@@ -256,10 +256,11 @@ public class DynamoDbAuditRepository : IAuditRepository
         return events.OrderByDescending(e => e.Timestamp).ToList();
     }
 
-    public async Task DeleteEventsAsync(IEnumerable<string> eventIds)
+    public async Task<int> DeleteEventsAsync(IEnumerable<string> eventIds)
     {
         var idList = eventIds.ToList();
         const int batchSize = 25;
+        var totalFailed = 0;
 
         for (var i = 0; i < idList.Count; i += batchSize)
         {
@@ -301,12 +302,15 @@ public class DynamoDbAuditRepository : IAuditRepository
 
             if (batchResponse.UnprocessedItems.Count > 0)
             {
-                _logger.LogError("Failed to delete {Count} items after retries",
-                    batchResponse.UnprocessedItems.Values.Sum(v => v.Count));
+                var failedCount = batchResponse.UnprocessedItems.Values.Sum(v => v.Count);
+                totalFailed += failedCount;
+                _logger.LogError("Failed to delete {Count} items after retries", failedCount);
             }
         }
 
-        _logger.LogInformation("Deleted {Count} audit events from DynamoDB", idList.Count);
+        var deleted = idList.Count - totalFailed;
+        _logger.LogInformation("Deleted {Deleted} of {Total} audit events from DynamoDB", deleted, idList.Count);
+        return totalFailed;
     }
 
     private static AuditEvent MapToAuditEvent(Dictionary<string, AttributeValue> item)

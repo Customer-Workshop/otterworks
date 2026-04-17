@@ -111,7 +111,7 @@ app.MapGet("/health", async (IAmazonDynamoDB dynamoDb) =>
     {
         Log.Warning(ex, "DynamoDB health check failed");
         return Results.Json(
-            new { status = "unhealthy", service = "audit-service", error = ex.Message, timestamp = DateTime.UtcNow },
+            new { status = "unhealthy", service = "audit-service", timestamp = DateTime.UtcNow },
             statusCode: 503);
     }
 });

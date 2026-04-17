@@ -34,7 +34,7 @@ resources:
     memory: 128Mi
 
 healthCheck:
-  path: /health
+  path: /api/health
   port: 3000
 
 monitoring:

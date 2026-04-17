@@ -119,6 +119,7 @@ public class ReportService {
 
     /**
      * Delete a report and its generated file.
+     * File deletion is deferred to afterCommit to avoid inconsistency on rollback.
      */
     @Transactional
     public boolean deleteReport(Long id) {
@@ -128,20 +129,29 @@ public class ReportService {
         }
 
         Report report = optReport.get();
+        final String filePath = report.getFilePath();
 
-        // Delete file if exists
-        if (report.getFilePath() != null) {
-            File file = new File(report.getFilePath());
-            if (file.exists()) {
-                boolean deleted = file.delete();
-                if (!deleted) {
-                    logger.warn("Failed to delete report file: {}", report.getFilePath());
-                }
-            }
-        }
-
+        // Delete DB record first
         reportRepository.deleteById(id);
         logger.info("Deleted report: {}", id);
+
+        // Defer file deletion until after transaction commits so a rollback
+        // doesn't leave the DB record pointing to a missing file.
+        if (filePath != null) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    File file = new File(filePath);
+                    if (file.exists()) {
+                        boolean deleted = file.delete();
+                        if (!deleted) {
+                            logger.warn("Failed to delete report file: {}", filePath);
+                        }
+                    }
+                }
+            });
+        }
+
         return true;
     }
 

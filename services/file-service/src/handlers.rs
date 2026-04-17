@@ -176,7 +176,7 @@ pub async fn list_files(
         .list_files(query.folder_id, query.owner_id, include_trashed)
         .await?;
 
-    let page = query.page.unwrap_or(1);
+    let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).min(100);
     let total = files.len();
     let start = ((page - 1) * page_size) as usize;

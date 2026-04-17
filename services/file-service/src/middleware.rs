@@ -82,7 +82,9 @@ where
             .unwrap_or_else(|| Uuid::new_v4().to_string());
 
         let method = req.method().to_string();
-        let path = req.path().to_string();
+        let path = req
+            .match_pattern()
+            .unwrap_or_else(|| req.path().to_string());
         let start = std::time::Instant::now();
 
         let fut = self.service.call(req);

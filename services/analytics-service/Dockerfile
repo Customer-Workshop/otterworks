@@ -1,8 +1,8 @@
 FROM sbtscala/scala-sbt:eclipse-temurin-17.0.10_7_1.9.9_3.4.0 AS builder
 
 WORKDIR /app
-COPY build.sbt project/ ./project/
-COPY project/build.properties project/plugins.sbt ./project/
+COPY build.sbt ./
+COPY project/ ./project/
 RUN sbt update || true
 
 COPY src ./src

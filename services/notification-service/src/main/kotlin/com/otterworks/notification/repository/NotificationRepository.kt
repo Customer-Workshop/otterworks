@@ -141,7 +141,7 @@ class NotificationRepository(
     }
 
     suspend fun markAllAsRead(userId: String): Int {
-        val (notifications, _) = getNotificationsByUserId(userId, page = 1, pageSize = 1000)
+        val (notifications, _) = getNotificationsByUserId(userId, page = 1, pageSize = Int.MAX_VALUE)
         val unreadNotifications = notifications.filter { !it.read }
 
         for (notification in unreadNotifications) {

@@ -77,10 +77,9 @@ class NotificationService(
             createdAt = Instant.now().toString(),
         )
 
-        if (DeliveryChannel.IN_APP in enabledChannels) {
-            repository.saveNotification(notification)
-            logger.info { "Stored in-app notification ${notification.id} for user $targetUserId" }
-        }
+        // Always persist notification for audit trail and offline retrieval
+        repository.saveNotification(notification)
+        logger.info { "Stored notification ${notification.id} for user $targetUserId" }
 
         if (DeliveryChannel.PUSH in enabledChannels) {
             webSocketManager.pushNotification(targetUserId, notification)

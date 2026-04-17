@@ -30,6 +30,7 @@ dependencies {
     // Database
     runtimeOnly 'org.postgresql:postgresql'
     implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql:10.8.1'
 
     // Observability
     implementation 'io.micrometer:micrometer-registry-prometheus'
@@ -46,6 +47,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'com.h2database:h2'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 spotless {

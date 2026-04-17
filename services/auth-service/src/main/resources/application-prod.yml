@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.otterworks: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN

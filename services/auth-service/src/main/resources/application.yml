@@ -4,11 +4,17 @@ server:
 spring:
   application:
     name: auth-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/otterworks}
     username: ${SPRING_DATASOURCE_USERNAME:otterworks}
     password: ${SPRING_DATASOURCE_PASSWORD:otterworks_dev}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,22 +29,25 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:dev-jwt-secret-otterworks-2024-change-in-production}
-  access-token-expiry: 3600
-  refresh-token-expiry: 604800
+  access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600}
+  refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:2592000}
 
 management:
   endpoints:
     web:
+      base-path: /
       exposure:
-        include: health,info,prometheus,metrics
+        include: prometheus,info
+      path-mapping:
+        prometheus: metrics
   metrics:
     export:
       prometheus:
         enabled: true
+    tags:
+      application: auth-service
 
 logging:
   level:
-    com.otterworks: DEBUG
-    org.springframework.security: INFO
-  pattern:
-    console: '{"timestamp":"%d{ISO8601}","level":"%level","service":"auth-service","logger":"%logger","message":"%msg","trace_id":"%X{traceId}","span_id":"%X{spanId}"}%n'
+    com.otterworks: INFO
+    org.springframework.security: WARN

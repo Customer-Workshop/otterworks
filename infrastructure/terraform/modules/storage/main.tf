@@ -4,6 +4,14 @@ resource "aws_s3_bucket" "files" {
   bucket = "${var.project}-files-${var.environment}"
 }
 
+resource "aws_s3_bucket_public_access_block" "files" {
+  bucket                  = aws_s3_bucket.files.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 resource "aws_s3_bucket_versioning" "files" {
   bucket = aws_s3_bucket.files.id
   versioning_configuration {
@@ -41,6 +49,14 @@ resource "aws_s3_bucket" "data_lake" {
   bucket = "${var.project}-data-lake-${var.environment}"
 }
 
+resource "aws_s3_bucket_public_access_block" "data_lake" {
+  bucket                  = aws_s3_bucket.data_lake.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "data_lake" {
   bucket = aws_s3_bucket.data_lake.id
   rule {
@@ -53,6 +69,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "data_lake" {
 
 resource "aws_s3_bucket" "audit_archive" {
   bucket = "${var.project}-audit-archive-${var.environment}"
+}
+
+resource "aws_s3_bucket_public_access_block" "audit_archive" {
+  bucket                  = aws_s3_bucket.audit_archive.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "audit_archive" {

@@ -20,15 +20,16 @@ module Api
 
         # PUT /api/v1/admin/config/:id
         def update
-          previous_value = @config.value
+          previous_value = @config.is_secret ? '********' : @config.value
 
           if @config.update(config_params)
+            after_value = @config.is_secret ? '********' : @config.value
             AuditLogger.log(
               action: 'config.updated',
               resource_type: 'SystemConfig',
               resource_id: @config.id,
               request: request,
-              changes_made: { key: @config.key, before: previous_value, after: @config.value }
+              changes_made: { key: @config.key, before: previous_value, after: after_value }
             )
             render json: @config, serializer: SystemConfigSerializer
           else

@@ -18,10 +18,6 @@ class ApplicationController < ActionController::API
     render json: { error: "Missing parameter: #{e.param}" }, status: :bad_request
   end
 
-  rescue_from ArgumentError do |e|
-    render json: { error: e.message }, status: :bad_request
-  end
-
   private
 
   def current_user_id

@@ -2,6 +2,12 @@ module Api
   module V1
     module Admin
       class AuditLogsController < ApplicationController
+        class InvalidDateError < StandardError; end
+
+        rescue_from InvalidDateError do |e|
+          render json: { error: e.message }, status: :bad_request
+        end
+
         # GET /api/v1/admin/audit-logs
         def index
           result = paginate(filtered_scope)
@@ -38,7 +44,7 @@ module Api
 
         def parse_time!(value)
           parsed = Time.zone.parse(value)
-          raise ArgumentError, "Invalid date: #{value}" if parsed.nil?
+          raise InvalidDateError, "Invalid date format: #{value}" if parsed.nil?
 
           parsed
         end

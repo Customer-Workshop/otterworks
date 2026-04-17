@@ -68,7 +68,9 @@ public class ReportDataFetcher {
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> fetchAnalyticsData(Date dateFrom, Date dateTo, Map<String, String> parameters) {
-        String cacheKey = "analytics:" + ReportDateUtils.toIsoString(dateFrom) + ":" + ReportDateUtils.toIsoString(dateTo);
+        String metric = (parameters != null) ? parameters.get("metric") : null;
+        String cacheKey = "analytics:" + ReportDateUtils.toIsoString(dateFrom) + ":" + ReportDateUtils.toIsoString(dateTo)
+                + (metric != null ? ":metric=" + metric : "");
 
         try {
             return dataCache.get(cacheKey, () -> {

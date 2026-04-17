@@ -8,8 +8,8 @@ A collaborative file storage and document editing platform — functionally equi
 # Start infrastructure (Postgres, Redis, LocalStack for AWS services)
 docker compose -f docker-compose.infra.yml up -d
 
-# Start all services
-docker compose up -d
+# Start all services (must reference both compose files)
+docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
 
 # Seed development data
 ./scripts/seed-data.sh

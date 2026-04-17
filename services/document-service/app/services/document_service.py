@@ -67,12 +67,12 @@ class DocumentService:
         if not document:
             return None
 
-        if data.title is not None:
+        if "title" in data.model_fields_set and data.title is not None:
             document.title = data.title
-        if data.content is not None:
+        if "content" in data.model_fields_set and data.content is not None:
             document.content = data.content
-            document.word_count = len(data.content.split())
-        if data.folder_id is not None:
+            document.word_count = len(data.content.split()) if data.content else 0
+        if "folder_id" in data.model_fields_set:
             document.folder_id = data.folder_id
 
         await self.db.commit()

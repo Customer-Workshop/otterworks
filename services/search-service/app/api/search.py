@@ -3,8 +3,6 @@
 import structlog
 from flask import Blueprint, current_app, jsonify, request
 
-from app.services.opensearch_client import OpenSearchService
-
 logger = structlog.get_logger()
 
 search_bp = Blueprint("search", __name__)
@@ -14,15 +12,18 @@ search_bp = Blueprint("search", __name__)
 def search_documents():
     """Full-text search across documents and files."""
     query = request.args.get("q", "")
-    page = int(request.args.get("page", 1))
-    page_size = int(request.args.get("page_size", 20))
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+        page_size = max(1, min(100, int(request.args.get("page_size", 20))))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid page or page_size parameter"}), 400
     doc_type = request.args.get("type")  # document, file, or None for all
     owner_id = request.args.get("owner_id")
 
     if not query:
         return jsonify({"error": "Query parameter 'q' is required"}), 400
 
-    service = OpenSearchService(current_app.config["OPENSEARCH_URL"])
+    service = current_app.opensearch_service
     results = service.search(
         query=query,
         doc_type=doc_type,
@@ -42,7 +43,7 @@ def suggest():
     if not prefix or len(prefix) < 2:
         return jsonify({"suggestions": []})
 
-    service = OpenSearchService(current_app.config["OPENSEARCH_URL"])
+    service = current_app.opensearch_service
     suggestions = service.suggest(prefix)
     return jsonify({"suggestions": suggestions})
 
@@ -54,7 +55,7 @@ def index_document():
     if not data:
         return jsonify({"error": "Request body is required"}), 400
 
-    service = OpenSearchService(current_app.config["OPENSEARCH_URL"])
+    service = current_app.opensearch_service
     service.index_document(data)
 
     logger.info("document_indexed", document_id=data.get("id"))
@@ -64,7 +65,7 @@ def index_document():
 @search_bp.route("/index/<document_id>", methods=["DELETE"])
 def remove_document(document_id: str):
     """Remove a document from the search index."""
-    service = OpenSearchService(current_app.config["OPENSEARCH_URL"])
+    service = current_app.opensearch_service
     service.delete_document(document_id)
 
     logger.info("document_removed_from_index", document_id=document_id)

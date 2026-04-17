@@ -3,90 +3,179 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
-import { createLogger, format, transports } from 'winston';
-import { setupCollaborationHandlers } from './handlers/collaboration';
+import pino from 'pino';
+import { loadConfig } from './config';
+import { MetricsCollector } from './metrics';
+import { createAuthMiddleware } from './middleware/auth';
 import { RedisAdapter } from './services/redis-adapter';
 import { DocumentStore } from './services/document-store';
+import { AwarenessService } from './services/awareness';
+import { PresenceHandler } from './handlers/presence';
+import { setupCollaborationHandlers } from './handlers/collaboration';
 
-const logger = createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: format.combine(
-    format.timestamp(),
-    format.json(),
-  ),
-  defaultMeta: { service: 'collab-service' },
-  transports: [new transports.Console()],
+const config = loadConfig();
+
+const logger = pino({
+  level: config.logLevel,
+  transport:
+    process.env.NODE_ENV !== 'production'
+      ? { target: 'pino-pretty', options: { colorize: true } }
+      : undefined,
+  base: { service: 'collab-service' },
 });
 
 const app = express();
 const httpServer = createServer(app);
+const metrics = new MetricsCollector();
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:4200'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: config.cors.origins,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Health check
-app.get('/health', (_req, res) => {
-  res.json({ status: 'healthy', service: 'collab-service' });
-});
-
-// Metrics endpoint
-app.get('/metrics', (_req, res) => {
-  res.type('text/plain').send(
-    '# HELP collab_service_up Collaboration Service is running\n' +
-    '# TYPE collab_service_up gauge\ncollab_service_up 1\n' +
-    '# HELP collab_active_connections Current WebSocket connections\n' +
-    '# TYPE collab_active_connections gauge\n' +
-    `collab_active_connections ${io.engine.clientsCount}\n`
-  );
-});
-
-// Active documents endpoint
-app.get('/api/v1/collab/documents', (_req, res) => {
-  const rooms = io.sockets.adapter.rooms;
-  const activeDocuments: string[] = [];
-  rooms.forEach((_sockets, room) => {
-    if (room.startsWith('doc:')) {
-      activeDocuments.push(room.replace('doc:', ''));
-    }
+app.get('/health', async (_req, res) => {
+  const redisHealthy = await redisAdapter.ping();
+  const status = redisHealthy ? 'healthy' : 'degraded';
+  res.status(redisHealthy ? 200 : 503).json({
+    status,
+    service: 'collab-service',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    redis: redisHealthy ? 'connected' : 'disconnected',
+    activeDocuments: collabManager?.getDocumentCount() ?? 0,
   });
-  res.json({ activeDocuments, count: activeDocuments.length });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (_req, res) => {
+  try {
+    const metricsOutput = await metrics.getMetrics();
+    res.type(metrics.getContentType()).send(metricsOutput);
+  } catch (err) {
+    logger.error({ err }, 'metrics_collection_failed');
+    res.status(500).send('Error collecting metrics');
+  }
+});
+
+// Presence endpoint
+app.get('/api/v1/collab/documents/:id/presence', (req, res) => {
+  const documentId = req.params.id;
+  const presence = presenceHandler.getDocumentPresence(documentId);
+  res.json(presence);
+});
+
+// Active documents listing
+app.get('/api/v1/collab/documents', (_req, res) => {
+  const activeDocuments = presenceHandler.getActiveDocuments();
+  res.json({ documents: activeDocuments, count: activeDocuments.length });
 });
 
 // Socket.IO server
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:4200'],
+    origin: config.cors.origins,
     credentials: true,
   },
   pingInterval: 25000,
   pingTimeout: 20000,
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 120000,
+    skipMiddlewares: false,
+  },
 });
+
+// JWT auth middleware for WebSocket
+io.use(createAuthMiddleware(config.jwt.secret, logger));
 
 // Initialize services
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
-const redisAdapter = new RedisAdapter(redisHost, redisPort);
-const documentStore = new DocumentStore(redisAdapter);
+const redisAdapter = new RedisAdapter(
+  {
+    host: config.redis.host,
+    port: config.redis.port,
+    password: config.redis.password,
+    db: config.redis.db,
+    keyPrefix: config.redis.keyPrefix,
+  },
+  logger,
+);
 
-// Setup WebSocket handlers
-setupCollaborationHandlers(io, documentStore, logger);
-
-// Start server
-const HTTP_PORT = parseInt(process.env.HTTP_PORT || '8084', 10);
-
-httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
-  logger.info(`Collaboration Service listening on port ${HTTP_PORT}`);
+const documentStore = new DocumentStore(redisAdapter, logger, {
+  documentTtl: config.persistence.documentTtlSeconds,
+  snapshotTtl: config.persistence.snapshotTtlSeconds,
+  maxSnapshots: config.persistence.maxSnapshotsPerDocument,
 });
 
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down...');
+const awareness = new AwarenessService(logger);
+const presenceHandler = new PresenceHandler(awareness, logger);
+
+// Setup collaboration handlers
+const collabManager = setupCollaborationHandlers(
+  io,
+  documentStore,
+  awareness,
+  presenceHandler,
+  metrics,
+  logger,
+  config.persistence.intervalMs,
+  config.persistence.snapshotIntervalMs,
+);
+
+// Start presence cleanup with document eviction callback
+const presenceCleanupTimer = presenceHandler.startCleanupInterval(
+  io,
+  60000,
+  300000,
+  (documentId: string) => {
+    collabManager.persistAndCleanupDocument(documentId).catch((err) => {
+      logger.error({ err, documentId }, 'stale_cleanup_document_eviction_failed');
+    });
+  },
+);
+
+// Start server
+async function start(): Promise<void> {
+  try {
+    await redisAdapter.connect();
+    logger.info('redis_connected');
+  } catch (err) {
+    logger.warn({ err }, 'redis_connection_failed, starting without Redis persistence');
+  }
+
+  httpServer.listen(config.httpPort, '0.0.0.0', () => {
+    logger.info({ port: config.httpPort }, 'collaboration_service_started');
+  });
+}
+
+// Graceful shutdown
+async function shutdown(signal: string): Promise<void> {
+  logger.info({ signal }, 'shutdown_initiated');
+
+  clearInterval(presenceCleanupTimer);
+  await collabManager.stop();
+
   httpServer.close(() => {
     redisAdapter.disconnect();
+    logger.info('collaboration_service_stopped');
     process.exit(0);
   });
+
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    logger.error('forced_shutdown_after_timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+start().catch((err) => {
+  logger.fatal({ err }, 'startup_failed');
+  process.exit(1);
 });

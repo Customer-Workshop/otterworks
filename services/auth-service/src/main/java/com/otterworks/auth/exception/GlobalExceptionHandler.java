@@ -1,5 +1,6 @@
 package com.otterworks.auth.exception;
 
+import io.jsonwebtoken.JwtException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,6 +31,11 @@ public class GlobalExceptionHandler {
             .map(err -> err.getField() + ": " + err.getDefaultMessage())
             .collect(Collectors.joining(", "));
     return buildErrorResponse(HttpStatus.BAD_REQUEST, errors);
+  }
+
+  @ExceptionHandler(JwtException.class)
+  public ResponseEntity<Map<String, Object>> handleJwtException(JwtException ex) {
+    return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
   }
 
   @ExceptionHandler(AccessDeniedException.class)

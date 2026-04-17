@@ -1,32 +1,44 @@
 Rails.application.routes.draw do
-  # Health check
-  get "/health", to: "health#show"
-  get "/metrics", to: "health#metrics"
+  # Health check (excluded from JWT auth)
+  get '/health', to: 'health#show'
+  get '/metrics', to: 'health#metrics'
 
   # Admin API
   namespace :api do
     namespace :v1 do
       namespace :admin do
-        resources :users, only: [:index, :show, :update, :destroy] do
+        # User Management
+        resources :users, only: %i[index show update destroy] do
           member do
             put :suspend
             put :activate
-            put :reset_password
           end
         end
 
-        resources :documents, only: [:index, :show, :destroy] do
-          member do
-            put :flag
-            put :unflag
-          end
-        end
+        # System Health
+        get 'health/services', to: 'health#services'
 
-        resources :feature_flags, only: [:index, :create, :update, :destroy]
+        # Feature Flags
+        resources :features, only: %i[index show create update destroy]
 
-        get "system/health", to: "system#health"
-        get "system/stats", to: "system#stats"
-        get "system/audit-log", to: "system#audit_log"
+        # System Configuration
+        resources :config, only: %i[index show update]
+
+        # Audit Log Viewer
+        resources :audit_logs, only: %i[index show], path: 'audit-logs'
+
+        # Storage Quotas
+        get 'quotas/:user_id', to: 'quotas#show', as: :quota
+        put 'quotas/:user_id', to: 'quotas#update'
+
+        # System Metrics
+        get 'metrics/summary', to: 'metrics#summary'
+
+        # Announcements
+        resources :announcements, only: %i[index show create update destroy]
+
+        # Bulk Operations
+        post 'bulk/users', to: 'bulk#users'
       end
     end
   end

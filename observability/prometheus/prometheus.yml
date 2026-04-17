@@ -1,0 +1,54 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8080']
+    metrics_path: /metrics
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8081']
+    metrics_path: /metrics
+
+  - job_name: 'file-service'
+    static_configs:
+      - targets: ['file-service:8082']
+    metrics_path: /metrics
+
+  - job_name: 'document-service'
+    static_configs:
+      - targets: ['document-service:8083']
+    metrics_path: /metrics
+
+  - job_name: 'collab-service'
+    static_configs:
+      - targets: ['collab-service:8084']
+    metrics_path: /metrics
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:8086']
+    metrics_path: /metrics
+
+  - job_name: 'search-service'
+    static_configs:
+      - targets: ['search-service:8087']
+    metrics_path: /metrics
+
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['analytics-service:8088']
+    metrics_path: /metrics
+
+  - job_name: 'admin-service'
+    static_configs:
+      - targets: ['admin-service:8089']
+    metrics_path: /metrics
+
+  - job_name: 'audit-service'
+    static_configs:
+      - targets: ['audit-service:8090']
+    metrics_path: /metrics

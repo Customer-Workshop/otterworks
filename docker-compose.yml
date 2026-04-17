@@ -1,0 +1,292 @@
+version: "3.9"
+
+# Application services for local development
+# Requires: docker compose -f docker-compose.infra.yml up -d (run first)
+# Usage: docker compose up -d
+
+x-common-env: &common-env
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_ENDPOINT_URL: http://localstack:4566
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: otterworks
+  POSTGRES_PASSWORD: otterworks_dev
+  POSTGRES_DB: otterworks
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  OPENSEARCH_URL: http://opensearch:9200
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+  OTEL_SERVICE_NAME: ""
+
+services:
+  # --- API Gateway (Go / Chi) ---
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: otterworks-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: api-gateway
+      AUTH_SERVICE_URL: http://auth-service:8081
+      FILE_SERVICE_URL: http://file-service:8082
+      DOCUMENT_SERVICE_URL: http://document-service:8083
+      COLLAB_SERVICE_URL: http://collab-service:8084
+      NOTIFICATION_SERVICE_URL: http://notification-service:8086
+      SEARCH_SERVICE_URL: http://search-service:8087
+      ANALYTICS_SERVICE_URL: http://analytics-service:8088
+      ADMIN_SERVICE_URL: http://admin-service:8089
+      AUDIT_SERVICE_URL: http://audit-service:8090
+    depends_on:
+      - auth-service
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Auth Service (Java / Spring Boot) ---
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: otterworks-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: auth-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/otterworks
+      SPRING_DATASOURCE_USERNAME: otterworks
+      SPRING_DATASOURCE_PASSWORD: otterworks_dev
+      JWT_SECRET: dev-jwt-secret-otterworks-2024-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # --- File Service (Rust / Actix-Web) ---
+  file-service:
+    build:
+      context: ./services/file-service
+      dockerfile: Dockerfile
+    container_name: otterworks-file-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: file-service
+      S3_BUCKET: otterworks-files
+      DYNAMODB_TABLE: otterworks-file-metadata
+    depends_on:
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Document Service (Python / FastAPI) ---
+  document-service:
+    build:
+      context: ./services/document-service
+      dockerfile: Dockerfile
+    container_name: otterworks-document-service
+    ports:
+      - "8083:8083"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: document-service
+      DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Collaboration Service (Node.js / Socket.io) ---
+  collab-service:
+    build:
+      context: ./services/collab-service
+      dockerfile: Dockerfile
+    container_name: otterworks-collab-service
+    ports:
+      - "8084:8084"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: collab-service
+      HTTP_PORT: 8084
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Notification Service (Kotlin / Ktor) ---
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: otterworks-notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: notification-service
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-notifications
+      SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
+    depends_on:
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Search Service (Python / Flask) ---
+  search-service:
+    build:
+      context: ./services/search-service
+      dockerfile: Dockerfile
+    container_name: otterworks-search-service
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: search-service
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Analytics Service (Scala / Akka HTTP) ---
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    container_name: otterworks-analytics-service
+    ports:
+      - "8088:8088"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: analytics-service
+      S3_DATA_LAKE_BUCKET: otterworks-data-lake
+    depends_on:
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Admin Service (Ruby / Rails) ---
+  admin-service:
+    build:
+      context: ./services/admin-service
+      dockerfile: Dockerfile
+    container_name: otterworks-admin-service
+    ports:
+      - "8089:8089"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: admin-service
+      RAILS_ENV: development
+      DATABASE_URL: postgres://otterworks:otterworks_dev@postgres:5432/otterworks
+      SECRET_KEY_BASE: dev-secret-key-base-otterworks-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # --- Audit Service (C# / ASP.NET) ---
+  audit-service:
+    build:
+      context: ./services/audit-service
+      dockerfile: Dockerfile
+    container_name: otterworks-audit-service
+    ports:
+      - "8090:8090"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: audit-service
+      DYNAMODB_TABLE: otterworks-audit-events
+      ASPNETCORE_URLS: http://+:8090
+    depends_on:
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Web Frontend (React / Next.js) ---
+  web-app:
+    build:
+      context: ./frontend/web-app
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+        NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:8084
+    container_name: otterworks-web-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+
+  # --- Admin Dashboard (Angular) ---
+  admin-dashboard:
+    build:
+      context: ./frontend/admin-dashboard
+      dockerfile: Dockerfile
+    container_name: otterworks-admin-dashboard
+    ports:
+      - "4200:4200"
+    environment:
+      API_URL: http://localhost:8080
+    depends_on:
+      - api-gateway
+
+  # --- Jaeger (Distributed Tracing) ---
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    container_name: otterworks-jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+networks:
+  default:
+    name: otterworks-network
+
+volumes:
+  postgres_data:
+  localstack_data:
+  opensearch_data:

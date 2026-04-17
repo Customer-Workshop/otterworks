@@ -40,23 +40,13 @@ INDEX_COUNT = Counter(
 def health() -> tuple:
     """Liveness check — returns 200 if the process is running.
 
-    Used by Docker healthcheck (curl -f). Always returns 200 so that
-    temporary OpenSearch outages do not cause container restarts.
+    Used by Docker healthcheck (curl -f). Never calls external services
+    so the response is immediate regardless of dependency health.
+    Use /health/ready for dependency-aware readiness probes.
     """
-    opensearch_service = current_app.config.get("OPENSEARCH_SERVICE")
-
-    opensearch_healthy = False
-    if opensearch_service:
-        opensearch_healthy = opensearch_service.ping()
-
-    status = "healthy" if opensearch_healthy else "degraded"
-
     return jsonify({
-        "status": status,
+        "status": "alive",
         "service": "search-service",
-        "dependencies": {
-            "opensearch": "connected" if opensearch_healthy else "disconnected",
-        },
     }), 200
 
 

@@ -4,25 +4,15 @@ from __future__ import annotations
 
 
 class TestHealthEndpoint:
-    """Tests for GET /health."""
+    """Tests for GET /health (liveness)."""
 
-    def test_health_when_opensearch_connected(self, client, mock_opensearch_client):
-        """Health returns healthy when OpenSearch is reachable."""
-        mock_opensearch_client.ping.return_value = True
+    def test_health_returns_200(self, client):
+        """Liveness always returns 200 without contacting dependencies."""
         response = client.get("/health")
         assert response.status_code == 200
         data = response.get_json()
-        assert data["status"] == "healthy"
-        assert data["dependencies"]["opensearch"] == "connected"
-
-    def test_health_when_opensearch_disconnected(self, client, mock_opensearch_client):
-        """Health returns 200 with degraded status when OpenSearch is unreachable."""
-        mock_opensearch_client.ping.return_value = False
-        response = client.get("/health")
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["status"] == "degraded"
-        assert data["dependencies"]["opensearch"] == "disconnected"
+        assert data["status"] == "alive"
+        assert data["service"] == "search-service"
 
 
 class TestReadinessEndpoint:

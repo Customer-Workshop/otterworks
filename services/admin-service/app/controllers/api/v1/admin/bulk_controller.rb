@@ -18,23 +18,27 @@ module Api
             request: request
           )
 
-          status = if result.errors.any? && result.success_count.zero? && result.failure_count.zero?
-                     :bad_request
-                   elsif result.failure_count.zero?
-                     :ok
-                   else
-                     :multi_status
-                   end
-
           render json: {
             operation: operation,
             success_count: result.success_count,
             failure_count: result.failure_count,
             errors: result.errors
-          }, status: status
+          }, status: bulk_status(result)
         end
 
         private
+
+        def bulk_status(result)
+          if result.errors.any? && result.success_count.zero? && result.failure_count.zero?
+            :bad_request
+          elsif result.success_count.zero? && result.failure_count.positive?
+            :unprocessable_entity
+          elsif result.failure_count.zero?
+            :ok
+          else
+            :multi_status
+          end
+        end
 
         def bulk_params
           params.permit(:reason, :role).to_h.symbolize_keys

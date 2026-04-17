@@ -52,12 +52,18 @@ impl EventPublisher {
         let message =
             serde_json::to_string(event).map_err(|e| ServiceError::Internal(e.to_string()))?;
 
-        self.client
+        let mut req = self
+            .client
             .publish()
             .topic_arn(topic_arn)
-            .message(&message)
-            .message_group_id(&event.event_type)
-            .send()
+            .message(&message);
+
+        // message_group_id is only valid for FIFO topics (ARN ends with .fifo)
+        if topic_arn.ends_with(".fifo") {
+            req = req.message_group_id(&event.event_type);
+        }
+
+        req.send()
             .await
             .map_err(|e| ServiceError::SnsError(e.to_string()))?;
 

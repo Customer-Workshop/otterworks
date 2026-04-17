@@ -29,14 +29,17 @@ export function setupCollaborationHandlers(
     if (pending) return pending;
 
     const initPromise = (async () => {
-      const doc = new Y.Doc();
-      const savedState = await documentStore.getDocumentState(documentId);
-      if (savedState) {
-        Y.applyUpdate(doc, savedState);
+      try {
+        const doc = new Y.Doc();
+        const savedState = await documentStore.getDocumentState(documentId);
+        if (savedState) {
+          Y.applyUpdate(doc, savedState);
+        }
+        documents.set(documentId, doc);
+        return doc;
+      } finally {
+        documentInitPromises.delete(documentId);
       }
-      documents.set(documentId, doc);
-      documentInitPromises.delete(documentId);
-      return doc;
     })();
 
     documentInitPromises.set(documentId, initPromise);

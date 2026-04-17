@@ -92,6 +92,10 @@ export class RedisAdapter {
     await this.client.hdel(this.prefixKey(key), field);
   }
 
+  async hincrby(key: string, field: string, increment: number): Promise<number> {
+    return this.client.hincrby(this.prefixKey(key), field, increment);
+  }
+
   async lpush(key: string, value: string): Promise<void> {
     await this.client.lpush(this.prefixKey(key), value);
   }

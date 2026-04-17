@@ -126,8 +126,17 @@ const collabManager = setupCollaborationHandlers(
   config.persistence.snapshotIntervalMs,
 );
 
-// Start presence cleanup
-const presenceCleanupTimer = presenceHandler.startCleanupInterval(io);
+// Start presence cleanup with document eviction callback
+const presenceCleanupTimer = presenceHandler.startCleanupInterval(
+  io,
+  60000,
+  300000,
+  (documentId: string) => {
+    collabManager.persistAndCleanupDocument(documentId).catch((err) => {
+      logger.error({ err, documentId }, 'stale_cleanup_document_eviction_failed');
+    });
+  },
+);
 
 // Start server
 async function start(): Promise<void> {

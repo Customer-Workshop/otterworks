@@ -419,7 +419,7 @@ export class CollaborationManager {
     }
   }
 
-  private async persistAndCleanupDocument(documentId: string): Promise<void> {
+  async persistAndCleanupDocument(documentId: string): Promise<void> {
     const { documentStore, metrics, logger } = this.deps;
     const doc = this.documents.get(documentId);
     if (!doc) return;

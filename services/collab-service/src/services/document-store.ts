@@ -62,16 +62,15 @@ export class DocumentStore {
     // Update document metadata
     const now = new Date().toISOString();
     const metaKey = `${DOC_META_KEY}${documentId}`;
-    const existing = await this.redis.hgetall(metaKey);
-
-    const version = existing.version ? parseInt(existing.version, 10) + 1 : 1;
 
     await this.redis.hset(metaKey, 'documentId', documentId);
     await this.redis.hset(metaKey, 'lastModifiedAt', now);
     await this.redis.hset(metaKey, 'lastModifiedBy', userId || 'system');
-    await this.redis.hset(metaKey, 'version', String(version));
+    // Use atomic hincrby to avoid lost increments under concurrent updates
+    const version = await this.redis.hincrby(metaKey, 'version', 1);
 
-    if (!existing.createdAt) {
+    const createdAt = await this.redis.hget(metaKey, 'createdAt');
+    if (!createdAt) {
       await this.redis.hset(metaKey, 'createdAt', now);
     }
 

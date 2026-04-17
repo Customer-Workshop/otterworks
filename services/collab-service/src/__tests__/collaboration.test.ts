@@ -26,6 +26,7 @@ const mockRedis = {
   hget: jest.fn().mockResolvedValue(null),
   hgetall: jest.fn().mockResolvedValue({}),
   hdel: jest.fn().mockResolvedValue(undefined),
+  hincrby: jest.fn().mockResolvedValue(1),
   lpush: jest.fn().mockResolvedValue(undefined),
   lrange: jest.fn().mockResolvedValue([]),
   ltrim: jest.fn().mockResolvedValue(undefined),

@@ -11,6 +11,7 @@ const mockRedis = {
   hget: jest.fn(),
   hgetall: jest.fn(),
   hdel: jest.fn(),
+  hincrby: jest.fn(),
   lpush: jest.fn(),
   lrange: jest.fn(),
   ltrim: jest.fn(),
@@ -79,8 +80,9 @@ describe('DocumentStore', () => {
   describe('saveDocumentState', () => {
     it('should save document state with TTL', async () => {
       mockRedis.set.mockResolvedValue(undefined);
-      mockRedis.hgetall.mockResolvedValue({});
       mockRedis.hset.mockResolvedValue(undefined);
+      mockRedis.hincrby.mockResolvedValue(1);
+      mockRedis.hget.mockResolvedValue(null);
       mockRedis.expire.mockResolvedValue(undefined);
 
       const doc = new Y.Doc();
@@ -94,17 +96,15 @@ describe('DocumentStore', () => {
 
     it('should update document metadata', async () => {
       mockRedis.set.mockResolvedValue(undefined);
-      mockRedis.hgetall.mockResolvedValue({
-        version: '5',
-        createdAt: '2024-01-01T00:00:00Z',
-      });
       mockRedis.hset.mockResolvedValue(undefined);
+      mockRedis.hincrby.mockResolvedValue(6);
+      mockRedis.hget.mockResolvedValue('2024-01-01T00:00:00Z');
       mockRedis.expire.mockResolvedValue(undefined);
 
       const state = Buffer.from(new Uint8Array([1, 2, 3]));
       await store.saveDocumentState('doc-456', state, 'user-1');
 
-      expect(mockRedis.hset).toHaveBeenCalledWith('doc:meta:doc-456', 'version', '6');
+      expect(mockRedis.hincrby).toHaveBeenCalledWith('doc:meta:doc-456', 'version', 1);
       expect(mockRedis.hset).toHaveBeenCalledWith(
         'doc:meta:doc-456',
         'lastModifiedBy',
@@ -114,8 +114,9 @@ describe('DocumentStore', () => {
 
     it('should set createdAt on first save', async () => {
       mockRedis.set.mockResolvedValue(undefined);
-      mockRedis.hgetall.mockResolvedValue({});
       mockRedis.hset.mockResolvedValue(undefined);
+      mockRedis.hincrby.mockResolvedValue(1);
+      mockRedis.hget.mockResolvedValue(null);
       mockRedis.expire.mockResolvedValue(undefined);
 
       const state = Buffer.from(new Uint8Array([1, 2, 3]));
@@ -130,8 +131,9 @@ describe('DocumentStore', () => {
 
     it('should default userId to system when not provided', async () => {
       mockRedis.set.mockResolvedValue(undefined);
-      mockRedis.hgetall.mockResolvedValue({});
       mockRedis.hset.mockResolvedValue(undefined);
+      mockRedis.hincrby.mockResolvedValue(1);
+      mockRedis.hget.mockResolvedValue(null);
       mockRedis.expire.mockResolvedValue(undefined);
 
       const state = Buffer.from(new Uint8Array([1, 2, 3]));

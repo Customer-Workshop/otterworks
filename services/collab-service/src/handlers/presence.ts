@@ -44,15 +44,24 @@ export class PresenceHandler {
     io: SocketIOServer,
     intervalMs = 60000,
     maxIdleMs = 300000,
+    onDocumentEmpty?: (documentId: string) => void,
   ): NodeJS.Timeout {
     return setInterval(() => {
       const removed = this.awareness.cleanupStaleUsers(maxIdleMs);
+      const affectedDocuments = new Set<string>();
       for (const entry of removed) {
-        this.broadcastPresenceUpdate(io, entry.documentId);
+        affectedDocuments.add(entry.documentId);
         this.logger.info(
           { documentId: entry.documentId, userId: entry.userId },
           'stale_user_removed_from_presence',
         );
+      }
+      for (const documentId of affectedDocuments) {
+        this.broadcastPresenceUpdate(io, documentId);
+        // Trigger document cleanup if no users remain
+        if (onDocumentEmpty && this.awareness.getDocumentUserCount(documentId) === 0) {
+          onDocumentEmpty(documentId);
+        }
       }
     }, intervalMs);
   }

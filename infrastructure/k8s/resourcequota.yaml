@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: otterworks-quota
+  namespace: decomposition-dev
+  labels:
+    app.kubernetes.io/managed-by: terraform
+    platform/environment: dev
+    platform/team: otterworks
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    pods: "20"

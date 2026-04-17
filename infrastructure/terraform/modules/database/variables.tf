@@ -1,0 +1,49 @@
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
+}
+
+variable "project" {
+  description = "Project name used as prefix for resource naming"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{1,20}$", var.project))
+    error_message = "Project name must be lowercase alphanumeric with hyphens, 2-21 characters."
+  }
+}
+
+variable "db_password" {
+  description = "Master password for the RDS PostgreSQL instance"
+  type        = string
+  sensitive   = true
+  default     = "change-me-in-production"
+
+  validation {
+    condition     = length(var.db_password) >= 8
+    error_message = "Database password must be at least 8 characters."
+  }
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "Initial allocated storage in GB"
+  type        = number
+  default     = 20
+}
+
+variable "db_max_allocated_storage" {
+  description = "Maximum allocated storage in GB for autoscaling"
+  type        = number
+  default     = 50
+}

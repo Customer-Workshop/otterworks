@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: decomposition-dev
+  labels:
+    app.kubernetes.io/managed-by: terraform
+    platform/environment: dev
+    platform/team: otterworks

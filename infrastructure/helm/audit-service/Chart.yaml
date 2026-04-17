@@ -1,0 +1,6 @@
+apiVersion: v2
+name: audit-service
+description: OtterWorks Audit Service - C#/ASP.NET audit trail
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

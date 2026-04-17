@@ -1,4 +1,14 @@
-# Cognito user pool for OtterWorks authentication
+# ------------------------------------------------------------------------------
+# OtterWorks Auth Module
+# Cognito user pool for authentication and authorization
+# ------------------------------------------------------------------------------
+
+locals {
+  common_tags = {
+    Module  = "auth"
+    Project = var.project
+  }
+}
 
 resource "aws_cognito_user_pool" "main" {
   name = "${var.project}-users-${var.environment}"
@@ -15,10 +25,10 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   schema {
-    name                     = "email"
-    attribute_data_type      = "String"
-    required                 = true
-    mutable                  = true
+    name                = "email"
+    attribute_data_type = "String"
+    required            = true
+    mutable             = true
     string_attribute_constraints {
       min_length = 1
       max_length = 256
@@ -26,19 +36,19 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   schema {
-    name                     = "display_name"
-    attribute_data_type      = "String"
-    required                 = false
-    mutable                  = true
+    name                = "display_name"
+    attribute_data_type = "String"
+    required            = false
+    mutable             = true
     string_attribute_constraints {
       min_length = 1
       max_length = 100
     }
   }
 
-  tags = {
+  tags = merge(local.common_tags, {
     Service = "auth-service"
-  }
+  })
 }
 
 resource "aws_cognito_user_pool_client" "web" {
@@ -51,18 +61,22 @@ resource "aws_cognito_user_pool_client" "web" {
     "ALLOW_USER_SRP_AUTH",
   ]
 
-  access_token_validity  = 1  # hours
-  refresh_token_validity = 30 # days
-  id_token_validity      = 1  # hours
+  access_token_validity  = 1
+  refresh_token_validity = 30
+  id_token_validity      = 1
 }
 
-output "user_pool_id" {
-  value = aws_cognito_user_pool.main.id
-}
+resource "aws_cognito_user_pool_client" "admin" {
+  name         = "${var.project}-admin-client"
+  user_pool_id = aws_cognito_user_pool.main.id
 
-output "user_pool_client_id" {
-  value = aws_cognito_user_pool_client.web.id
-}
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH",
+  ]
 
-variable "environment" { type = string }
-variable "project" { type = string }
+  access_token_validity  = 1
+  refresh_token_validity = 7
+  id_token_validity      = 1
+}

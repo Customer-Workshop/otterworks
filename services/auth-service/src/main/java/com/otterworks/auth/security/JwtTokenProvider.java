@@ -57,6 +57,19 @@ public class JwtTokenProvider {
 
   public String validateTokenAndGetUserId(String token) {
     Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    String type = claims.get("type", String.class);
+    if ("refresh".equals(type)) {
+      throw new IllegalArgumentException("Refresh token cannot be used as access token");
+    }
+    return claims.getSubject();
+  }
+
+  public String validateRefreshTokenAndGetUserId(String token) {
+    Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    String type = claims.get("type", String.class);
+    if (!"refresh".equals(type)) {
+      throw new IllegalArgumentException("Token is not a refresh token");
+    }
     return claims.getSubject();
   }
 }

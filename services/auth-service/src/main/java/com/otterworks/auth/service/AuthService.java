@@ -69,7 +69,7 @@ public class AuthService {
   }
 
   public AuthResponse refreshToken(String token) {
-    String userId = jwtTokenProvider.validateTokenAndGetUserId(token);
+    String userId = jwtTokenProvider.validateRefreshTokenAndGetUserId(token);
     User user =
         userRepository
             .findById(java.util.UUID.fromString(userId))

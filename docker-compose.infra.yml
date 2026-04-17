@@ -194,6 +194,10 @@ services:
       retries: 3
     restart: unless-stopped
 
+networks:
+  default:
+    name: otterworks-network
+
 volumes:
   postgres_data:
   localstack_data:

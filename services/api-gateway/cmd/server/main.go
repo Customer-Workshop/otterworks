@@ -123,16 +123,19 @@ func main() {
 	})
 
 	// --- Route Proxies ---
+	// Chi's Mount strips the mount prefix before forwarding to the handler.
+	// Include the full backend path in the target URL so the proxy prepends it,
+	// e.g. /api/v1/auth/register → chi strips to /register → proxy sends /api/v1/auth/register
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Mount("/auth", newReverseProxy(cfg.AuthServiceURL))
-		r.Mount("/files", newReverseProxy(cfg.FileServiceURL))
-		r.Mount("/documents", newReverseProxy(cfg.DocumentServiceURL))
-		r.Mount("/collab", newReverseProxy(cfg.CollabServiceURL))
-		r.Mount("/notifications", newReverseProxy(cfg.NotificationServiceURL))
-		r.Mount("/search", newReverseProxy(cfg.SearchServiceURL))
-		r.Mount("/analytics", newReverseProxy(cfg.AnalyticsServiceURL))
-		r.Mount("/admin", newReverseProxy(cfg.AdminServiceURL))
-		r.Mount("/audit", newReverseProxy(cfg.AuditServiceURL))
+		r.Mount("/auth", newReverseProxy(cfg.AuthServiceURL+"/api/v1/auth"))
+		r.Mount("/files", newReverseProxy(cfg.FileServiceURL+"/api/v1/files"))
+		r.Mount("/documents", newReverseProxy(cfg.DocumentServiceURL+"/api/v1/documents"))
+		r.Mount("/collab", newReverseProxy(cfg.CollabServiceURL+"/api/v1/collab"))
+		r.Mount("/notifications", newReverseProxy(cfg.NotificationServiceURL+"/api/v1/notifications"))
+		r.Mount("/search", newReverseProxy(cfg.SearchServiceURL+"/api/v1/search"))
+		r.Mount("/analytics", newReverseProxy(cfg.AnalyticsServiceURL+"/api/v1/analytics"))
+		r.Mount("/admin", newReverseProxy(cfg.AdminServiceURL+"/api/v1/admin"))
+		r.Mount("/audit", newReverseProxy(cfg.AuditServiceURL+"/api/v1/audit"))
 	})
 
 	// --- Server ---

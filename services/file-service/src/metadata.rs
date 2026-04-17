@@ -167,7 +167,7 @@ impl MetadataClient {
                 .expression_attribute_values(":f", AttributeValue::S(fid.to_string()));
         } else {
             update_builder =
-                update_builder.update_expression("REMOVE folder_id SET updated_at = :u");
+                update_builder.update_expression("SET updated_at = :u REMOVE folder_id");
         }
 
         update_builder

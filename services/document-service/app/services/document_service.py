@@ -233,7 +233,7 @@ class DocumentService:
     async def search(
         self, query: str, page: int = 1, size: int = 20
     ) -> tuple[list[Document], int]:
-        escaped = query.replace("%", "\\%").replace("_", "\\_")
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
         base = select(Document).where(
             Document.is_deleted.is_(False),

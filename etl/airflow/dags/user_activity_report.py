@@ -17,8 +17,15 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 logger = logging.getLogger(__name__)
 
 # Configuration
-S3_BUCKET = "{{ var.value.get('otterworks_data_lake_bucket', 'otterworks-data-lake') }}"
+_DEFAULT_S3_BUCKET = "otterworks-data-lake"
 S3_REPORTS_PREFIX = "reports/user-activity"
+
+
+def _get_s3_bucket():
+    from airflow.models import Variable
+    return Variable.get("otterworks_data_lake_bucket", default_var=_DEFAULT_S3_BUCKET)
+
+
 POSTGRES_CONN_ID = "otterworks_postgres"
 AWS_CONN_ID = "aws_default"
 LOOKBACK_DAYS = 30
@@ -109,7 +116,7 @@ def query_per_user_activity(**context):
         key = f"analytics/daily/year={year}/month={month}/day={day}/top_users.jsonl.gz"
 
         try:
-            obj = s3_hook.get_key(key, bucket_name=S3_BUCKET)
+            obj = s3_hook.get_key(key, bucket_name=_get_s3_bucket())
             if obj is None:
                 continue
 
@@ -205,12 +212,14 @@ def store_reports_to_s3(**context):
 
     s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
 
+    bucket = _get_s3_bucket()
+
     # Store full report
     report_key = f"{S3_REPORTS_PREFIX}/{ds}/activity_report.json"
     s3_hook.load_string(
         json.dumps(report, indent=2, default=str),
         key=report_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=bucket,
         replace=True,
     )
 
@@ -219,7 +228,7 @@ def store_reports_to_s3(**context):
     s3_hook.load_string(
         json.dumps(report, indent=2, default=str),
         key=latest_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=bucket,
         replace=True,
     )
 
@@ -231,7 +240,7 @@ def store_reports_to_s3(**context):
         s3_hook.load_string(
             "\n".join(lines) + "\n",
             key=users_key,
-            bucket_name=S3_BUCKET,
+            bucket_name=bucket,
             replace=True,
         )
 
@@ -239,7 +248,7 @@ def store_reports_to_s3(**context):
         "Stored activity report for %s: %d user summaries at s3://%s/%s",
         ds,
         len(user_summaries),
-        S3_BUCKET,
+        bucket,
         report_key,
     )
 

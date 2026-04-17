@@ -75,11 +75,11 @@ def resolve_user_id(df):
     return df.withColumn(
         "resolved_user_id",
         F.coalesce(
-            F.col("userId"),
             F.col("ownerId"),
             F.col("editedBy"),
             F.col("authorId"),
             F.col("deletedBy"),
+            F.col("userId"),
             F.lit("unknown"),
         ),
     )

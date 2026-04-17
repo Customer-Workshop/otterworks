@@ -22,16 +22,31 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 logger = logging.getLogger(__name__)
 
-# Configuration
-SQS_QUEUE_URL = "{{ var.value.get('otterworks_analytics_queue_url', 'https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics') }}"
-DYNAMODB_TABLE = "{{ var.value.get('otterworks_analytics_table', 'otterworks-analytics-events') }}"
-S3_BUCKET = "{{ var.value.get('otterworks_data_lake_bucket', 'otterworks-data-lake') }}"
+# Configuration defaults (used when Airflow Variables are not set)
+_DEFAULT_SQS_QUEUE_URL = "https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics"
+_DEFAULT_DYNAMODB_TABLE = "otterworks-analytics-events"
+_DEFAULT_S3_BUCKET = "otterworks-data-lake"
 S3_PREFIX = "analytics/daily"
 POSTGRES_CONN_ID = "otterworks_postgres"
 AWS_CONN_ID = "aws_default"
 MAX_SQS_MESSAGES = 10000
 SQS_BATCH_SIZE = 10
 SQS_WAIT_TIME = 5
+
+
+def _get_sqs_queue_url():
+    from airflow.models import Variable
+    return Variable.get("otterworks_analytics_queue_url", default_var=_DEFAULT_SQS_QUEUE_URL)
+
+
+def _get_dynamodb_table():
+    from airflow.models import Variable
+    return Variable.get("otterworks_analytics_table", default_var=_DEFAULT_DYNAMODB_TABLE)
+
+
+def _get_s3_bucket():
+    from airflow.models import Variable
+    return Variable.get("otterworks_data_lake_bucket", default_var=_DEFAULT_S3_BUCKET)
 
 default_args = {
     "owner": "otterworks-data",
@@ -51,7 +66,7 @@ def extract_from_sqs(**context):
     """
     sqs_hook = SqsHook(aws_conn_id=AWS_CONN_ID)
     sqs_client = sqs_hook.get_conn()
-    queue_url = SQS_QUEUE_URL
+    queue_url = _get_sqs_queue_url()
 
     all_events = []
     messages_processed = 0
@@ -97,7 +112,7 @@ def extract_from_dynamodb(**context):
     to retrieve all events for the given execution date.
     """
     ds = context["ds"]
-    dynamodb_hook = DynamoDBHook(aws_conn_id=AWS_CONN_ID, table_name=DYNAMODB_TABLE)
+    dynamodb_hook = DynamoDBHook(aws_conn_id=AWS_CONN_ID, table_name=_get_dynamodb_table())
     table = dynamodb_hook.get_conn()
 
     all_items = []
@@ -262,6 +277,7 @@ def load_to_data_lake(**context):
         return
 
     s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
+    bucket = _get_s3_bucket()
     partition_key = f"{S3_PREFIX}/year={ds[:4]}/month={ds[5:7]}/day={ds[8:10]}"
 
     # Write summary
@@ -272,7 +288,7 @@ def load_to_data_lake(**context):
     s3_hook.load_bytes(
         summary_bytes,
         key=summary_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=bucket,
         replace=True,
     )
 
@@ -284,7 +300,7 @@ def load_to_data_lake(**context):
     s3_hook.load_bytes(
         hourly_bytes,
         key=hourly_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=bucket,
         replace=True,
     )
 
@@ -298,11 +314,11 @@ def load_to_data_lake(**context):
     s3_hook.load_bytes(
         buf.getvalue(),
         key=users_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=bucket,
         replace=True,
     )
 
-    logger.info("Loaded analytics data to s3://%s/%s", S3_BUCKET, partition_key)
+    logger.info("Loaded analytics data to s3://%s/%s", bucket, partition_key)
     context["ti"].xcom_push(key="s3_partition", value=partition_key)
 
 
@@ -378,7 +394,7 @@ def generate_report(**context):
     s3_hook.load_string(
         json.dumps(report, indent=2),
         key=report_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=_get_s3_bucket(),
         replace=True,
     )
 

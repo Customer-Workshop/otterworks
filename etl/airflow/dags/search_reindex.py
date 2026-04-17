@@ -18,11 +18,26 @@ from airflow.providers.amazon.aws.hooks.base_aws import AwsBaseHook
 
 logger = logging.getLogger(__name__)
 
-# Configuration
-DOCUMENT_SERVICE_URL = "{{ var.value.get('document_service_url', 'http://document-service:8083') }}"
-FILE_SERVICE_URL = "{{ var.value.get('file_service_url', 'http://file-service:8082') }}"
-OPENSEARCH_URL = "{{ var.value.get('opensearch_url', 'https://opensearch.otterworks.internal:9200') }}"
+# Configuration defaults
+_DEFAULT_DOCUMENT_SERVICE_URL = "http://document-service:8083"
+_DEFAULT_FILE_SERVICE_URL = "http://file-service:8082"
+_DEFAULT_OPENSEARCH_URL = "https://opensearch.otterworks.internal:9200"
 INDEX_PREFIX = "otterworks"
+
+
+def _get_document_service_url():
+    from airflow.models import Variable
+    return Variable.get("document_service_url", default_var=_DEFAULT_DOCUMENT_SERVICE_URL)
+
+
+def _get_file_service_url():
+    from airflow.models import Variable
+    return Variable.get("file_service_url", default_var=_DEFAULT_FILE_SERVICE_URL)
+
+
+def _get_opensearch_url():
+    from airflow.models import Variable
+    return Variable.get("opensearch_url", default_var=_DEFAULT_OPENSEARCH_URL)
 DOCUMENTS_INDEX = f"{INDEX_PREFIX}-documents"
 FILES_INDEX = f"{INDEX_PREFIX}-files"
 ALIAS_DOCUMENTS = f"{INDEX_PREFIX}-documents-live"
@@ -115,8 +130,10 @@ def create_indices(**context):
         },
     }
 
+    opensearch_url = _get_opensearch_url()
+
     resp = session.put(
-        f"{OPENSEARCH_URL}/{docs_index}",
+        f"{opensearch_url}/{docs_index}",
         data=json.dumps(documents_mapping),
         timeout=REQUEST_TIMEOUT,
     )
@@ -124,7 +141,7 @@ def create_indices(**context):
     logger.info("Created documents index: %s", docs_index)
 
     resp = session.put(
-        f"{OPENSEARCH_URL}/{files_index}",
+        f"{opensearch_url}/{files_index}",
         data=json.dumps(files_mapping),
         timeout=REQUEST_TIMEOUT,
     )
@@ -149,7 +166,7 @@ def fetch_and_index_documents(**context):
 
     while True:
         resp = requests.get(
-            f"{DOCUMENT_SERVICE_URL}/api/v1/documents",
+            f"{_get_document_service_url()}/api/v1/documents",
             params={"page": page, "page_size": API_PAGE_SIZE},
             timeout=REQUEST_TIMEOUT,
         )
@@ -186,7 +203,7 @@ def fetch_and_index_files(**context):
 
     while True:
         resp = requests.get(
-            f"{FILE_SERVICE_URL}/api/v1/files",
+            f"{_get_file_service_url()}/api/v1/files",
             params={"page": page, "page_size": API_PAGE_SIZE},
             timeout=REQUEST_TIMEOUT,
         )
@@ -220,10 +237,12 @@ def _build_bulk_body(items, index_name, id_field):
     return "\n".join(lines) + "\n"
 
 
-def _send_bulk_request(session, bulk_body):
+def _send_bulk_request(session, bulk_body, opensearch_url=None):
     """Send a bulk index request to OpenSearch with error checking."""
+    if opensearch_url is None:
+        opensearch_url = _get_opensearch_url()
     resp = session.post(
-        f"{OPENSEARCH_URL}/_bulk",
+        f"{opensearch_url}/_bulk",
         data=bulk_body,
         timeout=REQUEST_TIMEOUT * 2,
     )
@@ -251,9 +270,11 @@ def validate_indices(**context):
 
     session = _opensearch_session()
 
+    opensearch_url = _get_opensearch_url()
+
     # Refresh indices to make all docs searchable
-    session.post(f"{OPENSEARCH_URL}/{docs_index}/_refresh", timeout=REQUEST_TIMEOUT)
-    session.post(f"{OPENSEARCH_URL}/{files_index}/_refresh", timeout=REQUEST_TIMEOUT)
+    session.post(f"{opensearch_url}/{docs_index}/_refresh", timeout=REQUEST_TIMEOUT)
+    session.post(f"{opensearch_url}/{files_index}/_refresh", timeout=REQUEST_TIMEOUT)
 
     docs_count = _get_index_count(session, docs_index)
     files_count = _get_index_count(session, files_index)
@@ -278,10 +299,12 @@ def validate_indices(**context):
     context["ti"].xcom_push(key="validation_passed", value=True)
 
 
-def _get_index_count(session, index_name):
+def _get_index_count(session, index_name, opensearch_url=None):
     """Get the document count for an OpenSearch index."""
+    if opensearch_url is None:
+        opensearch_url = _get_opensearch_url()
     resp = session.get(
-        f"{OPENSEARCH_URL}/{index_name}/_count",
+        f"{opensearch_url}/{index_name}/_count",
         timeout=REQUEST_TIMEOUT,
     )
     resp.raise_for_status()
@@ -306,8 +329,10 @@ def swap_aliases(**context):
 
     session = _opensearch_session()
 
-    _swap_alias(session, ALIAS_DOCUMENTS, docs_index)
-    _swap_alias(session, ALIAS_FILES, files_index)
+    opensearch_url = _get_opensearch_url()
+
+    _swap_alias(session, ALIAS_DOCUMENTS, docs_index, opensearch_url)
+    _swap_alias(session, ALIAS_FILES, files_index, opensearch_url)
 
     logger.info(
         "Aliases swapped: %s -> %s, %s -> %s",
@@ -318,11 +343,13 @@ def swap_aliases(**context):
     )
 
 
-def _swap_alias(session, alias_name, new_index):
+def _swap_alias(session, alias_name, new_index, opensearch_url=None):
     """Atomically swap an alias from old index to new index."""
+    if opensearch_url is None:
+        opensearch_url = _get_opensearch_url()
     # Find current indices attached to alias
     current_resp = session.get(
-        f"{OPENSEARCH_URL}/_alias/{alias_name}",
+        f"{opensearch_url}/_alias/{alias_name}",
         timeout=REQUEST_TIMEOUT,
     )
 
@@ -334,7 +361,7 @@ def _swap_alias(session, alias_name, new_index):
     actions.append({"add": {"index": new_index, "alias": alias_name}})
 
     resp = session.post(
-        f"{OPENSEARCH_URL}/_aliases",
+        f"{opensearch_url}/_aliases",
         data=json.dumps({"actions": actions}),
         timeout=REQUEST_TIMEOUT,
     )
@@ -345,7 +372,7 @@ def _swap_alias(session, alias_name, new_index):
         for old_index in current_indices:
             if old_index != new_index:
                 delete_resp = session.delete(
-                    f"{OPENSEARCH_URL}/{old_index}",
+                    f"{opensearch_url}/{old_index}",
                     timeout=REQUEST_TIMEOUT,
                 )
                 if delete_resp.ok:

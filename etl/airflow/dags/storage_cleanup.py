@@ -16,11 +16,26 @@ from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 logger = logging.getLogger(__name__)
 
-# Configuration
-FILES_BUCKET = "{{ var.value.get('otterworks_files_bucket', 'otterworks-file-storage') }}"
-QUARANTINE_BUCKET = "{{ var.value.get('otterworks_quarantine_bucket', 'otterworks-file-quarantine') }}"
-REPORT_BUCKET = "{{ var.value.get('otterworks_data_lake_bucket', 'otterworks-data-lake') }}"
+# Configuration defaults
+_DEFAULT_FILES_BUCKET = "otterworks-file-storage"
+_DEFAULT_QUARANTINE_BUCKET = "otterworks-file-quarantine"
+_DEFAULT_REPORT_BUCKET = "otterworks-data-lake"
 DYNAMODB_TABLE = "otterworks-file-metadata"
+
+
+def _get_files_bucket():
+    from airflow.models import Variable
+    return Variable.get("otterworks_files_bucket", default_var=_DEFAULT_FILES_BUCKET)
+
+
+def _get_quarantine_bucket():
+    from airflow.models import Variable
+    return Variable.get("otterworks_quarantine_bucket", default_var=_DEFAULT_QUARANTINE_BUCKET)
+
+
+def _get_report_bucket():
+    from airflow.models import Variable
+    return Variable.get("otterworks_data_lake_bucket", default_var=_DEFAULT_REPORT_BUCKET)
 FILES_PREFIX = "files/"
 AWS_CONN_ID = "aws_default"
 QUARANTINE_PREFIX = "quarantined"
@@ -47,7 +62,9 @@ def list_s3_objects(**context):
     all_objects = []
     paginator = s3_client.get_paginator("list_objects_v2")
 
-    for page in paginator.paginate(Bucket=FILES_BUCKET, Prefix=FILES_PREFIX):
+    files_bucket = _get_files_bucket()
+
+    for page in paginator.paginate(Bucket=files_bucket, Prefix=FILES_PREFIX):
         for obj in page.get("Contents", []):
             all_objects.append(
                 {
@@ -57,7 +74,7 @@ def list_s3_objects(**context):
                 }
             )
 
-    logger.info("Found %d objects in s3://%s/%s", len(all_objects), FILES_BUCKET, FILES_PREFIX)
+    logger.info("Found %d objects in s3://%s/%s", len(all_objects), files_bucket, FILES_PREFIX)
     context["ti"].xcom_push(key="total_objects", value=len(all_objects))
     context["ti"].xcom_push(key="total_size_bytes", value=sum(o["size"] for o in all_objects))
     return all_objects
@@ -143,18 +160,21 @@ def move_to_quarantine(**context):
     moved_count = 0
     failed_count = 0
 
+    files_bucket = _get_files_bucket()
+    quarantine_bucket = _get_quarantine_bucket()
+
     for obj in orphaned:
         source_key = obj["key"]
         dest_key = f"{QUARANTINE_PREFIX}/{ds}/{source_key}"
 
         try:
             s3_client.copy_object(
-                Bucket=QUARANTINE_BUCKET,
+                Bucket=quarantine_bucket,
                 Key=dest_key,
-                CopySource={"Bucket": FILES_BUCKET, "Key": source_key},
+                CopySource={"Bucket": files_bucket, "Key": source_key},
                 MetadataDirective="COPY",
             )
-            s3_client.delete_object(Bucket=FILES_BUCKET, Key=source_key)
+            s3_client.delete_object(Bucket=files_bucket, Key=source_key)
             moved_count += 1
         except Exception as exc:
             logger.warning("Failed to quarantine %s: %s", source_key, exc)
@@ -164,7 +184,7 @@ def move_to_quarantine(**context):
         "Quarantined %d objects (%d failed) to s3://%s/%s/%s/",
         moved_count,
         failed_count,
-        QUARANTINE_BUCKET,
+        quarantine_bucket,
         QUARANTINE_PREFIX,
         ds,
     )
@@ -215,7 +235,7 @@ def generate_storage_report(**context):
         "cleanup": {
             "objects_quarantined": moved_count,
             "objects_failed": failed_count,
-            "quarantine_bucket": QUARANTINE_BUCKET,
+            "quarantine_bucket": _get_quarantine_bucket(),
         },
         "savings": {
             "storage_freed_gb": round(savings_gb, 4),
@@ -228,7 +248,7 @@ def generate_storage_report(**context):
     s3_hook.load_string(
         json.dumps(report, indent=2),
         key=report_key,
-        bucket_name=REPORT_BUCKET,
+        bucket_name=_get_report_bucket(),
         replace=True,
     )
 

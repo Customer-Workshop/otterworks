@@ -27,11 +27,16 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 DYNAMODB_TABLE = "otterworks-audit-events"
-S3_BUCKET = "{{ var.value.get('otterworks_archive_bucket', 'otterworks-audit-archive') }}"
+_DEFAULT_ARCHIVE_BUCKET = "otterworks-audit-archive"
 S3_PREFIX = "audit-archive"
 AWS_CONN_ID = "aws_default"
 RETENTION_DAYS = 90
 DYNAMODB_BATCH_SIZE = 25  # DynamoDB batch write limit
+
+
+def _get_archive_bucket():
+    from airflow.models import Variable
+    return Variable.get("otterworks_archive_bucket", default_var=_DEFAULT_ARCHIVE_BUCKET)
 
 default_args = {
     "owner": "otterworks-compliance",
@@ -118,7 +123,7 @@ def compress_and_upload(**context):
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
         for event in events:
-            line = json.dumps(event, cls=_DecimalEncoder, default=str)
+            line = json.dumps(event, cls=_DecimalEncoder)
             gz.write(line.encode("utf-8"))
             gz.write(b"\n")
 
@@ -127,7 +132,7 @@ def compress_and_upload(**context):
     s3_hook.load_bytes(
         buf.getvalue(),
         key=archive_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=_get_archive_bucket(),
         replace=True,
         extra_args={"StorageClass": "GLACIER"},
     )
@@ -135,7 +140,7 @@ def compress_and_upload(**context):
     logger.info(
         "Archived %d events to s3://%s/%s (%.2f MB compressed)",
         len(events),
-        S3_BUCKET,
+        _get_archive_bucket(),
         archive_key,
         compressed_size / (1024 * 1024),
     )
@@ -220,7 +225,7 @@ def generate_compliance_report(**context):
             "events_scanned": archive_count,
             "events_archived": archive_count,
             "events_deleted_from_source": deleted_count,
-            "archive_location": f"s3://{S3_BUCKET}/{archive_key}" if archive_key else None,
+            "archive_location": f"s3://{_get_archive_bucket()}/{archive_key}" if archive_key else None,
             "archive_storage_class": "GLACIER",
             "compressed_size_bytes": compressed_size,
         },
@@ -233,11 +238,12 @@ def generate_compliance_report(**context):
     }
 
     s3_hook = S3Hook(aws_conn_id=AWS_CONN_ID)
+    bucket = _get_archive_bucket()
     report_key = f"reports/compliance/audit-archive/{ds}/report.json"
     s3_hook.load_string(
         json.dumps(report, indent=2),
         key=report_key,
-        bucket_name=S3_BUCKET,
+        bucket_name=bucket,
         replace=True,
     )
 
@@ -245,7 +251,7 @@ def generate_compliance_report(**context):
         "Compliance report generated: %d events archived, %d deleted, stored at s3://%s/%s",
         archive_count,
         deleted_count,
-        S3_BUCKET,
+        bucket,
         report_key,
     )
 

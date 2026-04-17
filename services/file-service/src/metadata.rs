@@ -6,6 +6,12 @@ use crate::config::AwsConfig;
 use crate::errors::ServiceError;
 use crate::models::{FileMetadata, FileShare, FileVersion, Folder, SharePermission};
 
+/// Check if an AWS SDK error is a ConditionalCheckFailedException.
+fn is_conditional_check_failed<E: std::fmt::Debug>(err: &aws_sdk_dynamodb::error::SdkError<E>) -> bool {
+    matches!(err, aws_sdk_dynamodb::error::SdkError::ServiceError(se)
+        if format!("{:?}", se.err()).contains("ConditionalCheckFailed"))
+}
+
 /// Client for DynamoDB metadata operations.
 #[derive(Clone)]
 pub struct MetadataClient {
@@ -125,7 +131,12 @@ impl MetadataClient {
             .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()))
             .send()
             .await
-            .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            .map_err(|e| {
+                if is_conditional_check_failed(&e) {
+                    return ServiceError::FileNotFound(file_id.to_string());
+                }
+                ServiceError::DynamoError(e.to_string())
+            })?;
 
         self.get_file(file_id).await
     }
@@ -142,7 +153,12 @@ impl MetadataClient {
             .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()))
             .send()
             .await
-            .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            .map_err(|e| {
+                if is_conditional_check_failed(&e) {
+                    return ServiceError::FileNotFound(file_id.to_string());
+                }
+                ServiceError::DynamoError(e.to_string())
+            })?;
 
         self.get_file(file_id).await
     }
@@ -173,7 +189,12 @@ impl MetadataClient {
         update_builder
             .send()
             .await
-            .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            .map_err(|e| {
+                if is_conditional_check_failed(&e) {
+                    return ServiceError::FileNotFound(file_id.to_string());
+                }
+                ServiceError::DynamoError(e.to_string())
+            })?;
 
         self.get_file(file_id).await
     }
@@ -304,7 +325,12 @@ impl MetadataClient {
         builder
             .send()
             .await
-            .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            .map_err(|e| {
+                if is_conditional_check_failed(&e) {
+                    return ServiceError::FolderNotFound(folder_id.to_string());
+                }
+                ServiceError::DynamoError(e.to_string())
+            })?;
 
         self.get_folder(folder_id).await
     }

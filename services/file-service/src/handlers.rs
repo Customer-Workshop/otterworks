@@ -202,8 +202,8 @@ pub async fn delete_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
-    s3.delete_object(&file.s3_key).await?;
     meta.delete_file(&file_id).await?;
+    s3.delete_object(&file.s3_key).await?;
 
     let _ = events.file_deleted(&file_id, &file.owner_id).await;
 

@@ -58,9 +58,12 @@ impl EventPublisher {
             .topic_arn(topic_arn)
             .message(&message);
 
-        // message_group_id is only valid for FIFO topics (ARN ends with .fifo)
+        // message_group_id and message_deduplication_id are only valid for FIFO topics
         if topic_arn.ends_with(".fifo") {
-            req = req.message_group_id(&event.event_type);
+            let dedup_id = format!("{}_{}", event.file_id, event.timestamp);
+            req = req
+                .message_group_id(&event.event_type)
+                .message_deduplication_id(&dedup_id);
         }
 
         req.send()

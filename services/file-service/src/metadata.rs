@@ -208,15 +208,14 @@ impl MetadataClient {
             scan_builder = scan_builder.filter_expression(filter_parts.join(" AND "));
         }
 
-        let result = scan_builder
-            .send()
-            .await
-            .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
-
-        let items = result.items();
-        let mut files = Vec::with_capacity(items.len());
-        for item in items {
-            files.push(parse_file_metadata(item)?);
+        // Use the SDK paginator to handle DynamoDB's 1MB-per-Scan limit automatically
+        let mut paginator = scan_builder.into_paginator().send();
+        let mut files = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            for item in page.items() {
+                files.push(parse_file_metadata(item)?);
+            }
         }
         Ok(files)
     }

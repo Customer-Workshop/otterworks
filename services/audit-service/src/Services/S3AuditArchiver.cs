@@ -103,25 +103,25 @@ public class S3AuditArchiver : IAuditArchiver
         await _s3Client.PutObjectAsync(putRequest);
 
         var eventIds = events.Select(e => e.Id);
-        var failedDeletes = await _repository.DeleteEventsAsync(eventIds);
+        var deletedCount = await _repository.DeleteEventsAsync(eventIds);
 
         var s3Location = $"s3://{_settings.S3ArchiveBucket}/{key}";
-        var archivedCount = events.Count - failedDeletes;
+        var failedCount = events.Count - deletedCount;
 
-        if (failedDeletes > 0)
+        if (failedCount > 0)
         {
             _logger.LogWarning(
                 "Archived {Archived} of {Total} audit events to {Location}; {Failed} events could not be deleted from DynamoDB and may be re-archived on next run",
-                archivedCount, events.Count, s3Location, failedDeletes);
+                deletedCount, events.Count, s3Location, failedCount);
         }
         else
         {
-            _logger.LogInformation("Archived {Count} audit events to {Location}", archivedCount, s3Location);
+            _logger.LogInformation("Archived {Count} audit events to {Location}", deletedCount, s3Location);
         }
 
         return new ArchiveResult
         {
-            ArchivedCount = archivedCount,
+            ArchivedCount = deletedCount,
             S3Location = s3Location,
             ArchivedBefore = olderThan,
         };

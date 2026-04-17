@@ -310,7 +310,7 @@ public class DynamoDbAuditRepository : IAuditRepository
 
         var deleted = idList.Count - totalFailed;
         _logger.LogInformation("Deleted {Deleted} of {Total} audit events from DynamoDB", deleted, idList.Count);
-        return totalFailed;
+        return deleted;
     }
 
     private static AuditEvent MapToAuditEvent(Dictionary<string, AttributeValue> item)

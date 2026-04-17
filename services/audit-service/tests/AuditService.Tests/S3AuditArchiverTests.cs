@@ -92,7 +92,7 @@ public class S3AuditArchiverTests
 
         _mockRepository.Setup(r => r.GetEventsByDateRangeAsync(DateTime.MinValue, olderThan)).ReturnsAsync(events);
         _mockS3.Setup(s => s.PutObjectAsync(It.IsAny<PutObjectRequest>(), default)).ReturnsAsync(new PutObjectResponse());
-        _mockRepository.Setup(r => r.DeleteEventsAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(0);
+        _mockRepository.Setup(r => r.DeleteEventsAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(2);
 
         var result = await _archiver.ArchiveOldEventsAsync(olderThan);
 

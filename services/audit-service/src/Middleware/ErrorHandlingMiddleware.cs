@@ -25,6 +25,12 @@ public class ErrorHandlingMiddleware
             _logger.LogError(ex, "Unhandled exception processing {Method} {Path}",
                 context.Request.Method, context.Request.Path);
 
+            if (context.Response.HasStarted)
+            {
+                _logger.LogWarning("Response has already started, cannot write error response");
+                throw;
+            }
+
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             context.Response.ContentType = "application/json";
 

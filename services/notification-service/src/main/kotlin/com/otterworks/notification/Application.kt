@@ -57,10 +57,9 @@ fun Application.configurePlugins() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             logger.error(cause) { "Unhandled exception" }
-            call.respondText(
-                text = """{"error":"${cause.message}"}""",
-                contentType = ContentType.Application.Json,
-                status = HttpStatusCode.InternalServerError
+            call.respond(
+                status = HttpStatusCode.InternalServerError,
+                message = mapOf("error" to (cause.message ?: "Internal server error"))
             )
         }
     }

@@ -113,7 +113,7 @@ public class SnsConsumer : BackgroundService
 
             var entity = new AuditEvent
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = message.MessageId,
                 UserId = auditEvent.UserId ?? "system",
                 Action = auditEvent.Action ?? "unknown",
                 ResourceType = auditEvent.ResourceType ?? "unknown",

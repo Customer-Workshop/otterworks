@@ -433,9 +433,12 @@ export class CollaborationManager {
       const state = Y.encodeStateAsUpdate(doc);
       await documentStore.saveDocumentState(documentId, Buffer.from(state));
       logger.info({ documentId }, 'document_persisted_on_cleanup');
-      this.documents.delete(documentId);
-      metrics.activeRooms.dec();
-      logger.debug({ documentId }, 'document_removed_from_memory');
+      // Re-check if users have re-joined during the async persistence
+      if (this.deps.awareness.getDocumentUserCount(documentId) === 0) {
+        this.documents.delete(documentId);
+        metrics.activeRooms.dec();
+        logger.debug({ documentId }, 'document_removed_from_memory');
+      }
     } catch (err) {
       logger.error({ err, documentId }, 'document_persist_on_cleanup_failed');
       // Keep document in memory so the periodic persistence loop can retry

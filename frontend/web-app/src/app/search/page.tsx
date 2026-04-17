@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -27,6 +27,12 @@ function SearchContent() {
   const [query, setQuery] = useState(initialQuery);
   const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  useEffect(() => {
+    const urlQuery = searchParams.get("q") || "";
+    setQuery(urlQuery);
+    setSubmittedQuery(urlQuery);
+  }, [searchParams]);
   const [showFilters, setShowFilters] = useState(false);
 
   const { data, isLoading } = useQuery({

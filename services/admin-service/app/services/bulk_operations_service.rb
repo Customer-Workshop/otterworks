@@ -28,7 +28,7 @@ class BulkOperationsService
       errors << { user_id: user.id, error: e.message }
     end
 
-    missing_count = user_ids.size - users.size
+    missing_count = user_ids.uniq.size - users.size
     if missing_count.positive?
       failure_count += missing_count
       errors << { error: "#{missing_count} user(s) not found" }

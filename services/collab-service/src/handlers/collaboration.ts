@@ -98,6 +98,26 @@ export class CollaborationManager {
     const room = `doc:${documentId}`;
 
     try {
+      // If socket is already in another document, leave it first
+      const oldDocId = awareness.getUserDocument(socket.id);
+      if (oldDocId && oldDocId !== documentId) {
+        const oldRoom = `doc:${oldDocId}`;
+        socket.leave(oldRoom);
+        awareness.removeUser(socket.id);
+        socket.to(oldRoom).emit('user-left', {
+          socketId: socket.id,
+          userId: user.userId,
+        });
+        presenceHandler.broadcastPresenceUpdate(io, oldDocId);
+        if (awareness.getDocumentUserCount(oldDocId) === 0) {
+          this.persistAndCleanupDocument(oldDocId);
+        }
+        logger.info(
+          { oldDocumentId: oldDocId, newDocumentId: documentId, socketId: socket.id },
+          'user_switched_documents',
+        );
+      }
+
       await socket.join(room);
       logger.info(
         { documentId, userId: user.userId, socketId: socket.id },
@@ -147,23 +167,27 @@ export class CollaborationManager {
 
   private handleLeaveDocument(socket: Socket, data: { documentId: string }): void {
     const { io, awareness, presenceHandler, metrics, logger } = this.deps;
-    const { documentId } = data;
-    const room = `doc:${documentId}`;
 
     const mapping = awareness.removeUser(socket.id);
+    // Use the document the awareness service actually tracked, falling back to client-provided id
+    const trackedDocId = mapping?.documentId ?? data.documentId;
+    const room = `doc:${trackedDocId}`;
+
     socket.leave(room);
 
-    socket.to(room).emit('user-left', { socketId: socket.id, userId: mapping?.userId });
-    presenceHandler.broadcastPresenceUpdate(io, documentId);
+    if (mapping) {
+      socket.to(room).emit('user-left', { socketId: socket.id, userId: mapping.userId });
+      presenceHandler.broadcastPresenceUpdate(io, trackedDocId);
+    }
     metrics.messagesTotal.inc({ type: 'leave-document' });
 
     // Clean up empty documents from memory
-    const userCount = awareness.getDocumentUserCount(documentId);
+    const userCount = awareness.getDocumentUserCount(trackedDocId);
     if (userCount === 0) {
-      this.persistAndCleanupDocument(documentId);
+      this.persistAndCleanupDocument(trackedDocId);
     }
 
-    logger.info({ documentId, socketId: socket.id }, 'user_left_document');
+    logger.info({ documentId: trackedDocId, socketId: socket.id }, 'user_left_document');
   }
 
   private async handleDocumentUpdate(

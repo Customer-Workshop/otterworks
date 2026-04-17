@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   ArrowLeft,
   Share2,
@@ -38,6 +38,8 @@ function DocumentEditorContent() {
   const documentId = params.id as string;
   const [title, setTitle] = useState("");
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const latestContentRef = useRef<string>("");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ["documents", documentId],
@@ -59,6 +61,23 @@ function DocumentEditorContent() {
       router.push("/documents");
     },
   });
+
+  const debouncedSave = useCallback(
+    (content: string) => {
+      latestContentRef.current = content;
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        updateMutation.mutate({ content });
+      }, 1000);
+    },
+    [updateMutation]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   if (isLoading) return <PageLoader />;
   if (!document) {
@@ -133,9 +152,10 @@ function DocumentEditorContent() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() =>
-                updateMutation.mutate({ title: document.title })
-              }
+              onClick={() => {
+                if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+                updateMutation.mutate({ content: latestContentRef.current });
+              }}
               disabled={updateMutation.isPending}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
             >
@@ -174,9 +194,7 @@ function DocumentEditorContent() {
       {/* Editor */}
       <CollaborativeEditor
         documentId={documentId}
-        onUpdate={(content) => {
-          updateMutation.mutate({ content });
-        }}
+        onUpdate={debouncedSave}
       />
     </div>
   );

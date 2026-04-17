@@ -18,8 +18,6 @@ import {
   Quote,
   Heading1,
   Heading2,
-  Undo,
-  Redo,
   Code,
   Minus,
 } from "lucide-react";
@@ -177,23 +175,6 @@ export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEdito
           title="Horizontal rule"
         >
           <Minus size={16} />
-        </ToolbarButton>
-
-        <div className="w-px h-5 bg-gray-300 mx-1" />
-
-        <ToolbarButton
-          onClick={() => editor.chain().focus().undo().run()}
-          active={false}
-          title="Undo"
-        >
-          <Undo size={16} />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().redo().run()}
-          active={false}
-          title="Redo"
-        >
-          <Redo size={16} />
         </ToolbarButton>
 
         <div className="flex-1" />

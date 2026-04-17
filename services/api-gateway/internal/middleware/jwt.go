@@ -23,31 +23,38 @@ type JWTClaims struct {
 
 // JWTConfig holds configuration for JWT validation middleware.
 type JWTConfig struct {
-	Secret     string
-	PublicPath []string // paths that skip JWT validation
+	Secret      string
+	PublicPath  []string // exact paths that skip JWT validation
+	PrefixPath  []string // prefix paths that skip JWT validation (e.g. /health, /metrics)
 }
 
-// DefaultPublicPaths returns the default set of paths that skip JWT validation.
+// DefaultPublicPaths returns the default set of exact-match paths that skip JWT validation.
 func DefaultPublicPaths() []string {
 	return []string{
-		"/health",
-		"/metrics",
 		"/api/v1/auth/login",
 		"/api/v1/auth/register",
 	}
 }
 
+// DefaultPrefixPaths returns paths where any sub-path also skips JWT validation.
+func DefaultPrefixPaths() []string {
+	return []string{
+		"/health",
+		"/metrics",
+	}
+}
+
 // JWTAuth returns middleware that validates JWT tokens on protected routes.
 func JWTAuth(cfg JWTConfig) func(http.Handler) http.Handler {
-	publicPaths := make(map[string]bool, len(cfg.PublicPath))
+	exactPaths := make(map[string]bool, len(cfg.PublicPath))
 	for _, p := range cfg.PublicPath {
-		publicPaths[p] = true
+		exactPaths[p] = true
 	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip JWT validation for public paths
-			if isPublicPath(r.URL.Path, publicPaths) {
+			if isPublicPath(r.URL.Path, exactPaths, cfg.PrefixPath) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -113,13 +120,14 @@ func validateToken(tokenStr, secret string) (*JWTClaims, error) {
 	return claims, nil
 }
 
-func isPublicPath(path string, publicPaths map[string]bool) bool {
-	if publicPaths[path] {
+func isPublicPath(path string, exactPaths map[string]bool, prefixPaths []string) bool {
+	// Exact match for API paths (e.g. /api/v1/auth/login)
+	if exactPaths[path] {
 		return true
 	}
-	// Check prefix matches for paths like /health, /metrics
-	for p := range publicPaths {
-		if strings.HasPrefix(path, p+"/") || path == p {
+	// Prefix match only for operational paths (e.g. /health, /metrics)
+	for _, p := range prefixPaths {
+		if path == p || strings.HasPrefix(path, p+"/") {
 			return true
 		}
 	}

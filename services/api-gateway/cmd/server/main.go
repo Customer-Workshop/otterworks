@@ -90,6 +90,7 @@ func main() {
 	r.Use(middleware.JWTAuth(middleware.JWTConfig{
 		Secret:     cfg.JWTSecret,
 		PublicPath: middleware.DefaultPublicPaths(),
+		PrefixPath: middleware.DefaultPrefixPaths(),
 	}))
 
 	// Health check

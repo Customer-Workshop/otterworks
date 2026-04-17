@@ -25,6 +25,7 @@ func TestJWTAuth_PublicPathsSkipValidation(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +49,53 @@ func TestJWTAuth_PublicPathsSkipValidation(t *testing.T) {
 	}
 }
 
+func TestJWTAuth_SubPathsOfExactMatchRequireAuth(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:     testSecret,
+		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
+	}
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Sub-paths of exact-match public paths should require auth
+	protectedSubPaths := []string{
+		"/api/v1/auth/login/callback",
+		"/api/v1/auth/register/verify",
+	}
+
+	for _, path := range protectedSubPaths {
+		t.Run("protected_"+path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusUnauthorized, rec.Code, "sub-path %s should require auth", path)
+		})
+	}
+
+	// Sub-paths of prefix-match paths should skip auth
+	prefixSubPaths := []string{
+		"/health/ready",
+		"/metrics/prometheus",
+	}
+
+	for _, path := range prefixSubPaths {
+		t.Run("prefix_public_"+path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusOK, rec.Code, "prefix path %s should not require auth", path)
+		})
+	}
+}
+
 func TestJWTAuth_MissingToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +113,7 @@ func TestJWTAuth_InvalidToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +132,7 @@ func TestJWTAuth_ValidToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	claims := JWTClaims{
@@ -123,6 +169,7 @@ func TestJWTAuth_ExpiredToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	claims := JWTClaims{
@@ -151,6 +198,7 @@ func TestJWTAuth_WrongSecret(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	claims := JWTClaims{
@@ -178,6 +226,7 @@ func TestJWTAuth_MalformedAuthHeader(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,
 		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
 	}
 
 	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

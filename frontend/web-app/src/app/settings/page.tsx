@@ -1,0 +1,207 @@
+"use client";
+
+import { useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { User, Bell, Save } from "lucide-react";
+import { AppShell } from "@/components/layout/app-shell";
+import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { PageLoader } from "@/components/ui/loading-spinner";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { authApi, settingsApi } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth-store";
+
+const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email"),
+});
+
+type ProfileForm = z.infer<typeof profileSchema>;
+
+export default function SettingsPage() {
+  return (
+    <AppShell>
+      <ErrorBoundary>
+        <SettingsContent />
+      </ErrorBoundary>
+    </AppShell>
+  );
+}
+
+function SettingsContent() {
+  const { user, setUser } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => settingsApi.get(),
+  });
+
+  const profileMutation = useMutation({
+    mutationFn: (data: ProfileForm) => authApi.updateProfile(data),
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
+    },
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: (data: Partial<{ notificationEmail: boolean; notificationInApp: boolean; notificationDesktop: boolean }>) =>
+      settingsApi.update(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+    },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+    reset,
+  } = useForm<ProfileForm>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: user?.name || "",
+      email: user?.email || "",
+    },
+  });
+
+  useEffect(() => {
+    if (user) {
+      reset({ name: user.name, email: user.email });
+    }
+  }, [user, reset]);
+
+  if (settingsLoading) return <PageLoader />;
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8">
+      <Breadcrumb items={[{ label: "Settings" }]} />
+
+      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+
+      {/* Profile section */}
+      <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
+          <User size={18} className="text-gray-500" />
+          <h2 className="font-medium text-gray-900">Profile</h2>
+        </div>
+        <form onSubmit={handleSubmit((data) => profileMutation.mutate(data))} className="p-6 space-y-5">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Full name
+            </label>
+            <input
+              id="name"
+              type="text"
+              {...register("name")}
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+            />
+            {errors.name && (
+              <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              {...register("email")}
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+            />
+            {errors.email && (
+              <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={!isDirty || profileMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-otter-600 text-white rounded-lg hover:bg-otter-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-medium"
+            >
+              <Save size={16} />
+              {profileMutation.isPending ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+
+          {profileMutation.isSuccess && (
+            <p className="text-sm text-green-600">Profile updated successfully.</p>
+          )}
+        </form>
+      </section>
+
+      {/* Notification preferences */}
+      <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
+          <Bell size={18} className="text-gray-500" />
+          <h2 className="font-medium text-gray-900">Notification preferences</h2>
+        </div>
+        <div className="p-6 space-y-4">
+          <ToggleRow
+            label="Email notifications"
+            description="Receive notifications via email"
+            checked={settings?.notificationEmail ?? true}
+            onChange={(checked) =>
+              settingsMutation.mutate({ notificationEmail: checked })
+            }
+          />
+          <ToggleRow
+            label="In-app notifications"
+            description="Show notifications within the app"
+            checked={settings?.notificationInApp ?? true}
+            onChange={(checked) =>
+              settingsMutation.mutate({ notificationInApp: checked })
+            }
+          />
+          <ToggleRow
+            label="Desktop notifications"
+            description="Show browser push notifications"
+            checked={settings?.notificationDesktop ?? false}
+            onChange={(checked) =>
+              settingsMutation.mutate({ notificationDesktop: checked })
+            }
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <div>
+        <p className="text-sm font-medium text-gray-900">{label}</p>
+        <p className="text-xs text-gray-500">{description}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+          checked ? "bg-otter-600" : "bg-gray-300"
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+            checked ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}

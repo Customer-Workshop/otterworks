@@ -1,22 +1,22 @@
 """Database session management."""
 
-import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.config import settings
 from app.db.base import Base
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://otterworks:otterworks_dev@localhost:5432/otterworks",
+engine = create_async_engine(
+    settings.database_url,
+    echo=False,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
 )
-
-engine = create_async_engine(DATABASE_URL, echo=False, pool_size=10, max_overflow=20)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def init_db():
+async def init_db() -> None:
     """Create all tables."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

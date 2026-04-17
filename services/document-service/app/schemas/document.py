@@ -1,9 +1,11 @@
-"""Document Pydantic schemas for request/response validation."""
+"""Pydantic schemas for request/response validation."""
 
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+# ---- Document schemas ----
 
 
 class DocumentCreate(BaseModel):
@@ -12,12 +14,23 @@ class DocumentCreate(BaseModel):
     content_type: str = Field(default="text/markdown")
     owner_id: UUID
     folder_id: UUID | None = None
-    is_template: bool = False
 
 
 class DocumentUpdate(BaseModel):
+    """Full replace (PUT)."""
+
+    title: str = Field(..., min_length=1, max_length=500)
+    content: str = Field(default="")
+    content_type: str = Field(default="text/markdown")
+    folder_id: UUID | None = None
+
+
+class DocumentPatch(BaseModel):
+    """Partial update (PATCH)."""
+
     title: str | None = Field(None, min_length=1, max_length=500)
     content: str | None = None
+    content_type: str | None = None
     folder_id: UUID | None = None
 
 
@@ -31,18 +44,80 @@ class DocumentResponse(BaseModel):
     is_deleted: bool
     is_template: bool
     word_count: int
+    version: int
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
 
 
+class DocumentListResponse(BaseModel):
+    items: list[DocumentResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+# ---- Version schemas ----
+
+
 class DocumentVersionResponse(BaseModel):
     id: UUID
     document_id: UUID
     version_number: int
+    title: str
     content: str
     created_by: UUID
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ---- Comment schemas ----
+
+
+class CommentCreate(BaseModel):
+    author_id: UUID
+    content: str = Field(..., min_length=1)
+
+
+class CommentResponse(BaseModel):
+    id: UUID
+    document_id: UUID
+    author_id: UUID
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---- Template schemas ----
+
+
+class TemplateCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=500)
+    description: str = Field(default="")
+    content: str = Field(default="")
+    content_type: str = Field(default="text/markdown")
+    created_by: UUID
+
+
+class TemplateResponse(BaseModel):
+    id: UUID
+    name: str
+    description: str
+    content: str
+    content_type: str
+    created_by: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DocumentFromTemplate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+    owner_id: UUID
+    folder_id: UUID | None = None

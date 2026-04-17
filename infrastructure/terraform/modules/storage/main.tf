@@ -45,15 +45,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "files" {
-  bucket = aws_s3_bucket.files.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
 resource "aws_s3_bucket_lifecycle_configuration" "files" {
   bucket = aws_s3_bucket.files.id
 
@@ -98,15 +89,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "data_lake" {
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "data_lake" {
-  bucket = aws_s3_bucket.data_lake.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
 # --- Audit Archive Bucket ---
 
 resource "aws_s3_bucket" "audit_archive" {
@@ -133,13 +115,4 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "audit_archive" {
     }
     bucket_key_enabled = true
   }
-}
-
-resource "aws_s3_bucket_public_access_block" "audit_archive" {
-  bucket = aws_s3_bucket.audit_archive.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
 }

@@ -43,10 +43,12 @@ class MetricsRepository(config: PostgresConfig)(using ec: ExecutionContext):
         dailyActiveUsers = filtered.map(_.userId).distinct.size.toLong,
         documentsCreated = filtered.count(_.eventType == EventType.DocumentCreated).toLong,
         filesUploaded = filtered.count(_.eventType == EventType.FileUploaded).toLong,
-        storageUsedBytes = filtered
-          .filter(_.eventType == EventType.StorageAllocated)
-          .flatMap(_.metadata.get("bytes").map(_.toLong))
-          .sum,
+        storageUsedBytes = Math.max(0L, filtered
+          .filter(e => e.eventType == EventType.StorageAllocated || e.eventType == EventType.StorageReleased)
+          .foldLeft(0L) { (acc, e) =>
+            val bytes = e.metadata.getOrElse("bytes", "0").toLong
+            if e.eventType == EventType.StorageAllocated then acc + bytes else acc - bytes
+          }),
         collabSessions = filtered.count(_.eventType == EventType.CollabSessionStarted).toLong,
         totalEvents = filtered.size.toLong
       )

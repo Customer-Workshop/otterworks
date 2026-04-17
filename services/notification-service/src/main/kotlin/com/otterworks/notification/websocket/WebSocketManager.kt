@@ -25,9 +25,9 @@ class WebSocketManager {
     }
 
     fun removeConnection(userId: String, session: DefaultWebSocketSession) {
-        connections[userId]?.remove(session)
-        if (connections[userId]?.isEmpty() == true) {
-            connections.remove(userId)
+        connections.computeIfPresent(userId) { _, sessions ->
+            sessions.remove(session)
+            if (sessions.isEmpty()) null else sessions
         }
         logger.info { "WebSocket disconnected for user $userId" }
     }

@@ -61,18 +61,28 @@ class NotificationRepository(
         page: Int = 1,
         pageSize: Int = 20,
     ): Pair<List<Notification>, Int> {
-        val request = QueryRequest {
-            tableName = config.dynamoDbTableNotifications
-            indexName = "userId-createdAt-index"
-            keyConditionExpression = "userId = :uid"
-            expressionAttributeValues = mapOf(
-                ":uid" to AttributeValue.S(userId),
-            )
-            scanIndexForward = false
-        }
+        val allItems = mutableListOf<Notification>()
+        var lastEvaluatedKey: Map<String, AttributeValue>? = null
 
-        val response = dynamoDbClient.query(request)
-        val allItems = response.items?.mapNotNull { mapToNotification(it) } ?: emptyList()
+        do {
+            val request = QueryRequest {
+                tableName = config.dynamoDbTableNotifications
+                indexName = "userId-createdAt-index"
+                keyConditionExpression = "userId = :uid"
+                expressionAttributeValues = mapOf(
+                    ":uid" to AttributeValue.S(userId),
+                )
+                scanIndexForward = false
+                if (lastEvaluatedKey != null) {
+                    exclusiveStartKey = lastEvaluatedKey
+                }
+            }
+
+            val response = dynamoDbClient.query(request)
+            response.items?.mapNotNull { mapToNotification(it) }?.let { allItems.addAll(it) }
+            lastEvaluatedKey = response.lastEvaluatedKey
+        } while (lastEvaluatedKey != null)
+
         val total = allItems.size
         val startIndex = (page - 1) * pageSize
         val paged = allItems.drop(startIndex).take(pageSize)
@@ -81,20 +91,31 @@ class NotificationRepository(
     }
 
     suspend fun getUnreadCount(userId: String): Int {
-        val request = QueryRequest {
-            tableName = config.dynamoDbTableNotifications
-            indexName = "userId-createdAt-index"
-            keyConditionExpression = "userId = :uid"
-            filterExpression = "#r = :readVal"
-            expressionAttributeNames = mapOf("#r" to "read")
-            expressionAttributeValues = mapOf(
-                ":uid" to AttributeValue.S(userId),
-                ":readVal" to AttributeValue.Bool(false),
-            )
-        }
+        var totalCount = 0
+        var lastEvaluatedKey: Map<String, AttributeValue>? = null
 
-        val response = dynamoDbClient.query(request)
-        return response.count
+        do {
+            val request = QueryRequest {
+                tableName = config.dynamoDbTableNotifications
+                indexName = "userId-createdAt-index"
+                keyConditionExpression = "userId = :uid"
+                filterExpression = "#r = :readVal"
+                expressionAttributeNames = mapOf("#r" to "read")
+                expressionAttributeValues = mapOf(
+                    ":uid" to AttributeValue.S(userId),
+                    ":readVal" to AttributeValue.Bool(false),
+                )
+                if (lastEvaluatedKey != null) {
+                    exclusiveStartKey = lastEvaluatedKey
+                }
+            }
+
+            val response = dynamoDbClient.query(request)
+            totalCount += response.count
+            lastEvaluatedKey = response.lastEvaluatedKey
+        } while (lastEvaluatedKey != null)
+
+        return totalCount
     }
 
     suspend fun markAsRead(id: String): Boolean {

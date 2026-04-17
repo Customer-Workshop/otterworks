@@ -90,8 +90,8 @@ fun Application.configurePlugins(config: AppConfig = AppConfig.load()) {
         exception<Throwable> { call, cause ->
             logger.error(cause) { "Unhandled exception" }
             call.respond(
-                HttpStatusCode.InternalServerError,
-                mapOf("error" to (cause.message ?: "Internal server error")),
+                status = HttpStatusCode.InternalServerError,
+                message = mapOf("error" to (cause.message ?: "Internal server error"))
             )
         }
     }

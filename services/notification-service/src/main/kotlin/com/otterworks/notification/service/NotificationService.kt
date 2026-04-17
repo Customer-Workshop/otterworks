@@ -40,32 +40,7 @@ class NotificationService(
         val rendered = NotificationTemplates.render(event)
         val deliveredVia = mutableListOf<String>()
 
-        val notification = Notification(
-            id = UUID.randomUUID().toString(),
-            userId = targetUserId,
-            type = event.eventType,
-            title = rendered.title,
-            message = rendered.message,
-            resourceId = resolveResourceId(event),
-            resourceType = resolveResourceType(event),
-            actorId = event.actorId.ifEmpty { event.ownerId },
-            read = false,
-            createdAt = Instant.now().toString(),
-        )
-
-        if (DeliveryChannel.IN_APP in enabledChannels) {
-            repository.saveNotification(notification)
-            deliveredVia.add("in_app")
-            logger.info { "Stored in-app notification ${notification.id} for user $targetUserId" }
-        }
-
-        if (DeliveryChannel.PUSH in enabledChannels) {
-            webSocketManager.pushNotification(targetUserId, notification)
-            deliveredVia.add("push")
-            pushSentCounter?.increment()
-            logger.info { "Pushed WebSocket notification ${notification.id} to user $targetUserId" }
-        }
-
+        // Attempt email delivery first to build deliveredVia before saving
         if (DeliveryChannel.EMAIL in enabledChannels) {
             val emailSent = emailSender.sendEmail(
                 toAddress = "$targetUserId@otterworks.io",
@@ -78,9 +53,38 @@ class NotificationService(
             }
         }
 
-        if (deliveredVia.isNotEmpty() && DeliveryChannel.IN_APP in enabledChannels) {
-            val updated = notification.copy(deliveredVia = deliveredVia)
-            repository.saveNotification(updated)
+        if (DeliveryChannel.PUSH in enabledChannels) {
+            deliveredVia.add("push")
+            pushSentCounter?.increment()
+        }
+
+        if (DeliveryChannel.IN_APP in enabledChannels) {
+            deliveredVia.add("in_app")
+        }
+
+        // Create notification with final deliveredVia and save once
+        val notification = Notification(
+            id = UUID.randomUUID().toString(),
+            userId = targetUserId,
+            type = event.eventType,
+            title = rendered.title,
+            message = rendered.message,
+            resourceId = resolveResourceId(event),
+            resourceType = resolveResourceType(event),
+            actorId = event.actorId.ifEmpty { event.ownerId },
+            read = false,
+            deliveredVia = deliveredVia,
+            createdAt = Instant.now().toString(),
+        )
+
+        if (DeliveryChannel.IN_APP in enabledChannels) {
+            repository.saveNotification(notification)
+            logger.info { "Stored in-app notification ${notification.id} for user $targetUserId" }
+        }
+
+        if (DeliveryChannel.PUSH in enabledChannels) {
+            webSocketManager.pushNotification(targetUserId, notification)
+            logger.info { "Pushed WebSocket notification ${notification.id} to user $targetUserId" }
         }
 
         processedCounter?.increment()

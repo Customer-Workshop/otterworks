@@ -1,0 +1,87 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.production
+*.env
+
+# --- Go ---
+services/api-gateway/bin/
+services/api-gateway/vendor/
+
+# --- Java ---
+services/auth-service/build/
+services/auth-service/.gradle/
+services/auth-service/out/
+*.class
+*.jar
+
+# --- Rust ---
+services/file-service/target/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# --- Node.js ---
+node_modules/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# --- Kotlin ---
+services/notification-service/build/
+services/notification-service/.gradle/
+
+# --- Scala ---
+services/analytics-service/target/
+services/analytics-service/project/target/
+services/analytics-service/project/project/
+
+# --- Ruby ---
+services/admin-service/tmp/
+services/admin-service/log/
+services/admin-service/.bundle/
+services/admin-service/vendor/bundle/
+
+# --- C# ---
+services/audit-service/bin/
+services/audit-service/obj/
+*.user
+*.suo
+
+# --- Angular ---
+frontend/admin-dashboard/dist/
+frontend/admin-dashboard/.angular/
+
+# --- Terraform ---
+infrastructure/terraform/.terraform/
+infrastructure/terraform/*.tfstate
+infrastructure/terraform/*.tfstate.backup
+infrastructure/terraform/.terraform.lock.hcl
+infrastructure/terraform/plan.out
+
+# --- Docker ---
+*.log
+
+# --- Misc ---
+*.bak
+*.tmp

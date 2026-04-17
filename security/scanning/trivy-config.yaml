@@ -1,0 +1,15 @@
+# Trivy scanning configuration for OtterWorks
+severity:
+  - CRITICAL
+  - HIGH
+
+vulnerability:
+  type:
+    - os
+    - library
+
+ignorefile: .trivyignore
+
+timeout: 10m
+
+format: table

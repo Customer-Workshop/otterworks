@@ -1,0 +1,13 @@
+flask==3.0.2
+flask-restful==0.3.10
+flask-cors==4.0.0
+marshmallow==3.21.1
+opensearch-py==2.4.2
+celery[redis]==5.3.6
+gunicorn==21.2.0
+python-dotenv==1.0.1
+structlog==24.1.0
+prometheus-flask-instrumentator==6.1.0
+opentelemetry-api==1.23.0
+opentelemetry-sdk==1.23.0
+opentelemetry-instrumentation-flask==0.44b0

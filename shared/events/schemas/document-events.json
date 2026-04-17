@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OtterWorks Document Events",
+  "definitions": {
+    "DocumentCreatedEvent": {
+      "type": "object",
+      "required": ["eventType", "documentId", "title", "ownerId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "document_created" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "title": { "type": "string" },
+        "ownerId": { "type": "string", "format": "uuid" },
+        "folderId": { "type": "string", "format": "uuid" },
+        "contentType": { "type": "string", "default": "text/markdown" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "DocumentEditedEvent": {
+      "type": "object",
+      "required": ["eventType", "documentId", "editedBy", "timestamp"],
+      "properties": {
+        "eventType": { "const": "document_edited" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "editedBy": { "type": "string", "format": "uuid" },
+        "versionNumber": { "type": "integer" },
+        "wordCount": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CommentAddedEvent": {
+      "type": "object",
+      "required": ["eventType", "documentId", "commentId", "authorId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "comment_added" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "commentId": { "type": "string", "format": "uuid" },
+        "authorId": { "type": "string", "format": "uuid" },
+        "content": { "type": "string" },
+        "mentionedUserIds": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" }
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

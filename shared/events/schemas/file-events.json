@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OtterWorks File Events",
+  "definitions": {
+    "FileUploadedEvent": {
+      "type": "object",
+      "required": ["eventType", "fileId", "fileName", "ownerId", "mimeType", "sizeBytes", "timestamp"],
+      "properties": {
+        "eventType": { "const": "file_uploaded" },
+        "fileId": { "type": "string", "format": "uuid" },
+        "fileName": { "type": "string" },
+        "ownerId": { "type": "string", "format": "uuid" },
+        "folderId": { "type": "string", "format": "uuid" },
+        "mimeType": { "type": "string" },
+        "sizeBytes": { "type": "integer" },
+        "s3Key": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "FileSharedEvent": {
+      "type": "object",
+      "required": ["eventType", "fileId", "ownerId", "sharedWithUserId", "permission", "timestamp"],
+      "properties": {
+        "eventType": { "const": "file_shared" },
+        "fileId": { "type": "string", "format": "uuid" },
+        "ownerId": { "type": "string", "format": "uuid" },
+        "sharedWithUserId": { "type": "string", "format": "uuid" },
+        "permission": { "enum": ["viewer", "editor"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "FileDeletedEvent": {
+      "type": "object",
+      "required": ["eventType", "fileId", "deletedBy", "timestamp"],
+      "properties": {
+        "eventType": { "const": "file_deleted" },
+        "fileId": { "type": "string", "format": "uuid" },
+        "deletedBy": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

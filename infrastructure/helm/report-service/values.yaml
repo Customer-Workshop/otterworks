@@ -1,0 +1,49 @@
+replicaCount: 1
+
+image:
+  repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-report-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8091
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: report-service.otterworks.workshop.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: report-service-tls
+      hosts:
+        - report-service.otterworks.workshop.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+healthCheck:
+  path: /health
+  initialDelaySeconds: 30
+  periodSeconds: 15
+
+env:
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: otterworks_reports
+  DB_USER: otterworks
+  ANALYTICS_SERVICE_URL: http://analytics-service:8088
+  AUDIT_SERVICE_URL: http://audit-service:8090
+  AUTH_SERVICE_URL: http://auth-service:8081
+  REPORT_OUTPUT_DIR: /tmp/reports

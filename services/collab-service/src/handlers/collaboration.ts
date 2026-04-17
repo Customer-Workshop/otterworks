@@ -158,10 +158,10 @@ export class CollaborationManager {
     const { documentId } = data;
     const room = `doc:${documentId}`;
 
-    awareness.removeUser(socket.id);
+    const mapping = awareness.removeUser(socket.id);
     socket.leave(room);
 
-    socket.to(room).emit('user-left', { socketId: socket.id });
+    socket.to(room).emit('user-left', { socketId: socket.id, userId: mapping?.userId });
     presenceHandler.broadcastPresenceUpdate(io, documentId);
     metrics.messagesTotal.inc({ type: 'leave-document' });
 
@@ -428,13 +428,13 @@ export class CollaborationManager {
       const state = Y.encodeStateAsUpdate(doc);
       await documentStore.saveDocumentState(documentId, Buffer.from(state));
       logger.info({ documentId }, 'document_persisted_on_cleanup');
+      this.documents.delete(documentId);
+      metrics.activeRooms.dec();
+      logger.debug({ documentId }, 'document_removed_from_memory');
     } catch (err) {
       logger.error({ err, documentId }, 'document_persist_on_cleanup_failed');
+      // Keep document in memory so the periodic persistence loop can retry
     }
-
-    this.documents.delete(documentId);
-    metrics.activeRooms.dec();
-    logger.debug({ documentId }, 'document_removed_from_memory');
   }
 
   private startPersistenceLoop(): void {

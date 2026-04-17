@@ -23,9 +23,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("otter_access_token");
-      localStorage.removeItem("otter_refresh_token");
-      window.location.href = "/login";
+      const url = error.config?.url || "";
+      if (!url.includes("/auth/")) {
+        localStorage.removeItem("otter_access_token");
+        localStorage.removeItem("otter_refresh_token");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

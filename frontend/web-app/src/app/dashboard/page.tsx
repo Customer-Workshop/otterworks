@@ -127,7 +127,7 @@ function DashboardContent() {
             <div
               className="h-full bg-otter-600 rounded-full transition-all"
               style={{
-                width: `${Math.min((storage.used / storage.total) * 100, 100)}%`,
+                width: `${storage.total > 0 ? Math.min((storage.used / storage.total) * 100, 100) : 0}%`,
               }}
             />
           </div>

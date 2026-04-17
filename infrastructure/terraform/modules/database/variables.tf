@@ -22,7 +22,6 @@ variable "db_password" {
   description = "Master password for the RDS PostgreSQL instance"
   type        = string
   sensitive   = true
-  default     = "change-me-in-production"
 
   validation {
     condition     = length(var.db_password) >= 8

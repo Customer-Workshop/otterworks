@@ -13,12 +13,12 @@ eks_cluster_name = "workshop-dev"
 # Kubernetes namespace for OtterWorks
 namespace = "decomposition-dev"
 
-# RDS PostgreSQL master password (use a strong password in production)
-# db_password = "your-secure-password-here"
+# REQUIRED: RDS PostgreSQL master password (no default — must be set)
+db_password = "your-secure-password-here"
 
-# OIDC provider ARN from the EKS cluster (required for IRSA)
+# REQUIRED: OIDC provider ARN from the EKS cluster (no default — must be set)
 # Find with: aws eks describe-cluster --name workshop-dev --query "cluster.identity.oidc.issuer"
-# oidc_provider_arn = "arn:aws:iam::oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLE"
+oidc_provider_arn = "arn:aws:iam::oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLE"
 
 # CloudWatch log retention in days
 log_retention_days = 30

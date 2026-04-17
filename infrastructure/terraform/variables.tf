@@ -31,13 +31,11 @@ variable "db_password" {
   description = "Master password for the RDS PostgreSQL instance"
   type        = string
   sensitive   = true
-  default     = "change-me-in-production"
 }
 
 variable "oidc_provider_arn" {
   description = "ARN of the EKS OIDC identity provider for IRSA"
   type        = string
-  default     = ""
 }
 
 variable "log_retention_days" {

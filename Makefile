@@ -13,20 +13,20 @@ infra-up: ## Start local infrastructure (Postgres, Redis, LocalStack, OpenSearch
 infra-down: ## Stop local infrastructure
 	docker compose -f docker-compose.infra.yml down
 
-up: ## Start all application services
-	docker compose up -d --build
+up: ## Start all application services (requires infra-up first)
+	docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 
 down: ## Stop all application services
-	docker compose down
+	docker compose -f docker-compose.infra.yml -f docker-compose.yml down
 
 build: ## Build all service images
-	docker compose build
+	docker compose -f docker-compose.infra.yml -f docker-compose.yml build
 
 seed: ## Seed development data
 	./scripts/seed-data.sh
 
 logs: ## Tail logs for all services
-	docker compose logs -f
+	docker compose -f docker-compose.infra.yml -f docker-compose.yml logs -f
 
 # --- Per-Service Builds ---
 

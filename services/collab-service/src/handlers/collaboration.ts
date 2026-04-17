@@ -86,8 +86,8 @@ export function setupCollaborationHandlers(
       });
     });
 
-    // Handle disconnect
-    socket.on('disconnect', () => {
+    // Handle disconnect - use 'disconnecting' because Socket.IO v4 clears rooms before 'disconnect'
+    socket.on('disconnecting', () => {
       logger.info('client_disconnected', { socketId: socket.id });
       // Broadcast to all rooms this socket was in
       socket.rooms.forEach(room => {

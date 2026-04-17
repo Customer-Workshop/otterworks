@@ -56,7 +56,7 @@ app.MapPost("/api/v1/audit/events", async (AuditEventRequest request, IAuditRepo
     return Results.Created($"/api/v1/audit/events/{auditEvent.Id}", auditEvent);
 });
 
-app.MapGet("/api/v1/audit/events", async (string? userId, string? action, string? resourceType, int page, int pageSize, IAuditRepository repo) =>
+app.MapGet("/api/v1/audit/events", async (string? userId, string? action, string? resourceType, int page = 1, int pageSize = 20, IAuditRepository repo) =>
 {
     var events = await repo.QueryEventsAsync(userId, action, resourceType, page, pageSize);
     return Results.Ok(events);

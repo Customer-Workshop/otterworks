@@ -59,5 +59,7 @@ class HealthChecker
     { status: 'healthy', latency_ms: latency }
   rescue StandardError => e
     { status: 'unhealthy', message: e.message }
+  ensure
+    redis&.close
   end
 end

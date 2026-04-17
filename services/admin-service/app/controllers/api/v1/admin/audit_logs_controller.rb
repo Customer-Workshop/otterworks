@@ -31,9 +31,16 @@ module Api
         end
 
         def apply_time_filters(scope)
-          scope = scope.since(Time.zone.parse(params[:since])) if params[:since].present?
-          scope = scope.where('created_at <= ?', Time.zone.parse(params[:until])) if params[:until].present?
+          scope = scope.since(parse_time!(params[:since])) if params[:since].present?
+          scope = scope.where('created_at <= ?', parse_time!(params[:until])) if params[:until].present?
           scope
+        end
+
+        def parse_time!(value)
+          parsed = Time.zone.parse(value)
+          raise ArgumentError, "Invalid date: #{value}" if parsed.nil?
+
+          parsed
         end
       end
     end

@@ -27,6 +27,10 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		l := zerolog.New(os.Stdout).With().Timestamp().Logger()
+		l.Fatal().Err(err).Msg("invalid configuration")
+	}
 
 	// Structured JSON logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix

@@ -84,12 +84,7 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 }
 
 func extractIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
-	}
+	// chimw.RealIP has already set r.RemoteAddr to the client IP
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

@@ -85,6 +85,32 @@ func TestCORS_PreflightRequest(t *testing.T) {
 	assert.Empty(t, rec.Body.String(), "preflight should not pass through to handler")
 }
 
+func TestCORS_PreflightDisallowedOrigin(t *testing.T) {
+	cfg := CORSConfig{
+		AllowedOrigins: []string{"http://localhost:3000"},
+		AllowedMethods: []string{"GET", "POST"},
+		AllowedHeaders: []string{"Content-Type"},
+	}
+
+	called := false
+	handler := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodOptions, "/api/test", nil)
+	req.Header.Set("Origin", "http://evil.com")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	// Should pass through to the next handler, not return 204 with CORS headers
+	assert.True(t, called, "disallowed origin preflight should pass through to handler")
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Methods"))
+}
+
 func TestCORS_WildcardOrigin(t *testing.T) {
 	cfg := CORSConfig{
 		AllowedOrigins: []string{"*"},

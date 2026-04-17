@@ -72,24 +72,10 @@ func TestExtractIP(t *testing.T) {
 	tests := []struct {
 		name       string
 		remoteAddr string
-		xff        string
-		xri        string
 		expected   string
 	}{
 		{
-			name:       "X-Forwarded-For takes precedence",
-			remoteAddr: "127.0.0.1:1234",
-			xff:        "203.0.113.50",
-			expected:   "203.0.113.50",
-		},
-		{
-			name:       "X-Real-IP used when no XFF",
-			remoteAddr: "127.0.0.1:1234",
-			xri:        "198.51.100.10",
-			expected:   "198.51.100.10",
-		},
-		{
-			name:       "RemoteAddr used as fallback",
+			name:       "RemoteAddr with port",
 			remoteAddr: "10.0.0.1:5678",
 			expected:   "10.0.0.1",
 		},
@@ -98,18 +84,17 @@ func TestExtractIP(t *testing.T) {
 			remoteAddr: "10.0.0.1",
 			expected:   "10.0.0.1",
 		},
+		{
+			name:       "Uses RemoteAddr set by chimw.RealIP",
+			remoteAddr: "203.0.113.50:1234",
+			expected:   "203.0.113.50",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.RemoteAddr = tt.remoteAddr
-			if tt.xff != "" {
-				req.Header.Set("X-Forwarded-For", tt.xff)
-			}
-			if tt.xri != "" {
-				req.Header.Set("X-Real-IP", tt.xri)
-			}
 			result := extractIP(req)
 			require.Equal(t, tt.expected, result)
 		})

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -43,6 +44,14 @@ type Config struct {
 	CBInterval      time.Duration
 	CBTimeout       time.Duration
 	CBFailureRatio  float64
+}
+
+// Validate checks that required security-sensitive configuration is present.
+func (c *Config) Validate() error {
+	if c.JWTSecret == "" {
+		return fmt.Errorf("JWT_SECRET environment variable is required but not set")
+	}
+	return nil
 }
 
 // Load reads configuration from environment variables with sensible defaults.

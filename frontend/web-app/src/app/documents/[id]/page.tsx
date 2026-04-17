@@ -38,9 +38,12 @@ function DocumentEditorContent() {
   const documentId = params.id as string;
   const [title, setTitle] = useState("");
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
   const latestContentRef = useRef<string | null>(null);
-  const editorHasUpdated = useRef(false);
+  const documentIdRef = useRef(documentId);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  documentIdRef.current = documentId;
 
   const { data: document, isLoading } = useQuery({
     queryKey: ["documents", documentId],
@@ -66,24 +69,30 @@ function DocumentEditorContent() {
   useEffect(() => {
     if (document?.content && latestContentRef.current === null) {
       latestContentRef.current = document.content;
+      setHasContent(true);
     }
   }, [document]);
 
   const debouncedSave = useCallback(
     (content: string) => {
       latestContentRef.current = content;
-      editorHasUpdated.current = true;
+      if (!hasContent) setHasContent(true);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         updateMutation.mutate({ content });
       }, 1000);
     },
-    [updateMutation]
+    [updateMutation, hasContent]
   );
 
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        if (latestContentRef.current !== null) {
+          documentsApi.update(documentIdRef.current, { content: latestContentRef.current }).catch(() => {});
+        }
+      }
     };
   }, []);
 
@@ -166,7 +175,7 @@ function DocumentEditorContent() {
                   updateMutation.mutate({ content: latestContentRef.current });
                 }
               }}
-              disabled={updateMutation.isPending || latestContentRef.current === null}
+              disabled={updateMutation.isPending || !hasContent}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
             >
               <Save size={16} />

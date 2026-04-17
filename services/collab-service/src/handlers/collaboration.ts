@@ -133,8 +133,12 @@ export function setupCollaborationHandlers(
   // Periodically persist all active documents
   setInterval(async () => {
     for (const [documentId, doc] of documents) {
-      const state = Y.encodeStateAsUpdate(doc);
-      await documentStore.saveDocumentState(documentId, Buffer.from(state));
+      try {
+        const state = Y.encodeStateAsUpdate(doc);
+        await documentStore.saveDocumentState(documentId, Buffer.from(state));
+      } catch (err) {
+        logger.error('periodic_save_failed', { documentId, error: String(err) });
+      }
     }
   }, 30000); // Every 30 seconds
 }

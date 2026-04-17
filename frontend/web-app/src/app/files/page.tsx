@@ -53,10 +53,20 @@ function FileBrowserContent() {
 
   const handleUpload = useCallback(
     async (files: File[]) => {
+      const results: { file: File; ok: boolean }[] = [];
       for (const file of files) {
-        await filesApi.upload(file, folderId);
+        try {
+          await filesApi.upload(file, folderId);
+          results.push({ file, ok: true });
+        } catch {
+          results.push({ file, ok: false });
+        }
       }
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length > 0) {
+        throw { results };
+      }
     },
     [folderId, queryClient]
   );

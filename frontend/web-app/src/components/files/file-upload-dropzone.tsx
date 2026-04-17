@@ -37,13 +37,21 @@ export function FileUploadDropzone({ onUpload, className }: FileUploadDropzonePr
             acceptedFiles.includes(f.file) ? { ...f, status: "done" as const, progress: 100 } : f
           )
         );
-      } catch {
+      } catch (err: unknown) {
+        const perFileResults =
+          err && typeof err === "object" && "results" in err
+            ? (err as { results: { file: File; ok: boolean }[] }).results
+            : null;
+
         setUploadingFiles((prev) =>
-          prev.map((f) =>
-            acceptedFiles.includes(f.file)
-              ? { ...f, status: "error" as const, error: "Upload failed" }
-              : f
-          )
+          prev.map((f) => {
+            if (!acceptedFiles.includes(f.file)) return f;
+            if (perFileResults) {
+              const result = perFileResults.find((r) => r.file === f.file);
+              if (result?.ok) return { ...f, status: "done" as const, progress: 100 };
+            }
+            return { ...f, status: "error" as const, error: "Upload failed" };
+          })
         );
       }
     },

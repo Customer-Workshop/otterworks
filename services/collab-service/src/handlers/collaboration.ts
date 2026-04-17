@@ -194,6 +194,9 @@ export class CollaborationManager {
       return;
     }
 
+    // Refresh the user's lastActive so active editors aren't evicted as stale
+    this.deps.awareness.refreshActivity(socket.id);
+
     // Step 2: Broadcast to other clients immediately after successful CRDT apply
     socket.to(room).emit('document-update', { documentId, update });
     metrics.documentUpdatesTotal.inc();

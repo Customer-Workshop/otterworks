@@ -85,6 +85,22 @@ export class AwarenessService {
       lastActive: Date.now(),
     };
 
+    // If this socket was already in another document, clean up the old mapping
+    const oldMapping = this.socketToDocument.get(socketId);
+    if (oldMapping && oldMapping.documentId !== documentId) {
+      const oldState = this.states.get(oldMapping.documentId);
+      if (oldState) {
+        oldState.users.delete(socketId);
+        if (oldState.users.size === 0) {
+          this.states.delete(oldMapping.documentId);
+        }
+      }
+      this.logger.debug(
+        { oldDocumentId: oldMapping.documentId, newDocumentId: documentId, socketId },
+        'awareness_socket_moved_documents',
+      );
+    }
+
     state.users.set(socketId, awareness);
     this.socketToDocument.set(socketId, { documentId, userId });
 
@@ -171,6 +187,20 @@ export class AwarenessService {
 
   getActiveDocumentIds(): string[] {
     return Array.from(this.states.keys());
+  }
+
+  refreshActivity(socketId: string): boolean {
+    const mapping = this.socketToDocument.get(socketId);
+    if (!mapping) return false;
+
+    const state = this.states.get(mapping.documentId);
+    if (!state) return false;
+
+    const awareness = state.users.get(socketId);
+    if (!awareness) return false;
+
+    awareness.lastActive = Date.now();
+    return true;
   }
 
   cleanupStaleUsers(

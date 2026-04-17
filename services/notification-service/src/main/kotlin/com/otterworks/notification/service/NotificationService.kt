@@ -40,7 +40,11 @@ class NotificationService(
         val rendered = NotificationTemplates.render(event)
         val deliveredVia = mutableListOf<String>()
 
-        // Attempt email delivery first to build deliveredVia before saving
+        if (DeliveryChannel.IN_APP in enabledChannels) {
+            deliveredVia.add("in_app")
+        }
+
+        // Attempt email delivery
         if (DeliveryChannel.EMAIL in enabledChannels) {
             val emailSent = emailSender.sendEmail(
                 toAddress = "$targetUserId@otterworks.io",
@@ -53,16 +57,7 @@ class NotificationService(
             }
         }
 
-        if (DeliveryChannel.PUSH in enabledChannels) {
-            deliveredVia.add("push")
-            pushSentCounter?.increment()
-        }
-
-        if (DeliveryChannel.IN_APP in enabledChannels) {
-            deliveredVia.add("in_app")
-        }
-
-        // Create notification with final deliveredVia and save once
+        // Create notification and persist for audit trail and offline retrieval
         val notification = Notification(
             id = UUID.randomUUID().toString(),
             userId = targetUserId,
@@ -77,13 +72,18 @@ class NotificationService(
             createdAt = Instant.now().toString(),
         )
 
-        // Always persist notification for audit trail and offline retrieval
         repository.saveNotification(notification)
         logger.info { "Stored notification ${notification.id} for user $targetUserId" }
 
+        // Attempt WebSocket push after save, then update record with actual delivery status
         if (DeliveryChannel.PUSH in enabledChannels) {
-            webSocketManager.pushNotification(targetUserId, notification)
-            logger.info { "Pushed WebSocket notification ${notification.id} to user $targetUserId" }
+            val pushCount = webSocketManager.pushNotification(targetUserId, notification)
+            if (pushCount > 0) {
+                deliveredVia.add("push")
+                pushSentCounter?.increment()
+                repository.saveNotification(notification.copy(deliveredVia = deliveredVia))
+                logger.info { "Pushed notification ${notification.id} to $pushCount session(s) for user $targetUserId" }
+            }
         }
 
         processedCounter?.increment()

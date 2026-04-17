@@ -20,7 +20,7 @@ class WebSocketManager {
     }
 
     fun addConnection(userId: String, session: DefaultWebSocketSession) {
-        connections.getOrPut(userId) { ConcurrentHashMap.newKeySet() }.add(session)
+        connections.computeIfAbsent(userId) { ConcurrentHashMap.newKeySet() }.add(session)
         logger.info { "WebSocket connected for user $userId (total: ${connections[userId]?.size ?: 0})" }
     }
 
@@ -32,15 +32,17 @@ class WebSocketManager {
         logger.info { "WebSocket disconnected for user $userId" }
     }
 
-    suspend fun pushNotification(userId: String, notification: Notification) {
-        val sessions = connections[userId] ?: return
+    suspend fun pushNotification(userId: String, notification: Notification): Int {
+        val sessions = connections[userId] ?: return 0
 
         val payload = json.encodeToString(notification)
         val deadSessions = mutableListOf<DefaultWebSocketSession>()
+        var successCount = 0
 
         for (session in sessions) {
             try {
                 session.send(Frame.Text(payload))
+                successCount++
                 logger.debug { "Pushed notification ${notification.id} to user $userId via WebSocket" }
             } catch (e: Exception) {
                 logger.warn { "Failed to push to WebSocket for user $userId: ${e.message}" }
@@ -49,6 +51,7 @@ class WebSocketManager {
         }
 
         deadSessions.forEach { removeConnection(userId, it) }
+        return successCount
     }
 
     fun getConnectedUserCount(): Int = connections.size

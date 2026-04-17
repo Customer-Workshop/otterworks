@@ -46,7 +46,7 @@ class MetricsRepository(config: PostgresConfig)(using ec: ExecutionContext):
         storageUsedBytes = Math.max(0L, events
           .filter(e => e.eventType == EventType.StorageAllocated || e.eventType == EventType.StorageReleased)
           .foldLeft(0L) { (acc, e) =>
-            val bytes = e.metadata.getOrElse("bytes", "0").toLong
+            val bytes = scala.util.Try(e.metadata.getOrElse("bytes", "0").toLong).getOrElse(0L)
             if e.eventType == EventType.StorageAllocated then acc + bytes else acc - bytes
           }),
         collabSessions = filtered.count(_.eventType == EventType.CollabSessionStarted).toLong,
@@ -166,7 +166,7 @@ class MetricsRepository(config: PostgresConfig)(using ec: ExecutionContext):
       )
 
       val totalBytes = storageEvents.foldLeft(0L) { (acc, e) =>
-        val bytes = e.metadata.getOrElse("bytes", "0").toLong
+        val bytes = scala.util.Try(e.metadata.getOrElse("bytes", "0").toLong).getOrElse(0L)
         if e.eventType == EventType.StorageAllocated then acc + bytes else acc - bytes
       }
 
@@ -177,7 +177,7 @@ class MetricsRepository(config: PostgresConfig)(using ec: ExecutionContext):
         .filter(e => e.eventType == EventType.StorageAllocated)
         .groupBy(_.resourceType)
         .map { case (rt, evts) =>
-          rt -> evts.flatMap(_.metadata.get("bytes").map(_.toLong)).sum
+          rt -> evts.flatMap(_.metadata.get("bytes").flatMap(s => scala.util.Try(s.toLong).toOption)).sum
         }
         .toMap
 

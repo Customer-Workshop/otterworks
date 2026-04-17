@@ -65,10 +65,11 @@ class EventProcessor(
               .waitTimeSeconds(2)
               .build()
             sqsClient.receiveMessage(request).messages().asScala.toList
-          }.getOrElse {
-            logger.warn("Failed to receive messages from SQS, will retry"): Unit
-            List.empty
-          }
+          } match
+            case Success(msgs) => msgs
+            case Failure(ex) =>
+              logger.warn("Failed to receive messages from SQS, will retry", ex)
+              List.empty
         }
       }
       .mapConcat(identity)

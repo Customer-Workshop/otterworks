@@ -1,0 +1,37 @@
+# OtterWorks Airflow Connection Templates
+#
+# These are templates for configuring Airflow connections.
+# In production, connections should be managed via environment variables
+# or a secrets backend (e.g., AWS Secrets Manager).
+#
+# For local development, connections are auto-created by docker-compose.
+
+connections:
+  aws_default:
+    conn_type: aws
+    description: "AWS connection (LocalStack for dev, real AWS for prod)"
+    extra:
+      # Dev: point to LocalStack
+      # endpoint_url: "http://localstack:4566"
+      region_name: "us-east-1"
+
+  otterworks_postgres:
+    conn_type: postgres
+    host: "postgres"
+    port: 5432
+    login: "airflow"
+    password: "airflow"
+    schema: "airflow"
+    description: "PostgreSQL for analytics aggregates"
+
+# Airflow Variables (set via UI or CLI)
+variables:
+  otterworks_analytics_queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics"
+  otterworks_analytics_table: "otterworks-analytics-events"
+  otterworks_data_lake_bucket: "otterworks-data-lake"
+  otterworks_archive_bucket: "otterworks-audit-archive"
+  otterworks_files_bucket: "otterworks-file-storage"
+  otterworks_quarantine_bucket: "otterworks-file-quarantine"
+  document_service_url: "http://document-service:8083"
+  file_service_url: "http://file-service:8082"
+  opensearch_url: "https://opensearch.otterworks.internal:9200"

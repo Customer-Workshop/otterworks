@@ -85,6 +85,34 @@ resource "aws_sqs_queue_policy" "notifications" {
   })
 }
 
+resource "aws_sqs_queue_policy" "analytics_events" {
+  queue_url = aws_sqs_queue.analytics_events.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.analytics_events.arn
+      Condition = { ArnEquals = { "aws:SourceArn" = aws_sns_topic.events.arn } }
+    }]
+  })
+}
+
+resource "aws_sqs_queue_policy" "search_indexing" {
+  queue_url = aws_sqs_queue.search_indexing.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.search_indexing.arn
+      Condition = { ArnEquals = { "aws:SourceArn" = aws_sns_topic.events.arn } }
+    }]
+  })
+}
+
 output "notification_queue_url" {
   value = aws_sqs_queue.notifications.url
 }

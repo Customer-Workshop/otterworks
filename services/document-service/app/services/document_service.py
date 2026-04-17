@@ -93,7 +93,9 @@ class DocumentService:
         result = await self.db.execute(query)
         return list(result.scalars().all()), total
 
-    async def update(self, document_id: UUID, data: DocumentUpdate) -> Document | None:
+    async def update(
+        self, document_id: UUID, data: DocumentUpdate, updated_by: UUID | None = None
+    ) -> Document | None:
         document = await self.get(document_id)
         if not document:
             return None
@@ -110,7 +112,7 @@ class DocumentService:
             version_number=document.version,
             title=data.title,
             content=data.content,
-            created_by=document.owner_id,
+            created_by=updated_by or document.owner_id,
         )
         self.db.add(version)
         await self.db.commit()

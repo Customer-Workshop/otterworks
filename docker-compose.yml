@@ -257,7 +257,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_WS_URL: ws://localhost:8085
+      NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:8084
     depends_on:
       - api-gateway
 

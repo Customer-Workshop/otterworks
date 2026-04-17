@@ -18,6 +18,33 @@ export function setupCollaborationHandlers(
 ): void {
   // Track Yjs documents in memory
   const documents = new Map<string, Y.Doc>();
+  // Prevent race conditions during concurrent document initialization
+  const documentInitPromises = new Map<string, Promise<Y.Doc>>();
+
+  async function getOrCreateDoc(documentId: string): Promise<Y.Doc> {
+    const existing = documents.get(documentId);
+    if (existing) return existing;
+
+    const pending = documentInitPromises.get(documentId);
+    if (pending) return pending;
+
+    const initPromise = (async () => {
+      try {
+        const doc = new Y.Doc();
+        const savedState = await documentStore.getDocumentState(documentId);
+        if (savedState) {
+          Y.applyUpdate(doc, savedState);
+        }
+        documents.set(documentId, doc);
+        return doc;
+      } finally {
+        documentInitPromises.delete(documentId);
+      }
+    })();
+
+    documentInitPromises.set(documentId, initPromise);
+    return initPromise;
+  }
 
   io.on('connection', (socket: Socket) => {
     logger.info('client_connected', { socketId: socket.id });
@@ -30,17 +57,8 @@ export function setupCollaborationHandlers(
       await socket.join(room);
       logger.info('user_joined_document', { documentId, userId, socketId: socket.id });
 
-      // Get or create Yjs document
-      let doc = documents.get(documentId);
-      if (!doc) {
-        doc = new Y.Doc();
-        // Load existing state from Redis
-        const savedState = await documentStore.getDocumentState(documentId);
-        if (savedState) {
-          Y.applyUpdate(doc, savedState);
-        }
-        documents.set(documentId, doc);
-      }
+      // Get or create Yjs document (safe against concurrent joins)
+      const doc = await getOrCreateDoc(documentId);
 
       // Send current document state to new client
       const state = Y.encodeStateAsUpdate(doc);
@@ -101,8 +119,12 @@ export function setupCollaborationHandlers(
             if (doc) {
               const state = Y.encodeStateAsUpdate(doc);
               await documentStore.saveDocumentState(documentId, Buffer.from(state));
-              documents.delete(documentId);
-              logger.info('document_evicted', { documentId, reason: 'room_empty' });
+              // Re-check room occupancy after async save to avoid racing with new joins
+              const socketsAfterSave = await io.in(room).fetchSockets();
+              if (socketsAfterSave.length <= 1) {
+                documents.delete(documentId);
+                logger.info('document_evicted', { documentId, reason: 'room_empty' });
+              }
             }
           }
         }

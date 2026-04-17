@@ -22,7 +22,7 @@ import java.util.TimeZone;
  *
  * This class is a prime candidate for complete rewrite during Java 8→17 migration.
  */
-public final class DateUtils2 {
+public final class ReportDateUtils {
 
     // LEGACY: SimpleDateFormat is NOT thread-safe — shared instance is a bug
     // in multithreaded environments. java.time.DateTimeFormatter is immutable and thread-safe.
@@ -36,7 +36,7 @@ public final class DateUtils2 {
         FILE_NAME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
-    private DateUtils2() {
+    private ReportDateUtils() {
         // Utility class
     }
 

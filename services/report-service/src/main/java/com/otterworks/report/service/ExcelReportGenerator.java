@@ -1,7 +1,7 @@
 package com.otterworks.report.service;
 
 import com.otterworks.report.model.Report;
-import com.otterworks.report.util.DateUtils2;
+import com.otterworks.report.util.ReportDateUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -118,15 +118,15 @@ public class ExcelReportGenerator {
         dateRow.createCell(0).setCellValue("Period:");
         dateRow.getCell(0).setCellStyle(labelStyle);
         dateRow.createCell(1).setCellValue(
-                DateUtils2.toDisplayString(report.getDateFrom())
-                + " to " + DateUtils2.toDisplayString(report.getDateTo()));
+                ReportDateUtils.toDisplayString(report.getDateFrom())
+                + " to " + ReportDateUtils.toDisplayString(report.getDateTo()));
         dateRow.getCell(1).setCellStyle(valueStyle);
 
         // Generated at
         Row genRow = sheet.createRow(5);
         genRow.createCell(0).setCellValue("Generated:");
         genRow.getCell(0).setCellStyle(labelStyle);
-        genRow.createCell(1).setCellValue(DateUtils2.toDisplayString(new Date()));
+        genRow.createCell(1).setCellValue(ReportDateUtils.toDisplayString(new Date()));
         genRow.getCell(1).setCellStyle(valueStyle);
 
         // Row count
@@ -255,6 +255,6 @@ public class ExcelReportGenerator {
 
     private String buildFileName(Report report, String extension) {
         String safeName = report.getReportName().replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
-        return safeName + "_" + DateUtils2.toFileNameString(new Date()) + "." + extension;
+        return safeName + "_" + ReportDateUtils.toFileNameString(new Date()) + "." + extension;
     }
 }

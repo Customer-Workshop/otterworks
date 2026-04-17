@@ -2,7 +2,7 @@ package com.otterworks.report.service;
 
 import com.opencsv.CSVWriter;
 import com.otterworks.report.model.Report;
-import com.otterworks.report.util.DateUtils2;
+import com.otterworks.report.util.ReportDateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -55,10 +55,10 @@ public class CsvReportGenerator {
 
                 // Write metadata comments
                 writer.writeNext(new String[]{"# OtterWorks Report: " + report.getReportName()});
-                writer.writeNext(new String[]{"# Generated: " + DateUtils2.toDisplayString(new Date())});
+                writer.writeNext(new String[]{"# Generated: " + ReportDateUtils.toDisplayString(new Date())});
                 writer.writeNext(new String[]{"# Period: "
-                        + DateUtils2.toDisplayString(report.getDateFrom())
-                        + " to " + DateUtils2.toDisplayString(report.getDateTo())});
+                        + ReportDateUtils.toDisplayString(report.getDateFrom())
+                        + " to " + ReportDateUtils.toDisplayString(report.getDateTo())});
                 writer.writeNext(new String[]{"# Rows: " + data.size()});
                 writer.writeNext(new String[]{""});
 
@@ -84,6 +84,6 @@ public class CsvReportGenerator {
 
     private String buildFileName(Report report, String extension) {
         String safeName = report.getReportName().replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
-        return safeName + "_" + DateUtils2.toFileNameString(new Date()) + "." + extension;
+        return safeName + "_" + ReportDateUtils.toFileNameString(new Date()) + "." + extension;
     }
 }

@@ -9,7 +9,7 @@ import com.otterworks.report.model.ReportRequest;
 import com.otterworks.report.model.ReportStatus;
 import com.otterworks.report.model.ReportType;
 import com.otterworks.report.repository.ReportRepository;
-import com.otterworks.report.util.DateUtils2;
+import com.otterworks.report.util.ReportDateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -76,7 +76,7 @@ public class ReportService {
         report.setCreatedAt(new Date()); // LEGACY: new Date() instead of Instant.now()
 
         // Default date range: last 30 days
-        report.setDateFrom(request.getDateFrom() != null ? request.getDateFrom() : DateUtils2.daysAgo(30));
+        report.setDateFrom(request.getDateFrom() != null ? request.getDateFrom() : ReportDateUtils.daysAgo(30));
         report.setDateTo(request.getDateTo() != null ? request.getDateTo() : new Date());
 
         // Serialize parameters
@@ -144,7 +144,7 @@ public class ReportService {
             report.setRowCount(data.size());
             reportRepository.save(report);
 
-            String duration = DateUtils2.humanReadableDuration(report.getCreatedAt(), report.getCompletedAt());
+            String duration = ReportDateUtils.humanReadableDuration(report.getCreatedAt(), report.getCompletedAt());
             logger.info("Report {} completed: {} rows, {} bytes, took {}",
                     reportId, data.size(), outputFile.length(), duration);
 

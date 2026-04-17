@@ -4,7 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.otterworks.report.config.AppConfig;
-import com.otterworks.report.util.DateUtils2;
+import com.otterworks.report.util.ReportDateUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,13 +68,13 @@ public class ReportDataFetcher {
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> fetchAnalyticsData(Date dateFrom, Date dateTo, Map<String, String> parameters) {
-        String cacheKey = "analytics:" + DateUtils2.toIsoString(dateFrom) + ":" + DateUtils2.toIsoString(dateTo);
+        String cacheKey = "analytics:" + ReportDateUtils.toIsoString(dateFrom) + ":" + ReportDateUtils.toIsoString(dateTo);
 
         try {
             return dataCache.get(cacheKey, () -> {
                 String url = appConfig.getAnalyticsServiceUrl() + "/api/v1/analytics/events"
-                        + "?from=" + DateUtils2.toIsoString(dateFrom)
-                        + "&to=" + DateUtils2.toIsoString(dateTo);
+                        + "?from=" + ReportDateUtils.toIsoString(dateFrom)
+                        + "&to=" + ReportDateUtils.toIsoString(dateTo);
 
                 if (parameters != null && StringUtils.isNotBlank(parameters.get("metric"))) {
                     url += "&metric=" + parameters.get("metric");
@@ -104,13 +104,13 @@ public class ReportDataFetcher {
      */
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> fetchAuditData(Date dateFrom, Date dateTo, Map<String, String> parameters) {
-        String cacheKey = "audit:" + DateUtils2.toIsoString(dateFrom) + ":" + DateUtils2.toIsoString(dateTo);
+        String cacheKey = "audit:" + ReportDateUtils.toIsoString(dateFrom) + ":" + ReportDateUtils.toIsoString(dateTo);
 
         try {
             return dataCache.get(cacheKey, () -> {
                 String url = appConfig.getAuditServiceUrl() + "/api/v1/audit/events"
-                        + "?from=" + DateUtils2.toIsoString(dateFrom)
-                        + "&to=" + DateUtils2.toIsoString(dateTo);
+                        + "?from=" + ReportDateUtils.toIsoString(dateFrom)
+                        + "&to=" + ReportDateUtils.toIsoString(dateTo);
 
                 logger.info("Fetching audit data from: {}", url);
 
@@ -137,8 +137,8 @@ public class ReportDataFetcher {
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> fetchUserActivityData(Date dateFrom, Date dateTo, Map<String, String> parameters) {
         String url = appConfig.getAuthServiceUrl() + "/api/v1/users/activity"
-                + "?from=" + DateUtils2.toIsoString(dateFrom)
-                + "&to=" + DateUtils2.toIsoString(dateTo);
+                + "?from=" + ReportDateUtils.toIsoString(dateFrom)
+                + "&to=" + ReportDateUtils.toIsoString(dateTo);
 
         logger.info("Fetching user activity from: {}", url);
 
@@ -166,7 +166,7 @@ public class ReportDataFetcher {
             row.put("event_id", "evt-" + String.format("%04d", i));
             row.put("event_type", events[i % events.length]);
             row.put("user_id", users[i % users.length]);
-            row.put("timestamp", DateUtils2.toIsoString(new Date(dateFrom.getTime() + (long) i * 3600000)));
+            row.put("timestamp", ReportDateUtils.toIsoString(new Date(dateFrom.getTime() + (long) i * 3600000)));
             row.put("duration_ms", 100 + (i * 17) % 5000);
             row.put("status", i % 10 == 0 ? "error" : "success");
             row.put("metadata", "sample-analytics-row-" + i);
@@ -187,7 +187,7 @@ public class ReportDataFetcher {
             row.put("actor", "user-" + String.format("%03d", i % 10));
             row.put("result", results[i % results.length]);
             row.put("ip_address", "192.168.1." + (i % 255));
-            row.put("timestamp", DateUtils2.toIsoString(new Date(dateFrom.getTime() + (long) i * 1800000)));
+            row.put("timestamp", ReportDateUtils.toIsoString(new Date(dateFrom.getTime() + (long) i * 1800000)));
             row.put("resource", "/files/doc-" + (i % 20));
             row.put("details", "Audit entry " + i);
             data.add(row);
@@ -202,7 +202,7 @@ public class ReportDataFetcher {
             Map<String, Object> row = new HashMap<>();
             row.put("user_id", "user-" + String.format("%03d", i));
             row.put("email", "user" + i + "@otterworks.example.com");
-            row.put("last_login", DateUtils2.toIsoString(DateUtils2.daysAgo(i % 7)));
+            row.put("last_login", ReportDateUtils.toIsoString(ReportDateUtils.daysAgo(i % 7)));
             row.put("files_uploaded", 10 + i * 3);
             row.put("docs_created", 5 + i * 2);
             row.put("storage_used_mb", 100 + i * 50);

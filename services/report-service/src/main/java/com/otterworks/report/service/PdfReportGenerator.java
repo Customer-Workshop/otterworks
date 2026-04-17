@@ -14,7 +14,7 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.otterworks.report.model.Report;
-import com.otterworks.report.util.DateUtils2;
+import com.otterworks.report.util.ReportDateUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,16 +83,16 @@ public class PdfReportGenerator {
             document.add(subtitle);
 
             String dateRange = "Period: "
-                    + DateUtils2.toDisplayString(report.getDateFrom())
+                    + ReportDateUtils.toDisplayString(report.getDateFrom())
                     + " — "
-                    + DateUtils2.toDisplayString(report.getDateTo());
+                    + ReportDateUtils.toDisplayString(report.getDateTo());
             Paragraph dateInfo = new Paragraph(dateRange, SUBTITLE_FONT);
             dateInfo.setAlignment(Element.ALIGN_CENTER);
             dateInfo.setSpacingAfter(4);
             document.add(dateInfo);
 
             Paragraph generated = new Paragraph(
-                    "Generated: " + DateUtils2.toDisplayString(new Date())
+                    "Generated: " + ReportDateUtils.toDisplayString(new Date())
                     + " | Rows: " + data.size(),
                     SUBTITLE_FONT);
             generated.setAlignment(Element.ALIGN_CENTER);
@@ -165,6 +165,6 @@ public class PdfReportGenerator {
 
     private String buildFileName(Report report, String extension) {
         String safeName = report.getReportName().replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
-        return safeName + "_" + DateUtils2.toFileNameString(new Date()) + "." + extension;
+        return safeName + "_" + ReportDateUtils.toFileNameString(new Date()) + "." + extension;
     }
 }

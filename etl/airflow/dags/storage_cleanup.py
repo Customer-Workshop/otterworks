@@ -8,7 +8,7 @@ storage savings.
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
@@ -198,7 +198,7 @@ def generate_storage_report(**context):
     report = {
         "report_type": "storage_cleanup",
         "report_date": ds,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "inventory": {
             "total_objects": total_objects,
             "total_size_bytes": total_size,

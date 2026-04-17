@@ -11,7 +11,7 @@ import io
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
@@ -395,7 +395,7 @@ def _build_daily_report(ds, summary, aggregated):
     return {
         "report_type": "daily_analytics",
         "report_date": ds,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "summary": summary,
         "highlights": {
             "peak_hour": _find_peak_hour(aggregated.get("hourly_breakdown", {})),

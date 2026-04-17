@@ -16,7 +16,7 @@ import gzip
 import io
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from airflow import DAG
@@ -211,7 +211,7 @@ def generate_compliance_report(**context):
     report = {
         "report_type": "audit_archive_compliance",
         "execution_date": ds,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "retention_policy": {
             "retention_days": RETENTION_DAYS,
             "cutoff_date": cutoff_date,

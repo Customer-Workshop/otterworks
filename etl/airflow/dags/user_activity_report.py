@@ -7,7 +7,7 @@ activity summaries, and stores them in S3 for admin-service to serve.
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
@@ -177,7 +177,7 @@ def _build_user_activity_report(ds, daily_summaries, user_activities):
     return {
         "report_type": "user_activity",
         "report_date": ds,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "lookback_days": LOOKBACK_DAYS,
         "trends": {
             "total_events": total_events,

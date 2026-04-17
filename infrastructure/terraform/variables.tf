@@ -16,6 +16,12 @@ variable "eks_cluster_name" {
   default     = "workshop-dev"
 }
 
+variable "db_password" {
+  description = "Password for the RDS PostgreSQL database"
+  type        = string
+  sensitive   = true
+}
+
 variable "namespace" {
   description = "Kubernetes namespace for OtterWorks"
   type        = string

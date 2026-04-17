@@ -67,9 +67,9 @@ class DocumentService:
         if not document:
             return None
 
-        if "title" in data.model_fields_set:
+        if "title" in data.model_fields_set and data.title is not None:
             document.title = data.title
-        if "content" in data.model_fields_set:
+        if "content" in data.model_fields_set and data.content is not None:
             document.content = data.content
             document.word_count = len(data.content.split()) if data.content else 0
         if "folder_id" in data.model_fields_set:

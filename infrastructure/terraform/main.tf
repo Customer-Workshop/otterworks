@@ -72,6 +72,7 @@ module "database" {
   source      = "./modules/database"
   environment = var.environment
   project     = "otterworks"
+  db_password = var.db_password
 }
 
 module "messaging" {

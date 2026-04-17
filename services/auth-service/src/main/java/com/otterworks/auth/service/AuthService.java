@@ -106,7 +106,7 @@ public class AuthService {
         accessToken,
         refreshToken,
         "Bearer",
-        3600,
+        jwtTokenProvider.getAccessTokenExpiry(),
         new AuthResponse.UserDto(
             user.getId().toString(),
             user.getEmail(),

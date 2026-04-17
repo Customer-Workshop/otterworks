@@ -8,6 +8,7 @@ from flask_cors import CORS
 
 from app.api.health import health_bp
 from app.api.search import search_bp
+from app.services.opensearch_client import OpenSearchService
 
 logger = structlog.get_logger()
 
@@ -19,6 +20,8 @@ def create_app() -> Flask:
 
     app.config["OPENSEARCH_URL"] = os.getenv("OPENSEARCH_URL", "http://localhost:9200")
     app.config["OPENSEARCH_INDEX"] = os.getenv("OPENSEARCH_INDEX", "otterworks-documents")
+
+    app.opensearch_service = OpenSearchService(app.config["OPENSEARCH_URL"])
 
     app.register_blueprint(health_bp)
     app.register_blueprint(search_bp, url_prefix="/api/v1/search")

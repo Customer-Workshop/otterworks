@@ -2,46 +2,102 @@ module Api
   module V1
     module Admin
       class UsersController < ApplicationController
+        before_action :set_user, only: %i[show update destroy suspend activate]
+
         # GET /api/v1/admin/users
         def index
-          # TODO: Paginated user listing with search/filter
-          render json: { users: [], total: 0, page: 1, page_size: 20 }
+          scope = AdminUser.all
+          scope = scope.search(params[:q]) if params[:q].present?
+          scope = scope.by_role(params[:role]) if params[:role].present?
+          scope = scope.where(status: params[:status]) if params[:status].present?
+          scope = scope.order(created_at: :desc)
+
+          result = paginate(scope)
+
+          render json: {
+            users: ActiveModelSerializers::SerializableResource.new(result[:records]),
+            total: result[:total],
+            page: result[:page],
+            per_page: result[:per_page]
+          }
         end
 
         # GET /api/v1/admin/users/:id
         def show
-          # TODO: Get user details including activity summary
-          render json: { error: "not implemented" }, status: :not_implemented
+          render json: @user, serializer: AdminUserSerializer, include_quota: true
         end
 
         # PUT /api/v1/admin/users/:id
         def update
-          # TODO: Update user roles, display name, etc.
-          render json: { error: "not implemented" }, status: :not_implemented
+          previous_attributes = @user.attributes.slice('role', 'display_name', 'email')
+
+          if @user.update(user_params)
+            AuditLogger.log(
+              action: 'user.updated',
+              resource_type: 'AdminUser',
+              resource_id: @user.id,
+              request: request,
+              changes_made: { before: previous_attributes,
+                              after: @user.attributes.slice('role', 'display_name', 'email') }
+            )
+            render json: @user, serializer: AdminUserSerializer
+          else
+            render json: { error: 'Validation failed', details: @user.errors.full_messages },
+                   status: :unprocessable_entity
+          end
         end
 
         # DELETE /api/v1/admin/users/:id
         def destroy
-          # TODO: Soft-delete user account
+          @user.soft_delete!
+
+          AuditLogger.log(
+            action: 'user.deleted',
+            resource_type: 'AdminUser',
+            resource_id: @user.id,
+            request: request
+          )
+
           head :no_content
         end
 
         # PUT /api/v1/admin/users/:id/suspend
         def suspend
-          # TODO: Suspend user account
-          render json: { error: "not implemented" }, status: :not_implemented
+          @user.suspend!(reason: params[:reason])
+
+          AuditLogger.log(
+            action: 'user.suspended',
+            resource_type: 'AdminUser',
+            resource_id: @user.id,
+            request: request,
+            changes_made: { reason: params[:reason] }
+          )
+
+          render json: @user, serializer: AdminUserSerializer
         end
 
         # PUT /api/v1/admin/users/:id/activate
         def activate
-          # TODO: Reactivate suspended user
-          render json: { error: "not implemented" }, status: :not_implemented
+          @user.activate!
+
+          AuditLogger.log(
+            action: 'user.activated',
+            resource_type: 'AdminUser',
+            resource_id: @user.id,
+            request: request
+          )
+
+          render json: @user, serializer: AdminUserSerializer
         end
 
-        # PUT /api/v1/admin/users/:id/reset_password
-        def reset_password
-          # TODO: Trigger password reset email
-          render json: { error: "not implemented" }, status: :not_implemented
+        private
+
+        def set_user
+          @user = AdminUser.find(params[:id])
+        end
+
+        def user_params
+          params.require(:user).permit(:email, :display_name, :role, :avatar_url)
         end
       end
     end

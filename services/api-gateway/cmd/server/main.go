@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,133 +10,105 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-	"github.com/go-chi/httprate"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/config"
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/health"
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware"
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/proxy"
 )
 
-type Config struct {
-	Port                  string
-	AuthServiceURL        string
-	FileServiceURL        string
-	DocumentServiceURL    string
-	CollabServiceURL      string
-	NotificationServiceURL string
-	SearchServiceURL      string
-	AnalyticsServiceURL   string
-	AdminServiceURL       string
-	AuditServiceURL       string
-}
-
-func loadConfig() Config {
-	return Config{
-		Port:                  getEnv("PORT", "8080"),
-		AuthServiceURL:        getEnv("AUTH_SERVICE_URL", "http://localhost:8081"),
-		FileServiceURL:        getEnv("FILE_SERVICE_URL", "http://localhost:8082"),
-		DocumentServiceURL:    getEnv("DOCUMENT_SERVICE_URL", "http://localhost:8083"),
-		CollabServiceURL:      getEnv("COLLAB_SERVICE_URL", "http://localhost:8084"),
-		NotificationServiceURL: getEnv("NOTIFICATION_SERVICE_URL", "http://localhost:8086"),
-		SearchServiceURL:      getEnv("SEARCH_SERVICE_URL", "http://localhost:8087"),
-		AnalyticsServiceURL:   getEnv("ANALYTICS_SERVICE_URL", "http://localhost:8088"),
-		AdminServiceURL:       getEnv("ADMIN_SERVICE_URL", "http://localhost:8089"),
-		AuditServiceURL:       getEnv("AUDIT_SERVICE_URL", "http://localhost:8090"),
-	}
-}
-
-func getEnv(key, fallback string) string {
-	if val, ok := os.LookupEnv(key); ok {
-		return val
-	}
-	return fallback
-}
-
-func newReverseProxy(target string) http.Handler {
-	u, err := url.Parse(target)
-	if err != nil {
-		log.Fatal().Err(err).Str("target", target).Msg("invalid proxy target URL")
-	}
-	proxy := httputil.NewSingleHostReverseProxy(u)
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Error().Err(err).Str("target", target).Str("path", r.URL.Path).Msg("proxy error")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadGateway)
-		fmt.Fprint(w, `{"error":"service unavailable"}`)
-	}
-	return proxy
-}
-
-func requestLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		ww := chimw.NewWrapResponseWriter(w, r.ProtoMajor)
-		next.ServeHTTP(ww, r)
-		log.Info().
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Int("status", ww.Status()).
-			Dur("latency", time.Since(start)).
-			Str("remote", r.RemoteAddr).
-			Str("user_agent", r.UserAgent()).
-			Msg("request")
-	})
-}
-
 func main() {
+	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		l := zerolog.New(os.Stdout).With().Timestamp().Logger()
+		l.Fatal().Err(err).Msg("invalid configuration")
+	}
+
 	// Structured JSON logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = zerolog.New(os.Stdout).With().Timestamp().Str("service", "api-gateway").Logger()
+	logger := zerolog.New(os.Stdout).With().
+		Timestamp().
+		Str("service", "api-gateway").
+		Logger()
 
-	cfg := loadConfig()
+	middleware.SetLogLevel(cfg.LogLevel)
 
+	// OpenTelemetry tracing
+	shutdownTracer := initTracer()
+
+	// Circuit breaker manager
+	cbManager := proxy.NewCircuitBreakerManager(proxy.CircuitBreakerConfig{
+		MaxRequests:  cfg.CBMaxRequests,
+		Interval:     cfg.CBInterval,
+		Timeout:      cfg.CBTimeout,
+		FailureRatio: cfg.CBFailureRatio,
+	})
+
+	// Build routes
+	var routes []proxy.Route
+	for prefix, target := range cfg.ServiceRoutes() {
+		routes = append(routes, proxy.Route{
+			Prefix:    prefix,
+			TargetURL: target,
+		})
+	}
+
+	// Create main router
 	r := chi.NewRouter()
 
-	// --- Middleware ---
-	r.Use(chimw.RequestID)
+	// Global middleware stack
+	r.Use(middleware.RequestID)
 	r.Use(chimw.RealIP)
-	r.Use(requestLogger)
+	r.Use(middleware.Metrics)
+	r.Use(middleware.Logger(logger))
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Compress(5))
-	r.Use(httprate.LimitByIP(100, time.Minute))
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:4200"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+
+	// Rate limiting
+	rateLimiter := middleware.NewRateLimiter(cfg.RateLimitRPS)
+	r.Use(rateLimiter.Handler)
+
+	// CORS
+	r.Use(middleware.CORS(middleware.CORSConfig{
+		AllowedOrigins:   cfg.CORSAllowedOrigins,
+		AllowedMethods:   cfg.CORSAllowedMethods,
+		AllowedHeaders:   cfg.CORSAllowedHeaders,
 		ExposedHeaders:   []string{"Link", "X-Request-ID"},
 		AllowCredentials: true,
-		MaxAge:           300,
+		MaxAge:           cfg.CORSMaxAge,
 	}))
 
-	// --- Health Check ---
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"status":"healthy","service":"api-gateway"}`)
-	})
+	// JWT validation
+	r.Use(middleware.JWTAuth(middleware.JWTConfig{
+		Secret:     cfg.JWTSecret,
+		PublicPath: middleware.DefaultPublicPaths(),
+		PrefixPath: middleware.DefaultPrefixPaths(),
+	}))
 
-	// --- Metrics ---
-	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprint(w, "# HELP api_gateway_up API Gateway is running\n# TYPE api_gateway_up gauge\napi_gateway_up 1\n")
-	})
+	// Health check
+	r.Get("/health", health.Handler())
 
-	// --- Route Proxies ---
-	// Chi's Mount strips the mount prefix before forwarding to the handler.
-	// Include the full backend path in the target URL so the proxy prepends it,
-	// e.g. /api/v1/auth/register → chi strips to /register → proxy sends /api/v1/auth/register
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Mount("/auth", newReverseProxy(cfg.AuthServiceURL+"/api/v1/auth"))
-		r.Mount("/files", newReverseProxy(cfg.FileServiceURL+"/api/v1/files"))
-		r.Mount("/documents", newReverseProxy(cfg.DocumentServiceURL+"/api/v1/documents"))
-		r.Mount("/collab", newReverseProxy(cfg.CollabServiceURL+"/api/v1/collab"))
-		r.Mount("/notifications", newReverseProxy(cfg.NotificationServiceURL+"/api/v1/notifications"))
-		r.Mount("/search", newReverseProxy(cfg.SearchServiceURL+"/api/v1/search"))
-		r.Mount("/analytics", newReverseProxy(cfg.AnalyticsServiceURL+"/api/v1/analytics"))
-		r.Mount("/admin", newReverseProxy(cfg.AdminServiceURL+"/api/v1/admin"))
-		r.Mount("/audit", newReverseProxy(cfg.AuditServiceURL+"/api/v1/audit"))
-	})
+	// Prometheus metrics
+	r.Handle("/metrics", promhttp.Handler())
 
-	// --- Server ---
+	// Mount reverse proxy routes
+	proxyRouter := proxy.NewRouter(proxy.RouterConfig{
+		Routes:        routes,
+		CBManager:     cbManager,
+		Logger:        logger,
+		EnableTracing: true,
+	})
+	r.Mount("/", proxyRouter)
+
+	// HTTP server
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      r,
@@ -148,23 +117,70 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Graceful shutdown
+	// Start server in background
 	go func() {
-		log.Info().Str("port", cfg.Port).Msg("API Gateway starting")
+		logger.Info().Str("port", cfg.Port).Msg("API Gateway starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("server failed")
+			logger.Fatal().Err(err).Msg("server failed")
 		}
 	}()
 
+	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Info().Msg("shutting down server...")
+	logger.Info().Msg("shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
+
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal().Err(err).Msg("server forced to shutdown")
+		logger.Fatal().Err(err).Msg("server forced to shutdown")
 	}
-	log.Info().Msg("server exited")
+
+	if shutdownTracer != nil {
+		if err := shutdownTracer(ctx); err != nil {
+			logger.Error().Err(err).Msg("failed to shutdown tracer")
+		}
+	}
+
+	logger.Info().Msg("server exited")
+}
+
+// initTracer sets up the OpenTelemetry trace provider.
+func initTracer() func(context.Context) error {
+	ctx := context.Background()
+
+	l := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	exporter, err := otlptracehttp.New(ctx)
+	if err != nil {
+		l.Warn().Err(err).Msg("failed to create OTLP exporter, tracing disabled")
+		return nil
+	}
+
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceName("api-gateway"),
+			semconv.ServiceVersion("0.1.0"),
+		),
+	)
+	if err != nil {
+		exporter.Shutdown(ctx)
+		l.Warn().Err(err).Msg("failed to create trace resource")
+		return nil
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+	)
+
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
+	return tp.Shutdown
 }

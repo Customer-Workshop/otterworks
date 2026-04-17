@@ -120,6 +120,7 @@ impl MetadataClient {
             .table_name(&self.files_table)
             .key("id", AttributeValue::S(file_id.to_string()))
             .update_expression("SET is_trashed = :t, updated_at = :u")
+            .condition_expression("attribute_exists(id)")
             .expression_attribute_values(":t", AttributeValue::Bool(true))
             .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()))
             .send()
@@ -136,6 +137,7 @@ impl MetadataClient {
             .table_name(&self.files_table)
             .key("id", AttributeValue::S(file_id.to_string()))
             .update_expression("SET is_trashed = :t, updated_at = :u")
+            .condition_expression("attribute_exists(id)")
             .expression_attribute_values(":t", AttributeValue::Bool(false))
             .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()))
             .send()
@@ -156,6 +158,7 @@ impl MetadataClient {
             .update_item()
             .table_name(&self.files_table)
             .key("id", AttributeValue::S(file_id.to_string()))
+            .condition_expression("attribute_exists(id)")
             .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()));
 
         if let Some(fid) = &folder_id {
@@ -282,6 +285,7 @@ impl MetadataClient {
             .update_item()
             .table_name(&self.folders_table)
             .key("id", AttributeValue::S(folder_id.to_string()))
+            .condition_expression("attribute_exists(id)")
             .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()));
 
         if let Some(n) = &name {

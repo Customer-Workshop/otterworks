@@ -120,22 +120,9 @@ public class AuthService {
   }
 
   @Transactional
-  public void logout(String token) {
-    try {
-      String jti = jwtTokenProvider.extractJti(token);
-      if (jti != null) {
-        refreshTokenRepository
-            .findByTokenIdAndRevokedFalse(jti)
-            .ifPresent(
-                rt -> {
-                  rt.setRevoked(true);
-                  refreshTokenRepository.save(rt);
-                });
-      }
-    } catch (Exception e) {
-      log.debug("Could not revoke refresh token on logout: {}", e.getMessage());
-    }
-    log.info("User logged out");
+  public void logout(UUID userId) {
+    refreshTokenRepository.revokeAllByUserId(userId);
+    log.info("User logged out: {}", userId);
   }
 
   private AuthResponse buildAuthResponse(User user) {

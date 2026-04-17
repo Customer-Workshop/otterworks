@@ -38,7 +38,8 @@ function DocumentEditorContent() {
   const documentId = params.id as string;
   const [title, setTitle] = useState("");
   const [isTitleEditing, setIsTitleEditing] = useState(false);
-  const latestContentRef = useRef<string>("");
+  const latestContentRef = useRef<string | null>(null);
+  const editorHasUpdated = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: document, isLoading } = useQuery({
@@ -62,9 +63,16 @@ function DocumentEditorContent() {
     },
   });
 
+  useEffect(() => {
+    if (document?.content && latestContentRef.current === null) {
+      latestContentRef.current = document.content;
+    }
+  }, [document]);
+
   const debouncedSave = useCallback(
     (content: string) => {
       latestContentRef.current = content;
+      editorHasUpdated.current = true;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         updateMutation.mutate({ content });
@@ -154,9 +162,11 @@ function DocumentEditorContent() {
             <button
               onClick={() => {
                 if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-                updateMutation.mutate({ content: latestContentRef.current });
+                if (latestContentRef.current !== null) {
+                  updateMutation.mutate({ content: latestContentRef.current });
+                }
               }}
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || latestContentRef.current === null}
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
             >
               <Save size={16} />

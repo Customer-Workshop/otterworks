@@ -3,7 +3,7 @@
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document, DocumentVersion
@@ -27,8 +27,7 @@ class DocumentService:
             word_count=len(data.content.split()) if data.content else 0,
         )
         self.db.add(document)
-        await self.db.commit()
-        await self.db.refresh(document)
+        await self.db.flush()
 
         # Create initial version
         version = DocumentVersion(
@@ -39,6 +38,7 @@ class DocumentService:
         )
         self.db.add(version)
         await self.db.commit()
+        await self.db.refresh(document)
 
         return document
 
@@ -62,18 +62,38 @@ class DocumentService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def update(self, document_id: UUID, data: DocumentUpdate) -> Document | None:
+    async def update(
+        self, document_id: UUID, data: DocumentUpdate, updated_by: UUID | None = None
+    ) -> Document | None:
         document = await self.get(document_id)
         if not document:
             return None
 
+        content_changed = False
         if "title" in data.model_fields_set and data.title is not None:
             document.title = data.title
         if "content" in data.model_fields_set and data.content is not None:
             document.content = data.content
             document.word_count = len(data.content.split()) if data.content else 0
+            content_changed = True
         if "folder_id" in data.model_fields_set:
             document.folder_id = data.folder_id
+
+        # Create a new version record when content changes
+        if content_changed:
+            latest = await self.db.execute(
+                select(func.coalesce(func.max(DocumentVersion.version_number), 0)).where(
+                    DocumentVersion.document_id == document_id
+                )
+            )
+            next_version = latest.scalar_one() + 1
+            version = DocumentVersion(
+                document_id=document_id,
+                version_number=next_version,
+                content=data.content,
+                created_by=updated_by or document.owner_id,
+            )
+            self.db.add(version)
 
         await self.db.commit()
         await self.db.refresh(document)

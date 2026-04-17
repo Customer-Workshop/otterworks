@@ -124,12 +124,10 @@ services:
     container_name: otterworks-collab-service
     ports:
       - "8084:8084"
-      - "8085:8085"
     environment:
       <<: *common-env
       OTEL_SERVICE_NAME: collab-service
       HTTP_PORT: 8084
-      WS_PORT: 8085
     depends_on:
       redis:
         condition: service_healthy
@@ -257,7 +255,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:8085
+      NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:8084
     depends_on:
       - api-gateway
 

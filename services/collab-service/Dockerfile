@@ -13,6 +13,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 
-EXPOSE 8084 8085
+EXPOSE 8084
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8084/health || exit 1
 CMD ["node", "dist/index.js"]

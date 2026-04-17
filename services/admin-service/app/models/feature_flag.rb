@@ -21,6 +21,6 @@ class FeatureFlag < ApplicationRecord
     return true if target_users.include?(user_id)
     return true if rollout_percentage == 100
 
-    rollout_percentage.positive? && (user_id.hash % 100) < rollout_percentage
+    rollout_percentage.positive? && (Digest::MD5.hexdigest(user_id.to_s).hex % 100) < rollout_percentage
   end
 end

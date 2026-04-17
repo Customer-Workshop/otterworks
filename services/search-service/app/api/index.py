@@ -5,6 +5,7 @@ from __future__ import annotations
 import structlog
 from flask import Blueprint, jsonify, request
 
+from app.api.health import INDEX_COUNT
 from app.services.indexer import Indexer
 from app.services.opensearch_client import OpenSearchService
 
@@ -31,6 +32,7 @@ def index_document() -> tuple:
     try:
         indexer = _get_indexer()
         result = indexer.index_document(data)
+        INDEX_COUNT.labels(operation="index", type="document").inc()
         logger.info("api_document_indexed", document_id=data.get("id"))
         return jsonify(result), 201
     except ValueError as e:
@@ -50,6 +52,7 @@ def index_file() -> tuple:
     try:
         indexer = _get_indexer()
         result = indexer.index_file(data)
+        INDEX_COUNT.labels(operation="index", type="file").inc()
         logger.info("api_file_indexed", file_id=data.get("id"))
         return jsonify(result), 201
     except ValueError as e:
@@ -67,6 +70,7 @@ def remove_from_index(doc_type: str, doc_id: str) -> tuple:
         result = indexer.remove(doc_type, doc_id)
         if result["status"] == "not_found":
             return jsonify(result), 404
+        INDEX_COUNT.labels(operation="delete", type=doc_type).inc()
         logger.info("api_document_removed", doc_type=doc_type, doc_id=doc_id)
         return jsonify(result), 200
     except ValueError as e:

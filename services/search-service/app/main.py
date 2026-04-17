@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 
 import structlog
-from flask import Flask
+from flask import Flask, g, request as flask_request
 from flask_cors import CORS
 
-from app.api.health import health_bp
+from app.api.health import REQUEST_COUNT, REQUEST_LATENCY, health_bp
 from app.api.index import index_bp
 from app.api.search import search_bp
 from app.config import AppConfig
@@ -74,6 +75,22 @@ def create_app(config: AppConfig | None = None) -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(search_bp, url_prefix="/api/v1/search")
     app.register_blueprint(index_bp, url_prefix="/api/v1/search")
+
+    # Prometheus request instrumentation
+    @app.before_request
+    def _start_timer() -> None:
+        g.start_time = time.monotonic()
+
+    @app.after_request
+    def _record_metrics(response):  # type: ignore[no-untyped-def]
+        if flask_request.path in ("/metrics", "/health"):
+            return response
+        elapsed = time.monotonic() - g.get("start_time", time.monotonic())
+        endpoint = flask_request.path
+        method = flask_request.method
+        REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=response.status_code).inc()
+        REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(elapsed)
+        return response
 
     # Start SQS consumer if enabled
     if config.sqs.enabled:

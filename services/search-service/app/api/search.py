@@ -5,6 +5,7 @@ from __future__ import annotations
 import structlog
 from flask import Blueprint, current_app, jsonify, request
 
+from app.api.health import SEARCH_COUNT
 from app.services.opensearch_client import OpenSearchService, get_search_analytics
 
 logger = structlog.get_logger()
@@ -44,6 +45,7 @@ def search_documents() -> tuple:
             page=page,
             page_size=page_size,
         )
+        SEARCH_COUNT.inc()
         logger.info("search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
     except Exception:
@@ -102,6 +104,7 @@ def advanced_search() -> tuple:
             page=page,
             page_size=page_size,
         )
+        SEARCH_COUNT.inc()
         logger.info("advanced_search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
     except Exception:

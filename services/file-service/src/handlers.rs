@@ -1,106 +1,408 @@
+use actix_multipart::Multipart;
 use actix_web::{web, HttpResponse};
+use bytes::BytesMut;
+use chrono::Utc;
+use futures_util::StreamExt;
+use uuid::Uuid;
 
-use crate::models::HealthResponse;
-use crate::storage::{S3Client, DynamoClient};
+use crate::config::AppConfig;
+use crate::errors::ServiceError;
+use crate::events::EventPublisher;
+use crate::metadata::MetadataClient;
+use crate::middleware;
+use crate::models::{
+    CreateFolderRequest, DownloadResponse, FileMetadata, FileShare, FileVersion, Folder,
+    HealthResponse, ListFilesQuery, ListFilesResponse, ListVersionsResponse, MoveFileRequest,
+    ShareFileRequest, ShareFileResponse, UpdateFolderRequest, UploadResponse,
+};
+use crate::storage::S3Client;
+
+// -- Health & Metrics --
 
 pub async fn health() -> HttpResponse {
     HttpResponse::Ok().json(HealthResponse {
         status: "healthy".into(),
         service: "file-service".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
     })
 }
 
 pub async fn metrics() -> HttpResponse {
     HttpResponse::Ok()
-        .content_type("text/plain")
-        .body("# HELP file_service_up File Service is running\n# TYPE file_service_up gauge\nfile_service_up 1\n")
+        .content_type("text/plain; charset=utf-8")
+        .body(middleware::render_metrics())
 }
 
+// -- File Handlers --
+
 pub async fn upload_file(
-    _s3: web::Data<S3Client>,
-    _dynamo: web::Data<DynamoClient>,
-) -> HttpResponse {
-    // TODO: Implement multipart file upload with S3 streaming
-    HttpResponse::NotImplemented().json(serde_json::json!({"error": "not yet implemented"}))
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    config: web::Data<AppConfig>,
+    mut payload: Multipart,
+) -> Result<HttpResponse, ServiceError> {
+    let mut file_bytes = BytesMut::new();
+    let mut file_name = String::from("unnamed");
+    let mut content_type = String::from("application/octet-stream");
+    let mut owner_id: Option<Uuid> = None;
+    let mut folder_id: Option<Uuid> = None;
+
+    while let Some(item) = payload.next().await {
+        let mut field = item.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+        let disposition = field.content_disposition().cloned();
+        let field_name = disposition
+            .as_ref()
+            .and_then(|d| d.get_name().map(|s| s.to_string()))
+            .unwrap_or_default();
+
+        match field_name.as_str() {
+            "file" => {
+                if let Some(fname) = disposition.as_ref().and_then(|d| d.get_filename()) {
+                    file_name = fname.to_string();
+                }
+                if let Some(ct) = field.content_type() {
+                    content_type = ct.to_string();
+                }
+                while let Some(chunk) = field.next().await {
+                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+                    file_bytes.extend_from_slice(&data);
+                    if file_bytes.len() as u64 > config.server.max_upload_bytes {
+                        return Err(ServiceError::FileTooLarge {
+                            max_bytes: config.server.max_upload_bytes,
+                            actual_bytes: file_bytes.len() as u64,
+                        });
+                    }
+                }
+            }
+            "owner_id" => {
+                let mut value = BytesMut::new();
+                while let Some(chunk) = field.next().await {
+                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+                    value.extend_from_slice(&data);
+                }
+                let s = String::from_utf8_lossy(&value).to_string();
+                owner_id = Some(
+                    s.trim()
+                        .parse::<Uuid>()
+                        .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
+                );
+            }
+            "folder_id" => {
+                let mut value = BytesMut::new();
+                while let Some(chunk) = field.next().await {
+                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+                    value.extend_from_slice(&data);
+                }
+                let s = String::from_utf8_lossy(&value).to_string();
+                let trimmed = s.trim();
+                if !trimmed.is_empty() {
+                    folder_id = Some(trimmed.parse::<Uuid>().map_err(|e| {
+                        ServiceError::BadRequest(format!("invalid folder_id: {e}"))
+                    })?);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let owner = owner_id.ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+
+    if file_bytes.is_empty() {
+        return Err(ServiceError::BadRequest("file field is required".into()));
+    }
+
+    let file_id = Uuid::new_v4();
+    let s3_key = format!("files/{}/{}", owner, file_id);
+    let now = Utc::now();
+    let size = file_bytes.len() as u64;
+
+    s3.upload_object(&s3_key, file_bytes.freeze(), &content_type)
+        .await?;
+
+    let file_meta = FileMetadata {
+        id: file_id,
+        name: file_name,
+        mime_type: content_type,
+        size_bytes: size,
+        s3_key: s3_key.clone(),
+        folder_id,
+        owner_id: owner,
+        version: 1,
+        is_trashed: false,
+        created_at: now,
+        updated_at: now,
+    };
+
+    meta.put_file(&file_meta).await?;
+
+    let version = FileVersion {
+        file_id,
+        version: 1,
+        s3_key,
+        size_bytes: size,
+        created_by: owner,
+        created_at: now,
+    };
+    meta.put_version(&version).await?;
+
+    let _ = events
+        .file_uploaded(&file_id, &owner, folder_id.as_ref())
+        .await;
+
+    tracing::info!(file_id = %file_id, name = %file_meta.name, size = %size, "File uploaded");
+
+    Ok(HttpResponse::Created().json(UploadResponse { file: file_meta }))
+}
+
+pub async fn get_file_metadata(
+    meta: web::Data<MetadataClient>,
+    path: web::Path<String>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+    let file = meta.get_file(&file_id).await?;
+    Ok(HttpResponse::Ok().json(file))
 }
 
 pub async fn list_files(
-    _dynamo: web::Data<DynamoClient>,
-    _query: web::Query<crate::models::ListFilesQuery>,
-) -> HttpResponse {
-    // TODO: Query DynamoDB for file listing with pagination
-    HttpResponse::Ok().json(serde_json::json!({"files": [], "total": 0}))
-}
+    meta: web::Data<MetadataClient>,
+    query: web::Query<ListFilesQuery>,
+) -> Result<HttpResponse, ServiceError> {
+    let include_trashed = query.include_trashed.unwrap_or(false);
+    let files = meta
+        .list_files(query.folder_id, query.owner_id, include_trashed)
+        .await?;
 
-pub async fn get_file(
-    _dynamo: web::Data<DynamoClient>,
-    path: web::Path<String>,
-) -> HttpResponse {
-    let _file_id = path.into_inner();
-    // TODO: Get file metadata from DynamoDB
-    HttpResponse::NotFound().json(serde_json::json!({"error": "file not found"}))
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(50).min(100);
+    let total = files.len();
+    let start = (page - 1).saturating_mul(page_size) as usize;
+    let paged: Vec<FileMetadata> = files.into_iter().skip(start).take(page_size as usize).collect();
+
+    Ok(HttpResponse::Ok().json(ListFilesResponse {
+        files: paged,
+        total,
+        page,
+        page_size,
+    }))
 }
 
 pub async fn delete_file(
-    _s3: web::Data<S3Client>,
-    _dynamo: web::Data<DynamoClient>,
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
     path: web::Path<String>,
-) -> HttpResponse {
-    let _file_id = path.into_inner();
-    // TODO: Soft delete file (mark as deleted in DynamoDB)
-    HttpResponse::NoContent().finish()
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.get_file(&file_id).await?;
+    meta.delete_file(&file_id).await?;
+    s3.delete_object(&file.s3_key).await?;
+
+    let _ = events.file_deleted(&file_id, &file.owner_id).await;
+
+    tracing::info!(file_id = %file_id, "File deleted");
+    Ok(HttpResponse::NoContent().finish())
 }
 
 pub async fn download_file(
-    _s3: web::Data<S3Client>,
-    _dynamo: web::Data<DynamoClient>,
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
     path: web::Path<String>,
-) -> HttpResponse {
-    let _file_id = path.into_inner();
-    // TODO: Generate presigned S3 URL and redirect
-    HttpResponse::NotImplemented().json(serde_json::json!({"error": "not yet implemented"}))
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.get_file(&file_id).await?;
+    let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
+
+    Ok(HttpResponse::Ok().json(DownloadResponse {
+        url,
+        expires_in_secs: 3600,
+    }))
+}
+
+pub async fn move_file(
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    path: web::Path<String>,
+    body: web::Json<MoveFileRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.move_file(&file_id, body.folder_id).await?;
+
+    let _ = events
+        .file_moved(&file_id, &file.owner_id, body.folder_id.as_ref())
+        .await;
+
+    tracing::info!(file_id = %file_id, folder_id = ?body.folder_id, "File moved");
+    Ok(HttpResponse::Ok().json(file))
 }
 
 pub async fn list_versions(
-    _dynamo: web::Data<DynamoClient>,
+    meta: web::Data<MetadataClient>,
     path: web::Path<String>,
-) -> HttpResponse {
-    let _file_id = path.into_inner();
-    // TODO: List file versions from DynamoDB
-    HttpResponse::Ok().json(serde_json::json!({"versions": []}))
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let versions = meta.list_versions(&file_id).await?;
+    Ok(HttpResponse::Ok().json(ListVersionsResponse { versions }))
 }
 
+pub async fn trash_file(
+    meta: web::Data<MetadataClient>,
+    path: web::Path<String>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.trash_file(&file_id).await?;
+    tracing::info!(file_id = %file_id, "File trashed");
+    Ok(HttpResponse::Ok().json(file))
+}
+
+pub async fn restore_file(
+    meta: web::Data<MetadataClient>,
+    path: web::Path<String>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.restore_file(&file_id).await?;
+    tracing::info!(file_id = %file_id, "File restored");
+    Ok(HttpResponse::Ok().json(file))
+}
+
+pub async fn share_file(
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    path: web::Path<String>,
+    body: web::Json<ShareFileRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    // Ensure file exists
+    let file = meta.get_file(&file_id).await?;
+
+    let share = FileShare {
+        id: Uuid::new_v4(),
+        file_id,
+        shared_with: body.shared_with,
+        permission: body.permission.clone(),
+        shared_by: body.shared_by,
+        created_at: Utc::now(),
+    };
+
+    meta.put_share(&share).await?;
+
+    let _ = events
+        .file_shared(&file_id, &file.owner_id, &body.shared_with)
+        .await;
+
+    tracing::info!(file_id = %file_id, shared_with = %body.shared_with, "File shared");
+    Ok(HttpResponse::Created().json(ShareFileResponse { share }))
+}
+
+// -- Folder Handlers --
+
 pub async fn create_folder(
-    _dynamo: web::Data<DynamoClient>,
-    _body: web::Json<crate::models::CreateFolderRequest>,
-) -> HttpResponse {
-    // TODO: Create folder entry in DynamoDB
-    HttpResponse::NotImplemented().json(serde_json::json!({"error": "not yet implemented"}))
+    meta: web::Data<MetadataClient>,
+    body: web::Json<CreateFolderRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let now = Utc::now();
+    let folder = Folder {
+        id: Uuid::new_v4(),
+        name: body.name.clone(),
+        parent_id: body.parent_id,
+        owner_id: body.owner_id,
+        created_at: now,
+        updated_at: now,
+    };
+
+    meta.put_folder(&folder).await?;
+    tracing::info!(folder_id = %folder.id, name = %folder.name, "Folder created");
+    Ok(HttpResponse::Created().json(folder))
 }
 
 pub async fn get_folder(
-    _dynamo: web::Data<DynamoClient>,
+    meta: web::Data<MetadataClient>,
     path: web::Path<String>,
-) -> HttpResponse {
-    let _folder_id = path.into_inner();
-    // TODO: Get folder and its contents from DynamoDB
-    HttpResponse::NotFound().json(serde_json::json!({"error": "folder not found"}))
+) -> Result<HttpResponse, ServiceError> {
+    let folder_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
+
+    let folder = meta.get_folder(&folder_id).await?;
+    Ok(HttpResponse::Ok().json(folder))
 }
 
 pub async fn update_folder(
-    _dynamo: web::Data<DynamoClient>,
+    meta: web::Data<MetadataClient>,
     path: web::Path<String>,
-) -> HttpResponse {
-    let _folder_id = path.into_inner();
-    // TODO: Update folder metadata
-    HttpResponse::NotImplemented().json(serde_json::json!({"error": "not yet implemented"}))
+    body: web::Json<UpdateFolderRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let folder_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
+
+    let folder = meta
+        .update_folder(&folder_id, body.name.clone(), body.parent_id)
+        .await?;
+    Ok(HttpResponse::Ok().json(folder))
 }
 
 pub async fn delete_folder(
-    _dynamo: web::Data<DynamoClient>,
+    meta: web::Data<MetadataClient>,
     path: web::Path<String>,
-) -> HttpResponse {
-    let _folder_id = path.into_inner();
-    // TODO: Delete folder and contents
-    HttpResponse::NoContent().finish()
+) -> Result<HttpResponse, ServiceError> {
+    let folder_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
+
+    meta.delete_folder(&folder_id).await?;
+    tracing::info!(folder_id = %folder_id, "Folder deleted");
+    Ok(HttpResponse::NoContent().finish())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test;
+
+    #[actix_rt::test]
+    async fn test_health_endpoint() {
+        let resp = health().await;
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[actix_rt::test]
+    async fn test_metrics_endpoint() {
+        let resp = metrics().await;
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
 }

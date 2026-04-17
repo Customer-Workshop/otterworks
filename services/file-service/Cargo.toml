@@ -16,14 +16,25 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tracing-actix-web = "0.7"
+tracing-opentelemetry = "0.22"
+opentelemetry = "0.21"
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = "0.14"
 aws-config = "1.1"
 aws-sdk-s3 = "1.15"
 aws-sdk-dynamodb = "1.14"
+aws-sdk-sns = "1.13"
+aws-smithy-types = "1.1"
 futures-util = "0.3"
 bytes = "1"
 mime = "0.3"
 thiserror = "1"
+anyhow = "1"
 dotenvy = "0.15"
+prometheus = "0.13"
+lazy_static = "1.4"
 
 [dev-dependencies]
 actix-rt = "2"
+actix-web = "4"
+tokio = { version = "1", features = ["full", "test-util"] }

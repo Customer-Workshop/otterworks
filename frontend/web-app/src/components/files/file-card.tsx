@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   File,
   FileText,
+  Folder,
   Image,
   Film,
   Music,
@@ -48,7 +49,7 @@ interface FileCardProps {
 
 export function FileCard({ file, onDelete, onShare, view = "grid" }: FileCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const Icon = file.isFolder ? File : getIconComponent(file.mimeType);
+  const Icon = file.isFolder ? Folder : getIconComponent(file.mimeType);
 
   if (view === "list") {
     return (

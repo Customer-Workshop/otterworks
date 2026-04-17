@@ -189,11 +189,26 @@ export class CollaborationManager {
       return;
     }
 
+    // Step 1: Apply CRDT update in memory
     try {
       const updateBytes = Buffer.from(update, 'base64');
       Y.applyUpdate(doc, new Uint8Array(updateBytes));
+    } catch (err) {
+      logger.error({ err, documentId, socketId: socket.id }, 'crdt_apply_failed');
+      socket.emit('document-update-error', {
+        documentId,
+        error: 'Failed to apply update',
+      });
+      return;
+    }
 
-      // Persist to Redis
+    // Step 2: Broadcast to other clients immediately after successful CRDT apply
+    socket.to(room).emit('document-update', { documentId, update });
+    metrics.documentUpdatesTotal.inc();
+    metrics.messagesTotal.inc({ type: 'document-update' });
+
+    // Step 3: Persist to Redis as best-effort (periodic loop provides eventual consistency)
+    try {
       const fullState = Y.encodeStateAsUpdate(doc);
       const persistStart = Date.now();
       await documentStore.saveDocumentState(
@@ -209,21 +224,11 @@ export class CollaborationManager {
         operation: 'save_state',
         status: 'success',
       });
-
-      // Broadcast to other clients
-      socket.to(room).emit('document-update', { documentId, update });
-
-      metrics.documentUpdatesTotal.inc();
-      metrics.messagesTotal.inc({ type: 'document-update' });
     } catch (err) {
-      logger.error({ err, documentId, socketId: socket.id }, 'document_update_failed');
+      logger.error({ err, documentId, socketId: socket.id }, 'document_persist_failed');
       metrics.persistenceOperations.inc({
         operation: 'save_state',
         status: 'error',
-      });
-      socket.emit('document-update-error', {
-        documentId,
-        error: 'Failed to apply update',
       });
     }
   }

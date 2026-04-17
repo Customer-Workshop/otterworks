@@ -32,6 +32,7 @@ export interface CollaborationDeps {
 
 export class CollaborationManager {
   private documents: Map<string, Y.Doc> = new Map();
+  private documentInitPromises: Map<string, Promise<Y.Doc>> = new Map();
   private deps: CollaborationDeps;
   private persistTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
@@ -92,7 +93,7 @@ export class CollaborationManager {
     ack?: (response: { success: boolean; error?: string }) => void,
   ): Promise<void> {
     const { documentId } = data;
-    const { io, documentStore, awareness, presenceHandler, metrics, logger } = this.deps;
+    const { io, awareness, presenceHandler, metrics, logger } = this.deps;
     const user = extractUserFromSocket(socket);
     const room = `doc:${documentId}`;
 
@@ -103,17 +104,8 @@ export class CollaborationManager {
         'user_joined_document',
       );
 
-      // Get or create Yjs document
-      let doc = this.documents.get(documentId);
-      if (!doc) {
-        doc = new Y.Doc();
-        const savedState = await documentStore.getDocumentState(documentId);
-        if (savedState) {
-          Y.applyUpdate(doc, savedState);
-        }
-        this.documents.set(documentId, doc);
-        metrics.activeRooms.inc();
-      }
+      // Get or create Yjs document (safe against concurrent joins)
+      const doc = await this.getOrCreateDoc(documentId);
 
       // Register awareness
       const userAwareness = awareness.addUser(
@@ -443,6 +435,33 @@ export class CollaborationManager {
       logger.error({ err, documentId }, 'document_persist_on_cleanup_failed');
       // Keep document in memory so the periodic persistence loop can retry
     }
+  }
+
+  private async getOrCreateDoc(documentId: string): Promise<Y.Doc> {
+    const existing = this.documents.get(documentId);
+    if (existing) return existing;
+
+    const pending = this.documentInitPromises.get(documentId);
+    if (pending) return pending;
+
+    const { documentStore, metrics } = this.deps;
+    const initPromise = (async () => {
+      try {
+        const doc = new Y.Doc();
+        const savedState = await documentStore.getDocumentState(documentId);
+        if (savedState) {
+          Y.applyUpdate(doc, savedState);
+        }
+        this.documents.set(documentId, doc);
+        metrics.activeRooms.inc();
+        return doc;
+      } finally {
+        this.documentInitPromises.delete(documentId);
+      }
+    })();
+
+    this.documentInitPromises.set(documentId, initPromise);
+    return initPromise;
   }
 
   private startPersistenceLoop(): void {

@@ -283,7 +283,27 @@ public class DynamoDbAuditRepository : IAuditRepository
                 },
             };
 
-            await _dynamoDb.BatchWriteItemAsync(batchRequest);
+            var batchResponse = await _dynamoDb.BatchWriteItemAsync(batchRequest);
+
+            var retryCount = 0;
+            while (batchResponse.UnprocessedItems.Count > 0 && retryCount < 5)
+            {
+                retryCount++;
+                var delayMs = (int)Math.Pow(2, retryCount) * 100;
+                _logger.LogWarning("Retrying {Count} unprocessed delete items (attempt {Retry})",
+                    batchResponse.UnprocessedItems.Values.Sum(v => v.Count), retryCount);
+                await Task.Delay(delayMs);
+                batchResponse = await _dynamoDb.BatchWriteItemAsync(new BatchWriteItemRequest
+                {
+                    RequestItems = batchResponse.UnprocessedItems,
+                });
+            }
+
+            if (batchResponse.UnprocessedItems.Count > 0)
+            {
+                _logger.LogError("Failed to delete {Count} items after retries",
+                    batchResponse.UnprocessedItems.Values.Sum(v => v.Count));
+            }
         }
 
         _logger.LogInformation("Deleted {Count} audit events from DynamoDB", idList.Count);

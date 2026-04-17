@@ -107,6 +107,7 @@ public class SnsConsumer : BackgroundService
             if (auditEvent is null)
             {
                 _logger.LogWarning("Failed to deserialize audit event from message {MessageId}", message.MessageId);
+                await _sqsClient.DeleteMessageAsync(_queueUrl, message.ReceiptHandle, ct);
                 return;
             }
 

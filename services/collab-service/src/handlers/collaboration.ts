@@ -33,6 +33,7 @@ export interface CollaborationDeps {
 export class CollaborationManager {
   private documents: Map<string, Y.Doc> = new Map();
   private documentInitPromises: Map<string, Promise<Y.Doc>> = new Map();
+  private cleaningUp: Set<string> = new Set();
   private deps: CollaborationDeps;
   private persistTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
@@ -444,9 +445,16 @@ export class CollaborationManager {
   }
 
   async persistAndCleanupDocument(documentId: string): Promise<void> {
+    // Guard against concurrent cleanup calls for the same document
+    if (this.cleaningUp.has(documentId)) return;
+    this.cleaningUp.add(documentId);
+
     const { documentStore, metrics, logger } = this.deps;
     const doc = this.documents.get(documentId);
-    if (!doc) return;
+    if (!doc) {
+      this.cleaningUp.delete(documentId);
+      return;
+    }
 
     try {
       const state = Y.encodeStateAsUpdate(doc);
@@ -461,6 +469,8 @@ export class CollaborationManager {
     } catch (err) {
       logger.error({ err, documentId }, 'document_persist_on_cleanup_failed');
       // Keep document in memory so the periodic persistence loop can retry
+    } finally {
+      this.cleaningUp.delete(documentId);
     }
   }
 

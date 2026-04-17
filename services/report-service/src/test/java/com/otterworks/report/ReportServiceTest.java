@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Date;
 
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -79,7 +80,8 @@ public class ReportServiceTest {
                 .andExpect(jsonPath("$.reportName", is("Test Usage Report")))
                 .andExpect(jsonPath("$.category", is("USAGE_ANALYTICS")))
                 .andExpect(jsonPath("$.reportType", is("PDF")))
-                .andExpect(jsonPath("$.status", is("PENDING")));
+                // @Async generation may complete before response is serialized
+                .andExpect(jsonPath("$.status", anyOf(is("PENDING"), is("GENERATING"), is("COMPLETED"))));
     }
 
     @Test

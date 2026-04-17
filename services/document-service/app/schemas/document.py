@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---- Document schemas ----
 
@@ -32,6 +32,13 @@ class DocumentPatch(BaseModel):
     content: str | None = None
     content_type: str | None = None
     folder_id: UUID | None = None
+
+    @field_validator("title", "content", "content_type", mode="before")
+    @classmethod
+    def reject_null_for_not_null_fields(cls, v: object, info) -> object:  # noqa: N805
+        if info.field_name in ("title", "content", "content_type") and v is None:
+            raise ValueError(f"{info.field_name} cannot be null")
+        return v
 
 
 class DocumentResponse(BaseModel):

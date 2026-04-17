@@ -43,8 +43,7 @@ class DocumentService:
             version=1,
         )
         self.db.add(document)
-        await self.db.commit()
-        await self.db.refresh(document)
+        await self.db.flush()
 
         version = DocumentVersion(
             document_id=document.id,
@@ -55,6 +54,7 @@ class DocumentService:
         )
         self.db.add(version)
         await self.db.commit()
+        await self.db.refresh(document)
 
         await event_publisher.publish(
             "document_created",

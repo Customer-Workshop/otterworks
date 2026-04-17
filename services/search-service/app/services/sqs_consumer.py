@@ -107,6 +107,11 @@ class SQSConsumer:
         except json.JSONDecodeError:
             logger.error("sqs_message_invalid_json", message_id=message.get("MessageId"))
             sqs.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
+        except ValueError:
+            logger.error(
+                "sqs_message_validation_failed", message_id=message.get("MessageId")
+            )
+            sqs.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
         except Exception:
             logger.exception(
                 "sqs_message_processing_failed", message_id=message.get("MessageId")

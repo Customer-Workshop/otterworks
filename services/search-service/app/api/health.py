@@ -38,7 +38,11 @@ INDEX_COUNT = Counter(
 
 @health_bp.route("/health")
 def health() -> tuple:
-    """Health check endpoint that verifies OpenSearch connectivity."""
+    """Liveness check — returns 200 if the process is running.
+
+    Used by Docker healthcheck (curl -f). Always returns 200 so that
+    temporary OpenSearch outages do not cause container restarts.
+    """
     opensearch_service = current_app.config.get("OPENSEARCH_SERVICE")
 
     opensearch_healthy = False
@@ -46,7 +50,6 @@ def health() -> tuple:
         opensearch_healthy = opensearch_service.ping()
 
     status = "healthy" if opensearch_healthy else "degraded"
-    http_status = 200 if opensearch_healthy else 503
 
     return jsonify({
         "status": status,
@@ -54,7 +57,25 @@ def health() -> tuple:
         "dependencies": {
             "opensearch": "connected" if opensearch_healthy else "disconnected",
         },
-    }), http_status
+    }), 200
+
+
+@health_bp.route("/health/ready")
+def readiness() -> tuple:
+    """Readiness check — returns 503 if OpenSearch is unreachable.
+
+    Use this for load-balancer readiness probes to stop routing
+    traffic when the service cannot serve search requests.
+    """
+    opensearch_service = current_app.config.get("OPENSEARCH_SERVICE")
+
+    opensearch_healthy = False
+    if opensearch_service:
+        opensearch_healthy = opensearch_service.ping()
+
+    if opensearch_healthy:
+        return jsonify({"ready": True}), 200
+    return jsonify({"ready": False, "reason": "opensearch_unavailable"}), 503
 
 
 @health_bp.route("/metrics")

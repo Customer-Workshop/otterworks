@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from typing import Any
 
@@ -111,6 +112,7 @@ FILES_INDEX_BODY: dict[str, Any] = {
                     },
                 },
             },
+            "type": {"type": "keyword"},
             "mime_type": {"type": "keyword"},
             "owner_id": {"type": "keyword"},
             "folder_id": {"type": "keyword"},
@@ -124,6 +126,7 @@ FILES_INDEX_BODY: dict[str, Any] = {
 }
 
 # In-memory analytics store (would be Redis/DB in production)
+_analytics_lock = threading.Lock()
 _search_analytics: dict[str, Any] = {
     "queries": [],
     "total_searches": 0,
@@ -135,20 +138,23 @@ MAX_ANALYTICS_ENTRIES = 10000
 
 def record_search_analytics(query: str, result_count: int) -> None:
     """Record a search query for analytics purposes."""
-    _search_analytics["queries"].append(
-        {"query": query, "result_count": result_count, "timestamp": time.time()}
-    )
-    _search_analytics["total_searches"] += 1
-    _search_analytics["total_results"] += result_count
-    # Prevent unbounded growth
-    if len(_search_analytics["queries"]) > MAX_ANALYTICS_ENTRIES:
-        _search_analytics["queries"] = _search_analytics["queries"][-MAX_ANALYTICS_ENTRIES:]
+    with _analytics_lock:
+        _search_analytics["queries"].append(
+            {"query": query, "result_count": result_count, "timestamp": time.time()}
+        )
+        _search_analytics["total_searches"] += 1
+        _search_analytics["total_results"] += result_count
+        # Prevent unbounded growth
+        if len(_search_analytics["queries"]) > MAX_ANALYTICS_ENTRIES:
+            _search_analytics["queries"] = _search_analytics["queries"][-MAX_ANALYTICS_ENTRIES:]
 
 
 def get_search_analytics() -> AnalyticsData:
     """Compute search analytics from recorded queries."""
-    queries = _search_analytics["queries"]
-    total_searches = _search_analytics["total_searches"]
+    with _analytics_lock:
+        queries = list(_search_analytics["queries"])
+        total_searches = _search_analytics["total_searches"]
+        total_results = _search_analytics["total_results"]
 
     # Popular queries: count occurrences
     query_counts: dict[str, int] = {}
@@ -162,9 +168,7 @@ def get_search_analytics() -> AnalyticsData:
     popular = sorted(query_counts.items(), key=lambda x: x[1], reverse=True)[:20]
     zero_results = sorted(zero_result_counts.items(), key=lambda x: x[1], reverse=True)[:20]
 
-    avg_results = (
-        _search_analytics["total_results"] / total_searches if total_searches > 0 else 0.0
-    )
+    avg_results = total_results / total_searches if total_searches > 0 else 0.0
 
     return AnalyticsData(
         popular_queries=[{"query": q, "count": c} for q, c in popular],

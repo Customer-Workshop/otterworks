@@ -117,13 +117,13 @@ app.MapGet("/health", async (IAmazonDynamoDB dynamoDb) =>
 });
 
 // Prometheus metrics
-app.MapGet("/metrics", () =>
+app.MapGet("/metrics", async () =>
 {
     using var stream = new MemoryStream();
-    Metrics.DefaultRegistry.CollectAndExportAsTextAsync(stream).Wait();
+    await Metrics.DefaultRegistry.CollectAndExportAsTextAsync(stream);
     stream.Position = 0;
     using var reader = new StreamReader(stream);
-    var metricsText = reader.ReadToEnd();
+    var metricsText = await reader.ReadToEndAsync();
     return Results.Text(metricsText, "text/plain; version=0.0.4; charset=utf-8");
 });
 

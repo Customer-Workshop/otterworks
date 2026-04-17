@@ -318,7 +318,7 @@ public class DynamoDbAuditRepository : IAuditRepository
             Action = item.TryGetValue("Action", out var act) ? act.S : string.Empty,
             ResourceType = item.TryGetValue("ResourceType", out var rt) ? rt.S : string.Empty,
             ResourceId = item.TryGetValue("ResourceId", out var rid) ? rid.S : string.Empty,
-            Timestamp = item.TryGetValue("Timestamp", out var ts) && DateTime.TryParse(ts.S, out var parsedTs)
+            Timestamp = item.TryGetValue("Timestamp", out var ts) && DateTime.TryParse(ts.S, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsedTs)
                 ? parsedTs
                 : DateTime.MinValue,
             IpAddress = item.TryGetValue("IpAddress", out var ip) ? ip.S : null,

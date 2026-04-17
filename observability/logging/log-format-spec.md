@@ -72,24 +72,24 @@ cross-service log correlation in CloudWatch / Loki.
 
 ## Language-Specific Implementation Notes
 
-### Go (api-gateway, file-service)
+### Go (api-gateway)
 Use `zerolog` or `zap` with JSON output. Set `zerolog.TimeFieldFormat` to
 `time.RFC3339Nano`.
 
-### Java / Kotlin / Scala (auth-service, analytics-service, admin-service)
+### Java / Kotlin / Scala (auth-service, notification-service, analytics-service)
 Use Logback with `LogstashEncoder`. Add `<encoder class="net.logstash.logback.encoder.LogstashEncoder"/>` to `logback-spring.xml`.
 
-### Rust (document-service)
+### Rust (file-service)
 Use `tracing` + `tracing-subscriber` with the `json` formatter.
 
-### Python (notification-service)
+### Python (document-service, search-service)
 Use `python-json-logger`. Configure via `logging.config.dictConfig`.
 
 ### Node.js (collab-service)
 Use `pino` with default JSON output. Install `pino-opentelemetry-transport`
 for automatic trace context injection.
 
-### Ruby (search-service)
+### Ruby (admin-service)
 Use `semantic_logger` with JSON formatter, or `ougai` for structured logging.
 
 ### C# (audit-service)

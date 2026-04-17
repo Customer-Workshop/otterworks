@@ -1,6 +1,9 @@
+using OtterWorks.AuditService.Models;
+
 namespace OtterWorks.AuditService.Services;
 
 public interface IAuditArchiver
 {
-    Task<string> ExportToS3Async(DateTime startDate, DateTime endDate, string? userId);
+    Task<ExportResult> ExportAsync(DateTime from, DateTime to, string format);
+    Task<ArchiveResult> ArchiveOldEventsAsync(DateTime olderThan);
 }

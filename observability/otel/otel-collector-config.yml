@@ -10,9 +10,42 @@ processors:
   batch:
     timeout: 5s
     send_batch_size: 1024
+    send_batch_max_size: 2048
+
   memory_limiter:
     check_interval: 1s
-    limit_mib: 256
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  attributes/service:
+    actions:
+      - key: environment
+        value: development
+        action: upsert
+
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100000
+    expected_new_traces_per_sec: 100
+    policies:
+      # Always keep traces with errors
+      - name: errors-policy
+        type: status_code
+        status_code:
+          status_codes:
+            - ERROR
+
+      # Always keep traces longer than 2 seconds
+      - name: latency-policy
+        type: latency
+        latency:
+          threshold_ms: 2000
+
+      # Sample healthy traces at 10%
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
 
 exporters:
   otlp/jaeger:
@@ -22,18 +55,38 @@ exporters:
 
   prometheus:
     endpoint: 0.0.0.0:8889
+    namespace: otel
+    resource_to_telemetry_conversion:
+      enabled: true
 
   logging:
     verbosity: normal
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  zpages:
+    endpoint: 0.0.0.0:55679
 
 service:
+  extensions: [health_check, zpages]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888
+
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, attributes/service, tail_sampling, batch]
       exporters: [otlp/jaeger, logging]
 
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, attributes/service, batch]
       exporters: [prometheus, logging]

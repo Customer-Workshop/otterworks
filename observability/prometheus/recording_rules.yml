@@ -1,0 +1,103 @@
+groups:
+  # -----------------------------------------------------------
+  # Request Rate Recording Rules
+  # -----------------------------------------------------------
+  - name: otterworks.request_rate
+    interval: 15s
+    rules:
+      - record: job:http_requests:rate5m
+        expr: sum by (job) (rate(http_requests_total[5m]))
+
+      - record: job_status:http_requests:rate5m
+        expr: sum by (job, status) (rate(http_requests_total[5m]))
+
+      - record: job_method:http_requests:rate5m
+        expr: sum by (job, method) (rate(http_requests_total[5m]))
+
+      - record: job_method_path:http_requests:rate5m
+        expr: sum by (job, method, path) (rate(http_requests_total[5m]))
+
+  # -----------------------------------------------------------
+  # Error Rate Recording Rules
+  # -----------------------------------------------------------
+  - name: otterworks.error_rate
+    interval: 15s
+    rules:
+      - record: job:http_errors:rate5m
+        expr: sum by (job) (rate(http_requests_total{status=~"5.."}[5m]))
+
+      - record: job:http_error_ratio:rate5m
+        expr: >-
+          sum by (job) (rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum by (job) (rate(http_requests_total[5m]))
+
+      - record: job:http_client_errors:rate5m
+        expr: sum by (job) (rate(http_requests_total{status=~"4.."}[5m]))
+
+      - record: job:http_client_error_ratio:rate5m
+        expr: >-
+          sum by (job) (rate(http_requests_total{status=~"4.."}[5m]))
+          /
+          sum by (job) (rate(http_requests_total[5m]))
+
+  # -----------------------------------------------------------
+  # Latency Percentile Recording Rules
+  # -----------------------------------------------------------
+  - name: otterworks.latency
+    interval: 15s
+    rules:
+      - record: job:http_request_duration_seconds:p50
+        expr: >-
+          histogram_quantile(0.50,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      - record: job:http_request_duration_seconds:p90
+        expr: >-
+          histogram_quantile(0.90,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      - record: job:http_request_duration_seconds:p95
+        expr: >-
+          histogram_quantile(0.95,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      - record: job:http_request_duration_seconds:p99
+        expr: >-
+          histogram_quantile(0.99,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+  # -----------------------------------------------------------
+  # Resource Utilization Recording Rules
+  # -----------------------------------------------------------
+  - name: otterworks.resources
+    interval: 30s
+    rules:
+      - record: job:process_cpu_usage:rate5m
+        expr: rate(process_cpu_seconds_total[5m])
+
+      - record: job:process_memory_bytes:current
+        expr: process_resident_memory_bytes
+
+      - record: job:process_open_fds_ratio:current
+        expr: >-
+          process_open_fds / process_max_fds
+
+  # -----------------------------------------------------------
+  # Service Availability Recording Rules
+  # -----------------------------------------------------------
+  - name: otterworks.availability
+    interval: 30s
+    rules:
+      - record: job:up:avg5m
+        expr: avg_over_time(up[5m])
+
+      - record: cluster:services_up:count
+        expr: count(up == 1)
+
+      - record: cluster:services_down:count
+        expr: count(up == 0)

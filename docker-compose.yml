@@ -17,7 +17,7 @@ x-common-env: &common-env
   REDIS_HOST: redis
   REDIS_PORT: 6379
   OPENSEARCH_URL: http://opensearch:9200
-  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
   OTEL_SERVICE_NAME: ""
 
 services:
@@ -271,16 +271,6 @@ services:
       API_URL: http://localhost:8080
     depends_on:
       - api-gateway
-
-  # --- Jaeger (Distributed Tracing) ---
-  jaeger:
-    image: jaegertracing/all-in-one:1.55
-    container_name: otterworks-jaeger
-    ports:
-      - "16686:16686"  # UI
-      - "4318:4318"    # OTLP HTTP
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
 
 networks:
   default:

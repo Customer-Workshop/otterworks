@@ -1,0 +1,63 @@
+# Trace Sampling Configuration for OtterWorks
+#
+# This file documents the sampling policies applied by the OpenTelemetry
+# Collector tail_sampling processor. The actual configuration lives in
+# otel-collector-config.yml; this file serves as a reference.
+
+policies:
+  # ---------------------------------------------------------------
+  # 1. Error policy  (priority: always keep)
+  # ---------------------------------------------------------------
+  # Every trace that contains at least one span with a non-OK status
+  # code is retained. This ensures that error investigation is never
+  # blocked by sampling.
+  - name: errors-policy
+    type: status_code
+    description: >-
+      Always retain traces containing spans with ERROR status codes.
+      This guarantees full visibility into failures across all services.
+    status_codes:
+      - ERROR
+
+  # ---------------------------------------------------------------
+  # 2. Latency policy  (priority: always keep)
+  # ---------------------------------------------------------------
+  # Traces whose end-to-end duration exceeds the threshold are kept
+  # regardless of status. Slow requests often indicate degradation
+  # that is not yet surfaced as errors.
+  - name: latency-policy
+    type: latency
+    description: >-
+      Always retain traces with total duration exceeding the threshold.
+      Helps identify slow endpoints and cascading latency issues.
+    threshold_ms: 2000
+
+  # ---------------------------------------------------------------
+  # 3. Probabilistic policy  (priority: baseline sampling)
+  # ---------------------------------------------------------------
+  # A percentage of "healthy" traces (those not caught by the policies
+  # above) is kept to provide a statistical baseline. 10% gives a
+  # representative sample while reducing storage by ~90%.
+  - name: probabilistic-policy
+    type: probabilistic
+    description: >-
+      Sample 10% of healthy traces to maintain statistical
+      representativeness while controlling storage costs.
+    sampling_percentage: 10
+
+# ---------------------------------------------------------------
+# Tuning guidance
+# ---------------------------------------------------------------
+# - decision_wait: 10s -- the collector waits this long after the
+#   root span arrives before making a sampling decision, giving
+#   child spans time to arrive.
+#
+# - num_traces: 100000 -- maximum in-flight traces held in memory.
+#   Increase if you see traces-dropped warnings in the collector logs.
+#
+# - To adjust the healthy-trace sample rate, change
+#   probabilistic-policy.sampling_percentage in the collector config.
+#
+# - For per-service overrides, add a composite policy in the
+#   collector config that chains a string_attribute matcher
+#   (service.name) with a nested probabilistic sampler.

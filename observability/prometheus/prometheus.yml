@@ -1,54 +1,242 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_timeout: 10s
+
+  external_labels:
+    cluster: otterworks-dev
+    environment: development
+
+rule_files:
+  - alerts.yml
+  - recording_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
 
 scrape_configs:
-  - job_name: 'api-gateway'
+  # -------------------------------------------------------
+  # Prometheus self-monitoring
+  # -------------------------------------------------------
+  - job_name: prometheus
     static_configs:
-      - targets: ['api-gateway:8080']
-    metrics_path: /metrics
+      - targets: ["localhost:9090"]
 
-  - job_name: 'auth-service'
-    static_configs:
-      - targets: ['auth-service:8081']
+  # -------------------------------------------------------
+  # Backend Services (15s scrape interval)
+  # -------------------------------------------------------
+  - job_name: api-gateway
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["api-gateway:8080"]
+        labels:
+          service: api-gateway
+          language: go
+          tier: gateway
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'file-service'
-    static_configs:
-      - targets: ['file-service:8082']
+  - job_name: auth-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["auth-service:8081"]
+        labels:
+          service: auth-service
+          language: java
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'document-service'
-    static_configs:
-      - targets: ['document-service:8083']
+  - job_name: file-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["file-service:8082"]
+        labels:
+          service: file-service
+          language: rust
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'collab-service'
-    static_configs:
-      - targets: ['collab-service:8084']
+  - job_name: document-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["document-service:8083"]
+        labels:
+          service: document-service
+          language: python
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'notification-service'
-    static_configs:
-      - targets: ['notification-service:8086']
+  - job_name: collab-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["collab-service:8084"]
+        labels:
+          service: collab-service
+          language: nodejs
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'search-service'
-    static_configs:
-      - targets: ['search-service:8087']
+  - job_name: notification-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["notification-service:8086"]
+        labels:
+          service: notification-service
+          language: kotlin
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'analytics-service'
-    static_configs:
-      - targets: ['analytics-service:8088']
+  - job_name: search-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["search-service:8087"]
+        labels:
+          service: search-service
+          language: python
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'admin-service'
-    static_configs:
-      - targets: ['admin-service:8089']
+  - job_name: analytics-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["analytics-service:8088"]
+        labels:
+          service: analytics-service
+          language: scala
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
 
-  - job_name: 'audit-service'
-    static_configs:
-      - targets: ['audit-service:8090']
+  - job_name: admin-service
+    scrape_interval: 15s
     metrics_path: /metrics
+    static_configs:
+      - targets: ["admin-service:8089"]
+        labels:
+          service: admin-service
+          language: ruby
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  - job_name: audit-service
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["audit-service:8090"]
+        labels:
+          service: audit-service
+          language: csharp
+          tier: backend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # -------------------------------------------------------
+  # Frontend Applications (30s scrape - slower endpoints)
+  # -------------------------------------------------------
+  - job_name: web-app
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["web-app:3000"]
+        labels:
+          service: web-app
+          language: typescript
+          tier: frontend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  - job_name: admin-dashboard
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["admin-dashboard:4200"]
+        labels:
+          service: admin-dashboard
+          language: typescript
+          tier: frontend
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # -------------------------------------------------------
+  # Infrastructure Components (30s scrape)
+  # -------------------------------------------------------
+  - job_name: otel-collector
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["otel-collector:8889"]
+        labels:
+          service: otel-collector
+          tier: infrastructure
+
+  - job_name: redis
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          service: redis
+          tier: infrastructure
+
+  - job_name: postgres
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          service: postgres
+          tier: infrastructure

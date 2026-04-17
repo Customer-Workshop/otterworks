@@ -1,0 +1,58 @@
+# Jaeger All-in-One Configuration for Development
+#
+# This configuration runs Jaeger in all-in-one mode with in-memory
+# storage, suitable for local development and testing.
+
+# Collector settings
+collector:
+  # OTLP receiver (preferred ingestion path via OTel Collector)
+  otlp:
+    enabled: true
+    grpc:
+      host-port: 0.0.0.0:4317
+    http:
+      host-port: 0.0.0.0:4318
+
+  # Zipkin receiver for backwards compatibility
+  zipkin:
+    host-port: 0.0.0.0:9411
+
+  # Number of queue workers for span processing
+  num-workers: 4
+  queue-size: 2000
+
+# Query / UI settings
+query:
+  base-path: /
+  max-traces: 200
+  ui:
+    config:
+      archiveEnabled: false
+      dependencies:
+        menuEnabled: true
+      monitor:
+        menuEnabled: true
+
+# Storage backend
+storage:
+  type: memory
+  memory:
+    max-traces: 50000
+
+# Sampling strategies served to SDKs
+sampling:
+  default-strategy:
+    type: probabilistic
+    param: 1.0
+
+# Logging
+log-level: info
+
+# Metrics
+metrics-backend: prometheus
+metrics-http-route: /metrics
+
+# Admin / health
+admin:
+  http:
+    host-port: 0.0.0.0:14269

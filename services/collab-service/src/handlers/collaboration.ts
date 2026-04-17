@@ -69,10 +69,23 @@ export class CollaborationManager {
     logger.info('collaboration_manager_started');
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.persistTimer) clearInterval(this.persistTimer);
     if (this.snapshotTimer) clearInterval(this.snapshotTimer);
-    this.deps.logger.info('collaboration_manager_stopped');
+
+    // Final persistence pass: flush all in-memory documents to Redis before shutdown
+    const { documentStore, logger } = this.deps;
+    for (const [documentId, doc] of this.documents) {
+      try {
+        const state = Y.encodeStateAsUpdate(doc);
+        await documentStore.saveDocumentState(documentId, Buffer.from(state));
+        logger.info({ documentId }, 'document_persisted_on_shutdown');
+      } catch (err) {
+        logger.error({ err, documentId }, 'document_persist_on_shutdown_failed');
+      }
+    }
+
+    logger.info('collaboration_manager_stopped');
   }
 
   private registerSocketHandlers(socket: Socket): void {

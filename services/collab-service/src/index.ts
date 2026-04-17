@@ -157,7 +157,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'shutdown_initiated');
 
   clearInterval(presenceCleanupTimer);
-  collabManager.stop();
+  await collabManager.stop();
 
   httpServer.close(() => {
     redisAdapter.disconnect();

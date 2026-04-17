@@ -51,6 +51,22 @@ export class PresenceHandler {
       const affectedDocuments = new Set<string>();
       for (const entry of removed) {
         affectedDocuments.add(entry.documentId);
+
+        // Notify the evicted socket so it can re-join, and remove it from the room
+        const evictedSocket = io.sockets.sockets.get(entry.socketId);
+        if (evictedSocket) {
+          const room = `doc:${entry.documentId}`;
+          evictedSocket.emit('session-expired', {
+            documentId: entry.documentId,
+            reason: 'idle_timeout',
+          });
+          evictedSocket.leave(room);
+          evictedSocket.to(room).emit('user-left', {
+            socketId: entry.socketId,
+            userId: entry.userId,
+          });
+        }
+
         this.logger.info(
           { documentId: entry.documentId, userId: entry.userId },
           'stale_user_removed_from_presence',

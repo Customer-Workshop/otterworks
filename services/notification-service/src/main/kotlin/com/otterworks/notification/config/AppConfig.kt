@@ -6,7 +6,12 @@ data class AppConfig(
     val awsEndpointUrl: String?,
     val sqsQueueUrl: String,
     val snsTopicArn: String,
-    val dynamoDbTable: String,
+    val dynamoDbTableNotifications: String,
+    val dynamoDbTablePreferences: String,
+    val sesFromEmail: String,
+    val sqsPollIntervalMs: Long,
+    val sqsMaxMessages: Int,
+    val sqsWaitTimeSeconds: Int,
 ) {
     companion object {
         fun load(): AppConfig {
@@ -18,7 +23,15 @@ data class AppConfig(
                     ?: "http://localhost:4566/000000000000/otterworks-notifications",
                 snsTopicArn = System.getenv("SNS_TOPIC_ARN")
                     ?: "arn:aws:sns:us-east-1:000000000000:otterworks-events",
-                dynamoDbTable = System.getenv("DYNAMODB_TABLE") ?: "otterworks-notifications",
+                dynamoDbTableNotifications = System.getenv("DYNAMODB_TABLE_NOTIFICATIONS")
+                    ?: "otterworks-notifications",
+                dynamoDbTablePreferences = System.getenv("DYNAMODB_TABLE_PREFERENCES")
+                    ?: "otterworks-notification-preferences",
+                sesFromEmail = System.getenv("SES_FROM_EMAIL")
+                    ?: "notifications@otterworks.io",
+                sqsPollIntervalMs = System.getenv("SQS_POLL_INTERVAL_MS")?.toLongOrNull() ?: 5000L,
+                sqsMaxMessages = System.getenv("SQS_MAX_MESSAGES")?.toIntOrNull() ?: 10,
+                sqsWaitTimeSeconds = System.getenv("SQS_WAIT_TIME_SECONDS")?.toIntOrNull() ?: 20,
             )
         }
     }

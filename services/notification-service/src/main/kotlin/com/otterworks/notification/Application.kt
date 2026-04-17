@@ -1,20 +1,39 @@
 package com.otterworks.notification
 
+import aws.sdk.kotlin.services.dynamodb.DynamoDbClient
+import aws.sdk.kotlin.services.ses.SesClient
+import aws.sdk.kotlin.services.sqs.SqsClient
+import aws.smithy.kotlin.runtime.net.url.Url
 import com.otterworks.notification.config.AppConfig
 import com.otterworks.notification.consumer.SqsConsumer
+import com.otterworks.notification.plugins.configureMonitoring
+import com.otterworks.notification.repository.NotificationRepository
 import com.otterworks.notification.routes.configureRouting
-import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.cors.routing.*
-import io.ktor.server.plugins.statuspages.*
-import io.ktor.http.*
-import io.ktor.server.response.*
+import com.otterworks.notification.service.EmailSender
+import com.otterworks.notification.service.NotificationService
+import com.otterworks.notification.websocket.WebSocketManager
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.response.respond
+import io.ktor.server.websocket.WebSockets
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
+import org.koin.ktor.ext.inject
+import org.koin.ktor.plugin.Koin
+import org.koin.logger.slf4jLogger
+import java.time.Duration
 
 private val logger = KotlinLogging.logger {}
 
@@ -22,26 +41,39 @@ fun main() {
     val config = AppConfig.load()
 
     embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
-        configurePlugins()
-        configureRouting()
-
-        // Start SQS consumer in a coroutine
-        launch {
-            val consumer = SqsConsumer(config)
-            consumer.startPolling()
-        }
-
-        logger.info { "Notification Service started on port ${config.port}" }
+        module(config)
     }.start(wait = true)
 }
 
-fun Application.configurePlugins() {
+fun Application.module(config: AppConfig = AppConfig.load()) {
+    val prometheusRegistry = configureMonitoring()
+    configurePlugins(config)
+    configureDependencyInjection(config, prometheusRegistry)
+    configureRouting(prometheusRegistry)
+
+    val sqsConsumer by inject<SqsConsumer>()
+    launch {
+        sqsConsumer.startPolling()
+    }
+
+    logger.info { "Notification Service started on port ${config.port}" }
+}
+
+fun Application.configurePlugins(config: AppConfig = AppConfig.load()) {
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = false
             isLenient = true
             ignoreUnknownKeys = true
+            encodeDefaults = true
         })
+    }
+
+    install(WebSockets) {
+        pingPeriodMillis = 30000
+        timeoutMillis = 15000
+        maxFrameSize = Long.MAX_VALUE
+        masking = false
     }
 
     install(CORS) {
@@ -57,11 +89,60 @@ fun Application.configurePlugins() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             logger.error(cause) { "Unhandled exception" }
-            call.respondText(
-                text = """{"error":"${cause.message}"}""",
-                contentType = ContentType.Application.Json,
-                status = HttpStatusCode.InternalServerError
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf("error" to (cause.message ?: "Internal server error")),
             )
         }
+    }
+}
+
+fun Application.configureDependencyInjection(
+    config: AppConfig,
+    prometheusRegistry: io.micrometer.prometheus.PrometheusMeterRegistry,
+) {
+    install(Koin) {
+        slf4jLogger()
+        modules(
+            module {
+                single { config }
+                single { prometheusRegistry as io.micrometer.core.instrument.MeterRegistry }
+
+                single<SqsClient> {
+                    SqsClient {
+                        region = config.awsRegion
+                        config.awsEndpointUrl?.let { endpointUrl = Url.parse(it) }
+                    }
+                }
+
+                single<DynamoDbClient> {
+                    DynamoDbClient {
+                        region = config.awsRegion
+                        config.awsEndpointUrl?.let { endpointUrl = Url.parse(it) }
+                    }
+                }
+
+                single<SesClient> {
+                    SesClient {
+                        region = config.awsRegion
+                        config.awsEndpointUrl?.let { endpointUrl = Url.parse(it) }
+                    }
+                }
+
+                singleOf(::WebSocketManager)
+
+                single { NotificationRepository(get<DynamoDbClient>(), get<AppConfig>()) }
+                single { EmailSender(get<SesClient>(), get<AppConfig>()) }
+                single {
+                    NotificationService(
+                        repository = get<NotificationRepository>(),
+                        emailSender = get<EmailSender>(),
+                        webSocketManager = get<WebSocketManager>(),
+                        meterRegistry = get<io.micrometer.core.instrument.MeterRegistry>(),
+                    )
+                }
+                single { SqsConsumer(get<SqsClient>(), get<NotificationService>(), get<AppConfig>()) }
+            }
+        )
     }
 }

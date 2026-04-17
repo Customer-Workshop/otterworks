@@ -1,7 +1,14 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"notification-service"}</customFields>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+        </encoder>
+    </appender>
+
+    <appender name="STDOUT_PLAIN" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>{"timestamp":"%d{ISO8601}","level":"%level","service":"notification-service","logger":"%logger","message":"%msg"}%n</pattern>
+            <pattern>%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -11,4 +18,6 @@
 
     <logger name="com.otterworks" level="DEBUG" />
     <logger name="io.ktor" level="INFO" />
+    <logger name="org.koin" level="INFO" />
+    <logger name="io.micrometer" level="INFO" />
 </configuration>

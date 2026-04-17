@@ -29,9 +29,9 @@ class HealthRoutes(analyticsService: AnalyticsService)(using ec: ExecutionContex
               s"""{"status":"healthy","service":"analytics-service","eventsProcessed":$count}"""
             ))
           case Failure(_) =>
-            complete(HttpEntity(
+            complete(StatusCodes.ServiceUnavailable, HttpEntity(
               ContentTypes.`application/json`,
-              """{"status":"healthy","service":"analytics-service","eventsProcessed":0}"""
+              """{"status":"degraded","service":"analytics-service","eventsProcessed":0}"""
             ))
         }
       }

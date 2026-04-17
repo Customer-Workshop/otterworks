@@ -43,7 +43,7 @@ class MetricsRepository(config: PostgresConfig)(using ec: ExecutionContext):
         dailyActiveUsers = filtered.map(_.userId).distinct.size.toLong,
         documentsCreated = filtered.count(_.eventType == EventType.DocumentCreated).toLong,
         filesUploaded = filtered.count(_.eventType == EventType.FileUploaded).toLong,
-        storageUsedBytes = Math.max(0L, filtered
+        storageUsedBytes = Math.max(0L, events
           .filter(e => e.eventType == EventType.StorageAllocated || e.eventType == EventType.StorageReleased)
           .foldLeft(0L) { (acc, e) =>
             val bytes = e.metadata.getOrElse("bytes", "0").toLong

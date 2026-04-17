@@ -79,6 +79,7 @@ function DocumentEditorContent() {
       if (!hasContent) setHasContent(true);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
         updateMutation.mutate({ content });
       }, 1000);
     },
@@ -212,6 +213,7 @@ function DocumentEditorContent() {
 
       {/* Editor */}
       <CollaborativeEditor
+        key={documentId}
         documentId={documentId}
         onUpdate={debouncedSave}
       />

@@ -3,8 +3,13 @@ package com.otterworks.analytics.api
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
+import spray.json.*
+import spray.json.DefaultJsonProtocol.*
 
 object AnalyticsRoutes:
+  private def jsonResponse(fields: (String, JsValue)*): HttpEntity.Strict =
+    HttpEntity(ContentTypes.`application/json`, JsObject(fields*).compactPrint)
+
   val routes: Route = pathPrefix("api" / "v1" / "analytics") {
     concat(
       // Track an event
@@ -12,10 +17,7 @@ object AnalyticsRoutes:
         post {
           entity(as[String]) { body =>
             // TODO: Parse event and publish to SQS for async processing
-            complete(StatusCodes.Accepted, HttpEntity(
-              ContentTypes.`application/json`,
-              """{"status":"accepted"}"""
-            ))
+            complete(StatusCodes.Accepted, jsonResponse("status" -> JsString("accepted")))
           }
         }
       },
@@ -24,9 +26,13 @@ object AnalyticsRoutes:
         get {
           parameters("period".optional, "user_id".optional) { (period, userId) =>
             // TODO: Query aggregated analytics from S3 data lake
-            complete(HttpEntity(
-              ContentTypes.`application/json`,
-              s"""{"period":"${period.getOrElse("daily")}","metrics":{"documents_created":0,"files_uploaded":0,"active_users":0}}"""
+            complete(jsonResponse(
+              "period" -> JsString(period.getOrElse("daily")),
+              "metrics" -> JsObject(
+                "documents_created" -> JsNumber(0),
+                "files_uploaded" -> JsNumber(0),
+                "active_users" -> JsNumber(0)
+              )
             ))
           }
         }
@@ -35,9 +41,9 @@ object AnalyticsRoutes:
       path("top-documents") {
         get {
           parameters("limit".as[Int].withDefault(10)) { limit =>
-            complete(HttpEntity(
-              ContentTypes.`application/json`,
-              s"""{"documents":[],"limit":$limit}"""
+            complete(jsonResponse(
+              "documents" -> JsArray(),
+              "limit" -> JsNumber(limit)
             ))
           }
         }
@@ -46,9 +52,10 @@ object AnalyticsRoutes:
       path("active-users") {
         get {
           parameters("period".optional) { period =>
-            complete(HttpEntity(
-              ContentTypes.`application/json`,
-              s"""{"period":"${period.getOrElse("daily")}","users":[],"count":0}"""
+            complete(jsonResponse(
+              "period" -> JsString(period.getOrElse("daily")),
+              "users" -> JsArray(),
+              "count" -> JsNumber(0)
             ))
           }
         }

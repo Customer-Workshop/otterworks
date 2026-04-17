@@ -4,7 +4,7 @@ class ApplicationController < ActionController::API
 
   rescue_from StandardError do |e|
     Rails.logger.error("Unhandled error: #{e.message}")
-    render json: { error: e.message }, status: :internal_server_error
+    render json: { error: "Internal server error" }, status: :internal_server_error
   end
 
   rescue_from ActiveRecord::RecordNotFound do |e|

@@ -127,17 +127,17 @@ class DocumentService:
             return None
 
         changed = False
-        if data.title is not None:
+        if "title" in data.model_fields_set:
             document.title = data.title
             changed = True
-        if data.content is not None:
+        if "content" in data.model_fields_set:
             document.content = data.content
-            document.word_count = _word_count(data.content)
+            document.word_count = _word_count(data.content) if data.content else 0
             changed = True
-        if data.content_type is not None:
+        if "content_type" in data.model_fields_set:
             document.content_type = data.content_type
             changed = True
-        if data.folder_id is not None:
+        if "folder_id" in data.model_fields_set:
             document.folder_id = data.folder_id
             changed = True
 

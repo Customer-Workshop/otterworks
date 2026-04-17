@@ -62,8 +62,9 @@ func newReverseProxy(target string) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(u)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Error().Err(err).Str("target", target).Str("path", r.URL.Path).Msg("proxy error")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		fmt.Fprintf(w, `{"error":"service unavailable","target":"%s"}`, target)
+		fmt.Fprint(w, `{"error":"service unavailable"}`)
 	}
 	return proxy
 }

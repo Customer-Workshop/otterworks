@@ -90,8 +90,9 @@ class EventProcessor(
                     .receiptHandle(message.receiptHandle())
                     .build()
                   sqsClient.deleteMessage(deleteReq)
-                }
-                logger.debug("Processed SQS event: {}", event.eventId)
+                } match
+                  case Success(_) => logger.debug("Processed SQS event: {}", event.eventId)
+                  case Failure(ex) => logger.error("Failed to delete SQS message for event {}: {}", event.eventId, ex.getMessage)
               }
               .recover { case ex =>
                 logger.error("Failed to process event from SQS: {}", ex.getMessage)

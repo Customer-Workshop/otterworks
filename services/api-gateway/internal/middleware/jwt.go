@@ -15,9 +15,9 @@ type jwtClaimsKey struct{}
 
 // JWTClaims represents the claims extracted from a validated JWT.
 type JWTClaims struct {
-	UserID string
-	Email  string
-	Roles  []string
+	UserID string   `json:"user_id,omitempty"`
+	Email  string   `json:"email,omitempty"`
+	Roles  []string `json:"roles,omitempty"`
 	jwt.RegisteredClaims
 }
 

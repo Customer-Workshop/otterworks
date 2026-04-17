@@ -82,6 +82,6 @@ func normalizePath(path string) string {
 	case len(path) > len("/api/v1/audit") && path[:len("/api/v1/audit")] == "/api/v1/audit":
 		return "/api/v1/audit"
 	default:
-		return path
+		return "other"
 	}
 }

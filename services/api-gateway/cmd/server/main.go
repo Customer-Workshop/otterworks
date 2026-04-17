@@ -165,6 +165,7 @@ func initTracer() func(context.Context) error {
 		),
 	)
 	if err != nil {
+		exporter.Shutdown(ctx)
 		l.Warn().Err(err).Msg("failed to create trace resource")
 		return nil
 	}

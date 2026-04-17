@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -167,7 +167,7 @@ import { AuditEvent } from '../../core/models/audit.model';
     .severity-critical { color: #f44336; }
   `],
 })
-export class AuditComponent implements OnInit, AfterViewInit {
+export class AuditComponent implements OnInit {
   displayedColumns = ['timestamp', 'userName', 'action', 'resourceName', 'severity', 'details'];
   dataSource = new MatTableDataSource<AuditEvent>([]);
   loading = true;
@@ -175,8 +175,12 @@ export class AuditComponent implements OnInit, AfterViewInit {
   severityFilter = '';
   private searchFilter = '';
 
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild(MatPaginator) set matPaginator(paginator: MatPaginator) {
+    this.dataSource.paginator = paginator;
+  }
+  @ViewChild(MatSort) set matSort(sort: MatSort) {
+    this.dataSource.sort = sort;
+  }
 
   constructor(private api: AdminApiService) {}
 
@@ -186,11 +190,6 @@ export class AuditComponent implements OnInit, AfterViewInit {
       this.loading = false;
       this.setupFilterPredicate();
     });
-  }
-
-  ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
   }
 
   applyFilter(event: Event): void {

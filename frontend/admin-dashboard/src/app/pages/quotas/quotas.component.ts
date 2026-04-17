@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -133,14 +133,18 @@ import { User } from '../../core/models/user.model';
     :host ::ng-deep .quota-select .mat-mdc-form-field-subscript-wrapper { display: none; }
   `],
 })
-export class QuotasComponent implements OnInit, AfterViewInit {
+export class QuotasComponent implements OnInit {
   displayedColumns = ['displayName', 'storageUsed', 'storageQuota', 'usage', 'actions'];
   dataSource = new MatTableDataSource<User>([]);
   loading = true;
   gb = 1024 * 1024 * 1024;
 
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild(MatPaginator) set matPaginator(paginator: MatPaginator) {
+    this.dataSource.paginator = paginator;
+  }
+  @ViewChild(MatSort) set matSort(sort: MatSort) {
+    this.dataSource.sort = sort;
+  }
 
   constructor(private api: AdminApiService, private snackBar: MatSnackBar) {}
 
@@ -149,11 +153,6 @@ export class QuotasComponent implements OnInit, AfterViewInit {
       this.dataSource.data = users;
       this.loading = false;
     });
-  }
-
-  ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
   }
 
   applyFilter(event: Event): void {

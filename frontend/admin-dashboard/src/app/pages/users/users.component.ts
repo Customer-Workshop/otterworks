@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -175,7 +175,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
     .delete-action { color: #d32f2f; }
   `],
 })
-export class UsersComponent implements OnInit, AfterViewInit {
+export class UsersComponent implements OnInit {
   displayedColumns = ['displayName', 'role', 'status', 'department', 'lastLogin', 'actions'];
   dataSource = new MatTableDataSource<User>([]);
   loading = true;
@@ -183,8 +183,12 @@ export class UsersComponent implements OnInit, AfterViewInit {
   statusFilter = '';
   private searchFilter = '';
 
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild(MatPaginator) set matPaginator(paginator: MatPaginator) {
+    this.dataSource.paginator = paginator;
+  }
+  @ViewChild(MatSort) set matSort(sort: MatSort) {
+    this.dataSource.sort = sort;
+  }
 
   constructor(
     private api: AdminApiService,
@@ -195,11 +199,6 @@ export class UsersComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadUsers();
-  }
-
-  ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
   }
 
   loadUsers(): void {

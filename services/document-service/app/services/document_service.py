@@ -27,8 +27,7 @@ class DocumentService:
             word_count=len(data.content.split()) if data.content else 0,
         )
         self.db.add(document)
-        await self.db.commit()
-        await self.db.refresh(document)
+        await self.db.flush()
 
         # Create initial version
         version = DocumentVersion(
@@ -39,6 +38,7 @@ class DocumentService:
         )
         self.db.add(version)
         await self.db.commit()
+        await self.db.refresh(document)
 
         return document
 

@@ -145,8 +145,12 @@ export function setupCollaborationHandlers(
         if (doc) {
           const state = Y.encodeStateAsUpdate(doc);
           await documentStore.saveDocumentState(data.documentId, Buffer.from(state));
-          documents.delete(data.documentId);
-          logger.info('document_evicted', { documentId: data.documentId, reason: 'room_empty' });
+          // Re-check room occupancy after async save to avoid racing with new joins
+          const socketsAfterSave = await io.in(room).fetchSockets();
+          if (socketsAfterSave.length === 0) {
+            documents.delete(data.documentId);
+            logger.info('document_evicted', { documentId: data.documentId, reason: 'room_empty' });
+          }
         }
       }
     });

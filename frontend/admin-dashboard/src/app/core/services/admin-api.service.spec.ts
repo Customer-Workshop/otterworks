@@ -38,9 +38,9 @@ describe('AdminApiService', () => {
   }));
 
   it('should return a single user by id', fakeAsync(() => {
-    service.getUser('user-001').subscribe(user => {
+    service.getUser('usr-001').subscribe(user => {
       expect(user).toBeTruthy();
-      expect(user!.id).toBe('user-001');
+      expect(user!.id).toBe('usr-001');
     });
     tick(700);
   }));
@@ -93,7 +93,7 @@ describe('AdminApiService', () => {
   }));
 
   it('should toggle feature flag', fakeAsync(() => {
-    service.toggleFeatureFlag('flag-001', true).subscribe(flag => {
+    service.toggleFeatureFlag('ff-001', true).subscribe(flag => {
       expect(flag).toBeTruthy();
       expect(flag.enabled).toBeTrue();
     });
@@ -101,7 +101,7 @@ describe('AdminApiService', () => {
   }));
 
   it('should suspend a user', fakeAsync(() => {
-    service.suspendUser('user-001').subscribe(user => {
+    service.suspendUser('usr-001').subscribe(user => {
       expect(user).toBeTruthy();
       expect(user.status).toBe('suspended');
     });

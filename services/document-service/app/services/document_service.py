@@ -1,5 +1,6 @@
 """Document business logic service."""
 
+import html as html_mod
 import math
 from uuid import UUID
 
@@ -232,7 +233,8 @@ class DocumentService:
     async def search(
         self, query: str, page: int = 1, size: int = 20
     ) -> tuple[list[Document], int]:
-        pattern = f"%{query}%"
+        escaped = query.replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         base = select(Document).where(
             Document.is_deleted.is_(False),
             Document.is_template.is_(False),
@@ -253,12 +255,14 @@ class DocumentService:
 
     def export_document(self, document: Document, fmt: str) -> tuple[str, str]:
         if fmt == "html":
-            html = (
-                f"<html><head><title>{document.title}</title></head>"
-                f"<body><h1>{document.title}</h1>"
-                f"<div>{document.content}</div></body></html>"
+            safe_title = html_mod.escape(document.title)
+            safe_content = html_mod.escape(document.content)
+            markup = (
+                f"<html><head><title>{safe_title}</title></head>"
+                f"<body><h1>{safe_title}</h1>"
+                f"<div>{safe_content}</div></body></html>"
             )
-            return html, "text/html"
+            return markup, "text/html"
         if fmt == "markdown":
             md = f"# {document.title}\n\n{document.content}"
             return md, "text/markdown"

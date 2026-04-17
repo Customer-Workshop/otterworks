@@ -1,5 +1,6 @@
 """SNS event publishing for domain events."""
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -47,7 +48,8 @@ class EventPublisher:
 
         try:
             client = self._get_client()
-            client.publish(
+            await asyncio.to_thread(
+                client.publish,
                 TopicArn=settings.sns_topic_arn,
                 Message=json.dumps(message, cls=_UUIDEncoder),
                 MessageAttributes={

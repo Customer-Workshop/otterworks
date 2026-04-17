@@ -18,6 +18,30 @@ export function setupCollaborationHandlers(
 ): void {
   // Track Yjs documents in memory
   const documents = new Map<string, Y.Doc>();
+  // Prevent race conditions during concurrent document initialization
+  const documentInitPromises = new Map<string, Promise<Y.Doc>>();
+
+  async function getOrCreateDoc(documentId: string): Promise<Y.Doc> {
+    const existing = documents.get(documentId);
+    if (existing) return existing;
+
+    const pending = documentInitPromises.get(documentId);
+    if (pending) return pending;
+
+    const initPromise = (async () => {
+      const doc = new Y.Doc();
+      const savedState = await documentStore.getDocumentState(documentId);
+      if (savedState) {
+        Y.applyUpdate(doc, savedState);
+      }
+      documents.set(documentId, doc);
+      documentInitPromises.delete(documentId);
+      return doc;
+    })();
+
+    documentInitPromises.set(documentId, initPromise);
+    return initPromise;
+  }
 
   io.on('connection', (socket: Socket) => {
     logger.info('client_connected', { socketId: socket.id });
@@ -30,17 +54,8 @@ export function setupCollaborationHandlers(
       await socket.join(room);
       logger.info('user_joined_document', { documentId, userId, socketId: socket.id });
 
-      // Get or create Yjs document
-      let doc = documents.get(documentId);
-      if (!doc) {
-        doc = new Y.Doc();
-        // Load existing state from Redis
-        const savedState = await documentStore.getDocumentState(documentId);
-        if (savedState) {
-          Y.applyUpdate(doc, savedState);
-        }
-        documents.set(documentId, doc);
-      }
+      // Get or create Yjs document (safe against concurrent joins)
+      const doc = await getOrCreateDoc(documentId);
 
       // Send current document state to new client
       const state = Y.encodeStateAsUpdate(doc);

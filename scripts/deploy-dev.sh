@@ -10,7 +10,7 @@ AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-599083837640}"
 EKS_CLUSTER="${EKS_CLUSTER:-workshop-dev}"
 NAMESPACE="${NAMESPACE:-decomposition-dev}"
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-ECR_PREFIX="workshop/otterworks"
+ECR_PREFIX="workshop/otterworks-"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -89,7 +89,7 @@ build_and_push() {
     return 0
   fi
 
-  local image="${ECR_REGISTRY}/${ECR_PREFIX}/${service}:${IMAGE_TAG}"
+  local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}:${IMAGE_TAG}"
   log "Building ${service}..."
   docker build -t "${image}" "${service_dir}" --platform linux/amd64
   log "Pushing ${service}..."
@@ -112,7 +112,7 @@ deploy_service() {
     return 0
   fi
 
-  local image="${ECR_REGISTRY}/${ECR_PREFIX}/${service}"
+  local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}"
   log "Deploying ${service} via Helm..."
   helm upgrade --install "${service}" "${chart_dir}" \
     --namespace "${NAMESPACE}" \

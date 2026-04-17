@@ -15,7 +15,7 @@ locals {
 resource "aws_db_instance" "postgres" {
   identifier     = "${var.project}-postgres-${var.environment}"
   engine         = "postgres"
-  engine_version = "15.5"
+  engine_version = "15.7"
   instance_class = var.db_instance_class
 
   allocated_storage     = var.db_allocated_storage

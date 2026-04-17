@@ -88,9 +88,14 @@ resource "aws_dynamodb_table" "audit_events" {
     projection_type = "ALL"
   }
 
+  attribute {
+    name = "date_partition"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "timestamp-index"
-    hash_key        = "id"
+    hash_key        = "date_partition"
     range_key       = "timestamp"
     projection_type = "ALL"
   }

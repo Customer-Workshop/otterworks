@@ -78,7 +78,7 @@ public class AuthService {
   @Transactional
   public AuthResponse refreshToken(String token) {
     String jti = jwtTokenProvider.extractJti(token);
-    String userId = jwtTokenProvider.validateTokenAndGetUserId(token);
+    String userId = jwtTokenProvider.validateRefreshTokenAndGetUserId(token);
 
     RefreshToken storedToken =
         refreshTokenRepository

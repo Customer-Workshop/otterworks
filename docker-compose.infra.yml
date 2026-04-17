@@ -81,6 +81,10 @@ services:
       opensearch:
         condition: service_healthy
 
+networks:
+  default:
+    name: otterworks-network
+
 volumes:
   postgres_data:
   localstack_data:

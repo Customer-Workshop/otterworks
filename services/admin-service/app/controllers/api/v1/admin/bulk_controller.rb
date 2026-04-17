@@ -18,12 +18,20 @@ module Api
             request: request
           )
 
+          status = if result.errors.any? && result.success_count.zero? && result.failure_count.zero?
+                     :bad_request
+                   elsif result.failure_count.zero?
+                     :ok
+                   else
+                     :multi_status
+                   end
+
           render json: {
             operation: operation,
             success_count: result.success_count,
             failure_count: result.failure_count,
             errors: result.errors
-          }, status: result.failure_count.zero? ? :ok : :multi_status
+          }, status: status
         end
 
         private

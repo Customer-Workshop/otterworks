@@ -47,6 +47,8 @@ module Api
           raise InvalidDateError, "Invalid date format: #{value}" if parsed.nil?
 
           parsed
+        rescue ArgumentError
+          raise InvalidDateError, "Invalid date format: #{value}"
         end
       end
     end

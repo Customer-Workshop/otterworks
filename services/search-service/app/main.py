@@ -86,7 +86,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
         if flask_request.path in ("/metrics", "/health"):
             return response
         elapsed = time.monotonic() - g.get("start_time", time.monotonic())
-        endpoint = flask_request.url_rule.rule if flask_request.url_rule else flask_request.path
+        endpoint = flask_request.url_rule.rule if flask_request.url_rule else "unknown"
         method = flask_request.method
         REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=response.status_code).inc()
         REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(elapsed)

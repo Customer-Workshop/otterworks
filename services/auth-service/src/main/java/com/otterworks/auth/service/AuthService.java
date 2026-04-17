@@ -1,14 +1,18 @@
 package com.otterworks.auth.service;
 
 import com.otterworks.auth.dto.AuthResponse;
+import com.otterworks.auth.dto.ChangePasswordRequest;
 import com.otterworks.auth.dto.LoginRequest;
 import com.otterworks.auth.dto.RegisterRequest;
+import com.otterworks.auth.entity.RefreshToken;
 import com.otterworks.auth.entity.User;
+import com.otterworks.auth.repository.RefreshTokenRepository;
 import com.otterworks.auth.repository.UserRepository;
 import com.otterworks.auth.security.JwtTokenProvider;
 import java.time.Instant;
-import java.util.Map;
+import java.time.temporal.ChronoUnit;
 import java.util.Set;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,14 +27,17 @@ public class AuthService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenProvider jwtTokenProvider;
+  private final RefreshTokenRepository refreshTokenRepository;
 
   public AuthService(
       UserRepository userRepository,
       PasswordEncoder passwordEncoder,
-      JwtTokenProvider jwtTokenProvider) {
+      JwtTokenProvider jwtTokenProvider,
+      RefreshTokenRepository refreshTokenRepository) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtTokenProvider = jwtTokenProvider;
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   @Transactional
@@ -68,49 +75,74 @@ public class AuthService {
     return buildAuthResponse(user);
   }
 
+  @Transactional
   public AuthResponse refreshToken(String token) {
+    String jti = jwtTokenProvider.extractJti(token);
     String userId = jwtTokenProvider.validateRefreshTokenAndGetUserId(token);
+
+    RefreshToken storedToken =
+        refreshTokenRepository
+            .findByTokenIdAndRevokedFalse(jti)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or revoked refresh token"));
+
+    if (storedToken.getExpiresAt().isBefore(Instant.now())) {
+      throw new IllegalArgumentException("Refresh token expired");
+    }
+
+    storedToken.setRevoked(true);
+    refreshTokenRepository.save(storedToken);
+
     User user =
         userRepository
-            .findById(java.util.UUID.fromString(userId))
+            .findById(UUID.fromString(userId))
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    log.info("Token refreshed for user: {}", user.getEmail());
     return buildAuthResponse(user);
   }
 
-  public Map<String, Object> getUserInfo(String token) {
-    String userId = jwtTokenProvider.validateTokenAndGetUserId(token);
+  @Transactional
+  public void changePassword(UUID userId, ChangePasswordRequest request) {
     User user =
         userRepository
-            .findById(java.util.UUID.fromString(userId))
+            .findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-    return Map.of(
-        "id", user.getId().toString(),
-        "email", user.getEmail(),
-        "displayName", user.getDisplayName(),
-        "roles", user.getRoles(),
-        "emailVerified", user.isEmailVerified(),
-        "createdAt", user.getCreatedAt().toString());
+    if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+      throw new IllegalArgumentException("Current password is incorrect");
+    }
+
+    user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+    userRepository.save(user);
+
+    refreshTokenRepository.revokeAllByUserId(userId);
+    log.info("Password changed for user: {}", userId);
   }
 
-  public void logout(String token) {
-    // In production, add token to a blacklist in Redis
-    log.info("User logged out");
+  @Transactional
+  public void logout(UUID userId) {
+    refreshTokenRepository.revokeAllByUserId(userId);
+    log.info("User logged out: {}", userId);
   }
 
   private AuthResponse buildAuthResponse(User user) {
     String accessToken = jwtTokenProvider.generateAccessToken(user);
-    String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+    String refreshTokenStr = jwtTokenProvider.generateRefreshToken(user);
+
+    String jti = jwtTokenProvider.extractJti(refreshTokenStr);
+    RefreshToken refreshToken = new RefreshToken();
+    refreshToken.setUser(user);
+    refreshToken.setTokenId(jti);
+    refreshToken.setExpiresAt(
+        Instant.now().plus(jwtTokenProvider.getRefreshTokenExpiry(), ChronoUnit.SECONDS));
+    refreshTokenRepository.save(refreshToken);
 
     return new AuthResponse(
         accessToken,
-        refreshToken,
+        refreshTokenStr,
         "Bearer",
         jwtTokenProvider.getAccessTokenExpiry(),
         new AuthResponse.UserDto(
-            user.getId().toString(),
-            user.getEmail(),
-            user.getDisplayName(),
-            user.getAvatarUrl()));
+            user.getId().toString(), user.getEmail(), user.getDisplayName(), user.getAvatarUrl()));
   }
 }

@@ -1,13 +1,16 @@
 package com.otterworks.auth.controller;
 
-import com.otterworks.auth.dto.AuthResponse;
-import com.otterworks.auth.dto.LoginRequest;
-import com.otterworks.auth.dto.RegisterRequest;
+import com.otterworks.auth.dto.*;
 import com.otterworks.auth.service.AuthService;
+import com.otterworks.auth.service.UserService;
 import jakarta.validation.Valid;
-import java.util.Map;
+import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,9 +18,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
   private final AuthService authService;
+  private final UserService userService;
 
-  public AuthController(AuthService authService) {
+  public AuthController(AuthService authService, UserService userService) {
     this.authService = authService;
+    this.userService = userService;
   }
 
   @PostMapping("/register")
@@ -39,18 +44,40 @@ public class AuthController {
     return ResponseEntity.ok(response);
   }
 
-  @GetMapping("/me")
-  public ResponseEntity<Map<String, Object>> me(
-      @RequestHeader("Authorization") String bearerToken) {
-    String token = bearerToken.replace("Bearer ", "");
-    Map<String, Object> userInfo = authService.getUserInfo(token);
-    return ResponseEntity.ok(userInfo);
+  @GetMapping("/profile")
+  public ResponseEntity<UserDTO> getProfile(Authentication authentication) {
+    UUID userId = UUID.fromString((String) authentication.getPrincipal());
+    UserDTO profile = userService.getProfile(userId);
+    return ResponseEntity.ok(profile);
+  }
+
+  @PutMapping("/profile")
+  public ResponseEntity<UserDTO> updateProfile(
+      Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
+    UUID userId = UUID.fromString((String) authentication.getPrincipal());
+    UserDTO profile = userService.updateProfile(userId, request);
+    return ResponseEntity.ok(profile);
+  }
+
+  @PostMapping("/change-password")
+  public ResponseEntity<Void> changePassword(
+      Authentication authentication, @Valid @RequestBody ChangePasswordRequest request) {
+    UUID userId = UUID.fromString((String) authentication.getPrincipal());
+    authService.changePassword(userId, request);
+    return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/users")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<Page<UserDTO>> listUsers(Pageable pageable) {
+    Page<UserDTO> users = userService.listUsers(pageable);
+    return ResponseEntity.ok(users);
   }
 
   @PostMapping("/logout")
-  public ResponseEntity<Void> logout(@RequestHeader("Authorization") String bearerToken) {
-    String token = bearerToken.replace("Bearer ", "");
-    authService.logout(token);
+  public ResponseEntity<Void> logout(Authentication authentication) {
+    UUID userId = UUID.fromString((String) authentication.getPrincipal());
+    authService.logout(userId);
     return ResponseEntity.noContent().build();
   }
 }

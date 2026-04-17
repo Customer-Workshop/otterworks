@@ -181,6 +181,7 @@ export class UsersComponent implements OnInit, AfterViewInit {
   loading = true;
   roleFilter = '';
   statusFilter = '';
+  private searchFilter = '';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -206,24 +207,28 @@ export class UsersComponent implements OnInit, AfterViewInit {
     this.api.getUsers().subscribe(users => {
       this.dataSource.data = users;
       this.loading = false;
+      this.setupFilterPredicate();
     });
   }
 
   applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchFilter = (event.target as HTMLInputElement).value.trim().toLowerCase();
+    this.dataSource.filter = this.searchFilter || ' ';
   }
 
   applyFilters(): void {
-    this.dataSource.filterPredicate = (data: User, filter: string) => {
-      const matchesSearch = !filter ||
-        data.displayName.toLowerCase().includes(filter) ||
-        data.email.toLowerCase().includes(filter);
+    this.dataSource.filter = this.searchFilter || ' ';
+  }
+
+  private setupFilterPredicate(): void {
+    this.dataSource.filterPredicate = (data: User) => {
+      const matchesSearch = !this.searchFilter ||
+        data.displayName.toLowerCase().includes(this.searchFilter) ||
+        data.email.toLowerCase().includes(this.searchFilter);
       const matchesRole = !this.roleFilter || data.role === this.roleFilter;
       const matchesStatus = !this.statusFilter || data.status === this.statusFilter;
       return matchesSearch && matchesRole && matchesStatus;
     };
-    this.dataSource.filter = this.dataSource.filter || ' ';
   }
 
   viewUser(user: User): void {

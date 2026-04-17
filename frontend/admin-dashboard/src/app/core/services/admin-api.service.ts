@@ -62,6 +62,10 @@ export class AdminApiService {
 
   deleteUser(userId: string): Observable<void> {
     // return this.http.delete<void>(`${this.baseUrl}/admin/users/${userId}`);
+    const index = MOCK_USERS.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      MOCK_USERS.splice(index, 1);
+    }
     return of(undefined).pipe(delay(500));
   }
 
@@ -125,6 +129,10 @@ export class AdminApiService {
 
   deleteAnnouncement(id: string): Observable<void> {
     // return this.http.delete<void>(`${this.baseUrl}/admin/announcements/${id}`);
+    const index = MOCK_ANNOUNCEMENTS.findIndex(a => a.id === id);
+    if (index !== -1) {
+      MOCK_ANNOUNCEMENTS.splice(index, 1);
+    }
     return of(undefined).pipe(delay(400));
   }
 

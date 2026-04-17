@@ -174,6 +174,7 @@ export class CollaborationManager {
       if (ack) ack({ success: true });
     } catch (err) {
       logger.error({ err, documentId, socketId: socket.id }, 'join_document_failed');
+      socket.leave(room);
       metrics.connectionErrors.inc({ reason: 'join_failed' });
       if (ack) ack({ success: false, error: 'Failed to join document' });
     }

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: collab-service
+description: OtterWorks Collaboration Service - Node.js/Socket.io real-time editing
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -85,3 +85,9 @@ infrastructure/terraform/plan.out
 # --- Misc ---
 *.bak
 *.tmp
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup

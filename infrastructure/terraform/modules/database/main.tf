@@ -1,13 +1,25 @@
-# RDS PostgreSQL and DynamoDB tables for OtterWorks
+# ------------------------------------------------------------------------------
+# OtterWorks Database Module
+# RDS PostgreSQL and DynamoDB tables
+# ------------------------------------------------------------------------------
+
+locals {
+  common_tags = {
+    Module  = "database"
+    Project = var.project
+  }
+}
+
+# --- RDS PostgreSQL ---
 
 resource "aws_db_instance" "postgres" {
   identifier     = "${var.project}-postgres-${var.environment}"
   engine         = "postgres"
   engine_version = "15.5"
-  instance_class = "db.t3.micro"
+  instance_class = var.db_instance_class
 
-  allocated_storage     = 20
-  max_allocated_storage = 50
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_max_allocated_storage
   storage_encrypted     = true
 
   db_name  = "otterworks"
@@ -19,10 +31,12 @@ resource "aws_db_instance" "postgres" {
 
   backup_retention_period = var.environment == "dev" ? 1 : 7
 
-  tags = {
+  tags = merge(local.common_tags, {
     Service = "shared-database"
-  }
+  })
 }
+
+# --- DynamoDB: File Metadata ---
 
 resource "aws_dynamodb_table" "file_metadata" {
   name         = "${var.project}-file-metadata-${var.environment}"
@@ -56,10 +70,16 @@ resource "aws_dynamodb_table" "file_metadata" {
     projection_type = "ALL"
   }
 
-  tags = {
-    Service = "file-service"
+  point_in_time_recovery {
+    enabled = var.environment != "dev"
   }
+
+  tags = merge(local.common_tags, {
+    Service = "file-service"
+  })
 }
+
+# --- DynamoDB: Audit Events ---
 
 resource "aws_dynamodb_table" "audit_events" {
   name         = "${var.project}-audit-events-${var.environment}"
@@ -100,10 +120,16 @@ resource "aws_dynamodb_table" "audit_events" {
     projection_type = "ALL"
   }
 
-  tags = {
-    Service = "audit-service"
+  point_in_time_recovery {
+    enabled = true
   }
+
+  tags = merge(local.common_tags, {
+    Service = "audit-service"
+  })
 }
+
+# --- DynamoDB: Notifications ---
 
 resource "aws_dynamodb_table" "notifications" {
   name         = "${var.project}-notifications-${var.environment}"
@@ -126,18 +152,11 @@ resource "aws_dynamodb_table" "notifications" {
     projection_type = "ALL"
   }
 
-  tags = {
-    Service = "notification-service"
+  point_in_time_recovery {
+    enabled = var.environment != "dev"
   }
-}
 
-output "rds_endpoint" {
-  value = aws_db_instance.postgres.endpoint
-}
-
-variable "environment" { type = string }
-variable "project" { type = string }
-variable "db_password" {
-  type      = string
-  sensitive = true
+  tags = merge(local.common_tags, {
+    Service = "notification-service"
+  })
 }

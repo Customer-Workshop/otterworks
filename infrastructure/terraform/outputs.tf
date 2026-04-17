@@ -1,3 +1,5 @@
+# --- Storage ---
+
 output "s3_file_bucket" {
   description = "S3 bucket for file storage"
   value       = module.storage.file_bucket_name
@@ -8,10 +10,34 @@ output "s3_data_lake_bucket" {
   value       = module.storage.data_lake_bucket_name
 }
 
+output "s3_audit_archive_bucket" {
+  description = "S3 bucket for audit archive"
+  value       = module.storage.audit_archive_bucket_name
+}
+
+# --- Database ---
+
 output "rds_endpoint" {
   description = "RDS PostgreSQL endpoint"
   value       = module.database.rds_endpoint
 }
+
+output "dynamodb_file_metadata_table" {
+  description = "DynamoDB table name for file metadata"
+  value       = module.database.file_metadata_table_name
+}
+
+output "dynamodb_audit_events_table" {
+  description = "DynamoDB table name for audit events"
+  value       = module.database.audit_events_table_name
+}
+
+output "dynamodb_notifications_table" {
+  description = "DynamoDB table name for notifications"
+  value       = module.database.notifications_table_name
+}
+
+# --- Messaging ---
 
 output "sqs_notification_queue_url" {
   description = "SQS queue URL for notifications"
@@ -23,12 +49,47 @@ output "sns_events_topic_arn" {
   value       = module.messaging.events_topic_arn
 }
 
+# --- Search ---
+
 output "opensearch_endpoint" {
   description = "OpenSearch domain endpoint"
   value       = module.search.opensearch_endpoint
 }
 
+# --- Auth ---
+
 output "cognito_user_pool_id" {
   description = "Cognito user pool ID"
   value       = module.auth.user_pool_id
+}
+
+output "cognito_web_client_id" {
+  description = "Cognito web client ID"
+  value       = module.auth.user_pool_client_id
+}
+
+output "cognito_admin_client_id" {
+  description = "Cognito admin client ID"
+  value       = module.auth.admin_client_id
+}
+
+# --- Cache ---
+
+output "redis_endpoint" {
+  description = "ElastiCache Redis primary endpoint"
+  value       = module.cache.redis_endpoint
+}
+
+# --- Monitoring ---
+
+output "cloudwatch_log_groups" {
+  description = "Map of service name to CloudWatch log group name"
+  value       = module.monitoring.log_group_names
+}
+
+# --- IRSA ---
+
+output "irsa_role_arns" {
+  description = "Map of service account name to IAM role ARN"
+  value       = module.irsa.role_arns
 }

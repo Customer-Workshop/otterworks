@@ -1,17 +1,27 @@
-# OpenSearch domain for OtterWorks full-text search
+# ------------------------------------------------------------------------------
+# OtterWorks Search Module
+# OpenSearch domain for full-text search
+# ------------------------------------------------------------------------------
+
+locals {
+  common_tags = {
+    Module  = "search"
+    Project = var.project
+  }
+}
 
 resource "aws_opensearch_domain" "main" {
   domain_name    = "${var.project}-${var.environment}"
   engine_version = "OpenSearch_2.11"
 
   cluster_config {
-    instance_type  = "t3.small.search"
-    instance_count = 1 # Single node for dev, scale for prod
+    instance_type  = var.opensearch_instance_type
+    instance_count = var.opensearch_instance_count
   }
 
   ebs_options {
     ebs_enabled = true
-    volume_size = 10
+    volume_size = var.opensearch_volume_size
     volume_type = "gp3"
   }
 
@@ -28,14 +38,7 @@ resource "aws_opensearch_domain" "main" {
     tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
   }
 
-  tags = {
+  tags = merge(local.common_tags, {
     Service = "search-service"
-  }
+  })
 }
-
-output "opensearch_endpoint" {
-  value = aws_opensearch_domain.main.endpoint
-}
-
-variable "environment" { type = string }
-variable "project" { type = string }

@@ -8,22 +8,38 @@ variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
   default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
 }
 
 variable "eks_cluster_name" {
-  description = "Name of the shared EKS cluster"
+  description = "Name of the shared EKS cluster from platform-engineering-shared-services"
   type        = string
   default     = "workshop-dev"
 }
 
+variable "namespace" {
+  description = "Kubernetes namespace for OtterWorks services"
+  type        = string
+  default     = "decomposition-dev"
+}
+
 variable "db_password" {
-  description = "Password for the RDS PostgreSQL database"
+  description = "Master password for the RDS PostgreSQL instance"
   type        = string
   sensitive   = true
 }
 
-variable "namespace" {
-  description = "Kubernetes namespace for OtterWorks"
+variable "oidc_provider_arn" {
+  description = "ARN of the EKS OIDC identity provider for IRSA"
   type        = string
-  default     = "decomposition-dev"
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days"
+  type        = number
+  default     = 30
 }

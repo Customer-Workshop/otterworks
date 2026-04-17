@@ -1,7 +1,23 @@
-# S3 buckets for OtterWorks file storage and data lake
+# ------------------------------------------------------------------------------
+# OtterWorks Storage Module
+# S3 buckets for file storage, data lake, and audit archive
+# ------------------------------------------------------------------------------
+
+locals {
+  common_tags = {
+    Module  = "storage"
+    Project = var.project
+  }
+}
+
+# --- File Storage Bucket ---
 
 resource "aws_s3_bucket" "files" {
   bucket = "${var.project}-files-${var.environment}"
+
+  tags = merge(local.common_tags, {
+    Service = "file-service"
+  })
 }
 
 resource "aws_s3_bucket_public_access_block" "files" {
@@ -45,8 +61,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "files" {
   }
 }
 
+# --- Data Lake Bucket ---
+
 resource "aws_s3_bucket" "data_lake" {
   bucket = "${var.project}-data-lake-${var.environment}"
+
+  tags = merge(local.common_tags, {
+    Service = "analytics-service"
+  })
 }
 
 resource "aws_s3_bucket_public_access_block" "data_lake" {
@@ -67,8 +89,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "data_lake" {
   }
 }
 
+# --- Audit Archive Bucket ---
+
 resource "aws_s3_bucket" "audit_archive" {
   bucket = "${var.project}-audit-archive-${var.environment}"
+
+  tags = merge(local.common_tags, {
+    Service = "audit-service"
+  })
 }
 
 resource "aws_s3_bucket_public_access_block" "audit_archive" {
@@ -88,18 +116,3 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "audit_archive" {
     bucket_key_enabled = true
   }
 }
-
-output "file_bucket_name" {
-  value = aws_s3_bucket.files.id
-}
-
-output "data_lake_bucket_name" {
-  value = aws_s3_bucket.data_lake.id
-}
-
-output "audit_archive_bucket_name" {
-  value = aws_s3_bucket.audit_archive.id
-}
-
-variable "environment" { type = string }
-variable "project" { type = string }

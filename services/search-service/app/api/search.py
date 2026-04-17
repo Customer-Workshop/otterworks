@@ -14,8 +14,11 @@ search_bp = Blueprint("search", __name__)
 def search_documents():
     """Full-text search across documents and files."""
     query = request.args.get("q", "")
-    page = int(request.args.get("page", 1))
-    page_size = int(request.args.get("page_size", 20))
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+        page_size = max(1, min(100, int(request.args.get("page_size", 20))))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid page or page_size parameter"}), 400
     doc_type = request.args.get("type")  # document, file, or None for all
     owner_id = request.args.get("owner_id")
 

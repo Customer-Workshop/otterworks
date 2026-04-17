@@ -1,5 +1,10 @@
 FROM node:20-alpine AS builder
 
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ARG NEXT_PUBLIC_COLLAB_WS_URL=ws://localhost:8084
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_COLLAB_WS_URL=$NEXT_PUBLIC_COLLAB_WS_URL
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

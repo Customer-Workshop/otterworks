@@ -59,7 +59,7 @@ fun Application.configurePlugins() {
             logger.error(cause) { "Unhandled exception" }
             call.respond(
                 status = HttpStatusCode.InternalServerError,
-                message = mapOf("error" to (cause.message ?: "Internal server error"))
+                message = mapOf("error" to "Internal server error")
             )
         }
     }

@@ -100,6 +100,15 @@ class EventProcessor(
               }
           case Left(err) =>
             logger.error("Failed to decode SQS message: {}", err.getMessage)
+            Try {
+              val deleteReq = DeleteMessageRequest.builder()
+                .queueUrl(config.sqs.eventsQueueUrl)
+                .receiptHandle(message.receiptHandle())
+                .build()
+              sqsClient.deleteMessage(deleteReq)
+            } match
+              case Success(_) => logger.warn("Deleted undecodable SQS message")
+              case Failure(ex) => logger.error("Failed to delete undecodable SQS message: {}", ex.getMessage)
             Future.successful(())
       }
       .runWith(Sink.ignore)

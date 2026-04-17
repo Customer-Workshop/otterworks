@@ -84,19 +84,16 @@ public class ReportDataFetcher {
 
                 logger.info("Fetching analytics data from: {}", url);
 
-                try {
-                    ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-                    if (response.getBody() != null && response.getBody().containsKey("events")) {
-                        return (List<Map<String, Object>>) response.getBody().get("events");
-                    }
-                    return Collections.emptyList();
-                } catch (RestClientException e) {
-                    logger.error("Failed to fetch analytics data: {}", e.getMessage());
-                    return generateSampleAnalyticsData(dateFrom, dateTo);
+                // Let RestClientException propagate so fallback data is NOT cached.
+                // Only successful responses are stored in the Guava cache.
+                ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+                if (response.getBody() != null && response.getBody().containsKey("events")) {
+                    return (List<Map<String, Object>>) response.getBody().get("events");
                 }
+                return Collections.emptyList();
             });
         } catch (ExecutionException e) {
-            logger.error("Cache execution error for analytics data", e);
+            logger.error("Failed to fetch analytics data, using sample data: {}", e.getMessage());
             return generateSampleAnalyticsData(dateFrom, dateTo);
         }
     }
@@ -116,19 +113,15 @@ public class ReportDataFetcher {
 
                 logger.info("Fetching audit data from: {}", url);
 
-                try {
-                    ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-                    if (response.getBody() != null && response.getBody().containsKey("events")) {
-                        return (List<Map<String, Object>>) response.getBody().get("events");
-                    }
-                    return Collections.emptyList();
-                } catch (RestClientException e) {
-                    logger.error("Failed to fetch audit data: {}", e.getMessage());
-                    return generateSampleAuditData(dateFrom, dateTo);
+                // Let RestClientException propagate so fallback data is NOT cached.
+                ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+                if (response.getBody() != null && response.getBody().containsKey("events")) {
+                    return (List<Map<String, Object>>) response.getBody().get("events");
                 }
+                return Collections.emptyList();
             });
         } catch (ExecutionException e) {
-            logger.error("Cache execution error for audit data", e);
+            logger.error("Failed to fetch audit data, using sample data: {}", e.getMessage());
             return generateSampleAuditData(dateFrom, dateTo);
         }
     }

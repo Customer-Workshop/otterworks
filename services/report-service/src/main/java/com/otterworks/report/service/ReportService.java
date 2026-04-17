@@ -12,6 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import javax.transaction.Transactional;
 import java.io.File;
 import java.util.Date;
@@ -79,8 +82,16 @@ public class ReportService {
         logger.info("Created report request: id={}, name={}, type={}",
                 saved.getId(), saved.getReportName(), saved.getReportType());
 
-        // Kick off async generation via separate bean (avoids self-invocation proxy bypass)
-        generationWorker.generateReportAsync(saved.getId());
+        // Defer async generation until after @Transactional commit so the worker thread
+        // can see the persisted report (avoids race where findById returns empty).
+        // LEGACY: TransactionSynchronization callback — modern approach uses @TransactionalEventListener.
+        final Long reportId = saved.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                generationWorker.generateReportAsync(reportId);
+            }
+        });
 
         return saved;
     }

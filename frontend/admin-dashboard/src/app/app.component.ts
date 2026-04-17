@@ -1,31 +1,51 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
+import { SidebarComponent } from './layout/sidebar/sidebar.component';
+import { ToolbarComponent } from './layout/toolbar/toolbar.component';
+import { AuthService } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, ToolbarComponent],
   template: `
-    <div class="admin-layout">
-      <nav class="sidebar">
-        <div class="logo">
-          <h2>OtterWorks Admin</h2>
-        </div>
-        <ul class="nav-links">
-          <li><a routerLink="/dashboard">Dashboard</a></li>
-          <li><a routerLink="/users">Users</a></li>
-          <li><a routerLink="/documents">Documents</a></li>
-          <li><a routerLink="/system">System Health</a></li>
-          <li><a routerLink="/audit">Audit Log</a></li>
-          <li><a routerLink="/feature-flags">Feature Flags</a></li>
-        </ul>
-      </nav>
-      <main class="content">
-        <router-outlet></router-outlet>
-      </main>
+    <div class="app-layout" *ngIf="authService.isAuthenticated; else loginView">
+      <app-sidebar [(collapsed)]="sidebarCollapsed"></app-sidebar>
+      <div class="main-area">
+        <app-toolbar></app-toolbar>
+        <main class="content" [class.sidebar-collapsed]="sidebarCollapsed">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
     </div>
+    <ng-template #loginView>
+      <router-outlet></router-outlet>
+    </ng-template>
   `,
+  styles: [`
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .content {
+      flex: 1;
+      padding: 24px;
+      background: #f5f5f5;
+      overflow-y: auto;
+    }
+  `],
 })
 export class AppComponent {
-  title = 'OtterWorks Admin Dashboard';
+  sidebarCollapsed = false;
+
+  constructor(public authService: AuthService) {}
 }

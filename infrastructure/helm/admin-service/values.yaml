@@ -46,3 +46,6 @@ networkPolicy:
   enabled: true
   ingressNamespace: ingress-nginx
   monitoringNamespace: monitoring
+
+serviceAccount:
+  roleArn: ""

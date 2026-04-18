@@ -41,6 +41,7 @@ services:
       ANALYTICS_SERVICE_URL: http://analytics-service:8088
       ADMIN_SERVICE_URL: http://admin-service:8089
       AUDIT_SERVICE_URL: http://audit-service:8090
+      REPORT_SERVICE_URL: http://report-service:8091
     depends_on:
       - auth-service
     healthcheck:
@@ -219,6 +220,38 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # --- Report Service (Java 8 / Spring Boot 2.5 — LEGACY) ---
+  # TECH DEBT: This service deliberately uses outdated versions for upgrade exercises:
+  #   - Java 8 (target: 17+), Spring Boot 2.5 (target: 3.2+), javax.* (target: jakarta.*)
+  #   - JUnit 4, SpringFox Swagger 2, RestTemplate, Commons Lang 2, iText 5, POI 4.x
+  report-service:
+    build:
+      context: ./services/report-service
+      dockerfile: Dockerfile
+    container_name: otterworks-report-service
+    ports:
+      - "8091:8091"
+    environment:
+      <<: *common-env
+      OTEL_SERVICE_NAME: report-service
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: otterworks_reports
+      DB_USER: otterworks
+      DB_PASSWORD: otterworks_dev
+      ANALYTICS_SERVICE_URL: http://analytics-service:8088
+      AUDIT_SERVICE_URL: http://audit-service:8090
+      AUTH_SERVICE_URL: http://auth-service:8081
+      REPORT_OUTPUT_DIR: /tmp/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/health"]
       interval: 15s
       timeout: 5s
       retries: 5

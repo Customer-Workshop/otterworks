@@ -38,6 +38,12 @@ variable "oidc_provider_arn" {
   type        = string
 }
 
+variable "cluster_version" {
+  description = "Kubernetes version for the EKS cluster"
+  type        = string
+  default     = "1.32"
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number

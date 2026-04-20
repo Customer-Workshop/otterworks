@@ -5,10 +5,10 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
+  displayName: string;
   avatarUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthTokens {
@@ -23,7 +23,7 @@ export interface LoginCredentials {
 }
 
 export interface RegisterCredentials {
-  name: string;
+  displayName: string;
   email: string;
   password: string;
   confirmPassword: string;

@@ -42,10 +42,10 @@ func NewRouter(cfg RouterConfig) chi.Router {
 }
 
 func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
-	// Chi's r.Route(prefix) strips the prefix from the request path before
-	// passing to sub-handlers. We append the prefix to the target URL so that
-	// httputil.ReverseProxy re-adds it when forwarding to the backend.
-	target, err := url.Parse(route.TargetURL + route.Prefix)
+	// The full request path (e.g. /api/v1/auth/register) is preserved in
+	// req.URL.Path, so the target URL should be just the backend host.
+	// httputil.ReverseProxy joins the target path with req.URL.Path.
+	target, err := url.Parse(route.TargetURL)
 	if err != nil {
 		cfg.Logger.Fatal().Err(err).Str("target", route.TargetURL).Msg("invalid proxy target URL")
 	}

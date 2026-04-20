@@ -128,6 +128,14 @@ module "monitoring" {
   log_retention_days = var.log_retention_days
 }
 
+module "eks" {
+  source          = "./modules/eks"
+  cluster_name    = var.eks_cluster_name
+  cluster_version = var.cluster_version
+  environment     = var.environment
+  project         = "otterworks"
+}
+
 module "irsa" {
   source            = "./modules/irsa"
   environment       = var.environment

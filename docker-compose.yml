@@ -284,11 +284,13 @@ services:
       context: ./frontend/web-app
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080
         NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:8084
+        API_GATEWAY_URL: http://api-gateway:8080
     container_name: otterworks-web-app
     ports:
       - "3000:3000"
+    environment:
+      API_GATEWAY_URL: http://api-gateway:8080
     depends_on:
       - api-gateway
 

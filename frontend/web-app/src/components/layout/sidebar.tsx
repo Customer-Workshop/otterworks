@@ -140,11 +140,11 @@ export function Sidebar() {
           {user && sidebarOpen && (
             <div className="flex items-center gap-3 px-3 py-3 mt-2">
               <div className="w-8 h-8 rounded-full bg-otter-100 text-otter-700 flex items-center justify-center text-xs font-semibold">
-                {getInitials(user.name)}
+                {getInitials(user.displayName)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.name}
+                  {user.displayName}
                 </p>
                 <p className="text-xs text-gray-500 truncate">{user.email}</p>
               </div>

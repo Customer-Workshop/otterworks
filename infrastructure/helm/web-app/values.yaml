@@ -34,8 +34,11 @@ resources:
     memory: 128Mi
 
 healthCheck:
-  path: /api/health
+  path: /
   port: 3000
+
+env:
+  API_GATEWAY_URL: "http://api-gateway:8080"
 
 monitoring:
   enabled: true

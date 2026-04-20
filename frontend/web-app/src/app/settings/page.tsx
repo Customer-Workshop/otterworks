@@ -14,7 +14,7 @@ import { authApi, settingsApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 
 const profileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  displayName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
 });
 
@@ -62,14 +62,14 @@ function SettingsContent() {
   } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name || "",
+      displayName: user?.displayName || "",
       email: user?.email || "",
     },
   });
 
   useEffect(() => {
     if (user) {
-      reset({ name: user.name, email: user.email });
+      reset({ displayName: user.displayName, email: user.email });
     }
   }, [user, reset]);
 
@@ -95,11 +95,11 @@ function SettingsContent() {
             <input
               id="name"
               type="text"
-              {...register("name")}
+              {...register("displayName")}
               className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
             />
-            {errors.name && (
-              <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>
+            {errors.displayName && (
+              <p className="text-xs text-red-500 mt-1">{errors.displayName.message}</p>
             )}
           </div>
 

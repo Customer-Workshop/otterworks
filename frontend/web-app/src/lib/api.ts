@@ -23,7 +23,12 @@ export const authApi = {
     return data;
   },
   register: async (credentials: RegisterCredentials): Promise<AuthTokens> => {
-    const { data } = await apiClient.post<AuthTokens>("/auth/register", credentials);
+    const { displayName, email, password } = credentials;
+    const { data } = await apiClient.post<AuthTokens>("/auth/register", {
+      displayName,
+      email,
+      password,
+    });
     return data;
   },
   getProfile: async (): Promise<User> => {

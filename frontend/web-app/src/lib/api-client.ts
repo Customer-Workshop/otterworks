@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
+// API calls go through Next.js rewrites (same origin) to avoid CORS issues.
+// The rewrite proxy forwards /api/v1/* to the API gateway (configured via API_GATEWAY_URL env var).
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
+  baseURL: "/api/v1",
   headers: {
     "Content-Type": "application/json",
   },

@@ -64,7 +64,7 @@ export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEdito
               CollaborationCursor.configure({
                 provider,
                 user: {
-                  name: user?.name || "Anonymous",
+                  name: user?.displayName || "Anonymous",
                   color: generateColor(user?.id || "anon"),
                 },
               }),

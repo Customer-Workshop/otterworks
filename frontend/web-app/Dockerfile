@@ -1,9 +1,7 @@
 FROM node:20-alpine AS builder
 
 ARG NEXT_PUBLIC_COLLAB_WS_URL=ws://localhost:8084
-ARG API_GATEWAY_URL=http://api-gateway:8080
 ENV NEXT_PUBLIC_COLLAB_WS_URL=$NEXT_PUBLIC_COLLAB_WS_URL
-ENV API_GATEWAY_URL=$API_GATEWAY_URL
 
 WORKDIR /app
 COPY package.json package-lock.json ./

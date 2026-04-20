@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks/web-app
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: LoadBalancer

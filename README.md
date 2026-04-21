@@ -14,13 +14,16 @@ Individual service development may also require the language toolchains listed i
 ## Quick Start (Local Development)
 
 ```bash
-# Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
+# 1. Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
 make infra-up
 
-# Start all application services (builds images on first run)
+# 2. Wait for all infrastructure containers to become healthy (~30s)
+docker compose -f docker-compose.infra.yml ps   # all should show "healthy"
+
+# 3. Start all application services (builds images on first run)
 make up
 
-# Open the app
+# 4. Open the app
 open http://localhost:3000        # Web App (React / Next.js)
 open http://localhost:4200        # Admin Dashboard (Angular)
 ```
@@ -38,6 +41,39 @@ To stop everything:
 
 ```bash
 make down
+```
+
+### Environment Variables
+
+All services share a common set of environment variables defined in `docker-compose.yml` via the `x-common-env` anchor. Key defaults for local development:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AWS_REGION` | `us-east-1` | AWS region (LocalStack) |
+| `AWS_ENDPOINT_URL` | `http://localstack:4566` | LocalStack endpoint for S3, SQS, SNS, DynamoDB |
+| `POSTGRES_HOST` | `postgres` | PostgreSQL hostname |
+| `POSTGRES_DB` | `otterworks` | PostgreSQL database name |
+| `REDIS_HOST` | `redis` | Redis hostname |
+| `OPENSEARCH_URL` | `http://opensearch:9200` | OpenSearch endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | OpenTelemetry Collector |
+
+For production configuration, override these via Kubernetes ConfigMaps/Secrets or Terraform outputs.
+
+### Verifying the Setup
+
+After starting all services, verify they are running:
+
+```bash
+# Check all container health statuses
+make logs          # Tail logs across all services
+
+# Hit the API Gateway health endpoint
+curl http://localhost:8080/health
+
+# Verify individual services (replace PORT with the service port)
+curl http://localhost:8081/health   # Auth Service
+curl http://localhost:8082/health   # File Service
+curl http://localhost:8083/health   # Document Service
 ```
 
 ## Services
@@ -66,6 +102,43 @@ make down
 | Admin Dashboard | Angular 17 | 4200 | Administrative interface |
 
 ## Architecture
+
+```
+                                 +------------------+
+                                 |   CloudFront     |
+                                 |   CDN            |
+                                 +--------+---------+
+                                          |
+                                 +--------+---------+
+                                 |  NGINX Ingress   |
+                                 +--------+---------+
+                                          |
+                      +-------------------+-------------------+
+                      |                                       |
+             +--------+---------+                   +---------+--------+
+             |  Web Frontend    |                   |  Admin Dashboard |
+             |  (React/Next.js) |                   |  (Angular 17)    |
+             +--------+---------+                   +---------+--------+
+                      |                                       |
+             +--------+---------+                             |
+             |  API Gateway     +-----------------------------+
+             |  (Go / Chi)      |
+             +--------+---------+
+                      |
+  +---+---+---+---+---+---+---+---+---+---+
+  |   |   |   |   |   |   |   |   |   |   |
+ Auth File Doc  Co- Not- Sea- Ana- Adm- Aud- Rep-
+ Java Rust Py   lab  ify  rch  lyt  in   it   ort
+                JS   Kt   Py   Sc   Rb   C#   Java
+  |   |   |   |   |   |   |   |   |   |   |
+  +---+---+---+---+---+---+---+---+---+---+
+  |            Data & Infrastructure           |
+  | PostgreSQL | Redis | DynamoDB | S3         |
+  | OpenSearch | SQS/SNS | Cognito            |
+  +--------------------------------------------+
+```
+
+All client traffic enters through the **API Gateway** (Go/Chi), which handles JWT validation, rate limiting, and request routing to downstream microservices. Services communicate asynchronously via **SNS/SQS** for domain events and **Redis Pub/Sub** for real-time collaboration state. Data is persisted across **PostgreSQL** (relational), **DynamoDB** (NoSQL), **S3** (object storage), and **OpenSearch** (full-text search).
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design, data flow, and infrastructure details.
 
@@ -195,35 +268,75 @@ otterworks/
 
 ### Getting Started
 
-1. Fork the repository and create a feature branch from `main`.
+1. Fork the repository and create a feature branch from `main`:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 2. Follow the [Quick Start](#quick-start-local-development) instructions to bring up the local environment.
 3. Make your changes in the relevant service or module directory.
 
-### Code Standards
+### Development Workflow
 
-- Each service follows the idiomatic conventions of its language (e.g., `go fmt`, `cargo clippy`, `ruff`, `eslint`).
-- Run `make lint` before committing to catch issues early.
-- Run `make test` to execute the full test suite.
+- **One service at a time**: Each service can be built and tested independently. Use the per-service Make targets (e.g., `make build-gateway`, `make build-auth`) during development.
+- **Run tests** before committing:
+  ```bash
+  make test     # All services
+  make lint     # All linters
+  ```
+- **Per-service test commands** (run from the service directory):
+  | Service | Command |
+  |---------|--------|
+  | API Gateway | `go test ./...` |
+  | Auth Service | `./gradlew test` |
+  | File Service | `cargo test` |
+  | Document Service | `pytest` |
+  | Collab Service | `npm test` |
+  | Notification Service | `./gradlew test` |
+  | Search Service | `pytest` |
+  | Analytics Service | `sbt test` |
+  | Admin Service | `bundle exec rspec` |
+  | Audit Service | `dotnet test` |
+  | Web App | `npm test` |
+  | Admin Dashboard | `npm test` |
 
-### Commit Guidelines
+### Commit and PR Guidelines
 
-- Use clear, descriptive commit messages.
-- Keep commits focused — one logical change per commit.
+- Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages:
+  ```
+  feat(document-service): add template duplication endpoint
+  fix(api-gateway): correct rate limiter token bucket refill
+  docs: update README architecture diagram
+  ```
+- Keep PRs focused on a single service or concern when possible.
+- CI runs automatically on every PR — lint, test, build, and security scans must all pass.
+- Include a clear description of the change, motivation, and any testing performed.
+- Link to any relevant issue or user story.
 
-### Pull Requests
+### Code Style
 
-1. Push your branch and open a PR against `main`.
-2. Ensure CI passes (lint, test, build, security scan).
-3. Include a concise description of **what** changed and **why**.
-4. Link to any relevant issue or user story.
+Each service follows the conventions of its language ecosystem. Linting is enforced in CI:
+
+| Service | Linter |
+|---------|--------|
+| API Gateway (Go) | `golangci-lint` |
+| Auth Service (Java) | Spotless (`./gradlew spotlessCheck`) |
+| File Service (Rust) | `cargo clippy` |
+| Document Service (Python) | `ruff` |
+| Collab Service (Node.js) | ESLint (`npm run lint`) |
+| Search Service (Python) | `ruff` |
+| Web App (Next.js) | ESLint (`npm run lint`) |
+| Admin Dashboard (Angular) | ESLint (`npm run lint`) |
 
 ### Adding a New Service
 
-1. Create a directory under `services/<service-name>/` with a `Dockerfile`.
-2. Add the service to `docker-compose.yml` with the shared environment block (`x-common-env`).
-3. Create a Helm chart in `infrastructure/helm/<service-name>/`.
-4. Add OpenAPI and event schemas to `shared/`.
-5. Update this README and `ARCHITECTURE.md`.
+1. Create a directory under `services/<service-name>/` with a `Dockerfile` and health endpoint at `/health`.
+2. Add the service to `docker-compose.yml` with the shared `x-common-env` anchor.
+3. Add a Helm chart in `infrastructure/helm/<service-name>/`.
+4. Register the service in the API Gateway routing configuration.
+5. Add OpenAPI specs to `shared/openapi/` and event schemas to `shared/events/` as applicable.
+6. Add build, test, and lint targets to the `Makefile`.
+7. Update the CI workflow path filters in `.github/workflows/ci.yml`.
+8. Update this README and `ARCHITECTURE.md`.
 
 ## License
 

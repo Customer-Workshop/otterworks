@@ -32,7 +32,7 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid" }: Doc
             {document.wordCount > 0 && ` \u00B7 ${document.wordCount} words`}
           </p>
         </div>
-        {document.collaborators.length > 0 && (
+        {(document.collaborators ?? []).length > 0 && (
           <div className="flex -space-x-1 mr-2">
             {document.collaborators.slice(0, 3).map((c) => (
               <div
@@ -114,7 +114,7 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid" }: Doc
           </div>
         </div>
 
-        {document.collaborators.length > 0 && (
+        {(document.collaborators ?? []).length > 0 && (
           <div className="flex -space-x-1 mt-2">
             {document.collaborators.slice(0, 4).map((c) => (
               <div

@@ -46,13 +46,11 @@ def _extract_user_id(request: Request) -> UUID | None:
     return None
 
 
-@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-async def create_document(
+async def _do_create_document(
     body: DocumentCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a new document."""
+    db: AsyncSession,
+) -> DocumentResponse:
     if not body.owner_id:
         extracted_id = _extract_user_id(request)
         if not extracted_id:
@@ -66,6 +64,31 @@ async def create_document(
     document = await service.create(body)
     logger.info("document_created", document_id=str(document.id))
     return document
+
+
+@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_document(
+    body: DocumentCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new document."""
+    return await _do_create_document(body, request, db)
+
+
+@router.post(
+    "",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+async def create_document_no_slash(
+    body: DocumentCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new document (no trailing slash)."""
+    return await _do_create_document(body, request, db)
 
 
 @router.get("/search", response_model=DocumentListResponse)

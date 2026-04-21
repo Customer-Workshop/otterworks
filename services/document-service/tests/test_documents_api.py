@@ -260,16 +260,15 @@ async def test_create_document_via_jwt_hs384(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_via_x_user_id_header(client: AsyncClient):
-    """Create a document using X-User-Id header."""
+async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
+    """X-User-Id header alone is not trusted (prevents identity spoofing)."""
     user_id = uuid.uuid4()
     resp = await client.post(
         "/api/v1/documents/",
         json={"title": "Header Doc"},
         headers={"X-User-Id": str(user_id)},
     )
-    assert resp.status_code == 201
-    assert resp.json()["owner_id"] == str(user_id)
+    assert resp.status_code == 401
 
 
 @pytest.mark.asyncio

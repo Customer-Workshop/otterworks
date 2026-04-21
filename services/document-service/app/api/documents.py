@@ -1,9 +1,11 @@
 """Document CRUD API endpoints."""
 
+import os
 from uuid import UUID
 
+import jwt
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,13 +24,51 @@ from app.services.document_service import DocumentService
 logger = structlog.get_logger()
 router = APIRouter()
 
+def _get_jwt_secret() -> str:
+    return os.environ.get("JWT_SECRET", "")
+
+
+def _extract_user_id(request: Request) -> UUID | None:
+    """Extract user ID from the Authorization JWT or X-User-Id header."""
+    x_user_id = request.headers.get("X-User-Id")
+    if x_user_id:
+        try:
+            return UUID(x_user_id)
+        except ValueError:
+            pass
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[len("Bearer "):]
+        secret = _get_jwt_secret()
+        if secret:
+            try:
+                payload = jwt.decode(token, secret, algorithms=["HS256"])
+                user_id_str = payload.get("user_id") or payload.get("sub")
+                if user_id_str:
+                    return UUID(str(user_id_str))
+            except (jwt.PyJWTError, ValueError):
+                pass
+
+    return None
+
 
 @router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def create_document(
     body: DocumentCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new document."""
+    if not body.owner_id:
+        extracted_id = _extract_user_id(request)
+        if not extracted_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="owner_id is required: provide it in the body or authenticate via JWT",
+            )
+        body.owner_id = extracted_id
+
     service = DocumentService(db)
     document = await service.create(body)
     logger.info("document_created", document_id=str(document.id))

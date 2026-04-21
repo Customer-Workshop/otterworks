@@ -12,7 +12,7 @@ class DocumentCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     content: str = Field(default="")
     content_type: str = Field(default="text/markdown")
-    owner_id: UUID
+    owner_id: UUID | None = None
     folder_id: UUID | None = None
 
 

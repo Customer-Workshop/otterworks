@@ -8,24 +8,27 @@ A collaborative file storage and document editing platform — functionally equi
 - ~8 GB of available RAM (for running all infrastructure and services locally)
 - GNU Make (optional, for shorthand commands)
 
+Individual service development may also require the language toolchains listed in the [Services](#services) table below.
+
 ## Quick Start (Local Development)
 
 ```bash
 # Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
 make infra-up
 
-# Start all application services
+# Start all application services (builds images on first run)
 make up
 
 # Open the app
-open http://localhost:3000
+open http://localhost:3000        # Web App (React / Next.js)
+open http://localhost:4200        # Admin Dashboard (Angular)
 ```
 
 Or without Make:
 
 ```bash
 docker compose -f docker-compose.infra.yml up -d
-docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
+docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 ```
 
 To stop everything:
@@ -48,7 +51,9 @@ make down
 | Analytics Service | Scala 3.4 | Akka HTTP | 8088 | Usage analytics, data aggregation |
 | Admin Service | Ruby 3.3 | Rails 7.1 | 8089 | Admin dashboard backend |
 | Audit Service | C# 12 | ASP.NET 8 | 8090 | Immutable audit trail, compliance |
-| Report Service (**legacy**) | Java 8 | Spring Boot 2.5 | 8091 | PDF/CSV/Excel report generation (tech-debt: upgrade target Java 17+, Spring Boot 3.2+) |
+| Report Service *(legacy)* | Java 8 | Spring Boot 2.5 | 8091 | PDF/CSV/Excel report generation (tech-debt: upgrade target Java 17+, Spring Boot 3.2+) |
+
+> **Note:** The Report Service intentionally uses outdated dependencies (Java 8, Spring Boot 2.5, JUnit 4, javax.\*) and is a candidate for a framework-upgrade exercise. See `services/report-service/pom.xml` for details.
 
 ## Frontend Applications
 
@@ -83,19 +88,18 @@ Managed via Terraform in `infrastructure/terraform/`:
 ### Deploy to AWS
 
 ```bash
-# Deploy infrastructure
-cd infrastructure/terraform
-terraform init
-terraform apply -var-file=environments/dev.tfvars
+# Initialize and apply Terraform
+make tf-init
+make tf-apply          # uses environments/dev.tfvars
 
 # Deploy services to EKS
-./scripts/deploy-dev.sh
+make deploy-dev
 ```
 
 ### Tear Down
 
 ```bash
-./scripts/teardown-dev.sh
+make teardown-dev
 ```
 
 ## Observability
@@ -147,31 +151,76 @@ Per-service build targets are also available (e.g., `make build-gateway`, `make 
 
 ```
 otterworks/
-├── services/           # Backend microservices (11 services, 8 languages)
-├── frontend/           # Web app (React/Next.js) + Admin dashboard (Angular)
+├── services/              # Backend microservices (11 services, 8 languages)
+│   ├── api-gateway/       #   Go / Chi
+│   ├── auth-service/      #   Java / Spring Boot
+│   ├── file-service/      #   Rust / Actix-Web
+│   ├── document-service/  #   Python / FastAPI
+│   ├── collab-service/    #   Node.js / Socket.io
+│   ├── notification-service/ # Kotlin / Ktor
+│   ├── search-service/    #   Python / Flask
+│   ├── analytics-service/ #   Scala / Akka HTTP
+│   ├── admin-service/     #   Ruby / Rails
+│   ├── audit-service/     #   C# / ASP.NET
+│   └── report-service/    #   Java 8 / Spring Boot 2.5 (legacy)
+├── frontend/              # Web app (React/Next.js) + Admin dashboard (Angular)
 ├── infrastructure/
-│   ├── terraform/      # App-specific AWS resources (S3, RDS, DynamoDB, etc.)
-│   ├── helm/           # Per-service Helm charts
-│   └── k8s/            # Base Kubernetes resources (namespace, quotas, limits)
+│   ├── terraform/         #   App-specific AWS resources (S3, RDS, DynamoDB, etc.)
+│   ├── helm/              #   Per-service Helm charts
+│   └── k8s/               #   Base Kubernetes resources (namespace, quotas, limits)
 ├── shared/
-│   ├── proto/          # Protobuf/gRPC service definitions
-│   ├── openapi/        # OpenAPI specs per service
-│   └── events/         # Event schema definitions (JSON Schema)
+│   ├── proto/             #   Protobuf / gRPC service definitions
+│   ├── openapi/           #   OpenAPI specs per service
+│   └── events/            #   Event schema definitions (JSON Schema)
 ├── observability/
-│   ├── grafana/        # Dashboards and provisioning
-│   ├── prometheus/     # Alerting and recording rules
-│   ├── jaeger/         # Jaeger deployment config
-│   ├── otel/           # OpenTelemetry Collector config
-│   └── logging/        # Fluent Bit config and parsers
+│   ├── grafana/           #   Dashboards and provisioning
+│   ├── prometheus/        #   Scrape config, alert rules, recording rules
+│   ├── jaeger/            #   Jaeger deployment config
+│   ├── otel/              #   OpenTelemetry Collector config
+│   └── logging/           #   Fluent Bit config and parsers
 ├── security/
-│   ├── policies/       # Network policies (default-deny, DNS, namespace egress)
-│   └── scanning/       # Trivy container scanning config
+│   ├── policies/          #   Network policies (default-deny, DNS, namespace egress)
+│   └── scanning/          #   Trivy container scanning config
 ├── etl/
-│   ├── airflow/        # Airflow DAGs, plugins, and tests
-│   └── spark/          # Scala Spark processing jobs
-├── scripts/            # Deploy and teardown scripts
-└── .github/workflows/  # CI/CD pipelines
+│   ├── airflow/           #   Airflow DAGs, plugins, and tests
+│   └── spark/             #   Scala Spark processing jobs
+├── scripts/               # Deploy and teardown scripts
+└── .github/workflows/     # CI/CD pipelines (ci, docker-build, security-scan)
 ```
+
+## Contributing
+
+### Getting Started
+
+1. Fork the repository and create a feature branch from `main`.
+2. Follow the [Quick Start](#quick-start-local-development) instructions to bring up the local environment.
+3. Make your changes in the relevant service or module directory.
+
+### Code Standards
+
+- Each service follows the idiomatic conventions of its language (e.g., `go fmt`, `cargo clippy`, `ruff`, `eslint`).
+- Run `make lint` before committing to catch issues early.
+- Run `make test` to execute the full test suite.
+
+### Commit Guidelines
+
+- Use clear, descriptive commit messages.
+- Keep commits focused — one logical change per commit.
+
+### Pull Requests
+
+1. Push your branch and open a PR against `main`.
+2. Ensure CI passes (lint, test, build, security scan).
+3. Include a concise description of **what** changed and **why**.
+4. Link to any relevant issue or user story.
+
+### Adding a New Service
+
+1. Create a directory under `services/<service-name>/` with a `Dockerfile`.
+2. Add the service to `docker-compose.yml` with the shared environment block (`x-common-env`).
+3. Create a Helm chart in `infrastructure/helm/<service-name>/`.
+4. Add OpenAPI and event schemas to `shared/`.
+5. Update this README and `ARCHITECTURE.md`.
 
 ## License
 

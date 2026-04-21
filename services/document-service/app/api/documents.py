@@ -110,15 +110,13 @@ async def search_documents(
     )
 
 
-@router.get("/", response_model=DocumentListResponse)
-async def list_documents(
-    owner_id: UUID | None = None,
-    folder_id: UUID | None = None,
-    page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-):
-    """List documents with optional filtering and pagination."""
+async def _do_list_documents(
+    owner_id: UUID | None,
+    folder_id: UUID | None,
+    page: int,
+    size: int,
+    db: AsyncSession,
+) -> DocumentListResponse:
     service = DocumentService(db)
     items, total = await service.list_documents(
         owner_id=owner_id, folder_id=folder_id, page=page, size=size
@@ -130,6 +128,34 @@ async def list_documents(
         size=size,
         pages=service.paginate(total, page, size),
     )
+
+
+@router.get("/", response_model=DocumentListResponse)
+async def list_documents(
+    owner_id: UUID | None = None,
+    folder_id: UUID | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List documents with optional filtering and pagination."""
+    return await _do_list_documents(owner_id, folder_id, page, size, db)
+
+
+@router.get(
+    "",
+    response_model=DocumentListResponse,
+    include_in_schema=False,
+)
+async def list_documents_no_slash(
+    owner_id: UUID | None = None,
+    folder_id: UUID | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List documents (no trailing slash)."""
+    return await _do_list_documents(owner_id, folder_id, page, size, db)
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)

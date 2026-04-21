@@ -1,9 +1,11 @@
 """Document CRUD API endpoints."""
 
+import os
 from uuid import UUID
 
+import jwt
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,17 +24,71 @@ from app.services.document_service import DocumentService
 logger = structlog.get_logger()
 router = APIRouter()
 
+def _get_jwt_secret() -> str:
+    return os.environ.get("JWT_SECRET", "")
 
-@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-async def create_document(
+
+def _extract_user_id(request: Request) -> UUID | None:
+    """Extract user ID from the Authorization JWT."""
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[len("Bearer "):]
+        secret = _get_jwt_secret()
+        if secret:
+            try:
+                payload = jwt.decode(token, secret, algorithms=["HS256", "HS384"])
+                user_id_str = payload.get("user_id") or payload.get("sub")
+                if user_id_str:
+                    return UUID(str(user_id_str))
+            except (jwt.PyJWTError, ValueError):
+                pass
+
+    return None
+
+
+async def _do_create_document(
     body: DocumentCreate,
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a new document."""
+    request: Request,
+    db: AsyncSession,
+) -> DocumentResponse:
+    if not body.owner_id:
+        extracted_id = _extract_user_id(request)
+        if not extracted_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="owner_id is required: provide it in the body or authenticate via JWT",
+            )
+        body.owner_id = extracted_id
+
     service = DocumentService(db)
     document = await service.create(body)
     logger.info("document_created", document_id=str(document.id))
     return document
+
+
+@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_document(
+    body: DocumentCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new document."""
+    return await _do_create_document(body, request, db)
+
+
+@router.post(
+    "",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
+async def create_document_no_slash(
+    body: DocumentCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new document (no trailing slash)."""
+    return await _do_create_document(body, request, db)
 
 
 @router.get("/search", response_model=DocumentListResponse)
@@ -54,15 +110,13 @@ async def search_documents(
     )
 
 
-@router.get("/", response_model=DocumentListResponse)
-async def list_documents(
-    owner_id: UUID | None = None,
-    folder_id: UUID | None = None,
-    page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-):
-    """List documents with optional filtering and pagination."""
+async def _do_list_documents(
+    owner_id: UUID | None,
+    folder_id: UUID | None,
+    page: int,
+    size: int,
+    db: AsyncSession,
+) -> DocumentListResponse:
     service = DocumentService(db)
     items, total = await service.list_documents(
         owner_id=owner_id, folder_id=folder_id, page=page, size=size
@@ -74,6 +128,34 @@ async def list_documents(
         size=size,
         pages=service.paginate(total, page, size),
     )
+
+
+@router.get("/", response_model=DocumentListResponse)
+async def list_documents(
+    owner_id: UUID | None = None,
+    folder_id: UUID | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List documents with optional filtering and pagination."""
+    return await _do_list_documents(owner_id, folder_id, page, size, db)
+
+
+@router.get(
+    "",
+    response_model=DocumentListResponse,
+    include_in_schema=False,
+)
+async def list_documents_no_slash(
+    owner_id: UUID | None = None,
+    folder_id: UUID | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List documents (no trailing slash)."""
+    return await _do_list_documents(owner_id, folder_id, page, size, db)
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)

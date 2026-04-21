@@ -164,7 +164,7 @@ function DocumentEditorContent() {
 
         <div className="flex items-center gap-3">
           {/* Collaborators */}
-          {document.collaborators.length > 0 && (
+          {(document.collaborators ?? []).length > 0 && (
             <UserPresenceAvatars collaborators={document.collaborators} />
           )}
 
@@ -204,7 +204,7 @@ function DocumentEditorContent() {
         </span>
         <span className="flex items-center gap-1">
           <Users size={12} />
-          {document.collaborators.filter((c) => c.isOnline).length} online
+          {(document.collaborators ?? []).filter((c) => c.isOnline).length} online
         </span>
         {document.wordCount > 0 && (
           <span>{document.wordCount} words</span>

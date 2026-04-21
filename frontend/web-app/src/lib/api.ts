@@ -118,7 +118,7 @@ export const documentsApi = {
     return data;
   },
   create: async (title: string, parentId?: string | null): Promise<Document> => {
-    const { data } = await apiClient.post<Document>("/documents", { title, parentId });
+    const { data } = await apiClient.post<Document>("/documents/", { title, parentId });
     return data;
   },
   update: async (id: string, updates: Partial<Document>): Promise<Document> => {

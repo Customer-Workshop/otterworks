@@ -55,7 +55,7 @@ function DocumentsContent() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
 
-  const documents = data?.data || [];
+  const documents = (data as any)?.items ?? data?.data ?? [];
   const filtered = searchQuery
     ? documents.filter((doc) =>
         doc.title.toLowerCase().includes(searchQuery.toLowerCase())

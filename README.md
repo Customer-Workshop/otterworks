@@ -2,21 +2,47 @@
 
 A collaborative file storage and document editing platform — functionally equivalent to Google Drive + Google Docs. Built as a polyglot microservices system to demonstrate a realistic enterprise technology stack.
 
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) (v24+)
+- [Docker Compose](https://docs.docker.com/compose/install/) (v2+)
+- GNU Make (optional, for convenience targets)
+
+Individual service development may also require the language toolchains listed in the [Services](#services) table below.
+
 ## Quick Start (Local Development)
 
 ```bash
-# Start infrastructure (Postgres, Redis, LocalStack for AWS services)
-docker compose -f docker-compose.infra.yml up -d
+# Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
+make infra-up
+# — or without Make:
+# docker compose -f docker-compose.infra.yml up -d
 
-# Start all services (must reference both compose files)
-docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
-
-# Seed development data
-./scripts/seed-data.sh
+# Start all application services (builds images on first run)
+make up
+# — or without Make:
+# docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 
 # Open the app
-open http://localhost:3000
+open http://localhost:3000        # Web App (React / Next.js)
+open http://localhost:4200        # Admin Dashboard (Angular)
 ```
+
+### Useful Make Targets
+
+| Target | Description |
+|--------|-------------|
+| `make help` | List all available targets |
+| `make infra-up` | Start local infrastructure |
+| `make infra-down` | Stop local infrastructure |
+| `make up` | Build and start all services |
+| `make down` | Stop all services |
+| `make build` | Build all Docker images |
+| `make logs` | Tail logs for all services |
+| `make test` | Run tests for every service |
+| `make lint` | Lint every service |
+| `make deploy-dev` | Deploy all services to dev EKS |
+| `make teardown-dev` | Tear down dev environment |
 
 ## Services
 
@@ -26,12 +52,15 @@ open http://localhost:3000
 | Auth Service | Java 17 | Spring Boot 3 | 8081 | Authentication, authorization, user management |
 | File Service | Rust 1.77 | Actix-Web 4 | 8082 | File upload/download, S3 integration, versioning |
 | Document Service | Python 3.12 | FastAPI | 8083 | Document CRUD, version history, snapshots |
-| Collaboration Service | Node.js 20 | Socket.io | 8084/8085 | Real-time collaborative editing (CRDT) |
+| Collaboration Service | Node.js 20 | Socket.io | 8084 | Real-time collaborative editing (CRDT via Yjs) |
 | Notification Service | Kotlin 1.9 | Ktor 2.3 | 8086 | Event-driven notifications (email, in-app, webhook) |
 | Search Service | Python 3.12 | Flask 3.0 | 8087 | Full-text search via OpenSearch |
 | Analytics Service | Scala 3.4 | Akka HTTP | 8088 | Usage analytics, data aggregation |
 | Admin Service | Ruby 3.3 | Rails 7.1 | 8089 | Admin dashboard backend |
 | Audit Service | C# 12 | ASP.NET 8 | 8090 | Immutable audit trail, compliance |
+| Report Service *(legacy)* | Java 8 | Spring Boot 2.5 | 8091 | PDF, CSV, and Excel report generation |
+
+> **Note:** The Report Service intentionally uses outdated dependencies (Java 8, Spring Boot 2.5, JUnit 4, javax.\*) and is a candidate for a framework-upgrade exercise. See `services/report-service/pom.xml` for details.
 
 ## Frontend Applications
 
@@ -48,57 +77,128 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design, data flow, an
 
 ### AWS Resources (App-Specific)
 Managed via Terraform in `infrastructure/terraform/`:
-- S3 (file storage, data lake)
+- S3 (file storage, data lake, static assets)
 - RDS PostgreSQL
 - ElastiCache Redis
-- DynamoDB (file metadata, audit events)
+- DynamoDB (file metadata, audit events, notifications)
 - SQS/SNS (event bus)
 - OpenSearch (full-text search)
 - Cognito (identity)
 - CloudFront (CDN)
+- ECR repositories (one per service)
 
 ### Kubernetes
-Each service has a Helm chart in `infrastructure/helm/`. Deploys to EKS cluster managed by [platform-engineering-shared-services](https://github.com/Cognition-Partner-Workshops/platform-engineering-shared-services).
+- Base namespace resources (namespace, resource quotas, limit ranges) in `infrastructure/k8s/`.
+- Per-service Helm charts in `infrastructure/helm/`.
+- Deploys to EKS cluster managed by [platform-engineering-shared-services](https://github.com/Cognition-Partner-Workshops/platform-engineering-shared-services).
 
 ### Deploy to AWS
 
 ```bash
-# Deploy infrastructure
-cd infrastructure/terraform
-terraform init
-terraform apply -var-file=environments/dev.tfvars
+# Initialize and apply Terraform
+make tf-init
+make tf-apply          # uses environments/dev.tfvars
 
 # Deploy services to EKS
-./scripts/deploy-dev.sh
+make deploy-dev
 ```
 
 ### Tear Down
 
 ```bash
-./scripts/teardown-dev.sh
+make teardown-dev
 ```
 
 ## Observability
 
-- **Logging**: Structured JSON logs → CloudWatch via Fluentd
-- **Metrics**: Prometheus + Grafana dashboards
-- **Tracing**: OpenTelemetry → Jaeger
-- **Alerting**: PrometheusRule → Alertmanager
+The local dev stack (`docker-compose.infra.yml`) includes a full observability suite:
+
+| Tool | URL | Purpose |
+|------|-----|---------|
+| Grafana | http://localhost:3001 | Dashboards (admin / otterworks) |
+| Prometheus | http://localhost:9090 | Metrics and alerting |
+| Jaeger | http://localhost:16686 | Distributed tracing |
+| OpenSearch Dashboards | http://localhost:5601 | Search index exploration |
+
+- **Logging**: Structured JSON logs (stdout) shipped via Fluent Bit
+- **Metrics**: Prometheus scrapes `/metrics` endpoints; custom Grafana dashboards in `observability/grafana/dashboards/`
+- **Tracing**: OpenTelemetry SDK in each service, exported through the OTel Collector to Jaeger
+- **Alerting**: PrometheusRule definitions in `observability/prometheus/`
 
 ## Project Structure
 
 ```
 otterworks/
-├── services/           # Backend microservices (10 services, 8 languages)
-├── frontend/           # Web app (React) + Admin dashboard (Angular)
-├── infrastructure/     # Terraform + Helm charts
-├── shared/             # Protobuf, OpenAPI specs, event schemas
-├── observability/      # Grafana dashboards, Prometheus rules, Jaeger config
-├── security/           # OPA policies, scanning configs, SBOM scripts
-├── etl/                # Airflow DAGs + Spark jobs
-├── scripts/            # Setup, deploy, teardown scripts
-└── docs/               # API docs, runbooks, ADRs
+├── services/              # Backend microservices (11 services, 8 languages)
+│   ├── api-gateway/       #   Go / Chi
+│   ├── auth-service/      #   Java / Spring Boot
+│   ├── file-service/      #   Rust / Actix-Web
+│   ├── document-service/  #   Python / FastAPI
+│   ├── collab-service/    #   Node.js / Socket.io
+│   ├── notification-service/ # Kotlin / Ktor
+│   ├── search-service/    #   Python / Flask
+│   ├── analytics-service/ #   Scala / Akka HTTP
+│   ├── admin-service/     #   Ruby / Rails
+│   ├── audit-service/     #   C# / ASP.NET
+│   └── report-service/    #   Java 8 / Spring Boot 2.5 (legacy)
+├── frontend/              # Web app (React) + Admin dashboard (Angular)
+├── infrastructure/
+│   ├── terraform/         #   App-specific AWS resources
+│   ├── helm/              #   Per-service Helm charts
+│   └── k8s/               #   Base Kubernetes resources (namespace, quotas)
+├── shared/
+│   ├── proto/             #   Protobuf / gRPC service definitions
+│   ├── openapi/           #   OpenAPI specs per service
+│   └── events/            #   Event schema definitions (JSON Schema)
+├── observability/
+│   ├── grafana/           #   Dashboards and provisioning
+│   ├── prometheus/        #   Scrape config, alert rules, recording rules
+│   ├── jaeger/            #   Jaeger deployment config
+│   ├── otel/              #   OpenTelemetry Collector config
+│   └── logging/           #   Fluent Bit config and log format spec
+├── security/
+│   ├── policies/          #   Network policies (default-deny, DNS, egress)
+│   └── scanning/          #   SAST / DAST config files
+├── etl/
+│   ├── airflow/           #   Airflow DAG definitions
+│   └── spark/             #   Scala Spark processing jobs
+├── scripts/               # Deploy and teardown scripts
+└── .github/workflows/     # CI/CD pipelines (ci, docker-build, security-scan)
 ```
+
+## Contributing
+
+### Getting Started
+
+1. Fork the repository and create a feature branch from `main`.
+2. Follow the [Quick Start](#quick-start-local-development) instructions to bring up the local environment.
+3. Make your changes in the relevant service or module directory.
+
+### Code Standards
+
+- Each service follows the idiomatic conventions of its language (e.g., `go fmt`, `cargo clippy`, `ruff`, `eslint`).
+- Run `make lint` before committing to catch issues early.
+- Run `make test` to execute the full test suite.
+
+### Commit Guidelines
+
+- Use clear, descriptive commit messages.
+- Keep commits focused — one logical change per commit.
+
+### Pull Requests
+
+1. Push your branch and open a PR against `main`.
+2. Ensure CI passes (lint, test, build, security scan).
+3. Include a concise description of **what** changed and **why**.
+4. Link to any relevant issue or user story.
+
+### Adding a New Service
+
+1. Create a directory under `services/<service-name>/` with a `Dockerfile`.
+2. Add the service to `docker-compose.yml` with the shared environment block (`x-common-env`).
+3. Create a Helm chart in `infrastructure/helm/<service-name>/`.
+4. Add OpenAPI and event schemas to `shared/`.
+5. Update this README and `ARCHITECTURE.md`.
 
 ## License
 

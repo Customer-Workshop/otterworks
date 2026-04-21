@@ -4,9 +4,9 @@ A collaborative file storage and document editing platform — functionally equi
 
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) (v24+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2+)
-- GNU Make (optional, for convenience targets)
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) v2+
+- ~8 GB of available RAM (for running all infrastructure and services locally)
+- GNU Make (optional, for shorthand commands)
 
 Individual service development may also require the language toolchains listed in the [Services](#services) table below.
 
@@ -15,34 +15,27 @@ Individual service development may also require the language toolchains listed i
 ```bash
 # Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
 make infra-up
-# — or without Make:
-# docker compose -f docker-compose.infra.yml up -d
 
 # Start all application services (builds images on first run)
 make up
-# — or without Make:
-# docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 
 # Open the app
 open http://localhost:3000        # Web App (React / Next.js)
 open http://localhost:4200        # Admin Dashboard (Angular)
 ```
 
-### Useful Make Targets
+Or without Make:
 
-| Target | Description |
-|--------|-------------|
-| `make help` | List all available targets |
-| `make infra-up` | Start local infrastructure |
-| `make infra-down` | Stop local infrastructure |
-| `make up` | Build and start all services |
-| `make down` | Stop all services |
-| `make build` | Build all Docker images |
-| `make logs` | Tail logs for all services |
-| `make test` | Run tests for every service |
-| `make lint` | Lint every service |
-| `make deploy-dev` | Deploy all services to dev EKS |
-| `make teardown-dev` | Tear down dev environment |
+```bash
+docker compose -f docker-compose.infra.yml up -d
+docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+```
+
+To stop everything:
+
+```bash
+make down
+```
 
 ## Services
 
@@ -52,13 +45,13 @@ open http://localhost:4200        # Admin Dashboard (Angular)
 | Auth Service | Java 17 | Spring Boot 3 | 8081 | Authentication, authorization, user management |
 | File Service | Rust 1.77 | Actix-Web 4 | 8082 | File upload/download, S3 integration, versioning |
 | Document Service | Python 3.12 | FastAPI | 8083 | Document CRUD, version history, snapshots |
-| Collaboration Service | Node.js 20 | Socket.io | 8084 | Real-time collaborative editing (CRDT via Yjs) |
+| Collaboration Service | Node.js 20 | Socket.io | 8084 (HTTP) / 8085 (WS) | Real-time collaborative editing (CRDT via Yjs) |
 | Notification Service | Kotlin 1.9 | Ktor 2.3 | 8086 | Event-driven notifications (email, in-app, webhook) |
 | Search Service | Python 3.12 | Flask 3.0 | 8087 | Full-text search via OpenSearch |
 | Analytics Service | Scala 3.4 | Akka HTTP | 8088 | Usage analytics, data aggregation |
 | Admin Service | Ruby 3.3 | Rails 7.1 | 8089 | Admin dashboard backend |
 | Audit Service | C# 12 | ASP.NET 8 | 8090 | Immutable audit trail, compliance |
-| Report Service *(legacy)* | Java 8 | Spring Boot 2.5 | 8091 | PDF, CSV, and Excel report generation |
+| Report Service *(legacy)* | Java 8 | Spring Boot 2.5 | 8091 | PDF/CSV/Excel report generation (tech-debt: upgrade target Java 17+, Spring Boot 3.2+) |
 
 > **Note:** The Report Service intentionally uses outdated dependencies (Java 8, Spring Boot 2.5, JUnit 4, javax.\*) and is a candidate for a framework-upgrade exercise. See `services/report-service/pom.xml` for details.
 
@@ -83,14 +76,14 @@ Managed via Terraform in `infrastructure/terraform/`:
 - DynamoDB (file metadata, audit events, notifications)
 - SQS/SNS (event bus)
 - OpenSearch (full-text search)
-- Cognito (identity)
+- Cognito (identity federation)
 - CloudFront (CDN)
-- ECR repositories (one per service)
+- ECR (container image repositories)
 
 ### Kubernetes
-- Base namespace resources (namespace, resource quotas, limit ranges) in `infrastructure/k8s/`.
-- Per-service Helm charts in `infrastructure/helm/`.
-- Deploys to EKS cluster managed by [platform-engineering-shared-services](https://github.com/Cognition-Partner-Workshops/platform-engineering-shared-services).
+- Helm charts per service in `infrastructure/helm/`
+- Base namespace resources (ResourceQuota, LimitRange) in `infrastructure/k8s/`
+- Deploys to EKS cluster managed by [platform-engineering-shared-services](https://github.com/Cognition-Partner-Workshops/platform-engineering-shared-services)
 
 ### Deploy to AWS
 
@@ -111,19 +104,48 @@ make teardown-dev
 
 ## Observability
 
-The local dev stack (`docker-compose.infra.yml`) includes a full observability suite:
+All observability services run locally via `docker-compose.infra.yml`.
 
 | Tool | URL | Purpose |
 |------|-----|---------|
-| Grafana | http://localhost:3001 | Dashboards (admin / otterworks) |
-| Prometheus | http://localhost:9090 | Metrics and alerting |
-| Jaeger | http://localhost:16686 | Distributed tracing |
-| OpenSearch Dashboards | http://localhost:5601 | Search index exploration |
+| Grafana | http://localhost:3001 | Dashboards and metrics visualization (admin / otterworks) |
+| Prometheus | http://localhost:9090 | Metrics collection and alerting rules |
+| Jaeger | http://localhost:16686 | Distributed tracing UI |
+| OpenSearch Dashboards | http://localhost:5601 | Log exploration and search analytics |
 
-- **Logging**: Structured JSON logs (stdout) shipped via Fluent Bit
-- **Metrics**: Prometheus scrapes `/metrics` endpoints; custom Grafana dashboards in `observability/grafana/dashboards/`
-- **Tracing**: OpenTelemetry SDK in each service, exported through the OTel Collector to Jaeger
-- **Alerting**: PrometheusRule definitions in `observability/prometheus/`
+- **Logging**: Structured JSON logs → Fluent Bit → CloudWatch (production) / stdout (local)
+- **Metrics**: Prometheus scraping `/metrics` endpoints + Grafana dashboards in `observability/grafana/dashboards/`
+- **Tracing**: OpenTelemetry SDK per service → OTel Collector → Jaeger
+- **Alerting**: PrometheusRule definitions in `observability/prometheus/` → Alertmanager
+
+## CI/CD
+
+GitHub Actions workflows in `.github/workflows/`:
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| `ci.yml` | Push / PR to `main` | Lint, test, and build changed services (change-detection via path filters) |
+| `docker-build.yml` | Push / PR | Build and push Docker images to ECR |
+| `security-scan.yml` | Push / PR | SAST, dependency audit, and container scanning |
+
+## Makefile Commands
+
+Run `make help` to list all available commands. Key targets:
+
+| Command | Description |
+|---------|-------------|
+| `make infra-up` | Start local infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability) |
+| `make up` | Build and start all application services |
+| `make down` | Stop all services and infrastructure |
+| `make build` | Build all service Docker images |
+| `make logs` | Tail logs for all services |
+| `make test` | Run tests for all services |
+| `make lint` | Lint all services |
+| `make tf-plan` | Plan Terraform changes (dev) |
+| `make deploy-dev` | Deploy all services to dev EKS |
+| `make teardown-dev` | Tear down the dev environment |
+
+Per-service build targets are also available (e.g., `make build-gateway`, `make build-auth`).
 
 ## Project Structure
 
@@ -141,11 +163,11 @@ otterworks/
 │   ├── admin-service/     #   Ruby / Rails
 │   ├── audit-service/     #   C# / ASP.NET
 │   └── report-service/    #   Java 8 / Spring Boot 2.5 (legacy)
-├── frontend/              # Web app (React) + Admin dashboard (Angular)
+├── frontend/              # Web app (React/Next.js) + Admin dashboard (Angular)
 ├── infrastructure/
-│   ├── terraform/         #   App-specific AWS resources
+│   ├── terraform/         #   App-specific AWS resources (S3, RDS, DynamoDB, etc.)
 │   ├── helm/              #   Per-service Helm charts
-│   └── k8s/               #   Base Kubernetes resources (namespace, quotas)
+│   └── k8s/               #   Base Kubernetes resources (namespace, quotas, limits)
 ├── shared/
 │   ├── proto/             #   Protobuf / gRPC service definitions
 │   ├── openapi/           #   OpenAPI specs per service
@@ -155,12 +177,12 @@ otterworks/
 │   ├── prometheus/        #   Scrape config, alert rules, recording rules
 │   ├── jaeger/            #   Jaeger deployment config
 │   ├── otel/              #   OpenTelemetry Collector config
-│   └── logging/           #   Fluent Bit config and log format spec
+│   └── logging/           #   Fluent Bit config and parsers
 ├── security/
-│   ├── policies/          #   Network policies (default-deny, DNS, egress)
-│   └── scanning/          #   SAST / DAST config files
+│   ├── policies/          #   Network policies (default-deny, DNS, namespace egress)
+│   └── scanning/          #   Trivy container scanning config
 ├── etl/
-│   ├── airflow/           #   Airflow DAG definitions
+│   ├── airflow/           #   Airflow DAGs, plugins, and tests
 │   └── spark/             #   Scala Spark processing jobs
 ├── scripts/               # Deploy and teardown scripts
 └── .github/workflows/     # CI/CD pipelines (ci, docker-build, security-scan)

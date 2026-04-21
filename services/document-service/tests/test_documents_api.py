@@ -1,9 +1,18 @@
 """Tests for document API endpoints."""
 
+import os
 import uuid
 
+import jwt
 import pytest
 from httpx import AsyncClient
+
+TEST_JWT_SECRET = "test-jwt-secret-for-unit-tests-pad32"  # noqa: S105
+os.environ.setdefault("JWT_SECRET", TEST_JWT_SECRET)
+
+
+def _make_jwt(user_id: str) -> str:
+    return jwt.encode({"user_id": user_id}, TEST_JWT_SECRET, algorithm="HS256")
 
 
 @pytest.mark.asyncio
@@ -218,3 +227,55 @@ async def test_export_document_markdown(client: AsyncClient, owner_id: uuid.UUID
     )
     assert resp.status_code == 200
     assert "# Export MD" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_create_document_via_jwt(client: AsyncClient):
+    """Create a document without owner_id in the body, using JWT instead."""
+    user_id = uuid.uuid4()
+    token = _make_jwt(str(user_id))
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "JWT Doc", "content": "Created via JWT"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["title"] == "JWT Doc"
+    assert data["owner_id"] == str(user_id)
+
+
+@pytest.mark.asyncio
+async def test_create_document_via_jwt_hs384(client: AsyncClient):
+    """Create a document using an HS384-signed JWT (matches auth-service algorithm)."""
+    user_id = uuid.uuid4()
+    token = jwt.encode({"sub": str(user_id)}, TEST_JWT_SECRET, algorithm="HS384")
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "HS384 Doc"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["owner_id"] == str(user_id)
+
+
+@pytest.mark.asyncio
+async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
+    """X-User-Id header alone is not trusted (prevents identity spoofing)."""
+    user_id = uuid.uuid4()
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Header Doc"},
+        headers={"X-User-Id": str(user_id)},
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_document_no_auth_returns_401(client: AsyncClient):
+    """Creating a document without owner_id and without auth returns 401."""
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "No Auth Doc"},
+    )
+    assert resp.status_code == 401

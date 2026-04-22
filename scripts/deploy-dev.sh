@@ -19,7 +19,7 @@ NAMESPACE="${NAMESPACE:-otterworks}"
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_PREFIX="otterworks/"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
+DB_PASSWORD="${DB_PASSWORD:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -91,6 +91,7 @@ fi
 # ---------- Step 2: Provision Application Infrastructure ----------
 
 if [ "${SKIP_TERRAFORM}" = false ]; then
+  DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set when running Terraform}"
   log "Provisioning application infrastructure (RDS, DynamoDB, S3, SQS, etc.)..."
   cd "${REPO_ROOT}/infrastructure/terraform"
   terraform init -input=false

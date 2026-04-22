@@ -70,16 +70,6 @@ resource "aws_opensearch_domain" "main" {
     tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
   }
 
-  access_policies = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { AWS = "*" }
-      Action    = "es:ESHttp*"
-      Resource  = "arn:aws:es:*:*:domain/${var.project}-${var.environment}/*"
-    }]
-  })
-
   tags = merge(local.common_tags, {
     Service = "search-service"
   })

@@ -141,6 +141,23 @@ module "monitoring" {
   log_retention_days = var.log_retention_days
 }
 
+# --- OpenSearch Access Policy (scoped to search-service IRSA role) ---
+# Defined here to avoid circular dependency between search and irsa modules.
+
+resource "aws_opensearch_domain_policy" "search" {
+  domain_name = module.search.opensearch_domain_name
+
+  access_policies = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = module.irsa.role_arns["search-service"] }
+      Action    = "es:ESHttp*"
+      Resource  = "${module.search.opensearch_arn}/*"
+    }]
+  })
+}
+
 module "irsa" {
   source            = "./modules/irsa"
   environment       = var.environment

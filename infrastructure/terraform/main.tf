@@ -99,6 +99,7 @@ module "database" {
   db_password = var.db_password
 
   vpc_id     = local.vpc_id
+  vpc_cidr   = local.vpc_cidr
   subnet_ids = local.private_subnets
 }
 
@@ -114,6 +115,7 @@ module "search" {
   project     = "otterworks"
 
   vpc_id     = local.vpc_id
+  vpc_cidr   = local.vpc_cidr
   subnet_ids = local.private_subnets
 }
 

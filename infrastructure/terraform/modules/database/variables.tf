@@ -56,3 +56,8 @@ variable "subnet_ids" {
   description = "Subnet IDs for the RDS subnet group"
   type        = list(string)
 }
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block for security group ingress rules"
+  type        = string
+}

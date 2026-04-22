@@ -13,7 +13,6 @@ set -euo pipefail
 AWS_REGION="${AWS_REGION:-us-east-1}"
 EKS_CLUSTER="${EKS_CLUSTER:-otterworks-dev}"
 NAMESPACE="${NAMESPACE:-otterworks}"
-DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -77,6 +76,7 @@ kubectl delete namespace "${NAMESPACE}" --ignore-not-found --timeout=120s || \
 # ---------- Step 4: Destroy application Terraform (RDS, DynamoDB, S3, etc.) ----------
 
 if [ "${DESTROY_INFRA}" = true ]; then
+  DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set when using --destroy-infra or --destroy-all}"
   log "Destroying application infrastructure (RDS, S3, DynamoDB, SQS, etc.)..."
   cd "${REPO_ROOT}/infrastructure/terraform"
 

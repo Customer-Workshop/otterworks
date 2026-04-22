@@ -45,3 +45,8 @@ variable "subnet_ids" {
   description = "Subnet IDs for OpenSearch VPC placement"
   type        = list(string)
 }
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block for security group ingress rules"
+  type        = string
+}

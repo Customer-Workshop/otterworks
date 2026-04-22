@@ -1,20 +1,37 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------------------
-# OtterWorks - Deploy to Dev EKS Cluster
-# Builds Docker images, pushes to ECR, and deploys via Helm
+# OtterWorks - Full Standalone Deploy
+# 1. Provisions platform infrastructure (VPC, EKS, ECR) via Terraform
+# 2. Provisions application infrastructure (RDS, DynamoDB, S3, etc.) via Terraform
+# 3. Builds Docker images, pushes to ECR, and deploys via Helm
+#
+# Usage:
+#   ./scripts/deploy-dev.sh                    # Full deploy (platform + app + helm)
+#   ./scripts/deploy-dev.sh --skip-platform    # Skip platform provisioning
+#   ./scripts/deploy-dev.sh --skip-terraform   # Skip all Terraform, just build+deploy
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-599083837640}"
-EKS_CLUSTER="${EKS_CLUSTER:-workshop-dev}"
-NAMESPACE="${NAMESPACE:-decomposition-dev}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:?ERROR: AWS_ACCOUNT_ID must be set}"
+EKS_CLUSTER="${EKS_CLUSTER:-otterworks-dev}"
+NAMESPACE="${NAMESPACE:-otterworks}"
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-ECR_PREFIX="workshop/otterworks-"
+ECR_PREFIX="otterworks/"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
+DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+SKIP_PLATFORM=false
+SKIP_TERRAFORM=false
+for arg in "$@"; do
+  case "$arg" in
+    --skip-platform)  SKIP_PLATFORM=true ;;
+    --skip-terraform) SKIP_TERRAFORM=true ;;
+  esac
+done
 
 # Colors
 RED='\033[0;31m'
@@ -52,27 +69,54 @@ ALL_SERVICES=("${BACKEND_SERVICES[@]}" "${FRONTEND_SERVICES[@]}")
 
 log "Checking prerequisites..."
 
-command -v aws >/dev/null 2>&1    || { err "aws CLI not found"; exit 1; }
-command -v docker >/dev/null 2>&1 || { err "docker not found"; exit 1; }
-command -v helm >/dev/null 2>&1   || { err "helm not found"; exit 1; }
-command -v kubectl >/dev/null 2>&1 || { err "kubectl not found"; exit 1; }
+command -v aws >/dev/null 2>&1       || { err "aws CLI not found"; exit 1; }
+command -v docker >/dev/null 2>&1    || { err "docker not found"; exit 1; }
+command -v helm >/dev/null 2>&1      || { err "helm not found"; exit 1; }
+command -v kubectl >/dev/null 2>&1   || { err "kubectl not found"; exit 1; }
+command -v terraform >/dev/null 2>&1 || { err "terraform not found"; exit 1; }
 
-# ---------- Step 1: Configure kubectl ----------
+# ---------- Step 1: Provision Platform (VPC, EKS, ECR) ----------
+
+if [ "${SKIP_TERRAFORM}" = false ] && [ "${SKIP_PLATFORM}" = false ]; then
+  log "Provisioning platform infrastructure (VPC, EKS, ECR)..."
+  cd "${REPO_ROOT}/platform/terraform"
+  terraform init -input=false
+  terraform apply -var-file=environments/dev.tfvars -auto-approve -input=false
+  cd "${REPO_ROOT}"
+  log "Platform infrastructure provisioned."
+else
+  log "Skipping platform provisioning."
+fi
+
+# ---------- Step 2: Provision Application Infrastructure ----------
+
+if [ "${SKIP_TERRAFORM}" = false ]; then
+  log "Provisioning application infrastructure (RDS, DynamoDB, S3, SQS, etc.)..."
+  cd "${REPO_ROOT}/infrastructure/terraform"
+  terraform init -input=false
+  terraform apply -var="db_password=${DB_PASSWORD}" -auto-approve -input=false
+  cd "${REPO_ROOT}"
+  log "Application infrastructure provisioned."
+else
+  log "Skipping Terraform provisioning."
+fi
+
+# ---------- Step 3: Configure kubectl ----------
 
 log "Configuring kubectl for EKS cluster ${EKS_CLUSTER}..."
 aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}"
 
-# ---------- Step 2: Create namespace ----------
+# ---------- Step 4: Create namespace ----------
 
 log "Ensuring namespace ${NAMESPACE} exists..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
-# ---------- Step 3: ECR Login ----------
+# ---------- Step 5: ECR Login ----------
 
 log "Logging into ECR..."
 aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
 
-# ---------- Step 4: Build and push Docker images ----------
+# ---------- Step 6: Build and push Docker images ----------
 
 build_and_push() {
   local service=$1
@@ -101,7 +145,7 @@ for service in "${ALL_SERVICES[@]}"; do
   build_and_push "${service}" || warn "Failed to build ${service}, continuing..."
 done
 
-# ---------- Step 5: Deploy via Helm ----------
+# ---------- Step 7: Deploy via Helm ----------
 
 deploy_service() {
   local service=$1
@@ -129,7 +173,7 @@ for service in "${ALL_SERVICES[@]}"; do
   deploy_service "${service}" || FAILED+=("${service}")
 done
 
-# ---------- Step 6: Verify ----------
+# ---------- Step 8: Verify ----------
 
 log "Checking pod status in namespace ${NAMESPACE}..."
 kubectl get pods -n "${NAMESPACE}" -o wide

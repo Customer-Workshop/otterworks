@@ -1,6 +1,7 @@
 # ------------------------------------------------------------------------------
 # OtterWorks Infrastructure - Application-Specific AWS Resources
-# Shared platform (EKS, VPC, ingress) lives in platform-engineering-shared-services
+# Platform (VPC, EKS, ECR) is provisioned by /platform/terraform
+# This layer provisions app-level resources: RDS, DynamoDB, S3, SQS, etc.
 # ------------------------------------------------------------------------------
 
 terraform {
@@ -36,45 +37,49 @@ provider "aws" {
       Project     = "otterworks"
       Environment = var.environment
       ManagedBy   = "terraform"
+      Layer       = "application"
     }
   }
 }
 
-# --- Data Sources for Shared Platform ---
+# --- Read Platform Outputs (VPC, EKS, ECR from /platform/terraform) ---
 
-data "aws_eks_cluster" "platform" {
-  name = var.eks_cluster_name
+data "terraform_remote_state" "platform" {
+  backend = "s3"
+
+  config = {
+    bucket = "otterworks-terraform-state"
+    key    = "platform/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
+locals {
+  cluster_name      = data.terraform_remote_state.platform.outputs.cluster_name
+  cluster_endpoint  = data.terraform_remote_state.platform.outputs.cluster_endpoint
+  cluster_ca        = data.terraform_remote_state.platform.outputs.cluster_certificate_authority
+  vpc_id            = data.terraform_remote_state.platform.outputs.vpc_id
+  vpc_cidr          = data.terraform_remote_state.platform.outputs.vpc_cidr_block
+  private_subnets   = data.terraform_remote_state.platform.outputs.private_subnet_ids
+  public_subnets    = data.terraform_remote_state.platform.outputs.public_subnet_ids
+  oidc_provider_arn = data.terraform_remote_state.platform.outputs.oidc_provider_arn
+  oidc_provider_url = data.terraform_remote_state.platform.outputs.oidc_provider_url
 }
 
 data "aws_eks_cluster_auth" "platform" {
-  name = var.eks_cluster_name
-}
-
-data "aws_vpc" "platform" {
-  id = data.aws_eks_cluster.platform.vpc_config[0].vpc_id
-}
-
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.platform.id]
-  }
-
-  tags = {
-    "kubernetes.io/role/internal-elb" = "1"
-  }
+  name = local.cluster_name
 }
 
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.platform.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.platform.certificate_authority[0].data)
+  host                   = local.cluster_endpoint
+  cluster_ca_certificate = base64decode(local.cluster_ca)
   token                  = data.aws_eks_cluster_auth.platform.token
 }
 
 provider "helm" {
   kubernetes {
-    host                   = data.aws_eks_cluster.platform.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.platform.certificate_authority[0].data)
+    host                   = local.cluster_endpoint
+    cluster_ca_certificate = base64decode(local.cluster_ca)
     token                  = data.aws_eks_cluster_auth.platform.token
   }
 }
@@ -92,6 +97,9 @@ module "database" {
   environment = var.environment
   project     = "otterworks"
   db_password = var.db_password
+
+  vpc_id     = local.vpc_id
+  subnet_ids = local.private_subnets
 }
 
 module "messaging" {
@@ -104,6 +112,9 @@ module "search" {
   source      = "./modules/search"
   environment = var.environment
   project     = "otterworks"
+
+  vpc_id     = local.vpc_id
+  subnet_ids = local.private_subnets
 }
 
 module "auth" {
@@ -116,9 +127,9 @@ module "cache" {
   source              = "./modules/cache"
   environment         = var.environment
   project             = "otterworks"
-  vpc_id              = data.aws_vpc.platform.id
-  subnet_ids          = data.aws_subnets.private.ids
-  allowed_cidr_blocks = [data.aws_vpc.platform.cidr_block]
+  vpc_id              = local.vpc_id
+  subnet_ids          = local.private_subnets
+  allowed_cidr_blocks = [local.vpc_cidr]
 }
 
 module "monitoring" {
@@ -128,21 +139,13 @@ module "monitoring" {
   log_retention_days = var.log_retention_days
 }
 
-module "eks" {
-  source          = "./modules/eks"
-  cluster_name    = var.eks_cluster_name
-  cluster_version = var.cluster_version
-  environment     = var.environment
-  project         = "otterworks"
-}
-
 module "irsa" {
   source            = "./modules/irsa"
   environment       = var.environment
   project           = "otterworks"
   namespace         = var.namespace
-  oidc_provider_arn = var.oidc_provider_arn
-  oidc_provider_url = data.aws_eks_cluster.platform.identity[0].oidc[0].issuer
+  oidc_provider_arn = local.oidc_provider_arn
+  oidc_provider_url = local.oidc_provider_url
 
   service_accounts = {
     "file-service" = jsonencode({

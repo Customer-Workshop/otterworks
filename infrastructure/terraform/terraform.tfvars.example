@@ -1,5 +1,9 @@
 # OtterWorks Infrastructure - Example Variable Values
 # Copy this file to terraform.tfvars and customize for your environment.
+#
+# Prerequisites: Platform layer must be applied first (platform/terraform)
+# which provisions VPC, EKS, and ECR. This layer reads platform outputs
+# via terraform_remote_state.
 
 # AWS region for all resources
 aws_region = "us-east-1"
@@ -7,18 +11,11 @@ aws_region = "us-east-1"
 # Environment name (dev, staging, prod)
 environment = "dev"
 
-# EKS cluster name from platform-engineering-shared-services
-eks_cluster_name = "workshop-dev"
-
-# Kubernetes namespace for OtterWorks
-namespace = "decomposition-dev"
+# Kubernetes namespace for OtterWorks services
+namespace = "otterworks"
 
 # REQUIRED: RDS PostgreSQL master password (no default — must be set)
 db_password = "your-secure-password-here"
-
-# REQUIRED: OIDC provider ARN from the EKS cluster (no default — must be set)
-# Find with: aws eks describe-cluster --name workshop-dev --query "cluster.identity.oidc.issuer"
-oidc_provider_arn = "arn:aws:iam::oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLE"
 
 # CloudWatch log retention in days
 log_retention_days = 30

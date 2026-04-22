@@ -87,18 +87,6 @@ output "cloudwatch_log_groups" {
   value       = module.monitoring.log_group_names
 }
 
-# --- EKS ---
-
-output "eks_cluster_version" {
-  description = "Current EKS cluster Kubernetes version"
-  value       = module.eks.cluster_version
-}
-
-output "ebs_csi_driver_role_arn" {
-  description = "IAM role ARN for the EBS CSI driver"
-  value       = module.eks.ebs_csi_driver_role_arn
-}
-
 # --- IRSA ---
 
 output "irsa_role_arns" {

@@ -35,3 +35,13 @@ variable "opensearch_volume_size" {
   type        = number
   default     = 10
 }
+
+variable "vpc_id" {
+  description = "VPC ID for the OpenSearch security group"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs for OpenSearch VPC placement"
+  type        = list(string)
+}

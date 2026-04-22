@@ -46,3 +46,13 @@ variable "db_max_allocated_storage" {
   type        = number
   default     = 50
 }
+
+variable "vpc_id" {
+  description = "VPC ID for the RDS security group"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs for the RDS subnet group"
+  type        = list(string)
+}

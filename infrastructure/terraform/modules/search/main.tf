@@ -75,7 +75,7 @@ resource "aws_opensearch_domain" "main" {
     Statement = [{
       Effect    = "Allow"
       Principal = { AWS = "*" }
-      Action    = "es:*"
+      Action    = "es:ESHttp*"
       Resource  = "arn:aws:es:*:*:domain/${var.project}-${var.environment}/*"
     }]
   })

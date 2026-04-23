@@ -43,18 +43,45 @@ pub enum ServiceError {
 impl ResponseError for ServiceError {
     fn error_response(&self) -> HttpResponse {
         let (status, error_type) = match self {
-            ServiceError::FileNotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, "file_not_found"),
-            ServiceError::FolderNotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, "folder_not_found"),
-            ServiceError::VersionNotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, "version_not_found"),
-            ServiceError::ShareNotFound(_) => (actix_web::http::StatusCode::NOT_FOUND, "share_not_found"),
-            ServiceError::BadRequest(_) => (actix_web::http::StatusCode::BAD_REQUEST, "bad_request"),
-            ServiceError::FileTooLarge { .. } => (actix_web::http::StatusCode::PAYLOAD_TOO_LARGE, "file_too_large"),
-            ServiceError::Unauthorized(_) => (actix_web::http::StatusCode::UNAUTHORIZED, "unauthorized"),
+            ServiceError::FileNotFound(_) => {
+                (actix_web::http::StatusCode::NOT_FOUND, "file_not_found")
+            }
+            ServiceError::FolderNotFound(_) => {
+                (actix_web::http::StatusCode::NOT_FOUND, "folder_not_found")
+            }
+            ServiceError::VersionNotFound(_) => {
+                (actix_web::http::StatusCode::NOT_FOUND, "version_not_found")
+            }
+            ServiceError::ShareNotFound(_) => {
+                (actix_web::http::StatusCode::NOT_FOUND, "share_not_found")
+            }
+            ServiceError::BadRequest(_) => {
+                (actix_web::http::StatusCode::BAD_REQUEST, "bad_request")
+            }
+            ServiceError::FileTooLarge { .. } => (
+                actix_web::http::StatusCode::PAYLOAD_TOO_LARGE,
+                "file_too_large",
+            ),
+            ServiceError::Unauthorized(_) => {
+                (actix_web::http::StatusCode::UNAUTHORIZED, "unauthorized")
+            }
             ServiceError::Forbidden(_) => (actix_web::http::StatusCode::FORBIDDEN, "forbidden"),
-            ServiceError::S3Error(_) => (actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "storage_error"),
-            ServiceError::DynamoError(_) => (actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "metadata_error"),
-            ServiceError::SnsError(_) => (actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "event_error"),
-            ServiceError::Internal(_) => (actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
+            ServiceError::S3Error(_) => (
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "storage_error",
+            ),
+            ServiceError::DynamoError(_) => (
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "metadata_error",
+            ),
+            ServiceError::SnsError(_) => (
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "event_error",
+            ),
+            ServiceError::Internal(_) => (
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_error",
+            ),
         };
 
         HttpResponse::build(status).json(ErrorResponse {

@@ -46,7 +46,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, 100 + count.index)
   availability_zone       = local.azs[count.index]
-  map_public_ip_on_launch = true # nosemgrep: terraform.aws.security.aws-vpc-no-public-ip-subnet -- required: dev EKS nodes use public subnets (no NAT gateway for cost savings)
+  map_public_ip_on_launch = true # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
 
   tags = merge(local.common_tags, {
     Name                                           = "${var.project}-public-${local.azs[count.index]}"

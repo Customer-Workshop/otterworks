@@ -45,7 +45,7 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_controller" {
 
 # --- EKS Cluster ---
 
-resource "aws_eks_cluster" "main" {
+resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
   name     = var.cluster_name
   version  = var.cluster_version
   role_arn = aws_iam_role.cluster.arn
@@ -55,7 +55,7 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = concat(var.public_subnet_ids, var.private_subnet_ids)
     endpoint_private_access = true
-    endpoint_public_access  = true # nosemgrep: terraform.aws.security.eks-public-endpoint -- required for dev: deploy-dev.sh runs kubectl from outside VPC
+    endpoint_public_access  = true
   }
 
   tags = merge(local.common_tags, {

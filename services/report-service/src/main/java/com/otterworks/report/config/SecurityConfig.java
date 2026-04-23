@@ -25,8 +25,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         // LEGACY: Uses deprecated antMatchers() and authorizeRequests()
         // Upgrade: requestMatchers() and authorizeHttpRequests()
-        http
-            .csrf().disable() // nosemgrep: java.spring.security.audit.spring-csrf-disabled -- stateless REST API, no session/cookies
+        http // nosemgrep: java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled
+            .csrf().disable()
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()

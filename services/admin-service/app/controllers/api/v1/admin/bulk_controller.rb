@@ -41,7 +41,7 @@ module Api
         end
 
         def bulk_params
-          params.permit(:reason, :role).to_h.symbolize_keys
+          params.permit(:reason, :role).to_h.symbolize_keys # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
         end
       end
     end

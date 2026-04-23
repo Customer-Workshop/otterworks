@@ -52,6 +52,7 @@ services:
     read_only: true
     tmpfs:
     - /tmp
+    - /var/run/postgresql
   localstack:
     image: localstack/localstack:3.1
     ports:

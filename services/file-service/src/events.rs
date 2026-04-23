@@ -52,11 +52,7 @@ impl EventPublisher {
         let message =
             serde_json::to_string(event).map_err(|e| ServiceError::Internal(e.to_string()))?;
 
-        let mut req = self
-            .client
-            .publish()
-            .topic_arn(topic_arn)
-            .message(&message);
+        let mut req = self.client.publish().topic_arn(topic_arn).message(&message);
 
         // message_group_id and message_deduplication_id are only valid for FIFO topics
         if topic_arn.ends_with(".fifo") {
@@ -95,11 +91,7 @@ impl EventPublisher {
         self.publish(&event).await
     }
 
-    pub async fn file_deleted(
-        &self,
-        file_id: &Uuid,
-        owner_id: &Uuid,
-    ) -> Result<(), ServiceError> {
+    pub async fn file_deleted(&self, file_id: &Uuid, owner_id: &Uuid) -> Result<(), ServiceError> {
         let event = FileEvent {
             event_type: "file_deleted".into(),
             file_id: file_id.to_string(),

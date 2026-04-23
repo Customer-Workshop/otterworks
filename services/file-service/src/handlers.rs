@@ -180,7 +180,11 @@ pub async fn list_files(
     let page_size = query.page_size.unwrap_or(50).min(100);
     let total = files.len();
     let start = (page - 1).saturating_mul(page_size) as usize;
-    let paged: Vec<FileMetadata> = files.into_iter().skip(start).take(page_size as usize).collect();
+    let paged: Vec<FileMetadata> = files
+        .into_iter()
+        .skip(start)
+        .take(page_size as usize)
+        .collect();
 
     Ok(HttpResponse::Ok().json(ListFilesResponse {
         files: paged,

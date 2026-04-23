@@ -25,8 +25,7 @@ async fn main() -> std::io::Result<()> {
     let app_config = config::AppConfig::from_env();
     let s3_client = storage::S3Client::new(&app_config.aws).await;
     let meta_client = metadata::MetadataClient::new(&app_config.aws).await;
-    let event_publisher =
-        events::EventPublisher::new(&app_config.sns, &app_config.aws).await;
+    let event_publisher = events::EventPublisher::new(&app_config.sns, &app_config.aws).await;
 
     let port = app_config.server.port;
     tracing::info!(port = %port, "File Service starting");
@@ -63,10 +62,7 @@ async fn main() -> std::io::Result<()> {
                         web::get().to(handlers::list_versions),
                     )
                     .route("/{file_id}/trash", web::post().to(handlers::trash_file))
-                    .route(
-                        "/{file_id}/restore",
-                        web::post().to(handlers::restore_file),
-                    )
+                    .route("/{file_id}/restore", web::post().to(handlers::restore_file))
                     .route("/{file_id}/share", web::post().to(handlers::share_file)),
             )
             .service(

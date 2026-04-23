@@ -24,6 +24,7 @@ services:
     read_only: true
     tmpfs:
     - /tmp
+    - /var/run/postgresql
   redis:
     image: redis:7-alpine
     container_name: otterworks-redis

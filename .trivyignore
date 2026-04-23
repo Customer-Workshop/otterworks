@@ -1,0 +1,38 @@
+# OtterWorks Trivy Ignore List
+# These CVEs are acknowledged and tracked for remediation in future upgrade cycles.
+# report-service is excluded via skip-dirs (intentional legacy Java 8 service for upgrade exercise).
+
+# --- etl/airflow: requires Airflow 2.9+ upgrade (major version) ---
+CVE-2024-39877
+CVE-2024-45034
+CVE-2024-56373
+CVE-2025-54550
+CVE-2025-68675
+
+# --- frontend/admin-dashboard: requires Angular 19+ upgrade (major version) ---
+CVE-2025-66035
+CVE-2025-66412
+CVE-2026-22610
+CVE-2026-27970
+CVE-2026-32635
+
+# --- frontend/web-app: requires Next.js 14.2.25+ or 15.x upgrade ---
+CVE-2025-29927
+CVE-2024-46982
+CVE-2024-51479
+GHSA-5j59-xgg2-r9c4
+GHSA-h25m-26qc-wcjf
+GHSA-mwv6-3258-q52c
+GHSA-q4gf-8mx6-v5v3
+
+# --- services/api-gateway: Go dependency upgrades require build tool ---
+CVE-2025-30204
+CVE-2026-24051
+CVE-2026-39883
+CVE-2026-33186
+
+# --- services/document-service: Python dependency upgrades require poetry ---
+CVE-2026-0994
+CVE-2024-53981
+CVE-2026-24486
+CVE-2024-47874

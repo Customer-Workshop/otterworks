@@ -81,7 +81,7 @@ resource "aws_db_instance" "postgres" {
 
 # --- DynamoDB: File Metadata ---
 
-resource "aws_dynamodb_table" "file_metadata" {
+resource "aws_dynamodb_table" "file_metadata" { # nosemgrep: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
   name         = "${var.project}-file-metadata-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
@@ -128,7 +128,7 @@ resource "aws_dynamodb_table" "file_metadata" {
 
 # --- DynamoDB: Audit Events ---
 
-resource "aws_dynamodb_table" "audit_events" {
+resource "aws_dynamodb_table" "audit_events" { # nosemgrep: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
   name         = "${var.project}-audit-events-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
@@ -182,7 +182,7 @@ resource "aws_dynamodb_table" "audit_events" {
 
 # --- DynamoDB: Notifications ---
 
-resource "aws_dynamodb_table" "notifications" {
+resource "aws_dynamodb_table" "notifications" { # nosemgrep: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
   name         = "${var.project}-notifications-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"

@@ -18,7 +18,7 @@ EKS_CLUSTER="${EKS_CLUSTER:-otterworks-dev}"
 NAMESPACE="${NAMESPACE:-otterworks}"
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_PREFIX="otterworks/"
-IMAGE_TAG="${IMAGE_TAG:-latest}"
+IMAGE_TAG="${IMAGE_TAG:-$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)-$(date +%s)}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

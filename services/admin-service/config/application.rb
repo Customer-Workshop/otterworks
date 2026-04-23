@@ -15,6 +15,13 @@ require_relative '../app/middleware/jwt_authenticator'
 module AdminService
   class Application < Rails::Application
     config.load_defaults 7.1
+
+    # Tell Zeitwerk that the "api" directory maps to the "Api" constant
+    # (not the default "API") so eager_load works in CI.
+    config.autoloader = :zeitwerk
+    Rails.autoloaders.each do |autoloader|
+      autoloader.inflector.inflect('api' => 'Api')
+    end
     config.api_only = true
     config.active_job.queue_adapter = :sidekiq
     config.log_formatter = ::Logger::Formatter.new

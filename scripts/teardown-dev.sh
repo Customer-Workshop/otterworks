@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------------------
-# OtterWorks - Teardown Dev Environment
-# Removes Helm releases, Kubernetes resources, and optionally Terraform infra
+# OtterWorks - Full Standalone Teardown
+# Removes Helm releases, application Terraform, and platform Terraform (VPC/EKS/ECR).
+#
+# Usage:
+#   ./scripts/teardown-dev.sh                    # Remove Helm releases + namespace only
+#   ./scripts/teardown-dev.sh --destroy-infra    # Also destroy application Terraform (RDS, S3, etc.)
+#   ./scripts/teardown-dev.sh --destroy-all      # Destroy everything: Helm + app Terraform + platform (EKS/VPC/ECR)
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
-EKS_CLUSTER="${EKS_CLUSTER:-workshop-dev}"
-NAMESPACE="${NAMESPACE:-decomposition-dev}"
+EKS_CLUSTER="${EKS_CLUSTER:-otterworks-dev}"
+NAMESPACE="${NAMESPACE:-otterworks}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -21,7 +26,14 @@ log()  { echo -e "${GREEN}[teardown]${NC} $*"; }
 warn() { echo -e "${YELLOW}[teardown]${NC} $*"; }
 err()  { echo -e "${RED}[teardown]${NC} $*" >&2; }
 
-DESTROY_INFRA="${1:-}"
+DESTROY_INFRA=false
+DESTROY_ALL=false
+for arg in "$@"; do
+  case "$arg" in
+    --destroy-infra) DESTROY_INFRA=true ;;
+    --destroy-all)   DESTROY_INFRA=true; DESTROY_ALL=true ;;
+  esac
+done
 
 # ---------- Step 1: Configure kubectl ----------
 
@@ -61,20 +73,43 @@ log "Deleting namespace ${NAMESPACE}..."
 kubectl delete namespace "${NAMESPACE}" --ignore-not-found --timeout=120s || \
   warn "Namespace deletion timed out or failed"
 
-# ---------- Step 4: Optionally destroy Terraform infra ----------
+# ---------- Step 4: Destroy application Terraform (RDS, DynamoDB, S3, etc.) ----------
 
-if [ "${DESTROY_INFRA}" = "--destroy-infra" ]; then
-  log "Destroying Terraform infrastructure..."
+if [ "${DESTROY_INFRA}" = true ]; then
+  DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set when using --destroy-infra or --destroy-all}"
+  log "Destroying application infrastructure (RDS, S3, DynamoDB, SQS, etc.)..."
   cd "${REPO_ROOT}/infrastructure/terraform"
 
-  if [ -f ".terraform/terraform.tfstate" ] || [ -d ".terraform" ]; then
+  if [ -d ".terraform" ]; then
+    terraform destroy -var="db_password=${DB_PASSWORD}" -auto-approve
+  else
+    terraform init -input=false
+    terraform destroy -var="db_password=${DB_PASSWORD}" -auto-approve
+  fi
+
+  cd "${REPO_ROOT}"
+  log "Application infrastructure destroyed."
+else
+  log "Skipping application Terraform destroy (pass --destroy-infra or --destroy-all)"
+fi
+
+# ---------- Step 5: Destroy platform Terraform (VPC, EKS, ECR) ----------
+
+if [ "${DESTROY_ALL}" = true ]; then
+  log "Destroying platform infrastructure (VPC, EKS, ECR)..."
+  cd "${REPO_ROOT}/platform/terraform"
+
+  if [ -d ".terraform" ]; then
     terraform destroy -var-file=environments/dev.tfvars -auto-approve
   else
-    warn "Terraform not initialized — run 'terraform init' first"
-    warn "Then run: terraform destroy -var-file=environments/dev.tfvars -auto-approve"
+    terraform init -input=false
+    terraform destroy -var-file=environments/dev.tfvars -auto-approve
   fi
+
+  cd "${REPO_ROOT}"
+  log "Platform infrastructure destroyed."
 else
-  log "Skipping Terraform destroy (pass --destroy-infra to also destroy AWS resources)"
+  log "Skipping platform Terraform destroy (pass --destroy-all to also destroy VPC/EKS/ECR)"
 fi
 
 log "Teardown complete!"
@@ -82,10 +117,17 @@ echo ""
 log "What was removed:"
 echo "  - All Helm releases in ${NAMESPACE}"
 echo "  - Kubernetes namespace ${NAMESPACE}"
-if [ "${DESTROY_INFRA}" = "--destroy-infra" ]; then
-  echo "  - All Terraform-managed AWS resources (S3, RDS, DynamoDB, SQS, etc.)"
+if [ "${DESTROY_INFRA}" = true ]; then
+  echo "  - Application Terraform resources (RDS, S3, DynamoDB, SQS, SNS, etc.)"
+fi
+if [ "${DESTROY_ALL}" = true ]; then
+  echo "  - Platform Terraform resources (VPC, EKS cluster, ECR repositories)"
 fi
 echo ""
-log "To destroy the EKS cluster itself:"
-echo "  aws eks delete-nodegroup --cluster-name ${EKS_CLUSTER} --nodegroup-name default --region ${AWS_REGION}"
-echo "  aws eks delete-cluster --name ${EKS_CLUSTER} --region ${AWS_REGION}"
+if [ "${DESTROY_ALL}" = false ]; then
+  log "To fully destroy all infrastructure including VPC/EKS/ECR:"
+  echo "  ./scripts/teardown-dev.sh --destroy-all"
+fi
+echo ""
+log "To reprovision everything from scratch:"
+echo "  ./scripts/deploy-dev.sh"

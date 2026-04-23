@@ -15,33 +15,16 @@ variable "environment" {
   }
 }
 
-variable "eks_cluster_name" {
-  description = "Name of the shared EKS cluster from platform-engineering-shared-services"
-  type        = string
-  default     = "workshop-dev"
-}
-
 variable "namespace" {
   description = "Kubernetes namespace for OtterWorks services"
   type        = string
-  default     = "decomposition-dev"
+  default     = "otterworks"
 }
 
 variable "db_password" {
   description = "Master password for the RDS PostgreSQL instance"
   type        = string
   sensitive   = true
-}
-
-variable "oidc_provider_arn" {
-  description = "ARN of the EKS OIDC identity provider for IRSA"
-  type        = string
-}
-
-variable "cluster_version" {
-  description = "Kubernetes version for the EKS cluster"
-  type        = string
-  default     = "1.32"
 }
 
 variable "log_retention_days" {

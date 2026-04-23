@@ -10,6 +10,33 @@ locals {
   }
 }
 
+# --- OpenSearch Security Group ---
+
+resource "aws_security_group" "opensearch" {
+  name        = "${var.project}-opensearch-${var.environment}"
+  description = "Security group for OtterWorks OpenSearch"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "HTTPS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Service = "search-service"
+  })
+}
+
 resource "aws_opensearch_domain" "main" {
   domain_name    = "${var.project}-${var.environment}"
   engine_version = "OpenSearch_2.11"
@@ -17,6 +44,11 @@ resource "aws_opensearch_domain" "main" {
   cluster_config {
     instance_type  = var.opensearch_instance_type
     instance_count = var.opensearch_instance_count
+  }
+
+  vpc_options {
+    subnet_ids         = [var.subnet_ids[0]]
+    security_group_ids = [aws_security_group.opensearch.id]
   }
 
   ebs_options {

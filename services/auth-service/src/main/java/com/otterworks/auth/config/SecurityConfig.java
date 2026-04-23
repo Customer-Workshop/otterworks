@@ -25,7 +25,8 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.csrf(csrf -> csrf.disable()) // nosemgrep: java.spring.security.audit.spring-csrf-disabled -- stateless JWT REST API, no session/cookies
+    http.csrf(
+            csrf -> csrf.disable()) // nosemgrep: java.spring.security.audit.spring-csrf-disabled
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(

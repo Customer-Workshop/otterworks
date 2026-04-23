@@ -21,7 +21,7 @@ RUN mkdir -p /tmp/reports
 
 COPY --from=builder /app/target/report-service.jar app.jar
 
-RUN useradd -r -u 1001 appuser
+RUN useradd -r -u 1001 appuser && chown appuser:appuser /tmp/reports
 USER appuser
 
 EXPOSE 8091

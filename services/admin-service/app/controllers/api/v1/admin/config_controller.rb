@@ -41,7 +41,7 @@ module Api
         private
 
         def set_config
-          @config = SystemConfig.find(params[:id])
+          @config = SystemConfig.find(params[:id]) # nosemgrep: ruby.rails.security.audit.unscoped-find -- admin-only controller with JWT auth
         end
 
         def config_params

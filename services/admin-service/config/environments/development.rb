@@ -3,7 +3,7 @@ require 'active_support/core_ext/integer/time'
 Rails.application.configure do
   config.enable_reloading = true
   config.eager_load = false
-  config.consider_all_requests_local = true
+  config.consider_all_requests_local = false
 
   if Rails.root.join('tmp/caching-dev.txt').exist?
     config.cache_store = :memory_store

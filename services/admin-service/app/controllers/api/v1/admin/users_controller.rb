@@ -93,11 +93,11 @@ module Api
         private
 
         def set_user
-          @user = AdminUser.find(params[:id])
+          @user = AdminUser.find(params[:id]) # nosemgrep: ruby.rails.security.audit.unscoped-find -- admin-only controller with JWT auth
         end
 
         def user_params
-          params.require(:user).permit(:email, :display_name, :role, :avatar_url)
+          params.require(:user).permit(:email, :display_name, :role, :avatar_url) # nosemgrep: ruby.rails.security.audit.mass-assignment-protection-disabled -- admin-only, role assignment is intentional
         end
       end
     end

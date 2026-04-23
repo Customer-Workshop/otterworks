@@ -21,6 +21,9 @@ RUN mkdir -p /tmp/reports
 
 COPY --from=builder /app/target/report-service.jar app.jar
 
+RUN useradd -r -u 1001 appuser
+USER appuser
+
 EXPOSE 8091
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

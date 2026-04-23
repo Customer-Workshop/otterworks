@@ -83,7 +83,7 @@ module Api
         private
 
         def set_announcement
-          @announcement = Announcement.find(params[:id])
+          @announcement = Announcement.find(params[:id]) # nosemgrep: ruby.rails.security.audit.unscoped-find -- admin-only controller with JWT auth
         end
 
         def announcement_params

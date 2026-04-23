@@ -1,8 +1,4 @@
-version: "3.9"
-
-# Infrastructure services for local development
-# Usage: docker compose -f docker-compose.infra.yml up -d
-
+version: '3.9'
 services:
   postgres:
     image: postgres:15-alpine
@@ -12,28 +8,41 @@ services:
       POSTGRES_PASSWORD: otterworks_dev
       POSTGRES_DB: otterworks
     ports:
-      - "5432:5432"
+    - 5432:5432
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    - postgres_data:/var/lib/postgresql/data
+    - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U otterworks"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U otterworks
       interval: 5s
       timeout: 5s
       retries: 5
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   redis:
     image: redis:7-alpine
     container_name: otterworks-redis
     ports:
-      - "6379:6379"
+    - 6379:6379
     command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+      - CMD
+      - redis-cli
+      - ping
       interval: 5s
       timeout: 5s
       retries: 5
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   localstack:
     image: localstack/localstack:3.4
     container_name: otterworks-localstack
@@ -42,165 +51,224 @@ services:
       DEFAULT_REGION: us-east-1
       DOCKER_HOST: unix:///var/run/docker.sock
     ports:
-      - "4566:4566"
+    - 4566:4566
     volumes:
-      - localstack_data:/var/lib/localstack
-      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+    - localstack_data:/var/lib/localstack
+    - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:4566/_localstack/health
       interval: 10s
       timeout: 5s
       retries: 5
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   opensearch:
     image: opensearchproject/opensearch:2.11.0
     container_name: otterworks-opensearch
     environment:
       discovery.type: single-node
-      plugins.security.disabled: "true"
-      OPENSEARCH_JAVA_OPTS: "-Xms256m -Xmx256m"
+      plugins.security.disabled: 'true'
+      OPENSEARCH_JAVA_OPTS: -Xms256m -Xmx256m
     ports:
-      - "9200:9200"
+    - 9200:9200
     volumes:
-      - opensearch_data:/usr/share/opensearch/data
+    - opensearch_data:/usr/share/opensearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl -sf http://localhost:9200/_cluster/health || exit 1
       interval: 10s
       timeout: 5s
       retries: 5
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.0
     container_name: otterworks-opensearch-dashboards
     environment:
       OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: 'true'
     ports:
-      - "5601:5601"
+    - 5601:5601
     depends_on:
       opensearch:
         condition: service_healthy
-
-  # ---------------------------------------------------------------------------
-  # Observability Stack
-  # ---------------------------------------------------------------------------
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   prometheus:
     image: prom/prometheus:v2.51.0
     container_name: otterworks-prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=15d"
-      - "--web.enable-lifecycle"
-      - "--web.enable-admin-api"
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=15d
+    - --web.enable-lifecycle
+    - --web.enable-admin-api
     ports:
-      - "9090:9090"
+    - 9090:9090
     volumes:
-      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
-      - ./observability/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
-      - prometheus_data:/prometheus
+    - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    - ./observability/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
+    - prometheus_data:/prometheus
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:9090/-/healthy
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   grafana:
     image: grafana/grafana:10.4.0
     container_name: otterworks-grafana
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: otterworks
-      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_SERVER_ROOT_URL: http://localhost:3001
     ports:
-      - "3001:3000"
+    - 3001:3000
     volumes:
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
+    - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    - grafana_data:/var/lib/grafana
     depends_on:
       prometheus:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:3000/api/health
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   jaeger:
     image: jaegertracing/all-in-one:1.55
     container_name: otterworks-jaeger
     environment:
-      COLLECTOR_OTLP_ENABLED: "true"
+      COLLECTOR_OTLP_ENABLED: 'true'
       SPAN_STORAGE_TYPE: memory
-      MEMORY_MAX_TRACES: "50000"
+      MEMORY_MAX_TRACES: '50000'
       METRICS_STORAGE_TYPE: prometheus
     ports:
-      - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC
-      - "4318:4318"     # OTLP HTTP
-      - "14269:14269"   # Admin / health
+    - 16686:16686
+    - 4317:4317
+    - 4318:4318
+    - 14269:14269
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:14269/
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.96.0
     container_name: otterworks-otel-collector
-    command: ["--config=/etc/otelcol/config.yml"]
+    command:
+    - --config=/etc/otelcol/config.yml
     ports:
-      - "4327:4317"     # OTLP gRPC (remapped to avoid Jaeger conflict)
-      - "4328:4318"     # OTLP HTTP (remapped to avoid Jaeger conflict)
-      - "8888:8888"     # Collector metrics
-      - "8889:8889"     # Prometheus exporter
-      - "13133:13133"   # Health check
-      - "55679:55679"   # zPages
+    - 4327:4317
+    - 4328:4318
+    - 8888:8888
+    - 8889:8889
+    - 13133:13133
+    - 55679:55679
     volumes:
-      - ./observability/otel/otel-collector-config.yml:/etc/otelcol/config.yml:ro
+    - ./observability/otel/otel-collector-config.yml:/etc/otelcol/config.yml:ro
     depends_on:
       jaeger:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:13133/
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
   fluent-bit:
     image: fluent/fluent-bit:3.0
     container_name: otterworks-fluent-bit
     ports:
-      - "2020:2020"     # Fluent Bit metrics / health
+    - 2020:2020
     volumes:
-      - ./observability/logging/fluentbit-config.yml:/fluent-bit/etc/fluent-bit.conf:ro
-      - ./observability/logging/parsers.conf:/fluent-bit/etc/parsers.conf:ro
-      - /var/log/containers:/var/log/containers:ro
+    - ./observability/logging/fluentbit-config.yml:/fluent-bit/etc/fluent-bit.conf:ro
+    - ./observability/logging/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+    - /var/log/containers:/var/log/containers:ro
     depends_on:
       localstack:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2020/api/v1/health"]
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:2020/api/v1/health
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
-
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
 networks:
   default:
     name: otterworks-network
-
 volumes:
-  postgres_data:
-  localstack_data:
-  opensearch_data:
-  prometheus_data:
-  grafana_data:
+  postgres_data: null
+  localstack_data: null
+  opensearch_data: null
+  prometheus_data: null
+  grafana_data: null

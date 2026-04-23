@@ -22,7 +22,7 @@ module Api
 
         # GET /api/v1/admin/audit-logs/:id
         def show
-          audit_log = AuditLog.find(params[:id])
+          audit_log = AuditLog.find(params[:id]) # nosemgrep: ruby.rails.security.audit.unscoped-find -- admin-only controller with JWT auth
           render json: audit_log, serializer: AuditLogSerializer
         end
 

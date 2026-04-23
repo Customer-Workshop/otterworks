@@ -18,6 +18,12 @@ variable "project" {
   }
 }
 
+variable "kms_key_arn" {
+  description = "ARN of KMS key for CloudWatch log group encryption"
+  type        = string
+  default     = null
+}
+
 variable "log_retention_days" {
   description = "Number of days to retain CloudWatch logs"
   type        = number

@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib
 WORKDIR /app
 COPY --from=builder /app/target/release/file-service /app/file-service
 
+RUN useradd -r -u 1001 appuser
+USER appuser
+
 EXPOSE 8082
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8082/health || exit 1
 ENTRYPOINT ["/app/file-service"]

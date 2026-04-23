@@ -81,7 +81,7 @@ module Api
         private
 
         def set_feature_flag
-          @feature_flag = FeatureFlag.find(params[:id])
+          @feature_flag = FeatureFlag.find(params[:id]) # nosemgrep: ruby.rails.security.audit.unscoped-find -- admin-only controller with JWT auth
         end
 
         def feature_flag_params

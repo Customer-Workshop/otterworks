@@ -86,6 +86,10 @@ resource "aws_dynamodb_table" "file_metadata" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
+  server_side_encryption {
+    enabled = true
+  }
+
   attribute {
     name = "id"
     type = "S"
@@ -128,6 +132,10 @@ resource "aws_dynamodb_table" "audit_events" {
   name         = "${var.project}-audit-events-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
+
+  server_side_encryption {
+    enabled = true
+  }
 
   attribute {
     name = "id"
@@ -178,6 +186,10 @@ resource "aws_dynamodb_table" "notifications" {
   name         = "${var.project}-notifications-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
+
+  server_side_encryption {
+    enabled = true
+  }
 
   attribute {
     name = "id"

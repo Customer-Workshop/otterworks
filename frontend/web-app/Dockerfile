@@ -17,6 +17,9 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s CMD wget --spider -q http://localhost:3000/ || exit 1
+RUN adduser -D -u 1001 appuser
+USER appuser
+
 ENV NODE_ENV=production
 # API_GATEWAY_URL default for runtime (can be overridden by Helm/docker-compose env)
 ENV API_GATEWAY_URL=http://api-gateway:8080

@@ -11,6 +11,9 @@ WORKDIR /app
 COPY --from=builder /usr/local/bundle /usr/local/bundle
 COPY . .
 
+RUN useradd -r -u 1001 appuser
+USER appuser
+
 EXPOSE 8089
 HEALTHCHECK --interval=15s --timeout=5s CMD curl -f http://localhost:8089/health || exit 1
 CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "8089"]

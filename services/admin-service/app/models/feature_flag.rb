@@ -21,6 +21,6 @@ class FeatureFlag < ApplicationRecord
     return true if target_users.include?(user_id)
     return true if rollout_percentage == 100
 
-    rollout_percentage.positive? && (Digest::MD5.hexdigest("#{name}:#{user_id}").hex % 100) < rollout_percentage # nosemgrep: ruby.lang.security.weak-hashing.insecure-hash-algorithm-md5
+    rollout_percentage.positive? && (Digest::MD5.hexdigest("#{name}:#{user_id}").hex % 100) < rollout_percentage # nosemgrep: ruby.lang.security.weak-hashes-md5.weak-hashes-md5
   end
 end

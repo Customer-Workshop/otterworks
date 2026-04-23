@@ -40,13 +40,13 @@ resource "aws_internet_gateway" "main" {
 
 # --- Public Subnets ---
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public" { # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
   count = var.az_count
 
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, 100 + count.index)
   availability_zone       = local.azs[count.index]
-  map_public_ip_on_launch = true # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
+  map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
     Name                                           = "${var.project}-public-${local.azs[count.index]}"

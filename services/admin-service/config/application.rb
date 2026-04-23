@@ -19,6 +19,7 @@ module AdminService
     config.time_zone = 'UTC'
 
     config.middleware.use Rack::Attack
+    config.middleware.use JwtAuthenticator
 
     # Structured JSON logging
     config.lograge.enabled = true

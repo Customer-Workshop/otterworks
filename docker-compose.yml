@@ -1,19 +1,4 @@
 version: '3.9'
-x-common-env:
-  AWS_REGION: us-east-1
-  AWS_ACCESS_KEY_ID: test
-  AWS_SECRET_ACCESS_KEY: test
-  AWS_ENDPOINT_URL: http://localstack:4566
-  POSTGRES_HOST: postgres
-  POSTGRES_PORT: 5432
-  POSTGRES_USER: otterworks
-  POSTGRES_PASSWORD: otterworks_dev
-  POSTGRES_DB: otterworks
-  REDIS_HOST: redis
-  REDIS_PORT: 6379
-  OPENSEARCH_URL: http://opensearch:9200
-  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
-  OTEL_SERVICE_NAME: ''
 services:
   api-gateway:
     build:

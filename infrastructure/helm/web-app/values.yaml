@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks/web-app
-  tag: latest
-  pullPolicy: Always
+  tag: ""  # Set at deploy time (ECR uses IMMUTABLE tags)
+  pullPolicy: IfNotPresent
 
 service:
   type: LoadBalancer

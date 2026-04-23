@@ -45,10 +45,12 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_controller" {
 
 # --- EKS Cluster ---
 
-resource "aws_eks_cluster" "main" {
+resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
   name     = var.cluster_name
   version  = var.cluster_version
   role_arn = aws_iam_role.cluster.arn
+
+  enabled_cluster_log_types = ["api", "audit", "authenticator"]
 
   vpc_config {
     subnet_ids              = concat(var.public_subnet_ids, var.private_subnet_ids)

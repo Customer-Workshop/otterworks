@@ -13,6 +13,9 @@ RUN apk --no-cache add curl
 WORKDIR /app
 COPY --from=builder /app/target/scala-3.4.0/analytics-service-assembly-*.jar app.jar
 
+RUN adduser -D -u 1001 appuser
+USER appuser
+
 EXPOSE 8088
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8088/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]

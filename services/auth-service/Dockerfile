@@ -13,6 +13,9 @@ RUN apk --no-cache add curl
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar
 
+RUN adduser -D -u 1001 appuser
+USER appuser
+
 EXPOSE 8081
 HEALTHCHECK --interval=15s --timeout=5s CMD curl -f http://localhost:8081/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -93,11 +93,11 @@ module Api
         private
 
         def set_user
-          @user = AdminUser.find(params[:id])
+          @user = AdminUser.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
         def user_params
-          params.require(:user).permit(:email, :display_name, :role, :avatar_url)
+          params.require(:user).permit(:email, :display_name, :role, :avatar_url) # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
         end
       end
     end

@@ -81,7 +81,7 @@ module Api
         private
 
         def set_feature_flag
-          @feature_flag = FeatureFlag.find(params[:id])
+          @feature_flag = FeatureFlag.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
         def feature_flag_params

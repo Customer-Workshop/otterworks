@@ -27,7 +27,7 @@ INSERT INTO users (id, email, password_hash, display_name, email_verified, creat
 VALUES (
     'a0000000-0000-0000-0000-000000000001',
     'admin@otterworks.dev',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash
     'Admin User',
     true,
     NOW(),

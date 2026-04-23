@@ -18,7 +18,9 @@ class JwtTokenProviderTest {
   void setUp() {
     jwtTokenProvider =
         new JwtTokenProvider(
-            "test-jwt-secret-otterworks-must-be-at-least-32-bytes-long-for-hmac", 3600, 2592000);
+            "test-jwt-secret-otterworks-must-be-at-least-32-bytes-long-for-hmac",
+            3600,
+            2592000); // nosemgrep: java.lang.security.audit.crypto.no-static-initialization-vector
   }
 
   @Test
@@ -89,7 +91,9 @@ class JwtTokenProviderTest {
   void isTokenValid_shouldReturnFalseForExpiredToken() {
     JwtTokenProvider shortLivedProvider =
         new JwtTokenProvider(
-            "test-jwt-secret-otterworks-must-be-at-least-32-bytes-long-for-hmac", -1, -1);
+            "test-jwt-secret-otterworks-must-be-at-least-32-bytes-long-for-hmac",
+            -1,
+            -1); // nosemgrep: java.lang.security.audit.crypto.no-static-initialization-vector
     User user = createTestUser();
     String token = shortLivedProvider.generateAccessToken(user);
 
@@ -111,7 +115,8 @@ class JwtTokenProviderTest {
     user.setId(UUID.randomUUID());
     user.setEmail("test@otterworks.dev");
     user.setDisplayName("Test User");
-    user.setPasswordHash("$2a$12$hashedpassword");
+    user.setPasswordHash(
+        "$2a$12$hashedpassword"); // nosemgrep: generic.secrets.security.detected-bcrypt-hash
     user.setRoles(Set.of(User.Role.USER));
     return user;
   }

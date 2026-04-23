@@ -7,7 +7,9 @@ use crate::errors::ServiceError;
 use crate::models::{FileMetadata, FileShare, FileVersion, Folder, SharePermission};
 
 /// Check if an AWS SDK error is a ConditionalCheckFailedException.
-fn is_conditional_check_failed<E: std::fmt::Debug>(err: &aws_sdk_dynamodb::error::SdkError<E>) -> bool {
+fn is_conditional_check_failed<E: std::fmt::Debug>(
+    err: &aws_sdk_dynamodb::error::SdkError<E>,
+) -> bool {
     matches!(err, aws_sdk_dynamodb::error::SdkError::ServiceError(se)
         if format!("{:?}", se.err()).contains("ConditionalCheckFailed"))
 }
@@ -49,7 +51,10 @@ impl MetadataClient {
         let mut item = std::collections::HashMap::new();
         item.insert("id".into(), AttributeValue::S(file.id.to_string()));
         item.insert("name".into(), AttributeValue::S(file.name.clone()));
-        item.insert("mime_type".into(), AttributeValue::S(file.mime_type.clone()));
+        item.insert(
+            "mime_type".into(),
+            AttributeValue::S(file.mime_type.clone()),
+        );
         item.insert(
             "size_bytes".into(),
             AttributeValue::N(file.size_bytes.to_string()),
@@ -74,10 +79,7 @@ impl MetadataClient {
         );
 
         if let Some(folder_id) = &file.folder_id {
-            item.insert(
-                "folder_id".into(),
-                AttributeValue::S(folder_id.to_string()),
-            );
+            item.insert("folder_id".into(), AttributeValue::S(folder_id.to_string()));
         }
 
         self.client
@@ -186,15 +188,12 @@ impl MetadataClient {
                 update_builder.update_expression("SET updated_at = :u REMOVE folder_id");
         }
 
-        update_builder
-            .send()
-            .await
-            .map_err(|e| {
-                if is_conditional_check_failed(&e) {
-                    return ServiceError::FileNotFound(file_id.to_string());
-                }
-                ServiceError::DynamoError(e.to_string())
-            })?;
+        update_builder.send().await.map_err(|e| {
+            if is_conditional_check_failed(&e) {
+                return ServiceError::FileNotFound(file_id.to_string());
+            }
+            ServiceError::DynamoError(e.to_string())
+        })?;
 
         self.get_file(file_id).await
     }
@@ -316,21 +315,17 @@ impl MetadataClient {
         }
         if let Some(pid) = &parent_id {
             update_parts.push("parent_id = :p".to_string());
-            builder = builder
-                .expression_attribute_values(":p", AttributeValue::S(pid.to_string()));
+            builder = builder.expression_attribute_values(":p", AttributeValue::S(pid.to_string()));
         }
 
         builder = builder.update_expression(format!("SET {}", update_parts.join(", ")));
 
-        builder
-            .send()
-            .await
-            .map_err(|e| {
-                if is_conditional_check_failed(&e) {
-                    return ServiceError::FolderNotFound(folder_id.to_string());
-                }
-                ServiceError::DynamoError(e.to_string())
-            })?;
+        builder.send().await.map_err(|e| {
+            if is_conditional_check_failed(&e) {
+                return ServiceError::FolderNotFound(folder_id.to_string());
+            }
+            ServiceError::DynamoError(e.to_string())
+        })?;
 
         self.get_folder(folder_id).await
     }
@@ -383,10 +378,7 @@ impl MetadataClient {
         Ok(())
     }
 
-    pub async fn list_versions(
-        &self,
-        file_id: &Uuid,
-    ) -> Result<Vec<FileVersion>, ServiceError> {
+    pub async fn list_versions(&self, file_id: &Uuid) -> Result<Vec<FileVersion>, ServiceError> {
         let result = self
             .client
             .query()
@@ -443,10 +435,7 @@ impl MetadataClient {
         Ok(())
     }
 
-    pub async fn list_shares(
-        &self,
-        file_id: &Uuid,
-    ) -> Result<Vec<FileShare>, ServiceError> {
+    pub async fn list_shares(&self, file_id: &Uuid) -> Result<Vec<FileShare>, ServiceError> {
         let result = self
             .client
             .query()
@@ -637,10 +626,7 @@ mod tests {
     fn test_parse_file_metadata_with_folder() {
         let mut item = make_file_item();
         let folder_id = Uuid::new_v4();
-        item.insert(
-            "folder_id".into(),
-            AttributeValue::S(folder_id.to_string()),
-        );
+        item.insert("folder_id".into(), AttributeValue::S(folder_id.to_string()));
         let file = parse_file_metadata(&item).unwrap();
         assert_eq!(file.folder_id, Some(folder_id));
     }

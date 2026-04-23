@@ -6,7 +6,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:1.25-alpine
+FROM nginxinc/nginx-unprivileged:1.25-alpine
 COPY --from=builder /app/dist/admin-dashboard/browser /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

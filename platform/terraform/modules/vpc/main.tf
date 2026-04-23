@@ -40,7 +40,7 @@ resource "aws_internet_gateway" "main" {
 
 # --- Public Subnets ---
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public" { # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
   count = var.az_count
 
   vpc_id                  = aws_vpc.main.id

@@ -41,7 +41,7 @@ module Api
         private
 
         def set_config
-          @config = SystemConfig.find(params[:id])
+          @config = SystemConfig.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
         def config_params

@@ -72,6 +72,8 @@ resource "aws_db_instance" "postgres" {
 
   backup_retention_period = var.environment == "dev" ? 1 : 7
 
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
   tags = merge(local.common_tags, {
     Service = "shared-database"
   })

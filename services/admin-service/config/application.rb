@@ -16,6 +16,12 @@ module AdminService
   class Application < Rails::Application
     config.load_defaults 7.1
     config.api_only = true
+
+    # Exclude middleware from Zeitwerk autoloading — it is manually
+    # required via require_relative above, and Zeitwerk's inflection
+    # rules would expect JWTAuthenticator instead of JwtAuthenticator.
+    config.autoload_paths -= [root.join('app/middleware').to_s]
+    config.eager_load_paths -= [root.join('app/middleware').to_s]
     config.active_job.queue_adapter = :sidekiq
     config.log_formatter = ::Logger::Formatter.new
     config.time_zone = 'UTC'

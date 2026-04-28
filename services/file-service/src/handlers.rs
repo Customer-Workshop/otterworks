@@ -1,5 +1,5 @@
 use actix_multipart::Multipart;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use bytes::BytesMut;
 use chrono::Utc;
 use futures_util::StreamExt;
@@ -36,12 +36,21 @@ pub async fn metrics() -> HttpResponse {
 // -- File Handlers --
 
 pub async fn upload_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     config: web::Data<AppConfig>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
+    // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
+    // Fall back to the multipart field for direct/internal callers.
+    let header_owner_id = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok());
+
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
     let mut content_type = String::from("application/octet-stream");
@@ -106,7 +115,9 @@ pub async fn upload_file(
         }
     }
 
-    let owner = owner_id.ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+    let owner = header_owner_id
+        .or(owner_id)
+        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
 
     if file_bytes.is_empty() {
         return Err(ServiceError::BadRequest("file field is required".into()));

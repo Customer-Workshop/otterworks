@@ -16,6 +16,48 @@ import type {
   SharedUser,
 } from "@/types";
 
+// Raw shape returned by the file-service (snake_case, different field names)
+interface RawFileItem {
+  id: string;
+  name: string;
+  mime_type: string;
+  size_bytes: number;
+  s3_key: string;
+  folder_id: string | null;
+  owner_id: string;
+  version: number;
+  is_trashed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface RawFileListResponse {
+  files: RawFileItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// Normalize a single file from the file-service format to the frontend FileItem shape
+function mapRawFile(raw: RawFileItem): FileItem {
+  return {
+    id: raw.id,
+    name: raw.name,
+    mimeType: raw.mime_type ?? "application/octet-stream",
+    size: raw.size_bytes ?? 0,
+    parentId: raw.folder_id ?? null,
+    ownerId: raw.owner_id ?? "",
+    ownerName: "",
+    isFolder: false,
+    path: `/${raw.name}`,
+    sharedWith: [],
+    tags: [],
+    createdAt: raw.created_at ?? "",
+    updatedAt: raw.updated_at ?? "",
+    versions: [],
+  };
+}
+
 // ── Auth ──────────────────────────────────────────────────────
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<AuthTokens> => {
@@ -51,23 +93,31 @@ export const filesApi = {
     page = 1,
     pageSize = 50
   ): Promise<PaginatedResponse<FileItem>> => {
+    // file-service uses folder_id, not parentId
     const params: Record<string, string | number> = { page, pageSize };
-    if (parentId) params.parentId = parentId;
-    const { data } = await apiClient.get<PaginatedResponse<FileItem>>("/files", { params });
-    return data;
+    if (parentId) params.folder_id = parentId;
+    const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
+    return {
+      data: (data.files ?? []).map(mapRawFile),
+      total: data.total ?? 0,
+      page: data.page ?? page,
+      pageSize: data.page_size ?? pageSize,
+      hasMore: ((data.page ?? page) * (data.page_size ?? pageSize)) < (data.total ?? 0),
+    };
   },
   get: async (id: string): Promise<FileItem> => {
-    const { data } = await apiClient.get<FileItem>(`/files/${id}`);
-    return data;
+    const { data } = await apiClient.get<RawFileItem>(`/files/${id}`);
+    return mapRawFile(data);
   },
   upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
     const formData = new FormData();
     formData.append("file", file);
-    if (parentId) formData.append("parentId", parentId);
-    const { data } = await apiClient.post<FileItem>("/files/upload", formData, {
+    // file-service uses folder_id, not parentId
+    if (parentId) formData.append("folder_id", parentId);
+    const { data } = await apiClient.post<{ file: RawFileItem }>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return data;
+    return mapRawFile(data.file);
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
     const { data } = await apiClient.post<FileItem>("/files/folder", { name, parentId });
@@ -98,10 +148,15 @@ export const filesApi = {
     await apiClient.delete(`/files/${id}/permanent`);
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
-    const { data } = await apiClient.get<FileItem[]>("/files/recent", {
-      params: { limit },
+    // The file-service has no /recent endpoint; fetch the first page and
+    // return the most recently uploaded files sorted by createdAt descending.
+    const { data } = await apiClient.get<RawFileListResponse>("/files", {
+      params: { page: 1, pageSize: 50 },
     });
-    return data;
+    return (data.files ?? [])
+      .map(mapRawFile)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   },
 };
 

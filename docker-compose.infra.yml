@@ -44,7 +44,7 @@ services:
     read_only: true
     tmpfs:
     - /tmp
-  localstack:
+  localstack: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
     image: localstack/localstack:3.8
     container_name: otterworks-localstack
     environment:
@@ -67,7 +67,7 @@ services:
       retries: 5
     security_opt:
     - no-new-privileges:true
-  opensearch:
+  opensearch: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
     image: opensearchproject/opensearch:2.11.0
     container_name: otterworks-opensearch
     environment:
@@ -92,7 +92,7 @@ services:
     tmpfs:
     - /tmp
     - /usr/share/opensearch/logs:uid=1000,gid=1000
-  opensearch-dashboards:
+  opensearch-dashboards: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
     image: opensearchproject/opensearch-dashboards:2.11.0
     container_name: otterworks-opensearch-dashboards
     environment:

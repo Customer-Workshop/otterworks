@@ -5,8 +5,9 @@ A collaborative file storage and document editing platform — functionally equi
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) v2+
-- ~8 GB of available RAM (for running all infrastructure and services locally)
+- ~12 GB of available RAM (for running all infrastructure and services locally)
 - GNU Make (optional, for shorthand commands)
+- Runs on both x86_64 and Apple Silicon (ARM64) — no Rosetta required
 
 Individual service development may also require the language toolchains listed in the [Services](#services) table below.
 
@@ -30,6 +31,8 @@ Or without Make:
 docker compose -f docker-compose.infra.yml up -d
 docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 ```
+
+On first run, `scripts/init-db.sql` creates the required Postgres databases and `scripts/localstack-init.sh` provisions S3 buckets, SQS queues, SNS topics, and DynamoDB tables in LocalStack automatically.
 
 To stop everything:
 
@@ -125,7 +128,7 @@ GitHub Actions workflows in `.github/workflows/`:
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
 | `ci.yml` | Push / PR to `main` | Lint, test, and build changed services (change-detection via path filters) |
-| `docker-build.yml` | Push / PR | Build and push Docker images to ECR |
+| `docker-build.yml` | Push to `main` / tags | Build and push Docker images to ECR |
 | `security-scan.yml` | Push / PR | SAST, dependency audit, and container scanning |
 
 ## Makefile Commands

@@ -16,11 +16,12 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=3s CMD wget --spider -q http://localhost:3000/ || exit 1
+HEALTHCHECK --interval=10s --timeout=3s CMD wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1
 RUN adduser -D -u 1001 appuser
 USER appuser
 
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
 # API_GATEWAY_URL default for runtime (can be overridden by Helm/docker-compose env)
 ENV API_GATEWAY_URL=http://api-gateway:8080
 CMD ["node", "server.js"]

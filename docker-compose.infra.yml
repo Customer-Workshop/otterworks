@@ -44,8 +44,8 @@ services:
     read_only: true
     tmpfs:
     - /tmp
-  localstack:
-    image: localstack/localstack:3.4
+  localstack: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
+    image: localstack/localstack:3.8
     container_name: otterworks-localstack
     environment:
       SERVICES: s3,sqs,sns,dynamodb,ses,cognito-idp,secretsmanager
@@ -67,15 +67,14 @@ services:
       retries: 5
     security_opt:
     - no-new-privileges:true
-    read_only: true
-    tmpfs:
-    - /tmp
-  opensearch:
+  opensearch: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
     image: opensearchproject/opensearch:2.11.0
     container_name: otterworks-opensearch
     environment:
       discovery.type: single-node
       plugins.security.disabled: 'true'
+      DISABLE_INSTALL_DEMO_CONFIG: 'true'
+      DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI: 'true'
       OPENSEARCH_JAVA_OPTS: -Xms256m -Xmx256m
     ports:
     - 9200:9200
@@ -90,11 +89,10 @@ services:
       retries: 5
     security_opt:
     - no-new-privileges:true
-    read_only: true
     tmpfs:
     - /tmp
-    - /usr/share/opensearch/logs
-  opensearch-dashboards:
+    - /usr/share/opensearch/logs:uid=1000,gid=1000
+  opensearch-dashboards: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
     image: opensearchproject/opensearch-dashboards:2.11.0
     container_name: otterworks-opensearch-dashboards
     environment:
@@ -107,7 +105,6 @@ services:
         condition: service_healthy
     security_opt:
     - no-new-privileges:true
-    read_only: true
     tmpfs:
     - /tmp
   prometheus:

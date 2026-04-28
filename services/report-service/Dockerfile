@@ -1,6 +1,6 @@
 # LEGACY: Uses JDK 8 (target: JDK 17+ or 21+)
 # Maven build instead of Gradle (matches legacy Java enterprise pattern)
-FROM maven:3.8.7-openjdk-8-slim AS builder
+FROM maven:3.8.7-eclipse-temurin-8 AS builder
 
 WORKDIR /app
 COPY pom.xml .
@@ -11,7 +11,7 @@ COPY src/ src/
 RUN mvn package -DskipTests -B
 
 # LEGACY: JRE 8 runtime (target: eclipse-temurin:17-jre or 21-jre)
-FROM openjdk:8-jre-slim
+FROM eclipse-temurin:8-jre
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 

@@ -1,4 +1,4 @@
-FROM sbtscala/scala-sbt:eclipse-temurin-17.0.10_7_1.9.9_3.4.0 AS builder
+FROM sbtscala/scala-sbt:eclipse-temurin-jammy-17.0.10_7_1.9.9_3.4.1 AS builder
 
 WORKDIR /app
 COPY build.sbt ./
@@ -8,12 +8,12 @@ RUN sbt update || true
 COPY src ./src
 RUN sbt assembly
 
-FROM eclipse-temurin:17-jre-alpine
-RUN apk --no-cache add curl
+FROM eclipse-temurin:17-jre-jammy
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/target/scala-3.4.0/analytics-service-assembly-*.jar app.jar
 
-RUN adduser -D -u 1001 appuser
+RUN useradd -r -u 1001 appuser
 USER appuser
 
 EXPOSE 8088

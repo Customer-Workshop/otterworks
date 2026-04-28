@@ -1,6 +1,6 @@
 FROM ruby:3.3-slim AS builder
 
-RUN apt-get update && apt-get install -y build-essential libpq-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y build-essential libpq-dev libyaml-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 RUN bundle config set --local without 'test development' && bundle install
@@ -16,4 +16,4 @@ USER appuser
 
 EXPOSE 8089
 HEALTHCHECK --interval=15s --timeout=5s CMD curl -f http://localhost:8089/health || exit 1
-CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0", "-p", "8089"]
+CMD ["sh", "-c", "bundle exec rails db:migrate; bundle exec rails server -b 0.0.0.0 -p 8089"]

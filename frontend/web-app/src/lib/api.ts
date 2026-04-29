@@ -53,8 +53,16 @@ export const filesApi = {
   ): Promise<PaginatedResponse<FileItem>> => {
     const params: Record<string, string | number> = { page, pageSize };
     if (parentId) params.parentId = parentId;
-    const { data } = await apiClient.get<PaginatedResponse<FileItem>>("/files", { params });
-    return data;
+    const { data } = await apiClient.get<any>("/files", { params });
+    // Backend returns { files: [...], total, page, pageSize } — normalise to PaginatedResponse
+    const items: FileItem[] = data.files ?? data.data ?? [];
+    return {
+      data: items,
+      total: data.total ?? items.length,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+    };
   },
   get: async (id: string): Promise<FileItem> => {
     const { data } = await apiClient.get<FileItem>(`/files/${id}`);

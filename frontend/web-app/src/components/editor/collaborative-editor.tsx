@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -56,6 +56,8 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
   }, [documentId, ydoc]);
 
   const [contentLoaded, setContentLoaded] = useState(false);
+  // Suppress onUpdate callback while we inject saved content to avoid writing it back
+  const suppressSaveRef = useRef(false);
 
   const editor = useEditor(
     {
@@ -81,7 +83,9 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
         },
       },
       onUpdate: ({ editor: ed }) => {
-        onUpdate?.(ed.getHTML());
+        if (!suppressSaveRef.current) {
+          onUpdate?.(ed.getHTML());
+        }
       },
     },
     [provider]
@@ -95,7 +99,10 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
         const currentContent = editor.getHTML();
         // Only inject saved content if the editor is still empty (no collab content arrived)
         if (!currentContent || currentContent === "<p></p>") {
+          suppressSaveRef.current = true;
           editor.commands.setContent(initialContent);
+          // Clear suppression after a microtask so Yjs observer fires are caught
+          queueMicrotask(() => { suppressSaveRef.current = false; });
         }
         setContentLoaded(true);
       }, 500);

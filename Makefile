@@ -83,10 +83,10 @@ test: ## Run tests for all services
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm test
 
 test-api-flows: ## Run black-box API flow tests against the local API gateway
-	python3 -m pytest tests/api
+	UV_PROJECT_ENVIRONMENT=.venv uv run python -m pytest tests/api
 
 test-api-flows-collect: ## Collect black-box API flow tests without running them
-	python3 -m pytest tests/api --collect-only -q
+	UV_PROJECT_ENVIRONMENT=.venv uv run python -m pytest tests/api --collect-only -q
 
 lint: ## Lint all services
 	@echo "=== API Gateway ===" && cd services/api-gateway && golangci-lint run

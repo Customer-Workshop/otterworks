@@ -1,6 +1,7 @@
 package com.otterworks.analytics.api
 
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import akka.http.scaladsl.server.Directives.concat
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
 import com.otterworks.analytics.config.PostgresConfig
@@ -51,6 +52,23 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
       val response = responseAs[AcceptedResponse]
       response.status shouldBe "accepted"
       response.eventId should not be empty
+    }
+  }
+
+  it should "work when event routes are mounted with analytics routes" in {
+    val (eventRoutes, analyticsRoutes, _) = createRoutes()
+    val routes = concat(eventRoutes.routes, analyticsRoutes.routes)
+    val payload = TrackEventRequest(
+      eventType = "document.created",
+      userId = "user-1",
+      resourceId = "doc-1",
+      resourceType = "document",
+      metadata = Some(Map("title" -> "Test"))
+    ).toJson.compactPrint
+    val entity = HttpEntity(ContentTypes.`application/json`, payload)
+
+    Post("/api/v1/analytics/events", entity) ~> routes ~> check {
+      status shouldBe StatusCodes.Accepted
     }
   }
 

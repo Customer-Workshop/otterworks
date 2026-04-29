@@ -149,13 +149,13 @@ public class ReportController {
         }
 
         if (report.getStatus() == ReportStatus.FAILED || report.getFilePath() == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.notFound().build();
         }
 
         File file = new File(report.getFilePath());
         if (!file.exists()) {
-            logger.error("Report file missing: {}", report.getFilePath());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            logger.warn("Report file missing: {}", report.getFilePath());
+            return ResponseEntity.notFound().build();
         }
 
         try {
@@ -175,7 +175,7 @@ public class ReportController {
 
         } catch (IOException e) {
             logger.error("Failed to read report file {}: {}", report.getFilePath(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.notFound().build();
         }
     }
 

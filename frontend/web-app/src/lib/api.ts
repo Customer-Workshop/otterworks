@@ -96,7 +96,7 @@ export const filesApi = {
       const token = localStorage.getItem("otter_access_token");
       if (token) {
         try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
+          const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/')));
           if (payload.sub) formData.append("owner_id", payload.sub);
         } catch {
           // token decode failed — let the server handle it

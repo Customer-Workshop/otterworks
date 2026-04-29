@@ -1,5 +1,23 @@
 import axios from "axios";
 
+// ── snake_case → camelCase helpers ────────────────────────────
+function snakeToCamel(s: string): string {
+  return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function transformKeys(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(transformKeys);
+  if (obj !== null && typeof obj === "object" && !(obj instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+        snakeToCamel(k),
+        transformKeys(v),
+      ])
+    );
+  }
+  return obj;
+}
+
 // API calls go through Next.js rewrites (same origin) to avoid CORS issues.
 // The rewrite proxy forwards /api/v1/* to the API gateway (configured via API_GATEWAY_URL env var).
 export const apiClient = axios.create({
@@ -20,7 +38,12 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data) {
+      response.data = transformKeys(response.data);
+    }
+    return response;
+  },
   async (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const url = error.config?.url || "";

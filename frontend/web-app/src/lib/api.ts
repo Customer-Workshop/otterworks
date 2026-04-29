@@ -64,6 +64,20 @@ export const filesApi = {
     const formData = new FormData();
     formData.append("file", file);
     if (parentId) formData.append("parentId", parentId);
+
+    // The file-service requires owner_id — extract it from the JWT sub claim
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("otter_access_token");
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          if (payload.sub) formData.append("owner_id", payload.sub);
+        } catch {
+          // token decode failed — let the server handle it
+        }
+      }
+    }
+
     const { data } = await apiClient.post<FileItem>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });

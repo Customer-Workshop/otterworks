@@ -25,12 +25,13 @@ import { cn } from "@/lib/utils";
 
 interface CollaborativeEditorProps {
   documentId: string;
+  initialContent?: string;
   onUpdate?: (content: string) => void;
 }
 
 const COLLAB_WS_URL = process.env.NEXT_PUBLIC_COLLAB_WS_URL || "ws://localhost:8085";
 
-export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ documentId, initialContent, onUpdate }: CollaborativeEditorProps) {
   const { user } = useAuthStore();
   const [ydoc] = useState(() => new Y.Doc());
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -53,6 +54,8 @@ export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEdito
       wsProvider.destroy();
     };
   }, [documentId, ydoc]);
+
+  const [contentLoaded, setContentLoaded] = useState(false);
 
   const editor = useEditor(
     {
@@ -83,6 +86,22 @@ export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEdito
     },
     [provider]
   );
+
+  // Load saved content from the API when the editor is ready and the Yjs doc is empty
+  useEffect(() => {
+    if (editor && initialContent && !contentLoaded) {
+      // Wait a tick so Yjs collaboration sync can happen first
+      const timer = setTimeout(() => {
+        const currentContent = editor.getHTML();
+        // Only inject saved content if the editor is still empty (no collab content arrived)
+        if (!currentContent || currentContent === "<p></p>") {
+          editor.commands.setContent(initialContent);
+        }
+        setContentLoaded(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [editor, initialContent, contentLoaded]);
 
   if (!editor) {
     return (

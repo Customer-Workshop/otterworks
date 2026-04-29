@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test lint deploy-dev teardown-dev seed
+.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed
 
 SHELL := /bin/bash
 
@@ -81,6 +81,12 @@ test: ## Run tests for all services
 	@echo "=== Audit Service (C#) ===" && cd services/audit-service && dotnet test
 	@echo "=== Web Frontend ===" && cd frontend/web-app && npm test
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm test
+
+test-api-flows: ## Run black-box API flow tests against the local API gateway
+	python3 -m pytest tests/api
+
+test-api-flows-collect: ## Collect black-box API flow tests without running them
+	python3 -m pytest tests/api --collect-only -q
 
 lint: ## Lint all services
 	@echo "=== API Gateway ===" && cd services/api-gateway && golangci-lint run

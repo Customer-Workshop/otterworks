@@ -81,8 +81,8 @@ export const filesApi = {
     page = 1,
     pageSize = 50
   ): Promise<PaginatedResponse<FileItem>> => {
-    const params: Record<string, string | number> = { page, pageSize };
-    if (parentId) params.parentId = parentId;
+    const params: Record<string, string | number> = { page, page_size: pageSize };
+    if (parentId) params.folder_id = parentId;
     const { data } = await apiClient.get<any>("/files", { params });
     // Backend returns { files: [...], total, page, pageSize } — normalise to PaginatedResponse
     const rawItems = data.files ?? data.data ?? [];
@@ -117,7 +117,7 @@ export const filesApi = {
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
     const ownerId = getOwnerIdFromJwt();
-    const { data } = await apiClient.post<any>("/files/folder", {
+    const { data } = await apiClient.post<any>("/folders", {
       name,
       parent_id: parentId ?? null,
       owner_id: ownerId,

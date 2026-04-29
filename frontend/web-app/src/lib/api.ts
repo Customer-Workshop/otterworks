@@ -44,6 +44,23 @@ export const authApi = {
   },
 };
 
+// ── Helpers ───────────────────────────────────────────────────
+// Backend file objects use different field names — normalise to frontend FileItem shape.
+function normalizeFileItem(raw: Record<string, unknown>): FileItem {
+  return {
+    ...raw,
+    size: (raw.sizeBytes ?? raw.size ?? 0) as number,
+    mimeType: (raw.mimeType ?? raw.contentType ?? "") as string,
+    parentId: (raw.folderId ?? raw.parentId ?? null) as string | null,
+    isFolder: (raw.isFolder ?? false) as boolean,
+    ownerName: (raw.ownerName ?? "") as string,
+    path: (raw.path ?? "") as string,
+    sharedWith: (raw.sharedWith ?? []) as SharedUser[],
+    tags: (raw.tags ?? []) as string[],
+    versions: (raw.versions ?? []) as FileItem["versions"],
+  } as FileItem;
+}
+
 // ── Files ─────────────────────────────────────────────────────
 export const filesApi = {
   list: async (
@@ -55,7 +72,8 @@ export const filesApi = {
     if (parentId) params.parentId = parentId;
     const { data } = await apiClient.get<any>("/files", { params });
     // Backend returns { files: [...], total, page, pageSize } — normalise to PaginatedResponse
-    const items: FileItem[] = data.files ?? data.data ?? [];
+    const rawItems = data.files ?? data.data ?? [];
+    const items: FileItem[] = rawItems.map(normalizeFileItem);
     return {
       data: items,
       total: data.total ?? items.length,
@@ -86,10 +104,12 @@ export const filesApi = {
       }
     }
 
-    const { data } = await apiClient.post<FileItem>("/files/upload", formData, {
+    const { data } = await apiClient.post<any>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return data;
+    // Backend wraps response in { file: {...} }
+    const raw = data.file ?? data;
+    return normalizeFileItem(raw);
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
     const { data } = await apiClient.post<FileItem>("/files/folder", { name, parentId });

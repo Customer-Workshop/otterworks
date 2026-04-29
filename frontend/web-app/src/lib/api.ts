@@ -83,8 +83,8 @@ export const filesApi = {
     };
   },
   get: async (id: string): Promise<FileItem> => {
-    const { data } = await apiClient.get<FileItem>(`/files/${id}`);
-    return data;
+    const { data } = await apiClient.get<any>(`/files/${id}`);
+    return normalizeFileItem(data);
   },
   upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
     const formData = new FormData();
@@ -112,8 +112,8 @@ export const filesApi = {
     return normalizeFileItem(raw);
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
-    const { data } = await apiClient.post<FileItem>("/files/folder", { name, parentId });
-    return data;
+    const { data } = await apiClient.post<any>("/files/folder", { name, parentId });
+    return normalizeFileItem(data);
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}`);
@@ -125,25 +125,27 @@ export const filesApi = {
     await apiClient.post(`/files/${id}/restore`);
   },
   getShared: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<PaginatedResponse<FileItem>>("/files/shared", {
+    const { data } = await apiClient.get<any>("/files/shared", {
       params: { page, pageSize },
     });
-    return data;
+    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    return { ...data, data: items };
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<PaginatedResponse<FileItem>>("/files/trash", {
+    const { data } = await apiClient.get<any>("/files/trash", {
       params: { page, pageSize },
     });
-    return data;
+    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    return { ...data, data: items };
   },
   permanentDelete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}/permanent`);
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
-    const { data } = await apiClient.get<FileItem[]>("/files/recent", {
+    const { data } = await apiClient.get<any[]>("/files/recent", {
       params: { limit },
     });
-    return data;
+    return (Array.isArray(data) ? data : []).map(normalizeFileItem);
   },
 };
 

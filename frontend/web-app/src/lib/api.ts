@@ -89,7 +89,7 @@ export const filesApi = {
   upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
     const formData = new FormData();
     formData.append("file", file);
-    if (parentId) formData.append("parentId", parentId);
+    if (parentId) formData.append("folder_id", parentId);
 
     // The file-service requires owner_id — extract it from the JWT sub claim
     if (typeof window !== "undefined") {

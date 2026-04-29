@@ -68,7 +68,9 @@ Then("I should see a {string} button", async function (this: OtterWorld, buttonT
 });
 
 Then("the URL should contain {string}", async function (this: OtterWorld, path: string) {
-  await expect(this.page).toHaveURL(new RegExp(path), { timeout: 10_000 });
+  await this.page.waitForTimeout(1_000);
+  const currentUrl = this.page.url();
+  expect(currentUrl).toContain(path);
 });
 
 Then(

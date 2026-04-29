@@ -88,9 +88,10 @@ func main() {
 
 	// JWT validation
 	r.Use(middleware.JWTAuth(middleware.JWTConfig{
-		Secret:     cfg.JWTSecret,
-		PublicPath: middleware.DefaultPublicPaths(),
-		PrefixPath: middleware.DefaultPrefixPaths(),
+		Secret:              cfg.JWTSecret,
+		PublicPath:          middleware.DefaultPublicPaths(),
+		PrefixPath:          middleware.DefaultPrefixPaths(),
+		ProtectedPrefixPath: routePrefixes(routes),
 	}))
 
 	// Health check
@@ -145,6 +146,14 @@ func main() {
 	}
 
 	logger.Info().Msg("server exited")
+}
+
+func routePrefixes(routes []proxy.Route) []string {
+	prefixes := make([]string, 0, len(routes))
+	for _, route := range routes {
+		prefixes = append(prefixes, route.Prefix)
+	}
+	return prefixes
 }
 
 // initTracer sets up the OpenTelemetry trace provider.

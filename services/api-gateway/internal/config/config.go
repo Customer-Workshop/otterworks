@@ -99,6 +99,7 @@ func (c *Config) ServiceRoutes() map[string]string {
 		"/api/v1/documents":     c.DocumentServiceURL,
 		"/api/v1/templates":     c.DocumentServiceURL,
 		"/api/v1/collab":        c.CollabServiceURL,
+		"/socket.io":            c.CollabServiceURL,
 		"/api/v1/notifications": c.NotificationServiceURL,
 		"/api/v1/preferences":   c.NotificationServiceURL,
 		"/api/v1/search":        c.SearchServiceURL,

@@ -109,6 +109,44 @@ func TestJWTAuth_MissingToken(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+func TestJWTAuth_UnmatchedProtectedPrefixSkipsValidation(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:              testSecret,
+		PublicPath:          DefaultPublicPaths(),
+		PrefixPath:          DefaultPrefixPaths(),
+		ProtectedPrefixPath: []string{"/api/v1/files"},
+	}
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/does-not-exist", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestJWTAuth_MatchedProtectedPrefixRequiresAuth(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:              testSecret,
+		PublicPath:          DefaultPublicPaths(),
+		PrefixPath:          DefaultPrefixPaths(),
+		ProtectedPrefixPath: []string{"/api/v1/files"},
+	}
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/files/list", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}
+
 func TestJWTAuth_InvalidToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,

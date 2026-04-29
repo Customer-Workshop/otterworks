@@ -84,10 +84,6 @@ const io = new SocketIOServer(httpServer, {
   },
   pingInterval: 25000,
   pingTimeout: 20000,
-  connectionStateRecovery: {
-    maxDisconnectionDuration: 120000,
-    skipMiddlewares: false,
-  },
 });
 
 // JWT auth middleware for WebSocket

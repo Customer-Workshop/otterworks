@@ -44,6 +44,7 @@ function DocumentEditorContent() {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [hasContent, setHasContent] = useState(false);
   const latestContentRef = useRef<string | null>(null);
   const documentIdRef = useRef(documentId);
@@ -238,23 +239,34 @@ function DocumentEditorContent() {
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && shareEmail.trim()) {
-                  documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }]).catch(() => {});
-                  setShareEmail("");
+                  setShareStatus("sending");
+                  documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }])
+                    .then(() => { setShareStatus("sent"); setShareEmail(""); setTimeout(() => setShareStatus("idle"), 2000); })
+                    .catch(() => { setShareStatus("error"); setTimeout(() => setShareStatus("idle"), 3000); });
                 }
               }}
             />
             <button
               onClick={() => {
                 if (shareEmail.trim()) {
-                  documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }]).catch(() => {});
-                  setShareEmail("");
+                  setShareStatus("sending");
+                  documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }])
+                    .then(() => { setShareStatus("sent"); setShareEmail(""); setTimeout(() => setShareStatus("idle"), 2000); })
+                    .catch(() => { setShareStatus("error"); setTimeout(() => setShareStatus("idle"), 3000); });
                 }
               }}
-              className="px-4 py-2 bg-otter-600 text-white rounded-lg text-sm hover:bg-otter-700 transition"
+              disabled={shareStatus === "sending"}
+              className="px-4 py-2 bg-otter-600 text-white rounded-lg text-sm hover:bg-otter-700 transition disabled:opacity-50"
             >
-              Invite
+              {shareStatus === "sending" ? "Sending..." : "Invite"}
             </button>
           </div>
+          {shareStatus === "sent" && (
+            <p className="text-sm text-green-600">Invite sent successfully</p>
+          )}
+          {shareStatus === "error" && (
+            <p className="text-sm text-red-600">Failed to send invite. Please try again.</p>
+          )}
           <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
             <button
               onClick={() => {

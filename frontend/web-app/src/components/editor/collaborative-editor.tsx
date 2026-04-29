@@ -101,8 +101,8 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
         if (!currentContent || currentContent === "<p></p>") {
           suppressSaveRef.current = true;
           editor.commands.setContent(initialContent);
-          // Clear suppression after a microtask so Yjs observer fires are caught
-          queueMicrotask(() => { suppressSaveRef.current = false; });
+          // Clear suppression after a short delay so any async Yjs observer fires are also caught
+          setTimeout(() => { suppressSaveRef.current = false; }, 50);
         }
         setContentLoaded(true);
       }, 500);

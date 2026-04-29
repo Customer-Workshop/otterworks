@@ -45,6 +45,19 @@ export const authApi = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────
+// Extract the user ID from the JWT stored in localStorage.
+function getOwnerIdFromJwt(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("otter_access_token");
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Backend file objects use different field names — normalise to frontend FileItem shape.
 function normalizeFileItem(raw: Record<string, unknown>): FileItem {
   return {
@@ -92,17 +105,8 @@ export const filesApi = {
     if (parentId) formData.append("folder_id", parentId);
 
     // The file-service requires owner_id — extract it from the JWT sub claim
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("otter_access_token");
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/')));
-          if (payload.sub) formData.append("owner_id", payload.sub);
-        } catch {
-          // token decode failed — let the server handle it
-        }
-      }
-    }
+    const ownerId = getOwnerIdFromJwt();
+    if (ownerId) formData.append("owner_id", ownerId);
 
     const { data } = await apiClient.post<any>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -112,7 +116,12 @@ export const filesApi = {
     return normalizeFileItem(raw);
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
-    const { data } = await apiClient.post<any>("/files/folder", { name, parentId });
+    const ownerId = getOwnerIdFromJwt();
+    const { data } = await apiClient.post<any>("/files/folder", {
+      name,
+      parent_id: parentId ?? null,
+      owner_id: ownerId,
+    });
     return normalizeFileItem(data);
   },
   delete: async (id: string): Promise<void> => {

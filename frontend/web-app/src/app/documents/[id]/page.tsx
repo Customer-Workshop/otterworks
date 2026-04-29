@@ -238,7 +238,7 @@ function DocumentEditorContent() {
               placeholder="Enter email address"
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && shareEmail.trim()) {
+                if (e.key === "Enter" && shareEmail.trim() && shareStatus !== "sending") {
                   setShareStatus("sending");
                   documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }])
                     .then(() => { setShareStatus("sent"); setShareEmail(""); setTimeout(() => setShareStatus("idle"), 2000); })

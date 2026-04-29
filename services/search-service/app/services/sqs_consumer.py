@@ -98,6 +98,20 @@ class SQSConsumer:
             if "Message" in body and "TopicArn" in body:
                 body = json.loads(body["Message"])
 
+            if "event_type" in body and "payload" in body:
+                action_map = {
+                    "document_created": "index_document",
+                    "document_updated": "index_document",
+                    "document_deleted": "delete",
+                    "file_created": "index_file",
+                    "file_updated": "index_file",
+                    "file_deleted": "delete",
+                }
+                body = {
+                    "action": action_map.get(body["event_type"], body["event_type"]),
+                    "data": body["payload"],
+                }
+
             result = self.indexer.process_event(body)
             logger.info("sqs_message_processed", result=result)
 

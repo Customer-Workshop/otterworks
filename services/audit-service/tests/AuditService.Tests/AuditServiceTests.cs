@@ -122,10 +122,10 @@ public class AuditServiceTests
         };
 
         _mockRepository
-            .Setup(r => r.QueryEventsAsync("user-1", "create", null, null, null, 1, 20))
+            .Setup(r => r.QueryEventsAsync("user-1", "create", null, null, null, null, 1, 20))
             .ReturnsAsync(page);
 
-        var result = await _service.QueryEventsAsync("user-1", "create", null, null, null, 1, 20);
+        var result = await _service.QueryEventsAsync("user-1", "create", null, null, null, null, 1, 20);
 
         Assert.Equal(1, result.Total);
         Assert.Single(result.Events);

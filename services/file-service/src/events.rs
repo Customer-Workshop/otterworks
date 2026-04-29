@@ -13,11 +13,13 @@ pub struct EventPublisher {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileEvent {
     pub event_type: String,
     pub file_id: String,
     pub owner_id: String,
     pub folder_id: Option<String>,
+    #[serde(rename = "sharedWithUserId")]
     pub shared_with: Option<String>,
     pub timestamp: String,
 }
@@ -154,6 +156,9 @@ mod tests {
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("file_uploaded"));
+        assert!(json.contains("eventType"));
+        assert!(json.contains("fileId"));
+        assert!(json.contains("ownerId"));
     }
 
     #[test]
@@ -169,5 +174,6 @@ mod tests {
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains(&folder.to_string()));
+        assert!(json.contains("folderId"));
     }
 }

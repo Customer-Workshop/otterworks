@@ -26,6 +26,18 @@ def _word_count(text: str) -> int:
     return len(text.split()) if text else 0
 
 
+def _document_index_payload(document: Document) -> dict[str, object]:
+    return {
+        "id": document.id,
+        "title": document.title,
+        "content": document.content,
+        "owner_id": document.owner_id,
+        "tags": [],
+        "created_at": document.created_at,
+        "updated_at": document.updated_at,
+    }
+
+
 class DocumentService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -58,7 +70,7 @@ class DocumentService:
 
         await event_publisher.publish(
             "document_created",
-            {"document_id": document.id, "owner_id": document.owner_id},
+            _document_index_payload(document),
         )
         return document
 
@@ -120,7 +132,7 @@ class DocumentService:
 
         await event_publisher.publish(
             "document_updated",
-            {"document_id": document.id, "version": document.version},
+            _document_index_payload(document),
         )
         return document
 
@@ -161,7 +173,7 @@ class DocumentService:
         if changed:
             await event_publisher.publish(
                 "document_updated",
-                {"document_id": document.id, "version": document.version},
+                _document_index_payload(document),
             )
         return document
 
@@ -173,7 +185,7 @@ class DocumentService:
         await self.db.commit()
 
         await event_publisher.publish(
-            "document_deleted", {"document_id": document_id}
+            "document_deleted", {"id": document_id, "type": "document"}
         )
         return True
 
@@ -183,7 +195,7 @@ class DocumentService:
         result = await self.db.execute(
             select(DocumentVersion)
             .where(DocumentVersion.document_id == document_id)
-            .order_by(DocumentVersion.version_number.desc())
+            .order_by(DocumentVersion.version_number.asc())
         )
         return list(result.scalars().all())
 
@@ -223,8 +235,7 @@ class DocumentService:
         await event_publisher.publish(
             "document_updated",
             {
-                "document_id": document.id,
-                "version": document.version,
+                **_document_index_payload(document),
                 "restored_from": version_id,
             },
         )

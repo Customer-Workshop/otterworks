@@ -114,6 +114,7 @@ services:
       OTEL_SERVICE_NAME: file-service
       S3_BUCKET: otterworks-files
       DYNAMODB_TABLE: otterworks-file-metadata
+      SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
     depends_on:
       localstack:
         condition: service_healthy
@@ -154,6 +155,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: document-service
       DOC_SVC_DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
+      DOC_SVC_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
+      DOC_SVC_AWS_ENDPOINT_URL: http://localstack:4566
+      DOC_SVC_SNS_ENABLED: 'true'
+      JWT_SECRET: dev-jwt-secret-otterworks-2024-change-in-production
     depends_on:
       postgres:
         condition: service_healthy
@@ -194,6 +199,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: collab-service
       HTTP_PORT: 8084
+      JWT_SECRET: dev-jwt-secret-otterworks-2024-change-in-production
     depends_on:
       redis:
         condition: service_healthy
@@ -235,6 +241,8 @@ services:
       OTEL_SERVICE_NAME: notification-service
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-notifications
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
+      DYNAMODB_TABLE_NOTIFICATIONS: otterworks-notifications
+      DYNAMODB_TABLE_PREFERENCES: otterworks-notification-preferences
     depends_on:
       localstack:
         condition: service_healthy
@@ -274,6 +282,8 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: search-service
+      SQS_ENABLED: 'true'
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-search-events
     depends_on:
       opensearch:
         condition: service_healthy
@@ -449,6 +459,9 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: audit-service
       DYNAMODB_TABLE: otterworks-audit-events
+      Aws__EndpointUrl: http://localstack:4566
+      Aws__DynamoDbTable: otterworks-audit-events
+      Aws__S3ArchiveBucket: otterworks-audit-archive
       ASPNETCORE_URLS: http://+:8090
     depends_on:
       localstack:

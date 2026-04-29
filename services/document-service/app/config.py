@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
 
     sns_topic_arn: str = ""
+    aws_endpoint_url: str = ""
     aws_region: str = "us-east-1"
     sns_enabled: bool = False
 

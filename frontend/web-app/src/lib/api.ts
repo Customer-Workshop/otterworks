@@ -129,14 +129,26 @@ export const filesApi = {
       params: { page, pageSize },
     });
     const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
-    return { ...data, data: items };
+    return {
+      data: items,
+      total: data.total ?? items.length,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+    };
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
     const { data } = await apiClient.get<any>("/files/trash", {
       params: { page, pageSize },
     });
     const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
-    return { ...data, data: items };
+    return {
+      data: items,
+      total: data.total ?? items.length,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+    };
   },
   permanentDelete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}/permanent`);

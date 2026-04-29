@@ -5,7 +5,7 @@ RSpec.describe StorageQuota do
     subject { build(:storage_quota) }
 
     it { is_expected.to validate_presence_of(:user_id) }
-    it { is_expected.to validate_uniqueness_of(:user_id) }
+    it { is_expected.to validate_uniqueness_of(:user_id).case_insensitive }
     it { is_expected.to validate_presence_of(:quota_bytes) }
     it { is_expected.to validate_numericality_of(:quota_bytes).is_greater_than(0) }
     it { is_expected.to validate_presence_of(:used_bytes) }

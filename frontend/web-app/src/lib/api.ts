@@ -135,7 +135,7 @@ export const filesApi = {
   },
   getShared: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
     const { data } = await apiClient.get<any>("/files/shared", {
-      params: { page, pageSize },
+      params: { page, page_size: pageSize },
     });
     const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
     return {
@@ -148,7 +148,7 @@ export const filesApi = {
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
     const { data } = await apiClient.get<any>("/files/trash", {
-      params: { page, pageSize },
+      params: { page, page_size: pageSize },
     });
     const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
     return {

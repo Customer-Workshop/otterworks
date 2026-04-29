@@ -1,4 +1,6 @@
 class StorageQuota < ApplicationRecord
+  self.table_name = 'storage_quotas'
+
   TIERS = %w[free basic pro enterprise].freeze
   TIER_LIMITS = {
     'free' => 5.gigabytes,

@@ -28,18 +28,16 @@ export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps
     setContent(null);
     setUseIframeFallback(false);
 
-    fetch(presignedUrl)
+    fetch(presignedUrl, {
+      headers: { Range: `bytes=0-${MAX_PREVIEW_SIZE - 1}` },
+    })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // 206 = partial content (Range honored), 200 = full file (Range ignored)
+        if (!res.ok && res.status !== 206) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
         if (cancelled) return;
-        if (text.length > MAX_PREVIEW_SIZE) {
-          setContent(text.slice(0, MAX_PREVIEW_SIZE));
-          setTruncated(true);
-        } else {
-          setContent(text);
-          setTruncated(false);
-        }
+        setContent(text);
+        setTruncated(res.status === 206);
       })
       .catch(() => {
         if (!cancelled) setUseIframeFallback(true);

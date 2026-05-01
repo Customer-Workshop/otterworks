@@ -4,6 +4,7 @@ import { useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { useDropzone } from "react-dropzone";
 import {
   LayoutGrid,
   List,
@@ -116,8 +117,24 @@ function FileBrowserContent() {
   const files = data?.data ?? [];
   const items = [...folders, ...files];
 
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop: (files) => handleUpload(files),
+    noClick: true,
+    noKeyboard: true,
+    multiple: true,
+  });
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div {...getRootProps()} className="max-w-7xl mx-auto space-y-6 relative">
+      {isDragActive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-otter-600/10 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border-2 border-dashed border-otter-500 p-12 text-center">
+            <Upload size={48} className="mx-auto mb-4 text-otter-600" />
+            <p className="text-lg font-semibold text-gray-900">Drop files to upload</p>
+            <p className="text-sm text-gray-500 mt-1">Files will be added to the current folder</p>
+          </div>
+        </div>
+      )}
       <Breadcrumb items={breadcrumbs} />
 
       {/* Header */}

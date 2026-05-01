@@ -13,19 +13,20 @@ interface TextFilePreviewProps {
 export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [truncated, setTruncated] = useState(false);
+  // Falls back to iframe when fetch() is blocked (e.g. CORS on cross-origin S3 URLs)
+  const [useIframeFallback, setUseIframeFallback] = useState(false);
 
   useEffect(() => {
     if (!presignedUrl) {
       setLoading(false);
-      setError("No download URL available");
       return;
     }
 
     let cancelled = false;
     setLoading(true);
-    setError(null);
+    setContent(null);
+    setUseIframeFallback(false);
 
     fetch(presignedUrl)
       .then(async (res) => {
@@ -40,8 +41,8 @@ export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps
           setTruncated(false);
         }
       })
-      .catch((err) => {
-        if (!cancelled) setError(err.message ?? "Failed to load file");
+      .catch(() => {
+        if (!cancelled) setUseIframeFallback(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -61,11 +62,33 @@ export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps
     );
   }
 
-  if (error || content === null) {
+  if (!presignedUrl) {
     return (
       <div className="text-center py-8">
         <AlertCircle size={48} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">{error ?? "Could not load preview"}</p>
+        <p className="text-sm text-gray-500">No download URL available</p>
+      </div>
+    );
+  }
+
+  if (useIframeFallback) {
+    return (
+      <div className="w-full">
+        <iframe
+          src={presignedUrl}
+          className="w-full min-h-[500px] bg-white rounded-lg border border-gray-200"
+          sandbox="allow-same-origin"
+          title={`Preview of ${fileName}`}
+        />
+      </div>
+    );
+  }
+
+  if (content === null) {
+    return (
+      <div className="text-center py-8">
+        <AlertCircle size={48} className="text-gray-300 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Could not load preview</p>
       </div>
     );
   }

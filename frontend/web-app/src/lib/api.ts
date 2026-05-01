@@ -123,9 +123,7 @@ export const filesApi = {
     page = 1,
     pageSize = 50
   ): Promise<PaginatedResponse<FileItem>> => {
-<<<<<<< HEAD
-    // file-service uses folder_id, not parentId
-    const params: Record<string, string | number> = { page, pageSize };
+    const params: Record<string, string | number> = { page, page_size: pageSize };
     if (parentId) params.folder_id = parentId;
     const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
     return {
@@ -139,50 +137,22 @@ export const filesApi = {
   get: async (id: string): Promise<FileItem> => {
     const { data } = await apiClient.get<RawFileItem>(`/files/${id}`);
     return mapRawFile(data);
-=======
-    const params: Record<string, string | number> = { page, page_size: pageSize };
-    if (parentId) params.folder_id = parentId;
-    const { data } = await apiClient.get<any>("/files", { params });
-    // Backend returns { files: [...], total, page, pageSize } — normalise to PaginatedResponse
-    const rawItems = data.files ?? data.data ?? [];
-    const items: FileItem[] = rawItems.map(normalizeFileItem);
-    return {
-      data: items,
-      total: data.total ?? items.length,
-      page: data.page ?? page,
-      pageSize: data.pageSize ?? pageSize,
-      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
-    };
-  },
-  get: async (id: string): Promise<FileItem> => {
-    const { data } = await apiClient.get<any>(`/files/${id}`);
-    return normalizeFileItem(data);
->>>>>>> origin/main
   },
   upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
     const formData = new FormData();
     formData.append("file", file);
-<<<<<<< HEAD
-    // file-service uses folder_id, not parentId
-    if (parentId) formData.append("folder_id", parentId);
-    const { data } = await apiClient.post<{ file: RawFileItem }>("/files/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return mapRawFile(data.file);
-=======
     if (parentId) formData.append("folder_id", parentId);
 
     // The file-service requires owner_id — extract it from the JWT sub claim
     const ownerId = getOwnerIdFromJwt();
     if (ownerId) formData.append("owner_id", ownerId);
 
-    const { data } = await apiClient.post<any>("/files/upload", formData, {
+    const { data } = await apiClient.post<{ file: RawFileItem }>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     // Backend wraps response in { file: {...} }
-    const raw = data.file ?? data;
-    return normalizeFileItem(raw);
->>>>>>> origin/main
+    const raw = data.file ?? (data as unknown as RawFileItem);
+    return mapRawFile(raw);
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
     const ownerId = getOwnerIdFromJwt();
@@ -232,22 +202,10 @@ export const filesApi = {
     await apiClient.delete(`/files/${id}/permanent`);
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
-<<<<<<< HEAD
-    // The file-service has no /recent endpoint; fetch the first page and
-    // return the most recently uploaded files sorted by createdAt descending.
-    const { data } = await apiClient.get<RawFileListResponse>("/files", {
-      params: { page: 1, pageSize: 50 },
-    });
-    return (data.files ?? [])
-      .map(mapRawFile)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, limit);
-=======
     const { data } = await apiClient.get<any[]>("/files/recent", {
       params: { limit },
     });
     return (Array.isArray(data) ? data : []).map(normalizeFileItem);
->>>>>>> origin/main
   },
 };
 

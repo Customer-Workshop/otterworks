@@ -114,11 +114,8 @@ services:
       OTEL_SERVICE_NAME: file-service
       S3_BUCKET: otterworks-files
       DYNAMODB_TABLE: otterworks-file-metadata
-<<<<<<< HEAD
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
-=======
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
->>>>>>> origin/main
     depends_on:
       localstack:
         condition: service_healthy
@@ -159,14 +156,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: document-service
       DOC_SVC_DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
-<<<<<<< HEAD
       DOC_SVC_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
       DOC_SVC_AWS_ENDPOINT_URL: http://localstack:4566
       DOC_SVC_SNS_ENABLED: 'true'
-      JWT_SECRET: dev-jwt-secret-otterworks-2024-change-in-production
-=======
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
->>>>>>> origin/main
     depends_on:
       postgres:
         condition: service_healthy
@@ -207,11 +200,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: collab-service
       HTTP_PORT: 8084
-<<<<<<< HEAD
-      JWT_SECRET: dev-jwt-secret-otterworks-2024-change-in-production
-=======
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
->>>>>>> origin/main
     depends_on:
       redis:
         condition: service_healthy
@@ -253,12 +242,9 @@ services:
       OTEL_SERVICE_NAME: notification-service
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-notifications
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
-<<<<<<< HEAD
       DYNAMODB_TABLE_NOTIFICATIONS: otterworks-notifications
       DYNAMODB_TABLE_PREFERENCES: otterworks-notification-preferences
-=======
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
->>>>>>> origin/main
     depends_on:
       localstack:
         condition: service_healthy
@@ -298,12 +284,9 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: search-service
-<<<<<<< HEAD
       SQS_ENABLED: 'true'
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-search-events
-=======
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
->>>>>>> origin/main
     depends_on:
       opensearch:
         condition: service_healthy

@@ -204,12 +204,13 @@ function FileBrowserContent() {
     if (ids.length === 0) return;
     const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
     const fileIds = ids.filter((id) => !folderIds.includes(id));
-    let deleted = 0;
+    let trashedFiles = 0;
+    let deletedFolders = 0;
     let failed = 0;
     for (const id of fileIds) {
       try {
         await filesApi.delete(id);
-        deleted++;
+        trashedFiles++;
       } catch {
         failed++;
       }
@@ -217,7 +218,7 @@ function FileBrowserContent() {
     for (const id of folderIds) {
       try {
         await filesApi.deleteFolder(id);
-        deleted++;
+        deletedFolders++;
       } catch {
         failed++;
       }
@@ -225,8 +226,11 @@ function FileBrowserContent() {
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    if (deleted > 0) toast.success(`${deleted} item${deleted > 1 ? "s" : ""} moved to trash`);
-    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to move to trash`);
+    const msgs: string[] = [];
+    if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles > 1 ? "s" : ""} moved to trash`);
+    if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders > 1 ? "s" : ""} deleted`);
+    if (msgs.length > 0) toast.success(msgs.join(", "));
+    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
     clearSelection();
   };
 

@@ -57,9 +57,20 @@ function TrashContent() {
 
   const items = data?.data || [];
 
+  const totalTrashed = data?.total ?? items.length;
+
   const emptyTrashMutation = useMutation({
     mutationFn: async () => {
-      await Promise.all(items.map((item) => filesApi.permanentDelete(item.id)));
+      let page = 1;
+      const pageSize = 50;
+      let hasMore = true;
+      while (hasMore) {
+        const batch = await filesApi.getTrashed(page, pageSize);
+        if (batch.data.length === 0) break;
+        await Promise.all(batch.data.map((item) => filesApi.permanentDelete(item.id)));
+        hasMore = batch.hasMore;
+        page++;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
@@ -143,7 +154,7 @@ function TrashContent() {
       <ConfirmDialog
         open={showEmptyTrashConfirm}
         title="Empty trash"
-        description={`This will permanently delete all ${items.length} item${items.length === 1 ? "" : "s"} in trash. This action cannot be undone.`}
+        description={`This will permanently delete all ${totalTrashed} item${totalTrashed === 1 ? "" : "s"} in trash. This action cannot be undone.`}
         confirmLabel="Delete all permanently"
         variant="destructive"
         onConfirm={() => {

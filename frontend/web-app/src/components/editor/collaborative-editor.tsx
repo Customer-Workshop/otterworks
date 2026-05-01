@@ -38,10 +38,12 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("otter_access_token") : null;
     const wsProvider = new WebsocketProvider(
       COLLAB_WS_URL,
       `document-${documentId}`,
-      ydoc
+      ydoc,
+      { params: { token: token || "" } }
     );
 
     wsProvider.on("status", (event: { status: string }) => {

@@ -584,6 +584,28 @@ impl MetadataClient {
         Ok(shares)
     }
 
+    pub async fn list_shares_by_owner(
+        &self,
+        owner_id: &Uuid,
+    ) -> Result<Vec<FileShare>, ServiceError> {
+        let mut paginator = self
+            .client
+            .scan()
+            .table_name(&self.shares_table)
+            .filter_expression("shared_by = :uid")
+            .expression_attribute_values(":uid", AttributeValue::S(owner_id.to_string()))
+            .into_paginator()
+            .items()
+            .send();
+
+        let mut shares = Vec::new();
+        while let Some(item) = paginator.next().await {
+            let item = item.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            shares.push(parse_file_share(&item)?);
+        }
+        Ok(shares)
+    }
+
     pub async fn list_shares(&self, file_id: &Uuid) -> Result<Vec<FileShare>, ServiceError> {
         let mut shares = Vec::new();
         let mut paginator = self

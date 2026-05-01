@@ -396,11 +396,33 @@ export const notificationsApi = {
 };
 
 // ── Activity ──────────────────────────────────────────────────
+// Shape after the axios camelCase interceptor transforms the file-service response
+interface RawActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  actorName: string;
+  resourceName: string;
+  resourceType: string;
+  resourceId: string;
+  createdAt: string;
+}
+
 export const activityApi = {
-  getRecent: async (_limit = 20): Promise<ActivityItem[]> => {
-    // Activity service endpoint does not exist yet; return empty list
-    // to avoid dashboard errors.
-    return [];
+  getRecent: async (limit = 20): Promise<ActivityItem[]> => {
+    const { data } = await apiClient.get<{ items: RawActivityItem[] }>("/files/activity", {
+      params: { limit },
+    });
+    return (data.items ?? []).map((raw) => ({
+      id: raw.id,
+      type: raw.type as ActivityItem["type"],
+      description: raw.description,
+      actorName: raw.actorName,
+      resourceName: raw.resourceName,
+      resourceType: raw.resourceType as "file" | "document",
+      resourceId: raw.resourceId,
+      createdAt: raw.createdAt,
+    }));
   },
 };
 

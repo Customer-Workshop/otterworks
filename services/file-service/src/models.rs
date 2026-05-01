@@ -175,3 +175,28 @@ pub struct ShareFileRequest {
 pub struct ShareFileResponse {
     pub share: FileShare,
 }
+
+// ── Activity ───────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+pub struct ActivityItem {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub activity_type: String,
+    pub description: String,
+    pub actor_name: String,
+    pub resource_name: String,
+    pub resource_type: String,
+    pub resource_id: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActivityQuery {
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ActivityResponse {
+    pub items: Vec<ActivityItem>,
+}

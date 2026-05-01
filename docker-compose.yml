@@ -115,6 +115,7 @@ services:
       S3_BUCKET: otterworks-files
       DYNAMODB_TABLE: otterworks-file-metadata
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
+      SEARCH_SERVICE_URL: http://search-service:8087
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
     depends_on:
       localstack:

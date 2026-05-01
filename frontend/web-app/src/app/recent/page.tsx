@@ -19,8 +19,8 @@ type RecentItem =
 function groupByTime(items: RecentItem[]): Record<string, RecentItem[]> {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfYesterday = new Date(startOfToday.getTime() - 86_400_000);
-  const startOfWeek = new Date(startOfToday.getTime() - startOfToday.getDay() * 86_400_000);
+  const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - startOfToday.getDay());
 
   const groups: Record<string, RecentItem[]> = {
     Today: [],

@@ -150,7 +150,7 @@ function FileBrowserContent() {
   };
 
   const { getRootProps, isDragActive } = useDropzone({
-    onDrop: (files) => handleUpload(files),
+    onDrop: (files) => { handleUpload(files).catch(() => {}); },
     noClick: true,
     noKeyboard: true,
     multiple: true,
@@ -398,7 +398,7 @@ function SortableHeader({
     <button
       onClick={() => onSort(field)}
       className={cn(
-        "flex items-center gap-1 hover:text-gray-700 transition",
+        "group/sort flex items-center gap-1 hover:text-gray-700 transition",
         isActive && "text-gray-900",
         className
       )}
@@ -411,7 +411,7 @@ function SortableHeader({
           <ChevronDown size={12} />
         )
       ) : (
-        <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-100" />
+        <ArrowUpDown size={12} className="opacity-0 group-hover/sort:opacity-100" />
       )}
     </button>
   );

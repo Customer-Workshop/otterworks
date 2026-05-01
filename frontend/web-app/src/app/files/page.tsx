@@ -145,10 +145,9 @@ function FileBrowserContent() {
     [folderId, queryClient]
   );
 
-  const breadcrumbs: BreadcrumbItem[] = [{ label: "Files", href: "/files" }];
-  if (folderId) {
-    breadcrumbs.push({ label: currentFolder?.name ?? "\u2026" });
-  }
+  const breadcrumbs: BreadcrumbItem[] | null = folderId
+    ? [{ label: "Files", href: "/files" }, { label: currentFolder?.name ?? "\u2026" }]
+    : null;
 
   const folders = folderItems ?? [];
   const rawFiles = data?.data ?? [];
@@ -271,7 +270,7 @@ function FileBrowserContent() {
           </div>
         </div>
       )}
-      {folderId && <Breadcrumb items={breadcrumbs} />}
+      {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
 
       {/* Bulk action bar */}
       {selectionActive && selectedIds.size > 0 && (

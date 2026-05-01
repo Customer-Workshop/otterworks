@@ -201,7 +201,7 @@ function FileDetailContent() {
               </h2>
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
-              {(isImage || isVideo || isText) && isUrlLoading ? (
+              {(isImage || isVideo || isText || isPdf) && isUrlLoading ? (
                 <div className="w-full text-center py-8">
                   <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>

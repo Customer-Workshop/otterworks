@@ -158,6 +158,10 @@ interface ImageFilePreviewProps {
 export function ImageFilePreview({ presignedUrl, fileName }: ImageFilePreviewProps) {
   const [error, setError] = useState(false);
 
+  useEffect(() => {
+    setError(false);
+  }, [presignedUrl]);
+
   if (!presignedUrl || error) {
     return (
       <div className="text-center py-8">

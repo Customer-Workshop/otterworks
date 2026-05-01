@@ -204,7 +204,7 @@ export const filesApi = {
   getRecent: async (limit = 10): Promise<FileItem[]> => {
     const params: Record<string, string | number> = { page: 1, page_size: limit };
     const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
-    return (data.files ?? []).map(mapRawFile);
+    return (data.files ?? []).map((f) => normalizeFileItem(f as unknown as Record<string, unknown>));
   },
 };
 
@@ -303,21 +303,29 @@ export const storageApi = {
     const fileCount = fileRes.data.total ?? 0;
     const documentCount = docRes.data.total ?? 0;
 
-    // Fetch all files to sum storage (only when there are files)
+    // Fetch all files to sum storage. The file-service caps page_size at 100,
+    // so paginate through all pages to get an accurate total.
     let used = 0;
     if (fileCount > 0) {
-      const allFiles = await apiClient.get<RawFileListResponse>("/files", {
-        params: { page: 1, page_size: fileCount },
-      });
-      // The axios interceptor transforms size_bytes → sizeBytes at runtime.
-      // Access both forms to work before and after the camelCase fix (PR #34).
-      used = (allFiles.data.files ?? []).reduce(
-        (sum, f) => {
-          const raw = f as unknown as Record<string, number>;
-          return sum + (raw.sizeBytes ?? raw.size_bytes ?? 0);
-        },
-        0,
-      );
+      const PAGE_LIMIT = 100;
+      let page = 1;
+      let fetched = 0;
+      while (fetched < fileCount) {
+        const batch = await apiClient.get<RawFileListResponse>("/files", {
+          params: { page, page_size: PAGE_LIMIT },
+        });
+        const files = batch.data.files ?? [];
+        if (files.length === 0) break;
+        used += files.reduce(
+          (sum, f) => {
+            const raw = f as unknown as Record<string, number>;
+            return sum + (raw.sizeBytes ?? raw.size_bytes ?? 0);
+          },
+          0,
+        );
+        fetched += files.length;
+        page += 1;
+      }
     }
 
     return {

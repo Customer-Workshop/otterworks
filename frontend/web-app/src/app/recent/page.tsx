@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { Clock, FolderOpen, FileText } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
@@ -130,7 +131,26 @@ function RecentContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {items.map((item) =>
                     item.kind === "file" ? (
-                      <FileCard key={`file-${item.data.id}`} file={item.data} view="grid" />
+                      <FileCard
+                        key={`file-${item.data.id}`}
+                        file={item.data}
+                        view="grid"
+                        onDownload={async (id, name) => {
+                          try {
+                            const downloadUrl = await filesApi.getDownloadUrl(id);
+                            const a = document.createElement("a");
+                            a.href = downloadUrl;
+                            a.download = name;
+                            a.rel = "noopener";
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            toast.success("File downloaded successfully");
+                          } catch {
+                            toast.error("Download failed. Please try again.");
+                          }
+                        }}
+                      />
                     ) : (
                       <DocumentCard
                         key={`doc-${item.data.id}`}

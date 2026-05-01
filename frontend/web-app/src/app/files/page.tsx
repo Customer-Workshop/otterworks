@@ -463,6 +463,21 @@ function FileBrowserContent() {
                     view={viewMode}
                     onDelete={(id) => deleteMutation.mutate(id)}
                     onShare={(id) => setShareFileId(id)}
+                    onDownload={async (id, name) => {
+                      try {
+                        const downloadUrl = await filesApi.getDownloadUrl(id);
+                        const a = document.createElement("a");
+                        a.href = downloadUrl;
+                        a.download = name;
+                        a.rel = "noopener";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        toast.success("File downloaded successfully");
+                      } catch {
+                        toast.error("Download failed. Please try again.");
+                      }
+                    }}
                     onRename={(id, name) => renameFileMutation.mutate({ id, name })}
                     selected={selectedIds.has(file.id)}
                     onSelect={toggleSelect}

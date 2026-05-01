@@ -60,10 +60,13 @@ apiClient.interceptors.response.use(
               Authorization: `Bearer ${localStorage.getItem("otter_access_token")}`,
             },
           });
-        } catch {
-          localStorage.removeItem("otter_access_token");
-          localStorage.removeItem("otter_refresh_token");
-          window.location.href = "/login";
+        } catch (verifyError: unknown) {
+          const status = (verifyError as { response?: { status?: number } })?.response?.status;
+          if (status === 401) {
+            localStorage.removeItem("otter_access_token");
+            localStorage.removeItem("otter_refresh_token");
+            window.location.href = "/login";
+          }
         } finally {
           isVerifyingToken = false;
         }

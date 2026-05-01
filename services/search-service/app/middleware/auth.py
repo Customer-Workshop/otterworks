@@ -51,7 +51,7 @@ def require_auth(app):
             token = _extract_bearer_token()
             if not auth_config.service_token:
                 logger.warning("auth_service_token_not_configured")
-                return None
+                return jsonify({"error": "unauthorized — service token not configured"}), 401
             if token != auth_config.service_token:
                 logger.warning("auth_rejected_internal", endpoint=endpoint)
                 return jsonify({"error": "unauthorized"}), 401

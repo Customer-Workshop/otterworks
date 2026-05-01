@@ -342,7 +342,7 @@ class MeiliSearchService:
                 task = self.client.delete_index(index_name)
                 self._wait_and_check(task.task_uid, timeout_in_ms=30000)
                 logger.info("meilisearch_index_deleted", index=index_name)
-            except meilisearch.errors.MeilisearchApiError:
+            except (meilisearch.errors.MeilisearchApiError, RuntimeError):
                 pass
         self.ensure_indices()
 

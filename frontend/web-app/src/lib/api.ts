@@ -187,7 +187,9 @@ export const filesApi = {
   },
   getDownloadUrl: async (id: string): Promise<string> => {
     const { data } = await apiClient.get<{ url: string; expiresInSecs: number }>(`/files/${id}/download`);
-    return data.url;
+    // Presigned URLs from S3/LocalStack use the internal Docker hostname.
+    // Rewrite to localhost so the browser can reach the endpoint.
+    return data.url.replace("://localstack:", "://localhost:");
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}`);

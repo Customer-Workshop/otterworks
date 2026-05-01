@@ -140,6 +140,43 @@ impl EventPublisher {
         self.publish(&event).await
     }
 
+    pub async fn file_trashed(&self, file_id: &Uuid, owner_id: &Uuid) -> Result<(), ServiceError> {
+        let event = FileEvent {
+            event_type: "file_trashed".into(),
+            file_id: file_id.to_string(),
+            owner_id: owner_id.to_string(),
+            folder_id: None,
+            shared_with: None,
+            timestamp: Utc::now().to_rfc3339(),
+            name: None,
+            mime_type: None,
+            size_bytes: None,
+        };
+        self.publish(&event).await
+    }
+
+    pub async fn file_restored(
+        &self,
+        file_id: &Uuid,
+        owner_id: &Uuid,
+        name: &str,
+        mime_type: &str,
+        size_bytes: u64,
+    ) -> Result<(), ServiceError> {
+        let event = FileEvent {
+            event_type: "file_restored".into(),
+            file_id: file_id.to_string(),
+            owner_id: owner_id.to_string(),
+            folder_id: None,
+            shared_with: None,
+            timestamp: Utc::now().to_rfc3339(),
+            name: Some(name.to_string()),
+            mime_type: Some(mime_type.to_string()),
+            size_bytes: Some(size_bytes),
+        };
+        self.publish(&event).await
+    }
+
     pub async fn file_moved(
         &self,
         file_id: &Uuid,
@@ -174,6 +211,9 @@ mod tests {
             folder_id: None,
             shared_with: None,
             timestamp: Utc::now().to_rfc3339(),
+            name: Some("test.txt".to_string()),
+            mime_type: Some("text/plain".to_string()),
+            size_bytes: Some(100),
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("file_uploaded"));
@@ -192,6 +232,9 @@ mod tests {
             folder_id: Some(folder.to_string()),
             shared_with: None,
             timestamp: Utc::now().to_rfc3339(),
+            name: None,
+            mime_type: None,
+            size_bytes: None,
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains(&folder.to_string()));

@@ -392,6 +392,7 @@ pub async fn list_versions(
 
 pub async fn trash_file(
     meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -400,12 +401,16 @@ pub async fn trash_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.trash_file(&file_id).await?;
+
+    let _ = events.file_trashed(&file_id, &file.owner_id).await;
+
     tracing::info!(file_id = %file_id, "File trashed");
     Ok(HttpResponse::Ok().json(file))
 }
 
 pub async fn restore_file(
     meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -414,6 +419,17 @@ pub async fn restore_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.restore_file(&file_id).await?;
+
+    let _ = events
+        .file_restored(
+            &file_id,
+            &file.owner_id,
+            &file.name,
+            &file.mime_type,
+            file.size as u64,
+        )
+        .await;
+
     tracing::info!(file_id = %file_id, "File restored");
     Ok(HttpResponse::Ok().json(file))
 }

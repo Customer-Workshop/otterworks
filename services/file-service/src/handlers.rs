@@ -12,8 +12,9 @@ use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
     CreateFolderRequest, DownloadResponse, FileMetadata, FileShare, FileVersion, Folder,
-    HealthResponse, ListFilesQuery, ListFilesResponse, ListVersionsResponse, MoveFileRequest,
-    ShareFileRequest, ShareFileResponse, UpdateFolderRequest, UploadResponse,
+    HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
+    ListVersionsResponse, MoveFileRequest, ShareFileRequest, ShareFileResponse,
+    UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -341,6 +342,14 @@ pub async fn share_file(
 }
 
 // -- Folder Handlers --
+
+pub async fn list_folders(
+    meta: web::Data<MetadataClient>,
+    query: web::Query<ListFoldersQuery>,
+) -> Result<HttpResponse, ServiceError> {
+    let folders = meta.list_folders(query.parent_id, query.owner_id).await?;
+    Ok(HttpResponse::Ok().json(ListFoldersResponse { folders }))
+}
 
 pub async fn create_folder(
     meta: web::Data<MetadataClient>,

@@ -49,6 +49,14 @@ function FileBrowserContent() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["files"] }),
   });
 
+  const deleteFolderMutation = useMutation({
+    mutationFn: filesApi.deleteFolder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+    },
+  });
+
   const createFolderMutation = useMutation({
     mutationFn: (name: string) => filesApi.createFolder(name, folderId),
     onSuccess: () => {
@@ -196,7 +204,7 @@ function FileBrowserContent() {
                     key={folder.id}
                     folder={folder}
                     view={viewMode}
-                    onDelete={(id) => deleteMutation.mutate(id)}
+                    onDelete={(id) => deleteFolderMutation.mutate(id)}
                   />
                 ))}
               </div>

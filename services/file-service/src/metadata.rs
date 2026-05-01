@@ -350,10 +350,15 @@ impl MetadataClient {
 
         let mut filter_parts: Vec<String> = Vec::new();
 
-        if let Some(pid) = &parent_id {
-            filter_parts.push("parent_id = :parent_id".to_string());
-            scan_builder = scan_builder
-                .expression_attribute_values(":parent_id", AttributeValue::S(pid.to_string()));
+        match &parent_id {
+            Some(pid) => {
+                filter_parts.push("parent_id = :parent_id".to_string());
+                scan_builder = scan_builder
+                    .expression_attribute_values(":parent_id", AttributeValue::S(pid.to_string()));
+            }
+            None => {
+                filter_parts.push("attribute_not_exists(parent_id)".to_string());
+            }
         }
         if let Some(oid) = &owner_id {
             filter_parts.push("owner_id = :owner_id".to_string());

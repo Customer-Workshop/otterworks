@@ -187,6 +187,9 @@ export const filesApi = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}`);
   },
+  deleteFolder: async (id: string): Promise<void> => {
+    await apiClient.delete(`/folders/${id}`);
+  },
   share: async (id: string, users: SharedUser[]): Promise<void> => {
     await apiClient.post(`/files/${id}/share`, { users });
   },

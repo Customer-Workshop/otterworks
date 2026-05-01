@@ -424,6 +424,7 @@ pub async fn restore_file(
         .file_restored(
             &file_id,
             &file.owner_id,
+            file.folder_id.as_ref(),
             &file.name,
             &file.mime_type,
             file.size_bytes as u64,

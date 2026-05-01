@@ -62,12 +62,20 @@ function mapRawFile(raw: RawFileItem): FileItem {
     isTrashed: raw.isTrashed ?? false,
     path: `/${raw.name}`,
     downloadUrl: undefined,
-    sharedWith: (raw.sharedWith ?? []).map((s) => ({
-      userId: s.sharedWith,
-      name: "",
-      email: "",
-      permission: s.permission === "viewer" ? "view" as const : s.permission === "editor" ? "edit" as const : "view" as const,
-    })),
+    sharedWith: (() => {
+      const mapped = (raw.sharedWith ?? []).map((s) => ({
+        userId: s.sharedWith,
+        name: "",
+        email: "",
+        permission: s.permission === "viewer" ? "view" as const : s.permission === "editor" ? "edit" as const : "view" as const,
+      }));
+      const seen = new Set<string>();
+      return mapped.filter((s) => {
+        if (seen.has(s.userId)) return false;
+        seen.add(s.userId);
+        return true;
+      });
+    })(),
     tags: [],
     createdAt: raw.createdAt ?? "",
     updatedAt: raw.updatedAt ?? "",

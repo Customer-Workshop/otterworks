@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -23,6 +23,7 @@ import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb"
 import { FileCard } from "@/components/files/file-card";
 import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
+import type { FileUploadDropzoneHandle } from "@/components/files/file-upload-dropzone";
 import { ShareDialog } from "@/components/files/share-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
@@ -39,6 +40,7 @@ function FileBrowserContent() {
   const queryClient = useQueryClient();
   const { viewMode, setViewMode, sortConfig, setSortConfig } = useUIStore();
   const [showUpload, setShowUpload] = useState(false);
+  const uploadDropzoneRef = useRef<FileUploadDropzoneHandle>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [shareFileId, setShareFileId] = useState<string | null>(null);
@@ -248,12 +250,8 @@ function FileBrowserContent() {
   const { getRootProps, isDragActive } = useDropzone({
     onDrop: (files) => {
       setShowUpload(true);
-      for (const file of files) {
-        handleUploadFile(file, {
-          onProgress: () => {},
-          signal: new AbortController().signal,
-        }).then(() => handleUploadComplete()).catch(() => {});
-      }
+      // Defer so the dropzone component mounts before we push files into it
+      setTimeout(() => uploadDropzoneRef.current?.addFiles(files), 0);
     },
     noClick: true,
     noKeyboard: true,
@@ -413,6 +411,7 @@ function FileBrowserContent() {
       {/* Upload dropzone */}
       {showUpload && (
         <FileUploadDropzone
+          ref={uploadDropzoneRef}
           uploadFile={handleUploadFile}
           onUploadComplete={handleUploadComplete}
           onDismiss={() => setShowUpload(false)}

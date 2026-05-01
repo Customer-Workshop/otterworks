@@ -154,6 +154,27 @@ export const filesApi = {
     const raw = data.file ?? (data as unknown as RawFileItem);
     return mapRawFile(raw);
   },
+  listFolders: async (parentId?: string | null): Promise<FileItem[]> => {
+    const params: Record<string, string> = {};
+    if (parentId) params.parent_id = parentId;
+    const { data } = await apiClient.get<{ folders: Array<Record<string, unknown>> }>("/folders", { params });
+    return (data.folders ?? []).map((f) => ({
+      id: (f.id ?? "") as string,
+      name: (f.name ?? "") as string,
+      mimeType: "",
+      size: 0,
+      parentId: (f.parentId ?? null) as string | null,
+      ownerId: (f.ownerId ?? "") as string,
+      ownerName: "",
+      isFolder: true,
+      path: `/${f.name}`,
+      sharedWith: [],
+      tags: [],
+      createdAt: (f.createdAt ?? "") as string,
+      updatedAt: (f.updatedAt ?? "") as string,
+      versions: [],
+    }));
+  },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
     const ownerId = getOwnerIdFromJwt();
     const { data } = await apiClient.post<any>("/folders", {

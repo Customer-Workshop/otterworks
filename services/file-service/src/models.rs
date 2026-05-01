@@ -124,6 +124,17 @@ pub struct ListVersionsResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ListFoldersQuery {
+    pub parent_id: Option<Uuid>,
+    pub owner_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListFoldersResponse {
+    pub folders: Vec<Folder>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateFolderRequest {
     pub name: String,
     pub parent_id: Option<Uuid>,

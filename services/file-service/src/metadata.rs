@@ -341,6 +341,41 @@ impl MetadataClient {
         Ok(())
     }
 
+    pub async fn list_folders(
+        &self,
+        parent_id: Option<Uuid>,
+        owner_id: Option<Uuid>,
+    ) -> Result<Vec<Folder>, ServiceError> {
+        let mut scan_builder = self.client.scan().table_name(&self.folders_table);
+
+        let mut filter_parts: Vec<String> = Vec::new();
+
+        if let Some(pid) = &parent_id {
+            filter_parts.push("parent_id = :parent_id".to_string());
+            scan_builder = scan_builder
+                .expression_attribute_values(":parent_id", AttributeValue::S(pid.to_string()));
+        }
+        if let Some(oid) = &owner_id {
+            filter_parts.push("owner_id = :owner_id".to_string());
+            scan_builder = scan_builder
+                .expression_attribute_values(":owner_id", AttributeValue::S(oid.to_string()));
+        }
+
+        if !filter_parts.is_empty() {
+            scan_builder = scan_builder.filter_expression(filter_parts.join(" AND "));
+        }
+
+        let mut paginator = scan_builder.into_paginator().send();
+        let mut folders = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            for item in page.items() {
+                folders.push(parse_folder(item)?);
+            }
+        }
+        Ok(folders)
+    }
+
     // -- File Versions --
 
     pub async fn put_version(&self, version: &FileVersion) -> Result<(), ServiceError> {

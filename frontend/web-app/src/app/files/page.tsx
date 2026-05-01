@@ -32,10 +32,17 @@ function FileBrowserContent() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading: filesLoading } = useQuery({
     queryKey: ["files", "list", folderId],
     queryFn: () => filesApi.list(folderId),
   });
+
+  const { data: folderItems, isLoading: foldersLoading } = useQuery({
+    queryKey: ["folders", "list", folderId],
+    queryFn: () => filesApi.listFolders(folderId),
+  });
+
+  const isLoading = filesLoading || foldersLoading;
 
   const deleteMutation = useMutation({
     mutationFn: filesApi.delete,
@@ -46,6 +53,7 @@ function FileBrowserContent() {
     mutationFn: (name: string) => filesApi.createFolder(name, folderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
       setShowNewFolder(false);
       setNewFolderName("");
     },
@@ -76,9 +84,9 @@ function FileBrowserContent() {
     breadcrumbs.push({ label: "Current folder" });
   }
 
-  const items = data?.data || [];
-  const folders = items.filter((item) => item.isFolder);
-  const files = items.filter((item) => !item.isFolder);
+  const folders = folderItems ?? [];
+  const files = data?.data ?? [];
+  const items = [...folders, ...files];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

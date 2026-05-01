@@ -69,6 +69,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api/v1/folders")
+                    .route("", web::get().to(handlers::list_folders))
                     .route("", web::post().to(handlers::create_folder))
                     .route("/{folder_id}", web::get().to(handlers::get_folder))
                     .route("/{folder_id}", web::put().to(handlers::update_folder))

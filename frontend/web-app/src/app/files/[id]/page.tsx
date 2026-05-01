@@ -17,11 +17,13 @@ import {
   File,
   Eye,
 } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ShareDialog } from "@/components/files/share-dialog";
 import { filesApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
@@ -46,6 +48,8 @@ function FileDetailContent() {
     queryFn: () => filesApi.get(fileId),
   });
 
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
   const deleteMutation = useMutation({
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
@@ -55,6 +59,13 @@ function FileDetailContent() {
     },
     onError: () => toast.error("Failed to delete file"),
   });
+
+  const handleShare = async (email: string, permission: "view" | "edit") => {
+    await filesApi.share(fileId, [
+      { userId: "", name: "", email, permission },
+    ]);
+    queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+  };
 
   if (isLoading) return <PageLoader />;
   if (!file) {
@@ -110,7 +121,10 @@ function FileDetailContent() {
               Download
             </a>
           )}
-          <button className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          <button
+            onClick={() => setShowShareDialog(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
             <Share2 size={16} />
             Share
           </button>
@@ -304,6 +318,16 @@ function FileDetailContent() {
           )}
         </div>
       </div>
+
+      {showShareDialog && (
+        <ShareDialog
+          fileId={file.id}
+          fileName={file.name}
+          sharedWith={file.sharedWith}
+          onShare={handleShare}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb"
 import { FileCard } from "@/components/files/file-card";
 import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
+import { ShareDialog } from "@/components/files/share-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -33,6 +34,7 @@ function FileBrowserContent() {
   const [showUpload, setShowUpload] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [shareFileId, setShareFileId] = useState<string | null>(null);
 
   const { data, isLoading: filesLoading } = useQuery({
     queryKey: ["files", "list", folderId],
@@ -265,6 +267,7 @@ function FileBrowserContent() {
                     file={file}
                     view={viewMode}
                     onDelete={(id) => deleteMutation.mutate(id)}
+                    onShare={(id) => setShareFileId(id)}
                   />
                 ))}
               </div>
@@ -272,6 +275,24 @@ function FileBrowserContent() {
           )}
         </div>
       )}
+      {shareFileId && (() => {
+        const shareFile = files.find((f) => f.id === shareFileId);
+        if (!shareFile) return null;
+        return (
+          <ShareDialog
+            fileId={shareFile.id}
+            fileName={shareFile.name}
+            sharedWith={shareFile.sharedWith}
+            onShare={async (email, permission) => {
+              await filesApi.share(shareFile.id, [
+                { userId: "", name: "", email, permission },
+              ]);
+              queryClient.invalidateQueries({ queryKey: ["files"] });
+            }}
+            onClose={() => setShareFileId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

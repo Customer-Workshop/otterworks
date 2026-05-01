@@ -222,8 +222,11 @@ export const filesApi = {
     };
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
+    const params: Record<string, string | number> = { page, page_size: pageSize };
+    const ownerId = getOwnerIdFromJwt();
+    if (ownerId) params.owner_id = ownerId;
     const { data } = await apiClient.get<RawFileListResponse>("/files/trash", {
-      params: { page, page_size: pageSize },
+      params,
     });
     const items = (data.files ?? []).map(mapRawFile);
     return {

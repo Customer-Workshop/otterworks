@@ -210,7 +210,7 @@ pub async fn list_trashed(
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let files = meta.list_trashed().await?;
+    let files = meta.list_trashed(query.owner_id).await?;
 
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).min(100);

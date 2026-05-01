@@ -46,9 +46,15 @@ public class SettingsController {
     if (request.getLanguage() != null) {
       settings.setLanguage(request.getLanguage());
     }
-    settings.setNotificationEmail(request.isNotificationEmail());
-    settings.setNotificationInApp(request.isNotificationInApp());
-    settings.setNotificationDesktop(request.isNotificationDesktop());
+    if (request.getNotificationEmail() != null) {
+      settings.setNotificationEmail(request.getNotificationEmail());
+    }
+    if (request.getNotificationInApp() != null) {
+      settings.setNotificationInApp(request.getNotificationInApp());
+    }
+    if (request.getNotificationDesktop() != null) {
+      settings.setNotificationDesktop(request.getNotificationDesktop());
+    }
 
     settings = settingsRepository.save(settings);
     return ResponseEntity.ok(UserSettingsDTO.fromEntity(settings));

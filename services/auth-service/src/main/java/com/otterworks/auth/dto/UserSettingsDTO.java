@@ -11,9 +11,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserSettingsDTO {
-  private boolean notificationEmail;
-  private boolean notificationInApp;
-  private boolean notificationDesktop;
+  private Boolean notificationEmail;
+  private Boolean notificationInApp;
+  private Boolean notificationDesktop;
   private String theme;
   private String language;
 

@@ -57,6 +57,7 @@ function FileDetailContent() {
   });
 
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [resolvedUsers, setResolvedUsers] = useState<Record<string, { name: string; email: string }>>({});
 
   useEffect(() => {
@@ -154,7 +155,9 @@ function FileDetailContent() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            disabled={isDownloading}
             onClick={async () => {
+              setIsDownloading(true);
               try {
                 const downloadUrl = await filesApi.getDownloadUrl(file.id);
                 const a = document.createElement("a");
@@ -164,14 +167,21 @@ function FileDetailContent() {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+                toast.success(`Downloading ${file.name}`);
               } catch {
                 toast.error("Download failed. Please try again.");
+              } finally {
+                setIsDownloading(false);
               }
             }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={16} />
-            Download
+            {isDownloading ? (
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
+            {isDownloading ? "Downloading..." : "Download"}
           </button>
           <button
             onClick={() => setShowShareDialog(true)}

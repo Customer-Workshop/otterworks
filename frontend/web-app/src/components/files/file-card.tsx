@@ -48,6 +48,7 @@ interface FileCardProps {
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   onRename?: (id: string, name: string) => void;
+  onDownload?: (id: string) => void;
   view?: "grid" | "list";
   selected?: boolean;
   onSelect?: (id: string) => void;
@@ -59,6 +60,7 @@ export function FileCard({
   onDelete,
   onShare,
   onRename,
+  onDownload,
   view = "grid",
   selected = false,
   onSelect,
@@ -161,6 +163,7 @@ export function FileCard({
               onDelete={onDelete}
               onShare={onShare}
               onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
+              onDownload={onDownload}
             />
           )}
         </div>
@@ -206,6 +209,7 @@ export function FileCard({
                 onDelete={onDelete}
                 onShare={onShare}
                 onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
+                onDownload={onDownload}
               />
             )}
           </div>
@@ -245,12 +249,14 @@ function FileMenu({
   onDelete,
   onShare,
   onRename,
+  onDownload,
 }: {
   file: FileItem;
   onClose: () => void;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   onRename?: () => void;
+  onDownload?: (id: string) => void;
 }) {
   return (
     <>
@@ -273,6 +279,7 @@ function FileMenu({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              onDownload?.(file.id);
               onClose();
             }}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"

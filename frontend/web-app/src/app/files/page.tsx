@@ -234,6 +234,26 @@ function FileBrowserContent() {
     clearSelection();
   };
 
+  const handleDownload = useCallback(
+    async (id: string) => {
+      const match = data?.data?.find((f) => f.id === id);
+      try {
+        const url = await filesApi.getDownloadUrl(id);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = match?.name ?? "download";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success(`Downloading ${match?.name ?? "file"}`);
+      } catch {
+        toast.error("Download failed");
+      }
+    },
+    [data]
+  );
+
   const { getRootProps, isDragActive } = useDropzone({
     onDrop: (files) => { handleUpload(files).catch(() => {}); },
     noClick: true,
@@ -464,6 +484,7 @@ function FileBrowserContent() {
                     onDelete={(id) => deleteMutation.mutate(id)}
                     onShare={(id) => setShareFileId(id)}
                     onRename={(id, name) => renameFileMutation.mutate({ id, name })}
+                    onDownload={handleDownload}
                     selected={selectedIds.has(file.id)}
                     onSelect={toggleSelect}
                     selectionActive={selectionActive}

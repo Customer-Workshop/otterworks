@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import helmet from 'helmet';
 import pino from 'pino';
@@ -12,6 +13,9 @@ import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { setupWSConnection } = require('y-websocket/bin/utils');
 
 const config = loadConfig();
 
@@ -121,6 +125,24 @@ const collabManager = setupCollaborationHandlers(
   config.persistence.intervalMs,
   config.persistence.snapshotIntervalMs,
 );
+
+// y-websocket server for TipTap/Yjs collaborative editing
+const wss = new WebSocketServer({ noServer: true });
+wss.on('connection', (conn, req) => {
+  setupWSConnection(conn, req);
+  logger.info({ url: req.url }, 'y-websocket_client_connected');
+});
+
+// Route WebSocket upgrades: Socket.IO paths go to Socket.IO, all others to y-websocket
+httpServer.on('upgrade', (request, socket, head) => {
+  if (request.url?.startsWith('/socket.io')) {
+    // Socket.IO handles its own upgrades via its internal listener
+    return;
+  }
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
+});
 
 // Start presence cleanup with document eviction callback
 const presenceCleanupTimer = presenceHandler.startCleanupInterval(

@@ -396,15 +396,16 @@ export const notificationsApi = {
 };
 
 // ── Activity ──────────────────────────────────────────────────
+// Shape after the axios camelCase interceptor transforms the file-service response
 interface RawActivityItem {
   id: string;
   type: string;
   description: string;
-  actor_name: string;
-  resource_name: string;
-  resource_type: string;
-  resource_id: string;
-  created_at: string;
+  actorName: string;
+  resourceName: string;
+  resourceType: string;
+  resourceId: string;
+  createdAt: string;
 }
 
 export const activityApi = {
@@ -416,11 +417,11 @@ export const activityApi = {
       id: raw.id,
       type: raw.type as ActivityItem["type"],
       description: raw.description,
-      actorName: raw.actor_name,
-      resourceName: raw.resource_name,
-      resourceType: raw.resource_type as "file" | "document",
-      resourceId: raw.resource_id,
-      createdAt: raw.created_at,
+      actorName: raw.actorName,
+      resourceName: raw.resourceName,
+      resourceType: raw.resourceType as "file" | "document",
+      resourceId: raw.resourceId,
+      createdAt: raw.createdAt,
     }));
   },
 };

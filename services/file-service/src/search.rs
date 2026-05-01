@@ -51,7 +51,7 @@ impl SearchIndexClient {
             created_at: created_at.to_string(),
         };
 
-        let url = format!("{}/index/file", self.base_url);
+        let url = format!("{}/api/v1/search/index/file", self.base_url);
         match self.http.post(&url).json(&payload).send().await {
             Ok(resp) if resp.status().is_success() => {
                 tracing::debug!(file_id = %id, "search_sync_index_ok");
@@ -67,7 +67,7 @@ impl SearchIndexClient {
 
     /// Remove a file from the search index synchronously.
     pub async fn remove_file(&self, id: &str) {
-        let url = format!("{}/index/file/{}", self.base_url, id);
+        let url = format!("{}/api/v1/search/index/file/{}", self.base_url, id);
         match self.http.delete(&url).send().await {
             Ok(_) => {
                 tracing::debug!(file_id = %id, "search_sync_remove_ok");

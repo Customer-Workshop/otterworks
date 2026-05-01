@@ -172,7 +172,11 @@ class MeiliSearchService:
 
         for index_name in indices_to_search:
             index = self.client.index(index_name)
-            result = index.search(query, search_params)
+            try:
+                result = index.search(query, search_params)
+            except meilisearch.errors.MeilisearchApiError as exc:
+                logger.warning("search_filter_error", index=index_name, error=str(exc))
+                raise ValueError(f"Invalid search filter: {exc}") from exc
             total += result["estimatedTotalHits"]
             for hit in result["hits"]:
                 all_hits.append(self._parse_hit(hit, index_name))
@@ -266,20 +270,46 @@ class MeiliSearchService:
 
         return suggestions
 
+    def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
+        """Wait for a MeiliSearch task and raise on failure."""
+        result = self.client.wait_for_task(task_uid, timeout_in_ms=timeout_in_ms)
+        status = getattr(result, "status", None) or (result.get("status") if isinstance(result, dict) else None)
+        if status and status != "succeeded":
+            error = getattr(result, "error", None) or (result.get("error") if isinstance(result, dict) else None)
+            raise RuntimeError(
+                f"MeiliSearch task {task_uid} {status}: {error}"
+            )
+
     def index_document(self, document: dict[str, Any]) -> None:
         """Index or update a document."""
         doc = {**document, "type": "document"}
         index = self.client.index(self.documents_index_name)
         task = index.add_documents([doc])
-        self.client.wait_for_task(task.task_uid, timeout_in_ms=10000)
+        self._wait_and_check(task.task_uid)
         logger.info("document_indexed", document_id=doc.get("id"))
 
     def index_file(self, file_data: dict[str, Any]) -> None:
-        """Index or update a file."""
+        """Index or update a file.
+
+        If the add fails with an LMDB key-exists error (a known
+        Meilisearch bug triggered by delete-then-re-add on the same
+        ID), the method retries once after explicitly deleting the
+        stale entry.
+        """
         doc = {**file_data, "type": "file"}
         index = self.client.index(self.files_index_name)
         task = index.add_documents([doc])
-        self.client.wait_for_task(task.task_uid, timeout_in_ms=10000)
+        try:
+            self._wait_and_check(task.task_uid)
+        except RuntimeError as exc:
+            if "MDB_KEYEXIST" in str(exc):
+                logger.warning("lmdb_key_exists_retry", file_id=doc.get("id"))
+                del_task = index.delete_document(doc["id"])
+                self._wait_and_check(del_task.task_uid)
+                retry_task = index.add_documents([doc])
+                self._wait_and_check(retry_task.task_uid)
+            else:
+                raise
         logger.info("file_indexed", file_id=doc.get("id"))
 
     def delete_document(self, doc_type: str, doc_id: str) -> bool:
@@ -292,21 +322,51 @@ class MeiliSearchService:
             logger.warning("document_not_found_in_index", doc_id=doc_id, index=index_name)
             return False
         task = index.delete_document(doc_id)
-        self.client.wait_for_task(task.task_uid, timeout_in_ms=10000)
+        self._wait_and_check(task.task_uid)
         logger.info("document_removed_from_index", doc_id=doc_id, index=index_name)
         return True
 
-    def reindex(self) -> dict[str, Any]:
-        """Delete and recreate indices."""
+    def reindex(
+        self,
+        documents: list[dict[str, Any]] | None = None,
+        files: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Delete indices, recreate them, and optionally repopulate.
+
+        If *documents* or *files* lists are supplied they are bulk-indexed
+        after the empty indices are created.  When called without data the
+        indices are left empty (callers can populate them afterwards).
+        """
         for index_name in [self.documents_index_name, self.files_index_name]:
             try:
                 task = self.client.delete_index(index_name)
-                self.client.wait_for_task(task.task_uid, timeout_in_ms=30000)
+                self._wait_and_check(task.task_uid, timeout_in_ms=30000)
                 logger.info("meilisearch_index_deleted", index=index_name)
             except meilisearch.errors.MeilisearchApiError:
                 pass
         self.ensure_indices()
-        return {"status": "reindexed", "indices": [self.documents_index_name, self.files_index_name]}
+
+        indexed_counts: dict[str, int] = {"documents": 0, "files": 0}
+        if documents:
+            idx = self.client.index(self.documents_index_name)
+            for batch_start in range(0, len(documents), 500):
+                batch = documents[batch_start : batch_start + 500]
+                task = idx.add_documents(batch)
+                self._wait_and_check(task.task_uid, timeout_in_ms=60000)
+            indexed_counts["documents"] = len(documents)
+        if files:
+            idx = self.client.index(self.files_index_name)
+            for batch_start in range(0, len(files), 500):
+                batch = files[batch_start : batch_start + 500]
+                task = idx.add_documents(batch)
+                self._wait_and_check(task.task_uid, timeout_in_ms=60000)
+            indexed_counts["files"] = len(files)
+
+        return {
+            "status": "reindexed",
+            "indices": [self.documents_index_name, self.files_index_name],
+            "indexed_counts": indexed_counts,
+        }
 
     def _resolve_indices(self, doc_type: str | None) -> list[str]:
         """Determine which indices to search based on type filter."""

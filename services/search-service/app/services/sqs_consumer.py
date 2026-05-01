@@ -106,6 +106,8 @@ class SQSConsumer:
                 "file_uploaded": "index_file",
                 "file_updated": "index_file",
                 "file_deleted": "delete",
+                "file_trashed": "delete",
+                "file_restored": "index_file",
             }
             return {
                 "action": action_map.get(body["event_type"], body["event_type"]),
@@ -120,6 +122,8 @@ class SQSConsumer:
                 "file_created": "index_file",
                 "file_updated": "index_file",
                 "file_deleted": "delete",
+                "file_trashed": "delete",
+                "file_restored": "index_file",
             }
             # file_shared and file_moved events don't carry file metadata
             # (name, mimeType, sizeBytes) so they can't be indexed — skip them

@@ -321,15 +321,15 @@ export const searchApi = {
     const rawResults = (data.results ?? []) as Record<string, unknown>[];
     const total = (data.total as number) ?? rawResults.length;
     const pg = (data.page as number) ?? 1;
-    const ps = (data.pageSize as number) ?? 20;
+    const ps = (data.page_size as number) ?? (data.pageSize as number) ?? 20;
     return {
       data: rawResults.map((r): SearchResult => ({
         id: String(r.id ?? ""),
         type: (r.type as SearchResult["type"]) ?? "file",
         name: String(r.title ?? r.name ?? r.id ?? ""),
-        snippet: String(r.contentSnippet ?? ""),
+        snippet: String(r.content_snippet ?? r.contentSnippet ?? ""),
         path: "",
-        updatedAt: String(r.updatedAt ?? ""),
+        updatedAt: String(r.updated_at ?? r.updatedAt ?? ""),
         ownerName: "",
       })),
       total,

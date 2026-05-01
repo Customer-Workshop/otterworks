@@ -483,9 +483,7 @@ function FileBrowserContent() {
             fileName={shareFile.name}
             sharedWith={shareFile.sharedWith}
             onShare={async (email, permission) => {
-              await filesApi.share(shareFile.id, [
-                { userId: "", name: "", email, permission },
-              ]);
+              await filesApi.share(shareFile.id, email, permission);
               queryClient.invalidateQueries({ queryKey: ["files"] });
             }}
             onClose={() => setShareFileId(null)}

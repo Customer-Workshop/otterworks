@@ -6,19 +6,36 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.config import OpenSearchConfig
+from app.config import MeiliSearchConfig
 from app.services.indexer import Indexer
-from app.services.opensearch_client import OpenSearchService
+from app.services.meilisearch_client import MeiliSearchService
 
 
 @pytest.fixture()
-def mock_os_service() -> OpenSearchService:
-    """Create an OpenSearchService with mocked client."""
-    with patch("app.services.opensearch_client.OpenSearch") as mock_cls:
+def mock_ms_service() -> MeiliSearchService:
+    """Create a MeiliSearchService with mocked client."""
+    with patch("app.services.meilisearch_client.meilisearch.Client") as mock_cls:
         mock_client = MagicMock()
-        mock_client.indices.exists.return_value = True
+
+        mock_task = MagicMock()
+        mock_task.task_uid = 1
+        mock_task_result = MagicMock()
+        mock_task_result.status = "succeeded"
+        mock_client.wait_for_task.return_value = mock_task_result
+
+        mock_index = MagicMock()
+        mock_index.add_documents.return_value = mock_task
+        mock_index.delete_document.return_value = mock_task
+        mock_index.get_document.return_value = {"id": "doc-1"}
+        mock_client.index.return_value = mock_index
+
+        mock_client.create_index.return_value = mock_task
+        mock_client.delete_index.return_value = mock_task
+        mock_client.get_index.side_effect = None
+        mock_client.health.return_value = {"status": "available"}
+
         mock_cls.return_value = mock_client
-        service = OpenSearchService(OpenSearchConfig(
+        service = MeiliSearchService(MeiliSearchConfig(
             documents_index="test-docs",
             files_index="test-files",
         ))
@@ -26,8 +43,8 @@ def mock_os_service() -> OpenSearchService:
 
 
 @pytest.fixture()
-def indexer(mock_os_service: OpenSearchService) -> Indexer:
-    return Indexer(mock_os_service)
+def indexer(mock_ms_service: MeiliSearchService) -> Indexer:
+    return Indexer(mock_ms_service)
 
 
 class TestIndexer:

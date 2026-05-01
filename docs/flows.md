@@ -22,7 +22,7 @@ flowchart LR
   D --> PG[PostgreSQL]
   A --> PG
   C --> RE[Redis]
-  S --> OS[OpenSearch]
+  S --> MS[MeiliSearch]
   N --> Q[SQS/SNS]
   AN --> DL[S3 Data Lake]
 ```
@@ -159,7 +159,7 @@ flowchart LR
   ANQ --> AN[Analytics Service]
 
   N --> OUT1[Email / In-app / Webhook]
-  S --> OS[OpenSearch Index Update]
+  S --> MS[MeiliSearch Index Update]
   AU --> DDB[(DynamoDB Audit Log)]
   AN --> DL[(S3 Data Lake)]
 ```
@@ -176,12 +176,12 @@ sequenceDiagram
   participant UI as Web App
   participant GW as API Gateway
   participant SEARCH as Search Service
-  participant OS as OpenSearch
+  participant MS as MeiliSearch
 
   UI->>GW: GET /api/search?q=...
   GW->>SEARCH: Forward query
-  SEARCH->>OS: Full-text query
-  OS-->>SEARCH: Ranked hits
+  SEARCH->>MS: Full-text query
+  MS-->>SEARCH: Ranked hits
   SEARCH-->>GW: Search results
   GW-->>UI: Results
 ```
@@ -194,12 +194,12 @@ sequenceDiagram
   participant DOC as Document/File Service
   participant BUS as SNS/SQS
   participant SEARCH as Search Service
-  participant OS as OpenSearch
+  participant MS as MeiliSearch
 
   DOC->>BUS: Publish create/edit/delete event
   BUS-->>SEARCH: Deliver event
-  SEARCH->>OS: Index/Reindex/Delete document
-  OS-->>SEARCH: Ack
+  SEARCH->>MS: Index/Reindex/Delete document
+  MS-->>SEARCH: Ack
 ```
 
 ---

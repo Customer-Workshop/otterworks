@@ -51,9 +51,9 @@ output "sns_events_topic_arn" {
 
 # --- Search ---
 
-output "opensearch_endpoint" {
-  description = "OpenSearch domain endpoint"
-  value       = module.search.opensearch_endpoint
+output "meilisearch_ecs_cluster_arn" {
+  description = "MeiliSearch ECS cluster ARN"
+  value       = module.search.meilisearch_ecs_cluster_arn
 }
 
 # --- Auth ---

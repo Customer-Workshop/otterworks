@@ -1,6 +1,6 @@
 # ------------------------------------------------------------------------------
 # OtterWorks Search Module
-# OpenSearch domain for full-text search
+# MeiliSearch instance for full-text search
 # ------------------------------------------------------------------------------
 
 locals {
@@ -10,17 +10,17 @@ locals {
   }
 }
 
-# --- OpenSearch Security Group ---
+# --- MeiliSearch Security Group ---
 
-resource "aws_security_group" "opensearch" {
-  name        = "${var.project}-opensearch-${var.environment}"
-  description = "Security group for OtterWorks OpenSearch"
+resource "aws_security_group" "meilisearch" {
+  name        = "${var.project}-meilisearch-${var.environment}"
+  description = "Security group for OtterWorks MeiliSearch"
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "HTTPS from VPC"
-    from_port   = 443
-    to_port     = 443
+    description = "MeiliSearch HTTP from VPC"
+    from_port   = 7700
+    to_port     = 7700
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
@@ -37,37 +37,82 @@ resource "aws_security_group" "opensearch" {
   })
 }
 
-resource "aws_opensearch_domain" "main" {
-  domain_name    = "${var.project}-${var.environment}"
-  engine_version = "OpenSearch_2.11"
+# --- ECS Cluster ---
 
-  cluster_config {
-    instance_type  = var.opensearch_instance_type
-    instance_count = var.opensearch_instance_count
-  }
+resource "aws_ecs_cluster" "meilisearch" {
+  name = "${var.project}-meilisearch-${var.environment}"
 
-  vpc_options {
-    subnet_ids         = [var.subnet_ids[0]]
-    security_group_ids = [aws_security_group.opensearch.id]
-  }
+  tags = merge(local.common_tags, {
+    Service = "search-service"
+  })
+}
 
-  ebs_options {
-    ebs_enabled = true
-    volume_size = var.opensearch_volume_size
-    volume_type = "gp3"
-  }
+# --- CloudWatch Log Group ---
 
-  encrypt_at_rest {
-    enabled = true
-  }
+resource "aws_cloudwatch_log_group" "meilisearch" {
+  name              = "/ecs/${var.project}-meilisearch-${var.environment}"
+  retention_in_days = 30
 
-  node_to_node_encryption {
-    enabled = true
-  }
+  tags = local.common_tags
+}
 
-  domain_endpoint_options {
-    enforce_https       = true
-    tls_security_policy = "Policy-Min-TLS-1-2-2019-07"
+# --- ECS Task Definition ---
+
+resource "aws_ecs_task_definition" "meilisearch" {
+  family                   = "${var.project}-meilisearch-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.meilisearch_cpu
+  memory                   = var.meilisearch_memory
+  execution_role_arn       = var.ecs_execution_role_arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "meilisearch"
+      image     = "getmeili/meilisearch:v1.6"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 7700
+          hostPort      = 7700
+          protocol      = "tcp"
+        }
+      ]
+      environment = [
+        { name = "MEILI_ENV", value = var.environment == "prod" ? "production" : "development" },
+        { name = "MEILI_NO_ANALYTICS", value = "true" },
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.meilisearch.name
+          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-stream-prefix" = "meilisearch"
+        }
+      }
+    }
+  ])
+
+  tags = merge(local.common_tags, {
+    Service = "search-service"
+  })
+}
+
+data "aws_region" "current" {}
+
+# --- ECS Service ---
+
+resource "aws_ecs_service" "meilisearch" {
+  name            = "${var.project}-meilisearch-${var.environment}"
+  cluster         = aws_ecs_cluster.meilisearch.id
+  task_definition = aws_ecs_task_definition.meilisearch.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = [aws_security_group.meilisearch.id]
+    assign_public_ip = false
   }
 
   tags = merge(local.common_tags, {

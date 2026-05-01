@@ -34,4 +34,4 @@ variables:
   otterworks_quarantine_bucket: "otterworks-file-quarantine"
   document_service_url: "http://document-service:8083"
   file_service_url: "http://file-service:8082"
-  opensearch_url: "https://opensearch.otterworks.internal:9200"
+  meilisearch_url: "http://meilisearch:7700"

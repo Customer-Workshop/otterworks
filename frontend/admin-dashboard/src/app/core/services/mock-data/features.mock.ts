@@ -13,7 +13,7 @@ export const MOCK_FEATURE_FLAGS: FeatureFlag[] = [
   },
   {
     id: 'ff-003', name: 'Advanced Search', key: 'advanced-search',
-    description: 'Enable full-text search with filters powered by OpenSearch',
+    description: 'Enable full-text search with filters powered by MeiliSearch',
     enabled: true, category: 'Search', updatedAt: '2026-04-12T14:00:00Z', updatedBy: 'Frank Wilson',
   },
   {

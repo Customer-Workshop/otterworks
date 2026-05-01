@@ -187,6 +187,10 @@ export const filesApi = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}`);
   },
+  getFolder: async (id: string): Promise<FileItem> => {
+    const { data } = await apiClient.get<Record<string, unknown>>(`/folders/${id}`);
+    return normalizeFileItem(data);
+  },
   deleteFolder: async (id: string): Promise<void> => {
     await apiClient.delete(`/folders/${id}`);
   },

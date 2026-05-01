@@ -42,6 +42,12 @@ function FileBrowserContent() {
     queryFn: () => filesApi.listFolders(folderId),
   });
 
+  const { data: currentFolder } = useQuery({
+    queryKey: ["folders", "detail", folderId],
+    queryFn: () => filesApi.getFolder(folderId!),
+    enabled: !!folderId,
+  });
+
   const isLoading = filesLoading || foldersLoading;
 
   const deleteMutation = useMutation({
@@ -89,7 +95,7 @@ function FileBrowserContent() {
 
   const breadcrumbs: BreadcrumbItem[] = [{ label: "Files", href: "/files" }];
   if (folderId) {
-    breadcrumbs.push({ label: "Current folder" });
+    breadcrumbs.push({ label: currentFolder?.name ?? "…" });
   }
 
   const folders = folderItems ?? [];

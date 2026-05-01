@@ -53,6 +53,21 @@ function StarredContent() {
     placeholderData: keepPreviousData,
   });
 
+  const { data: foldersData, isLoading: foldersLoading } = useQuery({
+    queryKey: ["starred", "folders", starredIds?.folderIds],
+    queryFn: async () => {
+      if (!starredIds?.folderIds.length) return [];
+      const results = await Promise.allSettled(
+        starredIds.folderIds.map((id) => filesApi.getFolder(id))
+      );
+      return results
+        .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof filesApi.getFolder>>> => r.status === "fulfilled")
+        .map((r) => r.value);
+    },
+    enabled: !!starredIds?.folderIds.length,
+    placeholderData: keepPreviousData,
+  });
+
   const { data: docsData, isLoading: docsLoading } = useQuery({
     queryKey: ["starred", "documents", starredIds?.documentIds],
     queryFn: async () => {
@@ -72,9 +87,9 @@ function StarredContent() {
     queryClient.invalidateQueries({ queryKey: ["starred"] });
   }, [queryClient]);
 
-  const files = filesData ?? [];
+  const files = [...(filesData ?? []), ...(foldersData ?? [])];
   const documents = docsData ?? [];
-  const isLoading = authLoading || starredIdsLoading || filesLoading || docsLoading;
+  const isLoading = authLoading || starredIdsLoading || filesLoading || foldersLoading || docsLoading;
   const isEmpty = files.length === 0 && documents.length === 0;
 
   return (

@@ -233,7 +233,7 @@ export const filesApi = {
   },
   getFolder: async (id: string): Promise<FileItem> => {
     const { data } = await apiClient.get<Record<string, unknown>>(`/folders/${id}`);
-    return normalizeFileItem(data);
+    return normalizeFileItem({ ...data, isFolder: true });
   },
   deleteFolder: async (id: string): Promise<void> => {
     await apiClient.delete(`/folders/${id}`);
@@ -305,7 +305,7 @@ export const filesApi = {
   },
   renameFolder: async (id: string, name: string): Promise<FileItem> => {
     const { data } = await apiClient.put<Record<string, unknown>>(`/folders/${id}`, { name });
-    return normalizeFileItem(data);
+    return normalizeFileItem({ ...data, isFolder: true });
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
     const params: Record<string, string | number> = { page: 1, page_size: limit };
@@ -492,7 +492,7 @@ export const storageApi = {
 // ── Starred (localStorage-backed) ─────────────────────────────
 const STARRED_STORAGE_KEY = "otter_starred_items";
 
-type StarredItemType = "file" | "document";
+type StarredItemType = "file" | "folder" | "document";
 
 interface StarredEntry {
   itemId: string;
@@ -537,17 +537,19 @@ export const starredApi = {
     return true;
   },
 
-  getStarredIds: (userId: string): { fileIds: string[]; documentIds: string[] } => {
+  getStarredIds: (userId: string): { fileIds: string[]; folderIds: string[]; documentIds: string[] } => {
     const map = getStarredMap();
     const prefix = `${userId}:`;
     const fileIds: string[] = [];
+    const folderIds: string[] = [];
     const documentIds: string[] = [];
     for (const [key, entry] of Object.entries(map)) {
       if (!key.startsWith(prefix)) continue;
       if (entry.itemType === "file") fileIds.push(entry.itemId);
+      else if (entry.itemType === "folder") folderIds.push(entry.itemId);
       else documentIds.push(entry.itemId);
     }
-    return { fileIds, documentIds };
+    return { fileIds, folderIds, documentIds };
   },
 };
 

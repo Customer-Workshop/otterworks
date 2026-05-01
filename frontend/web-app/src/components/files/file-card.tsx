@@ -86,10 +86,10 @@ export function FileCard({
     e.preventDefault();
     e.stopPropagation();
     if (!userId) return;
-    const nowStarred = starredApi.toggle(userId, file.id, "file");
+    const nowStarred = starredApi.toggle(userId, file.id, file.isFolder ? "folder" : "file");
     setStarred(nowStarred);
     onStarToggle?.();
-  }, [userId, file.id, onStarToggle]);
+  }, [userId, file.id, file.isFolder, onStarToggle]);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(file.name);
   const renameInputRef = useRef<HTMLInputElement>(null);

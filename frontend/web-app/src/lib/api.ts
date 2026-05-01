@@ -16,26 +16,26 @@ import type {
   SharedUser,
 } from "@/types";
 
-// Raw shape returned by the file-service (snake_case, different field names)
+// Shape after the axios camelCase interceptor transforms the file-service response
 interface RawFileItem {
   id: string;
   name: string;
-  mime_type: string;
-  size_bytes: number;
-  s3_key: string;
-  folder_id: string | null;
-  owner_id: string;
+  mimeType: string;
+  sizeBytes: number;
+  s3Key: string;
+  folderId: string | null;
+  ownerId: string;
   version: number;
-  is_trashed: boolean;
-  created_at: string;
-  updated_at: string;
+  isTrashed: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface RawFileListResponse {
   files: RawFileItem[];
   total: number;
   page: number;
-  page_size: number;
+  pageSize: number;
 }
 
 // Normalize a single file from the file-service format to the frontend FileItem shape
@@ -43,17 +43,17 @@ function mapRawFile(raw: RawFileItem): FileItem {
   return {
     id: raw.id,
     name: raw.name,
-    mimeType: raw.mime_type ?? "application/octet-stream",
-    size: raw.size_bytes ?? 0,
-    parentId: raw.folder_id ?? null,
-    ownerId: raw.owner_id ?? "",
+    mimeType: raw.mimeType ?? "application/octet-stream",
+    size: raw.sizeBytes ?? 0,
+    parentId: raw.folderId ?? null,
+    ownerId: raw.ownerId ?? "",
     ownerName: "",
     isFolder: false,
     path: `/${raw.name}`,
     sharedWith: [],
     tags: [],
-    createdAt: raw.created_at ?? "",
-    updatedAt: raw.updated_at ?? "",
+    createdAt: raw.createdAt ?? "",
+    updatedAt: raw.updatedAt ?? "",
     versions: [],
   };
 }
@@ -130,8 +130,8 @@ export const filesApi = {
       data: (data.files ?? []).map(mapRawFile),
       total: data.total ?? 0,
       page: data.page ?? page,
-      pageSize: data.page_size ?? pageSize,
-      hasMore: ((data.page ?? page) * (data.page_size ?? pageSize)) < (data.total ?? 0),
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: ((data.page ?? page) * (data.pageSize ?? pageSize)) < (data.total ?? 0),
     };
   },
   get: async (id: string): Promise<FileItem> => {

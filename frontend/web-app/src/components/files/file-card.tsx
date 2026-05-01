@@ -126,7 +126,7 @@ export function FileCard({
                   }}
                   onBlur={submitRename}
                   className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 />
               </div>
             ) : (
@@ -220,7 +220,7 @@ export function FileCard({
               }}
               onBlur={submitRename}
               className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
             />
           </div>
         ) : (

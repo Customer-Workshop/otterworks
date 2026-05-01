@@ -19,7 +19,7 @@ import {
   X,
   Star,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { FileItem } from "@/types";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import { starredApi } from "@/lib/api";
@@ -74,14 +74,20 @@ export function FileCard({
   const userId = user?.id ?? "";
   const [starred, setStarred] = useState(() => userId ? starredApi.isStarred(userId, file.id) : false);
 
-  const handleStarClick = (e: React.MouseEvent) => {
+  useEffect(() => {
+    if (userId) {
+      setStarred(starredApi.isStarred(userId, file.id));
+    }
+  }, [userId, file.id]);
+
+  const handleStarClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!userId) return;
     const nowStarred = starredApi.toggle(userId, file.id, "file");
     setStarred(nowStarred);
     onStarToggle?.();
-  };
+  }, [userId, file.id, onStarToggle]);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(file.name);
   const renameInputRef = useRef<HTMLInputElement>(null);

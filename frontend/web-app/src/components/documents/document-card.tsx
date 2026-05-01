@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FileText, MoreVertical, Trash2, Share2, ExternalLink, Star } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Document } from "@/types";
 import { formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 import { starredApi } from "@/lib/api";
@@ -22,14 +22,20 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid", onSta
   const userId = user?.id ?? "";
   const [starred, setStarred] = useState(() => userId ? starredApi.isStarred(userId, document.id) : false);
 
-  const handleStarClick = (e: React.MouseEvent) => {
+  useEffect(() => {
+    if (userId) {
+      setStarred(starredApi.isStarred(userId, document.id));
+    }
+  }, [userId, document.id]);
+
+  const handleStarClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!userId) return;
     const nowStarred = starredApi.toggle(userId, document.id, "document");
     setStarred(nowStarred);
     onStarToggle?.();
-  };
+  }, [userId, document.id, onStarToggle]);
 
   if (view === "list") {
     return (

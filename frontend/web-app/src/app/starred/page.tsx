@@ -28,7 +28,7 @@ export default function StarredPage() {
 
 function StarredContent() {
   const { viewMode, setViewMode } = useUIStore();
-  const { user } = useAuthStore();
+  const { user, isLoading: authLoading } = useAuthStore();
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
 
@@ -72,7 +72,7 @@ function StarredContent() {
 
   const files = filesData ?? [];
   const documents = docsData ?? [];
-  const isLoading = starredIdsLoading || filesLoading || docsLoading;
+  const isLoading = authLoading || starredIdsLoading || filesLoading || docsLoading;
   const isEmpty = files.length === 0 && documents.length === 0;
 
   return (

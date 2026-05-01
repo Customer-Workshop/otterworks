@@ -68,9 +68,9 @@ public class AuthController {
   }
 
   @GetMapping("/users/lookup")
-  public ResponseEntity<UserDTO> lookupUser(@RequestParam String email) {
+  public ResponseEntity<UserLookupResponse> lookupUser(@RequestParam String email) {
     UserDTO user = userService.findByEmail(email);
-    return ResponseEntity.ok(user);
+    return ResponseEntity.ok(UserLookupResponse.fromUserDTO(user));
   }
 
   @GetMapping("/users")

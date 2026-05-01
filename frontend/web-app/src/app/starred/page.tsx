@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { Star, LayoutGrid, List } from "lucide-react";
 import { useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
@@ -50,6 +50,7 @@ function StarredContent() {
         .map((r) => r.value);
     },
     enabled: !!starredIds?.fileIds.length,
+    placeholderData: keepPreviousData,
   });
 
   const { data: docsData, isLoading: docsLoading } = useQuery({
@@ -64,6 +65,7 @@ function StarredContent() {
         .map((r) => r.value);
     },
     enabled: !!starredIds?.documentIds.length,
+    placeholderData: keepPreviousData,
   });
 
   const handleStarToggle = useCallback(() => {

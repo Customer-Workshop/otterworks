@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, RotateCcw, AlertTriangle, X } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { filesApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import { File, FileText, Folder, Image, Film } from "lucide-react";
@@ -25,6 +26,8 @@ export default function TrashPage() {
 
 function TrashContent() {
   const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<FileItem | null>(null);
+  const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["files", "trash"],
@@ -53,10 +56,27 @@ function TrashContent() {
 
   const items = data?.data || [];
 
+  const totalTrashed = data?.total ?? items.length;
+
+  const emptyTrashMutation = useMutation({
+    mutationFn: async () => {
+      const pageSize = 50;
+      let batch = await filesApi.getTrashed(1, pageSize);
+      while (batch.data.length > 0) {
+        await Promise.all(batch.data.map((item) => filesApi.permanentDelete(item.id)));
+        batch = await filesApi.getTrashed(1, pageSize);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Trash emptied");
+    },
+    onError: () => toast.error("Failed to empty trash"),
+  });
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Trash" }]} />
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Trash</h1>
@@ -64,6 +84,16 @@ function TrashContent() {
             Items in trash will be permanently deleted after 30 days
           </p>
         </div>
+        {items.length > 0 && (
+          <button
+            onClick={() => setShowEmptyTrashConfirm(true)}
+            disabled={emptyTrashMutation.isPending}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition disabled:opacity-50"
+          >
+            <Trash2 size={16} />
+            Empty Trash
+          </button>
+        )}
       </div>
 
       {/* Warning banner */}
@@ -92,12 +122,40 @@ function TrashContent() {
               key={item.id}
               item={item}
               onRestore={() => restoreMutation.mutate(item.id)}
-              onDelete={() => permanentDeleteMutation.mutate(item.id)}
+              onDelete={() => setDeleteTarget(item)}
               isRestoring={restoreMutation.isPending}
             />
           ))}
         </div>
       )}
+
+      {/* Confirm permanent delete of single item */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Permanently delete"
+        description={`This will permanently delete ${deleteTarget?.name ?? "this item"}. This action cannot be undone.`}
+        confirmLabel="Delete permanently"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteTarget) permanentDeleteMutation.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Confirm empty trash */}
+      <ConfirmDialog
+        open={showEmptyTrashConfirm}
+        title="Empty trash"
+        description={`This will permanently delete all ${totalTrashed} item${totalTrashed === 1 ? "" : "s"} in trash. This action cannot be undone.`}
+        confirmLabel="Delete all permanently"
+        variant="destructive"
+        onConfirm={() => {
+          emptyTrashMutation.mutate();
+          setShowEmptyTrashConfirm(false);
+        }}
+        onCancel={() => setShowEmptyTrashConfirm(false)}
+      />
     </div>
   );
 }

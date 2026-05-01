@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -57,8 +56,6 @@ function NotificationsContent() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Notifications" }]} />
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

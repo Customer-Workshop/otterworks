@@ -252,7 +252,7 @@ function FileBrowserContent() {
           </div>
         </div>
       )}
-      <Breadcrumb items={breadcrumbs} />
+      {folderId && <Breadcrumb items={breadcrumbs} />}
 
       {/* Bulk action bar */}
       {selectionActive && selectedIds.size > 0 && (
@@ -463,6 +463,21 @@ function FileBrowserContent() {
                     view={viewMode}
                     onDelete={(id) => deleteMutation.mutate(id)}
                     onShare={(id) => setShareFileId(id)}
+                    onDownload={async (id, name) => {
+                      try {
+                        const downloadUrl = await filesApi.getDownloadUrl(id);
+                        const a = document.createElement("a");
+                        a.href = downloadUrl;
+                        a.download = name;
+                        a.rel = "noopener";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        toast.success("File downloaded successfully");
+                      } catch {
+                        toast.error("Download failed. Please try again.");
+                      }
+                    }}
                     onRename={(id, name) => renameFileMutation.mutate({ id, name })}
                     selected={selectedIds.has(file.id)}
                     onSelect={toggleSelect}
@@ -481,9 +496,18 @@ function FileBrowserContent() {
           <ShareDialog
             fileId={shareFile.id}
             fileName={shareFile.name}
+            ownerId={shareFile.ownerId}
             sharedWith={shareFile.sharedWith}
             onShare={async (email, permission) => {
               await filesApi.share(shareFile.id, email, permission);
+              queryClient.invalidateQueries({ queryKey: ["files"] });
+            }}
+            onPermissionChange={async (userId, permission) => {
+              await filesApi.updateSharePermission(shareFile.id, userId, permission);
+              queryClient.invalidateQueries({ queryKey: ["files"] });
+            }}
+            onRemoveAccess={async (userId) => {
+              await filesApi.removeShare(shareFile.id, userId);
               queryClient.invalidateQueries({ queryKey: ["files"] });
             }}
             onClose={() => setShareFileId(null)}

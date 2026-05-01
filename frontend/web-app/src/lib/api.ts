@@ -233,7 +233,7 @@ export const filesApi = {
   },
   getFolder: async (id: string): Promise<FileItem> => {
     const { data } = await apiClient.get<Record<string, unknown>>(`/folders/${id}`);
-    return normalizeFileItem(data);
+    return normalizeFileItem({ ...data, isFolder: true });
   },
   deleteFolder: async (id: string): Promise<void> => {
     await apiClient.delete(`/folders/${id}`);
@@ -305,7 +305,7 @@ export const filesApi = {
   },
   renameFolder: async (id: string, name: string): Promise<FileItem> => {
     const { data } = await apiClient.put<Record<string, unknown>>(`/folders/${id}`, { name });
-    return normalizeFileItem(data);
+    return normalizeFileItem({ ...data, isFolder: true });
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
     const params: Record<string, string | number> = { page: 1, page_size: limit };

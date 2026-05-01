@@ -68,6 +68,7 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
 
     return () => {
       wsProvider.destroy();
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
   }, [documentId, ydoc]);
 

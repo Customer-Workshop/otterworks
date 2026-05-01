@@ -67,6 +67,12 @@ public class AuthController {
     return ResponseEntity.noContent().build();
   }
 
+  @GetMapping("/users/lookup")
+  public ResponseEntity<UserLookupResponse> lookupUser(@RequestParam String email) {
+    UserDTO user = userService.findByEmail(email);
+    return ResponseEntity.ok(UserLookupResponse.fromUserDTO(user));
+  }
+
   @GetMapping("/users")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Page<UserDTO>> listUsers(Pageable pageable) {

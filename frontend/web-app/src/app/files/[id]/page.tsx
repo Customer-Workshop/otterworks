@@ -68,9 +68,7 @@ function FileDetailContent() {
   });
 
   const handleShare = async (email: string, permission: "view" | "edit") => {
-    await filesApi.share(fileId, [
-      { userId: "", name: "", email, permission },
-    ]);
+    await filesApi.share(fileId, email, permission);
     queryClient.invalidateQueries({ queryKey: ["files", fileId] });
   };
 

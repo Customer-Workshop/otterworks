@@ -231,6 +231,46 @@ pub async fn list_files(
     }))
 }
 
+pub async fn list_shared_files(
+    meta: web::Data<MetadataClient>,
+    req: HttpRequest,
+    query: web::Query<ListFilesQuery>,
+) -> Result<HttpResponse, ServiceError> {
+    let user_id: Uuid = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
+
+    let shares = meta.list_shares_for_user(&user_id).await?;
+
+    let mut files = Vec::new();
+    for share in &shares {
+        match meta.get_file(&share.file_id).await {
+            Ok(file) if !file.is_trashed => files.push(file),
+            _ => {}
+        }
+    }
+
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(50).min(100);
+    let total = files.len();
+    let start = (page - 1).saturating_mul(page_size) as usize;
+    let paged: Vec<FileMetadata> = files
+        .into_iter()
+        .skip(start)
+        .take(page_size as usize)
+        .collect();
+
+    Ok(HttpResponse::Ok().json(ListFilesResponse {
+        files: paged,
+        total,
+        page,
+        page_size,
+    }))
+}
+
 pub async fn list_trashed(
     req: HttpRequest,
     meta: web::Data<MetadataClient>,
@@ -256,7 +296,6 @@ pub async fn list_trashed(
         page_size,
     }))
 }
-
 pub async fn delete_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,

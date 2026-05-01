@@ -226,10 +226,9 @@ export const filesApi = {
     await apiClient.delete(`/files/${id}/permanent`);
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
-    const { data } = await apiClient.get<any[]>("/files/recent", {
-      params: { limit },
-    });
-    return (Array.isArray(data) ? data : []).map(normalizeFileItem);
+    const params: Record<string, string | number> = { page: 1, page_size: limit };
+    const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
+    return (data.files ?? []).map((f) => normalizeFileItem(f as unknown as Record<string, unknown>));
   },
 };
 
@@ -263,10 +262,10 @@ export const documentsApi = {
     await apiClient.post(`/documents/${id}/restore`);
   },
   getRecent: async (limit = 10): Promise<Document[]> => {
-    const { data } = await apiClient.get<Document[]>("/documents/recent", {
-      params: { limit },
+    const { data } = await apiClient.get<{ items?: Document[] }>("/documents", {
+      params: { page: 1, size: limit },
     });
-    return data;
+    return data.items ?? [];
   },
 };
 
@@ -308,19 +307,57 @@ export const notificationsApi = {
 
 // ── Activity ──────────────────────────────────────────────────
 export const activityApi = {
-  getRecent: async (limit = 20): Promise<ActivityItem[]> => {
-    const { data } = await apiClient.get<ActivityItem[]>("/activity/recent", {
-      params: { limit },
-    });
-    return data;
+  getRecent: async (_limit = 20): Promise<ActivityItem[]> => {
+    // Activity service endpoint does not exist yet; return empty list
+    // to avoid dashboard errors.
+    return [];
   },
 };
 
 // ── Storage ───────────────────────────────────────────────────
 export const storageApi = {
   getUsage: async (): Promise<StorageUsage> => {
-    const { data } = await apiClient.get<StorageUsage>("/storage/usage");
-    return data;
+    // The /storage/usage endpoint is not routed. Compute stats from
+    // existing file and document list endpoints instead.
+    const [fileRes, docRes] = await Promise.all([
+      apiClient.get<RawFileListResponse>("/files", { params: { page: 1, page_size: 1 } }),
+      apiClient.get<{ total?: number }>("/documents", { params: { page: 1, size: 1 } }),
+    ]);
+
+    const fileCount = fileRes.data.total ?? 0;
+    const documentCount = docRes.data.total ?? 0;
+
+    // Fetch all files to sum storage. The file-service caps page_size at 100,
+    // so paginate through all pages to get an accurate total.
+    let used = 0;
+    if (fileCount > 0) {
+      const PAGE_LIMIT = 100;
+      let page = 1;
+      let fetched = 0;
+      while (fetched < fileCount) {
+        const batch = await apiClient.get<RawFileListResponse>("/files", {
+          params: { page, page_size: PAGE_LIMIT },
+        });
+        const files = batch.data.files ?? [];
+        if (files.length === 0) break;
+        used += files.reduce(
+          (sum, f) => {
+            const raw = f as unknown as Record<string, number>;
+            return sum + (raw.sizeBytes ?? raw.size_bytes ?? 0);
+          },
+          0,
+        );
+        fetched += files.length;
+        page += 1;
+      }
+    }
+
+    return {
+      used,
+      total: 10 * 1024 * 1024 * 1024, // 10 GB default quota
+      fileCount,
+      documentCount,
+    };
   },
 };
 

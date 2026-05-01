@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Download,
@@ -49,8 +50,10 @@ function FileDetailContent() {
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      toast.success("File deleted");
       router.push("/files");
     },
+    onError: () => toast.error("Failed to delete file"),
   });
 
   if (isLoading) return <PageLoader />;

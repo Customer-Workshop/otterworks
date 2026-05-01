@@ -3,6 +3,7 @@
 import { useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   LayoutGrid,
   List,
@@ -52,7 +53,11 @@ function FileBrowserContent() {
 
   const deleteMutation = useMutation({
     mutationFn: filesApi.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["files"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      toast.success("File deleted");
+    },
+    onError: () => toast.error("Failed to delete file"),
   });
 
   const deleteFolderMutation = useMutation({
@@ -60,7 +65,9 @@ function FileBrowserContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      toast.success("Folder deleted");
     },
+    onError: () => toast.error("Failed to delete folder"),
   });
 
   const createFolderMutation = useMutation({
@@ -70,7 +77,9 @@ function FileBrowserContent() {
       queryClient.invalidateQueries({ queryKey: ["folders"] });
       setShowNewFolder(false);
       setNewFolderName("");
+      toast.success("Folder created");
     },
+    onError: () => toast.error("Failed to create folder"),
   });
 
   const handleUpload = useCallback(
@@ -85,8 +94,13 @@ function FileBrowserContent() {
         }
       }
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      const succeeded = results.filter((r) => r.ok);
       const failed = results.filter((r) => !r.ok);
+      if (succeeded.length > 0) {
+        toast.success(`${succeeded.length} file${succeeded.length > 1 ? "s" : ""} uploaded`);
+      }
       if (failed.length > 0) {
+        toast.error(`${failed.length} file${failed.length > 1 ? "s" : ""} failed to upload`);
         throw { results };
       }
     },

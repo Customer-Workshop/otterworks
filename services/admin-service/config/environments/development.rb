@@ -19,4 +19,7 @@ Rails.application.configure do
   config.active_support.disallowed_deprecation = :raise
   config.active_support.disallowed_deprecation_warnings = []
   config.active_record.migration_error = :page_load
+
+  # Allow requests from Docker internal hostnames
+  config.hosts.clear
 end

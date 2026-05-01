@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -25,12 +25,13 @@ import { cn } from "@/lib/utils";
 
 interface CollaborativeEditorProps {
   documentId: string;
+  initialContent?: string;
   onUpdate?: (content: string) => void;
 }
 
 const COLLAB_WS_URL = process.env.NEXT_PUBLIC_COLLAB_WS_URL || "ws://localhost:8085";
 
-export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ documentId, initialContent, onUpdate }: CollaborativeEditorProps) {
   const { user } = useAuthStore();
   const [ydoc] = useState(() => new Y.Doc());
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -53,6 +54,10 @@ export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEdito
       wsProvider.destroy();
     };
   }, [documentId, ydoc]);
+
+  const [contentLoaded, setContentLoaded] = useState(false);
+  // Suppress onUpdate callback while we inject saved content to avoid writing it back
+  const suppressSaveRef = useRef(false);
 
   const editor = useEditor(
     {
@@ -78,11 +83,32 @@ export function CollaborativeEditor({ documentId, onUpdate }: CollaborativeEdito
         },
       },
       onUpdate: ({ editor: ed }) => {
-        onUpdate?.(ed.getHTML());
+        if (!suppressSaveRef.current) {
+          onUpdate?.(ed.getHTML());
+        }
       },
     },
     [provider]
   );
+
+  // Load saved content from the API when the editor is ready and the Yjs doc is empty
+  useEffect(() => {
+    if (editor && initialContent && !contentLoaded) {
+      // Wait a tick so Yjs collaboration sync can happen first
+      const timer = setTimeout(() => {
+        const currentContent = editor.getHTML();
+        // Only inject saved content if the editor is still empty (no collab content arrived)
+        if (!currentContent || currentContent === "<p></p>") {
+          suppressSaveRef.current = true;
+          editor.commands.setContent(initialContent);
+          // Clear suppression after a short delay so any async Yjs observer fires are also caught
+          setTimeout(() => { suppressSaveRef.current = false; }, 50);
+        }
+        setContentLoaded(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [editor, initialContent, contentLoaded]);
 
   if (!editor) {
     return (

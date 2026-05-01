@@ -10,6 +10,9 @@ import {
   Save,
   Clock,
   Users,
+  Copy,
+  Check,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
@@ -38,6 +41,10 @@ function DocumentEditorContent() {
   const documentId = params.id as string;
   const [title, setTitle] = useState("");
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [hasContent, setHasContent] = useState(false);
   const latestContentRef = useRef<string | null>(null);
   const documentIdRef = useRef(documentId);
@@ -182,7 +189,10 @@ function DocumentEditorContent() {
               <Save size={16} />
               Save
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            <button
+              onClick={() => setShareOpen(!shareOpen)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
               <Share2 size={16} />
               Share
             </button>
@@ -211,10 +221,73 @@ function DocumentEditorContent() {
         )}
       </div>
 
+      {/* Share dialog */}
+      {shareOpen && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Share document</h3>
+            <button onClick={() => setShareOpen(false)} className="p-1 rounded hover:bg-gray-100 text-gray-400">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={shareEmail}
+              onChange={(e) => setShareEmail(e.target.value)}
+              placeholder="Enter email address"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && shareEmail.trim() && shareStatus !== "sending") {
+                  setShareStatus("sending");
+                  documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }])
+                    .then(() => { setShareStatus("sent"); setShareEmail(""); setTimeout(() => setShareStatus("idle"), 2000); })
+                    .catch(() => { setShareStatus("error"); setTimeout(() => setShareStatus("idle"), 3000); });
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                if (shareEmail.trim()) {
+                  setShareStatus("sending");
+                  documentsApi.share(documentId, [{ userId: "", name: "", email: shareEmail.trim(), permission: "edit" }])
+                    .then(() => { setShareStatus("sent"); setShareEmail(""); setTimeout(() => setShareStatus("idle"), 2000); })
+                    .catch(() => { setShareStatus("error"); setTimeout(() => setShareStatus("idle"), 3000); });
+                }
+              }}
+              disabled={shareStatus === "sending"}
+              className="px-4 py-2 bg-otter-600 text-white rounded-lg text-sm hover:bg-otter-700 transition disabled:opacity-50"
+            >
+              {shareStatus === "sending" ? "Sending..." : "Invite"}
+            </button>
+          </div>
+          {shareStatus === "sent" && (
+            <p className="text-sm text-green-600">Invite sent successfully</p>
+          )}
+          {shareStatus === "error" && (
+            <p className="text-sm text-red-600">Failed to send invite. Please try again.</p>
+          )}
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                setShareCopied(true);
+                setTimeout(() => setShareCopied(false), 2000);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+            >
+              {shareCopied ? <Check size={14} /> : <Copy size={14} />}
+              {shareCopied ? "Copied!" : "Copy link"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Editor */}
       <CollaborativeEditor
         key={documentId}
         documentId={documentId}
+        initialContent={document.content}
         onUpdate={debouncedSave}
       />
     </div>

@@ -86,6 +86,36 @@ export const authApi = {
   },
 };
 
+// ── Helpers ───────────────────────────────────────────────────
+// Extract the user ID from the JWT stored in localStorage.
+function getOwnerIdFromJwt(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("otter_access_token");
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Backend file objects use different field names — normalise to frontend FileItem shape.
+function normalizeFileItem(raw: Record<string, unknown>): FileItem {
+  return {
+    ...raw,
+    size: (raw.sizeBytes ?? raw.size ?? 0) as number,
+    mimeType: (raw.mimeType ?? raw.contentType ?? "") as string,
+    parentId: (raw.folderId ?? raw.parentId ?? null) as string | null,
+    isFolder: (raw.isFolder ?? false) as boolean,
+    ownerName: (raw.ownerName ?? "") as string,
+    path: (raw.path ?? "") as string,
+    sharedWith: (raw.sharedWith ?? []) as SharedUser[],
+    tags: (raw.tags ?? []) as string[],
+    versions: (raw.versions ?? []) as FileItem["versions"],
+  } as FileItem;
+}
+
 // ── Files ─────────────────────────────────────────────────────
 export const filesApi = {
   list: async (
@@ -93,6 +123,7 @@ export const filesApi = {
     page = 1,
     pageSize = 50
   ): Promise<PaginatedResponse<FileItem>> => {
+<<<<<<< HEAD
     // file-service uses folder_id, not parentId
     const params: Record<string, string | number> = { page, pageSize };
     if (parentId) params.folder_id = parentId;
@@ -108,20 +139,59 @@ export const filesApi = {
   get: async (id: string): Promise<FileItem> => {
     const { data } = await apiClient.get<RawFileItem>(`/files/${id}`);
     return mapRawFile(data);
+=======
+    const params: Record<string, string | number> = { page, page_size: pageSize };
+    if (parentId) params.folder_id = parentId;
+    const { data } = await apiClient.get<any>("/files", { params });
+    // Backend returns { files: [...], total, page, pageSize } — normalise to PaginatedResponse
+    const rawItems = data.files ?? data.data ?? [];
+    const items: FileItem[] = rawItems.map(normalizeFileItem);
+    return {
+      data: items,
+      total: data.total ?? items.length,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+    };
+  },
+  get: async (id: string): Promise<FileItem> => {
+    const { data } = await apiClient.get<any>(`/files/${id}`);
+    return normalizeFileItem(data);
+>>>>>>> origin/main
   },
   upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
     const formData = new FormData();
     formData.append("file", file);
+<<<<<<< HEAD
     // file-service uses folder_id, not parentId
     if (parentId) formData.append("folder_id", parentId);
     const { data } = await apiClient.post<{ file: RawFileItem }>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return mapRawFile(data.file);
+=======
+    if (parentId) formData.append("folder_id", parentId);
+
+    // The file-service requires owner_id — extract it from the JWT sub claim
+    const ownerId = getOwnerIdFromJwt();
+    if (ownerId) formData.append("owner_id", ownerId);
+
+    const { data } = await apiClient.post<any>("/files/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    // Backend wraps response in { file: {...} }
+    const raw = data.file ?? data;
+    return normalizeFileItem(raw);
+>>>>>>> origin/main
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
-    const { data } = await apiClient.post<FileItem>("/files/folder", { name, parentId });
-    return data;
+    const ownerId = getOwnerIdFromJwt();
+    const { data } = await apiClient.post<any>("/folders", {
+      name,
+      parent_id: parentId ?? null,
+      owner_id: ownerId,
+    });
+    return normalizeFileItem(data);
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}`);
@@ -133,21 +203,36 @@ export const filesApi = {
     await apiClient.post(`/files/${id}/restore`);
   },
   getShared: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<PaginatedResponse<FileItem>>("/files/shared", {
-      params: { page, pageSize },
+    const { data } = await apiClient.get<any>("/files/shared", {
+      params: { page, page_size: pageSize },
     });
-    return data;
+    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    return {
+      data: items,
+      total: data.total ?? items.length,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+    };
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<PaginatedResponse<FileItem>>("/files/trash", {
-      params: { page, pageSize },
+    const { data } = await apiClient.get<any>("/files/trash", {
+      params: { page, page_size: pageSize },
     });
-    return data;
+    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    return {
+      data: items,
+      total: data.total ?? items.length,
+      page: data.page ?? page,
+      pageSize: data.pageSize ?? pageSize,
+      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+    };
   },
   permanentDelete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}/permanent`);
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
+<<<<<<< HEAD
     // The file-service has no /recent endpoint; fetch the first page and
     // return the most recently uploaded files sorted by createdAt descending.
     const { data } = await apiClient.get<RawFileListResponse>("/files", {
@@ -157,6 +242,12 @@ export const filesApi = {
       .map(mapRawFile)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
+=======
+    const { data } = await apiClient.get<any[]>("/files/recent", {
+      params: { limit },
+    });
+    return (Array.isArray(data) ? data : []).map(normalizeFileItem);
+>>>>>>> origin/main
   },
 };
 

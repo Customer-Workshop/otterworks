@@ -24,6 +24,7 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ShareDialog } from "@/components/files/share-dialog";
+import { TextFilePreview, PdfFilePreview, ImageFilePreview } from "@/components/files/file-preview";
 import { filesApi, authApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
@@ -114,7 +115,14 @@ function FileDetailContent() {
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isPdf = file.mimeType === "application/pdf";
-  const isText = file.mimeType.startsWith("text/") || file.mimeType === "application/json" || file.mimeType === "application/xml";
+  const isText =
+    file.mimeType.startsWith("text/") ||
+    file.mimeType === "application/json" ||
+    file.mimeType === "application/xml" ||
+    file.mimeType === "application/javascript" ||
+    file.mimeType === "application/typescript" ||
+    file.mimeType === "application/x-yaml" ||
+    file.mimeType === "application/x-sh";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -193,16 +201,12 @@ function FileDetailContent() {
               </h2>
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
-              {(isImage || isVideo || isText) && isUrlLoading ? (
+              {(isImage || isVideo || isText || isPdf) && isUrlLoading ? (
                 <div className="w-full text-center py-8">
                   <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
-              ) : isImage && presignedUrl ? (
-                <img
-                  src={presignedUrl}
-                  alt={file.name}
-                  className="max-w-full max-h-[500px] rounded-lg shadow-sm"
-                />
+              ) : isImage ? (
+                <ImageFilePreview presignedUrl={presignedUrl} fileName={file.name} />
               ) : isVideo && presignedUrl ? (
                 <video
                   src={presignedUrl}
@@ -210,22 +214,9 @@ function FileDetailContent() {
                   className="max-w-full max-h-[500px] rounded-lg"
                 />
               ) : isPdf ? (
-                <div className="text-center">
-                  <FileText size={64} className="text-red-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">PDF document</p>
-                  {presignedUrl && (
-                    <a
-                      href={presignedUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-otter-600 hover:underline mt-1 inline-block"
-                    >
-                      Open in new tab
-                    </a>
-                  )}
-                </div>
+                <PdfFilePreview presignedUrl={presignedUrl} />
               ) : isText ? (
-                <TextPreview fileId={file.id} presignedUrl={presignedUrl} />
+                <TextFilePreview presignedUrl={presignedUrl} fileName={file.name} />
               ) : (
                 <div className="text-center">
                   <File size={64} className="text-gray-300 mx-auto mb-3" />
@@ -430,22 +421,4 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   return <File size={24} className="text-otter-600" />;
 }
 
-function TextPreview({ presignedUrl }: { fileId: string; presignedUrl?: string }) {
-  if (!presignedUrl) {
-    return (
-      <div className="text-center">
-        <File size={64} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">Could not load preview</p>
-      </div>
-    );
-  }
 
-  return (
-    <iframe
-      src={presignedUrl}
-      className="w-full min-h-[500px] bg-white rounded-lg border border-gray-200"
-      sandbox="allow-same-origin"
-      title="Text file preview"
-    />
-  );
-}

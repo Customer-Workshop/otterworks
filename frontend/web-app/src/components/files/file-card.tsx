@@ -68,6 +68,7 @@ export function FileCard({
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(file.name);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameDoneRef = useRef(false);
   const Icon = file.isFolder ? Folder : getIconComponent(file.mimeType);
 
   useEffect(() => {
@@ -79,6 +80,8 @@ export function FileCard({
   }, [isRenaming, file.name]);
 
   const submitRename = () => {
+    if (renameDoneRef.current) return;
+    renameDoneRef.current = true;
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== file.name) {
       onRename?.(file.id, trimmed);
@@ -122,7 +125,7 @@ export function FileCard({
                   onChange={(e) => setRenameValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") submitRename();
-                    if (e.key === "Escape") { setIsRenaming(false); setRenameValue(file.name); }
+                    if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }
                   }}
                   onBlur={submitRename}
                   className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
@@ -157,7 +160,7 @@ export function FileCard({
               onClose={() => setMenuOpen(false)}
               onDelete={onDelete}
               onShare={onShare}
-              onRename={() => { setIsRenaming(true); setRenameValue(file.name); }}
+              onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
             />
           )}
         </div>
@@ -202,7 +205,7 @@ export function FileCard({
                 onClose={() => setMenuOpen(false)}
                 onDelete={onDelete}
                 onShare={onShare}
-                onRename={() => { setIsRenaming(true); setRenameValue(file.name); }}
+                onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
               />
             )}
           </div>
@@ -216,7 +219,7 @@ export function FileCard({
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitRename();
-                if (e.key === "Escape") { setIsRenaming(false); setRenameValue(file.name); }
+                if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }
               }}
               onBlur={submitRename}
               className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"

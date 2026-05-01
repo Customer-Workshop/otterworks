@@ -31,6 +31,7 @@ export function FolderCard({
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(folder.name);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameDoneRef = useRef(false);
 
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -40,6 +41,8 @@ export function FolderCard({
   }, [isRenaming]);
 
   const submitRename = () => {
+    if (renameDoneRef.current) return;
+    renameDoneRef.current = true;
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== folder.name) {
       onRename?.(folder.id, trimmed);
@@ -83,7 +86,7 @@ export function FolderCard({
                   onChange={(e) => setRenameValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") submitRename();
-                    if (e.key === "Escape") { setIsRenaming(false); setRenameValue(folder.name); }
+                    if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(folder.name); }
                   }}
                   onBlur={submitRename}
                   className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
@@ -116,7 +119,7 @@ export function FolderCard({
               onClose={() => setMenuOpen(false)}
               onDelete={onDelete}
               onShare={onShare}
-              onRename={() => { setIsRenaming(true); setRenameValue(folder.name); }}
+              onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(folder.name); }}
             />
           )}
         </div>
@@ -161,7 +164,7 @@ export function FolderCard({
                 onClose={() => setMenuOpen(false)}
                 onDelete={onDelete}
                 onShare={onShare}
-                onRename={() => { setIsRenaming(true); setRenameValue(folder.name); }}
+                onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(folder.name); }}
               />
             )}
           </div>
@@ -175,7 +178,7 @@ export function FolderCard({
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitRename();
-                if (e.key === "Escape") { setIsRenaming(false); setRenameValue(folder.name); }
+                if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(folder.name); }
               }}
               onBlur={submitRename}
               className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"

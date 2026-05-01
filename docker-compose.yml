@@ -281,14 +281,14 @@ services:
       POSTGRES_DB: otterworks
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      OPENSEARCH_URL: http://opensearch:9200
+      MEILISEARCH_URL: http://meilisearch:7700
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: search-service
       SQS_ENABLED: 'true'
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-search-events
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
     depends_on:
-      opensearch:
+      meilisearch:
         condition: service_healthy
     healthcheck:
       test:

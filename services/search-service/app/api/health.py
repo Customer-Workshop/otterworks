@@ -38,12 +38,7 @@ INDEX_COUNT = Counter(
 
 @health_bp.route("/health")
 def health() -> tuple:
-    """Liveness check — returns 200 if the process is running.
-
-    Used by Docker healthcheck (curl -f). Never calls external services
-    so the response is immediate regardless of dependency health.
-    Use /health/ready for dependency-aware readiness probes.
-    """
+    """Liveness check — returns 200 if the process is running."""
     return jsonify({
         "status": "alive",
         "service": "search-service",
@@ -52,20 +47,16 @@ def health() -> tuple:
 
 @health_bp.route("/health/ready")
 def readiness() -> tuple:
-    """Readiness check — returns 503 if OpenSearch is unreachable.
+    """Readiness check — returns 503 if MeiliSearch is unreachable."""
+    search_service = current_app.config.get("SEARCH_SERVICE")
 
-    Use this for load-balancer readiness probes to stop routing
-    traffic when the service cannot serve search requests.
-    """
-    opensearch_service = current_app.config.get("OPENSEARCH_SERVICE")
+    healthy = False
+    if search_service:
+        healthy = search_service.ping()
 
-    opensearch_healthy = False
-    if opensearch_service:
-        opensearch_healthy = opensearch_service.ping()
-
-    if opensearch_healthy:
+    if healthy:
         return jsonify({"ready": True}), 200
-    return jsonify({"ready": False, "reason": "opensearch_unavailable"}), 503
+    return jsonify({"ready": False, "reason": "meilisearch_unavailable"}), 503
 
 
 @health_bp.route("/metrics")

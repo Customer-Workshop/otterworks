@@ -276,16 +276,40 @@ export const documentsApi = {
 // ── Search ────────────────────────────────────────────────────
 export const searchApi = {
   search: async (filters: SearchFilters): Promise<PaginatedResponse<SearchResult>> => {
-    const { data } = await apiClient.get<PaginatedResponse<SearchResult>>("/search", {
-      params: filters,
-    });
-    return data;
+    const { query, type, dateFrom, dateTo, owner } = filters;
+    const params: Record<string, string | number | undefined> = {
+      q: query,
+      type: type === "all" ? undefined : type,
+      date_from: dateFrom,
+      date_to: dateTo,
+      owner_id: owner,
+    };
+    const { data } = await apiClient.get<Record<string, unknown>>("/search", { params });
+    const rawResults = (data.results ?? []) as Record<string, unknown>[];
+    const total = (data.total as number) ?? rawResults.length;
+    const pg = (data.page as number) ?? 1;
+    const ps = (data.pageSize as number) ?? 20;
+    return {
+      data: rawResults.map((r): SearchResult => ({
+        id: String(r.id ?? ""),
+        type: (r.type as SearchResult["type"]) ?? "file",
+        name: String(r.title ?? r.name ?? r.id ?? ""),
+        snippet: String(r.contentSnippet ?? ""),
+        path: "",
+        updatedAt: String(r.updatedAt ?? ""),
+        ownerName: String(r.ownerId ?? ""),
+      })),
+      total,
+      page: pg,
+      pageSize: ps,
+      hasMore: pg * ps < total,
+    };
   },
   suggest: async (query: string): Promise<string[]> => {
-    const { data } = await apiClient.get<string[]>("/search/suggest", {
-      params: { query },
+    const { data } = await apiClient.get<{ suggestions: string[] }>("/search/suggest", {
+      params: { q: query },
     });
-    return data;
+    return data.suggestions ?? [];
   },
 };
 

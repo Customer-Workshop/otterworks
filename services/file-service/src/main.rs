@@ -51,6 +51,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/v1/files")
                     .route("/upload", web::post().to(handlers::upload_file))
+                    .route("/shared", web::get().to(handlers::list_shared_files))
                     .route("", web::get().to(handlers::list_files))
                     .route("/{file_id}", web::get().to(handlers::get_file_metadata))
                     .route("/{file_id}", web::delete().to(handlers::delete_file))

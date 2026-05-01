@@ -85,6 +85,13 @@ export const authApi = {
   logout: async (): Promise<void> => {
     await apiClient.post("/auth/logout");
   },
+  lookupUser: async (email: string): Promise<{ id: string; email: string; displayName: string }> => {
+    const { data } = await apiClient.get<{ id: string; email: string; displayName: string }>(
+      "/auth/users/lookup",
+      { params: { email } }
+    );
+    return data;
+  },
 };
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -201,17 +208,23 @@ export const filesApi = {
   deleteFolder: async (id: string): Promise<void> => {
     await apiClient.delete(`/folders/${id}`);
   },
-  share: async (id: string, users: SharedUser[]): Promise<void> => {
-    await apiClient.post(`/files/${id}/share`, { users });
+  share: async (id: string, email: string, permission: "view" | "edit"): Promise<void> => {
+    const user = await authApi.lookupUser(email);
+    const sharedBy = getOwnerIdFromJwt();
+    await apiClient.post(`/files/${id}/share`, {
+      shared_with: user.id,
+      permission: permission === "view" ? "viewer" : "editor",
+      shared_by: sharedBy,
+    });
   },
   restore: async (id: string): Promise<void> => {
     await apiClient.post(`/files/${id}/restore`);
   },
   getShared: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<any>("/files/shared", {
+    const { data } = await apiClient.get<RawFileListResponse>("/files/shared", {
       params: { page, page_size: pageSize },
     });
-    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    const items = (data.files ?? []).map(mapRawFile);
     return {
       data: items,
       total: data.total ?? items.length,

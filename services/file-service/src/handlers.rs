@@ -179,13 +179,31 @@ pub async fn get_file_metadata(
     Ok(HttpResponse::Ok().json(file))
 }
 
+/// Resolve the effective owner_id for list operations.
+///
+/// Prefer the `X-User-ID` header injected by the api-gateway from the
+/// authenticated JWT. This prevents a caller from spoofing another user's
+/// `owner_id` via the query string. Fall back to `query.owner_id` only when
+/// no header is present (direct/internal callers).
+fn resolve_owner_id(req: &HttpRequest, query_owner_id: Option<Uuid>) -> Option<Uuid> {
+    let header_owner_id = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok());
+
+    header_owner_id.or(query_owner_id)
+}
+
 pub async fn list_files(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
     let include_trashed = query.include_trashed.unwrap_or(false);
+    let owner_id = resolve_owner_id(&req, query.owner_id);
     let files = meta
-        .list_files(query.folder_id, query.owner_id, include_trashed)
+        .list_files(query.folder_id, owner_id, include_trashed)
         .await?;
 
     let page = query.page.unwrap_or(1).max(1);
@@ -207,10 +225,12 @@ pub async fn list_files(
 }
 
 pub async fn list_trashed(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let files = meta.list_trashed(query.owner_id).await?;
+    let owner_id = resolve_owner_id(&req, query.owner_id);
+    let files = meta.list_trashed(owner_id).await?;
 
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).min(100);
@@ -388,10 +408,12 @@ pub async fn share_file(
 // -- Folder Handlers --
 
 pub async fn list_folders(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFoldersQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let folders = meta.list_folders(query.parent_id, query.owner_id).await?;
+    let owner_id = resolve_owner_id(&req, query.owner_id);
+    let folders = meta.list_folders(query.parent_id, owner_id).await?;
     Ok(HttpResponse::Ok().json(ListFoldersResponse { folders }))
 }
 

@@ -48,7 +48,7 @@ interface FileCardProps {
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   onRename?: (id: string, name: string) => void;
-  onDownload?: (id: string) => void;
+  onDownload?: (id: string, name: string) => void;
   view?: "grid" | "list";
   selected?: boolean;
   onSelect?: (id: string) => void;
@@ -256,7 +256,7 @@ function FileMenu({
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   onRename?: () => void;
-  onDownload?: (id: string) => void;
+  onDownload?: (id: string, name: string) => void;
 }) {
   return (
     <>
@@ -279,7 +279,7 @@ function FileMenu({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onDownload?.(file.id);
+              onDownload?.(file.id, file.name);
               onClose();
             }}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"

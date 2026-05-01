@@ -24,11 +24,11 @@ export function FileUploadDropzone({ onUpload, className }: FileUploadDropzonePr
   const autoClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const timers = progressTimers.current;
-    const clearTimer = autoClearTimer.current;
+    const timersRef = progressTimers;
+    const clearRef = autoClearTimer;
     return () => {
-      timers.forEach(clearInterval);
-      if (clearTimer) clearTimeout(clearTimer);
+      timersRef.current.forEach(clearInterval);
+      if (clearRef.current) clearTimeout(clearRef.current);
     };
   }, []);
 

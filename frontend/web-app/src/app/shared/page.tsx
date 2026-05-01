@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { Share2, LayoutGrid, List } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { FileCard } from "@/components/files/file-card";
@@ -76,7 +77,26 @@ function SharedContent() {
           )}
         >
           {files.map((file) => (
-            <FileCard key={file.id} file={file} view={viewMode} />
+            <FileCard
+              key={file.id}
+              file={file}
+              view={viewMode}
+              onDownload={async (id, name) => {
+                try {
+                  const downloadUrl = await filesApi.getDownloadUrl(id);
+                  const a = document.createElement("a");
+                  a.href = downloadUrl;
+                  a.download = name;
+                  a.rel = "noopener";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  toast.success("File downloaded successfully");
+                } catch {
+                  toast.error("Download failed. Please try again.");
+                }
+              }}
+            />
           ))}
         </div>
       )}

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Download,
+  Loader2,
   Share2,
   Trash2,
   Clock,
@@ -176,11 +177,7 @@ function FileDetailContent() {
             }}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isDownloading ? (
-              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
+            {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             {isDownloading ? "Downloading..." : "Download"}
           </button>
           <button

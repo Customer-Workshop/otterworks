@@ -235,23 +235,22 @@ function FileBrowserContent() {
   };
 
   const handleDownload = useCallback(
-    async (id: string) => {
-      const match = data?.data?.find((f) => f.id === id);
+    async (id: string, name: string) => {
       try {
         const url = await filesApi.getDownloadUrl(id);
         const a = document.createElement("a");
         a.href = url;
-        a.download = match?.name ?? "download";
+        a.download = name;
         a.rel = "noopener";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        toast.success(`Downloading ${match?.name ?? "file"}`);
+        toast.success(`Downloading ${name}`);
       } catch {
         toast.error("Download failed");
       }
     },
-    [data]
+    []
   );
 
   const { getRootProps, isDragActive } = useDropzone({

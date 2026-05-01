@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, X, FileIcon, CheckCircle2 } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
@@ -20,9 +20,35 @@ interface UploadingFile {
 
 export function FileUploadDropzone({ onUpload, className }: FileUploadDropzoneProps) {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const progressTimers = useRef<ReturnType<typeof setInterval>[]>([]);
+  const autoClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const timersRef = progressTimers;
+    const clearRef = autoClearTimer;
+    return () => {
+      timersRef.current.forEach(clearInterval);
+      if (clearRef.current) clearTimeout(clearRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const allDone = uploadingFiles.length > 0 && uploadingFiles.every((f) => f.status !== "uploading");
+    if (allDone) {
+      if (autoClearTimer.current) clearTimeout(autoClearTimer.current);
+      autoClearTimer.current = setTimeout(() => {
+        setUploadingFiles([]);
+      }, 3000);
+    }
+  }, [uploadingFiles]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
+      if (autoClearTimer.current) {
+        clearTimeout(autoClearTimer.current);
+        autoClearTimer.current = null;
+      }
+
       const newFiles = acceptedFiles.map((file) => ({
         file,
         progress: 0,
@@ -30,14 +56,27 @@ export function FileUploadDropzone({ onUpload, className }: FileUploadDropzonePr
       }));
       setUploadingFiles((prev) => [...prev, ...newFiles]);
 
+      const timer = setInterval(() => {
+        setUploadingFiles((prev) =>
+          prev.map((f) => {
+            if (!acceptedFiles.includes(f.file) || f.status !== "uploading") return f;
+            const next = Math.min(f.progress + Math.random() * 15 + 5, 90);
+            return { ...f, progress: next };
+          })
+        );
+      }, 300);
+      progressTimers.current.push(timer);
+
       try {
         await onUpload(acceptedFiles);
+        clearInterval(timer);
         setUploadingFiles((prev) =>
           prev.map((f) =>
             acceptedFiles.includes(f.file) ? { ...f, status: "done" as const, progress: 100 } : f
           )
         );
       } catch (err: unknown) {
+        clearInterval(timer);
         const perFileResults =
           err && typeof err === "object" && "results" in err
             ? (err as { results: { file: File; ok: boolean }[] }).results
@@ -50,7 +89,7 @@ export function FileUploadDropzone({ onUpload, className }: FileUploadDropzonePr
               const result = perFileResults.find((r) => r.file === f.file);
               if (result?.ok) return { ...f, status: "done" as const, progress: 100 };
             }
-            return { ...f, status: "error" as const, error: "Upload failed" };
+            return { ...f, status: "error" as const, progress: 100, error: "Upload failed" };
           })
         );
       }
@@ -114,21 +153,33 @@ export function FileUploadDropzone({ onUpload, className }: FileUploadDropzonePr
           {uploadingFiles.map((item, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200"
+              className="p-2 bg-white rounded-lg border border-gray-200"
             >
-              <FileIcon size={16} className="text-gray-400 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700 truncate">{item.file.name}</p>
-                <p className="text-xs text-gray-400">{formatFileSize(item.file.size)}</p>
+              <div className="flex items-center gap-3">
+                <FileIcon size={16} className="text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-700 truncate">{item.file.name}</p>
+                  <p className="text-xs text-gray-400">{formatFileSize(item.file.size)}</p>
+                </div>
+                {item.status === "done" && (
+                  <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                )}
+                {item.status === "error" && (
+                  <X size={16} className="text-red-500 flex-shrink-0" />
+                )}
+                {item.status === "uploading" && (
+                  <span className="text-xs text-otter-600 font-medium flex-shrink-0">
+                    {Math.round(item.progress)}%
+                  </span>
+                )}
               </div>
-              {item.status === "done" && (
-                <CheckCircle2 size={16} className="text-green-500" />
-              )}
-              {item.status === "error" && (
-                <X size={16} className="text-red-500" />
-              )}
               {item.status === "uploading" && (
-                <div className="w-4 h-4 border-2 border-otter-600 border-t-transparent rounded-full animate-spin" />
+                <div className="mt-1.5 h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-otter-500 rounded-full transition-all duration-300"
+                    style={{ width: `${item.progress}%` }}
+                  />
+                </div>
               )}
             </div>
           ))}

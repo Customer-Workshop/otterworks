@@ -50,8 +50,8 @@ interface FileCardProps {
   file: FileItem;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
-  onDownload?: (id: string, name: string) => void;
   onRename?: (id: string, name: string) => void;
+  onDownload?: (id: string, name: string) => void;
   view?: "grid" | "list";
   selected?: boolean;
   onSelect?: (id: string) => void;
@@ -63,8 +63,8 @@ export function FileCard({
   file,
   onDelete,
   onShare,
-  onDownload,
   onRename,
+  onDownload,
   view = "grid",
   selected = false,
   onSelect,
@@ -195,8 +195,8 @@ export function FileCard({
               onClose={() => setMenuOpen(false)}
               onDelete={onDelete}
               onShare={onShare}
-              onDownload={onDownload}
               onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
+              onDownload={onDownload}
             />
           )}
         </div>
@@ -293,15 +293,15 @@ function FileMenu({
   onClose,
   onDelete,
   onShare,
-  onDownload,
   onRename,
+  onDownload,
 }: {
   file: FileItem;
   onClose: () => void;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
-  onDownload?: (id: string, name: string) => void;
   onRename?: () => void;
+  onDownload?: (id: string, name: string) => void;
 }) {
   return (
     <>

@@ -168,7 +168,7 @@ function FileDetailContent() {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                toast.success("File downloaded successfully");
+                toast.success(`Downloading ${file.name}`);
               } catch {
                 toast.error("Download failed. Please try again.");
               } finally {

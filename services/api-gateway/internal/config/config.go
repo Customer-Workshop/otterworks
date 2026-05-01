@@ -107,6 +107,7 @@ func (c *Config) ServiceRoutes() map[string]string {
 		"/api/v1/admin":         c.AdminServiceURL,
 		"/api/v1/audit":         c.AuditServiceURL,
 		"/api/v1/reports":       c.ReportServiceURL,
+		"/api/v1/settings":      c.AuthServiceURL,
 	}
 }
 

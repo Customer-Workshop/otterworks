@@ -45,7 +45,7 @@ function FileDetailContent() {
     queryFn: () => filesApi.get(fileId),
   });
 
-  const { data: presignedUrl } = useQuery({
+  const { data: presignedUrl, isLoading: isUrlLoading } = useQuery({
     queryKey: ["files", fileId, "download-url"],
     queryFn: () => filesApi.getDownloadUrl(fileId),
     enabled: !!file,
@@ -152,7 +152,11 @@ function FileDetailContent() {
               </h2>
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
-              {isImage && presignedUrl ? (
+              {(isImage || isVideo || isText) && isUrlLoading ? (
+                <div className="w-full text-center py-8">
+                  <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                </div>
+              ) : isImage && presignedUrl ? (
                 <img
                   src={presignedUrl}
                   alt={file.name}
@@ -370,7 +374,7 @@ function TextPreview({ fileId, presignedUrl }: { fileId: string; presignedUrl?: 
     enabled: !!presignedUrl,
   });
 
-  if (isLoading || !presignedUrl) {
+  if (isLoading) {
     return (
       <div className="w-full text-center py-8">
         <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />

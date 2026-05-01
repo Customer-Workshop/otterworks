@@ -229,6 +229,14 @@ export const filesApi = {
   permanentDelete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}/permanent`);
   },
+  renameFile: async (id: string, name: string): Promise<FileItem> => {
+    const { data } = await apiClient.patch<RawFileItem>(`/files/${id}/rename`, { name });
+    return mapRawFile(data);
+  },
+  renameFolder: async (id: string, name: string): Promise<FileItem> => {
+    const { data } = await apiClient.put<Record<string, unknown>>(`/folders/${id}`, { name });
+    return normalizeFileItem(data);
+  },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
     const params: Record<string, string | number> = { page: 1, page_size: limit };
     const { data } = await apiClient.get<RawFileListResponse>("/files", { params });

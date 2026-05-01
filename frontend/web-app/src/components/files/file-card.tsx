@@ -14,8 +14,11 @@ import {
   Trash2,
   Share2,
   Download,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { FileItem } from "@/types";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 
@@ -44,31 +47,99 @@ interface FileCardProps {
   file: FileItem;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
+  onRename?: (id: string, name: string) => void;
   view?: "grid" | "list";
+  selected?: boolean;
+  onSelect?: (id: string) => void;
+  selectionActive?: boolean;
 }
 
-export function FileCard({ file, onDelete, onShare, view = "grid" }: FileCardProps) {
+export function FileCard({
+  file,
+  onDelete,
+  onShare,
+  onRename,
+  view = "grid",
+  selected = false,
+  onSelect,
+  selectionActive = false,
+}: FileCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(file.name);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const Icon = file.isFolder ? Folder : getIconComponent(file.mimeType);
+
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      const dotIdx = renameValue.lastIndexOf(".");
+      renameInputRef.current.setSelectionRange(0, dotIdx > 0 ? dotIdx : renameValue.length);
+    }
+  }, [isRenaming, renameValue]);
+
+  const submitRename = () => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== file.name) {
+      onRename?.(file.id, trimmed);
+    }
+    setIsRenaming(false);
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect?.(file.id);
+  };
 
   if (view === "list") {
     return (
-      <Link
-        href={file.isFolder ? `/files?folder=${file.id}` : `/files/${file.id}`}
-        className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition group border-b border-gray-100 last:border-0"
-      >
-        <div className="w-10 h-10 rounded-lg bg-otter-50 flex items-center justify-center flex-shrink-0">
-          <Icon size={20} className="text-otter-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-        </div>
-        <span className="text-xs text-gray-500 w-32 hidden sm:block truncate">
-          {formatRelativeTime(file.updatedAt)}
-        </span>
-        <span className="text-xs text-gray-400 w-20 hidden sm:block text-right">
-          {file.isFolder ? "\u2014" : formatFileSize(file.size)}
-        </span>
+      <div className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition group border-b border-gray-100 last:border-0">
+        {selectionActive && (
+          <div className="flex-shrink-0" onClick={handleCheckboxClick}>
+            <input
+              type="checkbox"
+              checked={selected}
+              readOnly
+              className="h-4 w-4 rounded border-gray-300 text-otter-600 focus:ring-otter-500 cursor-pointer"
+            />
+          </div>
+        )}
+        <Link
+          href={file.isFolder ? `/files?folder=${file.id}` : `/files/${file.id}`}
+          className="flex items-center gap-4 flex-1 min-w-0"
+        >
+          <div className="w-10 h-10 rounded-lg bg-otter-50 flex items-center justify-center flex-shrink-0">
+            <Icon size={20} className="text-otter-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            {isRenaming ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+                <input
+                  ref={renameInputRef}
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitRename();
+                    if (e.key === "Escape") { setIsRenaming(false); setRenameValue(file.name); }
+                  }}
+                  onBlur={submitRename}
+                  className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            ) : (
+              <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+            )}
+          </div>
+          <span className="text-xs text-gray-500 w-32 hidden sm:block truncate">
+            {formatRelativeTime(file.updatedAt)}
+          </span>
+          <span className="text-xs text-gray-400 w-20 hidden sm:block text-right">
+            {file.isFolder ? "\u2014" : formatFileSize(file.size)}
+          </span>
+        </Link>
         <div className="relative w-8">
           <button
             onClick={(e) => {
@@ -86,49 +157,81 @@ export function FileCard({ file, onDelete, onShare, view = "grid" }: FileCardPro
               onClose={() => setMenuOpen(false)}
               onDelete={onDelete}
               onShare={onShare}
-            />
-          )}
-        </div>
-      </Link>
-    );
-  }
-
-  return (
-    <Link
-      href={file.isFolder ? `/files?folder=${file.id}` : `/files/${file.id}`}
-      className="group relative flex flex-col rounded-xl border border-gray-200 bg-white hover:shadow-md transition p-4"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-12 h-12 rounded-lg bg-otter-50 flex items-center justify-center">
-          <Icon size={24} className="text-otter-600" />
-        </div>
-        <div className="relative">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
-            className="p-1 rounded hover:bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100 transition"
-          >
-            <MoreVertical size={16} />
-          </button>
-          {menuOpen && (
-            <FileMenu
-              file={file}
-              onClose={() => setMenuOpen(false)}
-              onDelete={onDelete}
-              onShare={onShare}
+              onRename={() => { setIsRenaming(true); setRenameValue(file.name); }}
             />
           )}
         </div>
       </div>
-      <p className="text-sm font-medium text-gray-900 truncate mb-1">{file.name}</p>
-      <p className="text-xs text-gray-500">
-        {file.isFolder ? "Folder" : formatFileSize(file.size)} &middot;{" "}
-        {formatRelativeTime(file.updatedAt)}
-      </p>
-    </Link>
+    );
+  }
+
+  return (
+    <div className="group relative flex flex-col rounded-xl border border-gray-200 bg-white hover:shadow-md transition p-4">
+      {selectionActive && (
+        <div className="absolute top-2 left-2 z-10" onClick={handleCheckboxClick}>
+          <input
+            type="checkbox"
+            checked={selected}
+            readOnly
+            className="h-4 w-4 rounded border-gray-300 text-otter-600 focus:ring-otter-500 cursor-pointer"
+          />
+        </div>
+      )}
+      <Link
+        href={file.isFolder ? `/files?folder=${file.id}` : `/files/${file.id}`}
+        className="flex flex-col"
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="w-12 h-12 rounded-lg bg-otter-50 flex items-center justify-center">
+            <Icon size={24} className="text-otter-600" />
+          </div>
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              className="p-1 rounded hover:bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100 transition"
+            >
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen && (
+              <FileMenu
+                file={file}
+                onClose={() => setMenuOpen(false)}
+                onDelete={onDelete}
+                onShare={onShare}
+                onRename={() => { setIsRenaming(true); setRenameValue(file.name); }}
+              />
+            )}
+          </div>
+        </div>
+        {isRenaming ? (
+          <div className="mb-1" onClick={(e) => e.preventDefault()}>
+            <input
+              ref={renameInputRef}
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitRename();
+                if (e.key === "Escape") { setIsRenaming(false); setRenameValue(file.name); }
+              }}
+              onBlur={submitRename}
+              className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        ) : (
+          <p className="text-sm font-medium text-gray-900 truncate mb-1">{file.name}</p>
+        )}
+        <p className="text-xs text-gray-500">
+          {file.isFolder ? "Folder" : formatFileSize(file.size)} &middot;{" "}
+          {formatRelativeTime(file.updatedAt)}
+        </p>
+      </Link>
+    </div>
   );
 }
 
@@ -137,16 +240,30 @@ function FileMenu({
   onClose,
   onDelete,
   onShare,
+  onRename,
 }: {
   file: FileItem;
   onClose: () => void;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
+  onRename?: () => void;
 }) {
   return (
     <>
       <div className="fixed inset-0 z-10" onClick={onClose} />
       <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRename?.();
+            onClose();
+          }}
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          <Pencil size={14} />
+          Rename
+        </button>
         {!file.isFolder && (
           <button
             onClick={(e) => {

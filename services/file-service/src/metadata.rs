@@ -536,6 +536,29 @@ impl MetadataClient {
         Ok(())
     }
 
+    pub async fn find_existing_share(
+        &self,
+        file_id: &Uuid,
+        shared_with: &Uuid,
+    ) -> Result<Option<FileShare>, ServiceError> {
+        let mut paginator = self
+            .client
+            .scan()
+            .table_name(&self.shares_table)
+            .filter_expression("file_id = :fid AND shared_with = :uid")
+            .expression_attribute_values(":fid", AttributeValue::S(file_id.to_string()))
+            .expression_attribute_values(":uid", AttributeValue::S(shared_with.to_string()))
+            .into_paginator()
+            .items()
+            .send();
+
+        if let Some(item) = paginator.next().await {
+            let item = item.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            return Ok(Some(parse_file_share(&item)?));
+        }
+        Ok(None)
+    }
+
     pub async fn list_shares_for_user(
         &self,
         user_id: &Uuid,

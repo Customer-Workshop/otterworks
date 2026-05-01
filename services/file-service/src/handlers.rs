@@ -249,8 +249,13 @@ pub async fn list_shared_files(
 
     let shares = meta.list_shares_for_user(&user_id).await?;
 
+    // Deduplicate by file_id to handle legacy duplicate share records
+    let mut seen_file_ids = std::collections::HashSet::new();
     let mut files = Vec::new();
     for share in &shares {
+        if !seen_file_ids.insert(share.file_id) {
+            continue;
+        }
         match meta.get_file(&share.file_id).await {
             Ok(file) if !file.is_trashed => files.push(file),
             _ => {}
@@ -452,6 +457,26 @@ pub async fn share_file(
 
     // Ensure file exists
     let file = meta.get_file(&file_id).await?;
+
+    // Check if share already exists for this file + user
+    if let Some(existing) = meta.find_existing_share(&file_id, &body.shared_with).await? {
+        // Update permission if different, otherwise return existing
+        if existing.permission != body.permission {
+            let updated = FileShare {
+                id: existing.id,
+                file_id,
+                shared_with: body.shared_with,
+                permission: body.permission.clone(),
+                shared_by: body.shared_by,
+                created_at: existing.created_at,
+            };
+            meta.put_share(&updated).await?;
+            tracing::info!(file_id = %file_id, shared_with = %body.shared_with, "File share updated");
+            return Ok(HttpResponse::Ok().json(ShareFileResponse { share: updated }));
+        }
+        tracing::info!(file_id = %file_id, shared_with = %body.shared_with, "File already shared");
+        return Ok(HttpResponse::Ok().json(ShareFileResponse { share: existing }));
+    }
 
     let share = FileShare {
         id: Uuid::new_v4(),

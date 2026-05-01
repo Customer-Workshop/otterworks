@@ -50,6 +50,7 @@ function mapRawFile(raw: RawFileItem): FileItem {
     ownerName: "",
     isFolder: false,
     path: `/${raw.name}`,
+    downloadUrl: undefined,
     sharedWith: [],
     tags: [],
     createdAt: raw.createdAt ?? "",
@@ -183,6 +184,10 @@ export const filesApi = {
       owner_id: ownerId,
     });
     return normalizeFileItem(data);
+  },
+  getDownloadUrl: async (id: string): Promise<string> => {
+    const { data } = await apiClient.get<{ url: string; expiresInSecs: number }>(`/files/${id}/download`);
+    return data.url;
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/files/${id}`);

@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -152,13 +153,22 @@ export default function RegisterPage() {
               >
                 Confirm password
               </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                {...register("confirmPassword")}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
-                placeholder="Repeat your password"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  {...register("confirmPassword")}
+                  className="w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+                  placeholder="Repeat your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {errors.confirmPassword && (
                 <p className="text-xs text-red-500 mt-1">
                   {errors.confirmPassword.message}

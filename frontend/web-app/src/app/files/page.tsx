@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -23,6 +23,7 @@ import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb"
 import { FileCard } from "@/components/files/file-card";
 import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
+import type { FileUploadDropzoneHandle } from "@/components/files/file-upload-dropzone";
 import { ShareDialog } from "@/components/files/share-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
@@ -39,6 +40,7 @@ function FileBrowserContent() {
   const queryClient = useQueryClient();
   const { viewMode, setViewMode, sortConfig, setSortConfig } = useUIStore();
   const [showUpload, setShowUpload] = useState(false);
+  const uploadDropzoneRef = useRef<FileUploadDropzoneHandle>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [shareFileId, setShareFileId] = useState<string | null>(null);
@@ -120,30 +122,23 @@ function FileBrowserContent() {
     onError: () => toast.error("Failed to rename folder"),
   });
 
-  const handleUpload = useCallback(
-    async (files: File[]) => {
-      const results: { file: File; ok: boolean }[] = [];
-      for (const file of files) {
-        try {
-          await filesApi.upload(file, folderId);
-          results.push({ file, ok: true });
-        } catch {
-          results.push({ file, ok: false });
-        }
-      }
-      queryClient.invalidateQueries({ queryKey: ["files"] });
-      const succeeded = results.filter((r) => r.ok);
-      const failed = results.filter((r) => !r.ok);
-      if (succeeded.length > 0) {
-        toast.success(`${succeeded.length} file${succeeded.length > 1 ? "s" : ""} uploaded`);
-      }
-      if (failed.length > 0) {
-        toast.error(`${failed.length} file${failed.length > 1 ? "s" : ""} failed to upload`);
-        throw { results };
-      }
+  const handleUploadFile = useCallback(
+    async (
+      file: File,
+      options: { onProgress: (percent: number) => void; signal: AbortSignal },
+    ) => {
+      await filesApi.upload(file, folderId, {
+        onUploadProgress: options.onProgress,
+        signal: options.signal,
+      });
     },
-    [folderId, queryClient]
+    [folderId],
   );
+
+  const handleUploadComplete = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["files"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  }, [queryClient]);
 
   const breadcrumbs: BreadcrumbItem[] | null = folderId
     ? [{ label: "Files", href: "/files" }, { label: currentFolder?.name ?? "\u2026" }]
@@ -253,7 +248,11 @@ function FileBrowserContent() {
   );
 
   const { getRootProps, isDragActive } = useDropzone({
-    onDrop: (files) => { handleUpload(files).catch(() => {}); },
+    onDrop: (files) => {
+      setShowUpload(true);
+      // Defer so the dropzone component mounts before we push files into it
+      setTimeout(() => uploadDropzoneRef.current?.addFiles(files), 0);
+    },
     noClick: true,
     noKeyboard: true,
     multiple: true,
@@ -411,7 +410,12 @@ function FileBrowserContent() {
 
       {/* Upload dropzone */}
       {showUpload && (
-        <FileUploadDropzone onUpload={handleUpload} parentId={folderId} />
+        <FileUploadDropzone
+          ref={uploadDropzoneRef}
+          uploadFile={handleUploadFile}
+          onUploadComplete={handleUploadComplete}
+          onDismiss={() => setShowUpload(false)}
+        />
       )}
 
       {/* File listing */}

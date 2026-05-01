@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -57,8 +56,6 @@ function SearchContent() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Search" }]} />
-
       <h1 className="text-2xl font-bold text-gray-900">Search</h1>
 
       {/* Search form */}

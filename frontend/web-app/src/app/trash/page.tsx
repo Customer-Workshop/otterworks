@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, RotateCcw, AlertTriangle, X } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -78,8 +77,6 @@ function TrashContent() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Trash" }]} />
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Trash</h1>

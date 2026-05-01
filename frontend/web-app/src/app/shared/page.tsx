@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Share2, LayoutGrid, List } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { FileCard } from "@/components/files/file-card";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -42,8 +41,6 @@ function SharedContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Shared with me" }]} />
-
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Shared with me</h1>
         <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">

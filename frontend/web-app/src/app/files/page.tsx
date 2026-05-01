@@ -3,34 +3,42 @@
 import { useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { useDropzone } from "react-dropzone";
 import {
   LayoutGrid,
   List,
   FolderPlus,
   Upload,
   FolderOpen,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb";
 import { FileCard } from "@/components/files/file-card";
 import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
+import { ShareDialog } from "@/components/files/share-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
+import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { filesApi } from "@/lib/api";
 import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
-import type { ViewMode } from "@/types";
+import type { ViewMode, SortField } from "@/types";
 
 function FileBrowserContent() {
   const searchParams = useSearchParams();
   const folderId = searchParams.get("folder");
   const queryClient = useQueryClient();
-  const { viewMode, setViewMode } = useUIStore();
+  const { viewMode, setViewMode, sortConfig, setSortConfig } = useUIStore();
   const [showUpload, setShowUpload] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [shareFileId, setShareFileId] = useState<string | null>(null);
 
   const { data, isLoading: filesLoading } = useQuery({
     queryKey: ["files", "list", folderId],
@@ -52,7 +60,11 @@ function FileBrowserContent() {
 
   const deleteMutation = useMutation({
     mutationFn: filesApi.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["files"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      toast.success("File deleted");
+    },
+    onError: () => toast.error("Failed to delete file"),
   });
 
   const deleteFolderMutation = useMutation({
@@ -60,7 +72,9 @@ function FileBrowserContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      toast.success("Folder deleted");
     },
+    onError: () => toast.error("Failed to delete folder"),
   });
 
   const createFolderMutation = useMutation({
@@ -70,7 +84,9 @@ function FileBrowserContent() {
       queryClient.invalidateQueries({ queryKey: ["folders"] });
       setShowNewFolder(false);
       setNewFolderName("");
+      toast.success("Folder created");
     },
+    onError: () => toast.error("Failed to create folder"),
   });
 
   const handleUpload = useCallback(
@@ -85,8 +101,13 @@ function FileBrowserContent() {
         }
       }
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      const succeeded = results.filter((r) => r.ok);
       const failed = results.filter((r) => !r.ok);
+      if (succeeded.length > 0) {
+        toast.success(`${succeeded.length} file${succeeded.length > 1 ? "s" : ""} uploaded`);
+      }
       if (failed.length > 0) {
+        toast.error(`${failed.length} file${failed.length > 1 ? "s" : ""} failed to upload`);
         throw { results };
       }
     },
@@ -99,11 +120,53 @@ function FileBrowserContent() {
   }
 
   const folders = folderItems ?? [];
-  const files = data?.data ?? [];
+  const rawFiles = data?.data ?? [];
+
+  const sortedFiles = [...rawFiles].sort((a, b) => {
+    const dir = sortConfig.direction === "asc" ? 1 : -1;
+    switch (sortConfig.field) {
+      case "name":
+        return dir * a.name.localeCompare(b.name);
+      case "size":
+        return dir * (a.size - b.size);
+      case "updatedAt":
+        return dir * (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+      case "createdAt":
+        return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      default:
+        return 0;
+    }
+  });
+
+  const files = sortedFiles;
   const items = [...folders, ...files];
 
+  const toggleSort = (field: SortField) => {
+    if (sortConfig.field === field) {
+      setSortConfig({ field, direction: sortConfig.direction === "asc" ? "desc" : "asc" });
+    } else {
+      setSortConfig({ field, direction: "asc" });
+    }
+  };
+
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop: (files) => { handleUpload(files).catch(() => {}); },
+    noClick: true,
+    noKeyboard: true,
+    multiple: true,
+  });
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div {...getRootProps()} className="max-w-7xl mx-auto space-y-6 relative">
+      {isDragActive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-otter-600/10 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border-2 border-dashed border-otter-500 p-12 text-center">
+            <Upload size={48} className="mx-auto mb-4 text-otter-600" />
+            <p className="text-lg font-semibold text-gray-900">Drop files to upload</p>
+            <p className="text-sm text-gray-500 mt-1">Files will be added to the current folder</p>
+          </div>
+        </div>
+      )}
       <Breadcrumb items={breadcrumbs} />
 
       {/* Header */}
@@ -124,6 +187,24 @@ function FileBrowserContent() {
             <Upload size={16} />
             Upload
           </button>
+
+          <select
+            value={`${sortConfig.field}-${sortConfig.direction}`}
+            onChange={(e) => {
+              const [field, direction] = e.target.value.split("-") as [SortField, "asc" | "desc"];
+              setSortConfig({ field, direction });
+            }}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-otter-500"
+          >
+            <option value="updatedAt-desc">Last modified</option>
+            <option value="updatedAt-asc">Oldest modified</option>
+            <option value="name-asc">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="size-desc">Largest first</option>
+            <option value="size-asc">Smallest first</option>
+            <option value="createdAt-desc">Newest created</option>
+            <option value="createdAt-asc">Oldest created</option>
+          </select>
 
           <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden ml-2">
             <ViewModeButton
@@ -184,7 +265,7 @@ function FileBrowserContent() {
 
       {/* File listing */}
       {isLoading ? (
-        <PageLoader />
+        viewMode === "list" ? <FileListSkeleton /> : <FileGridSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
@@ -194,10 +275,19 @@ function FileBrowserContent() {
         />
       ) : (
         <div className="space-y-6">
+          {viewMode === "list" && (
+            <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+              <div className="w-10" />
+              <SortableHeader field="name" label="Name" current={sortConfig} onSort={toggleSort} className="flex-1" />
+              <SortableHeader field="updatedAt" label="Modified" current={sortConfig} onSort={toggleSort} className="w-32 hidden sm:block" />
+              <SortableHeader field="size" label="Size" current={sortConfig} onSort={toggleSort} className="w-20 hidden sm:block" />
+              <div className="w-8" />
+            </div>
+          )}
           {/* Folders */}
           {folders.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Folders</h2>
+              {viewMode === "grid" && <h2 className="text-sm font-medium text-gray-500 mb-3">Folders</h2>}
               <div
                 className={cn(
                   viewMode === "grid"
@@ -220,7 +310,7 @@ function FileBrowserContent() {
           {/* Files */}
           {files.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Files</h2>
+              {viewMode === "grid" && <h2 className="text-sm font-medium text-gray-500 mb-3">Files</h2>}
               <div
                 className={cn(
                   viewMode === "grid"
@@ -234,6 +324,7 @@ function FileBrowserContent() {
                     file={file}
                     view={viewMode}
                     onDelete={(id) => deleteMutation.mutate(id)}
+                    onShare={(id) => setShareFileId(id)}
                   />
                 ))}
               </div>
@@ -241,6 +332,24 @@ function FileBrowserContent() {
           )}
         </div>
       )}
+      {shareFileId && (() => {
+        const shareFile = files.find((f) => f.id === shareFileId);
+        if (!shareFile) return null;
+        return (
+          <ShareDialog
+            fileId={shareFile.id}
+            fileName={shareFile.name}
+            sharedWith={shareFile.sharedWith}
+            onShare={async (email, permission) => {
+              await filesApi.share(shareFile.id, [
+                { userId: "", name: "", email, permission },
+              ]);
+              queryClient.invalidateQueries({ queryKey: ["files"] });
+            }}
+            onClose={() => setShareFileId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -267,6 +376,43 @@ function ViewModeButton({
       )}
     >
       <Icon size={16} />
+    </button>
+  );
+}
+
+function SortableHeader({
+  field,
+  label,
+  current,
+  onSort,
+  className,
+}: {
+  field: SortField;
+  label: string;
+  current: { field: SortField; direction: "asc" | "desc" };
+  onSort: (field: SortField) => void;
+  className?: string;
+}) {
+  const isActive = current.field === field;
+  return (
+    <button
+      onClick={() => onSort(field)}
+      className={cn(
+        "group/sort flex items-center gap-1 hover:text-gray-700 transition",
+        isActive && "text-gray-900",
+        className
+      )}
+    >
+      {label}
+      {isActive ? (
+        current.direction === "asc" ? (
+          <ChevronUp size={12} />
+        ) : (
+          <ChevronDown size={12} />
+        )
+      ) : (
+        <ArrowUpDown size={12} className="opacity-0 group-hover/sort:opacity-100" />
+      )}
     </button>
   );
 }

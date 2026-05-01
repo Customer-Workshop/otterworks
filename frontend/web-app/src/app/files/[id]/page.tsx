@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Download,
@@ -16,11 +17,13 @@ import {
   File,
   Eye,
 } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ShareDialog } from "@/components/files/share-dialog";
 import { filesApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
@@ -52,13 +55,23 @@ function FileDetailContent() {
     staleTime: 30 * 60 * 1000,
   });
 
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const deleteMutation = useMutation({
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      toast.success("File deleted");
       router.push("/files");
     },
+    onError: () => toast.error("Failed to delete file"),
   });
+
+  const handleShare = async (email: string, permission: "view" | "edit") => {
+    await filesApi.share(fileId, [
+      { userId: "", name: "", email, permission },
+    ]);
+    queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+  };
 
   if (isLoading) return <PageLoader />;
   if (!file) {
@@ -110,14 +123,13 @@ function FileDetailContent() {
             onClick={async () => {
               try {
                 const downloadUrl = await filesApi.getDownloadUrl(file.id);
-                const res = await fetch(downloadUrl);
-                if (!res.ok) throw new Error("Download failed");
-                const blob = await res.blob();
                 const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
+                a.href = downloadUrl;
                 a.download = file.name;
+                a.rel = "noopener";
+                document.body.appendChild(a);
                 a.click();
-                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                document.body.removeChild(a);
               } catch {
                 alert("Download failed. Please try again.");
               }
@@ -127,7 +139,10 @@ function FileDetailContent() {
             <Download size={16} />
             Download
           </button>
-          <button className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          <button
+            onClick={() => setShowShareDialog(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
             <Share2 size={16} />
             Share
           </button>
@@ -327,6 +342,16 @@ function FileDetailContent() {
           )}
         </div>
       </div>
+
+      {showShareDialog && (
+        <ShareDialog
+          fileId={file.id}
+          fileName={file.name}
+          sharedWith={file.sharedWith}
+          onShare={handleShare}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </div>
   );
 }
@@ -361,28 +386,8 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   return <File size={24} className="text-otter-600" />;
 }
 
-function TextPreview({ fileId, presignedUrl }: { fileId: string; presignedUrl?: string }) {
-  const { data: content, isLoading } = useQuery({
-    queryKey: ["file-preview", fileId],
-    queryFn: async () => {
-      const url = presignedUrl ?? await filesApi.getDownloadUrl(fileId);
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const text = await res.text();
-      return text.slice(0, 10000);
-    },
-    enabled: !!presignedUrl,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="w-full text-center py-8">
-        <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    );
-  }
-
-  if (content === null || content === undefined) {
+function TextPreview({ presignedUrl }: { fileId: string; presignedUrl?: string }) {
+  if (!presignedUrl) {
     return (
       <div className="text-center">
         <File size={64} className="text-gray-300 mx-auto mb-3" />
@@ -392,8 +397,11 @@ function TextPreview({ fileId, presignedUrl }: { fileId: string; presignedUrl?: 
   }
 
   return (
-    <pre className="w-full text-sm text-gray-700 bg-gray-50 p-4 rounded-lg overflow-auto max-h-[500px] whitespace-pre-wrap font-mono">
-      {content}
-    </pre>
+    <iframe
+      src={presignedUrl}
+      className="w-full min-h-[500px] bg-white rounded-lg border border-gray-200"
+      sandbox="allow-same-origin"
+      title="Text file preview"
+    />
   );
 }

@@ -396,11 +396,32 @@ export const notificationsApi = {
 };
 
 // ── Activity ──────────────────────────────────────────────────
+interface RawActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  actor_name: string;
+  resource_name: string;
+  resource_type: string;
+  resource_id: string;
+  created_at: string;
+}
+
 export const activityApi = {
-  getRecent: async (_limit = 20): Promise<ActivityItem[]> => {
-    // Activity service endpoint does not exist yet; return empty list
-    // to avoid dashboard errors.
-    return [];
+  getRecent: async (limit = 20): Promise<ActivityItem[]> => {
+    const { data } = await apiClient.get<{ items: RawActivityItem[] }>("/files/activity", {
+      params: { limit },
+    });
+    return (data.items ?? []).map((raw) => ({
+      id: raw.id,
+      type: raw.type as ActivityItem["type"],
+      description: raw.description,
+      actorName: raw.actor_name,
+      resourceName: raw.resource_name,
+      resourceType: raw.resource_type as "file" | "document",
+      resourceId: raw.resource_id,
+      createdAt: raw.created_at,
+    }));
   },
 };
 

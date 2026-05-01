@@ -11,11 +11,13 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    CreateFolderRequest, DownloadResponse, FileDetailResponse, FileMetadata, FileShare,
-    FileVersion, Folder, HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery,
-    ListFoldersResponse, ListVersionsResponse, MoveFileRequest, RenameFileRequest,
-    ShareFileRequest, ShareFileResponse, UpdateFolderRequest, UploadResponse,
+    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
+    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
+    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
+    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest,
+    ShareFileResponse, UpdateFolderRequest, UploadResponse,
 };
+use crate::search::SearchIndexClient;
 use crate::storage::S3Client;
 
 // -- Health & Metrics --
@@ -41,6 +43,7 @@ pub async fn upload_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
+    search: web::Data<SearchIndexClient>,
     config: web::Data<AppConfig>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
@@ -166,6 +169,19 @@ pub async fn upload_file(
             &file_meta.name,
             &file_meta.mime_type,
             file_meta.size_bytes,
+        )
+        .await;
+
+    // Synchronous search indexing for near-instant search results
+    search
+        .index_file(
+            &file_id.to_string(),
+            &file_meta.name,
+            &file_meta.mime_type,
+            &owner.to_string(),
+            folder_id.as_ref().map(|f| f.to_string()).as_deref(),
+            size,
+            &file_meta.created_at.to_rfc3339(),
         )
         .await;
 
@@ -309,6 +325,7 @@ pub async fn delete_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
+    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -321,6 +338,7 @@ pub async fn delete_file(
     s3.delete_object(&file.s3_key).await?;
 
     let _ = events.file_deleted(&file_id, &file.owner_id).await;
+    search.remove_file(&file_id.to_string()).await;
 
     tracing::info!(file_id = %file_id, "File deleted");
     Ok(HttpResponse::NoContent().finish())
@@ -368,6 +386,7 @@ pub async fn move_file(
 
 pub async fn rename_file(
     meta: web::Data<MetadataClient>,
+    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
     body: web::Json<RenameFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -382,6 +401,20 @@ pub async fn rename_file(
     }
 
     let file = meta.rename_file(&file_id, name).await?;
+
+    // Re-index with updated name
+    search
+        .index_file(
+            &file.id.to_string(),
+            &file.name,
+            &file.mime_type,
+            &file.owner_id.to_string(),
+            file.folder_id.as_ref().map(|f| f.to_string()).as_deref(),
+            file.size_bytes,
+            &file.created_at.to_rfc3339(),
+        )
+        .await;
+
     tracing::info!(file_id = %file_id, new_name = %name, "File renamed");
     Ok(HttpResponse::Ok().json(file))
 }
@@ -402,6 +435,7 @@ pub async fn list_versions(
 pub async fn trash_file(
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
+    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -412,6 +446,7 @@ pub async fn trash_file(
     let file = meta.trash_file(&file_id).await?;
 
     let _ = events.file_trashed(&file_id, &file.owner_id).await;
+    search.remove_file(&file_id.to_string()).await;
 
     tracing::info!(file_id = %file_id, "File trashed");
     Ok(HttpResponse::Ok().json(file))
@@ -420,6 +455,7 @@ pub async fn trash_file(
 pub async fn restore_file(
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
+    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -437,6 +473,19 @@ pub async fn restore_file(
             &file.name,
             &file.mime_type,
             file.size_bytes as u64,
+        )
+        .await;
+
+    // Re-index restored file
+    search
+        .index_file(
+            &file.id.to_string(),
+            &file.name,
+            &file.mime_type,
+            &file.owner_id.to_string(),
+            file.folder_id.as_ref().map(|f| f.to_string()).as_deref(),
+            file.size_bytes,
+            &file.created_at.to_rfc3339(),
         )
         .await;
 
@@ -569,6 +618,73 @@ pub async fn delete_folder(
     meta.delete_folder(&folder_id).await?;
     tracing::info!(folder_id = %folder_id, "Folder deleted");
     Ok(HttpResponse::NoContent().finish())
+}
+
+// -- Activity Handler --
+
+pub async fn list_activity(
+    req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+    query: web::Query<ActivityQuery>,
+) -> Result<HttpResponse, ServiceError> {
+    let owner_id = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing owner context".into()))?;
+
+    let limit = query.limit.unwrap_or(20).min(50) as usize;
+
+    let (files, shares) = futures_util::future::join(
+        meta.list_files(None, Some(owner_id), true),
+        meta.list_shares_by_owner(&owner_id),
+    )
+    .await;
+
+    let files = files.unwrap_or_default();
+    let shares = shares.unwrap_or_default();
+
+    // Build a file-id → name lookup for share descriptions
+    let file_names: std::collections::HashMap<Uuid, String> =
+        files.iter().map(|f| (f.id, f.name.clone())).collect();
+
+    let mut items: Vec<ActivityItem> = Vec::new();
+
+    for f in &files {
+        items.push(ActivityItem {
+            id: format!("upload-{}", f.id),
+            activity_type: "upload".into(),
+            description: format!("Uploaded {}", f.name),
+            actor_name: "You".into(),
+            resource_name: f.name.clone(),
+            resource_type: "file".into(),
+            resource_id: f.id.to_string(),
+            created_at: f.created_at.to_rfc3339(),
+        });
+    }
+
+    for s in &shares {
+        let name = file_names
+            .get(&s.file_id)
+            .cloned()
+            .unwrap_or_else(|| "a file".into());
+        items.push(ActivityItem {
+            id: format!("share-{}", s.id),
+            activity_type: "share".into(),
+            description: format!("Shared {}", name),
+            actor_name: "You".into(),
+            resource_name: name,
+            resource_type: "file".into(),
+            resource_id: s.file_id.to_string(),
+            created_at: s.created_at.to_rfc3339(),
+        });
+    }
+
+    items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    items.truncate(limit);
+
+    Ok(HttpResponse::Ok().json(ActivityResponse { items }))
 }
 
 #[cfg(test)]

@@ -1,20 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, MoreVertical, Trash2, Share2, ExternalLink } from "lucide-react";
+import { FileText, MoreVertical, Trash2, Share2, ExternalLink, Star } from "lucide-react";
 import { useState } from "react";
 import type { Document } from "@/types";
 import { formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
+import { starredApi } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface DocumentCardProps {
   document: Document;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   view?: "grid" | "list";
+  onStarToggle?: () => void;
 }
 
-export function DocumentCard({ document, onDelete, onShare, view = "grid" }: DocumentCardProps) {
+export function DocumentCard({ document, onDelete, onShare, view = "grid", onStarToggle }: DocumentCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuthStore();
+  const userId = user?.id ?? "";
+  const [starred, setStarred] = useState(() => userId ? starredApi.isStarred(userId, document.id) : false);
+
+  const handleStarClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!userId) return;
+    const nowStarred = starredApi.toggle(userId, document.id, "document");
+    setStarred(nowStarred);
+    onStarToggle?.();
+  };
 
   if (view === "list") {
     return (
@@ -46,6 +61,16 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid" }: Doc
             ))}
           </div>
         )}
+        <button
+          onClick={handleStarClick}
+          className="p-1 rounded hover:bg-gray-200 transition flex-shrink-0"
+          aria-label={starred ? "Unstar" : "Star"}
+        >
+          <Star
+            size={16}
+            className={starred ? "text-yellow-400 fill-yellow-400" : "text-gray-400 opacity-0 group-hover:opacity-100"}
+          />
+        </button>
         <div className="relative">
           <button
             onClick={(e) => {
@@ -92,25 +117,37 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid" }: Doc
               {formatRelativeTime(document.updatedAt)}
             </p>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-1">
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(!menuOpen);
-              }}
-              className="p-1 rounded hover:bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100 transition"
+              onClick={handleStarClick}
+              className="p-1 rounded hover:bg-gray-100 transition"
+              aria-label={starred ? "Unstar" : "Star"}
             >
-              <MoreVertical size={16} />
-            </button>
-            {menuOpen && (
-              <DocMenu
-                docId={document.id}
-                onClose={() => setMenuOpen(false)}
-                onDelete={onDelete}
-                onShare={onShare}
+              <Star
+                size={16}
+                className={starred ? "text-yellow-400 fill-yellow-400" : "text-gray-400 opacity-0 group-hover:opacity-100"}
               />
-            )}
+            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100 transition"
+              >
+                <MoreVertical size={16} />
+              </button>
+              {menuOpen && (
+                <DocMenu
+                  docId={document.id}
+                  onClose={() => setMenuOpen(false)}
+                  onDelete={onDelete}
+                  onShare={onShare}
+                />
+              )}
+            </div>
           </div>
         </div>
 

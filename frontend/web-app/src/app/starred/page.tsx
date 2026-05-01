@@ -1,0 +1,187 @@
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Star, LayoutGrid, List } from "lucide-react";
+import { useCallback } from "react";
+import { AppShell } from "@/components/layout/app-shell";
+import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { FileCard } from "@/components/files/file-card";
+import { DocumentCard } from "@/components/documents/document-card";
+import { PageLoader } from "@/components/ui/loading-spinner";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { filesApi, documentsApi, starredApi } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth-store";
+import { useUIStore } from "@/stores/ui-store";
+import { cn } from "@/lib/utils";
+import type { ViewMode } from "@/types";
+
+export default function StarredPage() {
+  return (
+    <AppShell>
+      <ErrorBoundary>
+        <StarredContent />
+      </ErrorBoundary>
+    </AppShell>
+  );
+}
+
+function StarredContent() {
+  const { viewMode, setViewMode } = useUIStore();
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  const { data: starredIds } = useQuery({
+    queryKey: ["starred", "ids", userId],
+    queryFn: () => starredApi.getStarredIds(userId),
+    enabled: !!userId,
+  });
+
+  const { data: filesData, isLoading: filesLoading } = useQuery({
+    queryKey: ["starred", "files", starredIds?.fileIds],
+    queryFn: async () => {
+      if (!starredIds?.fileIds.length) return [];
+      const results = await Promise.allSettled(
+        starredIds.fileIds.map((id) => filesApi.get(id))
+      );
+      return results
+        .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof filesApi.get>>> => r.status === "fulfilled")
+        .map((r) => r.value);
+    },
+    enabled: !!starredIds?.fileIds.length,
+  });
+
+  const { data: docsData, isLoading: docsLoading } = useQuery({
+    queryKey: ["starred", "documents", starredIds?.documentIds],
+    queryFn: async () => {
+      if (!starredIds?.documentIds.length) return [];
+      const results = await Promise.allSettled(
+        starredIds.documentIds.map((id) => documentsApi.get(id))
+      );
+      return results
+        .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof documentsApi.get>>> => r.status === "fulfilled")
+        .map((r) => r.value);
+    },
+    enabled: !!starredIds?.documentIds.length,
+  });
+
+  const handleStarToggle = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["starred"] });
+  }, [queryClient]);
+
+  const files = filesData ?? [];
+  const documents = docsData ?? [];
+  const isLoading = filesLoading || docsLoading;
+  const isEmpty = files.length === 0 && documents.length === 0;
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <Breadcrumb items={[{ label: "Starred" }]} />
+
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Starred</h1>
+        <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+          <ViewBtn
+            mode="grid"
+            current={viewMode}
+            onClick={() => setViewMode("grid")}
+            icon={LayoutGrid}
+          />
+          <ViewBtn
+            mode="list"
+            current={viewMode}
+            onClick={() => setViewMode("list")}
+            icon={List}
+          />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <PageLoader />
+      ) : isEmpty ? (
+        <EmptyState
+          icon={Star}
+          title="No starred items"
+          description="Star files and documents for quick access. They will appear here."
+        />
+      ) : (
+        <div className="space-y-8">
+          {files.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Files
+              </h2>
+              <div
+                className={cn(
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                    : "space-y-1"
+                )}
+              >
+                {files.map((file) => (
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    view={viewMode}
+                    onStarToggle={handleStarToggle}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {documents.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Documents
+              </h2>
+              <div
+                className={cn(
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                    : "space-y-1"
+                )}
+              >
+                {documents.map((doc) => (
+                  <DocumentCard
+                    key={doc.id}
+                    document={doc}
+                    view={viewMode}
+                    onStarToggle={handleStarToggle}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ViewBtn({
+  mode,
+  current,
+  onClick,
+  icon: Icon,
+}: {
+  mode: ViewMode;
+  current: ViewMode;
+  onClick: () => void;
+  icon: typeof LayoutGrid;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "p-2 transition",
+        mode === current
+          ? "bg-gray-100 text-gray-900"
+          : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+      )}
+    >
+      <Icon size={16} />
+    </button>
+  );
+}

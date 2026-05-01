@@ -11,6 +11,7 @@ import {
   Settings,
   Share2,
   Trash2,
+  Star,
   Menu,
   X,
   Plus,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/search", label: "Search", icon: Search },
   { href: "/shared", label: "Shared with me", icon: Share2 },
+  { href: "/starred", label: "Starred", icon: Star },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/trash", label: "Trash", icon: Trash2 },
 ];

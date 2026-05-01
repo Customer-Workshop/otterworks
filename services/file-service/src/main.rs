@@ -74,7 +74,11 @@ async fn main() -> std::io::Result<()> {
                     )
                     .route("/{file_id}/trash", web::post().to(handlers::trash_file))
                     .route("/{file_id}/restore", web::post().to(handlers::restore_file))
-                    .route("/{file_id}/share", web::post().to(handlers::share_file)),
+                    .route("/{file_id}/share", web::post().to(handlers::share_file))
+                    .route(
+                        "/{file_id}/share/{user_id}",
+                        web::delete().to(handlers::remove_share),
+                    ),
             )
             .service(
                 web::scope("/api/v1/folders")

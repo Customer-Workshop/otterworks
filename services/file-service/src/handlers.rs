@@ -546,6 +546,33 @@ pub async fn share_file(
     Ok(HttpResponse::Created().json(ShareFileResponse { share }))
 }
 
+pub async fn remove_share(
+    meta: web::Data<MetadataClient>,
+    path: web::Path<(String, String)>,
+) -> Result<HttpResponse, ServiceError> {
+    let (file_id_str, user_id_str) = path.into_inner();
+    let file_id: Uuid = file_id_str
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+    let user_id: Uuid = user_id_str
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid user id: {e}")))?;
+
+    // Ensure file exists
+    let _file = meta.get_file(&file_id).await?;
+
+    // Find the existing share
+    let share = meta
+        .find_existing_share(&file_id, &user_id)
+        .await?
+        .ok_or_else(|| ServiceError::NotFound("Share not found".into()))?;
+
+    meta.delete_share(&share.id).await?;
+
+    tracing::info!(file_id = %file_id, user_id = %user_id, "File share removed");
+    Ok(HttpResponse::NoContent().finish())
+}
+
 // -- Folder Handlers --
 
 pub async fn list_folders(

@@ -157,7 +157,7 @@ export function ShareDialog({
                             <p className="text-sm font-medium text-gray-900">
                               {displayName}
                             </p>
-                            <p className="text-xs text-gray-500">{displayEmail}</p>
+                            {displayEmail && <p className="text-xs text-gray-500">{displayEmail}</p>}
                           </div>
                         </div>
                         <span className="text-xs text-gray-500 capitalize px-2 py-1 bg-gray-100 rounded-full">

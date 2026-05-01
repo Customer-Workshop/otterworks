@@ -73,6 +73,12 @@ public class AuthController {
     return ResponseEntity.ok(UserLookupResponse.fromUserDTO(user));
   }
 
+  @GetMapping("/users/by-id/{id}")
+  public ResponseEntity<UserLookupResponse> lookupUserById(@PathVariable UUID id) {
+    UserDTO user = userService.getProfile(id);
+    return ResponseEntity.ok(UserLookupResponse.fromUserDTO(user));
+  }
+
   @GetMapping("/users")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Page<UserDTO>> listUsers(Pageable pageable) {

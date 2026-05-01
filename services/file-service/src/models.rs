@@ -19,6 +19,13 @@ pub struct FileMetadata {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct FileDetailResponse {
+    #[serde(flatten)]
+    pub file: FileMetadata,
+    pub shared_with: Vec<FileShare>,
+}
+
 // ── Folder ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

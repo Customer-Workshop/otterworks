@@ -17,14 +17,14 @@ import {
   File,
   Eye,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ShareDialog } from "@/components/files/share-dialog";
-import { filesApi } from "@/lib/api";
+import { filesApi, authApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
 export default function FileDetailPage() {
@@ -56,6 +56,33 @@ function FileDetailContent() {
   });
 
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [resolvedUsers, setResolvedUsers] = useState<Record<string, { name: string; email: string }>>({});
+
+  useEffect(() => {
+    if (!file?.sharedWith?.length) return;
+    const userIds = file.sharedWith
+      .map((s) => s.userId)
+      .filter((id) => id && !resolvedUsers[id]);
+    if (userIds.length === 0) return;
+
+    Promise.allSettled(
+      userIds.map((id) => authApi.lookupUserById(id))
+    ).then((results) => {
+      const newUsers: Record<string, { name: string; email: string }> = {};
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          newUsers[userIds[i]] = {
+            name: result.value.displayName || result.value.email,
+            email: result.value.email,
+          };
+        }
+      });
+      if (Object.keys(newUsers).length > 0) {
+        setResolvedUsers((prev) => ({ ...prev, ...newUsers }));
+      }
+    });
+  }, [file?.sharedWith]);
+
   const deleteMutation = useMutation({
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
@@ -300,22 +327,29 @@ function FileDetailContent() {
                 <p className="text-sm text-gray-400">Not shared with anyone</p>
               ) : (
                 <div className="space-y-3">
-                  {file.sharedWith.map((shared) => (
-                    <div key={shared.userId} className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: generateColor(shared.userId) }}
-                      >
-                        {getInitials(shared.name)}
+                  {file.sharedWith.map((shared) => {
+                    const resolved = resolvedUsers[shared.userId];
+                    const displayName = resolved?.name || shared.name || shared.userId.slice(0, 8);
+                    const displayEmail = resolved?.email || shared.email;
+                    return (
+                      <div key={shared.userId} className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                          style={{ backgroundColor: generateColor(shared.userId) }}
+                        >
+                          {getInitials(displayName)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {displayName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {displayEmail ? `${displayEmail} · ${shared.permission}` : shared.permission}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {shared.name}
-                        </p>
-                        <p className="text-xs text-gray-500">{shared.permission}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -347,6 +381,7 @@ function FileDetailContent() {
           fileId={file.id}
           fileName={file.name}
           sharedWith={file.sharedWith}
+          resolvedUsers={resolvedUsers}
           onShare={handleShare}
           onClose={() => setShowShareDialog(false)}
         />

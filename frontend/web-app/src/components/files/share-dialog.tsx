@@ -10,6 +10,7 @@ interface ShareDialogProps {
   fileId: string;
   fileName: string;
   sharedWith: SharedUser[];
+  resolvedUsers?: Record<string, { name: string; email: string }>;
   onShare: (email: string, permission: "view" | "edit") => Promise<void>;
   onClose: () => void;
 }
@@ -18,6 +19,7 @@ export function ShareDialog({
   fileId,
   fileName,
   sharedWith,
+  resolvedUsers = {},
   onShare,
   onClose,
 }: ShareDialogProps) {
@@ -138,27 +140,32 @@ export function ShareDialog({
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                       People with access
                     </p>
-                    {sharedWith.map((user) => (
+                    {sharedWith.map((user) => {
+                      const resolved = resolvedUsers[user.userId];
+                      const displayName = resolved?.name || user.name || user.userId.slice(0, 8);
+                      const displayEmail = resolved?.email || user.email;
+                      return (
                       <div
                         key={user.userId}
                         className="flex items-center justify-between py-2"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-otter-100 flex items-center justify-center text-xs font-medium text-otter-700">
-                            {user.name.charAt(0).toUpperCase()}
+                            {displayName.charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">
-                              {user.name}
+                              {displayName}
                             </p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
+                            {displayEmail && <p className="text-xs text-gray-500">{displayEmail}</p>}
                           </div>
                         </div>
                         <span className="text-xs text-gray-500 capitalize px-2 py-1 bg-gray-100 rounded-full">
                           {user.permission}
                         </span>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 text-center py-4">

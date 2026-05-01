@@ -17,6 +17,15 @@ import type {
 } from "@/types";
 
 // Shape after the axios camelCase interceptor transforms the file-service response
+interface RawShareItem {
+  id: string;
+  fileId: string;
+  sharedWith: string;
+  permission: string;
+  sharedBy: string;
+  createdAt: string;
+}
+
 interface RawFileItem {
   id: string;
   name: string;
@@ -29,6 +38,7 @@ interface RawFileItem {
   isTrashed: boolean;
   createdAt: string;
   updatedAt: string;
+  sharedWith?: RawShareItem[];
 }
 
 interface RawFileListResponse {
@@ -52,7 +62,12 @@ function mapRawFile(raw: RawFileItem): FileItem {
     isTrashed: raw.isTrashed ?? false,
     path: `/${raw.name}`,
     downloadUrl: undefined,
-    sharedWith: [],
+    sharedWith: (raw.sharedWith ?? []).map((s) => ({
+      userId: s.sharedWith,
+      name: "",
+      email: "",
+      permission: s.permission === "viewer" ? "view" as const : s.permission === "editor" ? "edit" as const : "view" as const,
+    })),
     tags: [],
     createdAt: raw.createdAt ?? "",
     updatedAt: raw.updatedAt ?? "",
@@ -90,6 +105,12 @@ export const authApi = {
     const { data } = await apiClient.get<{ id: string; email: string; displayName: string }>(
       "/auth/users/lookup",
       { params: { email } }
+    );
+    return data;
+  },
+  lookupUserById: async (id: string): Promise<{ id: string; email: string; displayName: string }> => {
+    const { data } = await apiClient.get<{ id: string; email: string; displayName: string }>(
+      `/auth/users/by-id/${id}`
     );
     return data;
   },

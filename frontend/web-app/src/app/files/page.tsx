@@ -224,8 +224,9 @@ function FileBrowserContent() {
     }
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
-    if (deleted > 0) toast.success(`${deleted} item${deleted > 1 ? "s" : ""} deleted`);
-    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    if (deleted > 0) toast.success(`${deleted} item${deleted > 1 ? "s" : ""} moved to trash`);
+    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to move to trash`);
     clearSelection();
   };
 

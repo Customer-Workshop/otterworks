@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { filesApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import { File, FileText, Folder, Image, Film } from "lucide-react";
+import toast from "react-hot-toast";
 import type { FileItem } from "@/types";
 
 export default function TrashPage() {
@@ -34,14 +35,20 @@ function TrashContent() {
     mutationFn: filesApi.restore,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("File restored");
     },
+    onError: () => toast.error("Failed to restore file"),
   });
 
   const permanentDeleteMutation = useMutation({
     mutationFn: filesApi.permanentDelete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("File permanently deleted");
     },
+    onError: () => toast.error("Failed to delete file"),
   });
 
   const items = data?.data || [];

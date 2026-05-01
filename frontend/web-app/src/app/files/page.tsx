@@ -72,9 +72,10 @@ function FileBrowserContent() {
     mutationFn: filesApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      toast.success("File deleted");
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("File moved to trash");
     },
-    onError: () => toast.error("Failed to delete file"),
+    onError: () => toast.error("Failed to move file to trash"),
   });
 
   const deleteFolderMutation = useMutation({
@@ -82,6 +83,7 @@ function FileBrowserContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Folder deleted");
     },
     onError: () => toast.error("Failed to delete folder"),
@@ -202,12 +204,13 @@ function FileBrowserContent() {
     if (ids.length === 0) return;
     const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
     const fileIds = ids.filter((id) => !folderIds.includes(id));
-    let deleted = 0;
+    let trashedFiles = 0;
+    let deletedFolders = 0;
     let failed = 0;
     for (const id of fileIds) {
       try {
         await filesApi.delete(id);
-        deleted++;
+        trashedFiles++;
       } catch {
         failed++;
       }
@@ -215,14 +218,18 @@ function FileBrowserContent() {
     for (const id of folderIds) {
       try {
         await filesApi.deleteFolder(id);
-        deleted++;
+        deletedFolders++;
       } catch {
         failed++;
       }
     }
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
-    if (deleted > 0) toast.success(`${deleted} item${deleted > 1 ? "s" : ""} deleted`);
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    const msgs: string[] = [];
+    if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles > 1 ? "s" : ""} moved to trash`);
+    if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders > 1 ? "s" : ""} deleted`);
+    if (msgs.length > 0) toast.success(msgs.join(", "));
     if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
     clearSelection();
   };

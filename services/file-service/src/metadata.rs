@@ -225,6 +225,29 @@ impl MetadataClient {
         self.get_file(file_id).await
     }
 
+    pub async fn list_trashed(&self) -> Result<Vec<FileMetadata>, ServiceError> {
+        let scan_builder = self
+            .client
+            .scan()
+            .table_name(&self.files_table)
+            .filter_expression("is_trashed = :trashed")
+            .expression_attribute_values(":trashed", AttributeValue::Bool(true));
+
+        let mut paginator = scan_builder.into_paginator().send();
+        let mut files = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            if let Some(items) = page.items {
+                for item in &items {
+                    files.push(parse_file_metadata(item)?);
+                }
+            }
+        }
+
+        files.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        Ok(files)
+    }
+
     pub async fn list_files(
         &self,
         folder_id: Option<Uuid>,

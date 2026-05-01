@@ -206,6 +206,30 @@ pub async fn list_files(
     }))
 }
 
+pub async fn list_trashed(
+    meta: web::Data<MetadataClient>,
+    query: web::Query<ListFilesQuery>,
+) -> Result<HttpResponse, ServiceError> {
+    let files = meta.list_trashed().await?;
+
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(50).min(100);
+    let total = files.len();
+    let start = (page - 1).saturating_mul(page_size) as usize;
+    let paged: Vec<FileMetadata> = files
+        .into_iter()
+        .skip(start)
+        .take(page_size as usize)
+        .collect();
+
+    Ok(HttpResponse::Ok().json(ListFilesResponse {
+        files: paged,
+        total,
+        page,
+        page_size,
+    }))
+}
+
 pub async fn delete_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,

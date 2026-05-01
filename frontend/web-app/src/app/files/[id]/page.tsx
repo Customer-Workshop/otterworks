@@ -60,10 +60,11 @@ function FileDetailContent() {
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      toast.success("File deleted");
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("File moved to trash");
       router.push("/files");
     },
-    onError: () => toast.error("Failed to delete file"),
+    onError: () => toast.error("Failed to move file to trash"),
   });
 
   const handleShare = async (email: string, permission: "view" | "edit") => {

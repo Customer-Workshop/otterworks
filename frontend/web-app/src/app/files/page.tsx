@@ -72,9 +72,10 @@ function FileBrowserContent() {
     mutationFn: filesApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      toast.success("File deleted");
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("File moved to trash");
     },
-    onError: () => toast.error("Failed to delete file"),
+    onError: () => toast.error("Failed to move file to trash"),
   });
 
   const deleteFolderMutation = useMutation({
@@ -82,6 +83,7 @@ function FileBrowserContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Folder deleted");
     },
     onError: () => toast.error("Failed to delete folder"),

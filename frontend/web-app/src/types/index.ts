@@ -38,6 +38,7 @@ export interface FileItem {
   ownerId: string;
   ownerName: string;
   isFolder: boolean;
+  isTrashed?: boolean;
   path: string;
   thumbnailUrl?: string;
   downloadUrl?: string;

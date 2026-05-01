@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
+  Clock,
   FolderOpen,
   FileText,
   Search,
@@ -23,6 +24,7 @@ import { getInitials } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/recent", label: "Recent", icon: Clock },
   { href: "/files", label: "Files", icon: FolderOpen },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/search", label: "Search", icon: Search },

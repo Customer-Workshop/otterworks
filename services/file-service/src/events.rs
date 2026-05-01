@@ -178,6 +178,29 @@ impl EventPublisher {
         self.publish(&event).await
     }
 
+    pub async fn file_updated(
+        &self,
+        file_id: &Uuid,
+        owner_id: &Uuid,
+        folder_id: Option<&Uuid>,
+        name: &str,
+        mime_type: &str,
+        size_bytes: u64,
+    ) -> Result<(), ServiceError> {
+        let event = FileEvent {
+            event_type: "file_updated".into(),
+            file_id: file_id.to_string(),
+            owner_id: owner_id.to_string(),
+            folder_id: folder_id.map(|f| f.to_string()),
+            shared_with: None,
+            timestamp: Utc::now().to_rfc3339(),
+            name: Some(name.to_string()),
+            mime_type: Some(mime_type.to_string()),
+            size_bytes: Some(size_bytes),
+        };
+        self.publish(&event).await
+    }
+
     pub async fn file_moved(
         &self,
         file_id: &Uuid,

@@ -10,7 +10,6 @@ mod handlers;
 mod metadata;
 mod middleware;
 mod models;
-mod search;
 mod storage;
 
 #[actix_web::main]
@@ -29,8 +28,6 @@ async fn main() -> std::io::Result<()> {
     let s3_client = storage::S3Client::new(&app_config.aws).await;
     let meta_client = metadata::MetadataClient::new(&app_config.aws).await;
     let event_publisher = events::EventPublisher::new(&app_config.sns, &app_config.aws).await;
-    let search_url = std::env::var("SEARCH_SERVICE_URL").unwrap_or_else(|_| "http://search-service:8087".into());
-    let search_client = search::SearchIndexClient::new(&search_url);
 
     let port = app_config.server.port;
     tracing::info!(port = %port, "File Service starting");
@@ -39,7 +36,6 @@ async fn main() -> std::io::Result<()> {
     let s3_data = web::Data::new(s3_client);
     let meta_data = web::Data::new(meta_client);
     let events_data = web::Data::new(event_publisher);
-    let search_data = web::Data::new(search_client);
 
     HttpServer::new(move || {
         App::new()
@@ -50,7 +46,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(s3_data.clone())
             .app_data(meta_data.clone())
             .app_data(events_data.clone())
-            .app_data(search_data.clone())
             .route("/health", web::get().to(handlers::health))
             .route("/metrics", web::get().to(handlers::metrics))
             .service(

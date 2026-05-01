@@ -5,19 +5,17 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
-class OpenSearchConfig:
-    """OpenSearch connection configuration."""
+class MeiliSearchConfig:
+    """MeiliSearch connection configuration."""
 
-    url: str = field(default_factory=lambda: os.getenv("OPENSEARCH_URL", "http://localhost:9200"))
+    url: str = field(default_factory=lambda: os.getenv("MEILISEARCH_URL", "http://localhost:7700"))
+    api_key: str = field(default_factory=lambda: os.getenv("MEILISEARCH_API_KEY", ""))
     documents_index: str = field(
-        default_factory=lambda: os.getenv("OPENSEARCH_DOCUMENTS_INDEX", "otterworks-documents")
+        default_factory=lambda: os.getenv("MEILISEARCH_DOCUMENTS_INDEX", "documents")
     )
     files_index: str = field(
-        default_factory=lambda: os.getenv("OPENSEARCH_FILES_INDEX", "otterworks-files")
+        default_factory=lambda: os.getenv("MEILISEARCH_FILES_INDEX", "files")
     )
-    use_ssl: bool = False
-    verify_certs: bool = False
-    request_timeout: int = 30
 
 
 @dataclass(frozen=True)
@@ -46,5 +44,5 @@ class AppConfig:
         default_factory=lambda: os.getenv("FLASK_DEBUG", "false").lower() == "true"
     )
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
-    opensearch: OpenSearchConfig = field(default_factory=OpenSearchConfig)
+    meilisearch: MeiliSearchConfig = field(default_factory=MeiliSearchConfig)
     sqs: SQSConfig = field(default_factory=SQSConfig)

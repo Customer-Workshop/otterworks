@@ -67,46 +67,27 @@ services:
       retries: 5
     security_opt:
     - no-new-privileges:true
-  opensearch: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
-    image: opensearchproject/opensearch:2.11.0
-    container_name: otterworks-opensearch
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: otterworks-meilisearch
     environment:
-      discovery.type: single-node
-      plugins.security.disabled: 'true'
-      DISABLE_INSTALL_DEMO_CONFIG: 'true'
-      DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI: 'true'
-      OPENSEARCH_JAVA_OPTS: -Xms256m -Xmx256m
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: 'true'
     ports:
-    - 9200:9200
+    - 7700:7700
     volumes:
-    - opensearch_data:/usr/share/opensearch/data
+    - meilisearch_data:/meili_data
     healthcheck:
       test:
-      - CMD-SHELL
-      - curl -sf http://localhost:9200/_cluster/health || exit 1
+      - CMD
+      - curl
+      - -f
+      - http://localhost:7700/health
       interval: 10s
       timeout: 5s
       retries: 5
     security_opt:
     - no-new-privileges:true
-    tmpfs:
-    - /tmp
-    - /usr/share/opensearch/logs:uid=1000,gid=1000
-  opensearch-dashboards: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
-    image: opensearchproject/opensearch-dashboards:2.11.0
-    container_name: otterworks-opensearch-dashboards
-    environment:
-      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: 'true'
-    ports:
-    - 5601:5601
-    depends_on:
-      opensearch:
-        condition: service_healthy
-    security_opt:
-    - no-new-privileges:true
-    tmpfs:
-    - /tmp
   prometheus:
     image: prom/prometheus:v2.51.0
     container_name: otterworks-prometheus
@@ -268,6 +249,6 @@ networks:
 volumes:
   postgres_data: null
   localstack_data: null
-  opensearch_data: null
+  meilisearch_data: null
   prometheus_data: null
   grafana_data: null

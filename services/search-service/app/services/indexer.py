@@ -6,16 +6,16 @@ from typing import Any
 
 import structlog
 
-from app.services.opensearch_client import OpenSearchService
+from app.services.meilisearch_client import MeiliSearchService
 
 logger = structlog.get_logger()
 
 
 class Indexer:
-    """Handles document and file indexing into OpenSearch."""
+    """Handles document and file indexing into MeiliSearch."""
 
-    def __init__(self, opensearch_service: OpenSearchService) -> None:
-        self.opensearch = opensearch_service
+    def __init__(self, search_service: MeiliSearchService) -> None:
+        self.search = search_service
 
     def index_document(self, payload: dict[str, Any]) -> dict[str, str]:
         """Validate and index a document.
@@ -38,7 +38,7 @@ class Indexer:
             "updated_at": payload.get("updated_at"),
         }
 
-        self.opensearch.index_document(document)
+        self.search.index_document(document)
         logger.info("indexer_document_indexed", document_id=document["id"])
         return {"status": "indexed", "id": document["id"], "type": "document"}
 
@@ -65,7 +65,7 @@ class Indexer:
             "updated_at": payload.get("updated_at"),
         }
 
-        self.opensearch.index_file(file_data)
+        self.search.index_file(file_data)
         logger.info("indexer_file_indexed", file_id=file_data["id"])
         return {"status": "indexed", "id": file_data["id"], "type": "file"}
 
@@ -74,14 +74,14 @@ class Indexer:
         if doc_type not in ("document", "file"):
             raise ValueError(f"Invalid type '{doc_type}'. Must be 'document' or 'file'.")
 
-        deleted = self.opensearch.delete_document(doc_type, doc_id)
+        deleted = self.search.delete_document(doc_type, doc_id)
         status = "deleted" if deleted else "not_found"
         logger.info("indexer_document_removed", doc_id=doc_id, doc_type=doc_type, status=status)
         return {"status": status, "id": doc_id, "type": doc_type}
 
     def reindex(self) -> dict[str, Any]:
         """Trigger a full reindex (admin operation)."""
-        result = self.opensearch.reindex()
+        result = self.search.reindex()
         logger.info("indexer_reindex_complete")
         return result
 

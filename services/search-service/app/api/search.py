@@ -6,16 +6,16 @@ import structlog
 from flask import Blueprint, current_app, jsonify, request
 
 from app.api.health import SEARCH_COUNT
-from app.services.opensearch_client import OpenSearchService, get_search_analytics
+from app.services.meilisearch_client import MeiliSearchService, get_search_analytics
 
 logger = structlog.get_logger()
 
 search_bp = Blueprint("search", __name__)
 
 
-def _get_service() -> OpenSearchService:
-    """Get the shared OpenSearchService from app config."""
-    return current_app.config["OPENSEARCH_SERVICE"]
+def _get_service() -> MeiliSearchService:
+    """Get the shared MeiliSearchService from app config."""
+    return current_app.config["SEARCH_SERVICE"]
 
 
 @search_bp.route("/", methods=["GET"])

@@ -69,8 +69,11 @@ impl SearchIndexClient {
     pub async fn remove_file(&self, id: &str) {
         let url = format!("{}/api/v1/search/index/file/{}", self.base_url, id);
         match self.http.delete(&url).send().await {
-            Ok(_) => {
+            Ok(resp) if resp.status().is_success() => {
                 tracing::debug!(file_id = %id, "search_sync_remove_ok");
+            }
+            Ok(resp) => {
+                tracing::warn!(file_id = %id, status = %resp.status(), "search_sync_remove_non_ok");
             }
             Err(e) => {
                 tracing::warn!(file_id = %id, error = %e, "search_sync_remove_failed");

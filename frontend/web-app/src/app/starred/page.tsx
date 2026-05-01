@@ -32,7 +32,7 @@ function StarredContent() {
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
 
-  const { data: starredIds } = useQuery({
+  const { data: starredIds, isLoading: starredIdsLoading } = useQuery({
     queryKey: ["starred", "ids", userId],
     queryFn: () => starredApi.getStarredIds(userId),
     enabled: !!userId,
@@ -72,7 +72,7 @@ function StarredContent() {
 
   const files = filesData ?? [];
   const documents = docsData ?? [];
-  const isLoading = filesLoading || docsLoading;
+  const isLoading = starredIdsLoading || filesLoading || docsLoading;
   const isEmpty = files.length === 0 && documents.length === 0;
 
   return (

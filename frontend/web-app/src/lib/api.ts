@@ -211,6 +211,7 @@ export const filesApi = {
   share: async (id: string, email: string, permission: "view" | "edit"): Promise<void> => {
     const user = await authApi.lookupUser(email);
     const sharedBy = getOwnerIdFromJwt();
+    if (!sharedBy) throw new Error("Unable to determine current user");
     await apiClient.post(`/files/${id}/share`, {
       shared_with: user.id,
       permission: permission === "view" ? "viewer" : "editor",

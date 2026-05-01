@@ -77,6 +77,11 @@ class MeiliSearchService:
         self.documents_index_name = config.documents_index
         self.files_index_name = config.files_index
 
+    @staticmethod
+    def _escape(value: str) -> str:
+        """Escape a value for use in MeiliSearch filter expressions."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
     def ensure_indices(self) -> None:
         """Create indices and configure settings if they don't exist."""
         for index_name in [self.documents_index_name, self.files_index_name]:
@@ -154,9 +159,9 @@ class MeiliSearchService:
         """Full-text search across documents and files."""
         filter_parts: list[str] = []
         if doc_type:
-            filter_parts.append(f'type = "{doc_type}"')
+            filter_parts.append(f'type = "{self._escape(doc_type)}"')
         if owner_id:
-            filter_parts.append(f'owner_id = "{owner_id}"')
+            filter_parts.append(f'owner_id = "{self._escape(owner_id)}"')
 
         indices_to_search = self._resolve_indices(doc_type)
         multi_index = len(indices_to_search) > 1
@@ -199,16 +204,16 @@ class MeiliSearchService:
         """Advanced search with detailed filters."""
         filter_parts: list[str] = []
         if doc_type:
-            filter_parts.append(f'type = "{doc_type}"')
+            filter_parts.append(f'type = "{self._escape(doc_type)}"')
         if owner_id:
-            filter_parts.append(f'owner_id = "{owner_id}"')
+            filter_parts.append(f'owner_id = "{self._escape(owner_id)}"')
         if tags:
-            tag_filters = [f'tags = "{tag}"' for tag in tags]
+            tag_filters = [f'tags = "{self._escape(tag)}"' for tag in tags]
             filter_parts.append(f'({" OR ".join(tag_filters)})')
         if date_from:
-            filter_parts.append(f'created_at >= "{date_from}"')
+            filter_parts.append(f'created_at >= "{self._escape(date_from)}"')
         if date_to:
-            filter_parts.append(f'created_at <= "{date_to}"')
+            filter_parts.append(f'created_at <= "{self._escape(date_to)}"')
 
         search_term = query or ""
         indices_to_search = self._resolve_indices(doc_type)

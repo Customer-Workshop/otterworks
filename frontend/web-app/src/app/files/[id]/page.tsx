@@ -109,7 +109,7 @@ function FileDetailContent() {
           <button
             onClick={async () => {
               try {
-                const downloadUrl = presignedUrl ?? await filesApi.getDownloadUrl(file.id);
+                const downloadUrl = await filesApi.getDownloadUrl(file.id);
                 const res = await fetch(downloadUrl);
                 if (!res.ok) throw new Error("Download failed");
                 const blob = await res.blob();

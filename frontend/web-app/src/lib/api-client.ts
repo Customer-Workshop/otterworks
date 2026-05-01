@@ -62,7 +62,7 @@ apiClient.interceptors.response.use(
           });
         } catch (verifyError: unknown) {
           const status = (verifyError as { response?: { status?: number } })?.response?.status;
-          if (status === 401) {
+          if (status === 401 || status === undefined) {
             localStorage.removeItem("otter_access_token");
             localStorage.removeItem("otter_refresh_token");
             window.location.href = "/login";

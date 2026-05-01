@@ -11,10 +11,10 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    CreateFolderRequest, DownloadResponse, FileMetadata, FileShare, FileVersion, Folder,
-    HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
-    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest,
-    ShareFileResponse, UpdateFolderRequest, UploadResponse,
+    CreateFolderRequest, DownloadResponse, FileDetailResponse, FileMetadata, FileShare,
+    FileVersion, Folder, HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery,
+    ListFoldersResponse, ListVersionsResponse, MoveFileRequest, RenameFileRequest,
+    ShareFileRequest, ShareFileResponse, UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -183,7 +183,11 @@ pub async fn get_file_metadata(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
     let file = meta.get_file(&file_id).await?;
-    Ok(HttpResponse::Ok().json(file))
+    let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    Ok(HttpResponse::Ok().json(FileDetailResponse {
+        file,
+        shared_with: shares,
+    }))
 }
 
 /// Resolve the effective owner_id for list operations.

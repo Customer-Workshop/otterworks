@@ -306,7 +306,6 @@ export function ShareDialog({
                   <button
                     onClick={() => {
                       setLinkAccess("restricted");
-                      toast.success("Access set to restricted");
                     }}
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-xl border transition text-left",
@@ -341,7 +340,6 @@ export function ShareDialog({
                   <button
                     onClick={() => {
                       setLinkAccess("anyone");
-                      toast.success("Anyone with the link can now view");
                     }}
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-xl border transition text-left",

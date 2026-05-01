@@ -22,6 +22,7 @@ import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
 import { ShareDialog } from "@/components/files/share-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
+import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { filesApi } from "@/lib/api";
@@ -265,7 +266,7 @@ function FileBrowserContent() {
 
       {/* File listing */}
       {isLoading ? (
-        <PageLoader />
+        viewMode === "list" ? <FileListSkeleton /> : <FileGridSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           icon={FolderOpen}

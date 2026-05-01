@@ -26,7 +26,7 @@ public class UserSettingsService {
     this.userRepository = userRepository;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public UserSettingsDTO getSettings(UUID userId) {
     UserSettings settings =
         settingsRepository.findById(userId).orElseGet(() -> createDefaultSettings(userId));

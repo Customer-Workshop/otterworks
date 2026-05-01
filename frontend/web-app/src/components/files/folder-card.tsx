@@ -20,19 +20,19 @@ export function FolderCard({ folder, onDelete, onShare, view = "grid" }: FolderC
     return (
       <Link
         href={`/files?folder=${folder.id}`}
-        className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 rounded-lg transition group"
+        className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition group border-b border-gray-100 last:border-0"
       >
         <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
           <Folder size={20} className="text-amber-600" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{folder.name}</p>
-          <p className="text-xs text-gray-500">
-            {folder.ownerName} &middot; {formatRelativeTime(folder.updatedAt)}
-          </p>
         </div>
-        <span className="text-xs text-gray-400 hidden sm:block">Folder</span>
-        <div className="relative">
+        <span className="text-xs text-gray-500 w-32 hidden sm:block truncate">
+          {formatRelativeTime(folder.updatedAt)}
+        </span>
+        <span className="text-xs text-gray-400 w-20 hidden sm:block text-right">&mdash;</span>
+        <div className="relative w-8">
           <button
             onClick={(e) => {
               e.preventDefault();

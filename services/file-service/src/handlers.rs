@@ -13,8 +13,8 @@ use crate::middleware;
 use crate::models::{
     CreateFolderRequest, DownloadResponse, FileMetadata, FileShare, FileVersion, Folder,
     HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
-    ListVersionsResponse, MoveFileRequest, ShareFileRequest, ShareFileResponse,
-    UpdateFolderRequest, UploadResponse,
+    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest,
+    ShareFileResponse, UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -264,6 +264,26 @@ pub async fn move_file(
         .await;
 
     tracing::info!(file_id = %file_id, folder_id = ?body.folder_id, "File moved");
+    Ok(HttpResponse::Ok().json(file))
+}
+
+pub async fn rename_file(
+    meta: web::Data<MetadataClient>,
+    path: web::Path<String>,
+    body: web::Json<RenameFileRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let name = body.name.trim();
+    if name.is_empty() {
+        return Err(ServiceError::BadRequest("name cannot be empty".into()));
+    }
+
+    let file = meta.rename_file(&file_id, name).await?;
+    tracing::info!(file_id = %file_id, new_name = %name, "File renamed");
     Ok(HttpResponse::Ok().json(file))
 }
 

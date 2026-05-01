@@ -165,6 +165,33 @@ impl MetadataClient {
         self.get_file(file_id).await
     }
 
+    pub async fn rename_file(
+        &self,
+        file_id: &Uuid,
+        name: &str,
+    ) -> Result<FileMetadata, ServiceError> {
+        let now = Utc::now();
+        self.client
+            .update_item()
+            .table_name(&self.files_table)
+            .key("id", AttributeValue::S(file_id.to_string()))
+            .update_expression("SET #n = :n, updated_at = :u")
+            .condition_expression("attribute_exists(id)")
+            .expression_attribute_names("#n", "name")
+            .expression_attribute_values(":n", AttributeValue::S(name.to_string()))
+            .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()))
+            .send()
+            .await
+            .map_err(|e| {
+                if is_conditional_check_failed(&e) {
+                    return ServiceError::FileNotFound(file_id.to_string());
+                }
+                ServiceError::DynamoError(e.to_string())
+            })?;
+
+        self.get_file(file_id).await
+    }
+
     pub async fn move_file(
         &self,
         file_id: &Uuid,

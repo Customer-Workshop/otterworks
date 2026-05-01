@@ -153,6 +153,11 @@ pub struct MoveFileRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RenameFileRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ShareFileRequest {
     pub shared_with: Uuid,
     pub permission: SharePermission,

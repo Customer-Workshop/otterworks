@@ -257,7 +257,11 @@ module "irsa" {
             "ecs:DescribeServices",
             "ecs:DescribeTasks",
           ]
-          Resource = [module.search.meilisearch_ecs_cluster_arn]
+          Resource = [
+            module.search.meilisearch_ecs_cluster_arn,
+            module.search.meilisearch_ecs_service_arn,
+            "${replace(module.search.meilisearch_ecs_cluster_arn, ":cluster/", ":task/")}/*",
+          ]
         },
       ]
     })

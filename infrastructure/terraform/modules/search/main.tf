@@ -122,6 +122,13 @@ resource "aws_ecs_task_definition" "meilisearch" {
     }
   ])
 
+  lifecycle {
+    precondition {
+      condition     = var.environment != "prod" || var.meilisearch_master_key != ""
+      error_message = "meilisearch_master_key is required when environment is 'prod'. MeiliSearch refuses to start in production mode without MEILI_MASTER_KEY."
+    }
+  }
+
   tags = merge(local.common_tags, {
     Service = "search-service"
   })

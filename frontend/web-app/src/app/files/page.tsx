@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -14,6 +14,9 @@ import {
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
+  Trash2,
+  X,
+  CheckSquare,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb";
@@ -39,6 +42,13 @@ function FileBrowserContent() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [shareFileId, setShareFileId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionActive, setSelectionActive] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectionActive(false);
+  }, [folderId]);
 
   const { data, isLoading: filesLoading } = useQuery({
     queryKey: ["files", "list", folderId],
@@ -89,6 +99,25 @@ function FileBrowserContent() {
     onError: () => toast.error("Failed to create folder"),
   });
 
+  const renameFileMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => filesApi.renameFile(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      toast.success("File renamed");
+    },
+    onError: () => toast.error("Failed to rename file"),
+  });
+
+  const renameFolderMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => filesApi.renameFolder(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      toast.success("Folder renamed");
+    },
+    onError: () => toast.error("Failed to rename folder"),
+  });
+
   const handleUpload = useCallback(
     async (files: File[]) => {
       const results: { file: File; ok: boolean }[] = [];
@@ -116,7 +145,7 @@ function FileBrowserContent() {
 
   const breadcrumbs: BreadcrumbItem[] = [{ label: "Files", href: "/files" }];
   if (folderId) {
-    breadcrumbs.push({ label: currentFolder?.name ?? "…" });
+    breadcrumbs.push({ label: currentFolder?.name ?? "\u2026" });
   }
 
   const folders = folderItems ?? [];
@@ -149,6 +178,55 @@ function FileBrowserContent() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = items.map((i) => i.id);
+    setSelectedIds(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectionActive(false);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
+    const fileIds = ids.filter((id) => !folderIds.includes(id));
+    let deleted = 0;
+    let failed = 0;
+    for (const id of fileIds) {
+      try {
+        await filesApi.delete(id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    for (const id of folderIds) {
+      try {
+        await filesApi.deleteFolder(id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["files"] });
+    queryClient.invalidateQueries({ queryKey: ["folders"] });
+    if (deleted > 0) toast.success(`${deleted} item${deleted > 1 ? "s" : ""} deleted`);
+    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
+    clearSelection();
+  };
+
   const { getRootProps, isDragActive } = useDropzone({
     onDrop: (files) => { handleUpload(files).catch(() => {}); },
     noClick: true,
@@ -169,10 +247,58 @@ function FileBrowserContent() {
       )}
       <Breadcrumb items={breadcrumbs} />
 
+      {/* Bulk action bar */}
+      {selectionActive && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-otter-50 border border-otter-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-otter-800">
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={selectAll}
+              className="text-sm text-otter-600 hover:text-otter-800 underline"
+            >
+              Select all
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+            <button
+              onClick={clearSelection}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <X size={14} />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Files</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setSelectionActive(!selectionActive);
+              if (selectionActive) clearSelection();
+            }}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition",
+              selectionActive
+                ? "text-otter-700 bg-otter-50 border-otter-300"
+                : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
+            )}
+          >
+            <CheckSquare size={16} />
+            Select
+          </button>
           <button
             onClick={() => setShowNewFolder(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -277,6 +403,7 @@ function FileBrowserContent() {
         <div className="space-y-6">
           {viewMode === "list" && (
             <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+              {selectionActive && <div className="w-4" />}
               <div className="w-10" />
               <SortableHeader field="name" label="Name" current={sortConfig} onSort={toggleSort} className="flex-1" />
               <SortableHeader field="updatedAt" label="Modified" current={sortConfig} onSort={toggleSort} className="w-32 hidden sm:block" />
@@ -301,6 +428,10 @@ function FileBrowserContent() {
                     folder={folder}
                     view={viewMode}
                     onDelete={(id) => deleteFolderMutation.mutate(id)}
+                    onRename={(id, name) => renameFolderMutation.mutate({ id, name })}
+                    selected={selectedIds.has(folder.id)}
+                    onSelect={toggleSelect}
+                    selectionActive={selectionActive}
                   />
                 ))}
               </div>
@@ -325,6 +456,10 @@ function FileBrowserContent() {
                     view={viewMode}
                     onDelete={(id) => deleteMutation.mutate(id)}
                     onShare={(id) => setShareFileId(id)}
+                    onRename={(id, name) => renameFileMutation.mutate({ id, name })}
+                    selected={selectedIds.has(file.id)}
+                    onSelect={toggleSelect}
+                    selectionActive={selectionActive}
                   />
                 ))}
               </div>

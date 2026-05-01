@@ -88,6 +88,73 @@ class SQSConsumer:
                 logger.exception("sqs_consumer_error")
                 time.sleep(5)
 
+    @staticmethod
+    def _normalize_event(body: dict[str, Any]) -> dict[str, Any]:
+        """Normalize event payloads from different services into the indexer format.
+
+        Handles:
+        - snake_case events with nested payload (document-service format)
+        - camelCase flat events from file-service (eventType, fileId, etc.)
+        """
+        # Format 1: snake_case with nested payload (document-service)
+        if "event_type" in body and "payload" in body:
+            action_map = {
+                "document_created": "index_document",
+                "document_updated": "index_document",
+                "document_deleted": "delete",
+                "file_created": "index_file",
+                "file_uploaded": "index_file",
+                "file_updated": "index_file",
+                "file_deleted": "delete",
+            }
+            return {
+                "action": action_map.get(body["event_type"], body["event_type"]),
+                "data": body["payload"],
+            }
+
+        # Format 2: camelCase flat event from file-service
+        if "eventType" in body:
+            event_type = body["eventType"]
+            action_map = {
+                "file_uploaded": "index_file",
+                "file_created": "index_file",
+                "file_updated": "index_file",
+                "file_deleted": "delete",
+                "file_shared": "index_file",
+                "file_moved": "index_file",
+            }
+            action = action_map.get(event_type)
+            if not action:
+                return body
+
+            if action == "delete":
+                return {
+                    "action": "delete",
+                    "data": {
+                        "type": "file",
+                        "id": body.get("fileId", ""),
+                    },
+                }
+
+            # Map camelCase fields to snake_case for the indexer
+            return {
+                "action": action,
+                "data": {
+                    "id": body.get("fileId", ""),
+                    "name": body.get("name", ""),
+                    "mime_type": body.get("mimeType", ""),
+                    "owner_id": body.get("ownerId", ""),
+                    "folder_id": body.get("folderId", ""),
+                    "size": body.get("sizeBytes", 0),
+                    "tags": body.get("tags", []),
+                    "created_at": body.get("timestamp"),
+                    "updated_at": body.get("timestamp"),
+                },
+            }
+
+        # Format 3: already in indexer format (action + data)
+        return body
+
     def _process_message(self, sqs: Any, message: dict[str, Any]) -> None:
         """Process a single SQS message."""
         receipt_handle = message.get("ReceiptHandle", "")
@@ -98,19 +165,7 @@ class SQSConsumer:
             if "Message" in body and "TopicArn" in body:
                 body = json.loads(body["Message"])
 
-            if "event_type" in body and "payload" in body:
-                action_map = {
-                    "document_created": "index_document",
-                    "document_updated": "index_document",
-                    "document_deleted": "delete",
-                    "file_created": "index_file",
-                    "file_updated": "index_file",
-                    "file_deleted": "delete",
-                }
-                body = {
-                    "action": action_map.get(body["event_type"], body["event_type"]),
-                    "data": body["payload"],
-                }
+            body = self._normalize_event(body)
 
             result = self.indexer.process_event(body)
             logger.info("sqs_message_processed", result=result)

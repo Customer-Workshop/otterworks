@@ -48,8 +48,14 @@ function FileDetailContent() {
     queryFn: () => filesApi.get(fileId),
   });
 
-  const [showShareDialog, setShowShareDialog] = useState(false);
+  const { data: presignedUrl, isLoading: isUrlLoading } = useQuery({
+    queryKey: ["files", fileId, "download-url"],
+    queryFn: () => filesApi.getDownloadUrl(fileId),
+    enabled: !!file,
+    staleTime: 30 * 60 * 1000,
+  });
 
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const deleteMutation = useMutation({
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
@@ -82,6 +88,7 @@ function FileDetailContent() {
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isPdf = file.mimeType === "application/pdf";
+  const isText = file.mimeType.startsWith("text/") || file.mimeType === "application/json" || file.mimeType === "application/xml";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -112,15 +119,26 @@ function FileDetailContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {file.downloadUrl && (
-            <a
-              href={file.downloadUrl}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <Download size={16} />
-              Download
-            </a>
-          )}
+          <button
+            onClick={async () => {
+              try {
+                const downloadUrl = await filesApi.getDownloadUrl(file.id);
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.download = file.name;
+                a.rel = "noopener";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } catch {
+                toast.error("Download failed. Please try again.");
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
+            <Download size={16} />
+            Download
+          </button>
           <button
             onClick={() => setShowShareDialog(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -149,15 +167,19 @@ function FileDetailContent() {
               </h2>
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
-              {isImage && file.downloadUrl ? (
+              {(isImage || isVideo || isText) && isUrlLoading ? (
+                <div className="w-full text-center py-8">
+                  <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                </div>
+              ) : isImage && presignedUrl ? (
                 <img
-                  src={file.downloadUrl}
+                  src={presignedUrl}
                   alt={file.name}
                   className="max-w-full max-h-[500px] rounded-lg shadow-sm"
                 />
-              ) : isVideo && file.downloadUrl ? (
+              ) : isVideo && presignedUrl ? (
                 <video
-                  src={file.downloadUrl}
+                  src={presignedUrl}
                   controls
                   className="max-w-full max-h-[500px] rounded-lg"
                 />
@@ -165,9 +187,9 @@ function FileDetailContent() {
                 <div className="text-center">
                   <FileText size={64} className="text-red-400 mx-auto mb-3" />
                   <p className="text-sm text-gray-500">PDF document</p>
-                  {file.downloadUrl && (
+                  {presignedUrl && (
                     <a
-                      href={file.downloadUrl}
+                      href={presignedUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-otter-600 hover:underline mt-1 inline-block"
@@ -176,6 +198,8 @@ function FileDetailContent() {
                     </a>
                   )}
                 </div>
+              ) : isText ? (
+                <TextPreview fileId={file.id} presignedUrl={presignedUrl} />
               ) : (
                 <div className="text-center">
                   <File size={64} className="text-gray-300 mx-auto mb-3" />
@@ -233,7 +257,7 @@ function FileDetailContent() {
               <h2 className="text-sm font-medium text-gray-700">Details</h2>
             </div>
             <div className="p-5 space-y-4">
-              <InfoRow icon={User} label="Owner" value={file.ownerName} />
+              <InfoRow icon={User} label="Owner" value={file.ownerName || "You"} />
               <InfoRow
                 icon={HardDrive}
                 label="Size"
@@ -360,4 +384,24 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   if (mimeType === "application/pdf")
     return <FileText size={24} className="text-red-500" />;
   return <File size={24} className="text-otter-600" />;
+}
+
+function TextPreview({ presignedUrl }: { fileId: string; presignedUrl?: string }) {
+  if (!presignedUrl) {
+    return (
+      <div className="text-center">
+        <File size={64} className="text-gray-300 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Could not load preview</p>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      src={presignedUrl}
+      className="w-full min-h-[500px] bg-white rounded-lg border border-gray-200"
+      sandbox="allow-same-origin"
+      title="Text file preview"
+    />
+  );
 }

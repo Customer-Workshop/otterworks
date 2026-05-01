@@ -114,10 +114,9 @@ module "search" {
   environment = var.environment
   project     = "otterworks"
 
-  vpc_id                = local.vpc_id
-  vpc_cidr              = local.vpc_cidr
-  subnet_ids            = local.private_subnets
-  ecs_execution_role_arn = aws_iam_role.ecs_execution.arn
+  vpc_id     = local.vpc_id
+  vpc_cidr   = local.vpc_cidr
+  subnet_ids = local.private_subnets
 }
 
 module "auth" {

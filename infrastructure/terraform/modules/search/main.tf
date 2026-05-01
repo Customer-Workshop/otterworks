@@ -37,6 +37,30 @@ resource "aws_security_group" "meilisearch" {
   })
 }
 
+# --- ECS Execution Role ---
+
+data "aws_iam_policy_document" "ecs_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ecs_execution" {
+  name               = "${var.project}-meilisearch-ecs-exec-${var.environment}"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume_role.json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 # --- ECS Cluster ---
 
 resource "aws_ecs_cluster" "meilisearch" {
@@ -64,7 +88,7 @@ resource "aws_ecs_task_definition" "meilisearch" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.meilisearch_cpu
   memory                   = var.meilisearch_memory
-  execution_role_arn       = var.ecs_execution_role_arn
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
 
   container_definitions = jsonencode([
     {
@@ -78,10 +102,15 @@ resource "aws_ecs_task_definition" "meilisearch" {
           protocol      = "tcp"
         }
       ]
-      environment = [
-        { name = "MEILI_ENV", value = var.environment == "prod" ? "production" : "development" },
-        { name = "MEILI_NO_ANALYTICS", value = "true" },
-      ]
+      environment = concat(
+        [
+          { name = "MEILI_ENV", value = var.environment == "prod" ? "production" : "development" },
+          { name = "MEILI_NO_ANALYTICS", value = "true" },
+        ],
+        var.meilisearch_master_key != "" ? [
+          { name = "MEILI_MASTER_KEY", value = var.meilisearch_master_key },
+        ] : [],
+      )
       logConfiguration = {
         logDriver = "awslogs"
         options = {

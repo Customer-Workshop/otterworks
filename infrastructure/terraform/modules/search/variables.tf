@@ -30,9 +30,11 @@ variable "meilisearch_memory" {
   default     = 1024
 }
 
-variable "ecs_execution_role_arn" {
-  description = "ARN of the ECS task execution role"
+variable "meilisearch_master_key" {
+  description = "MeiliSearch master key (required for production). Leave empty for dev."
   type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "vpc_id" {

@@ -17,7 +17,6 @@ use crate::models::{
     ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest,
     ShareFileResponse, UpdateFolderRequest, UploadResponse,
 };
-use crate::search::SearchIndexClient;
 use crate::storage::S3Client;
 
 // -- Health & Metrics --
@@ -43,7 +42,6 @@ pub async fn upload_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
-    search: web::Data<SearchIndexClient>,
     config: web::Data<AppConfig>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
@@ -169,19 +167,6 @@ pub async fn upload_file(
             &file_meta.name,
             &file_meta.mime_type,
             file_meta.size_bytes,
-        )
-        .await;
-
-    // Synchronous search indexing for near-instant search results
-    search
-        .index_file(
-            &file_id.to_string(),
-            &file_meta.name,
-            &file_meta.mime_type,
-            &owner.to_string(),
-            folder_id.as_ref().map(|f| f.to_string()).as_deref(),
-            size,
-            &file_meta.created_at.to_rfc3339(),
         )
         .await;
 
@@ -325,7 +310,6 @@ pub async fn delete_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
-    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -338,7 +322,6 @@ pub async fn delete_file(
     s3.delete_object(&file.s3_key).await?;
 
     let _ = events.file_deleted(&file_id, &file.owner_id).await;
-    search.remove_file(&file_id.to_string()).await;
 
     tracing::info!(file_id = %file_id, "File deleted");
     Ok(HttpResponse::NoContent().finish())
@@ -386,7 +369,7 @@ pub async fn move_file(
 
 pub async fn rename_file(
     meta: web::Data<MetadataClient>,
-    search: web::Data<SearchIndexClient>,
+    events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<RenameFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -402,16 +385,14 @@ pub async fn rename_file(
 
     let file = meta.rename_file(&file_id, name).await?;
 
-    // Re-index with updated name
-    search
-        .index_file(
-            &file.id.to_string(),
+    let _ = events
+        .file_updated(
+            &file_id,
+            &file.owner_id,
+            file.folder_id.as_ref(),
             &file.name,
             &file.mime_type,
-            &file.owner_id.to_string(),
-            file.folder_id.as_ref().map(|f| f.to_string()).as_deref(),
-            file.size_bytes,
-            &file.created_at.to_rfc3339(),
+            file.size_bytes as u64,
         )
         .await;
 
@@ -435,7 +416,6 @@ pub async fn list_versions(
 pub async fn trash_file(
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
-    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -446,7 +426,6 @@ pub async fn trash_file(
     let file = meta.trash_file(&file_id).await?;
 
     let _ = events.file_trashed(&file_id, &file.owner_id).await;
-    search.remove_file(&file_id.to_string()).await;
 
     tracing::info!(file_id = %file_id, "File trashed");
     Ok(HttpResponse::Ok().json(file))
@@ -455,7 +434,6 @@ pub async fn trash_file(
 pub async fn restore_file(
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
-    search: web::Data<SearchIndexClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
@@ -473,19 +451,6 @@ pub async fn restore_file(
             &file.name,
             &file.mime_type,
             file.size_bytes as u64,
-        )
-        .await;
-
-    // Re-index restored file
-    search
-        .index_file(
-            &file.id.to_string(),
-            &file.name,
-            &file.mime_type,
-            &file.owner_id.to_string(),
-            file.folder_id.as_ref().map(|f| f.to_string()).as_deref(),
-            file.size_bytes,
-            &file.created_at.to_rfc3339(),
         )
         .await;
 

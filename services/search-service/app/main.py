@@ -14,6 +14,7 @@ from app.api.health import REQUEST_COUNT, REQUEST_LATENCY, health_bp
 from app.api.index import index_bp
 from app.api.search import search_bp
 from app.config import AppConfig
+from app.middleware.auth import require_auth
 from app.services.meilisearch_client import MeiliSearchService
 from app.services.sqs_consumer import SQSConsumer
 
@@ -75,6 +76,9 @@ def create_app(config: AppConfig | None = None) -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(search_bp, url_prefix="/api/v1/search")
     app.register_blueprint(index_bp, url_prefix="/api/v1/search")
+
+    # Register authentication middleware
+    require_auth(app)
 
     # Prometheus request instrumentation
     @app.before_request

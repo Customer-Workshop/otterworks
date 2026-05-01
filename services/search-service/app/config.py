@@ -34,6 +34,18 @@ class SQSConfig:
 
 
 @dataclass(frozen=True)
+class AuthConfig:
+    """Authentication configuration for the search service."""
+
+    service_token: str = field(
+        default_factory=lambda: os.getenv("SEARCH_SERVICE_TOKEN", "")
+    )
+    require_auth: bool = field(
+        default_factory=lambda: os.getenv("REQUIRE_AUTH", "true").lower() == "true"
+    )
+
+
+@dataclass(frozen=True)
 class AppConfig:
     """Top-level application configuration."""
 
@@ -46,3 +58,4 @@ class AppConfig:
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
     meilisearch: MeiliSearchConfig = field(default_factory=MeiliSearchConfig)
     sqs: SQSConfig = field(default_factory=SQSConfig)
+    auth: AuthConfig = field(default_factory=AuthConfig)

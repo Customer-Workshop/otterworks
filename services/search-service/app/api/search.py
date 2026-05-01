@@ -23,6 +23,8 @@ def search_documents() -> tuple:
     """Full-text search across documents and files.
 
     Query params: q (required), type, page, size
+    Results are automatically scoped to the authenticated user via the
+    ``X-User-ID`` header set by the API gateway.
     """
     query = request.args.get("q", "")
     try:
@@ -31,7 +33,7 @@ def search_documents() -> tuple:
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid page or size parameter"}), 400
     doc_type = request.args.get("type")
-    owner_id = request.args.get("owner_id")
+    owner_id = request.headers.get("X-User-ID", "").strip() or None
 
     if not query:
         return jsonify({"error": "Query parameter 'q' is required"}), 400
@@ -48,6 +50,8 @@ def search_documents() -> tuple:
         SEARCH_COUNT.inc()
         logger.info("search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception:
         logger.exception("search_failed", query=query)
         return jsonify({"error": "Search failed"}), 500
@@ -76,13 +80,14 @@ def suggest() -> tuple:
 def advanced_search() -> tuple:
     """Advanced search with filters: date range, owner, type, tags.
 
-    JSON body: {q, type, owner_id, tags, date_from, date_to, page, size}
+    JSON body: {q, type, tags, date_from, date_to, page, size}
+    owner_id is always derived from X-User-ID for tenant isolation.
     """
     data = request.get_json() or {}
 
     query = data.get("q")
     doc_type = data.get("type")
-    owner_id = data.get("owner_id")
+    owner_id = request.headers.get("X-User-ID", "").strip() or None
     tags = data.get("tags")
     date_from = data.get("date_from")
     date_to = data.get("date_to")

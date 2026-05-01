@@ -18,6 +18,37 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { searchApi } from "@/lib/api";
 import { formatRelativeTime, cn } from "@/lib/utils";
+
+/**
+ * Strip all HTML tags from a string except {@code <em>} (used by
+ * MeiliSearch for search-hit highlighting).  Everything else is
+ * escaped to prevent XSS.
+ */
+function sanitizeSnippet(html: string): string {
+  const ALLOWED = /<\/?em>/gi;
+  const tokens: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = ALLOWED.exec(html)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(escapeHtml(html.slice(lastIndex, match.index)));
+    }
+    tokens.push(match[0].toLowerCase());
+    lastIndex = ALLOWED.lastIndex;
+  }
+  if (lastIndex < html.length) {
+    tokens.push(escapeHtml(html.slice(lastIndex)));
+  }
+  return tokens.join("");
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 import type { SearchResult } from "@/types";
 
 function SearchContent() {
@@ -185,9 +216,12 @@ function SearchResultRow({ result }: { result: SearchResult }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900">{result.name}</p>
         {result.snippet && (
-          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-            {result.snippet}
-          </p>
+          <p
+            className="text-xs text-gray-500 mt-0.5 line-clamp-2 [&>em]:font-semibold [&>em]:not-italic [&>em]:text-gray-700"
+            dangerouslySetInnerHTML={{
+              __html: sanitizeSnippet(result.snippet),
+            }}
+          />
         )}
         <div className="flex items-center gap-2 mt-1">
           <span className="text-xs text-gray-400">{result.path}</span>

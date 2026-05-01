@@ -108,6 +108,12 @@ export const authApi = {
     );
     return data;
   },
+  lookupUserById: async (id: string): Promise<{ id: string; email: string; displayName: string }> => {
+    const { data } = await apiClient.get<{ id: string; email: string; displayName: string }>(
+      `/auth/users/by-id/${id}`
+    );
+    return data;
+  },
 };
 
 // ── Helpers ───────────────────────────────────────────────────

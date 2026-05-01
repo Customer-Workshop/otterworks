@@ -18,7 +18,7 @@ def _get_service() -> MeiliSearchService:
     return current_app.config["SEARCH_SERVICE"]
 
 
-@search_bp.route("/", methods=["GET"])
+@search_bp.route("/", methods=["GET"], strict_slashes=False)
 def search_documents() -> tuple:
     """Full-text search across documents and files.
 

@@ -114,9 +114,10 @@ module "search" {
   environment = var.environment
   project     = "otterworks"
 
-  vpc_id     = local.vpc_id
-  vpc_cidr   = local.vpc_cidr
-  subnet_ids = local.private_subnets
+  vpc_id                 = local.vpc_id
+  vpc_cidr               = local.vpc_cidr
+  subnet_ids             = local.private_subnets
+  meilisearch_master_key = var.meilisearch_master_key
 }
 
 module "auth" {

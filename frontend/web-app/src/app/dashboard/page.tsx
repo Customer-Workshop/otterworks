@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   FolderOpen,
   FileText,
@@ -149,7 +150,26 @@ function DashboardContent() {
         {recentFiles && recentFiles.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentFiles.map((file) => (
-              <FileCard key={file.id} file={file} view="grid" />
+              <FileCard
+                key={file.id}
+                file={file}
+                view="grid"
+                onDownload={async (id, name) => {
+                  try {
+                    const downloadUrl = await filesApi.getDownloadUrl(id);
+                    const a = document.createElement("a");
+                    a.href = downloadUrl;
+                    a.download = name;
+                    a.rel = "noopener";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    toast.success("File downloaded successfully");
+                  } catch {
+                    toast.error("Download failed. Please try again.");
+                  }
+                }}
+              />
             ))}
           </div>
         ) : (

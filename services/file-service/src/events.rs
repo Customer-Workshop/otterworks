@@ -22,6 +22,12 @@ pub struct FileEvent {
     #[serde(rename = "sharedWithUserId")]
     pub shared_with: Option<String>,
     pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<u64>,
 }
 
 impl EventPublisher {
@@ -81,6 +87,9 @@ impl EventPublisher {
         file_id: &Uuid,
         owner_id: &Uuid,
         folder_id: Option<&Uuid>,
+        name: &str,
+        mime_type: &str,
+        size_bytes: u64,
     ) -> Result<(), ServiceError> {
         let event = FileEvent {
             event_type: "file_uploaded".into(),
@@ -89,6 +98,9 @@ impl EventPublisher {
             folder_id: folder_id.map(|f| f.to_string()),
             shared_with: None,
             timestamp: Utc::now().to_rfc3339(),
+            name: Some(name.to_string()),
+            mime_type: Some(mime_type.to_string()),
+            size_bytes: Some(size_bytes),
         };
         self.publish(&event).await
     }
@@ -101,6 +113,9 @@ impl EventPublisher {
             folder_id: None,
             shared_with: None,
             timestamp: Utc::now().to_rfc3339(),
+            name: None,
+            mime_type: None,
+            size_bytes: None,
         };
         self.publish(&event).await
     }
@@ -118,6 +133,9 @@ impl EventPublisher {
             folder_id: None,
             shared_with: Some(shared_with.to_string()),
             timestamp: Utc::now().to_rfc3339(),
+            name: None,
+            mime_type: None,
+            size_bytes: None,
         };
         self.publish(&event).await
     }
@@ -135,6 +153,9 @@ impl EventPublisher {
             folder_id: folder_id.map(|f| f.to_string()),
             shared_with: None,
             timestamp: Utc::now().to_rfc3339(),
+            name: None,
+            mime_type: None,
+            size_bytes: None,
         };
         self.publish(&event).await
     }

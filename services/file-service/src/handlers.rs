@@ -159,7 +159,14 @@ pub async fn upload_file(
     meta.put_version(&version).await?;
 
     let _ = events
-        .file_uploaded(&file_id, &owner, folder_id.as_ref())
+        .file_uploaded(
+            &file_id,
+            &owner,
+            folder_id.as_ref(),
+            &file_meta.name,
+            &file_meta.mime_type,
+            file_meta.size_bytes,
+        )
         .await;
 
     tracing::info!(file_id = %file_id, name = %file_meta.name, size = %size, "File uploaded");

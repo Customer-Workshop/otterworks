@@ -131,7 +131,7 @@ function FileDetailContent() {
                 a.click();
                 document.body.removeChild(a);
               } catch {
-                alert("Download failed. Please try again.");
+                toast.error("Download failed. Please try again.");
               }
             }}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"

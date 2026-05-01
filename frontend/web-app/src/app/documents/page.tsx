@@ -11,7 +11,6 @@ import {
   Search,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { DocumentCard } from "@/components/documents/document-card";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -65,8 +64,6 @@ function DocumentsContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Documents" }]} />
-
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Documents</h1>

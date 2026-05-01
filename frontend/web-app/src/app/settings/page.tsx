@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { User, Bell, Save } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { authApi, settingsApi } from "@/lib/api";
@@ -77,8 +76,6 @@ function SettingsContent() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <Breadcrumb items={[{ label: "Settings" }]} />
-
       <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
 
       {/* Profile section */}

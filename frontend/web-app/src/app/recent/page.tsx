@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, FolderOpen, FileText } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { FileCard } from "@/components/files/file-card";
 import { DocumentCard } from "@/components/documents/document-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -93,9 +92,6 @@ function RecentContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb items={[{ label: "Recent" }]} />
-
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Recent</h1>

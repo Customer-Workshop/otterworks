@@ -252,7 +252,7 @@ function FileBrowserContent() {
           </div>
         </div>
       )}
-      <Breadcrumb items={breadcrumbs} />
+      {folderId && <Breadcrumb items={breadcrumbs} />}
 
       {/* Bulk action bar */}
       {selectionActive && selectedIds.size > 0 && (

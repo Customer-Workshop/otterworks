@@ -164,7 +164,8 @@ export function ShareDialog({
                           {user.permission}
                         </span>
                       </div>
-                    );})
+                    );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 text-center py-4">

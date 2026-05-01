@@ -11,6 +11,9 @@ import {
   FolderPlus,
   Upload,
   FolderOpen,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb";
@@ -24,13 +27,14 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { filesApi } from "@/lib/api";
 import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
-import type { ViewMode } from "@/types";
+import type { ViewMode, SortField } from "@/types";
+import type { FileItem } from "@/types";
 
 function FileBrowserContent() {
   const searchParams = useSearchParams();
   const folderId = searchParams.get("folder");
   const queryClient = useQueryClient();
-  const { viewMode, setViewMode } = useUIStore();
+  const { viewMode, setViewMode, sortConfig, setSortConfig } = useUIStore();
   const [showUpload, setShowUpload] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -116,8 +120,34 @@ function FileBrowserContent() {
   }
 
   const folders = folderItems ?? [];
-  const files = data?.data ?? [];
+  const rawFiles = data?.data ?? [];
+
+  const sortedFiles = [...rawFiles].sort((a, b) => {
+    const dir = sortConfig.direction === "asc" ? 1 : -1;
+    switch (sortConfig.field) {
+      case "name":
+        return dir * a.name.localeCompare(b.name);
+      case "size":
+        return dir * (a.size - b.size);
+      case "updatedAt":
+        return dir * (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+      case "createdAt":
+        return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      default:
+        return 0;
+    }
+  });
+
+  const files = sortedFiles;
   const items = [...folders, ...files];
+
+  const toggleSort = (field: SortField) => {
+    if (sortConfig.field === field) {
+      setSortConfig({ field, direction: sortConfig.direction === "asc" ? "desc" : "asc" });
+    } else {
+      setSortConfig({ field, direction: "asc" });
+    }
+  };
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop: (files) => handleUpload(files),
@@ -157,6 +187,24 @@ function FileBrowserContent() {
             <Upload size={16} />
             Upload
           </button>
+
+          <select
+            value={`${sortConfig.field}-${sortConfig.direction}`}
+            onChange={(e) => {
+              const [field, direction] = e.target.value.split("-") as [SortField, "asc" | "desc"];
+              setSortConfig({ field, direction });
+            }}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-otter-500"
+          >
+            <option value="updatedAt-desc">Last modified</option>
+            <option value="updatedAt-asc">Oldest modified</option>
+            <option value="name-asc">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="size-desc">Largest first</option>
+            <option value="size-asc">Smallest first</option>
+            <option value="createdAt-desc">Newest created</option>
+            <option value="createdAt-asc">Oldest created</option>
+          </select>
 
           <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden ml-2">
             <ViewModeButton
@@ -227,10 +275,19 @@ function FileBrowserContent() {
         />
       ) : (
         <div className="space-y-6">
+          {viewMode === "list" && (
+            <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+              <div className="w-10" />
+              <SortableHeader field="name" label="Name" current={sortConfig} onSort={toggleSort} className="flex-1" />
+              <SortableHeader field="updatedAt" label="Modified" current={sortConfig} onSort={toggleSort} className="w-32 hidden sm:block" />
+              <SortableHeader field="size" label="Size" current={sortConfig} onSort={toggleSort} className="w-20 hidden sm:block" />
+              <div className="w-8" />
+            </div>
+          )}
           {/* Folders */}
           {folders.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Folders</h2>
+              {viewMode === "grid" && <h2 className="text-sm font-medium text-gray-500 mb-3">Folders</h2>}
               <div
                 className={cn(
                   viewMode === "grid"
@@ -253,7 +310,7 @@ function FileBrowserContent() {
           {/* Files */}
           {files.length > 0 && (
             <section>
-              <h2 className="text-sm font-medium text-gray-500 mb-3">Files</h2>
+              {viewMode === "grid" && <h2 className="text-sm font-medium text-gray-500 mb-3">Files</h2>}
               <div
                 className={cn(
                   viewMode === "grid"
@@ -319,6 +376,43 @@ function ViewModeButton({
       )}
     >
       <Icon size={16} />
+    </button>
+  );
+}
+
+function SortableHeader({
+  field,
+  label,
+  current,
+  onSort,
+  className,
+}: {
+  field: SortField;
+  label: string;
+  current: { field: SortField; direction: "asc" | "desc" };
+  onSort: (field: SortField) => void;
+  className?: string;
+}) {
+  const isActive = current.field === field;
+  return (
+    <button
+      onClick={() => onSort(field)}
+      className={cn(
+        "flex items-center gap-1 hover:text-gray-700 transition",
+        isActive && "text-gray-900",
+        className
+      )}
+    >
+      {label}
+      {isActive ? (
+        current.direction === "asc" ? (
+          <ChevronUp size={12} />
+        ) : (
+          <ChevronDown size={12} />
+        )
+      ) : (
+        <ArrowUpDown size={12} className="opacity-0 group-hover:opacity-100" />
+      )}
     </button>
   );
 }

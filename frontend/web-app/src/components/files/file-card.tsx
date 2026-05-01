@@ -55,21 +55,21 @@ export function FileCard({ file, onDelete, onShare, view = "grid" }: FileCardPro
     return (
       <Link
         href={file.isFolder ? `/files?folder=${file.id}` : `/files/${file.id}`}
-        className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 rounded-lg transition group"
+        className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition group border-b border-gray-100 last:border-0"
       >
         <div className="w-10 h-10 rounded-lg bg-otter-50 flex items-center justify-center flex-shrink-0">
           <Icon size={20} className="text-otter-600" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-          <p className="text-xs text-gray-500">
-            {file.ownerName} &middot; {formatRelativeTime(file.updatedAt)}
-          </p>
         </div>
-        <span className="text-xs text-gray-400 hidden sm:block">
-          {file.isFolder ? "--" : formatFileSize(file.size)}
+        <span className="text-xs text-gray-500 w-32 hidden sm:block truncate">
+          {formatRelativeTime(file.updatedAt)}
         </span>
-        <div className="relative">
+        <span className="text-xs text-gray-400 w-20 hidden sm:block text-right">
+          {file.isFolder ? "\u2014" : formatFileSize(file.size)}
+        </span>
+        <div className="relative w-8">
           <button
             onClick={(e) => {
               e.preventDefault();

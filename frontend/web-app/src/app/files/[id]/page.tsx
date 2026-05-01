@@ -68,6 +68,7 @@ function FileDetailContent() {
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isPdf = file.mimeType === "application/pdf";
+  const isText = file.mimeType.startsWith("text/") || file.mimeType === "application/json" || file.mimeType === "application/xml";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -98,15 +99,30 @@ function FileDetailContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {file.downloadUrl && (
-            <a
-              href={file.downloadUrl}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <Download size={16} />
-              Download
-            </a>
-          )}
+          <button
+            onClick={async () => {
+              const url = file.downloadUrl ?? `/api/v1/files/${file.id}/download`;
+              const token = localStorage.getItem("otter_access_token");
+              try {
+                const res = await fetch(url, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                if (!res.ok) throw new Error("Download failed");
+                const blob = await res.blob();
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = file.name;
+                a.click();
+                URL.revokeObjectURL(a.href);
+              } catch {
+                alert("Download failed. Please try again.");
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
+            <Download size={16} />
+            Download
+          </button>
           <button className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
             <Share2 size={16} />
             Share
@@ -159,6 +175,8 @@ function FileDetailContent() {
                     </a>
                   )}
                 </div>
+              ) : isText && file.downloadUrl ? (
+                <TextPreview url={file.downloadUrl} />
               ) : (
                 <div className="text-center">
                   <File size={64} className="text-gray-300 mx-auto mb-3" />
@@ -216,7 +234,7 @@ function FileDetailContent() {
               <h2 className="text-sm font-medium text-gray-700">Details</h2>
             </div>
             <div className="p-5 space-y-4">
-              <InfoRow icon={User} label="Owner" value={file.ownerName} />
+              <InfoRow icon={User} label="Owner" value={file.ownerName || "You"} />
               <InfoRow
                 icon={HardDrive}
                 label="Size"
@@ -333,4 +351,42 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   if (mimeType === "application/pdf")
     return <FileText size={24} className="text-red-500" />;
   return <File size={24} className="text-otter-600" />;
+}
+
+function TextPreview({ url }: { url: string }) {
+  const { data: content, isLoading } = useQuery({
+    queryKey: ["file-preview", url],
+    queryFn: async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("otter_access_token") : null;
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return null;
+      const text = await res.text();
+      return text.slice(0, 10000);
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="w-full text-center py-8">
+        <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  if (!content) {
+    return (
+      <div className="text-center">
+        <File size={64} className="text-gray-300 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Could not load preview</p>
+      </div>
+    );
+  }
+
+  return (
+    <pre className="w-full text-sm text-gray-700 bg-gray-50 p-4 rounded-lg overflow-auto max-h-[500px] whitespace-pre-wrap font-mono">
+      {content}
+    </pre>
+  );
 }

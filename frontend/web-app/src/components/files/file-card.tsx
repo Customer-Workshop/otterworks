@@ -125,7 +125,8 @@ export function FileCard({ file, onDelete, onShare, view = "grid" }: FileCardPro
       </div>
       <p className="text-sm font-medium text-gray-900 truncate mb-1">{file.name}</p>
       <p className="text-xs text-gray-500">
-        {file.isFolder ? "Folder" : formatFileSize(file.size)} &middot;{" "}
+        {file.isFolder ? "Folder" : formatFileSize(file.size)}
+        {" \u00b7 "}
         {formatRelativeTime(file.updatedAt)}
       </p>
     </Link>

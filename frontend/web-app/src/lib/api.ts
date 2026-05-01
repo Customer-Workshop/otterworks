@@ -50,6 +50,7 @@ function mapRawFile(raw: RawFileItem): FileItem {
     ownerName: "",
     isFolder: false,
     path: `/${raw.name}`,
+    downloadUrl: `/api/v1/files/${raw.id}/download`,
     sharedWith: [],
     tags: [],
     createdAt: raw.createdAt ?? "",

@@ -37,6 +37,8 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+let isVerifyingToken = false;
+
 apiClient.interceptors.response.use(
   (response) => {
     if (response.data) {
@@ -48,9 +50,23 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const url = error.config?.url || "";
       if (!url.includes("/auth/")) {
-        localStorage.removeItem("otter_access_token");
-        localStorage.removeItem("otter_refresh_token");
-        window.location.href = "/login";
+        if (isVerifyingToken) {
+          return Promise.reject(error);
+        }
+        isVerifyingToken = true;
+        try {
+          await axios.get("/api/v1/auth/profile", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("otter_access_token")}`,
+            },
+          });
+        } catch {
+          localStorage.removeItem("otter_access_token");
+          localStorage.removeItem("otter_refresh_token");
+          window.location.href = "/login";
+        } finally {
+          isVerifyingToken = false;
+        }
       }
     }
     return Promise.reject(error);

@@ -45,6 +45,13 @@ function FileDetailContent() {
     queryFn: () => filesApi.get(fileId),
   });
 
+  const { data: presignedUrl } = useQuery({
+    queryKey: ["files", fileId, "download-url"],
+    queryFn: () => filesApi.getDownloadUrl(fileId),
+    enabled: !!file,
+    staleTime: 30 * 60 * 1000,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
@@ -101,19 +108,16 @@ function FileDetailContent() {
         <div className="flex items-center gap-2">
           <button
             onClick={async () => {
-              const url = file.downloadUrl ?? `/api/v1/files/${file.id}/download`;
-              const token = localStorage.getItem("otter_access_token");
               try {
-                const res = await fetch(url, {
-                  headers: token ? { Authorization: `Bearer ${token}` } : {},
-                });
+                const downloadUrl = presignedUrl ?? await filesApi.getDownloadUrl(file.id);
+                const res = await fetch(downloadUrl);
                 if (!res.ok) throw new Error("Download failed");
                 const blob = await res.blob();
                 const a = document.createElement("a");
                 a.href = URL.createObjectURL(blob);
                 a.download = file.name;
                 a.click();
-                URL.revokeObjectURL(a.href);
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000);
               } catch {
                 alert("Download failed. Please try again.");
               }
@@ -148,15 +152,15 @@ function FileDetailContent() {
               </h2>
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
-              {isImage && file.downloadUrl ? (
+              {isImage && presignedUrl ? (
                 <img
-                  src={file.downloadUrl}
+                  src={presignedUrl}
                   alt={file.name}
                   className="max-w-full max-h-[500px] rounded-lg shadow-sm"
                 />
-              ) : isVideo && file.downloadUrl ? (
+              ) : isVideo && presignedUrl ? (
                 <video
-                  src={file.downloadUrl}
+                  src={presignedUrl}
                   controls
                   className="max-w-full max-h-[500px] rounded-lg"
                 />
@@ -164,9 +168,9 @@ function FileDetailContent() {
                 <div className="text-center">
                   <FileText size={64} className="text-red-400 mx-auto mb-3" />
                   <p className="text-sm text-gray-500">PDF document</p>
-                  {file.downloadUrl && (
+                  {presignedUrl && (
                     <a
-                      href={file.downloadUrl}
+                      href={presignedUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-otter-600 hover:underline mt-1 inline-block"
@@ -175,8 +179,8 @@ function FileDetailContent() {
                     </a>
                   )}
                 </div>
-              ) : isText && file.downloadUrl ? (
-                <TextPreview url={file.downloadUrl} />
+              ) : isText ? (
+                <TextPreview fileId={file.id} presignedUrl={presignedUrl} />
               ) : (
                 <div className="text-center">
                   <File size={64} className="text-gray-300 mx-auto mb-3" />
@@ -353,21 +357,20 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   return <File size={24} className="text-otter-600" />;
 }
 
-function TextPreview({ url }: { url: string }) {
+function TextPreview({ fileId, presignedUrl }: { fileId: string; presignedUrl?: string }) {
   const { data: content, isLoading } = useQuery({
-    queryKey: ["file-preview", url],
+    queryKey: ["file-preview", fileId],
     queryFn: async () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("otter_access_token") : null;
-      const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const url = presignedUrl ?? await filesApi.getDownloadUrl(fileId);
+      const res = await fetch(url);
       if (!res.ok) return null;
       const text = await res.text();
       return text.slice(0, 10000);
     },
+    enabled: !!presignedUrl,
   });
 
-  if (isLoading) {
+  if (isLoading || !presignedUrl) {
     return (
       <div className="w-full text-center py-8">
         <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -375,7 +378,7 @@ function TextPreview({ url }: { url: string }) {
     );
   }
 
-  if (!content) {
+  if (content === null || content === undefined) {
     return (
       <div className="text-center">
         <File size={64} className="text-gray-300 mx-auto mb-3" />

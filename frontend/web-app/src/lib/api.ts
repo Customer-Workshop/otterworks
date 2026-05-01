@@ -489,6 +489,68 @@ export const storageApi = {
   },
 };
 
+// ── Starred (localStorage-backed) ─────────────────────────────
+const STARRED_STORAGE_KEY = "otter_starred_items";
+
+type StarredItemType = "file" | "document";
+
+interface StarredEntry {
+  itemId: string;
+  itemType: StarredItemType;
+  starredAt: string;
+}
+
+function getStarredMap(): Record<string, StarredEntry> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STARRED_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, StarredEntry>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStarredMap(map: Record<string, StarredEntry>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STARRED_STORAGE_KEY, JSON.stringify(map));
+}
+
+function starredKey(userId: string, itemId: string): string {
+  return `${userId}:${itemId}`;
+}
+
+export const starredApi = {
+  isStarred: (userId: string, itemId: string): boolean => {
+    return starredKey(userId, itemId) in getStarredMap();
+  },
+
+  toggle: (userId: string, itemId: string, itemType: StarredItemType): boolean => {
+    const map = getStarredMap();
+    const key = starredKey(userId, itemId);
+    if (key in map) {
+      delete map[key];
+      saveStarredMap(map);
+      return false;
+    }
+    map[key] = { itemId, itemType, starredAt: new Date().toISOString() };
+    saveStarredMap(map);
+    return true;
+  },
+
+  getStarredIds: (userId: string): { fileIds: string[]; documentIds: string[] } => {
+    const map = getStarredMap();
+    const prefix = `${userId}:`;
+    const fileIds: string[] = [];
+    const documentIds: string[] = [];
+    for (const [key, entry] of Object.entries(map)) {
+      if (!key.startsWith(prefix)) continue;
+      if (entry.itemType === "file") fileIds.push(entry.itemId);
+      else documentIds.push(entry.itemId);
+    }
+    return { fileIds, documentIds };
+  },
+};
+
 // ── Settings ──────────────────────────────────────────────────
 export const settingsApi = {
   get: async (): Promise<UserSettings> => {

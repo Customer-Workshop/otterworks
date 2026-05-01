@@ -17,10 +17,13 @@ import {
   Pencil,
   Check,
   X,
+  Star,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { FileItem } from "@/types";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
+import { starredApi } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth-store";
 
 const iconMap: Record<string, typeof File> = {
   file: File,
@@ -53,6 +56,7 @@ interface FileCardProps {
   selected?: boolean;
   onSelect?: (id: string) => void;
   selectionActive?: boolean;
+  onStarToggle?: () => void;
 }
 
 export function FileCard({
@@ -65,8 +69,27 @@ export function FileCard({
   selected = false,
   onSelect,
   selectionActive = false,
+  onStarToggle,
 }: FileCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuthStore();
+  const userId = user?.id ?? "";
+  const [starred, setStarred] = useState(() => userId ? starredApi.isStarred(userId, file.id) : false);
+
+  useEffect(() => {
+    if (userId) {
+      setStarred(starredApi.isStarred(userId, file.id));
+    }
+  }, [userId, file.id]);
+
+  const handleStarClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!userId) return;
+    const nowStarred = starredApi.toggle(userId, file.id, "file");
+    setStarred(nowStarred);
+    onStarToggle?.();
+  }, [userId, file.id, onStarToggle]);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(file.name);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +168,16 @@ export function FileCard({
             {file.isFolder ? "\u2014" : formatFileSize(file.size)}
           </span>
         </Link>
+        <button
+          onClick={handleStarClick}
+          className="p-1 rounded hover:bg-gray-200 transition flex-shrink-0"
+          aria-label={starred ? "Unstar" : "Star"}
+        >
+          <Star
+            size={16}
+            className={starred ? "text-yellow-400 fill-yellow-400" : "text-gray-400 opacity-0 group-hover:opacity-100"}
+          />
+        </button>
         <div className="relative w-8">
           <button
             onClick={(e) => {
@@ -191,27 +224,39 @@ export function FileCard({
           <div className="w-12 h-12 rounded-lg bg-otter-50 flex items-center justify-center">
             <Icon size={24} className="text-otter-600" />
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-1">
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(!menuOpen);
-              }}
-              className="p-1 rounded hover:bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100 transition"
+              onClick={handleStarClick}
+              className="p-1 rounded hover:bg-gray-100 transition"
+              aria-label={starred ? "Unstar" : "Star"}
             >
-              <MoreVertical size={16} />
-            </button>
-            {menuOpen && (
-              <FileMenu
-                file={file}
-                onClose={() => setMenuOpen(false)}
-                onDelete={onDelete}
-                onShare={onShare}
-                onDownload={onDownload}
-                onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
+              <Star
+                size={16}
+                className={starred ? "text-yellow-400 fill-yellow-400" : "text-gray-400 opacity-0 group-hover:opacity-100"}
               />
-            )}
+            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100 transition"
+              >
+                <MoreVertical size={16} />
+              </button>
+              {menuOpen && (
+                <FileMenu
+                  file={file}
+                  onClose={() => setMenuOpen(false)}
+                  onDelete={onDelete}
+                  onShare={onShare}
+                  onDownload={onDownload}
+                  onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
+                />
+              )}
+            </div>
           </div>
         </div>
         {isRenaming ? (

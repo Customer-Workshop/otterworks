@@ -225,6 +225,40 @@ impl MetadataClient {
         self.get_file(file_id).await
     }
 
+    pub async fn list_trashed(
+        &self,
+        owner_id: Option<Uuid>,
+    ) -> Result<Vec<FileMetadata>, ServiceError> {
+        let mut filter_parts = vec!["is_trashed = :trashed".to_string()];
+        let mut scan_builder = self
+            .client
+            .scan()
+            .table_name(&self.files_table)
+            .expression_attribute_values(":trashed", AttributeValue::Bool(true));
+
+        if let Some(oid) = &owner_id {
+            filter_parts.push("owner_id = :owner_id".to_string());
+            scan_builder = scan_builder
+                .expression_attribute_values(":owner_id", AttributeValue::S(oid.to_string()));
+        }
+
+        scan_builder = scan_builder.filter_expression(filter_parts.join(" AND "));
+
+        let mut paginator = scan_builder.into_paginator().send();
+        let mut files = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            if let Some(items) = page.items {
+                for item in &items {
+                    files.push(parse_file_metadata(item)?);
+                }
+            }
+        }
+
+        files.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        Ok(files)
+    }
+
     pub async fn list_files(
         &self,
         folder_id: Option<Uuid>,

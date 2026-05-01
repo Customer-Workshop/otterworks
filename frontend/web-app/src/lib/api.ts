@@ -49,6 +49,7 @@ function mapRawFile(raw: RawFileItem): FileItem {
     ownerId: raw.ownerId ?? "",
     ownerName: "",
     isFolder: false,
+    isTrashed: raw.isTrashed ?? false,
     path: `/${raw.name}`,
     downloadUrl: undefined,
     sharedWith: [],
@@ -192,7 +193,7 @@ export const filesApi = {
     return data.url.replace("://localstack:", "://localhost:");
   },
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/files/${id}`);
+    await apiClient.post(`/files/${id}/trash`);
   },
   getFolder: async (id: string): Promise<FileItem> => {
     const { data } = await apiClient.get<Record<string, unknown>>(`/folders/${id}`);
@@ -221,10 +222,13 @@ export const filesApi = {
     };
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<any>("/files/trash", {
-      params: { page, page_size: pageSize },
+    const params: Record<string, string | number> = { page, page_size: pageSize };
+    const ownerId = getOwnerIdFromJwt();
+    if (ownerId) params.owner_id = ownerId;
+    const { data } = await apiClient.get<RawFileListResponse>("/files/trash", {
+      params,
     });
-    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    const items = (data.files ?? []).map(mapRawFile);
     return {
       data: items,
       total: data.total ?? items.length,
@@ -234,7 +238,7 @@ export const filesApi = {
     };
   },
   permanentDelete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/files/${id}/permanent`);
+    await apiClient.delete(`/files/${id}`);
   },
   renameFile: async (id: string, name: string): Promise<FileItem> => {
     const { data } = await apiClient.patch<RawFileItem>(`/files/${id}/rename`, { name });

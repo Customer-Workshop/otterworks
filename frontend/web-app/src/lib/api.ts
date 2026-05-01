@@ -248,6 +248,22 @@ export const filesApi = {
       shared_by: sharedBy,
     });
   },
+  removeShare: async (fileId: string, userId: string): Promise<void> => {
+    await apiClient.delete(`/files/${fileId}/share/${userId}`);
+  },
+  updateSharePermission: async (
+    fileId: string,
+    userId: string,
+    permission: "view" | "edit"
+  ): Promise<void> => {
+    const sharedBy = getOwnerIdFromJwt();
+    if (!sharedBy) throw new Error("Unable to determine current user");
+    await apiClient.post(`/files/${fileId}/share`, {
+      shared_with: userId,
+      permission: permission === "view" ? "viewer" : "editor",
+      shared_by: sharedBy,
+    });
+  },
   restore: async (id: string): Promise<void> => {
     await apiClient.post(`/files/${id}/restore`);
   },

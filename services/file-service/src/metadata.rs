@@ -606,6 +606,17 @@ impl MetadataClient {
         Ok(shares)
     }
 
+    pub async fn delete_share(&self, share_id: &Uuid) -> Result<(), ServiceError> {
+        self.client
+            .delete_item()
+            .table_name(&self.shares_table)
+            .key("id", AttributeValue::S(share_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+        Ok(())
+    }
+
     pub async fn list_shares(&self, file_id: &Uuid) -> Result<Vec<FileShare>, ServiceError> {
         let mut shares = Vec::new();
         let mut paginator = self

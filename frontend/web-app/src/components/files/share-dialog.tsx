@@ -1,33 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import { X, Link2, Copy, Check, UserPlus, Globe } from "lucide-react";
+import { X, Link2, Copy, Check, UserPlus, Globe, Lock, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { filesApi } from "@/lib/api";
 import type { SharedUser } from "@/types";
 
 interface ShareDialogProps {
   fileId: string;
   fileName: string;
+  ownerId?: string;
+  ownerName?: string;
+  ownerEmail?: string;
   sharedWith: SharedUser[];
   resolvedUsers?: Record<string, { name: string; email: string }>;
   onShare: (email: string, permission: "view" | "edit") => Promise<void>;
   onClose: () => void;
+  onPermissionChange?: (userId: string, permission: "view" | "edit") => Promise<void>;
+  onRemoveAccess?: (userId: string) => Promise<void>;
 }
+
+type LinkAccess = "restricted" | "anyone";
 
 export function ShareDialog({
   fileId,
   fileName,
+  ownerId,
+  ownerName,
+  ownerEmail,
   sharedWith,
   resolvedUsers = {},
   onShare,
   onClose,
+  onPermissionChange,
+  onRemoveAccess,
 }: ShareDialogProps) {
   const [email, setEmail] = useState("");
   const [permission, setPermission] = useState<"view" | "edit">("view");
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"people" | "link">("people");
+  const [linkAccess, setLinkAccess] = useState<LinkAccess>("restricted");
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const handleShare = async () => {
     if (!email.trim()) return;
@@ -43,6 +59,38 @@ export function ShareDialog({
     }
   };
 
+  const handlePermissionChange = async (userId: string, newPermission: "view" | "edit") => {
+    setUpdatingUserId(userId);
+    try {
+      if (onPermissionChange) {
+        await onPermissionChange(userId, newPermission);
+      } else {
+        await filesApi.updateSharePermission(fileId, userId, newPermission);
+      }
+      toast.success("Permission updated");
+    } catch {
+      toast.error("Failed to update permission");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleRemoveAccess = async (userId: string) => {
+    setRemovingUserId(userId);
+    try {
+      if (onRemoveAccess) {
+        await onRemoveAccess(userId);
+      } else {
+        await filesApi.removeShare(fileId, userId);
+      }
+      toast.success("Access removed");
+    } catch {
+      toast.error("Failed to remove access");
+    } finally {
+      setRemovingUserId(null);
+    }
+  };
+
   const handleCopyLink = async () => {
     const shareUrl = `${window.location.origin}/files/${fileId}`;
     try {
@@ -54,6 +102,8 @@ export function ShareDialog({
       toast.error("Failed to copy link");
     }
   };
+
+  const ownerInitial = ownerName ? ownerName.charAt(0).toUpperCase() : "O";
 
   return (
     <>
@@ -134,55 +184,208 @@ export function ShareDialog({
                   </button>
                 </div>
 
-                {/* Shared users list */}
-                {sharedWith.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      People with access
-                    </p>
-                    {sharedWith.map((user) => {
-                      const resolved = resolvedUsers[user.userId];
-                      const displayName = resolved?.name || user.name || user.userId.slice(0, 8);
-                      const displayEmail = resolved?.email || user.email;
-                      return (
-                      <div
-                        key={user.userId}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-otter-100 flex items-center justify-center text-xs font-medium text-otter-700">
-                            {displayName.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {displayName}
-                            </p>
-                            {displayEmail && <p className="text-xs text-gray-500">{displayEmail}</p>}
-                          </div>
-                        </div>
-                        <span className="text-xs text-gray-500 capitalize px-2 py-1 bg-gray-100 rounded-full">
-                          {user.permission}
-                        </span>
-                      </div>
-                    );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No one else has access yet
+                {/* People with access list */}
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    People with access
                   </p>
-                )}
+
+                  {/* Owner row */}
+                  {ownerId && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-otter-600 flex items-center justify-center text-xs font-medium text-white">
+                          {ownerInitial}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {ownerName || "Owner"}
+                          </p>
+                          {ownerEmail && (
+                            <p className="text-xs text-gray-500">{ownerEmail}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-full">
+                        Owner
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Shared users */}
+                  {sharedWith.length > 0 ? (
+                    sharedWith
+                      .filter((user) => user.userId !== ownerId)
+                      .map((user) => {
+                        const resolved = resolvedUsers[user.userId];
+                        const displayName = resolved?.name || user.name || user.userId.slice(0, 8);
+                        const displayEmail = resolved?.email || user.email;
+                        const isUpdating = updatingUserId === user.userId;
+                        const isRemoving = removingUserId === user.userId;
+                        return (
+                          <div
+                            key={user.userId}
+                            className="flex items-center justify-between py-2 group"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-otter-100 flex items-center justify-center text-xs font-medium text-otter-700 flex-shrink-0">
+                                {displayName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {displayName}
+                                </p>
+                                {displayEmail && (
+                                  <p className="text-xs text-gray-500 truncate">{displayEmail}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <div className="relative">
+                                <select
+                                  value={user.permission === "edit" ? "edit" : "view"}
+                                  onChange={(e) =>
+                                    handlePermissionChange(
+                                      user.userId,
+                                      e.target.value as "view" | "edit"
+                                    )
+                                  }
+                                  disabled={isUpdating || isRemoving}
+                                  className={cn(
+                                    "appearance-none pl-2 pr-6 py-1 text-xs rounded-full border cursor-pointer focus:outline-none focus:ring-2 focus:ring-otter-500 bg-white",
+                                    isUpdating
+                                      ? "opacity-50 cursor-wait"
+                                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                                  )}
+                                >
+                                  <option value="view">Viewer</option>
+                                  <option value="edit">Editor</option>
+                                </select>
+                                <ChevronDown
+                                  size={12}
+                                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleRemoveAccess(user.userId)}
+                                disabled={isRemoving || isUpdating}
+                                className={cn(
+                                  "p-1 rounded-md transition",
+                                  isRemoving
+                                    ? "opacity-50 cursor-wait"
+                                    : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                )}
+                                title="Remove access"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                  ) : !ownerId ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No one else has access yet
+                    </p>
+                  ) : null}
+
+                  {ownerId && sharedWith.filter((u) => u.userId !== ownerId).length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-3">
+                      No one else has access yet
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Link access mode toggle */}
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    General access
+                  </p>
+                  <button
+                    onClick={() => {
+                      setLinkAccess("restricted");
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-xl border transition text-left",
+                      linkAccess === "restricted"
+                        ? "border-otter-300 bg-otter-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <Lock
+                      size={18}
+                      className={cn(
+                        linkAccess === "restricted" ? "text-otter-600" : "text-gray-400"
+                      )}
+                    />
+                    <div className="flex-1">
+                      <p
+                        className={cn(
+                          "text-sm font-medium",
+                          linkAccess === "restricted" ? "text-otter-700" : "text-gray-700"
+                        )}
+                      >
+                        Restricted
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Only people explicitly shared with can access
+                      </p>
+                    </div>
+                    {linkAccess === "restricted" && (
+                      <Check size={16} className="text-otter-600 flex-shrink-0" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLinkAccess("anyone");
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-xl border transition text-left",
+                      linkAccess === "anyone"
+                        ? "border-otter-300 bg-otter-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <Globe
+                      size={18}
+                      className={cn(
+                        linkAccess === "anyone" ? "text-otter-600" : "text-gray-400"
+                      )}
+                    />
+                    <div className="flex-1">
+                      <p
+                        className={cn(
+                          "text-sm font-medium",
+                          linkAccess === "anyone" ? "text-otter-700" : "text-gray-700"
+                        )}
+                      >
+                        Anyone with the link
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Anyone with the link can view this file
+                      </p>
+                    </div>
+                    {linkAccess === "anyone" && (
+                      <Check size={16} className="text-otter-600 flex-shrink-0" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Copy link section */}
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                   <Link2 size={20} className="text-gray-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700 truncate">
-                      {window.location.origin}/files/{fileId}
+                      {typeof window !== "undefined"
+                        ? `${window.location.origin}/files/${fileId}`
+                        : `/files/${fileId}`}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Anyone with the link can view this file
+                      {linkAccess === "anyone"
+                        ? "Anyone with the link can view this file"
+                        : "Only people with access can open this link"}
                     </p>
                   </div>
                   <button

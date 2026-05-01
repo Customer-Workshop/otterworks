@@ -380,9 +380,19 @@ function FileDetailContent() {
         <ShareDialog
           fileId={file.id}
           fileName={file.name}
+          ownerId={file.ownerId}
+          ownerName={file.ownerName || undefined}
           sharedWith={file.sharedWith}
           resolvedUsers={resolvedUsers}
           onShare={handleShare}
+          onPermissionChange={async (userId, permission) => {
+            await filesApi.updateSharePermission(file.id, userId, permission);
+            queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+          }}
+          onRemoveAccess={async (userId) => {
+            await filesApi.removeShare(file.id, userId);
+            queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+          }}
           onClose={() => setShowShareDialog(false)}
         />
       )}

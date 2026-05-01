@@ -176,7 +176,11 @@ export const filesApi = {
     const { data } = await apiClient.get<RawFileItem>(`/files/${id}`);
     return mapRawFile(data);
   },
-  upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
+  upload: async (
+    file: File,
+    parentId?: string | null,
+    options?: { onUploadProgress?: (percent: number) => void; signal?: AbortSignal },
+  ): Promise<FileItem> => {
     const formData = new FormData();
     formData.append("file", file);
     if (parentId) formData.append("folder_id", parentId);
@@ -187,6 +191,14 @@ export const filesApi = {
 
     const { data } = await apiClient.post<{ file: RawFileItem }>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      signal: options?.signal,
+      onUploadProgress: options?.onUploadProgress
+        ? (event) => {
+            if (event.total) {
+              options.onUploadProgress!(Math.round((event.loaded * 100) / event.total));
+            }
+          }
+        : undefined,
     });
     // Backend wraps response in { file: {...} }
     const raw = data.file ?? (data as unknown as RawFileItem);

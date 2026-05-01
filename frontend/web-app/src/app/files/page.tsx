@@ -120,30 +120,23 @@ function FileBrowserContent() {
     onError: () => toast.error("Failed to rename folder"),
   });
 
-  const handleUpload = useCallback(
-    async (files: File[]) => {
-      const results: { file: File; ok: boolean }[] = [];
-      for (const file of files) {
-        try {
-          await filesApi.upload(file, folderId);
-          results.push({ file, ok: true });
-        } catch {
-          results.push({ file, ok: false });
-        }
-      }
-      queryClient.invalidateQueries({ queryKey: ["files"] });
-      const succeeded = results.filter((r) => r.ok);
-      const failed = results.filter((r) => !r.ok);
-      if (succeeded.length > 0) {
-        toast.success(`${succeeded.length} file${succeeded.length > 1 ? "s" : ""} uploaded`);
-      }
-      if (failed.length > 0) {
-        toast.error(`${failed.length} file${failed.length > 1 ? "s" : ""} failed to upload`);
-        throw { results };
-      }
+  const handleUploadFile = useCallback(
+    async (
+      file: File,
+      options: { onProgress: (percent: number) => void; signal: AbortSignal },
+    ) => {
+      await filesApi.upload(file, folderId, {
+        onUploadProgress: options.onProgress,
+        signal: options.signal,
+      });
     },
-    [folderId, queryClient]
+    [folderId],
   );
+
+  const handleUploadComplete = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["files"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  }, [queryClient]);
 
   const breadcrumbs: BreadcrumbItem[] | null = folderId
     ? [{ label: "Files", href: "/files" }, { label: currentFolder?.name ?? "\u2026" }]
@@ -253,7 +246,15 @@ function FileBrowserContent() {
   );
 
   const { getRootProps, isDragActive } = useDropzone({
-    onDrop: (files) => { handleUpload(files).catch(() => {}); },
+    onDrop: (files) => {
+      setShowUpload(true);
+      for (const file of files) {
+        handleUploadFile(file, {
+          onProgress: () => {},
+          signal: new AbortController().signal,
+        }).then(() => handleUploadComplete()).catch(() => {});
+      }
+    },
     noClick: true,
     noKeyboard: true,
     multiple: true,
@@ -411,7 +412,11 @@ function FileBrowserContent() {
 
       {/* Upload dropzone */}
       {showUpload && (
-        <FileUploadDropzone onUpload={handleUpload} parentId={folderId} />
+        <FileUploadDropzone
+          uploadFile={handleUploadFile}
+          onUploadComplete={handleUploadComplete}
+          onDismiss={() => setShowUpload(false)}
+        />
       )}
 
       {/* File listing */}

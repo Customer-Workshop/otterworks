@@ -426,7 +426,7 @@ pub async fn restore_file(
             &file.owner_id,
             &file.name,
             &file.mime_type,
-            file.size as u64,
+            file.size_bytes as u64,
         )
         .await;
 

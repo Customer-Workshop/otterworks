@@ -115,6 +115,34 @@ class MeiliSearchService:
         except Exception:
             return False
 
+    def _build_search_params(
+        self,
+        page: int,
+        page_size: int,
+        filter_parts: list[str],
+        multi_index: bool,
+    ) -> dict[str, Any]:
+        """Build MeiliSearch search parameters with correct pagination."""
+        if multi_index:
+            fetch_limit = page * page_size
+            offset = 0
+        else:
+            fetch_limit = page_size
+            offset = (page - 1) * page_size
+
+        params: dict[str, Any] = {
+            "offset": offset,
+            "limit": fetch_limit,
+            "attributesToHighlight": ["title", "name", "content"],
+            "highlightPreTag": "<em>",
+            "highlightPostTag": "</em>",
+            "attributesToCrop": ["content"],
+            "cropLength": 200,
+        }
+        if filter_parts:
+            params["filter"] = " AND ".join(filter_parts)
+        return params
+
     def search(
         self,
         query: str,
@@ -130,19 +158,10 @@ class MeiliSearchService:
         if owner_id:
             filter_parts.append(f'owner_id = "{owner_id}"')
 
-        search_params: dict[str, Any] = {
-            "offset": (page - 1) * page_size,
-            "limit": page_size,
-            "attributesToHighlight": ["title", "name", "content"],
-            "highlightPreTag": "<em>",
-            "highlightPostTag": "</em>",
-            "attributesToCrop": ["content"],
-            "cropLength": 200,
-        }
-        if filter_parts:
-            search_params["filter"] = " AND ".join(filter_parts)
-
         indices_to_search = self._resolve_indices(doc_type)
+        multi_index = len(indices_to_search) > 1
+        search_params = self._build_search_params(page, page_size, filter_parts, multi_index)
+
         all_hits: list[SearchHit] = []
         total = 0
 
@@ -153,12 +172,13 @@ class MeiliSearchService:
             for hit in result["hits"]:
                 all_hits.append(self._parse_hit(hit, index_name))
 
-        # Sort by relevance (MeiliSearch returns pre-sorted within each index)
-        # For multi-index, interleave by keeping original order
         record_search_analytics(query, total)
 
+        start = (page - 1) * page_size if multi_index else 0
+        page_hits = all_hits[start : start + page_size]
+
         return SearchResponse(
-            results=all_hits[:page_size],
+            results=page_hits,
             total=total,
             page=page,
             page_size=page_size,
@@ -190,20 +210,11 @@ class MeiliSearchService:
         if date_to:
             filter_parts.append(f'created_at <= "{date_to}"')
 
-        search_params: dict[str, Any] = {
-            "offset": (page - 1) * page_size,
-            "limit": page_size,
-            "attributesToHighlight": ["title", "name", "content"],
-            "highlightPreTag": "<em>",
-            "highlightPostTag": "</em>",
-            "attributesToCrop": ["content"],
-            "cropLength": 200,
-        }
-        if filter_parts:
-            search_params["filter"] = " AND ".join(filter_parts)
-
         search_term = query or ""
         indices_to_search = self._resolve_indices(doc_type)
+        multi_index = len(indices_to_search) > 1
+        search_params = self._build_search_params(page, page_size, filter_parts, multi_index)
+
         all_hits: list[SearchHit] = []
         total = 0
 
@@ -216,8 +227,11 @@ class MeiliSearchService:
 
         record_search_analytics(search_term or "*", total)
 
+        start = (page - 1) * page_size if multi_index else 0
+        page_hits = all_hits[start : start + page_size]
+
         return SearchResponse(
-            results=all_hits[:page_size],
+            results=page_hits,
             total=total,
             page=page,
             page_size=page_size,
@@ -264,17 +278,18 @@ class MeiliSearchService:
         logger.info("file_indexed", file_id=doc.get("id"))
 
     def delete_document(self, doc_type: str, doc_id: str) -> bool:
-        """Remove a document or file from the index."""
+        """Remove a document or file from the index. Returns False if not found."""
         index_name = self.documents_index_name if doc_type == "document" else self.files_index_name
         index = self.client.index(index_name)
         try:
-            task = index.delete_document(doc_id)
-            self.client.wait_for_task(task.task_uid, timeout_in_ms=10000)
-            logger.info("document_removed_from_index", doc_id=doc_id, index=index_name)
-            return True
+            index.get_document(doc_id)
         except meilisearch.errors.MeilisearchApiError:
             logger.warning("document_not_found_in_index", doc_id=doc_id, index=index_name)
             return False
+        task = index.delete_document(doc_id)
+        self.client.wait_for_task(task.task_uid, timeout_in_ms=10000)
+        logger.info("document_removed_from_index", doc_id=doc_id, index=index_name)
+        return True
 
     def reindex(self) -> dict[str, Any]:
         """Delete and recreate indices."""

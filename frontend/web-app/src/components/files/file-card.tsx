@@ -73,10 +73,10 @@ export function FileCard({
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
       renameInputRef.current.focus();
-      const dotIdx = renameValue.lastIndexOf(".");
-      renameInputRef.current.setSelectionRange(0, dotIdx > 0 ? dotIdx : renameValue.length);
+      const dotIdx = file.name.lastIndexOf(".");
+      renameInputRef.current.setSelectionRange(0, dotIdx > 0 ? dotIdx : file.name.length);
     }
-  }, [isRenaming, renameValue]);
+  }, [isRenaming, file.name]);
 
   const submitRename = () => {
     const trimmed = renameValue.trim();

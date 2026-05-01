@@ -297,7 +297,7 @@ export const searchApi = {
         snippet: String(r.contentSnippet ?? ""),
         path: "",
         updatedAt: String(r.updatedAt ?? ""),
-        ownerName: String(r.ownerId ?? ""),
+        ownerName: "",
       })),
       total,
       page: pg,

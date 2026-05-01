@@ -61,15 +61,11 @@ function TrashContent() {
 
   const emptyTrashMutation = useMutation({
     mutationFn: async () => {
-      let page = 1;
       const pageSize = 50;
-      let hasMore = true;
-      while (hasMore) {
-        const batch = await filesApi.getTrashed(page, pageSize);
-        if (batch.data.length === 0) break;
+      let batch = await filesApi.getTrashed(1, pageSize);
+      while (batch.data.length > 0) {
         await Promise.all(batch.data.map((item) => filesApi.permanentDelete(item.id)));
-        hasMore = batch.hasMore;
-        page++;
+        batch = await filesApi.getTrashed(1, pageSize);
       }
     },
     onSuccess: () => {

@@ -6,7 +6,7 @@ from __future__ import annotations
 class TestIndexDocumentEndpoint:
     """Tests for POST /api/v1/search/index/document."""
 
-    def test_index_document_success(self, client, mock_opensearch_client):
+    def test_index_document_success(self, client, mock_meilisearch_client):
         """Index a valid document returns 201."""
         response = client.post(
             "/api/v1/search/index/document",
@@ -32,7 +32,7 @@ class TestIndexDocumentEndpoint:
         )
         assert response.status_code == 400
 
-    def test_index_document_missing_id(self, client, mock_opensearch_client):
+    def test_index_document_missing_id(self, client, mock_meilisearch_client):
         """Index document without id returns 400."""
         response = client.post(
             "/api/v1/search/index/document",
@@ -40,7 +40,7 @@ class TestIndexDocumentEndpoint:
         )
         assert response.status_code == 400
 
-    def test_index_document_missing_title(self, client, mock_opensearch_client):
+    def test_index_document_missing_title(self, client, mock_meilisearch_client):
         """Index document without title returns 400."""
         response = client.post(
             "/api/v1/search/index/document",
@@ -52,7 +52,7 @@ class TestIndexDocumentEndpoint:
 class TestIndexFileEndpoint:
     """Tests for POST /api/v1/search/index/file."""
 
-    def test_index_file_success(self, client, mock_opensearch_client):
+    def test_index_file_success(self, client, mock_meilisearch_client):
         """Index a valid file returns 201."""
         response = client.post(
             "/api/v1/search/index/file",
@@ -72,7 +72,7 @@ class TestIndexFileEndpoint:
         assert data["id"] == "file-123"
         assert data["type"] == "file"
 
-    def test_index_file_missing_name(self, client, mock_opensearch_client):
+    def test_index_file_missing_name(self, client, mock_meilisearch_client):
         """Index file without name returns 400."""
         response = client.post(
             "/api/v1/search/index/file",
@@ -84,14 +84,16 @@ class TestIndexFileEndpoint:
 class TestDeleteFromIndexEndpoint:
     """Tests for DELETE /api/v1/search/index/{type}/{id}."""
 
-    def test_delete_document(self, client, mock_opensearch_client):
+    def test_delete_document(self, client, mock_meilisearch_client):
         """Delete a document from index returns 200."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.get_document.return_value = {"id": "doc-123"}
         response = client.delete("/api/v1/search/index/document/doc-123")
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "deleted"
 
-    def test_delete_invalid_type(self, client, mock_opensearch_client):
+    def test_delete_invalid_type(self, client, mock_meilisearch_client):
         """Delete with invalid type returns 400."""
         response = client.delete("/api/v1/search/index/invalid/doc-123")
         assert response.status_code == 400
@@ -100,10 +102,9 @@ class TestDeleteFromIndexEndpoint:
 class TestReindexEndpoint:
     """Tests for POST /api/v1/search/reindex."""
 
-    def test_reindex_success(self, client, mock_opensearch_client):
+    def test_reindex_success(self, client, mock_meilisearch_client):
         """Reindex returns 200."""
-        mock_opensearch_client.indices.exists.return_value = True
         response = client.post("/api/v1/search/reindex")
         assert response.status_code == 200
         data = response.get_json()
-        assert data["status"] == "reindex_complete"
+        assert data["status"] == "reindexed"

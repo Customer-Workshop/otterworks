@@ -7,7 +7,7 @@ help: ## Show this help
 
 # --- Local Development ---
 
-infra-up: ## Start local infrastructure (Postgres, Redis, LocalStack, OpenSearch)
+infra-up: ## Start local infrastructure (Postgres, Redis, LocalStack, MeiliSearch)
 	docker compose -f docker-compose.infra.yml up -d
 
 infra-down: ## Stop local infrastructure

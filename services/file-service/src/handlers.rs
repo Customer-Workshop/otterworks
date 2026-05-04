@@ -530,7 +530,7 @@ pub async fn remove_share(
     let share = meta
         .find_existing_share(&file_id, &user_id)
         .await?
-        .ok_or_else(|| ServiceError::NotFound("Share not found".into()))?;
+        .ok_or_else(|| ServiceError::ShareNotFound("Share not found".into()))?;
 
     meta.delete_share(&share.id).await?;
 

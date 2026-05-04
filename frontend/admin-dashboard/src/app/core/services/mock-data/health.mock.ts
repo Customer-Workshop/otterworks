@@ -33,8 +33,8 @@ export const MOCK_SERVICE_HEALTH: ServiceHealth[] = [
   },
   {
     name: 'Search Service', status: 'down', uptime: '95.20%', responseTime: 0,
-    lastChecked: '2026-04-17T14:00:00Z', version: '1.1.0', port: 8087, language: 'Python 3.12',
-    details: 'MeiliSearch instance unreachable - restarting pods',
+    lastChecked: '2026-04-17T14:00:00Z', version: '1.1.0', port: 7700, language: 'Python 3.12',
+    details: 'MeiliSearch instance unreachable at http://localhost:7700 - restarting pods',
   },
   {
     name: 'Analytics Service', status: 'healthy', uptime: '99.80%', responseTime: 90,

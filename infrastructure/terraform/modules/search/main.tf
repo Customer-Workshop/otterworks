@@ -61,6 +61,41 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "ecs_secrets_access" {
+  count = var.meilisearch_master_key != "" ? 1 : 0
+  name  = "${var.project}-meilisearch-secrets-${var.environment}"
+  role  = aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = [aws_secretsmanager_secret.meilisearch_master_key[0].arn]
+      }
+    ]
+  })
+}
+
+# --- Secrets Manager ---
+
+resource "aws_secretsmanager_secret" "meilisearch_master_key" {
+  count       = var.meilisearch_master_key != "" ? 1 : 0
+  name        = "${var.project}/${var.environment}/meilisearch-master-key"
+  description = "MeiliSearch master key for ${var.environment}"
+
+  tags = merge(local.common_tags, {
+    Service = "search-service"
+  })
+}
+
+resource "aws_secretsmanager_secret_version" "meilisearch_master_key" {
+  count         = var.meilisearch_master_key != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.meilisearch_master_key[0].id
+  secret_string = var.meilisearch_master_key
+}
+
 # --- ECS Cluster ---
 
 resource "aws_ecs_cluster" "meilisearch" {
@@ -102,15 +137,16 @@ resource "aws_ecs_task_definition" "meilisearch" {
           protocol      = "tcp"
         }
       ]
-      environment = concat(
-        [
-          { name = "MEILI_ENV", value = var.environment == "prod" ? "production" : "development" },
-          { name = "MEILI_NO_ANALYTICS", value = "true" },
-        ],
-        var.meilisearch_master_key != "" ? [
-          { name = "MEILI_MASTER_KEY", value = var.meilisearch_master_key },
-        ] : [],
-      )
+      environment = [
+        { name = "MEILI_ENV", value = var.environment == "prod" ? "production" : "development" },
+        { name = "MEILI_NO_ANALYTICS", value = "true" },
+      ]
+      secrets = var.meilisearch_master_key != "" ? [
+        {
+          name      = "MEILI_MASTER_KEY"
+          valueFrom = aws_secretsmanager_secret.meilisearch_master_key[0].arn
+        },
+      ] : []
       logConfiguration = {
         logDriver = "awslogs"
         options = {

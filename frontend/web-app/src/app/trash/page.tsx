@@ -39,6 +39,7 @@ function TrashContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       toast.success("File restored");
     },
     onError: () => toast.error("Failed to restore file"),
@@ -49,6 +50,7 @@ function TrashContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       toast.success("File permanently deleted");
     },
     onError: () => toast.error("Failed to delete file"),
@@ -70,6 +72,7 @@ function TrashContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       toast.success("Trash emptied");
     },
     onError: () => toast.error("Failed to empty trash"),

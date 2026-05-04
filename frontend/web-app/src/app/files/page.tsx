@@ -75,6 +75,7 @@ function FileBrowserContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       toast.success("File moved to trash");
     },
     onError: () => toast.error("Failed to move file to trash"),
@@ -86,6 +87,7 @@ function FileBrowserContent() {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       toast.success("Folder deleted");
     },
     onError: () => toast.error("Failed to delete folder"),
@@ -138,6 +140,7 @@ function FileBrowserContent() {
   const handleUploadComplete = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
   }, [queryClient]);
 
   const breadcrumbs: BreadcrumbItem[] | null = folderId
@@ -220,6 +223,7 @@ function FileBrowserContent() {
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
     const msgs: string[] = [];
     if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles > 1 ? "s" : ""} moved to trash`);
     if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders > 1 ? "s" : ""} deleted`);

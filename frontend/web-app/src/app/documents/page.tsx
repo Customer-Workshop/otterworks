@@ -45,13 +45,17 @@ function DocumentsContent() {
     mutationFn: (title: string) => documentsApi.create(title),
     onSuccess: (doc) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       router.push(`/documents/${doc.id}`);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: documentsApi.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
+    },
   });
 
   const raw = data as PaginatedResponse<Document> & { items?: Document[] } | undefined;

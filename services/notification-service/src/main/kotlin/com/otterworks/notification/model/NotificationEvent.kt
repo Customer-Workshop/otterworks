@@ -7,7 +7,9 @@ enum class EventType {
     file_shared,
     comment_added,
     document_edited,
-    user_mentioned;
+    user_mentioned,
+    vulnerability_detected,
+    remediation_completed;
 
     companion object {
         fun fromString(value: String): EventType? = entries.find { it.name == value }
@@ -39,6 +41,14 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    val scanId: String = "",
+    val severity: String = "",
+    val cveId: String = "",
+    val service: String = "",
+    val packageName: String = "",
+    val fixedVersion: String = "",
+    val devinSessionId: String = "",
+    val prUrl: String = "",
     val timestamp: String,
 )
 
@@ -72,6 +82,8 @@ data class NotificationPreference(
         "comment_added" to listOf(DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
         "document_edited" to listOf(DeliveryChannel.IN_APP),
         "user_mentioned" to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
+        "vulnerability_detected" to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
+        "remediation_completed" to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP),
     ),
 )
 

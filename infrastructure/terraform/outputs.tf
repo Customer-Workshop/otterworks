@@ -49,6 +49,11 @@ output "sns_events_topic_arn" {
   value       = module.messaging.events_topic_arn
 }
 
+output "sqs_security_queue_url" {
+  description = "SQS queue URL for security events"
+  value       = module.messaging.security_queue_url
+}
+
 # --- Search ---
 
 output "opensearch_endpoint" {

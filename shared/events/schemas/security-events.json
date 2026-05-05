@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OtterWorks Security Events",
+  "definitions": {
+    "VulnerabilityDetectedEvent": {
+      "type": "object",
+      "required": ["eventType", "scanId", "scanner", "severity", "service", "timestamp"],
+      "properties": {
+        "eventType": { "const": "vulnerability_detected" },
+        "scanId": { "type": "string", "format": "uuid" },
+        "scanner": { "type": "string", "enum": ["trivy", "semgrep", "gitleaks"] },
+        "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
+        "service": { "type": "string" },
+        "cveId": { "type": "string" },
+        "packageName": { "type": "string" },
+        "currentVersion": { "type": "string" },
+        "fixedVersion": { "type": "string" },
+        "description": { "type": "string" },
+        "filePath": { "type": "string" },
+        "ruleId": { "type": "string" },
+        "commitSha": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "RemediationInitiatedEvent": {
+      "type": "object",
+      "required": ["eventType", "scanId", "service", "devinSessionId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "remediation_initiated" },
+        "scanId": { "type": "string", "format": "uuid" },
+        "service": { "type": "string" },
+        "devinSessionId": { "type": "string" },
+        "vulnerabilityCount": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "RemediationCompletedEvent": {
+      "type": "object",
+      "required": ["eventType", "scanId", "service", "devinSessionId", "status", "timestamp"],
+      "properties": {
+        "eventType": { "const": "remediation_completed" },
+        "scanId": { "type": "string", "format": "uuid" },
+        "service": { "type": "string" },
+        "devinSessionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "partial", "failed"] },
+        "prUrl": { "type": "string", "format": "uri" },
+        "fixedCount": { "type": "integer" },
+        "totalCount": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

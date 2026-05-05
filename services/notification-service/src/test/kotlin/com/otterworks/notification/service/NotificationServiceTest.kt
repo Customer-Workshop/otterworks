@@ -246,4 +246,83 @@ class NotificationServiceTest {
 
         coVerify { webSocketManager.pushNotification("user-3", any()) }
     }
+
+    @Test
+    fun `resolveTargetUserId returns security-team for vulnerability_detected`() {
+        val event = SqsNotificationMessage(
+            eventType = "vulnerability_detected",
+            scanId = "scan-001",
+            severity = "CRITICAL",
+            cveId = "CVE-2024-1234",
+            service = "collab-service",
+            timestamp = "2024-01-01T00:00:00Z",
+        )
+        assertEquals(NotificationService.SECURITY_TEAM_USER_ID, NotificationService.resolveTargetUserId(event))
+    }
+
+    @Test
+    fun `resolveTargetUserId returns security-team for remediation_completed`() {
+        val event = SqsNotificationMessage(
+            eventType = "remediation_completed",
+            scanId = "scan-001",
+            service = "collab-service",
+            devinSessionId = "devin-abc123",
+            prUrl = "https://github.com/org/repo/pull/42",
+            timestamp = "2024-01-01T00:00:00Z",
+        )
+        assertEquals(NotificationService.SECURITY_TEAM_USER_ID, NotificationService.resolveTargetUserId(event))
+    }
+
+    @Test
+    fun `resolveResourceId returns scanId for vulnerability_detected`() {
+        val event = SqsNotificationMessage(
+            eventType = "vulnerability_detected",
+            scanId = "scan-001",
+            severity = "CRITICAL",
+            timestamp = "2024-01-01T00:00:00Z",
+        )
+        assertEquals("scan-001", NotificationService.resolveResourceId(event))
+    }
+
+    @Test
+    fun `resolveResourceType returns security_scan for vulnerability_detected`() {
+        assertEquals("security_scan", NotificationService.resolveResourceType(
+            SqsNotificationMessage(eventType = "vulnerability_detected", timestamp = "2024-01-01T00:00:00Z")
+        ))
+    }
+
+    @Test
+    fun `resolveResourceType returns security_scan for remediation_completed`() {
+        assertEquals("security_scan", NotificationService.resolveResourceType(
+            SqsNotificationMessage(eventType = "remediation_completed", timestamp = "2024-01-01T00:00:00Z")
+        ))
+    }
+
+    @Test
+    fun `processEvent stores notification for vulnerability_detected`() = runTest {
+        val event = SqsNotificationMessage(
+            eventType = "vulnerability_detected",
+            scanId = "scan-001",
+            severity = "CRITICAL",
+            cveId = "CVE-2024-1234",
+            service = "collab-service",
+            packageName = "lodash",
+            fixedVersion = "4.17.21",
+            timestamp = "2024-01-01T00:00:00Z",
+        )
+
+        coEvery { repository.getPreferences("security-team") } returns NotificationPreference(userId = "security-team")
+        coEvery { emailSender.sendEmail(any(), any(), any()) } returns true
+
+        service.processEvent(event)
+
+        val savedNotifications = mutableListOf<Notification>()
+        coVerify(atLeast = 1) { repository.saveNotification(capture(savedNotifications)) }
+
+        val lastSaved = savedNotifications.last()
+        assertEquals("security-team", lastSaved.userId)
+        assertEquals("vulnerability_detected", lastSaved.type)
+        assertTrue(lastSaved.title.contains("CRITICAL"))
+        assertTrue(lastSaved.deliveredVia.contains("in_app"))
+    }
 }

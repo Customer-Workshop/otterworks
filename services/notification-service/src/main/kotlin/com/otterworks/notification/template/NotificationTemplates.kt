@@ -83,6 +83,44 @@ object NotificationTemplates {
                 </html>
             """.trimIndent(),
         ),
+        "vulnerability_detected" to Template(
+            titleTemplate = "[{{severity}}] Security Vulnerability Detected",
+            messageTemplate = "{{severity}} vulnerability {{cveId}} found in {{service}}: {{packageName}} (fix: {{fixedVersion}}).",
+            emailSubjectTemplate = "OtterWorks Security: {{severity}} vulnerability in {{service}}",
+            emailBodyTemplate = """
+                <html>
+                <body>
+                    <h2 style="color: #d32f2f;">Security Vulnerability Detected</h2>
+                    <table>
+                        <tr><td><strong>Severity:</strong></td><td>{{severity}}</td></tr>
+                        <tr><td><strong>CVE:</strong></td><td>{{cveId}}</td></tr>
+                        <tr><td><strong>Service:</strong></td><td>{{service}}</td></tr>
+                        <tr><td><strong>Package:</strong></td><td>{{packageName}}</td></tr>
+                        <tr><td><strong>Fixed Version:</strong></td><td>{{fixedVersion}}</td></tr>
+                    </table>
+                    <p>Automated remediation has been initiated via Devin.</p>
+                    <br/>
+                    <p style="color: #888;">— OtterWorks Security Pipeline</p>
+                </body>
+                </html>
+            """.trimIndent(),
+        ),
+        "remediation_completed" to Template(
+            titleTemplate = "Security Remediation Complete",
+            messageTemplate = "Automated remediation for {{service}} completed. PR: {{prUrl}}.",
+            emailSubjectTemplate = "OtterWorks Security: Remediation PR created for {{service}}",
+            emailBodyTemplate = """
+                <html>
+                <body>
+                    <h2 style="color: #2e7d32;">Security Remediation Complete</h2>
+                    <p>Automated remediation for <strong>{{service}}</strong> has been completed.</p>
+                    <p><a href="{{prUrl}}">Review the remediation PR</a></p>
+                    <br/>
+                    <p style="color: #888;">— OtterWorks Security Pipeline</p>
+                </body>
+                </html>
+            """.trimIndent(),
+        ),
     )
 
     fun render(event: SqsNotificationMessage): RenderedNotification {
@@ -99,6 +137,14 @@ object NotificationTemplates {
             "documentId" to event.documentId,
             "commentId" to event.commentId,
             "userId" to event.userId,
+            "scanId" to event.scanId,
+            "severity" to event.severity,
+            "cveId" to event.cveId,
+            "service" to event.service,
+            "packageName" to event.packageName,
+            "fixedVersion" to event.fixedVersion,
+            "devinSessionId" to event.devinSessionId,
+            "prUrl" to event.prUrl,
         )
 
         return RenderedNotification(

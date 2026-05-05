@@ -121,12 +121,16 @@ class NotificationService(
     }
 
     companion object {
+        const val SECURITY_TEAM_USER_ID = "security-team"
+
         fun resolveTargetUserId(event: SqsNotificationMessage): String {
             return when (event.eventType) {
                 "file_shared" -> event.sharedWithUserId
                 "comment_added" -> event.userId.ifEmpty { event.ownerId }
                 "document_edited" -> event.userId.ifEmpty { event.ownerId }
                 "user_mentioned" -> event.mentionedUserId.ifEmpty { event.userId }
+                "vulnerability_detected" -> SECURITY_TEAM_USER_ID
+                "remediation_completed" -> SECURITY_TEAM_USER_ID
                 else -> event.userId
             }
         }
@@ -137,6 +141,8 @@ class NotificationService(
                 "comment_added" -> event.commentId.ifEmpty { event.documentId }
                 "document_edited" -> event.documentId
                 "user_mentioned" -> event.documentId
+                "vulnerability_detected" -> event.scanId
+                "remediation_completed" -> event.scanId
                 else -> ""
             }
         }
@@ -147,6 +153,8 @@ class NotificationService(
                 "comment_added" -> "comment"
                 "document_edited" -> "document"
                 "user_mentioned" -> "document"
+                "vulnerability_detected" -> "security_scan"
+                "remediation_completed" -> "security_scan"
                 else -> "unknown"
             }
         }

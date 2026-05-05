@@ -137,4 +137,54 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage parses vulnerability_detected event`() {
+        val body = """
+            {
+                "eventType": "vulnerability_detected",
+                "scanId": "scan-001",
+                "severity": "CRITICAL",
+                "cveId": "CVE-2024-1234",
+                "service": "collab-service",
+                "packageName": "lodash",
+                "fixedVersion": "4.17.21",
+                "timestamp": "2024-06-15T10:30:00Z"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("vulnerability_detected", event.eventType)
+        assertEquals("scan-001", event.scanId)
+        assertEquals("CRITICAL", event.severity)
+        assertEquals("CVE-2024-1234", event.cveId)
+        assertEquals("collab-service", event.service)
+        assertEquals("lodash", event.packageName)
+        assertEquals("4.17.21", event.fixedVersion)
+    }
+
+    @Test
+    fun `parseMessage parses remediation_completed event`() {
+        val body = """
+            {
+                "eventType": "remediation_completed",
+                "scanId": "scan-001",
+                "service": "collab-service",
+                "devinSessionId": "devin-abc123",
+                "prUrl": "https://github.com/org/repo/pull/42",
+                "timestamp": "2024-06-15T11:00:00Z"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("remediation_completed", event.eventType)
+        assertEquals("scan-001", event.scanId)
+        assertEquals("collab-service", event.service)
+        assertEquals("devin-abc123", event.devinSessionId)
+        assertEquals("https://github.com/org/repo/pull/42", event.prUrl)
+    }
 }

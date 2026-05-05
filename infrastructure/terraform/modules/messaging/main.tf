@@ -81,7 +81,7 @@ resource "aws_sns_topic_subscription" "notifications" {
   endpoint  = aws_sqs_queue.notifications.arn
 
   filter_policy = jsonencode({
-    eventType = ["file_shared", "comment_added", "document_edited", "user_mentioned"]
+    eventType = ["file_shared", "comment_added", "document_edited", "user_mentioned", "vulnerability_detected", "remediation_completed"]
   })
 }
 
@@ -140,6 +140,57 @@ resource "aws_sqs_queue_policy" "search_indexing" {
       Principal = { Service = "sns.amazonaws.com" }
       Action    = "sqs:SendMessage"
       Resource  = aws_sqs_queue.search_indexing.arn
+      Condition = { ArnEquals = { "aws:SourceArn" = aws_sns_topic.events.arn } }
+    }]
+  })
+}
+
+# --- SQS: Security Events Queue ---
+
+resource "aws_sqs_queue" "security_events" {
+  name                       = "${var.project}-security-events-${var.environment}"
+  visibility_timeout_seconds = 120
+  message_retention_seconds  = 345600
+  receive_wait_time_seconds  = 20
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.security_events_dlq.arn
+    maxReceiveCount     = 3
+  })
+
+  tags = merge(local.common_tags, {
+    Service = "security-remediation"
+  })
+}
+
+resource "aws_sqs_queue" "security_events_dlq" {
+  name                      = "${var.project}-security-events-dlq-${var.environment}"
+  message_retention_seconds = 1209600
+
+  tags = merge(local.common_tags, {
+    Service = "security-remediation"
+  })
+}
+
+resource "aws_sns_topic_subscription" "security_events" {
+  topic_arn = aws_sns_topic.events.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.security_events.arn
+
+  filter_policy = jsonencode({
+    eventType = ["vulnerability_detected", "remediation_initiated", "remediation_completed"]
+  })
+}
+
+resource "aws_sqs_queue_policy" "security_events" {
+  queue_url = aws_sqs_queue.security_events.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.security_events.arn
       Condition = { ArnEquals = { "aws:SourceArn" = aws_sns_topic.events.arn } }
     }]
   })

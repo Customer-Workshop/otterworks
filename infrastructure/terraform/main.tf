@@ -393,5 +393,25 @@ module "irsa" {
         },
       ]
     })
+
+    "security-remediation" = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Effect = "Allow"
+          Action = [
+            "sqs:ReceiveMessage",
+            "sqs:DeleteMessage",
+            "sqs:GetQueueAttributes",
+          ]
+          Resource = [module.messaging.security_queue_arn]
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["sns:Publish"]
+          Resource = [module.messaging.events_topic_arn]
+        },
+      ]
+    })
   }
 }

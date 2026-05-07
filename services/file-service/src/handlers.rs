@@ -58,7 +58,7 @@ pub async fn upload_file(
 ) -> Result<HttpResponse, ServiceError> {
     // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
     // Fall back to the multipart field for direct/internal callers.
-    let header_owner_id = req
+    let _header_owner_id = req
         .headers()
         .get("X-User-ID")
         .and_then(|v| v.to_str().ok())
@@ -535,7 +535,7 @@ pub async fn share_file(
                 file_id,
                 shared_with: body.shared_with,
                 permission: body.permission.clone(),
-                shared_by: body.shared_by,
+                shared_by: user_id,
                 created_at: existing.created_at,
             };
             meta.put_share(&updated).await?;

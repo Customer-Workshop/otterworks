@@ -201,6 +201,8 @@ async def update_document(
     if document.owner_id != current_user:
         raise HTTPException(status_code=403, detail="You do not own this document")
     document = await service.update(document_id, body)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
     logger.info("document_updated", document_id=str(document_id))
     return document
 
@@ -221,6 +223,8 @@ async def patch_document(
     if document.owner_id != current_user:
         raise HTTPException(status_code=403, detail="You do not own this document")
     document = await service.patch(document_id, body)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
     logger.info("document_patched", document_id=str(document_id))
     return document
 

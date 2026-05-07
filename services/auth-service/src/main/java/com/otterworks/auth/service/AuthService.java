@@ -72,6 +72,12 @@ public class AuthService {
       throw new IllegalArgumentException("Account is temporarily locked. Try again later.");
     }
 
+    // Reset failed attempts if a previous lockout has expired
+    if (user.getLockedUntil() != null) {
+      user.setFailedLoginAttempts(0);
+      user.setLockedUntil(null);
+    }
+
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
       if (user.getFailedLoginAttempts() >= MAX_FAILED_ATTEMPTS) {

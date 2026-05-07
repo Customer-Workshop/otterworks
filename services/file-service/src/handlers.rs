@@ -394,15 +394,22 @@ pub async fn move_file(
 }
 
 pub async fn rename_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<RenameFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let existing = meta.get_file(&file_id).await?;
+    if existing.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     let name = body.name.trim();
     if name.is_empty() {
@@ -566,9 +573,11 @@ pub async fn share_file(
 }
 
 pub async fn remove_share(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, ServiceError> {
+    let auth_user_id = extract_user_id(&req)?;
     let (file_id_str, user_id_str) = path.into_inner();
     let file_id: Uuid = file_id_str
         .parse()
@@ -577,8 +586,11 @@ pub async fn remove_share(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid user id: {e}")))?;
 
-    // Ensure file exists
-    let _file = meta.get_file(&file_id).await?;
+    // Ensure file exists and requester owns it
+    let file = meta.get_file(&file_id).await?;
+    if file.owner_id != auth_user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     // Find the existing share
     let share = meta
@@ -743,7 +755,7 @@ pub async fn list_activity(
         });
     }
 
-    items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    items.sort_by_key(|a| std::cmp::Reverse(a.created_at.clone()));
     items.truncate(limit);
 
     Ok(HttpResponse::Ok().json(ActivityResponse { items }))

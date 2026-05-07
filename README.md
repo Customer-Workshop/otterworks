@@ -14,6 +14,11 @@ Individual service development may also require the language toolchains listed i
 ## Quick Start (Local Development)
 
 ```bash
+# Configure environment (required — generates a JWT secret)
+cp .env.example .env
+# Edit .env and set JWT_SECRET to a strong random value (>= 32 characters), e.g.:
+#   JWT_SECRET=$(openssl rand -base64 48)
+
 # Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
 make infra-up
 
@@ -28,6 +33,8 @@ open http://localhost:4200        # Admin Dashboard (Angular)
 Or without Make:
 
 ```bash
+cp .env.example .env
+# Edit .env and set JWT_SECRET to a strong random value (>= 32 characters)
 docker compose -f docker-compose.infra.yml up -d
 docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
 ```

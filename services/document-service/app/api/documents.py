@@ -36,7 +36,7 @@ def _extract_user_id(request: Request) -> UUID | None:
         secret = _get_jwt_secret()
         if secret:
             try:
-                payload = jwt.decode(token, secret, algorithms=["HS256", "HS384"])
+                payload = jwt.decode(token, secret, algorithms=["HS256", "HS384", "HS512"])
                 user_id_str = payload.get("user_id") or payload.get("sub")
                 if user_id_str:
                     return UUID(str(user_id_str))
@@ -47,17 +47,19 @@ def _extract_user_id(request: Request) -> UUID | None:
 
 
 async def get_current_user_id(request: Request) -> UUID:
-    """Extract authenticated user ID from X-User-ID header or JWT."""
+    """Extract authenticated user ID from JWT, with X-User-ID as gateway hint."""
+    jwt_user_id = _extract_user_id(request)
+    if jwt_user_id:
+        return jwt_user_id
     x_user_id = request.headers.get("X-User-ID")
     if x_user_id:
-        try:
-            return UUID(x_user_id)
-        except ValueError:
-            pass
-    user_id = _extract_user_id(request)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return user_id
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                return UUID(x_user_id)
+            except ValueError:
+                pass
+    raise HTTPException(status_code=401, detail="Authentication required")
 
 
 async def _do_create_document(

@@ -10,7 +10,8 @@ import com.otterworks.analytics.config.AppConfig
 import com.otterworks.analytics.repository.MetricsRepository
 import com.otterworks.analytics.service.{AnalyticsService, EventProcessor}
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{Await, ExecutionContextExecutor}
+import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 object Main:
@@ -32,8 +33,8 @@ object Main:
 
     val routes: Route = concat(
       healthRoutes.routes,
-      analyticsRoutes.routes,
       eventRoutes.routes,
+      analyticsRoutes.routes,
     )
 
     val host = config.server.host
@@ -51,3 +52,5 @@ object Main:
         system.log.error(s"Failed to start Analytics Service: ${e.getMessage}")
         system.terminate()
     }
+
+    Await.result(system.whenTerminated, Duration.Inf)

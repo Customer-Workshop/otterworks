@@ -165,6 +165,33 @@ impl MetadataClient {
         self.get_file(file_id).await
     }
 
+    pub async fn rename_file(
+        &self,
+        file_id: &Uuid,
+        name: &str,
+    ) -> Result<FileMetadata, ServiceError> {
+        let now = Utc::now();
+        self.client
+            .update_item()
+            .table_name(&self.files_table)
+            .key("id", AttributeValue::S(file_id.to_string()))
+            .update_expression("SET #n = :n, updated_at = :u")
+            .condition_expression("attribute_exists(id)")
+            .expression_attribute_names("#n", "name")
+            .expression_attribute_values(":n", AttributeValue::S(name.to_string()))
+            .expression_attribute_values(":u", AttributeValue::S(now.to_rfc3339()))
+            .send()
+            .await
+            .map_err(|e| {
+                if is_conditional_check_failed(&e) {
+                    return ServiceError::FileNotFound(file_id.to_string());
+                }
+                ServiceError::DynamoError(e.to_string())
+            })?;
+
+        self.get_file(file_id).await
+    }
+
     pub async fn move_file(
         &self,
         file_id: &Uuid,
@@ -196,6 +223,40 @@ impl MetadataClient {
         })?;
 
         self.get_file(file_id).await
+    }
+
+    pub async fn list_trashed(
+        &self,
+        owner_id: Option<Uuid>,
+    ) -> Result<Vec<FileMetadata>, ServiceError> {
+        let mut filter_parts = vec!["is_trashed = :trashed".to_string()];
+        let mut scan_builder = self
+            .client
+            .scan()
+            .table_name(&self.files_table)
+            .expression_attribute_values(":trashed", AttributeValue::Bool(true));
+
+        if let Some(oid) = &owner_id {
+            filter_parts.push("owner_id = :owner_id".to_string());
+            scan_builder = scan_builder
+                .expression_attribute_values(":owner_id", AttributeValue::S(oid.to_string()));
+        }
+
+        scan_builder = scan_builder.filter_expression(filter_parts.join(" AND "));
+
+        let mut paginator = scan_builder.into_paginator().send();
+        let mut files = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            if let Some(items) = page.items {
+                for item in &items {
+                    files.push(parse_file_metadata(item)?);
+                }
+            }
+        }
+
+        files.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        Ok(files)
     }
 
     pub async fn list_files(
@@ -341,6 +402,46 @@ impl MetadataClient {
         Ok(())
     }
 
+    pub async fn list_folders(
+        &self,
+        parent_id: Option<Uuid>,
+        owner_id: Option<Uuid>,
+    ) -> Result<Vec<Folder>, ServiceError> {
+        let mut scan_builder = self.client.scan().table_name(&self.folders_table);
+
+        let mut filter_parts: Vec<String> = Vec::new();
+
+        match &parent_id {
+            Some(pid) => {
+                filter_parts.push("parent_id = :parent_id".to_string());
+                scan_builder = scan_builder
+                    .expression_attribute_values(":parent_id", AttributeValue::S(pid.to_string()));
+            }
+            None => {
+                filter_parts.push("attribute_not_exists(parent_id)".to_string());
+            }
+        }
+        if let Some(oid) = &owner_id {
+            filter_parts.push("owner_id = :owner_id".to_string());
+            scan_builder = scan_builder
+                .expression_attribute_values(":owner_id", AttributeValue::S(oid.to_string()));
+        }
+
+        if !filter_parts.is_empty() {
+            scan_builder = scan_builder.filter_expression(filter_parts.join(" AND "));
+        }
+
+        let mut paginator = scan_builder.into_paginator().send();
+        let mut folders = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            for item in page.items() {
+                folders.push(parse_folder(item)?);
+            }
+        }
+        Ok(folders)
+    }
+
     // -- File Versions --
 
     pub async fn put_version(&self, version: &FileVersion) -> Result<(), ServiceError> {
@@ -435,21 +536,102 @@ impl MetadataClient {
         Ok(())
     }
 
-    pub async fn list_shares(&self, file_id: &Uuid) -> Result<Vec<FileShare>, ServiceError> {
-        let result = self
+    pub async fn find_existing_share(
+        &self,
+        file_id: &Uuid,
+        shared_with: &Uuid,
+    ) -> Result<Option<FileShare>, ServiceError> {
+        let mut paginator = self
             .client
-            .query()
+            .scan()
             .table_name(&self.shares_table)
-            .key_condition_expression("file_id = :fid")
+            .filter_expression("file_id = :fid AND shared_with = :uid")
             .expression_attribute_values(":fid", AttributeValue::S(file_id.to_string()))
+            .expression_attribute_values(":uid", AttributeValue::S(shared_with.to_string()))
+            .into_paginator()
+            .items()
+            .send();
+
+        if let Some(item) = paginator.next().await {
+            let item = item.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            return Ok(Some(parse_file_share(&item)?));
+        }
+        Ok(None)
+    }
+
+    pub async fn list_shares_for_user(
+        &self,
+        user_id: &Uuid,
+    ) -> Result<Vec<FileShare>, ServiceError> {
+        let mut paginator = self
+            .client
+            .scan()
+            .table_name(&self.shares_table)
+            .filter_expression("shared_with = :uid")
+            .expression_attribute_values(":uid", AttributeValue::S(user_id.to_string()))
+            .into_paginator()
+            .send();
+
+        let mut shares = Vec::new();
+        while let Some(page) = paginator.next().await {
+            let page = page.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            if let Some(items) = page.items {
+                for item in &items {
+                    shares.push(parse_file_share(item)?);
+                }
+            }
+        }
+        Ok(shares)
+    }
+
+    pub async fn list_shares_by_owner(
+        &self,
+        owner_id: &Uuid,
+    ) -> Result<Vec<FileShare>, ServiceError> {
+        let mut paginator = self
+            .client
+            .scan()
+            .table_name(&self.shares_table)
+            .filter_expression("shared_by = :uid")
+            .expression_attribute_values(":uid", AttributeValue::S(owner_id.to_string()))
+            .into_paginator()
+            .items()
+            .send();
+
+        let mut shares = Vec::new();
+        while let Some(item) = paginator.next().await {
+            let item = item.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            shares.push(parse_file_share(&item)?);
+        }
+        Ok(shares)
+    }
+
+    pub async fn delete_share(&self, share_id: &Uuid) -> Result<(), ServiceError> {
+        self.client
+            .delete_item()
+            .table_name(&self.shares_table)
+            .key("id", AttributeValue::S(share_id.to_string()))
             .send()
             .await
             .map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+        Ok(())
+    }
 
-        let items = result.items();
-        let mut shares = Vec::with_capacity(items.len());
-        for item in items {
-            shares.push(parse_file_share(item)?);
+    pub async fn list_shares(&self, file_id: &Uuid) -> Result<Vec<FileShare>, ServiceError> {
+        let mut shares = Vec::new();
+        let mut paginator = self
+            .client
+            .scan()
+            .table_name(&self.shares_table)
+            .filter_expression("file_id = :fid")
+            .expression_attribute_values(":fid", AttributeValue::S(file_id.to_string()))
+            .into_paginator()
+            .items()
+            .send();
+
+        while let Some(item) = paginator.next().await {
+            let item = item.map_err(|e| ServiceError::DynamoError(e.to_string()))?;
+            shares.push(parse_file_share(&item)?);
         }
         Ok(shares)
     }

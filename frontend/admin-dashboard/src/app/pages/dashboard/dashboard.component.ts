@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { DashboardStats } from '../../core/models/analytics.model';
 
@@ -161,7 +163,7 @@ import { DashboardStats } from '../../core/models/analytics.model';
     .chart-card { padding: 16px; }
   `],
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   stats: DashboardStats | null = null;
   loading = true;
 
@@ -180,13 +182,16 @@ export class DashboardComponent implements OnInit {
     scales: { y: { beginAtZero: true } },
   };
 
+  private destroy$ = new Subject<void>();
+
   constructor(private api: AdminApiService) {}
 
   ngOnInit(): void {
-    this.api.getDashboardStats().subscribe(stats => {
-      this.stats = stats;
-      this.loading = false;
-    });
+    this.loadStats();
+
+    this.api.statsChanged$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadStats());
 
     this.api.getAnalyticsReport().subscribe(report => {
       this.signupChartData = {
@@ -208,6 +213,18 @@ export class DashboardComponent implements OnInit {
           borderRadius: 4,
         }],
       };
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadStats(): void {
+    this.api.getDashboardStats().subscribe((stats: DashboardStats) => {
+      this.stats = stats;
+      this.loading = false;
     });
   }
 }

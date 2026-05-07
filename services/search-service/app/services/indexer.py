@@ -4,18 +4,23 @@ from __future__ import annotations
 
 from typing import Any
 
+import requests
 import structlog
 
-from app.services.opensearch_client import OpenSearchService
+from app.services.meilisearch_client import MeiliSearchService
 
 logger = structlog.get_logger()
 
+DOCUMENT_SERVICE_URL = "http://document-service:8083"
+FILE_SERVICE_URL = "http://file-service:8082"
+FETCH_TIMEOUT = 30
+
 
 class Indexer:
-    """Handles document and file indexing into OpenSearch."""
+    """Handles document and file indexing into MeiliSearch."""
 
-    def __init__(self, opensearch_service: OpenSearchService) -> None:
-        self.opensearch = opensearch_service
+    def __init__(self, search_service: MeiliSearchService) -> None:
+        self.search = search_service
 
     def index_document(self, payload: dict[str, Any]) -> dict[str, str]:
         """Validate and index a document.
@@ -38,7 +43,7 @@ class Indexer:
             "updated_at": payload.get("updated_at"),
         }
 
-        self.opensearch.index_document(document)
+        self.search.index_document(document)
         logger.info("indexer_document_indexed", document_id=document["id"])
         return {"status": "indexed", "id": document["id"], "type": "document"}
 
@@ -65,7 +70,7 @@ class Indexer:
             "updated_at": payload.get("updated_at"),
         }
 
-        self.opensearch.index_file(file_data)
+        self.search.index_file(file_data)
         logger.info("indexer_file_indexed", file_id=file_data["id"])
         return {"status": "indexed", "id": file_data["id"], "type": "file"}
 
@@ -74,16 +79,102 @@ class Indexer:
         if doc_type not in ("document", "file"):
             raise ValueError(f"Invalid type '{doc_type}'. Must be 'document' or 'file'.")
 
-        deleted = self.opensearch.delete_document(doc_type, doc_id)
+        deleted = self.search.delete_document(doc_type, doc_id)
         status = "deleted" if deleted else "not_found"
         logger.info("indexer_document_removed", doc_id=doc_id, doc_type=doc_type, status=status)
         return {"status": status, "id": doc_id, "type": doc_type}
 
     def reindex(self) -> dict[str, Any]:
-        """Trigger a full reindex (admin operation)."""
-        result = self.opensearch.reindex()
-        logger.info("indexer_reindex_complete")
+        """Trigger a full reindex by crawling source-of-truth services.
+
+        Fetches all documents from the document-service and all files
+        from the file-service, then passes them to MeiliSearch for
+        bulk re-indexing.  If a source service is unreachable the
+        corresponding index is still cleared and recreated empty.
+        """
+        documents = self._fetch_all_documents()
+        files = self._fetch_all_files()
+        result = self.search.reindex(documents=documents, files=files)
+        logger.info(
+            "indexer_reindex_complete",
+            documents=len(documents),
+            files=len(files),
+        )
         return result
+
+    @staticmethod
+    def _fetch_all_documents() -> list[dict[str, Any]]:
+        """Paginate through the document-service to collect all documents."""
+        docs: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            try:
+                resp = requests.get(
+                    f"{DOCUMENT_SERVICE_URL}/api/v1/documents/",
+                    params={"page": page, "page_size": 100},
+                    timeout=FETCH_TIMEOUT,
+                )
+                if resp.status_code != 200:
+                    logger.warning("reindex_document_fetch_failed", status=resp.status_code)
+                    break
+                data = resp.json()
+                items = data.get("documents") or data.get("items") or data.get("data") or []
+                if not items:
+                    break
+                for item in items:
+                    docs.append({
+                        "id": item.get("id", ""),
+                        "title": item.get("title", ""),
+                        "content": item.get("content", ""),
+                        "owner_id": item.get("owner_id", ""),
+                        "tags": item.get("tags", []),
+                        "created_at": item.get("created_at"),
+                        "updated_at": item.get("updated_at"),
+                        "type": "document",
+                    })
+                page += 1
+            except requests.RequestException:
+                logger.exception("reindex_document_fetch_error")
+                break
+        return docs
+
+    @staticmethod
+    def _fetch_all_files() -> list[dict[str, Any]]:
+        """Paginate through the file-service to collect all file metadata."""
+        files: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            try:
+                resp = requests.get(
+                    f"{FILE_SERVICE_URL}/api/v1/files",
+                    params={"page": page, "page_size": 100},
+                    timeout=FETCH_TIMEOUT,
+                )
+                if resp.status_code != 200:
+                    logger.warning("reindex_file_fetch_failed", status=resp.status_code)
+                    break
+                data = resp.json()
+                items = data.get("files") or data.get("items") or data.get("data") or []
+                if not items:
+                    break
+                for item in items:
+                    files.append({
+                        "id": item.get("id", ""),
+                        "name": item.get("name", ""),
+                        "mime_type": item.get("mime_type", item.get("mimeType", "")),
+                        "owner_id": item.get("owner_id", item.get("ownerId", "")),
+                        "folder_id": item.get("folder_id", item.get("folderId", "")),
+                        "tags": item.get("tags", []),
+                        "size": item.get("size", item.get("size_bytes", item.get("sizeBytes", 0))),
+                        "created_at": item.get("created_at", item.get("createdAt")),
+                        "updated_at": item.get("updated_at", item.get("updatedAt")),
+                        "type": "file",
+                    })
+                page += 1
+            except requests.RequestException:
+                logger.exception("reindex_file_fetch_error")
+                break
+        return files
 
     def process_event(self, event: dict[str, Any]) -> dict[str, Any] | None:
         """Process an SQS event message.

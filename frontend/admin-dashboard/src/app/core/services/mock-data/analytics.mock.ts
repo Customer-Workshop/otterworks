@@ -1,6 +1,6 @@
 import { DashboardStats, AnalyticsReport } from '../../models/analytics.model';
 
-export const MOCK_DASHBOARD_STATS: DashboardStats = {
+export let MOCK_DASHBOARD_STATS: DashboardStats = {
   totalUsers: 1284,
   activeDocuments: 8742,
   storageUsed: '2.4 TB',
@@ -10,6 +10,15 @@ export const MOCK_DASHBOARD_STATS: DashboardStats = {
   storageGrowth: 15.2,
   sessionsGrowth: -3.1,
 };
+
+export const mockStorage = { usedBytes: 2.4 * 1024 * 1024 * 1024 * 1024 };
+
+export function formatStorageUsed(bytes: number): string {
+  const tb = bytes / (1024 ** 4);
+  if (tb >= 1) return `${tb.toFixed(1)} TB`;
+  const gb = bytes / (1024 ** 3);
+  return `${gb.toFixed(1)} GB`;
+}
 
 export const MOCK_ANALYTICS_REPORT: AnalyticsReport = {
   userSignups: [

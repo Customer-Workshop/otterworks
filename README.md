@@ -19,7 +19,7 @@ cp .env.example .env
 # Edit .env and set JWT_SECRET to a strong random value (>= 32 characters), e.g.:
 #   JWT_SECRET=$(openssl rand -base64 48)
 
-# Start infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability stack)
+# Start infrastructure (Postgres, Redis, LocalStack, MeiliSearch, observability stack)
 make infra-up
 
 # Start all application services (builds images on first run)
@@ -57,7 +57,7 @@ make down
 | Document Service | Python 3.12 | FastAPI | 8083 | Document CRUD, version history, snapshots |
 | Collaboration Service | Node.js 20 | Socket.io | 8084 (HTTP) / 8085 (WS) | Real-time collaborative editing (CRDT via Yjs) |
 | Notification Service | Kotlin 1.9 | Ktor 2.3 | 8086 | Event-driven notifications (email, in-app, webhook) |
-| Search Service | Python 3.12 | Flask 3.0 | 8087 | Full-text search via OpenSearch |
+| Search Service | Python 3.12 | Flask 3.0 | 8087 | Full-text search via MeiliSearch |
 | Analytics Service | Scala 3.4 | Akka HTTP | 8088 | Usage analytics, data aggregation |
 | Admin Service | Ruby 3.3 | Rails 7.1 | 8089 | Admin dashboard backend |
 | Audit Service | C# 12 | ASP.NET 8 | 8090 | Immutable audit trail, compliance |
@@ -85,7 +85,7 @@ Managed via Terraform in `infrastructure/terraform/`:
 - ElastiCache Redis
 - DynamoDB (file metadata, audit events, notifications)
 - SQS/SNS (event bus)
-- OpenSearch (full-text search)
+- MeiliSearch (full-text search)
 - Cognito (identity federation)
 - CloudFront (CDN)
 - ECR (container image repositories)
@@ -121,7 +121,7 @@ All observability services run locally via `docker-compose.infra.yml`.
 | Grafana | http://localhost:3001 | Dashboards and metrics visualization (admin / otterworks) |
 | Prometheus | http://localhost:9090 | Metrics collection and alerting rules |
 | Jaeger | http://localhost:16686 | Distributed tracing UI |
-| OpenSearch Dashboards | http://localhost:5601 | Log exploration and search analytics |
+| MeiliSearch | http://localhost:7700 | Search engine dashboard |
 
 - **Logging**: Structured JSON logs → Fluent Bit → CloudWatch (production) / stdout (local)
 - **Metrics**: Prometheus scraping `/metrics` endpoints + Grafana dashboards in `observability/grafana/dashboards/`
@@ -144,7 +144,7 @@ Run `make help` to list all available commands. Key targets:
 
 | Command | Description |
 |---------|-------------|
-| `make infra-up` | Start local infrastructure (Postgres, Redis, LocalStack, OpenSearch, observability) |
+| `make infra-up` | Start local infrastructure (Postgres, Redis, LocalStack, MeiliSearch, observability) |
 | `make up` | Build and start all application services |
 | `make down` | Stop all services and infrastructure |
 | `make build` | Build all service Docker images |

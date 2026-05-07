@@ -23,9 +23,10 @@ type JWTClaims struct {
 
 // JWTConfig holds configuration for JWT validation middleware.
 type JWTConfig struct {
-	Secret      string
-	PublicPath  []string // exact paths that skip JWT validation
-	PrefixPath  []string // prefix paths that skip JWT validation (e.g. /health, /metrics)
+	Secret              string
+	PublicPath          []string // exact paths that skip JWT validation
+	PrefixPath          []string // prefix paths that skip JWT validation (e.g. /health, /metrics)
+	ProtectedPrefixPath []string // route prefixes that require JWT validation; empty means all non-public paths
 }
 
 // DefaultPublicPaths returns the default set of exact-match paths that skip JWT validation.
@@ -41,6 +42,7 @@ func DefaultPrefixPaths() []string {
 	return []string{
 		"/health",
 		"/metrics",
+		"/socket.io",
 	}
 }
 
@@ -55,6 +57,10 @@ func JWTAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip JWT validation for public paths
 			if isPublicPath(r.URL.Path, exactPaths, cfg.PrefixPath) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if !isProtectedPath(r.URL.Path, cfg.ProtectedPrefixPath) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -127,6 +133,18 @@ func isPublicPath(path string, exactPaths map[string]bool, prefixPaths []string)
 	}
 	// Prefix match only for operational paths (e.g. /health, /metrics)
 	for _, p := range prefixPaths {
+		if path == p || strings.HasPrefix(path, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isProtectedPath(path string, protectedPrefixes []string) bool {
+	if len(protectedPrefixes) == 0 {
+		return true
+	}
+	for _, p := range protectedPrefixes {
 		if path == p || strings.HasPrefix(path, p+"/") {
 			return true
 		}

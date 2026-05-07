@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, delay } from 'rxjs';
+import { Observable, of, delay, Subject } from 'rxjs';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -12,11 +12,13 @@ import { MOCK_AUDIT_EVENTS } from './mock-data/audit.mock';
 import { MOCK_FEATURE_FLAGS } from './mock-data/features.mock';
 import { MOCK_ANNOUNCEMENTS } from './mock-data/announcements.mock';
 import { MOCK_SERVICE_HEALTH } from './mock-data/health.mock';
-import { MOCK_DASHBOARD_STATS, MOCK_ANALYTICS_REPORT } from './mock-data/analytics.mock';
+import { MOCK_DASHBOARD_STATS, MOCK_ANALYTICS_REPORT, mockStorage, formatStorageUsed } from './mock-data/analytics.mock';
 
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly baseUrl = '/api/v1';
+
+  readonly statsChanged$ = new Subject<void>();
 
   constructor(private http: HttpClient) {}
 
@@ -65,8 +67,19 @@ export class AdminApiService {
     const index = MOCK_USERS.findIndex(u => u.id === userId);
     if (index !== -1) {
       MOCK_USERS.splice(index, 1);
+      MOCK_DASHBOARD_STATS.totalUsers = Math.max(0, MOCK_DASHBOARD_STATS.totalUsers - 1);
+      this.statsChanged$.next();
     }
     return of(undefined).pipe(delay(500));
+  }
+
+  deleteDocument(docId: string, fileSizeBytes = 275 * 1024 * 1024): Observable<void> {
+    // return this.http.delete<void>(`${this.baseUrl}/admin/documents/${docId}`);
+    MOCK_DASHBOARD_STATS.activeDocuments = Math.max(0, MOCK_DASHBOARD_STATS.activeDocuments - 1);
+    mockStorage.usedBytes = Math.max(0, mockStorage.usedBytes - fileSizeBytes);
+    MOCK_DASHBOARD_STATS.storageUsed = formatStorageUsed(mockStorage.usedBytes);
+    this.statsChanged$.next();
+    return of(undefined).pipe(delay(400));
   }
 
   // Audit

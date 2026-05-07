@@ -55,4 +55,12 @@ public class UserService {
   public Page<UserDTO> listUsers(Pageable pageable) {
     return userRepository.findAll(pageable).map(UserDTO::fromEntity);
   }
+
+  @Transactional(readOnly = true)
+  public UserDTO findByEmail(String email) {
+    return userRepository
+        .findByEmail(email)
+        .map(UserDTO::fromEntity)
+        .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+  }
 }

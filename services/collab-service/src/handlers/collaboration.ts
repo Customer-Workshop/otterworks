@@ -207,7 +207,7 @@ export class CollaborationManager {
 
   private async handleDocumentUpdate(
     socket: Socket,
-    data: { documentId: string; update: string },
+    data: { documentId: string; update: unknown },
   ): Promise<void> {
     const { documentStore, metrics, logger } = this.deps;
     const { documentId, update } = data;
@@ -220,17 +220,19 @@ export class CollaborationManager {
       return;
     }
 
-    // Step 1: Apply CRDT update in memory
-    try {
-      const updateBytes = Buffer.from(update, 'base64');
-      Y.applyUpdate(doc, new Uint8Array(updateBytes));
-    } catch (err) {
-      logger.error({ err, documentId, socketId: socket.id }, 'crdt_apply_failed');
-      socket.emit('document-update-error', {
-        documentId,
-        error: 'Failed to apply update',
-      });
-      return;
+    // Accept legacy JSON patches for API-flow clients while preserving Yjs updates for real editors.
+    if (typeof update === 'string') {
+      try {
+        const updateBytes = Buffer.from(update, 'base64');
+        Y.applyUpdate(doc, new Uint8Array(updateBytes));
+      } catch (err) {
+        logger.error({ err, documentId, socketId: socket.id }, 'crdt_apply_failed');
+        socket.emit('document-update-error', {
+          documentId,
+          error: 'Failed to apply update',
+        });
+        return;
+      }
     }
 
     // Refresh the user's lastActive so active editors aren't evicted as stale

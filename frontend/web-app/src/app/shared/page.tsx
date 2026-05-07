@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { Share2, LayoutGrid, List } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { FileCard } from "@/components/files/file-card";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -31,12 +31,17 @@ function SharedContent() {
     queryFn: () => filesApi.getShared(),
   });
 
-  const files = data?.data || [];
+  const rawFiles = data?.data || [];
+  // Deduplicate by file id (multiple share records for same file)
+  const seen = new Set<string>();
+  const files = rawFiles.filter((f) => {
+    if (seen.has(f.id)) return false;
+    seen.add(f.id);
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <Breadcrumb items={[{ label: "Shared with me" }]} />
-
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Shared with me</h1>
         <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
@@ -72,7 +77,26 @@ function SharedContent() {
           )}
         >
           {files.map((file) => (
-            <FileCard key={file.id} file={file} view={viewMode} />
+            <FileCard
+              key={file.id}
+              file={file}
+              view={viewMode}
+              onDownload={async (id, name) => {
+                try {
+                  const downloadUrl = await filesApi.getDownloadUrl(id);
+                  const a = document.createElement("a");
+                  a.href = downloadUrl;
+                  a.download = name;
+                  a.rel = "noopener";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  toast.success("File downloaded successfully");
+                } catch {
+                  toast.error("Download failed. Please try again.");
+                }
+              }}
+            />
           ))}
         </div>
       )}

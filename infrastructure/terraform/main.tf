@@ -114,9 +114,10 @@ module "search" {
   environment = var.environment
   project     = "otterworks"
 
-  vpc_id     = local.vpc_id
-  vpc_cidr   = local.vpc_cidr
-  subnet_ids = local.private_subnets
+  vpc_id                 = local.vpc_id
+  vpc_cidr               = local.vpc_cidr
+  subnet_ids             = local.private_subnets
+  meilisearch_master_key = var.meilisearch_master_key
 }
 
 module "auth" {
@@ -141,22 +142,7 @@ module "monitoring" {
   log_retention_days = var.log_retention_days
 }
 
-# --- OpenSearch Access Policy (scoped to search-service IRSA role) ---
-# Defined here to avoid circular dependency between search and irsa modules.
-
-resource "aws_opensearch_domain_policy" "search" {
-  domain_name = module.search.opensearch_domain_name
-
-  access_policies = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { AWS = module.irsa.role_arns["search-service"] }
-      Action    = "es:ESHttp*"
-      Resource  = "${module.search.opensearch_arn}/*"
-    }]
-  })
-}
+# --- MeiliSearch is deployed via ECS; no domain access policy needed. ---
 
 module "irsa" {
   source            = "./modules/irsa"
@@ -268,10 +254,14 @@ module "irsa" {
         },
         {
           Effect = "Allow"
-          Action = ["es:ESHttp*"]
+          Action = [
+            "ecs:DescribeServices",
+            "ecs:DescribeTasks",
+          ]
           Resource = [
-            module.search.opensearch_arn,
-            "${module.search.opensearch_arn}/*",
+            module.search.meilisearch_ecs_cluster_arn,
+            module.search.meilisearch_ecs_service_arn,
+            "${replace(module.search.meilisearch_ecs_cluster_arn, ":cluster/", ":task/")}/*",
           ]
         },
       ]

@@ -18,31 +18,32 @@ variable "project" {
   }
 }
 
-variable "opensearch_instance_type" {
-  description = "OpenSearch instance type"
+variable "meilisearch_cpu" {
+  description = "CPU units for MeiliSearch Fargate task (1024 = 1 vCPU)"
+  type        = number
+  default     = 512
+}
+
+variable "meilisearch_memory" {
+  description = "Memory in MiB for MeiliSearch Fargate task"
+  type        = number
+  default     = 1024
+}
+
+variable "meilisearch_master_key" {
+  description = "MeiliSearch master key (required for production). Leave empty for dev."
   type        = string
-  default     = "t3.small.search"
-}
-
-variable "opensearch_instance_count" {
-  description = "Number of OpenSearch instances"
-  type        = number
-  default     = 1
-}
-
-variable "opensearch_volume_size" {
-  description = "EBS volume size in GB for OpenSearch"
-  type        = number
-  default     = 10
+  default     = ""
+  sensitive   = true
 }
 
 variable "vpc_id" {
-  description = "VPC ID for the OpenSearch security group"
+  description = "VPC ID for the MeiliSearch security group"
   type        = string
 }
 
 variable "subnet_ids" {
-  description = "Subnet IDs for OpenSearch VPC placement"
+  description = "Subnet IDs for MeiliSearch ECS placement"
   type        = list(string)
 }
 

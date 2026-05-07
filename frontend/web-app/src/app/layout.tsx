@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
 import { AuthProvider } from "@/providers/auth-provider";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "OtterWorks",
@@ -19,6 +20,23 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>
         </QueryProvider>
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              borderRadius: "12px",
+              padding: "12px 16px",
+              fontSize: "14px",
+            },
+            success: {
+              iconTheme: { primary: "#16a34a", secondary: "#fff" },
+            },
+            error: {
+              iconTheme: { primary: "#dc2626", secondary: "#fff" },
+            },
+          }}
+        />
       </body>
     </html>
   );

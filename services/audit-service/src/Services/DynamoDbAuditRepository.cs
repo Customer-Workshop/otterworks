@@ -25,6 +25,7 @@ public class DynamoDbAuditRepository : IAuditRepository
     {
         var item = new Dictionary<string, AttributeValue>
         {
+            ["id"] = new AttributeValue { S = auditEvent.Id },
             ["Id"] = new AttributeValue { S = auditEvent.Id },
             ["UserId"] = new AttributeValue { S = auditEvent.UserId },
             ["Action"] = new AttributeValue { S = auditEvent.Action },
@@ -66,7 +67,7 @@ public class DynamoDbAuditRepository : IAuditRepository
             TableName = _settings.DynamoDbTable,
             Key = new Dictionary<string, AttributeValue>
             {
-                ["Id"] = new AttributeValue { S = id },
+                ["id"] = new AttributeValue { S = id },
             },
         };
 
@@ -78,7 +79,7 @@ public class DynamoDbAuditRepository : IAuditRepository
     }
 
     public async Task<AuditEventPage> QueryEventsAsync(
-        string? userId, string? action, string? resourceType,
+        string? userId, string? action, string? resourceType, string? resourceId,
         DateTime? from, DateTime? to, int page, int pageSize)
     {
         var filterExpressions = new List<string>();
@@ -103,6 +104,12 @@ public class DynamoDbAuditRepository : IAuditRepository
         {
             filterExpressions.Add("ResourceType = :rt");
             expressionValues[":rt"] = new AttributeValue { S = resourceType };
+        }
+
+        if (!string.IsNullOrEmpty(resourceId))
+        {
+            filterExpressions.Add("ResourceId = :rid");
+            expressionValues[":rid"] = new AttributeValue { S = resourceId };
         }
 
         if (from.HasValue)
@@ -271,7 +278,7 @@ public class DynamoDbAuditRepository : IAuditRepository
                 {
                     Key = new Dictionary<string, AttributeValue>
                     {
-                        ["Id"] = new AttributeValue { S = id },
+                        ["id"] = new AttributeValue { S = id },
                     },
                 },
             }).ToList();
@@ -317,7 +324,9 @@ public class DynamoDbAuditRepository : IAuditRepository
     {
         var auditEvent = new AuditEvent
         {
-            Id = item.TryGetValue("Id", out var id) ? id.S : string.Empty,
+            Id = item.TryGetValue("Id", out var id)
+                ? id.S
+                : item.TryGetValue("id", out var lowerId) ? lowerId.S : string.Empty,
             UserId = item.TryGetValue("UserId", out var uid) ? uid.S : string.Empty,
             Action = item.TryGetValue("Action", out var act) ? act.S : string.Empty,
             ResourceType = item.TryGetValue("ResourceType", out var rt) ? rt.S : string.Empty,

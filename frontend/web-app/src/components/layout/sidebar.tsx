@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
+  Clock,
   FolderOpen,
   FileText,
   Search,
@@ -11,6 +12,7 @@ import {
   Settings,
   Share2,
   Trash2,
+  Star,
   Menu,
   X,
   Plus,
@@ -23,10 +25,12 @@ import { getInitials } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/recent", label: "Recent", icon: Clock },
   { href: "/files", label: "Files", icon: FolderOpen },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/search", label: "Search", icon: Search },
   { href: "/shared", label: "Shared with me", icon: Share2 },
+  { href: "/starred", label: "Starred", icon: Star },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/trash", label: "Trash", icon: Trash2 },
 ];

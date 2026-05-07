@@ -32,3 +32,10 @@ variable "log_retention_days" {
   type        = number
   default     = 30
 }
+
+variable "meilisearch_master_key" {
+  description = "MeiliSearch master key (required for production)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

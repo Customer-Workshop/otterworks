@@ -1,10 +1,9 @@
 """
 OtterWorks Search Reindex Pipeline
 
-Weekly full reindex of all documents and files into OpenSearch.
+Weekly full reindex of all documents and files into MeiliSearch.
 Queries document-service and file-service APIs, bulk-indexes into
-OpenSearch, validates counts, and optionally swaps aliases for
-blue/green indexing.
+MeiliSearch, and validates counts.
 """
 
 import json
@@ -21,8 +20,12 @@ logger = logging.getLogger(__name__)
 # Configuration defaults
 _DEFAULT_DOCUMENT_SERVICE_URL = "http://document-service:8083"
 _DEFAULT_FILE_SERVICE_URL = "http://file-service:8082"
-_DEFAULT_OPENSEARCH_URL = "https://opensearch.otterworks.internal:9200"
-INDEX_PREFIX = "otterworks"
+_DEFAULT_MEILISEARCH_URL = "http://meilisearch:7700"
+DOCUMENTS_INDEX = "documents"
+FILES_INDEX = "files"
+BULK_BATCH_SIZE = 500
+API_PAGE_SIZE = 100
+REQUEST_TIMEOUT = 30
 
 
 def _get_document_service_url():
@@ -35,16 +38,45 @@ def _get_file_service_url():
     return Variable.get("file_service_url", default_var=_DEFAULT_FILE_SERVICE_URL)
 
 
-def _get_opensearch_url():
+def _get_meilisearch_url():
     from airflow.models import Variable
-    return Variable.get("opensearch_url", default_var=_DEFAULT_OPENSEARCH_URL)
-DOCUMENTS_INDEX = f"{INDEX_PREFIX}-documents"
-FILES_INDEX = f"{INDEX_PREFIX}-files"
-ALIAS_DOCUMENTS = f"{INDEX_PREFIX}-documents-live"
-ALIAS_FILES = f"{INDEX_PREFIX}-files-live"
-BULK_BATCH_SIZE = 500
-API_PAGE_SIZE = 100
-REQUEST_TIMEOUT = 30
+    return Variable.get("meilisearch_url", default_var=_DEFAULT_MEILISEARCH_URL)
+
+
+def _get_meilisearch_api_key():
+    from airflow.models import Variable
+    return Variable.get("meilisearch_api_key", default_var="")
+
+
+def _meilisearch_session():
+    """Create a requests session for MeiliSearch with appropriate headers."""
+    session = requests.Session()
+    session.headers.update({"Content-Type": "application/json"})
+    api_key = _get_meilisearch_api_key()
+    if api_key:
+        session.headers.update({"Authorization": f"Bearer {api_key}"})
+    return session
+
+
+def _wait_for_task(session, meilisearch_url, task_uid, timeout=60):
+    """Poll MeiliSearch until a task completes or times out."""
+    import time
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        resp = session.get(
+            f"{meilisearch_url}/tasks/{task_uid}",
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        status = resp.json().get("status")
+        if status == "succeeded":
+            return
+        if status == "failed":
+            error = resp.json().get("error", {})
+            raise RuntimeError(f"MeiliSearch task {task_uid} failed: {error}")
+        time.sleep(1)
+    raise TimeoutError(f"MeiliSearch task {task_uid} timed out after {timeout}s")
+
 
 default_args = {
     "owner": "otterworks-search",
@@ -55,111 +87,82 @@ default_args = {
 }
 
 
-def _opensearch_session():
-    """Create a requests session for OpenSearch with appropriate headers."""
-    session = requests.Session()
-    session.headers.update({"Content-Type": "application/json"})
-    return session
+def clear_indices(**context):
+    """Delete and recreate MeiliSearch indices with appropriate settings."""
+    session = _meilisearch_session()
+    meilisearch_url = _get_meilisearch_url()
 
+    for index_name in [DOCUMENTS_INDEX, FILES_INDEX]:
+        try:
+            resp = session.delete(
+                f"{meilisearch_url}/indexes/{index_name}",
+                timeout=REQUEST_TIMEOUT,
+            )
+            if resp.ok:
+                task_uid = resp.json().get("taskUid")
+                if task_uid is not None:
+                    _wait_for_task(session, meilisearch_url, task_uid)
+                logger.info("Deleted index: %s", index_name)
+        except Exception:
+            logger.info("Index %s did not exist, skipping delete", index_name)
 
-def _get_timestamped_index(base_name):
-    """Generate a timestamped index name for blue/green deployment."""
-    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    return f"{base_name}-{ts}"
+    for index_name in [DOCUMENTS_INDEX, FILES_INDEX]:
+        resp = session.post(
+            f"{meilisearch_url}/indexes",
+            data=json.dumps({"uid": index_name, "primaryKey": "id"}),
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        task_uid = resp.json().get("taskUid")
+        if task_uid is not None:
+            _wait_for_task(session, meilisearch_url, task_uid)
+        logger.info("Created index: %s", index_name)
 
-
-def create_indices(**context):
-    """Create fresh OpenSearch indices with appropriate mappings.
-
-    Uses timestamped index names for blue/green indexing strategy.
-    """
-    docs_index = _get_timestamped_index(DOCUMENTS_INDEX)
-    files_index = _get_timestamped_index(FILES_INDEX)
-
-    session = _opensearch_session()
-
-    documents_mapping = {
-        "settings": {
-            "number_of_shards": 2,
-            "number_of_replicas": 1,
-            "analysis": {
-                "analyzer": {
-                    "content_analyzer": {
-                        "type": "custom",
-                        "tokenizer": "standard",
-                        "filter": ["lowercase", "stop", "snowball"],
-                    }
-                }
-            },
-        },
-        "mappings": {
-            "properties": {
-                "document_id": {"type": "keyword"},
-                "title": {"type": "text", "analyzer": "content_analyzer", "fields": {"keyword": {"type": "keyword"}}},
-                "content": {"type": "text", "analyzer": "content_analyzer"},
-                "owner_id": {"type": "keyword"},
-                "folder_id": {"type": "keyword"},
-                "content_type": {"type": "keyword"},
-                "created_at": {"type": "date"},
-                "updated_at": {"type": "date"},
-                "version": {"type": "integer"},
-                "word_count": {"type": "integer"},
-                "tags": {"type": "keyword"},
-            }
-        },
+    # Configure documents index
+    docs_settings = {
+        "searchableAttributes": ["title", "content", "tags"],
+        "filterableAttributes": ["type", "owner_id", "tags", "created_at", "updated_at"],
+        "sortableAttributes": ["updated_at", "created_at"],
+        "rankingRules": ["words", "typo", "proximity", "attribute", "sort", "exactness"],
     }
-
-    files_mapping = {
-        "settings": {
-            "number_of_shards": 2,
-            "number_of_replicas": 1,
-        },
-        "mappings": {
-            "properties": {
-                "file_id": {"type": "keyword"},
-                "file_name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
-                "owner_id": {"type": "keyword"},
-                "folder_id": {"type": "keyword"},
-                "mime_type": {"type": "keyword"},
-                "size_bytes": {"type": "long"},
-                "s3_key": {"type": "keyword"},
-                "created_at": {"type": "date"},
-                "updated_at": {"type": "date"},
-                "tags": {"type": "keyword"},
-            }
-        },
-    }
-
-    opensearch_url = _get_opensearch_url()
-
-    resp = session.put(
-        f"{opensearch_url}/{docs_index}",
-        data=json.dumps(documents_mapping),
+    resp = session.patch(
+        f"{meilisearch_url}/indexes/{DOCUMENTS_INDEX}/settings",
+        data=json.dumps(docs_settings),
         timeout=REQUEST_TIMEOUT,
     )
     resp.raise_for_status()
-    logger.info("Created documents index: %s", docs_index)
+    task_uid = resp.json().get("taskUid")
+    if task_uid is not None:
+        _wait_for_task(session, meilisearch_url, task_uid)
 
-    resp = session.put(
-        f"{opensearch_url}/{files_index}",
-        data=json.dumps(files_mapping),
+    # Configure files index
+    files_settings = {
+        "searchableAttributes": ["name", "tags", "mime_type"],
+        "filterableAttributes": ["type", "owner_id", "mime_type", "folder_id", "tags", "created_at", "updated_at"],
+        "sortableAttributes": ["updated_at", "created_at", "size"],
+        "rankingRules": ["words", "typo", "proximity", "attribute", "sort", "exactness"],
+    }
+    resp = session.patch(
+        f"{meilisearch_url}/indexes/{FILES_INDEX}/settings",
+        data=json.dumps(files_settings),
         timeout=REQUEST_TIMEOUT,
     )
     resp.raise_for_status()
-    logger.info("Created files index: %s", files_index)
+    task_uid = resp.json().get("taskUid")
+    if task_uid is not None:
+        _wait_for_task(session, meilisearch_url, task_uid)
 
-    context["ti"].xcom_push(key="docs_index", value=docs_index)
-    context["ti"].xcom_push(key="files_index", value=files_index)
+    logger.info("MeiliSearch indices configured")
 
 
 def fetch_and_index_documents(**context):
-    """Query all documents from document-service API and bulk index into OpenSearch.
+    """Query all documents from document-service API and index into MeiliSearch.
 
-    Paginates through the document-service REST API and sends bulk
-    index requests to OpenSearch in batches of BULK_BATCH_SIZE.
+    Paginates through the document-service REST API and sends batch
+    add_documents requests to MeiliSearch.
     """
-    docs_index = context["ti"].xcom_pull(key="docs_index", task_ids="create_indices")
-    session = _opensearch_session()
+    session = _meilisearch_session()
+    meilisearch_url = _get_meilisearch_url()
 
     total_indexed = 0
     page = 0
@@ -177,26 +180,47 @@ def fetch_and_index_documents(**context):
         if not documents:
             break
 
-        bulk_body = _build_bulk_body(documents, docs_index, id_field="document_id")
-        _send_bulk_request(session, bulk_body)
+        # Normalize documents for MeiliSearch
+        batch = []
+        for doc in documents:
+            batch.append({
+                "id": doc.get("document_id", doc.get("id", "")),
+                "title": doc.get("title", ""),
+                "content": doc.get("content", ""),
+                "owner_id": doc.get("owner_id", ""),
+                "tags": doc.get("tags", []),
+                "type": "document",
+                "created_at": doc.get("created_at"),
+                "updated_at": doc.get("updated_at"),
+            })
+
+        index_resp = session.post(
+            f"{meilisearch_url}/indexes/{DOCUMENTS_INDEX}/documents",
+            data=json.dumps(batch),
+            timeout=REQUEST_TIMEOUT * 2,
+        )
+        index_resp.raise_for_status()
+        task_uid = index_resp.json().get("taskUid")
+        if task_uid is not None:
+            _wait_for_task(session, meilisearch_url, task_uid, timeout=120)
         total_indexed += len(documents)
 
         if len(documents) < API_PAGE_SIZE:
             break
         page += 1
 
-    logger.info("Indexed %d documents into %s", total_indexed, docs_index)
+    logger.info("Indexed %d documents into %s", total_indexed, DOCUMENTS_INDEX)
     context["ti"].xcom_push(key="docs_indexed", value=total_indexed)
 
 
 def fetch_and_index_files(**context):
-    """Query all files from file-service API and bulk index into OpenSearch.
+    """Query all files from file-service API and index into MeiliSearch.
 
-    Paginates through the file-service REST API and sends bulk
-    index requests to OpenSearch in batches of BULK_BATCH_SIZE.
+    Paginates through the file-service REST API and sends batch
+    add_documents requests to MeiliSearch.
     """
-    files_index = context["ti"].xcom_pull(key="files_index", task_ids="create_indices")
-    session = _opensearch_session()
+    session = _meilisearch_session()
+    meilisearch_url = _get_meilisearch_url()
 
     total_indexed = 0
     page = 0
@@ -214,70 +238,66 @@ def fetch_and_index_files(**context):
         if not files:
             break
 
-        bulk_body = _build_bulk_body(files, files_index, id_field="file_id")
-        _send_bulk_request(session, bulk_body)
+        # Normalize files for MeiliSearch
+        batch = []
+        for f in files:
+            batch.append({
+                "id": f.get("file_id", f.get("id", "")),
+                "name": f.get("file_name", f.get("name", "")),
+                "owner_id": f.get("owner_id", ""),
+                "mime_type": f.get("mime_type", ""),
+                "folder_id": f.get("folder_id", ""),
+                "size": f.get("size_bytes", f.get("size", 0)),
+                "tags": f.get("tags", []),
+                "type": "file",
+                "created_at": f.get("created_at"),
+                "updated_at": f.get("updated_at"),
+            })
+
+        index_resp = session.post(
+            f"{meilisearch_url}/indexes/{FILES_INDEX}/documents",
+            data=json.dumps(batch),
+            timeout=REQUEST_TIMEOUT * 2,
+        )
+        index_resp.raise_for_status()
+        task_uid = index_resp.json().get("taskUid")
+        if task_uid is not None:
+            _wait_for_task(session, meilisearch_url, task_uid, timeout=120)
         total_indexed += len(files)
 
         if len(files) < API_PAGE_SIZE:
             break
         page += 1
 
-    logger.info("Indexed %d files into %s", total_indexed, files_index)
+    logger.info("Indexed %d files into %s", total_indexed, FILES_INDEX)
     context["ti"].xcom_push(key="files_indexed", value=total_indexed)
 
 
-def _build_bulk_body(items, index_name, id_field):
-    """Build an OpenSearch bulk request body from a list of items."""
-    lines = []
-    for item in items:
-        doc_id = item.get(id_field, item.get("id", ""))
-        action = {"index": {"_index": index_name, "_id": doc_id}}
-        lines.append(json.dumps(action))
-        lines.append(json.dumps(item))
-    return "\n".join(lines) + "\n"
-
-
-def _send_bulk_request(session, bulk_body, opensearch_url=None):
-    """Send a bulk index request to OpenSearch with error checking."""
-    if opensearch_url is None:
-        opensearch_url = _get_opensearch_url()
-    resp = session.post(
-        f"{opensearch_url}/_bulk",
-        data=bulk_body,
-        timeout=REQUEST_TIMEOUT * 2,
-    )
-    resp.raise_for_status()
-    result = resp.json()
-    if result.get("errors"):
-        error_count = sum(
-            1
-            for item in result.get("items", [])
-            if "error" in item.get("index", {})
-        )
-        logger.warning("Bulk index had %d errors", error_count)
-
-
 def validate_indices(**context):
-    """Validate that the new indices have the expected document counts.
+    """Validate that the indices have the expected document counts.
 
     Compares the count of indexed documents/files with what was reported
     during the indexing phase. Fails if counts don't match.
     """
-    docs_index = context["ti"].xcom_pull(key="docs_index", task_ids="create_indices")
-    files_index = context["ti"].xcom_pull(key="files_index", task_ids="create_indices")
     docs_indexed = context["ti"].xcom_pull(key="docs_indexed", task_ids="fetch_and_index_documents") or 0
     files_indexed = context["ti"].xcom_pull(key="files_indexed", task_ids="fetch_and_index_files") or 0
 
-    session = _opensearch_session()
+    session = _meilisearch_session()
+    meilisearch_url = _get_meilisearch_url()
 
-    opensearch_url = _get_opensearch_url()
+    docs_stats = session.get(
+        f"{meilisearch_url}/indexes/{DOCUMENTS_INDEX}/stats",
+        timeout=REQUEST_TIMEOUT,
+    )
+    docs_stats.raise_for_status()
+    docs_count = docs_stats.json().get("numberOfDocuments", 0)
 
-    # Refresh indices to make all docs searchable
-    session.post(f"{opensearch_url}/{docs_index}/_refresh", timeout=REQUEST_TIMEOUT)
-    session.post(f"{opensearch_url}/{files_index}/_refresh", timeout=REQUEST_TIMEOUT)
-
-    docs_count = _get_index_count(session, docs_index)
-    files_count = _get_index_count(session, files_index)
+    files_stats = session.get(
+        f"{meilisearch_url}/indexes/{FILES_INDEX}/stats",
+        timeout=REQUEST_TIMEOUT,
+    )
+    files_stats.raise_for_status()
+    files_count = files_stats.json().get("numberOfDocuments", 0)
 
     logger.info(
         "Validation: documents=%d (expected %d), files=%d (expected %d)",
@@ -299,101 +319,21 @@ def validate_indices(**context):
     context["ti"].xcom_push(key="validation_passed", value=True)
 
 
-def _get_index_count(session, index_name, opensearch_url=None):
-    """Get the document count for an OpenSearch index."""
-    if opensearch_url is None:
-        opensearch_url = _get_opensearch_url()
-    resp = session.get(
-        f"{opensearch_url}/{index_name}/_count",
-        timeout=REQUEST_TIMEOUT,
-    )
-    resp.raise_for_status()
-    return resp.json().get("count", 0)
-
-
-def swap_aliases(**context):
-    """Swap OpenSearch aliases to point to new indices (blue/green).
-
-    Atomically removes old index from alias and adds new index,
-    then deletes the old index to free resources.
-    """
-    docs_index = context["ti"].xcom_pull(key="docs_index", task_ids="create_indices")
-    files_index = context["ti"].xcom_pull(key="files_index", task_ids="create_indices")
-    validation_passed = context["ti"].xcom_pull(
-        key="validation_passed", task_ids="validate_indices"
-    )
-
-    if not validation_passed:
-        logger.error("Skipping alias swap — validation did not pass")
-        return
-
-    session = _opensearch_session()
-
-    opensearch_url = _get_opensearch_url()
-
-    _swap_alias(session, ALIAS_DOCUMENTS, docs_index, opensearch_url)
-    _swap_alias(session, ALIAS_FILES, files_index, opensearch_url)
-
-    logger.info(
-        "Aliases swapped: %s -> %s, %s -> %s",
-        ALIAS_DOCUMENTS,
-        docs_index,
-        ALIAS_FILES,
-        files_index,
-    )
-
-
-def _swap_alias(session, alias_name, new_index, opensearch_url=None):
-    """Atomically swap an alias from old index to new index."""
-    if opensearch_url is None:
-        opensearch_url = _get_opensearch_url()
-    # Find current indices attached to alias
-    current_resp = session.get(
-        f"{opensearch_url}/_alias/{alias_name}",
-        timeout=REQUEST_TIMEOUT,
-    )
-
-    actions = []
-    if current_resp.status_code == 200:
-        current_indices = list(current_resp.json().keys())
-        for old_index in current_indices:
-            actions.append({"remove": {"index": old_index, "alias": alias_name}})
-    actions.append({"add": {"index": new_index, "alias": alias_name}})
-
-    resp = session.post(
-        f"{opensearch_url}/_aliases",
-        data=json.dumps({"actions": actions}),
-        timeout=REQUEST_TIMEOUT,
-    )
-    resp.raise_for_status()
-
-    # Clean up old indices
-    if current_resp.status_code == 200:
-        for old_index in current_indices:
-            if old_index != new_index:
-                delete_resp = session.delete(
-                    f"{opensearch_url}/{old_index}",
-                    timeout=REQUEST_TIMEOUT,
-                )
-                if delete_resp.ok:
-                    logger.info("Deleted old index: %s", old_index)
-
-
 with DAG(
     "otterworks_search_reindex",
     default_args=default_args,
-    description="Weekly full reindex of documents and files into OpenSearch",
+    description="Weekly full reindex of documents and files into MeiliSearch",
     schedule="@weekly",
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["otterworks", "search", "opensearch", "etl"],
+    tags=["otterworks", "search", "meilisearch", "etl"],
     doc_md=__doc__,
     max_active_runs=1,
 ) as dag:
 
-    create = PythonOperator(
-        task_id="create_indices",
-        python_callable=create_indices,
+    clear = PythonOperator(
+        task_id="clear_indices",
+        python_callable=clear_indices,
     )
 
     index_docs = PythonOperator(
@@ -411,10 +351,5 @@ with DAG(
         python_callable=validate_indices,
     )
 
-    swap = PythonOperator(
-        task_id="swap_aliases",
-        python_callable=swap_aliases,
-    )
-
-    # Create indices, then index docs/files in parallel, validate, swap aliases
-    create >> [index_docs, index_files] >> validate >> swap
+    # Clear indices, then index docs/files in parallel, then validate
+    clear >> [index_docs, index_files] >> validate

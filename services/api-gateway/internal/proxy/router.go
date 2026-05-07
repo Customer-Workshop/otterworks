@@ -38,6 +38,13 @@ func NewRouter(cfg RouterConfig) chi.Router {
 			sub.HandleFunc("/", handler)
 		})
 	}
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "route not found",
+		})
+	})
 
 	return r
 }

@@ -47,18 +47,10 @@ def _extract_user_id(request: Request) -> UUID | None:
 
 
 async def get_current_user_id(request: Request) -> UUID:
-    """Extract authenticated user ID from JWT, with X-User-ID as gateway hint."""
-    jwt_user_id = _extract_user_id(request)
-    if jwt_user_id:
-        return jwt_user_id
-    x_user_id = request.headers.get("X-User-ID")
-    if x_user_id:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            try:
-                return UUID(x_user_id)
-            except ValueError:
-                pass
+    """Extract authenticated user ID from a cryptographically verified JWT."""
+    user_id = _extract_user_id(request)
+    if user_id:
+        return user_id
     raise HTTPException(status_code=401, detail="Authentication required")
 
 

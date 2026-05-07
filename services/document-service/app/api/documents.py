@@ -60,6 +60,11 @@ def _require_user_id(request: Request) -> UUID:
     return user_id
 
 
+async def get_current_user_id(request: Request) -> UUID:
+    """FastAPI dependency: extract and require authenticated user ID."""
+    return _require_user_id(request)
+
+
 def _ensure_owner(document: object, user_id: UUID) -> None:
     if getattr(document, "owner_id", None) != user_id:
         raise HTTPException(status_code=403, detail="Access denied")

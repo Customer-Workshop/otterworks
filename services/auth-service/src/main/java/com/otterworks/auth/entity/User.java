@@ -55,6 +55,16 @@ public class User {
 
   @Column private Instant lastLoginAt;
 
+  @Column(nullable = false)
+  private int failedLoginAttempts = 0;
+
+  @Column
+  private Instant lockedUntil;
+
+  public boolean isAccountLocked() {
+    return lockedUntil != null && lockedUntil.isAfter(Instant.now());
+  }
+
   @PrePersist
   protected void onCreate() {
     createdAt = Instant.now();

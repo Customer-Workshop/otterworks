@@ -13,6 +13,8 @@ import com.otterworks.auth.entity.User;
 import com.otterworks.auth.repository.RefreshTokenRepository;
 import com.otterworks.auth.repository.UserRepository;
 import com.otterworks.auth.security.JwtTokenProvider;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -137,6 +139,7 @@ class AuthServiceTest {
 
     when(userRepository.findByEmail("test@otterworks.dev")).thenReturn(Optional.of(testUser));
     when(passwordEncoder.matches("wrongpassword", testUser.getPasswordHash())).thenReturn(false);
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
 
     assertThatThrownBy(() -> authService.login(request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -172,5 +175,95 @@ class AuthServiceTest {
     assertThatThrownBy(() -> authService.changePassword(testUser.getId(), request))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Current password is incorrect");
+  }
+
+  @Test
+  void login_shouldLockAccountAfterFiveFailedAttempts() {
+    LoginRequest request = new LoginRequest();
+    request.setEmail("test@otterworks.dev");
+    request.setPassword("wrongpassword");
+
+    testUser.setFailedLoginAttempts(4); // Already 4 failed attempts
+
+    when(userRepository.findByEmail("test@otterworks.dev")).thenReturn(Optional.of(testUser));
+    when(passwordEncoder.matches("wrongpassword", testUser.getPasswordHash())).thenReturn(false);
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+
+    assertThatThrownBy(() -> authService.login(request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid credentials");
+
+    assertThat(testUser.getFailedLoginAttempts()).isEqualTo(5);
+    assertThat(testUser.getLockedUntil()).isNotNull();
+    assertThat(testUser.getLockedUntil()).isAfter(Instant.now());
+  }
+
+  @Test
+  void login_shouldRejectLockedAccountEvenWithCorrectPassword() {
+    LoginRequest request = new LoginRequest();
+    request.setEmail("test@otterworks.dev");
+    request.setPassword("password123");
+
+    testUser.setLockedUntil(Instant.now().plus(15, ChronoUnit.MINUTES));
+    testUser.setFailedLoginAttempts(5);
+
+    when(userRepository.findByEmail("test@otterworks.dev")).thenReturn(Optional.of(testUser));
+
+    assertThatThrownBy(() -> authService.login(request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Account is temporarily locked. Try again later.");
+  }
+
+  @Test
+  void login_shouldResetFailedAttemptsOnSuccessfulLogin() {
+    LoginRequest request = new LoginRequest();
+    request.setEmail("test@otterworks.dev");
+    request.setPassword("password123");
+
+    testUser.setFailedLoginAttempts(3);
+
+    when(userRepository.findByEmail("test@otterworks.dev")).thenReturn(Optional.of(testUser));
+    when(passwordEncoder.matches("password123", testUser.getPasswordHash())).thenReturn(true);
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+    when(jwtTokenProvider.generateAccessToken(testUser)).thenReturn("access-token");
+    when(jwtTokenProvider.generateRefreshToken(testUser)).thenReturn("refresh-token");
+    when(jwtTokenProvider.extractJti("refresh-token")).thenReturn("jti-789");
+    when(jwtTokenProvider.getAccessTokenExpiry()).thenReturn(3600L);
+    when(jwtTokenProvider.getRefreshTokenExpiry()).thenReturn(2592000L);
+    when(refreshTokenRepository.save(any(RefreshToken.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+
+    authService.login(request);
+
+    assertThat(testUser.getFailedLoginAttempts()).isEqualTo(0);
+    assertThat(testUser.getLockedUntil()).isNull();
+  }
+
+  @Test
+  void login_shouldAllowLoginAfterLockoutExpires() {
+    LoginRequest request = new LoginRequest();
+    request.setEmail("test@otterworks.dev");
+    request.setPassword("password123");
+
+    // Lockout expired 1 minute ago
+    testUser.setLockedUntil(Instant.now().minus(1, ChronoUnit.MINUTES));
+    testUser.setFailedLoginAttempts(5);
+
+    when(userRepository.findByEmail("test@otterworks.dev")).thenReturn(Optional.of(testUser));
+    when(passwordEncoder.matches("password123", testUser.getPasswordHash())).thenReturn(true);
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+    when(jwtTokenProvider.generateAccessToken(testUser)).thenReturn("access-token");
+    when(jwtTokenProvider.generateRefreshToken(testUser)).thenReturn("refresh-token");
+    when(jwtTokenProvider.extractJti("refresh-token")).thenReturn("jti-101");
+    when(jwtTokenProvider.getAccessTokenExpiry()).thenReturn(3600L);
+    when(jwtTokenProvider.getRefreshTokenExpiry()).thenReturn(2592000L);
+    when(refreshTokenRepository.save(any(RefreshToken.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+
+    AuthResponse response = authService.login(request);
+
+    assertThat(response.getAccessToken()).isEqualTo("access-token");
+    assertThat(testUser.getFailedLoginAttempts()).isEqualTo(0);
+    assertThat(testUser.getLockedUntil()).isNull();
   }
 }

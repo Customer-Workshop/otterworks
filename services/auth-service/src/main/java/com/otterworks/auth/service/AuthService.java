@@ -60,7 +60,7 @@ public class AuthService {
     return buildAuthResponse(user);
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = IllegalArgumentException.class)
   public AuthResponse login(LoginRequest request) {
     User user =
         userRepository

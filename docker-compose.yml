@@ -32,7 +32,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:8089
       AUDIT_SERVICE_URL: http://audit-service:8090
       REPORT_SERVICE_URL: http://report-service:8091
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
     - auth-service
     healthcheck:
@@ -72,7 +72,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/otterworks
       SPRING_DATASOURCE_USERNAME: otterworks
       SPRING_DATASOURCE_PASSWORD: otterworks_dev
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,7 +114,7 @@ services:
       OTEL_SERVICE_NAME: file-service
       S3_BUCKET: otterworks-files
       DYNAMODB_TABLE: otterworks-file-metadata
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       localstack:
         condition: service_healthy
@@ -155,7 +155,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: document-service
       DOC_SVC_DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -196,7 +196,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: collab-service
       HTTP_PORT: 8084
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       redis:
         condition: service_healthy
@@ -238,7 +238,7 @@ services:
       OTEL_SERVICE_NAME: notification-service
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-notifications
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       localstack:
         condition: service_healthy
@@ -278,7 +278,7 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: search-service
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       opensearch:
         condition: service_healthy
@@ -319,7 +319,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: analytics-service
       S3_DATA_LAKE_BUCKET: otterworks-data-lake
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       localstack:
         condition: service_healthy
@@ -360,7 +360,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: admin-service
       RAILS_ENV: development
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: postgres://otterworks:otterworks_dev@postgres:5432/otterworks
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
@@ -408,7 +408,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: report-service
       DB_HOST: postgres
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
       DB_PORT: 5432
       DB_NAME: otterworks_reports
       DB_USER: otterworks
@@ -458,7 +458,7 @@ services:
       OTEL_SERVICE_NAME: audit-service
       DYNAMODB_TABLE: otterworks-audit-events
       ASPNETCORE_URLS: http://+:8090
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       localstack:
         condition: service_healthy

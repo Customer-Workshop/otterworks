@@ -1,7 +1,9 @@
 package proxy
 
 import (
+	"bufio"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -39,13 +41,13 @@ type CircuitBreakerConfig struct {
 
 // CircuitBreaker implements the circuit breaker pattern for a single backend.
 type CircuitBreaker struct {
-	mu           sync.Mutex
-	name         string
-	state        CircuitState
-	config       CircuitBreakerConfig
-	counts       counts
-	expiry       time.Time
-	now          func() time.Time
+	mu     sync.Mutex
+	name   string
+	state  CircuitState
+	config CircuitBreakerConfig
+	counts counts
+	expiry time.Time
+	now    func() time.Time
 }
 
 type counts struct {
@@ -216,6 +218,24 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 		r.written = true
 	}
 	return r.ResponseWriter.Write(b)
+}
+
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
+func (r *statusRecorder) Flush() {
+	if flusher, ok := r.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (r *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := r.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("wrapped response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
 }
 
 // CircuitBreakerManager manages circuit breakers for multiple backends.

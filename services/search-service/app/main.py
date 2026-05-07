@@ -1,4 +1,4 @@
-"""OtterWorks Search Service - Full-text search via OpenSearch."""
+"""OtterWorks Search Service - Full-text search via MeiliSearch."""
 
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ from app.api.health import REQUEST_COUNT, REQUEST_LATENCY, health_bp
 from app.api.index import index_bp
 from app.api.search import search_bp
 from app.config import AppConfig
-from app.services.opensearch_client import OpenSearchService
+from app.middleware.auth import require_auth
+from app.services.meilisearch_client import MeiliSearchService
 from app.services.sqs_consumer import SQSConsumer
 
 logger = structlog.get_logger()
@@ -60,21 +61,24 @@ def create_app(config: AppConfig | None = None) -> Flask:
     # Store config on the app
     app.config["APP_CONFIG"] = config
 
-    # Initialize OpenSearch service
-    opensearch_service = OpenSearchService(config.opensearch)
-    app.config["OPENSEARCH_SERVICE"] = opensearch_service
+    # Initialize MeiliSearch service
+    search_service = MeiliSearchService(config.meilisearch)
+    app.config["SEARCH_SERVICE"] = search_service
 
-    # Try to create indices on startup (non-fatal if OpenSearch is not available)
+    # Try to create indices on startup (non-fatal if MeiliSearch is not available)
     try:
-        opensearch_service.ensure_indices()
-        logger.info("opensearch_indices_ensured")
+        search_service.ensure_indices()
+        logger.info("meilisearch_indices_ensured")
     except Exception:
-        logger.warning("opensearch_indices_creation_deferred", reason="OpenSearch not available")
+        logger.warning("meilisearch_indices_creation_deferred", reason="MeiliSearch not available")
 
     # Register blueprints
     app.register_blueprint(health_bp)
     app.register_blueprint(search_bp, url_prefix="/api/v1/search")
     app.register_blueprint(index_bp, url_prefix="/api/v1/search")
+
+    # Register authentication middleware
+    require_auth(app)
 
     # Prometheus request instrumentation
     @app.before_request
@@ -96,7 +100,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     if config.sqs.enabled:
         from app.services.indexer import Indexer
 
-        indexer = Indexer(opensearch_service)
+        indexer = Indexer(search_service)
         sqs_consumer = SQSConsumer(
             indexer=indexer,
             queue_url=config.sqs.queue_url,
@@ -112,7 +116,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     logger.info(
         "search_service_created",
         port=config.port,
-        opensearch_url=config.opensearch.url,
+        meilisearch_url=config.meilisearch.url,
         sqs_enabled=config.sqs.enabled,
     )
     return app

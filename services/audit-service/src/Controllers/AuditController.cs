@@ -64,6 +64,7 @@ public static class AuditController
         string? user_id,
         string? action,
         string? resource,
+        string? resource_type,
         DateTime? from,
         DateTime? to,
         int? page,
@@ -73,7 +74,7 @@ public static class AuditController
         var pageNumber = page ?? 1;
         var pageSize = Math.Clamp(size ?? 20, 1, 100);
 
-        var result = await auditService.QueryEventsAsync(user_id, action, resource, from, to, pageNumber, pageSize);
+        var result = await auditService.QueryEventsAsync(user_id, action, resource_type, resource, from, to, pageNumber, pageSize);
         return Results.Ok(result);
     }
 

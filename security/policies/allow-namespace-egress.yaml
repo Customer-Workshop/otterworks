@@ -34,13 +34,13 @@ spec:
           port: 8089
         - protocol: TCP
           port: 8090
-    # Allow traffic to infrastructure services (PostgreSQL, Redis, OpenSearch)
+    # Allow traffic to infrastructure services (PostgreSQL, Redis, MeiliSearch)
     - ports:
         - protocol: TCP
           port: 5432
         - protocol: TCP
           port: 6379
         - protocol: TCP
-          port: 9200
+          port: 7700
         - protocol: TCP
           port: 443

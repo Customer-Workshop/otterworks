@@ -16,6 +16,73 @@ import type {
   SharedUser,
 } from "@/types";
 
+// Shape after the axios camelCase interceptor transforms the file-service response
+interface RawShareItem {
+  id: string;
+  fileId: string;
+  sharedWith: string;
+  permission: string;
+  sharedBy: string;
+  createdAt: string;
+}
+
+interface RawFileItem {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  s3Key: string;
+  folderId: string | null;
+  ownerId: string;
+  version: number;
+  isTrashed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sharedWith?: RawShareItem[];
+}
+
+interface RawFileListResponse {
+  files: RawFileItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// Normalize a single file from the file-service format to the frontend FileItem shape
+function mapRawFile(raw: RawFileItem): FileItem {
+  return {
+    id: raw.id,
+    name: raw.name,
+    mimeType: raw.mimeType ?? "application/octet-stream",
+    size: raw.sizeBytes ?? 0,
+    parentId: raw.folderId ?? null,
+    ownerId: raw.ownerId ?? "",
+    ownerName: "",
+    isFolder: false,
+    isTrashed: raw.isTrashed ?? false,
+    path: `/${raw.name}`,
+    downloadUrl: undefined,
+    sharedWith: (() => {
+      const mapped = (raw.sharedWith ?? []).map((s) => ({
+        userId: s.sharedWith,
+        name: "",
+        email: "",
+        permission: s.permission === "viewer" ? "view" as const : s.permission === "editor" ? "edit" as const : "view" as const,
+      }));
+      const seen = new Set<string>();
+      return mapped.filter((s) => {
+        if (seen.has(s.userId)) return false;
+        seen.add(s.userId);
+        return true;
+      });
+    })(),
+    tags: [],
+    createdAt: raw.createdAt ?? "",
+    updatedAt: raw.updatedAt ?? "",
+    versions: [],
+  };
+}
+
 // ── Auth ──────────────────────────────────────────────────────
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<AuthTokens> => {
@@ -41,6 +108,19 @@ export const authApi = {
   },
   logout: async (): Promise<void> => {
     await apiClient.post("/auth/logout");
+  },
+  lookupUser: async (email: string): Promise<{ id: string; email: string; displayName: string }> => {
+    const { data } = await apiClient.get<{ id: string; email: string; displayName: string }>(
+      "/auth/users/lookup",
+      { params: { email } }
+    );
+    return data;
+  },
+  lookupUserById: async (id: string): Promise<{ id: string; email: string; displayName: string }> => {
+    const { data } = await apiClient.get<{ id: string; email: string; displayName: string }>(
+      `/auth/users/by-id/${id}`
+    );
+    return data;
   },
 };
 
@@ -83,23 +163,24 @@ export const filesApi = {
   ): Promise<PaginatedResponse<FileItem>> => {
     const params: Record<string, string | number> = { page, page_size: pageSize };
     if (parentId) params.folder_id = parentId;
-    const { data } = await apiClient.get<any>("/files", { params });
-    // Backend returns { files: [...], total, page, pageSize } — normalise to PaginatedResponse
-    const rawItems = data.files ?? data.data ?? [];
-    const items: FileItem[] = rawItems.map(normalizeFileItem);
+    const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
     return {
-      data: items,
-      total: data.total ?? items.length,
+      data: (data.files ?? []).map(mapRawFile),
+      total: data.total ?? 0,
       page: data.page ?? page,
       pageSize: data.pageSize ?? pageSize,
-      hasMore: (data.page ?? page) * (data.pageSize ?? pageSize) < (data.total ?? items.length),
+      hasMore: ((data.page ?? page) * (data.pageSize ?? pageSize)) < (data.total ?? 0),
     };
   },
   get: async (id: string): Promise<FileItem> => {
-    const { data } = await apiClient.get<any>(`/files/${id}`);
-    return normalizeFileItem(data);
+    const { data } = await apiClient.get<RawFileItem>(`/files/${id}`);
+    return mapRawFile(data);
   },
-  upload: async (file: File, parentId?: string | null): Promise<FileItem> => {
+  upload: async (
+    file: File,
+    parentId?: string | null,
+    options?: { onUploadProgress?: (percent: number) => void; signal?: AbortSignal },
+  ): Promise<FileItem> => {
     const formData = new FormData();
     formData.append("file", file);
     if (parentId) formData.append("folder_id", parentId);
@@ -108,12 +189,41 @@ export const filesApi = {
     const ownerId = getOwnerIdFromJwt();
     if (ownerId) formData.append("owner_id", ownerId);
 
-    const { data } = await apiClient.post<any>("/files/upload", formData, {
+    const { data } = await apiClient.post<{ file: RawFileItem }>("/files/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      signal: options?.signal,
+      onUploadProgress: options?.onUploadProgress
+        ? (event) => {
+            if (event.total) {
+              options.onUploadProgress!(Math.round((event.loaded * 100) / event.total));
+            }
+          }
+        : undefined,
     });
     // Backend wraps response in { file: {...} }
-    const raw = data.file ?? data;
-    return normalizeFileItem(raw);
+    const raw = data.file ?? (data as unknown as RawFileItem);
+    return mapRawFile(raw);
+  },
+  listFolders: async (parentId?: string | null): Promise<FileItem[]> => {
+    const params: Record<string, string> = {};
+    if (parentId) params.parent_id = parentId;
+    const { data } = await apiClient.get<{ folders: Array<Record<string, unknown>> }>("/folders", { params });
+    return (data.folders ?? []).map((f) => ({
+      id: (f.id ?? "") as string,
+      name: (f.name ?? "") as string,
+      mimeType: "",
+      size: 0,
+      parentId: (f.parentId ?? null) as string | null,
+      ownerId: (f.ownerId ?? "") as string,
+      ownerName: "",
+      isFolder: true,
+      path: `/${f.name}`,
+      sharedWith: [],
+      tags: [],
+      createdAt: (f.createdAt ?? "") as string,
+      updatedAt: (f.updatedAt ?? "") as string,
+      versions: [],
+    }));
   },
   createFolder: async (name: string, parentId?: string | null): Promise<FileItem> => {
     const ownerId = getOwnerIdFromJwt();
@@ -124,20 +234,56 @@ export const filesApi = {
     });
     return normalizeFileItem(data);
   },
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/files/${id}`);
+  getDownloadUrl: async (id: string): Promise<string> => {
+    const { data } = await apiClient.get<{ url: string; expiresInSecs: number }>(`/files/${id}/download`);
+    // Presigned URLs from S3/LocalStack use the internal Docker hostname.
+    // Rewrite to localhost so the browser can reach the endpoint.
+    return data.url.replace("://localstack:", "://localhost:");
   },
-  share: async (id: string, users: SharedUser[]): Promise<void> => {
-    await apiClient.post(`/files/${id}/share`, { users });
+  delete: async (id: string): Promise<void> => {
+    await apiClient.post(`/files/${id}/trash`);
+  },
+  getFolder: async (id: string): Promise<FileItem> => {
+    const { data } = await apiClient.get<Record<string, unknown>>(`/folders/${id}`);
+    return normalizeFileItem({ ...data, isFolder: true });
+  },
+  deleteFolder: async (id: string): Promise<void> => {
+    await apiClient.delete(`/folders/${id}`);
+  },
+  share: async (id: string, email: string, permission: "view" | "edit"): Promise<void> => {
+    const user = await authApi.lookupUser(email);
+    const sharedBy = getOwnerIdFromJwt();
+    if (!sharedBy) throw new Error("Unable to determine current user");
+    await apiClient.post(`/files/${id}/share`, {
+      shared_with: user.id,
+      permission: permission === "view" ? "viewer" : "editor",
+      shared_by: sharedBy,
+    });
+  },
+  removeShare: async (fileId: string, userId: string): Promise<void> => {
+    await apiClient.delete(`/files/${fileId}/share/${userId}`);
+  },
+  updateSharePermission: async (
+    fileId: string,
+    userId: string,
+    permission: "view" | "edit"
+  ): Promise<void> => {
+    const sharedBy = getOwnerIdFromJwt();
+    if (!sharedBy) throw new Error("Unable to determine current user");
+    await apiClient.post(`/files/${fileId}/share`, {
+      shared_with: userId,
+      permission: permission === "view" ? "viewer" : "editor",
+      shared_by: sharedBy,
+    });
   },
   restore: async (id: string): Promise<void> => {
     await apiClient.post(`/files/${id}/restore`);
   },
   getShared: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<any>("/files/shared", {
+    const { data } = await apiClient.get<RawFileListResponse>("/files/shared", {
       params: { page, page_size: pageSize },
     });
-    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    const items = (data.files ?? []).map(mapRawFile);
     return {
       data: items,
       total: data.total ?? items.length,
@@ -147,10 +293,13 @@ export const filesApi = {
     };
   },
   getTrashed: async (page = 1, pageSize = 50): Promise<PaginatedResponse<FileItem>> => {
-    const { data } = await apiClient.get<any>("/files/trash", {
-      params: { page, page_size: pageSize },
+    const params: Record<string, string | number> = { page, page_size: pageSize };
+    const ownerId = getOwnerIdFromJwt();
+    if (ownerId) params.owner_id = ownerId;
+    const { data } = await apiClient.get<RawFileListResponse>("/files/trash", {
+      params,
     });
-    const items = (data.data ?? data.files ?? []).map(normalizeFileItem);
+    const items = (data.files ?? []).map(mapRawFile);
     return {
       data: items,
       total: data.total ?? items.length,
@@ -160,13 +309,20 @@ export const filesApi = {
     };
   },
   permanentDelete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/files/${id}/permanent`);
+    await apiClient.delete(`/files/${id}`);
+  },
+  renameFile: async (id: string, name: string): Promise<FileItem> => {
+    const { data } = await apiClient.patch<RawFileItem>(`/files/${id}/rename`, { name });
+    return mapRawFile(data);
+  },
+  renameFolder: async (id: string, name: string): Promise<FileItem> => {
+    const { data } = await apiClient.put<Record<string, unknown>>(`/folders/${id}`, { name });
+    return normalizeFileItem({ ...data, isFolder: true });
   },
   getRecent: async (limit = 10): Promise<FileItem[]> => {
-    const { data } = await apiClient.get<any[]>("/files/recent", {
-      params: { limit },
-    });
-    return (Array.isArray(data) ? data : []).map(normalizeFileItem);
+    const params: Record<string, string | number> = { page: 1, page_size: limit };
+    const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
+    return (data.files ?? []).map((f) => normalizeFileItem(f as unknown as Record<string, unknown>));
   },
 };
 
@@ -200,26 +356,50 @@ export const documentsApi = {
     await apiClient.post(`/documents/${id}/restore`);
   },
   getRecent: async (limit = 10): Promise<Document[]> => {
-    const { data } = await apiClient.get<Document[]>("/documents/recent", {
-      params: { limit },
+    const { data } = await apiClient.get<{ items?: Document[] }>("/documents", {
+      params: { page: 1, size: limit },
     });
-    return data;
+    return data.items ?? [];
   },
 };
 
 // ── Search ────────────────────────────────────────────────────
 export const searchApi = {
   search: async (filters: SearchFilters): Promise<PaginatedResponse<SearchResult>> => {
-    const { data } = await apiClient.get<PaginatedResponse<SearchResult>>("/search", {
-      params: filters,
-    });
-    return data;
+    const { query, type, dateFrom, dateTo, owner } = filters;
+    const params: Record<string, string | number | undefined> = {
+      q: query,
+      type: type === "all" ? undefined : type,
+      date_from: dateFrom,
+      date_to: dateTo,
+      owner_id: owner,
+    };
+    const { data } = await apiClient.get<Record<string, unknown>>("/search", { params });
+    const rawResults = (data.results ?? []) as Record<string, unknown>[];
+    const total = (data.total as number) ?? rawResults.length;
+    const pg = (data.page as number) ?? 1;
+    const ps = (data.page_size as number) ?? (data.pageSize as number) ?? 20;
+    return {
+      data: rawResults.map((r): SearchResult => ({
+        id: String(r.id ?? ""),
+        type: (r.type as SearchResult["type"]) ?? "file",
+        name: String(r.title ?? r.name ?? r.id ?? ""),
+        snippet: String(r.content_snippet ?? r.contentSnippet ?? ""),
+        path: "",
+        updatedAt: String(r.updated_at ?? r.updatedAt ?? ""),
+        ownerName: "",
+      })),
+      total,
+      page: pg,
+      pageSize: ps,
+      hasMore: pg * ps < total,
+    };
   },
   suggest: async (query: string): Promise<string[]> => {
-    const { data } = await apiClient.get<string[]>("/search/suggest", {
-      params: { query },
+    const { data } = await apiClient.get<{ suggestions: string[] }>("/search/suggest", {
+      params: { q: query },
     });
-    return data;
+    return data.suggestions ?? [];
   },
 };
 
@@ -244,20 +424,144 @@ export const notificationsApi = {
 };
 
 // ── Activity ──────────────────────────────────────────────────
+// Shape after the axios camelCase interceptor transforms the file-service response
+interface RawActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  actorName: string;
+  resourceName: string;
+  resourceType: string;
+  resourceId: string;
+  createdAt: string;
+}
+
 export const activityApi = {
   getRecent: async (limit = 20): Promise<ActivityItem[]> => {
-    const { data } = await apiClient.get<ActivityItem[]>("/activity/recent", {
+    const { data } = await apiClient.get<{ items: RawActivityItem[] }>("/files/activity", {
       params: { limit },
     });
-    return data;
+    return (data.items ?? []).map((raw) => ({
+      id: raw.id,
+      type: raw.type as ActivityItem["type"],
+      description: raw.description,
+      actorName: raw.actorName,
+      resourceName: raw.resourceName,
+      resourceType: raw.resourceType as "file" | "document",
+      resourceId: raw.resourceId,
+      createdAt: raw.createdAt,
+    }));
   },
 };
 
 // ── Storage ───────────────────────────────────────────────────
 export const storageApi = {
   getUsage: async (): Promise<StorageUsage> => {
-    const { data } = await apiClient.get<StorageUsage>("/storage/usage");
-    return data;
+    // The /storage/usage endpoint is not routed. Compute stats from
+    // existing file and document list endpoints instead.
+    const [fileRes, docRes] = await Promise.all([
+      apiClient.get<RawFileListResponse>("/files", { params: { page: 1, page_size: 1 } }),
+      apiClient.get<{ total?: number }>("/documents", { params: { page: 1, size: 1 } }),
+    ]);
+
+    const fileCount = fileRes.data.total ?? 0;
+    const documentCount = docRes.data.total ?? 0;
+
+    // Fetch all files to sum storage. The file-service caps page_size at 100,
+    // so paginate through all pages to get an accurate total.
+    let used = 0;
+    if (fileCount > 0) {
+      const PAGE_LIMIT = 100;
+      let page = 1;
+      let fetched = 0;
+      while (fetched < fileCount) {
+        const batch = await apiClient.get<RawFileListResponse>("/files", {
+          params: { page, page_size: PAGE_LIMIT },
+        });
+        const files = batch.data.files ?? [];
+        if (files.length === 0) break;
+        used += files.reduce(
+          (sum, f) => {
+            const raw = f as unknown as Record<string, number>;
+            return sum + (raw.sizeBytes ?? raw.size_bytes ?? 0);
+          },
+          0,
+        );
+        fetched += files.length;
+        page += 1;
+      }
+    }
+
+    return {
+      used,
+      total: 10 * 1024 * 1024 * 1024, // 10 GB default quota
+      fileCount,
+      documentCount,
+    };
+  },
+};
+
+// ── Starred (localStorage-backed) ─────────────────────────────
+const STARRED_STORAGE_KEY = "otter_starred_items";
+
+type StarredItemType = "file" | "folder" | "document";
+
+interface StarredEntry {
+  itemId: string;
+  itemType: StarredItemType;
+  starredAt: string;
+}
+
+function getStarredMap(): Record<string, StarredEntry> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STARRED_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, StarredEntry>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStarredMap(map: Record<string, StarredEntry>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STARRED_STORAGE_KEY, JSON.stringify(map));
+}
+
+function starredKey(userId: string, itemId: string): string {
+  return `${userId}:${itemId}`;
+}
+
+export const starredApi = {
+  isStarred: (userId: string, itemId: string): boolean => {
+    return starredKey(userId, itemId) in getStarredMap();
+  },
+
+  toggle: (userId: string, itemId: string, itemType: StarredItemType): boolean => {
+    const map = getStarredMap();
+    const key = starredKey(userId, itemId);
+    if (key in map) {
+      delete map[key];
+      saveStarredMap(map);
+      return false;
+    }
+    map[key] = { itemId, itemType, starredAt: new Date().toISOString() };
+    saveStarredMap(map);
+    return true;
+  },
+
+  getStarredIds: (userId: string): { fileIds: string[]; folderIds: string[]; documentIds: string[] } => {
+    const map = getStarredMap();
+    const prefix = `${userId}:`;
+    const fileIds: string[] = [];
+    const folderIds: string[] = [];
+    const documentIds: string[] = [];
+    for (const [key, entry] of Object.entries(map)) {
+      if (!key.startsWith(prefix)) continue;
+      if (entry.itemType === "file") fileIds.push(entry.itemId);
+      else if (entry.itemType === "folder") folderIds.push(entry.itemId);
+      else documentIds.push(entry.itemId);
+    }
+    return { fileIds, folderIds, documentIds };
   },
 };
 

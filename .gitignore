@@ -65,6 +65,8 @@ services/admin-service/vendor/bundle/
 # --- C# ---
 services/audit-service/bin/
 services/audit-service/obj/
+services/audit-service/**/bin/
+services/audit-service/**/obj/
 *.user
 *.suo
 

@@ -19,6 +19,13 @@ pub struct FileMetadata {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct FileDetailResponse {
+    #[serde(flatten)]
+    pub file: FileMetadata,
+    pub shared_with: Vec<FileShare>,
+}
+
 // ── Folder ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,6 +131,17 @@ pub struct ListVersionsResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ListFoldersQuery {
+    pub parent_id: Option<Uuid>,
+    pub owner_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListFoldersResponse {
+    pub folders: Vec<Folder>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateFolderRequest {
     pub name: String,
     pub parent_id: Option<Uuid>,
@@ -142,6 +160,11 @@ pub struct MoveFileRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RenameFileRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ShareFileRequest {
     pub shared_with: Uuid,
     pub permission: SharePermission,
@@ -151,4 +174,29 @@ pub struct ShareFileRequest {
 #[derive(Debug, Serialize)]
 pub struct ShareFileResponse {
     pub share: FileShare,
+}
+
+// ── Activity ───────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+pub struct ActivityItem {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub activity_type: String,
+    pub description: String,
+    pub actor_name: String,
+    pub resource_name: String,
+    pub resource_type: String,
+    pub resource_id: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActivityQuery {
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ActivityResponse {
+    pub items: Vec<ActivityItem>,
 }

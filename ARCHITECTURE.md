@@ -38,7 +38,7 @@ OtterWorks is a collaborative file storage and document editing platform (functi
   +--+---+---+---+---+---+---+---+---+--+
   |         Data & Infrastructure        |
   | PostgreSQL | Redis | DynamoDB | S3   |
-  | OpenSearch | SQS/SNS | Cognito      |
+  | MeiliSearch | SQS/SNS | Cognito     |
   +-----------------------------------------+
 ```
 
@@ -94,10 +94,10 @@ OtterWorks is a collaborative file storage and document editing platform (functi
 ### 7. Search Service (`services/search-service/`)
 - **Language**: Python 3.12
 - **Framework**: Flask 3.0
-- **Database**: OpenSearch (full-text index)
+- **Database**: MeiliSearch (full-text index)
 - **Purpose**: Full-text search across documents and file metadata. Indexes content from Document Service and File Service via event-driven ingestion. Supports faceted search, autocomplete, and relevance tuning.
 - **Port**: 8087
-- **Key Patterns**: OpenSearch Python client, Flask-RESTful, Celery workers for async indexing, marshmallow serialization, gunicorn
+- **Key Patterns**: MeiliSearch Python client, Flask-RESTful, SQS-based async indexing, marshmallow serialization, gunicorn
 
 ### 8. Analytics Service (`services/analytics-service/`)
 - **Language**: Scala 3.4
@@ -145,7 +145,7 @@ OtterWorks is a collaborative file storage and document editing platform (functi
 | Primary RDBMS | PostgreSQL 15 (RDS) | Users, documents, admin data |
 | Cache/Sessions | Redis 7 (ElastiCache) | Sessions, CRDT state, presence, rate limiting |
 | NoSQL | DynamoDB | File metadata, audit events, notification history |
-| Search | OpenSearch 2.11 | Full-text document search, autocomplete |
+| Search | MeiliSearch 1.6 | Full-text document search, autocomplete |
 | Object Storage | S3 | File blobs, document attachments, analytics data lake |
 | CDN | CloudFront | Static assets, presigned URL caching |
 
@@ -163,7 +163,7 @@ Managed via Terraform in `infrastructure/terraform/`:
 - ElastiCache Redis cluster
 - DynamoDB tables (file_metadata, audit_events, notifications)
 - SQS queues and SNS topics
-- OpenSearch domain
+- MeiliSearch instance
 - Cognito User Pool
 - CloudFront distribution
 - ECR repositories (one per service)
@@ -216,7 +216,7 @@ Each service has a Helm chart in `infrastructure/helm/<service-name>/`:
 ### Apache Airflow (`etl/airflow/`)
 - DAGs for daily/hourly analytics aggregation
 - Data quality checks
-- S3-to-OpenSearch document indexing pipeline
+- S3-to-MeiliSearch document indexing pipeline
 - User activity report generation
 
 ### Spark Jobs (`etl/spark-jobs/`)
@@ -253,7 +253,7 @@ Each service has a Helm chart in `infrastructure/helm/<service-name>/`:
 - DynamoDB on-demand billing
 - S3 Intelligent-Tiering for file storage
 - ElastiCache t3.micro for dev
-- OpenSearch t3.small.search for dev
+- MeiliSearch on ECS Fargate for dev
 - EKS managed node group with spot instances option
 - Teardown script to destroy all resources when not in use
 - CloudFront caching to reduce origin requests
@@ -281,7 +281,7 @@ otterworks/
 │   │   │   ├── storage/              # S3, CloudFront
 │   │   │   ├── database/             # RDS, ElastiCache, DynamoDB
 │   │   │   ├── messaging/            # SQS, SNS
-│   │   │   ├── search/               # OpenSearch
+│   │   │   ├── search/               # MeiliSearch
 │   │   │   ├── auth/                 # Cognito
 │   │   │   └── ecr/                  # ECR repositories
 │   │   └── environments/

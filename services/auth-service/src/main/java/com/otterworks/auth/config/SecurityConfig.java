@@ -40,6 +40,8 @@ public class SecurityConfig {
                         "/api/v1/auth/login",
                         "/api/v1/auth/refresh")
                     .permitAll()
+                    .requestMatchers("/api/v1/auth/users/lookup", "/api/v1/auth/users/by-id/**")
+                    .authenticated()
                     .requestMatchers("/api/v1/auth/users/**")
                     .hasRole("ADMIN")
                     .anyRequest()

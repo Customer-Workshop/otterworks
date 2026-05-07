@@ -52,10 +52,10 @@ public class AuditService : IAuditService
     }
 
     public async Task<AuditEventPage> QueryEventsAsync(
-        string? userId, string? action, string? resourceType,
+        string? userId, string? action, string? resourceType, string? resourceId,
         DateTime? from, DateTime? to, int page, int pageSize)
     {
-        return await _repository.QueryEventsAsync(userId, action, resourceType, from, to, page, pageSize);
+        return await _repository.QueryEventsAsync(userId, action, resourceType, resourceId, from, to, page, pageSize);
     }
 
     public async Task<UserActivityReport> GetUserActivityReportAsync(string userId, string period)

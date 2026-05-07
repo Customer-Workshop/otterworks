@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.SQS;
@@ -99,6 +100,32 @@ public class SnsConsumer : BackgroundService
             var snsMessage = TryParseSnsEnvelope(message.Body);
             var eventBody = snsMessage ?? message.Body;
 
+            var fileEvent = JsonSerializer.Deserialize<FileEventMessage>(eventBody, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            });
+            if (fileEvent?.EventType == "file_shared")
+            {
+                var fileShareEvent = new AuditEvent
+                {
+                    Id = message.MessageId,
+                    UserId = fileEvent.OwnerId ?? "system",
+                    Action = "share",
+                    ResourceType = "file",
+                    ResourceId = fileEvent.FileId ?? string.Empty,
+                    Details = new Dictionary<string, string>
+                    {
+                        ["sharedWithUserId"] = fileEvent.SharedWithUserId ?? string.Empty,
+                    },
+                    Timestamp = fileEvent.Timestamp ?? DateTime.UtcNow,
+                };
+
+                await _repository.SaveEventAsync(fileShareEvent);
+                _logger.LogDebug("Processed file share SNS event for {FileId}", fileEvent.FileId);
+                await _sqsClient.DeleteMessageAsync(_queueUrl, message.ReceiptHandle, ct);
+                return;
+            }
+
             var auditEvent = JsonSerializer.Deserialize<AuditEventMessage>(eventBody, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -163,6 +190,24 @@ public class SnsConsumer : BackgroundService
         public Dictionary<string, string>? Details { get; set; }
         public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
+        public DateTime? Timestamp { get; set; }
+    }
+
+    private sealed class FileEventMessage
+    {
+        [JsonPropertyName("eventType")]
+        public string? EventType { get; set; }
+
+        [JsonPropertyName("fileId")]
+        public string? FileId { get; set; }
+
+        [JsonPropertyName("ownerId")]
+        public string? OwnerId { get; set; }
+
+        [JsonPropertyName("sharedWithUserId")]
+        public string? SharedWithUserId { get; set; }
+
+        [JsonPropertyName("timestamp")]
         public DateTime? Timestamp { get; set; }
     }
 }

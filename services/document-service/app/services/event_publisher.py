@@ -32,7 +32,10 @@ class EventPublisher:
         if self._client is None:
             import boto3
 
-            self._client = boto3.client("sns", region_name=settings.aws_region)
+            kwargs = {"region_name": settings.aws_region}
+            if settings.aws_endpoint_url:
+                kwargs["endpoint_url"] = settings.aws_endpoint_url
+            self._client = boto3.client("sns", **kwargs)
         return self._client
 
     async def publish(self, event_type: str, payload: dict[str, Any]) -> None:

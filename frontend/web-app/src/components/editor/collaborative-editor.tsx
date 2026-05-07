@@ -20,6 +20,10 @@ import {
   Heading2,
   Code,
   Minus,
+  Loader2,
+  Check,
+  WifiOff,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,23 +39,36 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
   const { user } = useAuthStore();
   const [ydoc] = useState(() => new Y.Doc());
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connecting");
+  const [isSynced, setIsSynced] = useState(false);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("otter_access_token") : null;
     const wsProvider = new WebsocketProvider(
       COLLAB_WS_URL,
       `document-${documentId}`,
-      ydoc
+      ydoc,
+      { params: { token: token || "" } }
     );
 
     wsProvider.on("status", (event: { status: string }) => {
-      setConnected(event.status === "connected");
+      setConnectionStatus(event.status as "connected" | "disconnected" | "connecting");
+    });
+
+    wsProvider.on("sync", (synced: boolean) => {
+      setIsSynced(synced);
+      if (synced) {
+        setHasLocalChanges(false);
+      }
     });
 
     setProvider(wsProvider);
 
     return () => {
       wsProvider.destroy();
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
   }, [documentId, ydoc]);
 
@@ -85,6 +102,11 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
       onUpdate: ({ editor: ed }) => {
         if (!suppressSaveRef.current) {
           onUpdate?.(ed.getHTML());
+          setHasLocalChanges(true);
+          if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+          syncTimeoutRef.current = setTimeout(() => {
+            setHasLocalChanges(false);
+          }, 3000);
         }
       },
     },
@@ -205,21 +227,59 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-1.5">
-          <div
-            className={cn(
-              "w-2 h-2 rounded-full",
-              connected ? "bg-green-500" : "bg-gray-300"
-            )}
-          />
-          <span className="text-xs text-gray-500">
-            {connected ? "Connected" : "Offline"}
-          </span>
-        </div>
+        <SaveStatusIndicator
+          connectionStatus={connectionStatus}
+          isSynced={isSynced}
+          hasLocalChanges={hasLocalChanges}
+        />
       </div>
 
       {/* Editor */}
       <EditorContent editor={editor} />
+    </div>
+  );
+}
+
+function SaveStatusIndicator({
+  connectionStatus,
+  isSynced,
+  hasLocalChanges,
+}: {
+  connectionStatus: "connected" | "disconnected" | "connecting";
+  isSynced: boolean;
+  hasLocalChanges: boolean;
+}) {
+  if (connectionStatus === "disconnected") {
+    return (
+      <div className="flex items-center gap-1.5">
+        <WifiOff size={14} className="text-amber-500" />
+        <span className="text-xs text-amber-600 font-medium">Offline</span>
+      </div>
+    );
+  }
+
+  if (connectionStatus === "connecting") {
+    return (
+      <div className="flex items-center gap-1.5">
+        <RefreshCw size={14} className="text-blue-500 animate-spin" />
+        <span className="text-xs text-blue-600 font-medium">Reconnecting…</span>
+      </div>
+    );
+  }
+
+  if (hasLocalChanges || !isSynced) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <Loader2 size={14} className="text-gray-400 animate-spin" />
+        <span className="text-xs text-gray-500">Saving…</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Check size={14} className="text-green-500" />
+      <span className="text-xs text-gray-500">All changes saved</span>
     </div>
   );
 }

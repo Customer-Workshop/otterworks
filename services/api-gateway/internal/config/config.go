@@ -23,6 +23,7 @@ type Config struct {
 	AnalyticsServiceURL    string
 	AdminServiceURL        string
 	AuditServiceURL        string
+	ReportServiceURL       string
 
 	// Rate limiting
 	RateLimitRPS int
@@ -69,6 +70,7 @@ func Load() *Config {
 		AnalyticsServiceURL:    getEnv("ANALYTICS_SERVICE_URL", "http://analytics-service:8088"),
 		AdminServiceURL:        getEnv("ADMIN_SERVICE_URL", "http://admin-service:8089"),
 		AuditServiceURL:        getEnv("AUDIT_SERVICE_URL", "http://audit-service:8090"),
+		ReportServiceURL:       getEnv("REPORT_SERVICE_URL", "http://report-service:8091"),
 
 		RateLimitRPS: getEnvInt("RATE_LIMIT_RPS", 100),
 
@@ -93,13 +95,19 @@ func (c *Config) ServiceRoutes() map[string]string {
 	return map[string]string{
 		"/api/v1/auth":          c.AuthServiceURL,
 		"/api/v1/files":         c.FileServiceURL,
+		"/api/v1/folders":       c.FileServiceURL,
 		"/api/v1/documents":     c.DocumentServiceURL,
+		"/api/v1/templates":     c.DocumentServiceURL,
 		"/api/v1/collab":        c.CollabServiceURL,
+		"/socket.io":            c.CollabServiceURL,
 		"/api/v1/notifications": c.NotificationServiceURL,
+		"/api/v1/preferences":   c.NotificationServiceURL,
 		"/api/v1/search":        c.SearchServiceURL,
 		"/api/v1/analytics":     c.AnalyticsServiceURL,
 		"/api/v1/admin":         c.AdminServiceURL,
 		"/api/v1/audit":         c.AuditServiceURL,
+		"/api/v1/reports":       c.ReportServiceURL,
+		"/api/v1/settings":      c.AuthServiceURL,
 	}
 }
 

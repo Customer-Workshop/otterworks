@@ -2,9 +2,11 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Download,
+  Loader2,
   Share2,
   Trash2,
   Clock,
@@ -16,12 +18,15 @@ import {
   File,
   Eye,
 } from "lucide-react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { filesApi } from "@/lib/api";
+import { ShareDialog } from "@/components/files/share-dialog";
+import { TextFilePreview, PdfFilePreview, ImageFilePreview } from "@/components/files/file-preview";
+import { filesApi, authApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
 export default function FileDetailPage() {
@@ -45,13 +50,57 @@ function FileDetailContent() {
     queryFn: () => filesApi.get(fileId),
   });
 
+  const { data: presignedUrl, isLoading: isUrlLoading } = useQuery({
+    queryKey: ["files", fileId, "download-url"],
+    queryFn: () => filesApi.getDownloadUrl(fileId),
+    enabled: !!file,
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [resolvedUsers, setResolvedUsers] = useState<Record<string, { name: string; email: string }>>({});
+
+  useEffect(() => {
+    if (!file?.sharedWith?.length) return;
+    const userIds = file.sharedWith
+      .map((s) => s.userId)
+      .filter((id) => id && !resolvedUsers[id]);
+    if (userIds.length === 0) return;
+
+    Promise.allSettled(
+      userIds.map((id) => authApi.lookupUserById(id))
+    ).then((results) => {
+      const newUsers: Record<string, { name: string; email: string }> = {};
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          newUsers[userIds[i]] = {
+            name: result.value.displayName || result.value.email,
+            email: result.value.email,
+          };
+        }
+      });
+      if (Object.keys(newUsers).length > 0) {
+        setResolvedUsers((prev) => ({ ...prev, ...newUsers }));
+      }
+    });
+  }, [file?.sharedWith]);
+
   const deleteMutation = useMutation({
     mutationFn: () => filesApi.delete(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("File moved to trash");
       router.push("/files");
     },
+    onError: () => toast.error("Failed to move file to trash"),
   });
+
+  const handleShare = async (email: string, permission: "view" | "edit") => {
+    await filesApi.share(fileId, email, permission);
+    queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+  };
 
   if (isLoading) return <PageLoader />;
   if (!file) {
@@ -68,6 +117,14 @@ function FileDetailContent() {
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isPdf = file.mimeType === "application/pdf";
+  const isText =
+    file.mimeType.startsWith("text/") ||
+    file.mimeType === "application/json" ||
+    file.mimeType === "application/xml" ||
+    file.mimeType === "application/javascript" ||
+    file.mimeType === "application/typescript" ||
+    file.mimeType === "application/x-yaml" ||
+    file.mimeType === "application/x-sh";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -98,16 +155,35 @@ function FileDetailContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {file.downloadUrl && (
-            <a
-              href={file.downloadUrl}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <Download size={16} />
-              Download
-            </a>
-          )}
-          <button className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          <button
+            disabled={isDownloading}
+            onClick={async () => {
+              setIsDownloading(true);
+              try {
+                const downloadUrl = await filesApi.getDownloadUrl(file.id);
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.download = file.name;
+                a.rel = "noopener";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                toast.success(`Downloading ${file.name}`);
+              } catch {
+                toast.error("Download failed. Please try again.");
+              } finally {
+                setIsDownloading(false);
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {isDownloading ? "Downloading..." : "Download"}
+          </button>
+          <button
+            onClick={() => setShowShareDialog(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          >
             <Share2 size={16} />
             Share
           </button>
@@ -132,33 +208,22 @@ function FileDetailContent() {
               </h2>
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
-              {isImage && file.downloadUrl ? (
-                <img
-                  src={file.downloadUrl}
-                  alt={file.name}
-                  className="max-w-full max-h-[500px] rounded-lg shadow-sm"
-                />
-              ) : isVideo && file.downloadUrl ? (
+              {(isImage || isVideo || isText || isPdf) && isUrlLoading ? (
+                <div className="w-full text-center py-8">
+                  <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                </div>
+              ) : isImage ? (
+                <ImageFilePreview presignedUrl={presignedUrl} fileName={file.name} />
+              ) : isVideo && presignedUrl ? (
                 <video
-                  src={file.downloadUrl}
+                  src={presignedUrl}
                   controls
                   className="max-w-full max-h-[500px] rounded-lg"
                 />
               ) : isPdf ? (
-                <div className="text-center">
-                  <FileText size={64} className="text-red-400 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">PDF document</p>
-                  {file.downloadUrl && (
-                    <a
-                      href={file.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-otter-600 hover:underline mt-1 inline-block"
-                    >
-                      Open in new tab
-                    </a>
-                  )}
-                </div>
+                <PdfFilePreview presignedUrl={presignedUrl} />
+              ) : isText ? (
+                <TextFilePreview presignedUrl={presignedUrl} fileName={file.name} />
               ) : (
                 <div className="text-center">
                   <File size={64} className="text-gray-300 mx-auto mb-3" />
@@ -216,7 +281,7 @@ function FileDetailContent() {
               <h2 className="text-sm font-medium text-gray-700">Details</h2>
             </div>
             <div className="p-5 space-y-4">
-              <InfoRow icon={User} label="Owner" value={file.ownerName} />
+              <InfoRow icon={User} label="Owner" value={file.ownerName || "You"} />
               <InfoRow
                 icon={HardDrive}
                 label="Size"
@@ -260,22 +325,29 @@ function FileDetailContent() {
                 <p className="text-sm text-gray-400">Not shared with anyone</p>
               ) : (
                 <div className="space-y-3">
-                  {file.sharedWith.map((shared) => (
-                    <div key={shared.userId} className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: generateColor(shared.userId) }}
-                      >
-                        {getInitials(shared.name)}
+                  {file.sharedWith.map((shared) => {
+                    const resolved = resolvedUsers[shared.userId];
+                    const displayName = resolved?.name || shared.name || shared.userId.slice(0, 8);
+                    const displayEmail = resolved?.email || shared.email;
+                    return (
+                      <div key={shared.userId} className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                          style={{ backgroundColor: generateColor(shared.userId) }}
+                        >
+                          {getInitials(displayName)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {displayName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {displayEmail ? `${displayEmail} · ${shared.permission}` : shared.permission}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {shared.name}
-                        </p>
-                        <p className="text-xs text-gray-500">{shared.permission}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -301,6 +373,27 @@ function FileDetailContent() {
           )}
         </div>
       </div>
+
+      {showShareDialog && (
+        <ShareDialog
+          fileId={file.id}
+          fileName={file.name}
+          ownerId={file.ownerId}
+          ownerName={file.ownerName || undefined}
+          sharedWith={file.sharedWith}
+          resolvedUsers={resolvedUsers}
+          onShare={handleShare}
+          onPermissionChange={async (userId, permission) => {
+            await filesApi.updateSharePermission(file.id, userId, permission);
+            queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+          }}
+          onRemoveAccess={async (userId) => {
+            await filesApi.removeShare(file.id, userId);
+            queryClient.invalidateQueries({ queryKey: ["files", fileId] });
+          }}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </div>
   );
 }
@@ -334,3 +427,5 @@ function FileIcon({ mimeType }: { mimeType: string }) {
     return <FileText size={24} className="text-red-500" />;
   return <File size={24} className="text-otter-600" />;
 }
+
+

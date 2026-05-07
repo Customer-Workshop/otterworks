@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   FolderOpen,
   FileText,
@@ -15,6 +16,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { FileCard } from "@/components/files/file-card";
 import { DocumentCard } from "@/components/documents/document-card";
 import { PageLoader } from "@/components/ui/loading-spinner";
+import { DashboardSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { filesApi, documentsApi, activityApi, storageApi } from "@/lib/api";
@@ -54,7 +56,7 @@ function DashboardContent() {
 
   const isLoading = filesLoading || docsLoading || activityLoading;
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return <DashboardSkeleton />;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -148,7 +150,26 @@ function DashboardContent() {
         {recentFiles && recentFiles.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentFiles.map((file) => (
-              <FileCard key={file.id} file={file} view="grid" />
+              <FileCard
+                key={file.id}
+                file={file}
+                view="grid"
+                onDownload={async (id, name) => {
+                  try {
+                    const downloadUrl = await filesApi.getDownloadUrl(id);
+                    const a = document.createElement("a");
+                    a.href = downloadUrl;
+                    a.download = name;
+                    a.rel = "noopener";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    toast.success("File downloaded successfully");
+                  } catch {
+                    toast.error("Download failed. Please try again.");
+                  }
+                }}
+              />
             ))}
           </div>
         ) : (

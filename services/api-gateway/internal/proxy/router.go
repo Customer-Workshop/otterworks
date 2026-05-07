@@ -9,6 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware"
 )
 
 // Route defines a mapping from a URL prefix to a backend service.
@@ -37,6 +39,13 @@ func NewRouter(cfg RouterConfig) chi.Router {
 			sub.HandleFunc("/", handler)
 		})
 	}
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "route not found",
+		})
+	})
 
 	return r
 }
@@ -51,6 +60,24 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	// Wrap the default director to forward authenticated user identity.
+	// The auth-service issues JWTs with the user ID in the standard "sub" claim
+	// (claims.Subject). Fall back to the custom "user_id" claim for compatibility.
+	defaultDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		defaultDirector(req)
+		if claims := middleware.GetJWTClaims(req.Context()); claims != nil {
+			userID := claims.Subject
+			if userID == "" {
+				userID = claims.UserID
+			}
+			if userID != "" {
+				req.Header.Set("X-User-ID", userID)
+			}
+		}
+	}
+
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		cfg.Logger.Error().
 			Err(err).

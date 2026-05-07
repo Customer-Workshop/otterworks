@@ -135,7 +135,7 @@ public class DynamoDbAuditRepositoryTests
                 LastEvaluatedKey = new Dictionary<string, AttributeValue>(),
             });
 
-        var result = await _repository.QueryEventsAsync("user-1", null, null, null, null, 1, 2);
+        var result = await _repository.QueryEventsAsync("user-1", null, null, null, null, null, 1, 2);
 
         Assert.Equal(3, result.Total);
         Assert.Equal(2, result.Events.Count);
@@ -154,13 +154,14 @@ public class DynamoDbAuditRepositoryTests
                 LastEvaluatedKey = new Dictionary<string, AttributeValue>(),
             });
 
-        await _repository.QueryEventsAsync("user-1", "create", "document", null, null, 1, 20);
+        await _repository.QueryEventsAsync("user-1", "create", "document", "doc-1", null, null, 1, 20);
 
         _mockDynamoDb.Verify(d => d.ScanAsync(It.Is<ScanRequest>(req =>
             req.FilterExpression != null &&
             req.FilterExpression.Contains("#uid = :uid") &&
             req.FilterExpression.Contains("#act = :act") &&
-            req.FilterExpression.Contains("ResourceType = :rt")),
+            req.FilterExpression.Contains("ResourceType = :rt") &&
+            req.FilterExpression.Contains("ResourceId = :rid")),
             default), Times.Once);
     }
 

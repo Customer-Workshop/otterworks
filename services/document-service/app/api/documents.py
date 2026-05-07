@@ -46,6 +46,20 @@ def _extract_user_id(request: Request) -> UUID | None:
     return None
 
 
+async def get_current_user_id(request: Request) -> UUID:
+    """Extract authenticated user ID from X-User-ID header or JWT."""
+    x_user_id = request.headers.get("X-User-ID")
+    if x_user_id:
+        try:
+            return UUID(x_user_id)
+        except ValueError:
+            pass
+    user_id = _extract_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user_id
+
+
 async def _do_create_document(
     body: DocumentCreate,
     request: Request,
@@ -175,13 +189,18 @@ async def get_document(
 async def update_document(
     document_id: UUID,
     body: DocumentUpdate,
+    request: Request,
+    current_user: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Full replace of a document."""
     service = DocumentService(db)
-    document = await service.update(document_id, body)
+    document = await service.get(document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    if document.owner_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not own this document")
+    document = await service.update(document_id, body)
     logger.info("document_updated", document_id=str(document_id))
     return document
 
@@ -190,13 +209,18 @@ async def update_document(
 async def patch_document(
     document_id: UUID,
     body: DocumentPatch,
+    request: Request,
+    current_user: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Partial update of a document."""
     service = DocumentService(db)
-    document = await service.patch(document_id, body)
+    document = await service.get(document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    if document.owner_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not own this document")
+    document = await service.patch(document_id, body)
     logger.info("document_patched", document_id=str(document_id))
     return document
 
@@ -204,13 +228,18 @@ async def patch_document(
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
     document_id: UUID,
+    request: Request,
+    current_user: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document (soft delete)."""
     service = DocumentService(db)
-    deleted = await service.delete(document_id)
-    if not deleted:
+    document = await service.get(document_id)
+    if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    if document.owner_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not own this document")
+    await service.delete(document_id)
     logger.info("document_deleted", document_id=str(document_id))
 
 
@@ -232,10 +261,17 @@ async def list_versions(
 async def restore_version(
     document_id: UUID,
     version_id: UUID,
+    request: Request,
+    current_user: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Restore a document to a previous version."""
     service = DocumentService(db)
+    document = await service.get(document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if document.owner_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not own this document")
     document = await service.restore_version(document_id, version_id)
     if not document:
         raise HTTPException(
@@ -252,6 +288,8 @@ async def restore_version(
 @router.get("/{document_id}/export")
 async def export_document(
     document_id: UUID,
+    request: Request,
+    current_user: UUID = Depends(get_current_user_id),
     format: str = Query("markdown", pattern="^(pdf|html|markdown)$"),  # noqa: A002
     db: AsyncSession = Depends(get_db),
 ):
@@ -260,6 +298,8 @@ async def export_document(
     document = await service.get(document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+    if document.owner_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not own this document")
 
     body, content_type = service.export_document(document, format)
     return PlainTextResponse(content=body, media_type=content_type)

@@ -376,7 +376,7 @@ pub async fn share_file(
         file_id,
         shared_with: body.shared_with,
         permission: body.permission.clone(),
-        shared_by: body.shared_by,
+        shared_by: user_id,
         created_at: Utc::now(),
     };
 

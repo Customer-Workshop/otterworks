@@ -56,6 +56,7 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
 		pr.SetURL(target)
 		pr.Out.Host = target.Host
+		pr.SetXForwarded()
 		// Strip any client-supplied identity headers to prevent spoofing
 		pr.Out.Header.Del("X-User-ID")
 		// Inject authenticated user ID from JWT claims

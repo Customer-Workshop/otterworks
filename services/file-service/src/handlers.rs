@@ -56,18 +56,9 @@ pub async fn upload_file(
     config: web::Data<AppConfig>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
-    // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
-    // Fall back to the multipart field for direct/internal callers.
-    let _header_owner_id = req
-        .headers()
-        .get("X-User-ID")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok());
-
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
     let mut content_type = String::from("application/octet-stream");
-    let mut _owner_id: Option<Uuid> = None;
     let mut folder_id: Option<Uuid> = None;
 
     while let Some(item) = payload.next().await {
@@ -98,17 +89,11 @@ pub async fn upload_file(
                 }
             }
             "owner_id" => {
-                let mut value = BytesMut::new();
+                // Ignored: owner is now determined by the authenticated user (X-User-ID).
+                // Drain the field to avoid multipart parse errors.
                 while let Some(chunk) = field.next().await {
-                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
-                    value.extend_from_slice(&data);
+                    let _ = chunk;
                 }
-                let s = String::from_utf8_lossy(&value).to_string();
-                _owner_id = Some(
-                    s.trim()
-                        .parse::<Uuid>()
-                        .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
-                );
             }
             "folder_id" => {
                 let mut value = BytesMut::new();
@@ -196,7 +181,10 @@ pub async fn get_file_metadata(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
     let file = meta.get_file(&file_id).await?;
     if file.owner_id != user_id {
-        return Err(ServiceError::Forbidden("you do not own this file".into()));
+        let share = meta.find_existing_share(&file_id, &user_id).await?;
+        if share.is_none() {
+            return Err(ServiceError::Forbidden("you do not own this file".into()));
+        }
     }
     let shares = meta.list_shares(&file_id).await.unwrap_or_default();
     Ok(HttpResponse::Ok().json(FileDetailResponse {
@@ -355,7 +343,10 @@ pub async fn download_file(
 
     let file = meta.get_file(&file_id).await?;
     if file.owner_id != user_id {
-        return Err(ServiceError::Forbidden("you do not own this file".into()));
+        let share = meta.find_existing_share(&file_id, &user_id).await?;
+        if share.is_none() {
+            return Err(ServiceError::Forbidden("you do not own this file".into()));
+        }
     }
     let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
 

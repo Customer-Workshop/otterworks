@@ -255,7 +255,7 @@ impl MetadataClient {
             }
         }
 
-        files.sort_by_key(|a| std::cmp::Reverse(a.updated_at.clone()));
+        files.sort_by_key(|a| std::cmp::Reverse(a.updated_at));
         Ok(files)
     }
 

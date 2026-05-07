@@ -13,9 +13,9 @@ use crate::middleware;
 use crate::models::{
     ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
     FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
-    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest,
-    ShareFileResponse, UpdateFolderRequest, UploadResponse,
+    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
+    MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
+    UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -524,7 +524,10 @@ pub async fn share_file(
     }
 
     // Check if share already exists for this file + user
-    if let Some(existing) = meta.find_existing_share(&file_id, &body.shared_with).await? {
+    if let Some(existing) = meta
+        .find_existing_share(&file_id, &body.shared_with)
+        .await?
+    {
         // Update permission if different, otherwise return existing
         if existing.permission != body.permission {
             let updated = FileShare {

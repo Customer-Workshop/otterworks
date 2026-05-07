@@ -248,7 +248,7 @@ async def delete_document(
     if not existing:
         raise HTTPException(status_code=404, detail="Document not found")
     _ensure_owner(existing, user_id)
-    deleted = await service.delete(document_id)
+    await service.delete(document_id)
     logger.info("document_deleted", document_id=str(document_id))
 
 

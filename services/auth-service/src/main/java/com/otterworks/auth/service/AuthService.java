@@ -76,7 +76,10 @@ public class AuthService {
       user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
       if (user.getFailedLoginAttempts() >= MAX_FAILED_ATTEMPTS) {
         user.setLockedUntil(Instant.now().plus(LOCKOUT_DURATION_MINUTES, ChronoUnit.MINUTES));
-        log.warn("Account locked after {} failed attempts: email={}", MAX_FAILED_ATTEMPTS, user.getEmail());
+        log.warn(
+            "Account locked after {} failed attempts: email={}",
+            MAX_FAILED_ATTEMPTS,
+            user.getEmail());
       }
       userRepository.save(user);
       throw new IllegalArgumentException("Invalid credentials");

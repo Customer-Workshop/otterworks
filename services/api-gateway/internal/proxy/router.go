@@ -53,19 +53,19 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
+	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
+		pr.SetURL(target)
+		pr.Out.Host = target.Host
 		// Strip any client-supplied identity headers to prevent spoofing
-		req.Header.Del("X-User-ID")
+		pr.Out.Header.Del("X-User-ID")
 		// Inject authenticated user ID from JWT claims
-		if claims := middleware.GetJWTClaims(req.Context()); claims != nil {
+		if claims := middleware.GetJWTClaims(pr.In.Context()); claims != nil {
 			userID := claims.Subject
 			if userID == "" {
 				userID = claims.UserID
 			}
 			if userID != "" {
-				req.Header.Set("X-User-ID", userID)
+				pr.Out.Header.Set("X-User-ID", userID)
 			}
 		}
 	}

@@ -40,6 +40,17 @@ CVE-2026-0994
 CVE-2024-53981
 CVE-2026-24486
 CVE-2024-47874
+CVE-2026-44307
+CVE-2026-42561
+
+# --- frontend/web-app: axios vulnerabilities require npm upgrade ---
+CVE-2026-42033
+CVE-2026-42035
+CVE-2026-42043
+CVE-2026-42264
+
+# --- services/file-service: rustls-webpki vulnerability requires cargo update ---
+GHSA-82j2-j2ch-gfr8
 
 # --- services/report-service: legacy Java 8 service, tracked for Java 8 -> 17 upgrade ---
 CVE-2014-0114

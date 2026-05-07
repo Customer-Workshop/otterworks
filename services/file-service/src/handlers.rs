@@ -34,10 +34,13 @@ pub async fn metrics() -> HttpResponse {
 }
 
 fn extract_user_id(req: &HttpRequest) -> Result<Uuid, ServiceError> {
-    let header = req.headers().get("x-user-id")
+    let header = req
+        .headers()
+        .get("x-user-id")
         .and_then(|v| v.to_str().ok())
         .ok_or_else(|| ServiceError::Unauthorized("missing X-User-ID header".into()))?;
-    header.parse::<Uuid>()
+    header
+        .parse::<Uuid>()
         .map_err(|e| ServiceError::Unauthorized(format!("invalid X-User-ID: {e}")))
 }
 

@@ -58,8 +58,7 @@ public class User {
   @Column(nullable = false)
   private int failedLoginAttempts = 0;
 
-  @Column
-  private Instant lockedUntil;
+  @Column private Instant lockedUntil;
 
   public boolean isAccountLocked() {
     return lockedUntil != null && lockedUntil.isAfter(Instant.now());

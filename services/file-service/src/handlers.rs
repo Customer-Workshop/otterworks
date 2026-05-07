@@ -1,5 +1,5 @@
 use actix_multipart::Multipart;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use bytes::BytesMut;
 use chrono::Utc;
 use futures_util::StreamExt;
@@ -33,9 +33,18 @@ pub async fn metrics() -> HttpResponse {
         .body(middleware::render_metrics())
 }
 
+fn extract_user_id(req: &HttpRequest) -> Result<Uuid, ServiceError> {
+    let header = req.headers().get("x-user-id")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| ServiceError::Unauthorized("missing X-User-ID header".into()))?;
+    header.parse::<Uuid>()
+        .map_err(|e| ServiceError::Unauthorized(format!("invalid X-User-ID: {e}")))
+}
+
 // -- File Handlers --
 
 pub async fn upload_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
@@ -45,7 +54,7 @@ pub async fn upload_file(
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
     let mut content_type = String::from("application/octet-stream");
-    let mut owner_id: Option<Uuid> = None;
+    let mut _owner_id: Option<Uuid> = None;
     let mut folder_id: Option<Uuid> = None;
 
     while let Some(item) = payload.next().await {
@@ -82,7 +91,7 @@ pub async fn upload_file(
                     value.extend_from_slice(&data);
                 }
                 let s = String::from_utf8_lossy(&value).to_string();
-                owner_id = Some(
+                _owner_id = Some(
                     s.trim()
                         .parse::<Uuid>()
                         .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
@@ -106,7 +115,7 @@ pub async fn upload_file(
         }
     }
 
-    let owner = owner_id.ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+    let owner = extract_user_id(&req)?;
 
     if file_bytes.is_empty() {
         return Err(ServiceError::BadRequest("file field is required".into()));
@@ -156,24 +165,31 @@ pub async fn upload_file(
 }
 
 pub async fn get_file_metadata(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
     let file = meta.get_file(&file_id).await?;
+    if file.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
     Ok(HttpResponse::Ok().json(file))
 }
 
 pub async fn list_files(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let include_trashed = query.include_trashed.unwrap_or(false);
     let files = meta
-        .list_files(query.folder_id, query.owner_id, include_trashed)
+        .list_files(query.folder_id, Some(user_id), include_trashed)
         .await?;
 
     let page = query.page.unwrap_or(1).max(1);
@@ -195,17 +211,22 @@ pub async fn list_files(
 }
 
 pub async fn delete_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
+    if file.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
     meta.delete_file(&file_id).await?;
     s3.delete_object(&file.s3_key).await?;
 
@@ -216,16 +237,21 @@ pub async fn delete_file(
 }
 
 pub async fn download_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
+    if file.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
     let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
 
     Ok(HttpResponse::Ok().json(DownloadResponse {
@@ -235,15 +261,22 @@ pub async fn download_file(
 }
 
 pub async fn move_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<MoveFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let existing = meta.get_file(&file_id).await?;
+    if existing.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     let file = meta.move_file(&file_id, body.folder_id).await?;
 
@@ -256,26 +289,40 @@ pub async fn move_file(
 }
 
 pub async fn list_versions(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.get_file(&file_id).await?;
+    if file.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     let versions = meta.list_versions(&file_id).await?;
     Ok(HttpResponse::Ok().json(ListVersionsResponse { versions }))
 }
 
 pub async fn trash_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let existing = meta.get_file(&file_id).await?;
+    if existing.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     let file = meta.trash_file(&file_id).await?;
     tracing::info!(file_id = %file_id, "File trashed");
@@ -283,13 +330,20 @@ pub async fn trash_file(
 }
 
 pub async fn restore_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let existing = meta.get_file(&file_id).await?;
+    if existing.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     let file = meta.restore_file(&file_id).await?;
     tracing::info!(file_id = %file_id, "File restored");
@@ -297,18 +351,22 @@ pub async fn restore_file(
 }
 
 pub async fn share_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<ShareFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    // Ensure file exists
     let file = meta.get_file(&file_id).await?;
+    if file.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this file".into()));
+    }
 
     let share = FileShare {
         id: Uuid::new_v4(),
@@ -332,15 +390,17 @@ pub async fn share_file(
 // -- Folder Handlers --
 
 pub async fn create_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     body: web::Json<CreateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let owner = extract_user_id(&req)?;
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),
         name: body.name.clone(),
         parent_id: body.parent_id,
-        owner_id: body.owner_id,
+        owner_id: owner,
         created_at: now,
         updated_at: now,
     };
@@ -364,14 +424,21 @@ pub async fn get_folder(
 }
 
 pub async fn update_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
     body: web::Json<UpdateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let folder_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
+
+    let existing = meta.get_folder(&folder_id).await?;
+    if existing.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this folder".into()));
+    }
 
     let folder = meta
         .update_folder(&folder_id, body.name.clone(), body.parent_id)
@@ -380,13 +447,20 @@ pub async fn update_folder(
 }
 
 pub async fn delete_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = extract_user_id(&req)?;
     let folder_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
+
+    let existing = meta.get_folder(&folder_id).await?;
+    if existing.owner_id != user_id {
+        return Err(ServiceError::Forbidden("you do not own this folder".into()));
+    }
 
     meta.delete_folder(&folder_id).await?;
     tracing::info!(folder_id = %folder_id, "Folder deleted");
@@ -408,5 +482,31 @@ mod tests {
     async fn test_metrics_endpoint() {
         let resp = metrics().await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[actix_rt::test]
+    async fn test_extract_user_id_missing_header() {
+        let req = actix_web::test::TestRequest::default().to_http_request();
+        let result = extract_user_id(&req);
+        assert!(result.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn test_extract_user_id_valid_header() {
+        let user_id = Uuid::new_v4();
+        let req = actix_web::test::TestRequest::default()
+            .insert_header(("x-user-id", user_id.to_string()))
+            .to_http_request();
+        let result = extract_user_id(&req);
+        assert_eq!(result.unwrap(), user_id);
+    }
+
+    #[actix_rt::test]
+    async fn test_extract_user_id_invalid_uuid() {
+        let req = actix_web::test::TestRequest::default()
+            .insert_header(("x-user-id", "not-a-uuid"))
+            .to_http_request();
+        let result = extract_user_id(&req);
+        assert!(result.is_err());
     }
 }

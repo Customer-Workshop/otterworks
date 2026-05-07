@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -51,6 +52,24 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		// Strip any client-supplied identity headers to prevent spoofing
+		req.Header.Del("X-User-ID")
+		// Inject authenticated user ID from JWT claims
+		if claims := middleware.GetJWTClaims(req.Context()); claims != nil {
+			userID := claims.Subject
+			if userID == "" {
+				userID = claims.UserID
+			}
+			if userID != "" {
+				req.Header.Set("X-User-ID", userID)
+			}
+		}
+	}
+
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		cfg.Logger.Error().
 			Err(err).

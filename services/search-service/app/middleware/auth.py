@@ -1,11 +1,19 @@
 """Authentication middleware for the search service.
 
-Public endpoints (health, metrics) are exempt. Internal indexing and admin
-endpoints require a valid service-to-service token via the
-``Authorization: Bearer <token>`` header. Search endpoints served through
-the API gateway receive user identity via the ``X-User-ID`` header
-injected by the gateway's JWT middleware — no extra token is required for
-those, but the header must be present.
+Public endpoints (health, metrics) are exempt. All other endpoints accept
+either of two authentication modes:
+
+* A valid service-to-service token via ``Authorization: Bearer <token>``
+  (used by trusted internal callers such as the SQS indexer or admin
+  reindex jobs).
+* The ``X-User-ID`` header injected by the API gateway after it has
+  validated the caller's JWT (used by user-facing requests proxied
+  through the gateway).
+
+If a service token is configured the middleware will accept it on any
+endpoint; if it is not configured (e.g. local dev), only the gateway
+identity path is available and internal endpoints become reachable only
+via the gateway.
 """
 
 from __future__ import annotations
@@ -17,22 +25,14 @@ logger = structlog.get_logger()
 
 PUBLIC_PREFIXES = ("/health", "/metrics")
 
-INTERNAL_ENDPOINTS = frozenset({
-    "index.index_document",
-    "index.index_file",
-    "index.remove_from_index",
-    "index.reindex",
-})
-
 
 def require_auth(app):
     """Register a ``before_request`` hook that enforces authentication.
 
     * Requests to health/metrics paths are always allowed.
-    * Requests to internal indexing/admin endpoints must carry a valid
-      service token in the ``Authorization`` header.
-    * Requests to search endpoints must carry the ``X-User-ID`` header
-      set by the API gateway (proving the user passed JWT validation).
+    * All other requests must present either a valid service token in
+      the ``Authorization`` header or an ``X-User-ID`` header set by
+      the API gateway after JWT validation.
     """
     auth_config = app.config["APP_CONFIG"].auth
 
@@ -45,23 +45,20 @@ def require_auth(app):
         if any(path.startswith(p) for p in PUBLIC_PREFIXES):
             return None
 
-        endpoint = request.endpoint or ""
-
-        if endpoint in INTERNAL_ENDPOINTS:
+        # Accept a valid service token if one is configured.
+        if auth_config.service_token:
             token = _extract_bearer_token()
-            if not auth_config.service_token:
-                logger.warning("auth_service_token_not_configured")
-                return jsonify({"error": "unauthorized — service token not configured"}), 401
-            if token != auth_config.service_token:
-                logger.warning("auth_rejected_internal", endpoint=endpoint)
-                return jsonify({"error": "unauthorized"}), 401
+            if token and token == auth_config.service_token:
+                return None
+
+        # Otherwise require gateway-injected user identity.
+        user_id = request.headers.get("X-User-ID", "").strip()
+        if user_id:
             return None
 
-        user_id = request.headers.get("X-User-ID", "").strip()
-        if not user_id:
-            logger.warning("auth_missing_user_id", endpoint=endpoint)
-            return jsonify({"error": "unauthorized — missing user identity"}), 401
-        return None
+        endpoint = request.endpoint or ""
+        logger.warning("auth_rejected", endpoint=endpoint, path=path)
+        return jsonify({"error": "unauthorized"}), 401
 
 
 def _extract_bearer_token() -> str:

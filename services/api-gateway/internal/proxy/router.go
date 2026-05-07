@@ -51,8 +51,7 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 		cfg.Logger.Fatal().Err(err).Str("target", route.TargetURL).Msg("invalid proxy target URL")
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	proxy.Director = nil
+	proxy := &httputil.ReverseProxy{}
 
 	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
 		pr.SetURL(target)

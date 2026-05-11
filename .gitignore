@@ -67,6 +67,10 @@ services/audit-service/bin/
 services/audit-service/obj/
 services/audit-service/**/bin/
 services/audit-service/**/obj/
+services/search-service/bin/
+services/search-service/obj/
+services/search-service/**/bin/
+services/search-service/**/obj/
 *.user
 *.suo
 

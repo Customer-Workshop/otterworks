@@ -46,6 +46,10 @@ export const routes: Routes = [
         path: 'analytics',
         loadComponent: () => import('./pages/analytics/analytics.component').then(m => m.AnalyticsComponent),
       },
+      {
+        path: 'incidents',
+        loadComponent: () => import('./pages/incidents/incidents.component').then(m => m.IncidentsComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

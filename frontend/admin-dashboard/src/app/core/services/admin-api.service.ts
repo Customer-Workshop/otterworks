@@ -13,6 +13,8 @@ import { MOCK_FEATURE_FLAGS } from './mock-data/features.mock';
 import { MOCK_ANNOUNCEMENTS } from './mock-data/announcements.mock';
 import { MOCK_SERVICE_HEALTH } from './mock-data/health.mock';
 import { MOCK_DASHBOARD_STATS, MOCK_ANALYTICS_REPORT, mockStorage, formatStorageUsed } from './mock-data/analytics.mock';
+import { Incident } from '../models/incident.model';
+import { MOCK_INCIDENTS } from './mock-data/incidents.mock';
 
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
@@ -163,5 +165,20 @@ export class AdminApiService {
   getAnalyticsReport(): Observable<AnalyticsReport> {
     // return this.http.get<AnalyticsReport>(`${this.baseUrl}/analytics/report`);
     return of(MOCK_ANALYTICS_REPORT).pipe(delay(600));
+  }
+
+  // Incidents
+  getIncidents(): Observable<Incident[]> {
+    // return this.http.get<any>(`${this.baseUrl}/admin/incidents`).pipe(map(res => res.incidents));
+    return of([...MOCK_INCIDENTS]).pipe(delay(400));
+  }
+
+  getIncident(id: string): Observable<Incident | undefined> {
+    // return this.http.get<Incident>(`${this.baseUrl}/admin/incidents/${id}`);
+    return of(MOCK_INCIDENTS.find(i => i.id === id)).pipe(delay(300));
+  }
+
+  createIncident(incident: Partial<Incident>): Observable<Incident> {
+    return this.http.post<Incident>(`${this.baseUrl}/admin/incidents`, { incident });
   }
 }

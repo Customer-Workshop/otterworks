@@ -37,6 +37,9 @@ Rails.application.routes.draw do
         # Announcements
         resources :announcements, only: %i[index show create update destroy]
 
+        # Incidents (Automated Incident Response)
+        resources :incidents, only: %i[index show create]
+
         # Bulk Operations
         post 'bulk/users', to: 'bulk#users'
       end

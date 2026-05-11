@@ -11,20 +11,18 @@ public class MeilisearchService : IMeilisearchService
     private readonly HttpClient _httpClient;
     private readonly MeilisearchSettings _settings;
     private readonly ILogger<MeilisearchService> _logger;
-    private readonly object _analyticsLock = new();
-    private readonly List<AnalyticsEntry> _queries = [];
-    private int _totalSearches;
-    private int _totalResults;
-    private const int MaxAnalyticsEntries = 10000;
+    private readonly SearchAnalyticsStore _analytics;
 
     public MeilisearchService(
         HttpClient httpClient,
         IOptions<MeilisearchSettings> settings,
-        ILogger<MeilisearchService> logger)
+        ILogger<MeilisearchService> logger,
+        SearchAnalyticsStore analytics)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _logger = logger;
+        _analytics = analytics;
     }
 
     private static string Escape(string value) =>
@@ -431,46 +429,7 @@ public class MeilisearchService : IMeilisearchService
         };
     }
 
-    public AnalyticsData GetAnalytics()
-    {
-        List<AnalyticsEntry> queries;
-        int totalSearches;
-        int totalResults;
-
-        lock (_analyticsLock)
-        {
-            queries = [.. _queries];
-            totalSearches = _totalSearches;
-            totalResults = _totalResults;
-        }
-
-        var queryCounts = new Dictionary<string, int>();
-        var zeroResultCounts = new Dictionary<string, int>();
-
-        foreach (var entry in queries)
-        {
-            queryCounts[entry.Query] = queryCounts.GetValueOrDefault(entry.Query) + 1;
-            if (entry.ResultCount == 0)
-            {
-                zeroResultCounts[entry.Query] = zeroResultCounts.GetValueOrDefault(entry.Query) + 1;
-            }
-        }
-
-        var popular = queryCounts.OrderByDescending(x => x.Value).Take(20)
-            .Select(x => new QueryCount { Query = x.Key, Count = x.Value }).ToList();
-        var zeroResults = zeroResultCounts.OrderByDescending(x => x.Value).Take(20)
-            .Select(x => new QueryCount { Query = x.Key, Count = x.Value }).ToList();
-
-        var avgResults = totalSearches > 0 ? Math.Round((double)totalResults / totalSearches, 2) : 0.0;
-
-        return new AnalyticsData
-        {
-            PopularQueries = popular,
-            ZeroResultQueries = zeroResults,
-            TotalSearches = totalSearches,
-            AvgResultsPerQuery = avgResults,
-        };
-    }
+    public AnalyticsData GetAnalytics() => _analytics.GetAnalytics();
 
     private static Dictionary<string, object?> BuildSearchParams(int page, int pageSize, List<string> filterParts, bool multiIndex)
     {
@@ -599,19 +558,7 @@ public class MeilisearchService : IMeilisearchService
         _ => [_settings.DocumentsIndex, _settings.FilesIndex],
     };
 
-    private void RecordAnalytics(string query, int resultCount)
-    {
-        lock (_analyticsLock)
-        {
-            _queries.Add(new AnalyticsEntry { Query = query, ResultCount = resultCount, Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
-            _totalSearches++;
-            _totalResults += resultCount;
-            if (_queries.Count > MaxAnalyticsEntries)
-            {
-                _queries.RemoveRange(0, _queries.Count - MaxAnalyticsEntries);
-            }
-        }
-    }
+    private void RecordAnalytics(string query, int resultCount) => _analytics.Record(query, resultCount);
 
     private async Task WaitForTaskAsync(long taskUid, int timeoutMs, CancellationToken ct)
     {
@@ -665,12 +612,5 @@ public class MeilisearchService : IMeilisearchService
                 }
             }
         }
-    }
-
-    private sealed class AnalyticsEntry
-    {
-        public string Query { get; init; } = string.Empty;
-        public int ResultCount { get; init; }
-        public long Timestamp { get; init; }
     }
 }

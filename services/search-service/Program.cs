@@ -82,6 +82,9 @@ var sqsEnabled = string.Equals(
 var sqsRegion = Environment.GetEnvironmentVariable("AWS_REGION") ?? builder.Configuration.GetSection("Sqs")["Region"] ?? "us-east-1";
 var sqsEndpoint = Environment.GetEnvironmentVariable("AWS_ENDPOINT_URL") ?? builder.Configuration.GetSection("Sqs")["EndpointUrl"];
 
+// Analytics singleton (persists across transient MeilisearchService instances)
+builder.Services.AddSingleton<OtterWorks.SearchService.Services.SearchAnalyticsStore>();
+
 // Meilisearch HTTP client
 builder.Services.AddHttpClient<IMeilisearchService, MeilisearchService>(client =>
 {

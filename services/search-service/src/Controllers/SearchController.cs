@@ -40,7 +40,7 @@ public static class SearchEndpoints
             pageNum = Math.Max(1, int.Parse(page ?? "1"));
             pageSize = Math.Max(1, Math.Min(100, int.Parse(size ?? "20")));
         }
-        catch (FormatException)
+        catch (Exception ex) when (ex is FormatException or OverflowException)
         {
             return Results.Json(new { error = "Invalid page or size parameter" }, statusCode: 400);
         }
@@ -101,7 +101,7 @@ public static class SearchEndpoints
             pageNum = Math.Max(request.Page ?? 1, 1);
             pageSize = Math.Min(Math.Max(request.Size ?? 20, 1), 100);
         }
-        catch (FormatException)
+        catch (Exception ex) when (ex is FormatException or OverflowException)
         {
             return Results.Json(new { error = "Invalid page or size parameter" }, statusCode: 400);
         }

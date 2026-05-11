@@ -45,7 +45,7 @@ public sealed class AuthService : IAuthService
         user.UserRoles = new List<UserRole> { userRole };
 
         _logger.LogInformation("User registered: email={Email}", user.Email);
-        return BuildAuthResponse(user);
+        return await BuildAuthResponseAsync(user);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
@@ -64,7 +64,7 @@ public sealed class AuthService : IAuthService
         await _db.SaveChangesAsync();
 
         _logger.LogInformation("User logged in: email={Email}", user.Email);
-        return BuildAuthResponse(user);
+        return await BuildAuthResponseAsync(user);
     }
 
     public async Task<AuthResponse> RefreshTokenAsync(string token)
@@ -90,7 +90,7 @@ public sealed class AuthService : IAuthService
             ?? throw new ArgumentException("User not found");
 
         _logger.LogInformation("Token refreshed for user: {Email}", user.Email);
-        return BuildAuthResponse(user);
+        return await BuildAuthResponseAsync(user);
     }
 
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
@@ -130,7 +130,7 @@ public sealed class AuthService : IAuthService
         _logger.LogInformation("User logged out: {UserId}", userId);
     }
 
-    private AuthResponse BuildAuthResponse(User user)
+    private async Task<AuthResponse> BuildAuthResponseAsync(User user)
     {
         var accessToken = _jwtTokenProvider.GenerateAccessToken(user);
         var refreshTokenStr = _jwtTokenProvider.GenerateRefreshToken(user);
@@ -145,7 +145,7 @@ public sealed class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
         };
         _db.RefreshTokens.Add(refreshToken);
-        _db.SaveChanges();
+        await _db.SaveChangesAsync();
 
         return new AuthResponse
         {

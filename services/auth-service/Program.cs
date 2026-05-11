@@ -27,6 +27,12 @@ builder.Host.UseSerilog();
 
 // Configuration
 var jwtSection = builder.Configuration.GetSection("Jwt");
+var jwtEnvSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+if (!string.IsNullOrEmpty(jwtEnvSecret))
+{
+    builder.Configuration["Jwt:Secret"] = jwtEnvSecret;
+}
+
 builder.Services.Configure<JwtSettings>(jwtSection);
 
 // Override connection string from env vars used in docker-compose
@@ -57,8 +63,7 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 
 // JWT Authentication
 var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
-var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? jwtSettings.Secret;
-var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret));
 
 builder.Services.AddAuthentication(options =>
 {

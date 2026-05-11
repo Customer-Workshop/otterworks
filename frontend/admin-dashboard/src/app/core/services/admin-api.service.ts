@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, delay, Subject } from 'rxjs';
+import { Observable, of, delay, Subject, map } from 'rxjs';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -14,7 +14,6 @@ import { MOCK_ANNOUNCEMENTS } from './mock-data/announcements.mock';
 import { MOCK_SERVICE_HEALTH } from './mock-data/health.mock';
 import { MOCK_DASHBOARD_STATS, MOCK_ANALYTICS_REPORT, mockStorage, formatStorageUsed } from './mock-data/analytics.mock';
 import { Incident } from '../models/incident.model';
-import { MOCK_INCIDENTS } from './mock-data/incidents.mock';
 
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
@@ -169,13 +168,11 @@ export class AdminApiService {
 
   // Incidents
   getIncidents(): Observable<Incident[]> {
-    // return this.http.get<any>(`${this.baseUrl}/admin/incidents`).pipe(map(res => res.incidents));
-    return of([...MOCK_INCIDENTS]).pipe(delay(400));
+    return this.http.get<any>(`${this.baseUrl}/admin/incidents`).pipe(map(res => res.incidents));
   }
 
-  getIncident(id: string): Observable<Incident | undefined> {
-    // return this.http.get<Incident>(`${this.baseUrl}/admin/incidents/${id}`);
-    return of(MOCK_INCIDENTS.find(i => i.id === id)).pipe(delay(300));
+  getIncident(id: string): Observable<Incident> {
+    return this.http.get<Incident>(`${this.baseUrl}/admin/incidents/${id}`);
   }
 
   createIncident(incident: Partial<Incident>): Observable<Incident> {

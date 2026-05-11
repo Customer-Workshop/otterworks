@@ -29,6 +29,7 @@ builder.Services.Configure<ServiceUrlsSettings>(serviceUrlsSection);
 var reportSettingsSection = builder.Configuration.GetSection("ReportSettings");
 builder.Services.Configure<ReportSettings>(reportSettingsSection);
 var reportSettings = reportSettingsSection.Get<ReportSettings>() ?? new ReportSettings();
+reportSettings.OutputDir = Environment.GetEnvironmentVariable("REPORT_OUTPUT_DIR") ?? reportSettings.OutputDir;
 
 // Resolve connection string with environment variable substitution
 var rawConnectionString = builder.Configuration.GetConnectionString("ReportsDb") ?? "";

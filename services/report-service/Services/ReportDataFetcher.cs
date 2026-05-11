@@ -48,7 +48,7 @@ public class ReportDataFetcher : IReportDataFetcher
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("events", out var events))
             {
                 var result = ParseJsonArray(events);
@@ -85,7 +85,7 @@ public class ReportDataFetcher : IReportDataFetcher
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("events", out var events))
             {
                 var result = ParseJsonArray(events);
@@ -115,7 +115,7 @@ public class ReportDataFetcher : IReportDataFetcher
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("activities", out var activities))
             {
                 return ParseJsonArray(activities);

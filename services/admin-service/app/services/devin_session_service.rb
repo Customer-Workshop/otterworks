@@ -3,19 +3,20 @@ require 'json'
 require 'uri'
 
 class DevinSessionService
-  API_BASE = 'https://api.devin.ai/v1'.freeze
+  API_HOST = 'https://api.devin.ai'.freeze
 
   class << self
     def create_session(incident:)
       api_key = ENV.fetch('DEVIN_API_KEY', nil)
-      unless api_key
-        Rails.logger.warn('DEVIN_API_KEY not set, skipping Devin session creation')
+      org_id  = ENV.fetch('DEVIN_ORG_ID', nil)
+      unless api_key && org_id
+        Rails.logger.warn('DEVIN_API_KEY or DEVIN_ORG_ID not set, skipping Devin session creation')
         return nil
       end
 
       prompt = build_prompt(incident)
 
-      uri = URI("#{API_BASE}/sessions")
+      uri = URI("#{API_HOST}/v3/organizations/#{org_id}/sessions")
       request = Net::HTTP::Post.new(uri)
       request['Authorization'] = "Bearer #{api_key}"
       request['Content-Type'] = 'application/json'
@@ -36,9 +37,10 @@ class DevinSessionService
 
     def get_session(session_id:)
       api_key = ENV.fetch('DEVIN_API_KEY', nil)
-      return nil unless api_key && session_id
+      org_id  = ENV.fetch('DEVIN_ORG_ID', nil)
+      return nil unless api_key && org_id && session_id
 
-      uri = URI("#{API_BASE}/session/#{session_id}")
+      uri = URI("#{API_HOST}/v3/organizations/#{org_id}/sessions/#{session_id}")
       request = Net::HTTP::Get.new(uri)
       request['Authorization'] = "Bearer #{api_key}"
 
@@ -47,7 +49,7 @@ class DevinSessionService
 
       body = JSON.parse(response.body)
       {
-        status: body['status_enum'],
+        status: body['status'] || body['status_enum'],
         url: body['url']
       }
     rescue StandardError => e

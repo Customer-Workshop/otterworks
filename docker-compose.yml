@@ -369,6 +369,7 @@ services:
       DATABASE_PASSWORD: otterworks_dev
       SECRET_KEY_BASE: dev-secret-key-base-otterworks-change-in-production
       DEVIN_API_KEY: ${DEVIN_API_KEY:-}
+      DEVIN_ORG_ID: ${DEVIN_ORG_ID:-}
     depends_on:
       postgres:
         condition: service_healthy

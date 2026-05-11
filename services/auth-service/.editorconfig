@@ -1,0 +1,25 @@
+root = true
+
+[*.cs]
+# StyleCop rules that conflict with project conventions
+dotnet_diagnostic.SA1101.severity = none
+dotnet_diagnostic.SA1200.severity = none
+dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1602.severity = none
+dotnet_diagnostic.SA1516.severity = none
+dotnet_diagnostic.SA1208.severity = none
+dotnet_diagnostic.SA1210.severity = none
+dotnet_diagnostic.SA1413.severity = none
+dotnet_diagnostic.SA1117.severity = none
+dotnet_diagnostic.SA1116.severity = none
+dotnet_diagnostic.SA1115.severity = none
+dotnet_diagnostic.SA1000.severity = none
+dotnet_diagnostic.SA1009.severity = none
+dotnet_diagnostic.SA1111.severity = none
+dotnet_diagnostic.SA1118.severity = none
+dotnet_diagnostic.SA1201.severity = none
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1869.severity = none
+dotnet_diagnostic.SA0001.severity = none

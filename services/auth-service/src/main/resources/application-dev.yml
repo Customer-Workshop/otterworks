@@ -1,8 +1,0 @@
-spring:
-  jpa:
-    show-sql: true
-
-logging:
-  level:
-    com.otterworks: DEBUG
-    org.springframework.security: INFO

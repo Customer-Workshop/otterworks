@@ -2,7 +2,7 @@ import { User, UserActivity } from '../../models/user.model';
 
 export const MOCK_USERS: User[] = [
   {
-    id: 'usr-001',
+    id: 'user-001',
     email: 'alice.johnson@otterworks.io',
     displayName: 'Alice Johnson',
     role: 'admin',
@@ -15,7 +15,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 145,
   },
   {
-    id: 'usr-002',
+    id: 'user-002',
     email: 'bob.martinez@otterworks.io',
     displayName: 'Bob Martinez',
     role: 'editor',
@@ -28,7 +28,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 87,
   },
   {
-    id: 'usr-003',
+    id: 'user-003',
     email: 'carol.chen@otterworks.io',
     displayName: 'Carol Chen',
     role: 'editor',
@@ -41,7 +41,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 234,
   },
   {
-    id: 'usr-004',
+    id: 'user-004',
     email: 'david.kim@otterworks.io',
     displayName: 'David Kim',
     role: 'viewer',
@@ -54,7 +54,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 12,
   },
   {
-    id: 'usr-005',
+    id: 'user-005',
     email: 'emily.davis@otterworks.io',
     displayName: 'Emily Davis',
     role: 'editor',
@@ -67,7 +67,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 98,
   },
   {
-    id: 'usr-006',
+    id: 'user-006',
     email: 'frank.wilson@otterworks.io',
     displayName: 'Frank Wilson',
     role: 'admin',
@@ -80,7 +80,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 312,
   },
   {
-    id: 'usr-007',
+    id: 'user-007',
     email: 'grace.lee@otterworks.io',
     displayName: 'Grace Lee',
     role: 'viewer',
@@ -93,7 +93,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 0,
   },
   {
-    id: 'usr-008',
+    id: 'user-008',
     email: 'henry.patel@otterworks.io',
     displayName: 'Henry Patel',
     role: 'editor',
@@ -106,7 +106,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 56,
   },
   {
-    id: 'usr-009',
+    id: 'user-009',
     email: 'irene.garcia@otterworks.io',
     displayName: 'Irene Garcia',
     role: 'editor',
@@ -119,7 +119,7 @@ export const MOCK_USERS: User[] = [
     documentsCount: 189,
   },
   {
-    id: 'usr-010',
+    id: 'user-010',
     email: 'james.thompson@otterworks.io',
     displayName: 'James Thompson',
     role: 'viewer',
@@ -134,16 +134,16 @@ export const MOCK_USERS: User[] = [
 ];
 
 export const MOCK_USER_ACTIVITIES: UserActivity[] = [
-  { id: 'act-001', userId: 'usr-001', action: 'Uploaded file', resource: 'Q4-Report.docx', timestamp: '2026-04-17T10:30:00Z', ipAddress: '192.168.1.10' },
-  { id: 'act-002', userId: 'usr-001', action: 'Shared document', resource: 'Budget-2026.xlsx', timestamp: '2026-04-17T09:15:00Z', ipAddress: '192.168.1.10' },
-  { id: 'act-003', userId: 'usr-001', action: 'Edited document', resource: 'Team-Notes.docx', timestamp: '2026-04-16T16:00:00Z', ipAddress: '192.168.1.10' },
-  { id: 'act-004', userId: 'usr-002', action: 'Created folder', resource: 'Marketing-Assets', timestamp: '2026-04-17T09:00:00Z', ipAddress: '10.0.0.25' },
-  { id: 'act-005', userId: 'usr-002', action: 'Uploaded file', resource: 'Campaign-Brief.pdf', timestamp: '2026-04-16T14:30:00Z', ipAddress: '10.0.0.25' },
-  { id: 'act-006', userId: 'usr-003', action: 'Downloaded file', resource: 'Design-System.fig', timestamp: '2026-04-16T16:45:00Z', ipAddress: '10.0.0.42' },
-  { id: 'act-007', userId: 'usr-003', action: 'Edited document', resource: 'UI-Guidelines.docx', timestamp: '2026-04-16T15:00:00Z', ipAddress: '10.0.0.42' },
-  { id: 'act-008', userId: 'usr-005', action: 'Shared document', resource: 'Product-Roadmap.docx', timestamp: '2026-04-17T08:20:00Z', ipAddress: '172.16.0.5' },
-  { id: 'act-009', userId: 'usr-006', action: 'Deleted file', resource: 'old-backup.zip', timestamp: '2026-04-17T12:00:00Z', ipAddress: '192.168.1.15' },
-  { id: 'act-010', userId: 'usr-008', action: 'Created document', resource: 'API-Docs-v2.md', timestamp: '2026-04-16T14:30:00Z', ipAddress: '10.0.0.80' },
-  { id: 'act-011', userId: 'usr-009', action: 'Uploaded file', resource: 'Blog-Post-Draft.docx', timestamp: '2026-04-17T11:00:00Z', ipAddress: '172.16.0.12' },
-  { id: 'act-012', userId: 'usr-001', action: 'Login', resource: 'Admin Portal', timestamp: '2026-04-17T08:00:00Z', ipAddress: '192.168.1.10' },
+  { id: 'act-001', userId: 'user-001', action: 'Uploaded file', resource: 'Q4-Report.docx', timestamp: '2026-04-17T10:30:00Z', ipAddress: '192.168.1.10' },
+  { id: 'act-002', userId: 'user-001', action: 'Shared document', resource: 'Budget-2026.xlsx', timestamp: '2026-04-17T09:15:00Z', ipAddress: '192.168.1.10' },
+  { id: 'act-003', userId: 'user-001', action: 'Edited document', resource: 'Team-Notes.docx', timestamp: '2026-04-16T16:00:00Z', ipAddress: '192.168.1.10' },
+  { id: 'act-004', userId: 'user-002', action: 'Created folder', resource: 'Marketing-Assets', timestamp: '2026-04-17T09:00:00Z', ipAddress: '10.0.0.25' },
+  { id: 'act-005', userId: 'user-002', action: 'Uploaded file', resource: 'Campaign-Brief.pdf', timestamp: '2026-04-16T14:30:00Z', ipAddress: '10.0.0.25' },
+  { id: 'act-006', userId: 'user-003', action: 'Downloaded file', resource: 'Design-System.fig', timestamp: '2026-04-16T16:45:00Z', ipAddress: '10.0.0.42' },
+  { id: 'act-007', userId: 'user-003', action: 'Edited document', resource: 'UI-Guidelines.docx', timestamp: '2026-04-16T15:00:00Z', ipAddress: '10.0.0.42' },
+  { id: 'act-008', userId: 'user-005', action: 'Shared document', resource: 'Product-Roadmap.docx', timestamp: '2026-04-17T08:20:00Z', ipAddress: '172.16.0.5' },
+  { id: 'act-009', userId: 'user-006', action: 'Deleted file', resource: 'old-backup.zip', timestamp: '2026-04-17T12:00:00Z', ipAddress: '192.168.1.15' },
+  { id: 'act-010', userId: 'user-008', action: 'Created document', resource: 'API-Docs-v2.md', timestamp: '2026-04-16T14:30:00Z', ipAddress: '10.0.0.80' },
+  { id: 'act-011', userId: 'user-009', action: 'Uploaded file', resource: 'Blog-Post-Draft.docx', timestamp: '2026-04-17T11:00:00Z', ipAddress: '172.16.0.12' },
+  { id: 'act-012', userId: 'user-001', action: 'Login', resource: 'Admin Portal', timestamp: '2026-04-17T08:00:00Z', ipAddress: '192.168.1.10' },
 ];

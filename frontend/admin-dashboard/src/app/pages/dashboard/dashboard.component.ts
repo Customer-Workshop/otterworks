@@ -3,8 +3,11 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { NgChartsModule } from 'ng2-charts';
-import { ChartConfiguration } from 'chart.js';
+import { BaseChartDirective } from 'ng2-charts';
+import { Chart, ChartConfiguration, registerables } from 'chart.js';
+
+Chart.register(...registerables);
+
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AdminApiService } from '../../core/services/admin-api.service';
@@ -13,7 +16,7 @@ import { DashboardStats } from '../../core/models/analytics.model';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, NgChartsModule],
+  imports: [CommonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, BaseChartDirective],
   template: `
     <div class="page-container">
       <h1 class="page-title">Dashboard</h1>

@@ -1,22 +1,19 @@
 @use '@angular/material' as mat;
 
-@include mat.core();
-
-$admin-primary: mat.define-palette(mat.$blue-palette);
-$admin-accent: mat.define-palette(mat.$light-blue-palette);
-$admin-warn: mat.define-palette(mat.$red-palette);
-
-$admin-theme: mat.define-light-theme((
+$admin-theme: mat.define-theme((
   color: (
-    primary: $admin-primary,
-    accent: $admin-accent,
-    warn: $admin-warn,
+    theme-type: light,
+    primary: mat.$blue-palette,
+    tertiary: mat.$cyan-palette,
   ),
-  typography: mat.define-typography-config(),
-  density: 0,
+  density: (
+    scale: 0,
+  ),
 ));
 
-@include mat.all-component-themes($admin-theme);
+html {
+  @include mat.all-component-themes($admin-theme);
+}
 
 * {
   margin: 0;

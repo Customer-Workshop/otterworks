@@ -37,8 +37,8 @@ import { Subscription, interval } from 'rxjs';
         </button>
       </div>
 
-      <!-- Status summary chips -->
-      <div class="status-summary" *ngIf="!loading">
+      <!-- Status summary chips (only show when there are incidents) -->
+      <div class="status-summary" *ngIf="!loading && incidents.length > 0">
         <div class="summary-chip active" (click)="filterStatus = filterStatus === 'active' ? '' : 'active'">
           <mat-icon>warning</mat-icon>
           <span>{{ activeCount }} Active</span>
@@ -169,13 +169,41 @@ import { Subscription, interval } from 'rxjs';
       </div>
 
       <!-- Empty state -->
-      <div *ngIf="!loading && filteredIncidents.length === 0" class="empty-state">
-        <mat-icon>check_circle_outline</mat-icon>
-        <p *ngIf="filterStatus">No {{ filterStatus }} incidents</p>
-        <p *ngIf="!filterStatus">No incidents reported</p>
-        <button mat-stroked-button color="warn" (click)="showCreateForm = true" *ngIf="!showCreateForm">
-          Report First Incident
-        </button>
+      <div *ngIf="!loading && filteredIncidents.length === 0 && filterStatus" class="empty-state">
+        <mat-icon>filter_list_off</mat-icon>
+        <p>No {{ filterStatus }} incidents</p>
+        <button mat-stroked-button (click)="filterStatus = ''">Clear Filter</button>
+      </div>
+
+      <!-- First-run onboarding (no incidents at all) -->
+      <div *ngIf="!loading && incidents.length === 0 && !filterStatus" class="onboarding">
+        <mat-card class="onboarding-card">
+          <mat-card-content>
+            <div class="onboarding-hero">
+              <mat-icon class="onboarding-icon">smart_toy</mat-icon>
+              <h2>Automated Incident Response</h2>
+              <p>Report an incident and Devin will automatically spin up a session to investigate the root cause across OtterWorks' 11 microservices.</p>
+            </div>
+            <div class="onboarding-steps">
+              <div class="step">
+                <div class="step-number">1</div>
+                <div><strong>Report an incident</strong><br>Describe the issue, select severity and affected service</div>
+              </div>
+              <div class="step">
+                <div class="step-number">2</div>
+                <div><strong>Devin session launches</strong><br>An AI session is created with full architecture context</div>
+              </div>
+              <div class="step">
+                <div class="step-number">3</div>
+                <div><strong>Track progress</strong><br>Monitor the session status and view Devin's investigation live</div>
+              </div>
+            </div>
+            <button mat-raised-button color="warn" (click)="showCreateForm = true" class="onboarding-cta">
+              <mat-icon>add_alert</mat-icon>
+              Report Your First Incident
+            </button>
+          </mat-card-content>
+        </mat-card>
       </div>
     </div>
   `,
@@ -184,14 +212,13 @@ import { Subscription, interval } from 'rxjs';
     .page-title{font-size:1.5rem;font-weight:600;color:#333;margin:0}.page-subtitle{font-size:.85rem;color:#777;margin:4px 0 0}
     .loading-container{display:flex;justify-content:center;padding:60px}
     .status-summary{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
-    .summary-chip{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.85rem;font-weight:500;cursor:pointer}
-    .summary-chip .mat-icon{font-size:18px;width:18px;height:18px}
+    .summary-chip{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.85rem;cursor:pointer}
     .summary-chip.active{background:#fff3e0;color:#e65100}.summary-chip.investigating{background:#e3f2fd;color:#1565c0}.summary-chip.resolved{background:#e8f5e9;color:#2e7d32}
     .create-form{margin-bottom:24px;border-left:4px solid #f44336}.create-form mat-card-title{display:flex;align-items:center;gap:8px}
     .full-width{width:100%}.form-row{display:flex;gap:16px}
     .incidents-list{display:flex;flex-direction:column;gap:16px}
     .incident-card{border-left:4px solid transparent}.severity-border-low{border-left-color:#4caf50}.severity-border-medium{border-left-color:#2196f3}.severity-border-high{border-left-color:#ff9800}.severity-border-critical{border-left-color:#f44336}
-    .incident-header{display:flex;justify-content:space-between;align-items:flex-start}.incident-info{flex:1}
+    .incident-header{display:flex;justify-content:space-between;align-items:flex-start}
     .incident-title-row h3{margin:0 0 8px;font-size:1.05rem}.incident-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .severity-chip,.status-chip,.service-chip{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:.7rem;font-weight:600;text-transform:uppercase}
     .chip-icon{font-size:13px;width:13px;height:13px}
@@ -201,7 +228,7 @@ import { Subscription, interval } from 'rxjs';
     .incident-description{color:#555;line-height:1.6;margin:16px 0;font-size:.9rem}
     .devin-session{background:#f8f9ff;border:1px solid #e0e7ff;border-radius:8px;padding:12px 16px;margin:12px 0}
     .devin-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-    .devin-icon{color:#1565c0;font-size:20px;width:20px;height:20px}.devin-label{font-weight:600;font-size:.85rem;color:#333}
+    .devin-icon{color:#1565c0}.devin-label{font-weight:600;font-size:.85rem;color:#333}
     .devin-status{padding:2px 8px;border-radius:12px;font-size:.7rem;font-weight:600;text-transform:uppercase}
     .devin-running{background:#e3f2fd;color:#1565c0}.devin-stopped{background:#e8f5e9;color:#2e7d32}.devin-failed{background:#ffebee;color:#c62828}.devin-unknown{background:#eceff1;color:#546e7a}.devin-blocked{background:#fff3e0;color:#e65100}
     .devin-details{display:flex;align-items:center;gap:16px;font-size:.8rem}
@@ -212,6 +239,13 @@ import { Subscription, interval } from 'rxjs';
     .incident-meta{display:flex;gap:16px;font-size:.8rem;color:#999;flex-wrap:wrap;margin-top:8px}
     .empty-state{display:flex;flex-direction:column;align-items:center;padding:60px;color:#999}
     .empty-state .mat-icon{font-size:48px;width:48px;height:48px;margin-bottom:12px}
+    .onboarding-card{max-width:640px;margin:0 auto}
+    .onboarding-hero{text-align:center;margin-bottom:24px}
+    .onboarding-icon{font-size:56px;width:56px;height:56px;color:#1565c0}
+    .onboarding-hero h2{margin:0 0 8px;font-size:1.3rem}.onboarding-hero p{color:#666;line-height:1.5;margin:0}
+    .onboarding-steps{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}
+    .step{display:flex;gap:12px}.step-number{min-width:28px;height:28px;border-radius:50%;background:#1565c0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem}
+    .onboarding-cta{margin:0 auto}
   `],
 })
 export class IncidentsComponent implements OnInit, OnDestroy {

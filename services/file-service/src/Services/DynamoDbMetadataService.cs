@@ -539,11 +539,18 @@ public class DynamoDbMetadataService : IMetadataService
             },
         };
 
-        var response = await _dynamoDb.ScanAsync(request);
-        if (response.Items.Count > 0)
+        ScanResponse response;
+        do
         {
-            return ParseFileShare(response.Items[0]);
+            response = await _dynamoDb.ScanAsync(request);
+            if (response.Items.Count > 0)
+            {
+                return ParseFileShare(response.Items[0]);
+            }
+
+            request.ExclusiveStartKey = response.LastEvaluatedKey;
         }
+        while (response.LastEvaluatedKey != null && response.LastEvaluatedKey.Count > 0);
 
         return null;
     }

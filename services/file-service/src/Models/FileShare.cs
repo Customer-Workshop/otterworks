@@ -14,7 +14,7 @@ public class FileShare
     public Guid SharedWith { get; set; }
 
     [JsonPropertyName("permission")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<SharePermission>))]
     public SharePermission Permission { get; set; }
 
     [JsonPropertyName("shared_by")]
@@ -24,9 +24,12 @@ public class FileShare
     public DateTime CreatedAt { get; set; }
 }
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
+[JsonConverter(typeof(JsonStringEnumConverter<SharePermission>))]
 public enum SharePermission
 {
+    [JsonStringEnumMemberName("viewer")]
     Viewer,
+
+    [JsonStringEnumMemberName("editor")]
     Editor,
 }

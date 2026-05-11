@@ -46,7 +46,7 @@ public class ModelTests
         };
 
         var json = JsonSerializer.Serialize(share);
-        Assert.Contains("\"Viewer\"", json);
+        Assert.Contains("\"viewer\"", json);
     }
 
     [Fact]

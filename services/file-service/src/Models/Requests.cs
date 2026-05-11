@@ -20,7 +20,7 @@ public class ShareFileRequest
     public Guid SharedWith { get; set; }
 
     [JsonPropertyName("permission")]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<SharePermission>))]
     public SharePermission Permission { get; set; }
 
     [JsonPropertyName("shared_by")]

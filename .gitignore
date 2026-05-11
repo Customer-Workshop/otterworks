@@ -67,6 +67,10 @@ services/audit-service/bin/
 services/audit-service/obj/
 services/audit-service/**/bin/
 services/audit-service/**/obj/
+services/notification-service/bin/
+services/notification-service/obj/
+services/notification-service/**/bin/
+services/notification-service/**/obj/
 *.user
 *.suo
 

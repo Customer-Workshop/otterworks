@@ -15,9 +15,11 @@ Thumbs.db
 .env.production
 *.env
 
-# --- Go ---
+# --- C# (api-gateway) ---
 services/api-gateway/bin/
-services/api-gateway/vendor/
+services/api-gateway/obj/
+services/api-gateway/**/bin/
+services/api-gateway/**/obj/
 
 # --- Java ---
 services/auth-service/build/

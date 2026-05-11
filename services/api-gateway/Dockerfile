@@ -1,20 +1,22 @@
-FROM golang:1.22-alpine AS builder
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
 WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
+COPY ApiGateway.csproj global.json ./
+RUN dotnet restore ApiGateway.csproj
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/server ./cmd/server
+RUN dotnet publish ApiGateway.csproj -c Release -o /app/publish --no-restore
 
-FROM alpine:3.19
-RUN apk --no-cache add ca-certificates wget
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY --from=builder /bin/server /app/server
+COPY --from=builder /app/publish .
 
-RUN adduser -D -u 1001 appuser
+RUN useradd -u 1001 -m appuser
 USER appuser
 
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s CMD wget --spider -q http://localhost:8080/health || exit 1
-ENTRYPOINT ["/app/server"]
+HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8080/health || exit 1
+ENTRYPOINT ["dotnet", "ApiGateway.dll"]

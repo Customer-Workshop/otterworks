@@ -1,0 +1,51 @@
+[*.cs]
+# SA1101: Prefix local calls with this
+dotnet_diagnostic.SA1101.severity = none
+
+# SA1200: Using directive should appear within a namespace declaration
+dotnet_diagnostic.SA1200.severity = none
+
+# SA1309: Field names should not begin with underscore
+dotnet_diagnostic.SA1309.severity = none
+
+# SA1516: Elements should be separated by blank line
+dotnet_diagnostic.SA1516.severity = none
+
+# SA1633: File should have header
+dotnet_diagnostic.SA1633.severity = none
+
+# SA0001: XML comment analysis is disabled
+dotnet_diagnostic.SA0001.severity = none
+
+# SA1000: Keywords should be spaced correctly (new())
+dotnet_diagnostic.SA1000.severity = none
+
+# SA1116: Split parameters should begin on line after declaration
+dotnet_diagnostic.SA1116.severity = none
+
+# SA1117: Parameters should be on same line or each on own line
+dotnet_diagnostic.SA1117.severity = none
+
+# SA1201: Elements should appear in the correct order
+dotnet_diagnostic.SA1201.severity = none
+
+# SA1204: Static members should appear before non-static members
+dotnet_diagnostic.SA1204.severity = none
+
+# SA1649: File name should match first type name
+dotnet_diagnostic.SA1649.severity = none
+
+# CA1848: Use LoggerMessage delegates
+dotnet_diagnostic.CA1848.severity = none
+
+# CA1852: Seal internal types
+dotnet_diagnostic.CA1852.severity = none
+
+# SA1010: Opening square brackets (collection expression syntax)
+dotnet_diagnostic.SA1010.severity = none
+
+# SA1202: Elements should be ordered by access
+dotnet_diagnostic.SA1202.severity = none
+
+# SA1518: Code should not contain blank lines at end of file
+dotnet_diagnostic.SA1518.severity = none

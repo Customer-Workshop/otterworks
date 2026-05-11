@@ -1,7 +1,5 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Options;
-using OtterWorks.ReportService.Config;
 using OtterWorks.ReportService.Util;
 
 namespace OtterWorks.ReportService.Services;
@@ -10,19 +8,16 @@ public class ReportDataFetcher : IReportDataFetcher
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
-    private readonly ServiceUrlsSettings _serviceUrls;
     private readonly ILogger<ReportDataFetcher> _logger;
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(5);
 
     public ReportDataFetcher(
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
-        IOptions<ServiceUrlsSettings> serviceUrls,
         ILogger<ReportDataFetcher> logger)
     {
         _httpClientFactory = httpClientFactory;
         _cache = cache;
-        _serviceUrls = serviceUrls.Value;
         _logger = logger;
     }
 
@@ -40,7 +35,7 @@ public class ReportDataFetcher : IReportDataFetcher
 
         try
         {
-            var url = $"{_serviceUrls.Analytics}/api/v1/analytics/events?from={ReportDateUtils.ToIsoString(dateFrom)}&to={ReportDateUtils.ToIsoString(dateTo)}";
+            var url = $"/api/v1/analytics/events?from={ReportDateUtils.ToIsoString(dateFrom)}&to={ReportDateUtils.ToIsoString(dateTo)}";
             if (!string.IsNullOrWhiteSpace(metric))
             {
                 url += $"&metric={metric}";
@@ -82,7 +77,7 @@ public class ReportDataFetcher : IReportDataFetcher
 
         try
         {
-            var url = $"{_serviceUrls.Audit}/api/v1/audit/events?from={ReportDateUtils.ToIsoString(dateFrom)}&to={ReportDateUtils.ToIsoString(dateTo)}";
+            var url = $"/api/v1/audit/events?from={ReportDateUtils.ToIsoString(dateFrom)}&to={ReportDateUtils.ToIsoString(dateTo)}";
             _logger.LogInformation("Fetching audit data from: {Url}", url);
 
             var client = _httpClientFactory.CreateClient("audit");
@@ -112,7 +107,7 @@ public class ReportDataFetcher : IReportDataFetcher
     {
         try
         {
-            var url = $"{_serviceUrls.Auth}/api/v1/users/activity?from={ReportDateUtils.ToIsoString(dateFrom)}&to={ReportDateUtils.ToIsoString(dateTo)}";
+            var url = $"/api/v1/users/activity?from={ReportDateUtils.ToIsoString(dateFrom)}&to={ReportDateUtils.ToIsoString(dateTo)}";
             _logger.LogInformation("Fetching user activity from: {Url}", url);
 
             var client = _httpClientFactory.CreateClient("auth");

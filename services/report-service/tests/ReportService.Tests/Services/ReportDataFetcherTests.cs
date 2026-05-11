@@ -3,10 +3,8 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
-using OtterWorks.ReportService.Config;
 using OtterWorks.ReportService.Services;
 
 namespace ReportService.Tests.Services;
@@ -21,14 +19,8 @@ public class ReportDataFetcherTests
     {
         _httpClientFactory = new Mock<IHttpClientFactory>();
         _cache = new MemoryCache(new MemoryCacheOptions());
-        var serviceUrls = Options.Create(new ServiceUrlsSettings
-        {
-            Analytics = "http://analytics:8088",
-            Audit = "http://audit:8090",
-            Auth = "http://auth:8081"
-        });
         var logger = new Mock<ILogger<ReportDataFetcher>>();
-        _fetcher = new ReportDataFetcher(_httpClientFactory.Object, _cache, serviceUrls, logger.Object);
+        _fetcher = new ReportDataFetcher(_httpClientFactory.Object, _cache, logger.Object);
     }
 
     private void SetupHttpClient(string clientName, HttpStatusCode statusCode, string responseContent)

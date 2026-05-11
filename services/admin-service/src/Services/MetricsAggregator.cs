@@ -50,7 +50,7 @@ public class MetricsAggregator : IMetricsAggregator
         var totalAllocated = await quotas.SumAsync(q => q.QuotaBytes);
         var totalUsed = await quotas.SumAsync(q => q.UsedBytes);
         var count = await quotas.CountAsync();
-        var avgUsage = count == 0 ? 0 : await quotas.AverageAsync(q => (double)q.UsedBytes / q.QuotaBytes * 100);
+        var avgUsage = count == 0 ? 0 : await quotas.Where(q => q.QuotaBytes > 0).AverageAsync(q => (double)q.UsedBytes / q.QuotaBytes * 100);
 
         return new StorageMetrics
         {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using OtterWorks.AdminService.Data;
 using OtterWorks.AdminService.Models.Dto;
 using OtterWorks.AdminService.Services;
 
@@ -8,15 +9,30 @@ namespace OtterWorks.AdminService.Controllers;
 public class HealthController : ControllerBase
 {
     private readonly IHealthChecker _healthChecker;
+    private readonly AdminDbContext _context;
 
-    public HealthController(IHealthChecker healthChecker)
+    public HealthController(IHealthChecker healthChecker, AdminDbContext context)
     {
         _healthChecker = healthChecker;
+        _context = context;
     }
 
     [HttpGet("/health")]
-    public IActionResult GetHealth()
+    public async Task<IActionResult> GetHealth()
     {
+        try
+        {
+            var canConnect = await _context.Database.CanConnectAsync();
+            if (!canConnect)
+            {
+                return StatusCode(503, new HealthResponse { Status = "degraded" });
+            }
+        }
+        catch
+        {
+            return StatusCode(503, new HealthResponse { Status = "degraded" });
+        }
+
         return Ok(new HealthResponse());
     }
 

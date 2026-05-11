@@ -9,12 +9,13 @@ namespace OtterWorks.AdminService.Tests.Unit.Controllers;
 public class HealthControllerTests
 {
     [Fact]
-    public void GetHealth_ReturnsHealthyStatus()
+    public async Task GetHealth_ReturnsHealthyStatus()
     {
         var healthChecker = Mock.Of<IHealthChecker>();
-        var controller = new HealthController(healthChecker);
+        using var context = TestDbContext.Create();
+        var controller = new HealthController(healthChecker, context);
 
-        var result = controller.GetHealth() as OkObjectResult;
+        var result = await controller.GetHealth() as OkObjectResult;
 
         Assert.NotNull(result);
         var response = result.Value as HealthResponse;

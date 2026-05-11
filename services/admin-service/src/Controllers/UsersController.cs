@@ -36,7 +36,8 @@ public class UsersController : ControllerBase
 
         if (!string.IsNullOrEmpty(q))
         {
-            scope = scope.Where(u => EF.Functions.ILike(u.Email, $"%{q}%") || EF.Functions.ILike(u.DisplayName, $"%{q}%"));
+            var escaped = EscapeLikePattern(q);
+            scope = scope.Where(u => EF.Functions.ILike(u.Email, $"%{escaped}%") || EF.Functions.ILike(u.DisplayName, $"%{escaped}%"));
         }
 
         if (!string.IsNullOrEmpty(role))
@@ -234,6 +235,14 @@ public class UsersController : ControllerBase
     private string? GetCurrentUserEmail()
     {
         return HttpContext.Items["jwt.user_email"] as string;
+    }
+
+    private static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
     }
 
     private static List<string> ValidateUser(AdminUser user)

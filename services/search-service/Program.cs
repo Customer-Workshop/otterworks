@@ -128,6 +128,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Port binding (must be before Build())
+int port = settings.Port;
+string? portEnv = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var envPort))
+    port = envPort;
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 var app = builder.Build();
 
 // Security headers
@@ -177,13 +184,6 @@ catch (Exception ex)
 {
     Log.Warning(ex, "MeiliSearch indices creation deferred: MeiliSearch not available");
 }
-
-int port = settings.Port;
-string? portEnv = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var envPort))
-    port = envPort;
-
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 app.Run();
 

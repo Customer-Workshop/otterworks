@@ -214,9 +214,9 @@ public class IndexerService : IIndexerService
                     {
                         ["id"] = GetJsonStr(item, "id"),
                         ["name"] = GetJsonStr(item, "name"),
-                        ["mime_type"] = GetJsonStr(item, "mime_type") ?? GetJsonStr(item, "mimeType"),
-                        ["owner_id"] = GetJsonStr(item, "owner_id") ?? GetJsonStr(item, "ownerId"),
-                        ["folder_id"] = GetJsonStr(item, "folder_id") ?? GetJsonStr(item, "folderId"),
+                        ["mime_type"] = GetJsonStrOrNull(item, "mime_type") ?? GetJsonStr(item, "mimeType"),
+                        ["owner_id"] = GetJsonStrOrNull(item, "owner_id") ?? GetJsonStr(item, "ownerId"),
+                        ["folder_id"] = GetJsonStrOrNull(item, "folder_id") ?? GetJsonStr(item, "folderId"),
                         ["tags"] = GetJsonStrArray(item, "tags"),
                         ["size"] = GetJsonInt(item, "size") ?? GetJsonInt(item, "size_bytes") ?? GetJsonInt(item, "sizeBytes") ?? 0,
                         ["created_at"] = GetJsonStrOrNull(item, "created_at") ?? GetJsonStrOrNull(item, "createdAt"),

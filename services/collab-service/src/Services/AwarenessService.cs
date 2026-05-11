@@ -15,6 +15,7 @@ public class AwarenessService : IAwarenessService
     private readonly Dictionary<string, AwarenessState> states = new();
     private readonly Dictionary<string, (string DocumentId, string UserId)> connectionToDocument = new();
     private readonly ILogger<AwarenessService> logger;
+    private readonly object syncLock = new();
     private int colorIndex;
 
     public AwarenessService(ILogger<AwarenessService> logger)
@@ -24,216 +25,246 @@ public class AwarenessService : IAwarenessService
 
     public UserAwareness AddUser(string documentId, string connectionId, string userId, string displayName, string email)
     {
-        if (!states.TryGetValue(documentId, out AwarenessState? state))
+        lock (syncLock)
         {
-            state = new AwarenessState { DocumentId = documentId };
-            states[documentId] = state;
-        }
-
-        var awareness = new UserAwareness
-        {
-            UserId = userId,
-            DisplayName = displayName,
-            Email = email,
-            Color = AssignColor(),
-            Cursor = null,
-            Selection = null,
-            IsTyping = false,
-            LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-        };
-
-        if (connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) oldMapping)
-            && oldMapping.DocumentId != documentId)
-        {
-            if (states.TryGetValue(oldMapping.DocumentId, out AwarenessState? oldState))
+            if (!states.TryGetValue(documentId, out AwarenessState? state))
             {
-                oldState.Users.Remove(connectionId);
-                if (oldState.Users.Count == 0)
-                {
-                    states.Remove(oldMapping.DocumentId);
-                }
+                state = new AwarenessState { DocumentId = documentId };
+                states[documentId] = state;
             }
 
-            logger.LogDebug(
-                "Awareness socket moved: {OldDocId} -> {NewDocId} ({ConnectionId})",
-                oldMapping.DocumentId,
-                documentId,
-                connectionId);
+            var awareness = new UserAwareness
+            {
+                UserId = userId,
+                DisplayName = displayName,
+                Email = email,
+                Color = AssignColor(),
+                Cursor = null,
+                Selection = null,
+                IsTyping = false,
+                LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            };
+
+            if (connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) oldMapping)
+                && oldMapping.DocumentId != documentId)
+            {
+                if (states.TryGetValue(oldMapping.DocumentId, out AwarenessState? oldState))
+                {
+                    oldState.Users.Remove(connectionId);
+                    if (oldState.Users.Count == 0)
+                    {
+                        states.Remove(oldMapping.DocumentId);
+                    }
+                }
+
+                logger.LogDebug(
+                    "Awareness socket moved: {OldDocId} -> {NewDocId} ({ConnectionId})",
+                    oldMapping.DocumentId,
+                    documentId,
+                    connectionId);
+            }
+
+            state.Users[connectionId] = awareness;
+            connectionToDocument[connectionId] = (documentId, userId);
+
+            logger.LogDebug("Awareness user added: {DocumentId} {ConnectionId} {UserId}", documentId, connectionId, userId);
+
+            return awareness;
         }
-
-        state.Users[connectionId] = awareness;
-        connectionToDocument[connectionId] = (documentId, userId);
-
-        logger.LogDebug("Awareness user added: {DocumentId} {ConnectionId} {UserId}", documentId, connectionId, userId);
-
-        return awareness;
     }
 
     public (string DocumentId, string UserId)? RemoveUser(string connectionId)
     {
-        if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+        lock (syncLock)
         {
-            return null;
-        }
-
-        if (states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
-        {
-            state.Users.Remove(connectionId);
-            if (state.Users.Count == 0)
+            if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
             {
-                states.Remove(mapping.DocumentId);
+                return null;
             }
+
+            if (states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
+            {
+                state.Users.Remove(connectionId);
+                if (state.Users.Count == 0)
+                {
+                    states.Remove(mapping.DocumentId);
+                }
+            }
+
+            connectionToDocument.Remove(connectionId);
+
+            logger.LogDebug("Awareness user removed: {DocumentId} {ConnectionId} {UserId}", mapping.DocumentId, connectionId, mapping.UserId);
+
+            return mapping;
         }
-
-        connectionToDocument.Remove(connectionId);
-
-        logger.LogDebug("Awareness user removed: {DocumentId} {ConnectionId} {UserId}", mapping.DocumentId, connectionId, mapping.UserId);
-
-        return mapping;
     }
 
     public UserAwareness? UpdateCursor(string connectionId, CursorPosition? cursor, CursorPosition? selection)
     {
-        if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+        lock (syncLock)
         {
-            return null;
+            if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+            {
+                return null;
+            }
+
+            if (!states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
+            {
+                return null;
+            }
+
+            if (!state.Users.TryGetValue(connectionId, out UserAwareness? awareness))
+            {
+                return null;
+            }
+
+            awareness.Cursor = cursor;
+            awareness.Selection = selection;
+            awareness.LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            return awareness;
         }
-
-        if (!states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
-        {
-            return null;
-        }
-
-        if (!state.Users.TryGetValue(connectionId, out UserAwareness? awareness))
-        {
-            return null;
-        }
-
-        awareness.Cursor = cursor;
-        awareness.Selection = selection;
-        awareness.LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-        return awareness;
     }
 
     public UserAwareness? SetTyping(string connectionId, bool isTyping)
     {
-        if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+        lock (syncLock)
         {
-            return null;
+            if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+            {
+                return null;
+            }
+
+            if (!states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
+            {
+                return null;
+            }
+
+            if (!state.Users.TryGetValue(connectionId, out UserAwareness? awareness))
+            {
+                return null;
+            }
+
+            awareness.IsTyping = isTyping;
+            awareness.LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            return awareness;
         }
-
-        if (!states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
-        {
-            return null;
-        }
-
-        if (!state.Users.TryGetValue(connectionId, out UserAwareness? awareness))
-        {
-            return null;
-        }
-
-        awareness.IsTyping = isTyping;
-        awareness.LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-        return awareness;
     }
 
     public List<UserAwareness> GetDocumentUsers(string documentId)
     {
-        if (!states.TryGetValue(documentId, out AwarenessState? state))
+        lock (syncLock)
         {
-            return [];
-        }
+            if (!states.TryGetValue(documentId, out AwarenessState? state))
+            {
+                return [];
+            }
 
-        return state.Users.Values.ToList();
+            return state.Users.Values.ToList();
+        }
     }
 
     public int GetDocumentUserCount(string documentId)
     {
-        if (!states.TryGetValue(documentId, out AwarenessState? state))
+        lock (syncLock)
         {
-            return 0;
-        }
+            if (!states.TryGetValue(documentId, out AwarenessState? state))
+            {
+                return 0;
+            }
 
-        return state.Users.Count;
+            return state.Users.Count;
+        }
     }
 
     public string? GetUserDocument(string connectionId)
     {
-        return connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping)
-            ? mapping.DocumentId
-            : null;
+        lock (syncLock)
+        {
+            return connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping)
+                ? mapping.DocumentId
+                : null;
+        }
     }
 
     public List<string> GetActiveDocumentIds()
     {
-        return states.Keys.ToList();
+        lock (syncLock)
+        {
+            return states.Keys.ToList();
+        }
     }
 
     public bool RefreshActivity(string connectionId)
     {
-        if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+        lock (syncLock)
         {
-            return false;
-        }
+            if (!connectionToDocument.TryGetValue(connectionId, out (string DocumentId, string UserId) mapping))
+            {
+                return false;
+            }
 
-        if (!states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
-        {
-            return false;
-        }
+            if (!states.TryGetValue(mapping.DocumentId, out AwarenessState? state))
+            {
+                return false;
+            }
 
-        if (!state.Users.TryGetValue(connectionId, out UserAwareness? awareness))
-        {
-            return false;
-        }
+            if (!state.Users.TryGetValue(connectionId, out UserAwareness? awareness))
+            {
+                return false;
+            }
 
-        awareness.LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        return true;
+            awareness.LastActive = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            return true;
+        }
     }
 
     public List<(string ConnectionId, string DocumentId, string UserId)> CleanupStaleUsers(long maxIdleMs)
     {
-        var removed = new List<(string ConnectionId, string DocumentId, string UserId)>();
-        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var emptyDocuments = new List<string>();
-
-        foreach ((string documentId, AwarenessState state) in states)
+        lock (syncLock)
         {
-            var staleConnections = new List<string>();
+            var removed = new List<(string ConnectionId, string DocumentId, string UserId)>();
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var emptyDocuments = new List<string>();
 
-            foreach ((string connId, UserAwareness awareness) in state.Users)
+            foreach ((string documentId, AwarenessState state) in states)
             {
-                if (now - awareness.LastActive > maxIdleMs)
+                var staleConnections = new List<string>();
+
+                foreach ((string connId, UserAwareness awareness) in state.Users)
                 {
-                    staleConnections.Add(connId);
-                    removed.Add((connId, documentId, awareness.UserId));
+                    if (now - awareness.LastActive > maxIdleMs)
+                    {
+                        staleConnections.Add(connId);
+                        removed.Add((connId, documentId, awareness.UserId));
+                    }
+                }
+
+                foreach (string connId in staleConnections)
+                {
+                    state.Users.Remove(connId);
+                    connectionToDocument.Remove(connId);
+                }
+
+                if (state.Users.Count == 0)
+                {
+                    emptyDocuments.Add(documentId);
                 }
             }
 
-            foreach (string connId in staleConnections)
+            foreach (string docId in emptyDocuments)
             {
-                state.Users.Remove(connId);
-                connectionToDocument.Remove(connId);
+                states.Remove(docId);
             }
 
-            if (state.Users.Count == 0)
+            if (removed.Count > 0)
             {
-                emptyDocuments.Add(documentId);
+                logger.LogInformation("Awareness stale users cleaned: {Count}", removed.Count);
             }
-        }
 
-        foreach (string docId in emptyDocuments)
-        {
-            states.Remove(docId);
+            return removed;
         }
-
-        if (removed.Count > 0)
-        {
-            logger.LogInformation("Awareness stale users cleaned: {Count}", removed.Count);
-        }
-
-        return removed;
     }
 
     private string AssignColor()

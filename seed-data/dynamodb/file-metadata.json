@@ -1,0 +1,84 @@
+{
+  "otterworks-file-metadata": [
+    {
+      "id": {"S": "file-0001"}, "fileName": {"S": "otter-population-survey-q1.pdf"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000011"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000008"},
+      "mimeType": {"S": "application/pdf"}, "sizeBytes": {"N": "4521984"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000011/otter-population-survey-q1.pdf"},
+      "version": {"N": "1"}, "status": {"S": "active"}, "createdAt": {"S": "2026-03-15T09:00:00Z"}, "updatedAt": {"S": "2026-03-15T09:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0002"}, "fileName": {"S": "river-basin-topology.png"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000013"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000009"},
+      "mimeType": {"S": "image/png"}, "sizeBytes": {"N": "2345678"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000013/river-basin-topology.png"},
+      "version": {"N": "3"}, "status": {"S": "active"}, "createdAt": {"S": "2025-11-20T14:00:00Z"}, "updatedAt": {"S": "2026-04-10T08:30:00Z"}
+    },
+    {
+      "id": {"S": "file-0003"}, "fileName": {"S": "kelp-forest-mockups-v2.fig"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000009"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000007"},
+      "mimeType": {"S": "application/octet-stream"}, "sizeBytes": {"N": "18743296"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000009/kelp-forest-mockups-v2.fig"},
+      "version": {"N": "2"}, "status": {"S": "active"}, "createdAt": {"S": "2026-02-10T10:00:00Z"}, "updatedAt": {"S": "2026-04-22T16:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0004"}, "fileName": {"S": "dam-construction-standards.docx"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000001"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000001"},
+      "mimeType": {"S": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}, "sizeBytes": {"N": "892416"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000001/dam-construction-standards.docx"},
+      "version": {"N": "5"}, "status": {"S": "active"}, "createdAt": {"S": "2025-06-15T08:00:00Z"}, "updatedAt": {"S": "2026-05-01T11:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0005"}, "fileName": {"S": "sprint-tidepool-34-recording.mp4"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000007"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000006"},
+      "mimeType": {"S": "video/mp4"}, "sizeBytes": {"N": "156237824"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000007/sprint-tidepool-34-recording.mp4"},
+      "version": {"N": "1"}, "status": {"S": "active"}, "createdAt": {"S": "2026-04-28T12:00:00Z"}, "updatedAt": {"S": "2026-04-28T12:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0006"}, "fileName": {"S": "quarterly-fish-consumption-report.xlsx"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000012"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000008"},
+      "mimeType": {"S": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}, "sizeBytes": {"N": "1245184"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000012/quarterly-fish-consumption-report.xlsx"},
+      "version": {"N": "2"}, "status": {"S": "active"}, "createdAt": {"S": "2026-04-01T09:00:00Z"}, "updatedAt": {"S": "2026-04-30T10:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0007"}, "fileName": {"S": "predator-threat-assessment.pdf"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000016"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000010"},
+      "mimeType": {"S": "application/pdf"}, "sizeBytes": {"N": "3678208"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000016/predator-threat-assessment.pdf"},
+      "version": {"N": "4"}, "status": {"S": "active"}, "createdAt": {"S": "2025-09-01T08:00:00Z"}, "updatedAt": {"S": "2026-04-15T14:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0008"}, "fileName": {"S": "ripple-ui-component-library.zip"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000009"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000007"},
+      "mimeType": {"S": "application/zip"}, "sizeBytes": {"N": "8923648"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000009/ripple-ui-component-library.zip"},
+      "version": {"N": "6"}, "status": {"S": "active"}, "createdAt": {"S": "2025-07-10T10:00:00Z"}, "updatedAt": {"S": "2026-05-02T09:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0009"}, "fileName": {"S": "terraform-riverbed-modules.tar.gz"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000014"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000009"},
+      "mimeType": {"S": "application/gzip"}, "sizeBytes": {"N": "5432100"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000014/terraform-riverbed-modules.tar.gz"},
+      "version": {"N": "8"}, "status": {"S": "active"}, "createdAt": {"S": "2025-10-01T08:00:00Z"}, "updatedAt": {"S": "2026-04-20T11:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0010"}, "fileName": {"S": "otter-pup-onboarding-slides.pptx"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000024"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000011"},
+      "mimeType": {"S": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}, "sizeBytes": {"N": "12456789"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000024/otter-pup-onboarding-slides.pptx"},
+      "version": {"N": "11"}, "status": {"S": "active"}, "createdAt": {"S": "2024-07-15T09:00:00Z"}, "updatedAt": {"S": "2026-04-01T10:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0011"}, "fileName": {"S": "grafana-dashboard-export.json"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000015"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000009"},
+      "mimeType": {"S": "application/json"}, "sizeBytes": {"N": "234567"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000015/grafana-dashboard-export.json"},
+      "version": {"N": "2"}, "status": {"S": "active"}, "createdAt": {"S": "2026-03-20T14:00:00Z"}, "updatedAt": {"S": "2026-04-25T08:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0012"}, "fileName": {"S": "soc2-evidence-bundle-2026.zip"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000017"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000010"},
+      "mimeType": {"S": "application/zip"}, "sizeBytes": {"N": "45678912"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000017/soc2-evidence-bundle-2026.zip"},
+      "version": {"N": "1"}, "status": {"S": "active"}, "createdAt": {"S": "2026-05-01T09:00:00Z"}, "updatedAt": {"S": "2026-05-01T09:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0013"}, "fileName": {"S": "all-hands-may-2026-agenda.pdf"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000025"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000012"},
+      "mimeType": {"S": "application/pdf"}, "sizeBytes": {"N": "567890"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000025/all-hands-may-2026-agenda.pdf"},
+      "version": {"N": "2"}, "status": {"S": "active"}, "createdAt": {"S": "2026-05-05T08:00:00Z"}, "updatedAt": {"S": "2026-05-08T14:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0014"}, "fileName": {"S": "load-test-results-april.csv"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000004"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000001"},
+      "mimeType": {"S": "text/csv"}, "sizeBytes": {"N": "892100"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000004/load-test-results-april.csv"},
+      "version": {"N": "1"}, "status": {"S": "active"}, "createdAt": {"S": "2026-04-30T16:00:00Z"}, "updatedAt": {"S": "2026-04-30T16:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0015"}, "fileName": {"S": "whisker-standards-a11y.pdf"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000010"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000007"},
+      "mimeType": {"S": "application/pdf"}, "sizeBytes": {"N": "2345000"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000010/whisker-standards-a11y.pdf"},
+      "version": {"N": "3"}, "status": {"S": "active"}, "createdAt": {"S": "2026-03-01T10:00:00Z"}, "updatedAt": {"S": "2026-04-10T11:00:00Z"}
+    },
+    {
+      "id": {"S": "file-0016"}, "fileName": {"S": "old-dam-blueprints-2024.zip"}, "ownerId": {"S": "b0000000-0000-0000-0000-000000000001"}, "folderId": {"S": "f0000000-0000-0000-0000-000000000001"},
+      "mimeType": {"S": "application/zip"}, "sizeBytes": {"N": "34567890"}, "s3Key": {"S": "files/b0000000-0000-0000-0000-000000000001/old-dam-blueprints-2024.zip"},
+      "version": {"N": "1"}, "status": {"S": "trashed"}, "createdAt": {"S": "2024-12-01T08:00:00Z"}, "updatedAt": {"S": "2026-04-15T09:00:00Z"}
+    }
+  ]
+}

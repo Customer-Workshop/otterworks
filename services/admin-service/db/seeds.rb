@@ -39,9 +39,82 @@ FeatureFlag.find_or_create_by!(name: 'collaborative_editing') do |flag|
 end
 
 FeatureFlag.find_or_create_by!(name: 'ai_suggestions') do |flag|
-  flag.description = 'AI-powered writing suggestions'
+  flag.description = 'AI-powered writing suggestions (Operation Kelp Forest)'
   flag.enabled = false
   flag.rollout_percentage = 0
 end
 
-Rails.logger.debug 'Seed data loaded successfully'
+FeatureFlag.find_or_create_by!(name: 'otter_storage_v2') do |flag|
+  flag.description = 'Multi-tier storage lifecycle management (RFC-001)'
+  flag.enabled = true
+  flag.rollout_percentage = 100
+end
+
+FeatureFlag.find_or_create_by!(name: 'tidal_pool_cache') do |flag|
+  flag.description = 'Distributed caching layer for read-heavy endpoints (RFC-005)'
+  flag.enabled = false
+  flag.rollout_percentage = 0
+end
+
+FeatureFlag.find_or_create_by!(name: 'river_basin_events') do |flag|
+  flag.description = 'SNS/SQS event-driven inter-service communication (RFC-003)'
+  flag.enabled = true
+  flag.rollout_percentage = 100
+end
+
+FeatureFlag.find_or_create_by!(name: 'dam_builder_rate_limit') do |flag|
+  flag.description = 'Sliding window rate limiter for API gateway (RFC-004)'
+  flag.enabled = false
+  flag.rollout_percentage = 0
+end
+
+FeatureFlag.find_or_create_by!(name: 'predator_alert_mfa') do |flag|
+  flag.description = 'Mandatory MFA for all admin accounts'
+  flag.enabled = false
+  flag.rollout_percentage = 0
+end
+
+FeatureFlag.find_or_create_by!(name: 'kelp_forest_search') do |flag|
+  flag.description = 'Advanced full-text search with filters and facets'
+  flag.enabled = true
+  flag.rollout_percentage = 50
+end
+
+# Additional system configs
+SystemConfig.find_or_create_by!(key: 'max_collab_participants') do |config|
+  config.value = '25'
+  config.value_type = 'integer'
+  config.description = 'Maximum simultaneous collaborators on a single document'
+end
+
+SystemConfig.find_or_create_by!(key: 'file_versioning_max_versions') do |config|
+  config.value = '50'
+  config.value_type = 'integer'
+  config.description = 'Maximum number of file versions to retain before auto-pruning'
+end
+
+SystemConfig.find_or_create_by!(key: 'crdt_flush_interval_ms') do |config|
+  config.value = '500'
+  config.value_type = 'integer'
+  config.description = 'Interval for flushing CRDT state from Redis to PostgreSQL'
+end
+
+SystemConfig.find_or_create_by!(key: 'trash_retention_days') do |config|
+  config.value = '30'
+  config.value_type = 'integer'
+  config.description = 'Days before permanently deleting trashed files'
+end
+
+SystemConfig.find_or_create_by!(key: 'audit_log_retention_days') do |config|
+  config.value = '365'
+  config.value_type = 'integer'
+  config.description = 'Audit event retention period for compliance (SOC2)'
+end
+
+SystemConfig.find_or_create_by!(key: 'oncall_rotation_team') do |config|
+  config.value = 'Tide Watchers'
+  config.value_type = 'string'
+  config.description = 'Current primary on-call team'
+end
+
+Rails.logger.debug 'Seed data loaded successfully - The holt is stocked!'

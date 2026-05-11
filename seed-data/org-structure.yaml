@@ -1,0 +1,178 @@
+# OtterWorks Engineering Organization Structure
+# "Every otter has a role in the raft"
+
+organization:
+  name: OtterWorks Engineering
+  motto: "Building dams, shipping features"
+  headcount: 25
+
+departments:
+  - name: The Lodge
+    description: Core Engineering - builds and maintains platform services
+    head: Harbor Giant
+    headcount: 10
+    squads:
+      - name: River Runners
+        focus: Backend services (auth, document, file)
+        tech_lead: Ollie Lutris
+        members:
+          - Marina Enhydra
+          - Finn Aonyx
+          - River Canadensis
+          - Brook Cinerea
+        oncall_rotation: weekly
+        slack_channel: "#river-runners"
+        standup: "09:30 UTC daily"
+
+      - name: Dam Builders
+        focus: API Gateway, infrastructure reliability
+        tech_lead: Reed Lataxina
+        members:
+          - Cove Maxima
+          - Marsh Lutra
+        oncall_rotation: weekly
+        slack_channel: "#dam-builders"
+        standup: "09:00 UTC daily"
+
+      - name: Pup Paddlers
+        focus: Interns and new graduates
+        mentor: Ollie Lutris
+        members:
+          - Splash Minor
+          - Wade Nair
+        slack_channel: "#pup-paddlers"
+
+  - name: The Raft
+    description: Product Management - defines what we build and why
+    head: Kelp Perspicillata
+    headcount: 3
+    members:
+      - Pebble Sumatrana
+      - Cascade Felina
+    rituals:
+      sprint_cadence: 2 weeks
+      sprint_name_pattern: "Sprint Tidepool #N"
+      planning: "Monday 10:00 UTC"
+      retro: "Friday 15:00 UTC (bi-weekly)"
+    slack_channel: "#the-raft"
+
+  - name: The Den
+    description: Design - user experience, visual design, accessibility
+    head: Coral Maculicollis
+    headcount: 2
+    members:
+      - Shell Brasiliensis
+    design_system: Ripple UI v3.0
+    figma_workspace: "OtterWorks Design"
+    slack_channel: "#the-den"
+
+  - name: The Stream
+    description: Data Engineering - pipelines, analytics, ML infrastructure
+    head: Delta Provocax
+    headcount: 2
+    members:
+      - Rapids Longicaudis
+    squads:
+      - name: Shell Crackers
+        focus: ETL pipelines, data quality, analytics
+        tools:
+          - Apache Airflow
+          - Apache Spark
+          - dbt
+        slack_channel: "#shell-crackers"
+
+  - name: The Burrow
+    description: Platform Engineering / DevOps - infrastructure, CI/CD, observability
+    head: Dam Sanfilippo
+    headcount: 3
+    members:
+      - Tide Platensis
+      - Eddy Vittata
+    squads:
+      - name: Tide Watchers
+        focus: Monitoring, alerting, incident response
+        tools:
+          - Prometheus
+          - Grafana
+          - Jaeger
+          - PagerDuty
+        slack_channel: "#tide-watchers"
+      - name: Kelp Weavers
+        focus: CI/CD, Kubernetes, Terraform
+        tools:
+          - GitHub Actions
+          - Helm
+          - Terraform
+          - ArgoCD
+        slack_channel: "#kelp-weavers"
+
+  - name: The Cove
+    description: Security Engineering - AppSec, compliance, incident response
+    head: Riptide Giant
+    headcount: 2
+    members:
+      - Surf Indica
+    certifications:
+      - SOC2 Type II (in progress)
+      - ISO 27001 (planned Q4 2026)
+    tools:
+      - Trivy
+      - SonarQube
+      - OWASP ZAP
+      - Vault
+    slack_channel: "#the-cove"
+
+leadership:
+  - name: Harbor Giant
+    title: VP of Engineering
+    reports_to: CEO
+    department: The Lodge
+
+  - name: Estuary Atlas
+    title: CTO
+    reports_to: CEO
+    department: null
+    responsibilities:
+      - Technical strategy
+      - Architecture review
+      - All-hands presentations
+      - Vendor relationships
+
+projects:
+  active:
+    - codename: Project Riverbank
+      description: Core platform stability and performance improvements
+      status: in_progress
+      lead: Ollie Lutris
+      started: "2026-01-15"
+      target_completion: "2026-06-30"
+      key_results:
+        - "P99 latency < 200ms for all services"
+        - "Zero P1 incidents for 30 consecutive days"
+        - "99.99% uptime SLA"
+
+    - codename: Operation Kelp Forest
+      description: Q2 feature roadmap - real-time collab, search, AI summaries
+      status: in_progress
+      lead: Kelp Perspicillata
+      started: "2026-04-01"
+      target_completion: "2026-06-30"
+      key_results:
+        - "Launch AI document summaries to 100% of users"
+        - "Search latency < 50ms at P95"
+        - "10% increase in weekly active editors"
+
+    - codename: Sprint Tidepool
+      description: Current sprint execution (2-week cadence)
+      status: active
+      current_sprint: 35
+      sprint_goal: "Complete rate limiting overhaul, ship search improvements"
+
+  completed:
+    - codename: Dam Foundation
+      description: Initial platform build and launch
+      completed: "2025-06-30"
+
+    - codename: Kelp Garden
+      description: Real-time collaboration MVP
+      completed: "2025-12-15"

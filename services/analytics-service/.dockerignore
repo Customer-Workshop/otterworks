@@ -1,0 +1,5 @@
+bin/
+obj/
+Tests/
+.editorconfig
+*.md

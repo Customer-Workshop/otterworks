@@ -1,0 +1,24 @@
+[*.cs]
+# SA1101: Prefix local calls with this - modern C# convention skips 'this'
+dotnet_diagnostic.SA1101.severity = none
+
+# SA1200: Using directives should be placed outside of a namespace
+dotnet_diagnostic.SA1200.severity = none
+
+# SA1309: Field names should not begin with underscore - standard C# convention
+dotnet_diagnostic.SA1309.severity = none
+
+# SA1633: File should have header - not required for this project
+dotnet_diagnostic.SA1633.severity = none
+
+# SA0001: XML comment analysis disabled
+dotnet_diagnostic.SA0001.severity = none
+
+# SA1000: Keyword new should be followed by a space (target-typed new)
+dotnet_diagnostic.SA1000.severity = none
+
+# SA1516: Elements should be separated by blank line
+dotnet_diagnostic.SA1516.severity = none
+
+# CA1848: Use LoggerMessage delegates for performance
+dotnet_diagnostic.CA1848.severity = suggestion

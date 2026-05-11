@@ -25,7 +25,7 @@ public class DocumentsApiTests : IClassFixture<TestWebApplicationFactory>
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestWebApplicationFactory.TestJwtSecret));
         var creds = new SigningCredentials(key, algorithm);
         var claims = new[] { new Claim(claimType, userId) };
-        var token = new JwtSecurityToken(claims: claims, signingCredentials: creds);
+        var token = new JwtSecurityToken(claims: claims, signingCredentials: creds, expires: DateTime.UtcNow.AddHours(1));
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 

@@ -319,7 +319,8 @@ public class DocumentsController : ControllerBase
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
                         ValidateIssuer = false,
                         ValidateAudience = false,
-                        ValidateLifetime = false,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.FromMinutes(5),
                         ValidAlgorithms = new[] { "HS256", "HS384" },
                     }, out var validatedToken);
 

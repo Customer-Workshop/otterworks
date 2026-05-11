@@ -152,11 +152,13 @@ services:
       REDIS_PORT: 6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: document-service
-      DOC_SVC_DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
-      DOC_SVC_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
-      DOC_SVC_AWS_ENDPOINT_URL: http://localstack:4566
-      DOC_SVC_SNS_ENABLED: 'true'
-      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=otterworks;Username=otterworks;Password=otterworks_dev
+      Aws__Region: us-east-1
+      Aws__EndpointUrl: http://localstack:4566
+      Aws__SnsTopicArn: arn:aws:sns:us-east-1:000000000000:otterworks-events
+      Aws__SnsEnabled: 'true'
+      Redis__ConnectionString: redis:6379
+      Jwt__Secret: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
     depends_on:
       postgres:
         condition: service_healthy

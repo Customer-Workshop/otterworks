@@ -1,0 +1,32 @@
+root = true
+
+[*.cs]
+# Suppress StyleCop rules that conflict with modern C# conventions
+dotnet_diagnostic.SA0001.severity = none
+dotnet_diagnostic.SA1010.severity = none
+dotnet_diagnostic.SA1011.severity = none
+dotnet_diagnostic.SA1101.severity = none
+dotnet_diagnostic.SA1117.severity = none
+dotnet_diagnostic.SA1200.severity = none
+dotnet_diagnostic.SA1208.severity = none
+dotnet_diagnostic.SA1210.severity = none
+dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA1516.severity = none
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1601.severity = none
+dotnet_diagnostic.SA1602.severity = none
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1652.severity = none
+dotnet_diagnostic.SA1009.severity = none
+
+# CA rules - relaxed for service code
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA2227.severity = none
+dotnet_diagnostic.CA1822.severity = none
+
+# IDE rules
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_diagnostic.IDE0055.severity = warning
+dotnet_diagnostic.IDE0161.severity = warning
+csharp_style_namespace_declarations = file_scoped:warning

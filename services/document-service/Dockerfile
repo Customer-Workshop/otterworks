@@ -1,21 +1,20 @@
-FROM python:3.12-slim AS builder
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
 WORKDIR /app
-RUN pip install --no-cache-dir poetry==1.8.2
-COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.in-project true && poetry install --no-root --no-dev
+COPY *.csproj ./
+RUN dotnet restore
 
-FROM python:3.12-slim
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY --from=builder /app/.venv /app/.venv
 COPY . .
+RUN dotnet publish -c Release -o /out
 
-ENV PATH="/app/.venv/bin:$PATH"
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
+RUN apk --no-cache add curl
+WORKDIR /app
+COPY --from=builder /out .
 
-RUN useradd -r -u 1001 appuser
+RUN adduser -D -u 1001 appuser
 USER appuser
 
 EXPOSE 8083
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8083/health || exit 1
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8083"]
+ENTRYPOINT ["dotnet", "DocumentService.dll"]

@@ -29,14 +29,16 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Configuration from environment variables
-var awsSection = builder.Configuration.GetSection("Aws");
-builder.Services.Configure<AwsSettings>(awsSection);
-var awsSettings = awsSection.Get<AwsSettings>() ?? new AwsSettings();
-
-// Override from environment variables (docker-compose)
+builder.Services.Configure<AwsSettings>(builder.Configuration.GetSection("Aws"));
+builder.Services.PostConfigure<AwsSettings>(opts =>
+{
+    opts.Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? opts.Region;
+    opts.EndpointUrl = Environment.GetEnvironmentVariable("AWS_ENDPOINT_URL") ?? opts.EndpointUrl;
+    opts.DataLakeBucket = Environment.GetEnvironmentVariable("S3_DATA_LAKE_BUCKET") ?? opts.DataLakeBucket;
+});
+var awsSettings = builder.Configuration.GetSection("Aws").Get<AwsSettings>() ?? new AwsSettings();
 awsSettings.Region = Environment.GetEnvironmentVariable("AWS_REGION") ?? awsSettings.Region;
 awsSettings.EndpointUrl = Environment.GetEnvironmentVariable("AWS_ENDPOINT_URL") ?? awsSettings.EndpointUrl;
-awsSettings.DataLakeBucket = Environment.GetEnvironmentVariable("S3_DATA_LAKE_BUCKET") ?? awsSettings.DataLakeBucket;
 
 var postgresSettings = builder.Configuration.GetSection("Postgres").Get<PostgresSettings>() ?? new PostgresSettings();
 postgresSettings.Host = Environment.GetEnvironmentVariable("POSTGRES_HOST") ?? postgresSettings.Host;
@@ -78,7 +80,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     }
     catch (Exception ex)
     {
-        Log.Warning(ex, "Redis connection failed, using in-memory fallback");
+        Log.Warning(ex, "Redis connection failed");
         throw;
     }
 });

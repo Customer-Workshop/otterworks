@@ -1,21 +1,20 @@
-FROM node:20-alpine AS builder
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
 WORKDIR /app
-COPY package.json package-lock.json tsconfig.json ./
-RUN npm ci
-COPY src ./src
-RUN npm run build
+COPY *.csproj ./
+RUN dotnet restore
 
-FROM node:20-alpine
+COPY . .
+RUN dotnet publish -c Release -o /out
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
 RUN apk --no-cache add curl
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY package.json ./
+COPY --from=builder /out .
 
 RUN adduser -D -u 1001 appuser
 USER appuser
 
 EXPOSE 8084
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8084/health || exit 1
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["dotnet", "CollabService.dll"]

@@ -1,0 +1,56 @@
+root = true
+
+[*.cs]
+# SA1101: Prefix local calls with this - modern C# convention doesn't require this
+dotnet_diagnostic.SA1101.severity = none
+
+# SA0001: XML comment analysis is disabled due to project configuration
+dotnet_diagnostic.SA0001.severity = none
+
+# SA1633: File should have header
+dotnet_diagnostic.SA1633.severity = none
+
+# SA1200: Using directives should be placed correctly
+dotnet_diagnostic.SA1200.severity = none
+
+# SA1600: Elements should be documented
+dotnet_diagnostic.SA1600.severity = none
+
+# SA1601: Partial elements should be documented
+dotnet_diagnostic.SA1601.severity = none
+
+# SA1602: Enumeration items should be documented
+dotnet_diagnostic.SA1602.severity = none
+
+# CA1848: Use the LoggerMessage delegates - too verbose for this project
+dotnet_diagnostic.CA1848.severity = none
+
+# SA1309: Field names should not begin with underscore
+dotnet_diagnostic.SA1309.severity = none
+
+# SA1516: Elements should be separated by blank line
+dotnet_diagnostic.SA1516.severity = none
+
+# SA1503: Braces should not be omitted
+dotnet_diagnostic.SA1503.severity = none
+
+# IDE0005: Using directive is unnecessary
+dotnet_diagnostic.IDE0005.severity = warning
+
+# SA1010: Opening square brackets - C# 12 collection expressions
+dotnet_diagnostic.SA1010.severity = none
+
+# SA1011: Closing square bracket - C# 12 collection expressions
+dotnet_diagnostic.SA1011.severity = none
+
+# SA1000: Keywords should be spaced correctly - target-typed new()
+dotnet_diagnostic.SA1000.severity = none
+
+# SA1513: Closing brace should be followed by blank line
+dotnet_diagnostic.SA1513.severity = none
+
+# SA1202: Elements should be ordered by access
+dotnet_diagnostic.SA1202.severity = none
+
+# SA1214: Readonly fields should appear before non-readonly fields
+dotnet_diagnostic.SA1214.severity = none

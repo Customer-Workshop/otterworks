@@ -78,7 +78,7 @@ export class AuthService {
       email,
       displayName: 'Admin User',
       role: 'admin',
-      token: 'mock-jwt-token-' + Date.now(),
+      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi0wMDEiLCJ1c2VyX2lkIjoiYWRtaW4tMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGVzIjpbImFkbWluIl0sImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.KxoIksSDwoJrkE_LNeHCpHJ9pEK-dGVSi5iS7SPHrj4',
     };
     return of(user).pipe(delay(800));
   }

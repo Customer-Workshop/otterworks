@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, delay, Subject } from 'rxjs';
+import { Observable, of, delay, Subject, map } from 'rxjs';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -179,96 +179,27 @@ export class AdminApiService {
   }
 
   createIncident(incident: Partial<Incident>): Observable<Incident> {
-    // return this.http.post<Incident>(`${this.baseUrl}/admin/incidents`, { incident });
-    const newIncident: Incident = {
-      id: 'inc-' + Date.now(),
-      title: incident.title || '',
-      description: incident.description || '',
-      severity: incident.severity || 'medium',
-      status: 'investigating',
-      affectedService: incident.affectedService || null,
-      devinSessionId: null,
-      devinSessionUrl: null,
-      devinSessionStatus: null,
-      reporterId: 'admin-001',
-      resolvedAt: null,
-      active: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    return this.http.post<any>(`${this.baseUrl}/admin/incidents`, { incident }).pipe(
+      map(res => this.mapIncident(res.incident || res)),
+    );
+  }
+
+  private mapIncident(raw: any): Incident {
+    return {
+      id: raw.id,
+      title: raw.title,
+      description: raw.description,
+      severity: raw.severity,
+      status: raw.status,
+      affectedService: raw.affected_service,
+      devinSessionId: raw.devin_session_id,
+      devinSessionUrl: raw.devin_session_url,
+      devinSessionStatus: raw.devin_session_status,
+      reporterId: raw.reporter_id,
+      resolvedAt: raw.resolved_at,
+      active: raw.active,
+      createdAt: raw.created_at,
+      updatedAt: raw.updated_at,
     };
-    MOCK_INCIDENTS.unshift(newIncident);
-
-    // Call Devin API directly via fetch (bypasses Angular HTTP interceptor which
-    // would attach a mock JWT and trigger logout on 401)
-    return new Observable<Incident>(subscriber => {
-      this.callDevinApi(newIncident).then(updated => {
-        subscriber.next(updated);
-        subscriber.complete();
-      });
-    });
-  }
-
-  private async callDevinApi(incident: Incident): Promise<Incident> {
-    const apiKey = (window as any).__DEVIN_API_KEY;
-    if (!apiKey) {
-      console.warn('No Devin API key configured. Set window.__DEVIN_API_KEY to enable session creation.');
-      return incident;
-    }
-
-    try {
-      const res = await fetch('https://api.devin.ai/v1/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: this.buildDevinPrompt(incident) }),
-      });
-
-      if (!res.ok) {
-        console.error(`Devin API returned ${res.status}`);
-        return incident;
-      }
-
-      const data = await res.json();
-      incident.devinSessionId = data.session_id;
-      incident.devinSessionUrl = data.url;
-      incident.devinSessionStatus = 'running';
-    } catch (err) {
-      console.error('Devin API call failed:', err);
-    }
-
-    return incident;
-  }
-
-  private buildDevinPrompt(incident: Incident): string {
-    return [
-      'You are investigating an incident in the OtterWorks platform, a collaborative file storage and document editing system built as a polyglot microservices architecture.',
-      '',
-      '## Incident Details',
-      `- **Title**: ${incident.title}`,
-      `- **Severity**: ${incident.severity}`,
-      `- **Affected Service**: ${incident.affectedService || 'Unknown'}`,
-      `- **Description**: ${incident.description}`,
-      '',
-      '## OtterWorks Architecture',
-      'The platform has 11 microservices:',
-      '- API Gateway (Go/Chi, port 8080) - routing, rate limiting, JWT validation',
-      '- Auth Service (Java/Spring Boot, port 8081) - authentication, RBAC',
-      '- File Service (Rust/Actix-Web, port 8082) - file upload/download, S3',
-      '- Document Service (Python/FastAPI, port 8083) - document CRUD, versioning',
-      '- Collaboration Service (Node.js/Socket.io, port 8084) - real-time editing',
-      '- Notification Service (Kotlin/Ktor, port 8086) - event-driven notifications',
-      '- Search Service (Python/Flask, port 8087) - MeiliSearch full-text search',
-      '- Analytics Service (Scala/Akka HTTP, port 8088) - usage analytics',
-      '- Admin Service (Ruby/Rails, port 8089) - admin operations',
-      '- Audit Service (C#/ASP.NET, port 8090) - audit trail',
-      '- Report Service (Java/Spring Boot, port 8091) - report generation',
-      '',
-      'Services communicate via REST (through API Gateway) and async SNS/SQS events.',
-      '',
-      '## Your Task',
-      'Investigate this incident, identify the root cause, and implement a fix. Start by examining the affected service\'s code and logs.',
-    ].join('\n');
   }
 }

@@ -1,21 +1,20 @@
-FROM rust:latest AS builder
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
+COPY *.csproj ./
+RUN dotnet restore
 
-COPY src ./src
-RUN touch src/main.rs && cargo build --release
+COPY . .
+RUN dotnet publish -c Release -o /out
 
-FROM debian:trixie-slim
-RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
+RUN apk --no-cache add curl
 WORKDIR /app
-COPY --from=builder /app/target/release/file-service /app/file-service
+COPY --from=builder /out .
 
-RUN useradd -r -u 1001 appuser
+RUN adduser -D -u 1001 appuser
 USER appuser
 
 EXPOSE 8082
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8082/health || exit 1
-ENTRYPOINT ["/app/file-service"]
+ENTRYPOINT ["dotnet", "FileService.dll"]

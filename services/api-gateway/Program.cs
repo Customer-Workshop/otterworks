@@ -158,7 +158,7 @@ var pgPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "ott
 var pgDb = Environment.GetEnvironmentVariable("POSTGRES_DB") ?? "otterworks";
 var connectionString = $"Host={pgHost};Port={pgPort};Database={pgDb};Username={pgUser};Password={pgPassword}";
 builder.Services.AddDbContext<GatewayDbContext>(options =>
-    options.UseNpgsql(connectionString), ServiceLifetime.Singleton);
+    options.UseNpgsql(connectionString));
 
 // Memory cache
 builder.Services.AddMemoryCache();

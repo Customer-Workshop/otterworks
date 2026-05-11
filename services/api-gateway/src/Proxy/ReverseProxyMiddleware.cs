@@ -38,9 +38,7 @@ public class ReverseProxyMiddleware
         var route = FindRoute(path);
         if (route == null)
         {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = "route not found" }));
+            await _next(context);
             return;
         }
 

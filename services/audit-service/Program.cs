@@ -90,11 +90,28 @@ builder.Services.AddHealthChecks()
 // Prometheus metrics
 builder.Services.AddSingleton(Metrics.DefaultRegistry);
 
+// Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
 // Middleware pipeline
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+
+// Security headers
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    await next();
+});
+
+// Swagger/OpenAPI
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Prometheus metrics endpoint
 app.UseHttpMetrics();
@@ -105,13 +122,13 @@ app.MapGet("/health", async (IAmazonDynamoDB dynamoDb) =>
     try
     {
         await dynamoDb.ListTablesAsync();
-        return Results.Ok(new { status = "healthy", service = "audit-service", timestamp = DateTime.UtcNow });
+        return Results.Ok(new { status = "healthy", service = "audit-service", version = "0.1.0" });
     }
     catch (Exception ex)
     {
         Log.Warning(ex, "DynamoDB health check failed");
         return Results.Json(
-            new { status = "unhealthy", service = "audit-service", timestamp = DateTime.UtcNow },
+            new { status = "unhealthy", service = "audit-service", version = "0.1.0" },
             statusCode: 503);
     }
 });

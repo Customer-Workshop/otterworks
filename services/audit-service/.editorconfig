@@ -1,0 +1,65 @@
+root = true
+
+[*.cs]
+# StyleCop: Allow using directives outside namespace (file-scoped namespaces)
+dotnet_diagnostic.SA1200.severity = none
+
+# StyleCop: Do not require 'this.' prefix
+dotnet_diagnostic.SA1101.severity = none
+
+# StyleCop: Do not require blank line between elements
+dotnet_diagnostic.SA1516.severity = none
+
+# StyleCop: Allow fields with underscore prefix
+dotnet_diagnostic.SA1309.severity = none
+
+# StyleCop: Do not require file headers
+dotnet_diagnostic.SA1633.severity = none
+
+# StyleCop: Allow single-line blocks without braces
+dotnet_diagnostic.SA1503.severity = none
+
+# StyleCop: Allow parameters on same line as previous
+dotnet_diagnostic.SA1117.severity = none
+
+# StyleCop: Allow first parameter on declaration line
+dotnet_diagnostic.SA1116.severity = none
+
+# StyleCop: Allow multiple types per file
+dotnet_diagnostic.SA1402.severity = none
+
+# StyleCop: Allow tuple element names in any casing
+dotnet_diagnostic.SA1316.severity = none
+
+# StyleCop: File name should match first type name
+dotnet_diagnostic.SA1649.severity = none
+
+# StyleCop: Closing brace followed by blank line
+dotnet_diagnostic.SA1513.severity = none
+
+# StyleCop: Allow single-line accessors
+dotnet_diagnostic.SA1502.severity = none
+
+# StyleCop: Allow trailing comma
+dotnet_diagnostic.SA1413.severity = none
+
+# StyleCop: Static members ordering
+dotnet_diagnostic.SA1204.severity = none
+
+# StyleCop: XML comment analysis disabled
+dotnet_diagnostic.SA0001.severity = none
+
+# CA1848: Use LoggerMessage delegates for performance
+dotnet_diagnostic.CA1848.severity = suggestion
+
+# CA1716: Identifiers should not match keywords
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1869: Cache and reuse JsonSerializerOptions
+dotnet_diagnostic.CA1869.severity = suggestion
+
+# CA1305: Specify IFormatProvider
+dotnet_diagnostic.CA1305.severity = suggestion
+
+# CA1050: Declare types in namespaces
+dotnet_diagnostic.CA1050.severity = none

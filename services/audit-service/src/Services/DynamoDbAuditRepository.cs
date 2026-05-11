@@ -294,7 +294,7 @@ public class DynamoDbAuditRepository : IAuditRepository
             var batchResponse = await _dynamoDb.BatchWriteItemAsync(batchRequest);
 
             var retryCount = 0;
-            while (batchResponse.UnprocessedItems.Count > 0 && retryCount < 5)
+            while (batchResponse.UnprocessedItems?.Count > 0 && retryCount < 5)
             {
                 retryCount++;
                 var delayMs = (int)Math.Pow(2, retryCount) * 100;
@@ -307,7 +307,7 @@ public class DynamoDbAuditRepository : IAuditRepository
                 });
             }
 
-            if (batchResponse.UnprocessedItems.Count > 0)
+            if (batchResponse.UnprocessedItems?.Count > 0)
             {
                 var failedCount = batchResponse.UnprocessedItems.Values.Sum(v => v.Count);
                 totalFailed += failedCount;

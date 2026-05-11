@@ -157,7 +157,12 @@ import { Subscription, interval } from 'rxjs';
 
             <div class="devin-session devin-pending" *ngIf="!incident.devinSessionId && incident.active">
               <mat-icon class="devin-icon">smart_toy</mat-icon>
-              <span>No Devin session - click to trigger investigation</span>
+              <span>No Devin session</span>
+              <button mat-stroked-button color="primary" (click)="triggerSession(incident)"
+                [disabled]="incident.devinSessionStatus === 'triggering'" class="trigger-btn">
+                <mat-icon>play_arrow</mat-icon>
+                {{ incident.devinSessionStatus === 'triggering' ? 'Launching...' : 'Launch Devin' }}
+              </button>
             </div>
 
             <div class="incident-meta">
@@ -235,16 +240,12 @@ import { Subscription, interval } from 'rxjs';
     .session-id{color:#999;font-family:monospace;font-size:.75rem}
     .session-link{display:flex;align-items:center;gap:4px;color:#1565c0;text-decoration:none;font-weight:500}
     .session-link:hover{text-decoration:underline}.session-link .mat-icon{font-size:16px;width:16px;height:16px}
-    .devin-pending{display:flex;align-items:center;gap:8px;color:#999;font-size:.85rem;background:#fafafa;border-color:#eee}
+    .devin-pending{display:flex;align-items:center;gap:8px;color:#999;font-size:.85rem;background:#fafafa;border-color:#eee}.trigger-btn{margin-left:auto}
     .incident-meta{display:flex;gap:16px;font-size:.8rem;color:#999;flex-wrap:wrap;margin-top:8px}
-    .empty-state{display:flex;flex-direction:column;align-items:center;padding:60px;color:#999}
-    .empty-state .mat-icon{font-size:48px;width:48px;height:48px;margin-bottom:12px}
-    .onboarding-card{max-width:640px;margin:0 auto}
-    .onboarding-hero{text-align:center;margin-bottom:24px}
-    .onboarding-icon{font-size:56px;width:56px;height:56px;color:#1565c0}
-    .onboarding-hero h2{margin:0 0 8px;font-size:1.3rem}.onboarding-hero p{color:#666;line-height:1.5;margin:0}
-    .onboarding-steps{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}
-    .step{display:flex;gap:12px}.step-number{min-width:28px;height:28px;border-radius:50%;background:#1565c0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem}
+    .empty-state{display:flex;flex-direction:column;align-items:center;padding:60px;color:#999}.empty-state .mat-icon{font-size:48px;width:48px;height:48px;margin-bottom:12px}
+    .onboarding-card{max-width:640px;margin:0 auto}.onboarding-hero{text-align:center;margin-bottom:24px}
+    .onboarding-icon{font-size:56px;width:56px;height:56px;color:#1565c0}.onboarding-hero h2{margin:0 0 8px;font-size:1.3rem}.onboarding-hero p{color:#666;line-height:1.5;margin:0}
+    .onboarding-steps{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}.step{display:flex;gap:12px}.step-number{min-width:28px;height:28px;border-radius:50%;background:#1565c0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem}
     .onboarding-cta{margin:0 auto}
   `],
 })
@@ -329,6 +330,21 @@ export class IncidentsComponent implements OnInit, OnDestroy {
       error: () => {
         this.creating = false;
         this.snackBar.open('Failed to create incident', 'Dismiss', { duration: 3000 });
+      },
+    });
+  }
+
+  triggerSession(incident: Incident): void {
+    incident.devinSessionStatus = 'triggering';
+    this.api.triggerDevinSession(incident.id).subscribe({
+      next: (updated) => {
+        const idx = this.incidents.findIndex(i => i.id === incident.id);
+        if (idx !== -1) this.incidents[idx] = updated;
+        this.snackBar.open('Devin session launched!', 'Dismiss', { duration: 5000 });
+      },
+      error: () => {
+        incident.devinSessionStatus = null;
+        this.snackBar.open('Failed to launch Devin session', 'Dismiss', { duration: 3000 });
       },
     });
   }

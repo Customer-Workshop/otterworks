@@ -14,7 +14,7 @@ public class SqsConsumerService : BackgroundService
     private readonly INotificationService _notificationService;
     private readonly AwsSettings _settings;
     private readonly ILogger<SqsConsumerService> _logger;
-    private readonly Channel<SqsNotificationMessage> _channel;
+    private readonly Channel<(SqsNotificationMessage Message, string ReceiptHandle, string QueueUrl)> _channel;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -31,7 +31,7 @@ public class SqsConsumerService : BackgroundService
         _notificationService = notificationService;
         _settings = settings.Value;
         _logger = logger;
-        _channel = Channel.CreateBounded<SqsNotificationMessage>(new BoundedChannelOptions(100)
+        _channel = Channel.CreateBounded<(SqsNotificationMessage, string, string)>(new BoundedChannelOptions(100)
         {
             FullMode = BoundedChannelFullMode.Wait,
         });
@@ -66,15 +66,8 @@ public class SqsConsumerService : BackgroundService
                     var parsed = ParseMessage(message.Body);
                     if (parsed is not null)
                     {
-                        await _channel.Writer.WriteAsync(parsed, stoppingToken);
-
-                        await _sqsClient.DeleteMessageAsync(new DeleteMessageRequest
-                        {
-                            QueueUrl = _settings.SqsQueueUrl,
-                            ReceiptHandle = message.ReceiptHandle,
-                        }, stoppingToken);
-
-                        _logger.LogDebug("Deleted SQS message: {MessageId}", message.MessageId);
+                        await _channel.Writer.WriteAsync(
+                            (parsed, message.ReceiptHandle, _settings.SqsQueueUrl), stoppingToken);
                     }
                     else
                     {
@@ -105,11 +98,19 @@ public class SqsConsumerService : BackgroundService
 
     private async Task ProcessChannelAsync(CancellationToken stoppingToken)
     {
-        await foreach (var message in _channel.Reader.ReadAllAsync(stoppingToken))
+        await foreach (var (message, receiptHandle, queueUrl) in _channel.Reader.ReadAllAsync(stoppingToken))
         {
             try
             {
                 await _notificationService.ProcessEventAsync(message);
+
+                await _sqsClient.DeleteMessageAsync(new DeleteMessageRequest
+                {
+                    QueueUrl = queueUrl,
+                    ReceiptHandle = receiptHandle,
+                }, stoppingToken);
+
+                _logger.LogDebug("Processed and deleted SQS message for event: {EventType}", message.EventType);
             }
             catch (Exception ex)
             {

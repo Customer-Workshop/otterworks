@@ -1,14 +1,20 @@
-FROM python:3.12-slim
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+COPY *.csproj ./
+RUN dotnet restore
 
-RUN useradd -r -u 1001 appuser
+COPY . .
+RUN dotnet publish -c Release -o /out
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
+RUN apk --no-cache add curl
+WORKDIR /app
+COPY --from=builder /out .
+
+RUN adduser -D -u 1001 appuser
 USER appuser
 
 EXPOSE 8087
 HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8087/health || exit 1
-CMD ["gunicorn", "--bind", "0.0.0.0:8087", "--workers", "2", "--threads", "4", "app.main:create_app()"]
+ENTRYPOINT ["dotnet", "SearchService.dll"]

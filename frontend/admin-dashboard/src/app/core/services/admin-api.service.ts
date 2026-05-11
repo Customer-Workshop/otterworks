@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, delay, Subject, map } from 'rxjs';
+import { Observable, of, delay, Subject, map, catchError } from 'rxjs';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -168,11 +168,16 @@ export class AdminApiService {
 
   // Incidents
   getIncidents(): Observable<Incident[]> {
-    return this.http.get<any>(`${this.baseUrl}/admin/incidents`).pipe(map(res => res.incidents));
+    return this.http.get<any>(`${this.baseUrl}/admin/incidents`).pipe(
+      map(res => res.incidents),
+      catchError(() => of([])),
+    );
   }
 
-  getIncident(id: string): Observable<Incident> {
-    return this.http.get<Incident>(`${this.baseUrl}/admin/incidents/${id}`);
+  getIncident(id: string): Observable<Incident | null> {
+    return this.http.get<Incident>(`${this.baseUrl}/admin/incidents/${id}`).pipe(
+      catchError(() => of(null)),
+    );
   }
 
   createIncident(incident: Partial<Incident>): Observable<Incident> {

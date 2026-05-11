@@ -11,6 +11,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -51,16 +54,16 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
                             } else {
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.warn { "Skipping unparseable SQS message: ${msg.messageId}" }
                             }
+
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
+                            logger.debug { "Deleted SQS message: ${msg.messageId}" }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }
@@ -79,17 +82,49 @@ class SqsConsumer(
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         return try {
-            // Try parsing as direct message first
             json.decodeFromString<SqsNotificationMessage>(body)
         } catch (_: Exception) {
             try {
-                // Try unwrapping SNS envelope
                 val snsWrapper = json.decodeFromString<SnsEnvelope>(body)
-                json.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                parseInnerMessage(snsWrapper.Message)
             } catch (e: Exception) {
                 logger.error(e) { "Failed to parse message body" }
                 null
             }
+        }
+    }
+
+    internal fun parseInnerMessage(inner: String): SqsNotificationMessage? {
+        return try {
+            json.decodeFromString<SqsNotificationMessage>(inner)
+        } catch (_: Exception) {
+            tryParseSnakeCaseMessage(inner)
+        }
+    }
+
+    private fun tryParseSnakeCaseMessage(inner: String): SqsNotificationMessage? {
+        return try {
+            val obj = json.parseToJsonElement(inner).jsonObject
+            val eventType = obj["event_type"]?.jsonPrimitive?.content ?: return null
+            val timestamp = obj["timestamp"]?.jsonPrimitive?.content ?: return null
+            val payload = (obj["payload"] as? JsonObject) ?: JsonObject(emptyMap())
+
+            SqsNotificationMessage(
+                eventType = eventType,
+                fileId = payload["file_id"]?.jsonPrimitive?.content ?: "",
+                ownerId = payload["owner_id"]?.jsonPrimitive?.content ?: "",
+                sharedWithUserId = payload["shared_with_user_id"]?.jsonPrimitive?.content ?: "",
+                documentId = payload["document_id"]?.jsonPrimitive?.content ?: "",
+                commentId = payload["comment_id"]?.jsonPrimitive?.content ?: "",
+                userId = payload["user_id"]?.jsonPrimitive?.content
+                    ?: payload["author_id"]?.jsonPrimitive?.content ?: "",
+                actorId = payload["actor_id"]?.jsonPrimitive?.content ?: "",
+                mentionedUserId = payload["mentioned_user_id"]?.jsonPrimitive?.content ?: "",
+                timestamp = timestamp,
+            )
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to parse snake_case message" }
+            null
         }
     }
 }

@@ -137,4 +137,68 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage parses snake_case document-service comment_added event`() {
+        val innerMessage = """{"event_type":"comment_added","timestamp":"2024-06-15T10:30:00Z","payload":{"comment_id":"c-99","document_id":"doc-55","author_id":"user-7"}}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-456",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("comment_added", event.eventType)
+        assertEquals("doc-55", event.documentId)
+        assertEquals("c-99", event.commentId)
+        assertEquals("user-7", event.userId)
+    }
+
+    @Test
+    fun `parseMessage parses snake_case document-service document_created event`() {
+        val innerMessage = """{"event_type":"document_created","timestamp":"2024-06-15T10:30:00Z","payload":{"id":"doc-1","title":"Test","owner_id":"user-1"}}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-789",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("document_created", event.eventType)
+    }
+
+    @Test
+    fun `parseInnerMessage falls back to snake_case format`() {
+        val inner = """{"event_type":"comment_added","timestamp":"2024-01-01T00:00:00Z","payload":{"document_id":"doc-1","author_id":"user-1"}}"""
+
+        val event = consumer.parseInnerMessage(inner)
+
+        assertNotNull(event)
+        assertEquals("comment_added", event.eventType)
+        assertEquals("doc-1", event.documentId)
+        assertEquals("user-1", event.userId)
+    }
+
+    @Test
+    fun `parseInnerMessage prefers camelCase format`() {
+        val inner = """{"eventType":"file_shared","fileId":"f-1","ownerId":"o-1","sharedWithUserId":"u-2","timestamp":"2024-01-01T00:00:00Z"}"""
+
+        val event = consumer.parseInnerMessage(inner)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("f-1", event.fileId)
+    }
 }

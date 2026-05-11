@@ -56,7 +56,7 @@ class EventPublisher:
                 TopicArn=settings.sns_topic_arn,
                 Message=json.dumps(message, cls=_UUIDEncoder),
                 MessageAttributes={
-                    "event_type": {"DataType": "String", "StringValue": event_type}
+                    "eventType": {"DataType": "String", "StringValue": event_type}
                 },
             )
             logger.info("sns_event_published", event_type=event_type)

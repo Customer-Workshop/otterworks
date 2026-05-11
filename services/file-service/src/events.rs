@@ -2,6 +2,8 @@ use chrono::Utc;
 use serde::Serialize;
 use uuid::Uuid;
 
+use aws_sdk_sns::types::MessageAttributeValue;
+
 use crate::config::SnsConfig;
 use crate::errors::ServiceError;
 
@@ -60,7 +62,18 @@ impl EventPublisher {
         let message =
             serde_json::to_string(event).map_err(|e| ServiceError::Internal(e.to_string()))?;
 
-        let mut req = self.client.publish().topic_arn(topic_arn).message(&message);
+        let event_type_attr = MessageAttributeValue::builder()
+            .data_type("String")
+            .string_value(&event.event_type)
+            .build()
+            .map_err(|e| ServiceError::Internal(e.to_string()))?;
+
+        let mut req = self
+            .client
+            .publish()
+            .topic_arn(topic_arn)
+            .message(&message)
+            .message_attributes("eventType", event_type_attr);
 
         // message_group_id and message_deduplication_id are only valid for FIFO topics
         if topic_arn.ends_with(".fifo") {

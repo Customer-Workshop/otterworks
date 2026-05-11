@@ -32,7 +32,7 @@ public class SearchController : ControllerBase
             pageNum = Math.Max(1, int.Parse(page ?? "1", CultureInfo.InvariantCulture));
             pageSize = Math.Max(1, Math.Min(100, int.Parse(size ?? "20", CultureInfo.InvariantCulture)));
         }
-        catch (FormatException)
+        catch (Exception ex) when (ex is FormatException or OverflowException)
         {
             return BadRequest(new { error = "Invalid page or size parameter" });
         }
@@ -99,7 +99,7 @@ public class SearchController : ControllerBase
             pageNum = Math.Max(request.Page ?? 1, 1);
             pageSize = Math.Min(Math.Max(request.Size ?? 20, 1), 100);
         }
-        catch (FormatException)
+        catch (Exception ex) when (ex is FormatException or OverflowException)
         {
             return BadRequest(new { error = "Invalid page or size parameter" });
         }

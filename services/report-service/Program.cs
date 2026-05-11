@@ -28,8 +28,13 @@ builder.Services.Configure<ServiceUrlsSettings>(serviceUrlsSection);
 
 var reportSettingsSection = builder.Configuration.GetSection("ReportSettings");
 builder.Services.Configure<ReportSettings>(reportSettingsSection);
+var reportOutputDir = Environment.GetEnvironmentVariable("REPORT_OUTPUT_DIR");
+if (!string.IsNullOrEmpty(reportOutputDir))
+{
+    builder.Services.PostConfigure<ReportSettings>(s => s.OutputDir = reportOutputDir);
+}
 var reportSettings = reportSettingsSection.Get<ReportSettings>() ?? new ReportSettings();
-reportSettings.OutputDir = Environment.GetEnvironmentVariable("REPORT_OUTPUT_DIR") ?? reportSettings.OutputDir;
+reportSettings.OutputDir = reportOutputDir ?? reportSettings.OutputDir;
 
 // Resolve connection string with environment variable substitution
 var rawConnectionString = builder.Configuration.GetConnectionString("ReportsDb") ?? "";

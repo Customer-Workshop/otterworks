@@ -110,8 +110,11 @@ app.Use(async (context, next) =>
 });
 
 // Swagger/OpenAPI
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // Prometheus metrics endpoint
 app.UseHttpMetrics();

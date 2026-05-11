@@ -38,10 +38,10 @@ The loader script is idempotent — it uses `ON CONFLICT DO NOTHING` for SQL and
 |----------|-------|-------|
 | Users | 25 | Across 6 departments, 4 roles |
 | Documents | 30 | RFCs, ADRs, runbooks, meeting notes |
-| Files | 40 | Uploads across all folders |
+| Files | 16 | Uploads across all folders |
 | Folders | 12 | Team-organized hierarchy |
-| Audit events | 60 | 2 weeks of activity |
-| Notifications | 35 | Mix of read/unread |
-| Analytics rows | 500+ | 6 months of daily activity |
-| Search entries | 40 | Pre-indexed documents and files |
-| Event bus msgs | 20 | SNS/SQS samples |
+| Audit events | 30 | 2 weeks of activity |
+| Notifications | 20 | Mix of read/unread |
+| Analytics rows | 60 | 6 months of daily activity |
+| Search entries | 15 | Pre-indexed documents and files |
+| Event bus msgs | 10 | SNS/SQS samples |

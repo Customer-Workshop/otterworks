@@ -57,7 +57,7 @@ seed_postgres() {
 # DynamoDB seed data (file-metadata, audit-events, notifications)
 seed_dynamodb() {
   log "Seeding DynamoDB tables..."
-  if command -v aws &>/dev/null; then
+  if command -v aws &>/dev/null && command -v jq &>/dev/null; then
     local endpoint="${AWS_ENDPOINT_URL:-http://localhost:4566}"
 
     for table_file in "$SEED_DIR"/dynamodb/*.json; do
@@ -84,7 +84,7 @@ seed_dynamodb() {
     done
     log "  DynamoDB seeded."
   else
-    warn "aws CLI not found -- skipping DynamoDB seed"
+    warn "aws CLI or jq not found -- skipping DynamoDB seed"
   fi
 }
 
@@ -93,7 +93,7 @@ seed_search() {
   log "Seeding MeiliSearch..."
   local meili_url="${MEILISEARCH_URL:-http://localhost:7700}"
 
-  if curl -sf "$meili_url/health" &>/dev/null; then
+  if curl -sf "$meili_url/health" &>/dev/null && command -v jq &>/dev/null; then
     # Create indexes if they don't exist
     curl -sf -X POST "$meili_url/indexes" \
       -H "Content-Type: application/json" \

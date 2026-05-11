@@ -1,0 +1,26 @@
+root = true
+
+[*.cs]
+# StyleCop - disable rules that don't fit this project
+dotnet_diagnostic.SA0001.severity = none
+dotnet_diagnostic.SA1101.severity = none
+dotnet_diagnostic.SA1200.severity = none
+dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1601.severity = none
+dotnet_diagnostic.SA1602.severity = none
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1516.severity = none
+dotnet_diagnostic.SA1649.severity = none
+
+# SA rules - additional
+dotnet_diagnostic.SA1204.severity = none
+dotnet_diagnostic.SA1010.severity = none
+dotnet_diagnostic.SA1000.severity = none
+
+# CA rules
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1062.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1848.severity = none

@@ -1,19 +1,20 @@
-FROM ruby:3.3-slim AS builder
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS builder
 
-RUN apt-get update && apt-get install -y build-essential libpq-dev libyaml-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY Gemfile Gemfile.lock ./
-RUN bundle config set --local without 'test development' && bundle install
+COPY *.csproj ./
+RUN dotnet restore
 
-FROM ruby:3.3-slim
-RUN apt-get update && apt-get install -y libpq5 curl && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY --from=builder /usr/local/bundle /usr/local/bundle
 COPY . .
+RUN dotnet publish -c Release -o /out
 
-RUN useradd -r -u 1001 appuser && mkdir -p /app/tmp/pids /app/tmp/cache /app/log && chown -R appuser:appuser /app/tmp /app/log
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
+RUN apk --no-cache add curl
+WORKDIR /app
+COPY --from=builder /out .
+
+RUN adduser -D -u 1001 appuser
 USER appuser
 
 EXPOSE 8089
-HEALTHCHECK --interval=15s --timeout=5s CMD curl -f http://localhost:8089/health || exit 1
-CMD ["sh", "-c", "bundle exec rails db:migrate; bundle exec rails server -b 0.0.0.0 -p 8089"]
+HEALTHCHECK --interval=10s --timeout=3s CMD curl -f http://localhost:8089/health || exit 1
+ENTRYPOINT ["dotnet", "AdminService.dll"]

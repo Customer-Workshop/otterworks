@@ -1,5 +1,5 @@
 class JwtAuthenticator
-  EXCLUDED_PATHS = %w[/health /metrics].freeze
+  EXCLUDED_PATHS = %w[/health /metrics /api/v1/admin/alerts/ingest /api/v1/admin/chaos].freeze
 
   def initialize(app)
     @app = app
@@ -27,7 +27,7 @@ class JwtAuthenticator
   private
 
   def skip_authentication?(request)
-    EXCLUDED_PATHS.any? { |path| request.path == path }
+    EXCLUDED_PATHS.any? { |path| request.path == path || request.path.start_with?(path) }
   end
 
   def extract_token(request)

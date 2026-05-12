@@ -46,7 +46,14 @@ Rails.application.routes.draw do
 
         # Bulk Operations
         post 'bulk/users', to: 'bulk#users'
+
+        # Chaos injection (demo/workshop use — protected by X-Chaos-Secret header)
+        post  'chaos', to: 'chaos#trigger'
+        delete 'chaos', to: 'chaos#reset'
       end
+
+      # Grafana alert webhook (no JWT — protected by X-Alert-Secret header)
+      post 'alerts/ingest', to: 'admin/alerts#ingest'
     end
   end
 end

@@ -128,6 +128,11 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: otterworks
       GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_SERVER_ROOT_URL: http://localhost:3001
+      # Unified alerting (Grafana 8+ default; explicit for clarity)
+      GF_UNIFIED_ALERTING_ENABLED: 'true'
+      GF_ALERTING_ENABLED: 'false'
+      # Secret sent to the admin-service alert webhook
+      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
     ports:
     - 3001:3000
     volumes:

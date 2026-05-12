@@ -61,7 +61,7 @@ module Api
           return if expected.nil? || expected.empty? # secret not configured → allow (dev mode)
 
           provided = request.headers['X-Chaos-Secret']
-          return if provided == expected
+          return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
 
           render json: { error: 'Unauthorized' }, status: :unauthorized
         end

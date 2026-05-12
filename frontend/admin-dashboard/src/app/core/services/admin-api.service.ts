@@ -16,7 +16,7 @@ const SERVICE_META: Record<string, { version: string; port: number; language: st
   'document-service':     { version: '2.2.0', port: 8083, language: 'Python 3.12', details: 'Document editing, versioning, templates' },
   'collab-service':       { version: '1.5.3', port: 8084, language: 'Node.js 20',  details: 'Real-time collaborative editing (CRDT)' },
   'notification-service': { version: '1.3.1', port: 8086, language: 'Kotlin 1.9',  details: 'Event-driven notifications (email, in-app, webhook)' },
-  'search-service':       { version: '1.1.0', port: 7700, language: 'Python 3.12', details: 'Full-text search powered by MeiliSearch' },
+  'search-service':       { version: '1.1.0', port: 8087, language: 'Python 3.12', details: 'Full-text search powered by MeiliSearch' },
   'analytics-service':    { version: '1.2.0', port: 8088, language: 'Scala 3.4',   details: 'Usage analytics, data aggregation' },
   'audit-service':        { version: '2.0.1', port: 8090, language: 'C# 12',       details: 'Immutable audit trail, compliance' },
 };

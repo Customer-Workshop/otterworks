@@ -1,0 +1,17 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: otterworks-incident-webhook
+    receivers:
+      - uid: otterworks-webhook-receiver
+        type: webhook
+        settings:
+          url: http://admin-service:8089/api/v1/admin/alerts/ingest
+          httpMethod: POST
+          # X-Alert-Secret is passed via Authorization header workaround since
+          # Grafana webhook contact points don't support custom headers directly.
+          # The alerts_controller accepts either header for flexibility.
+          authorization_scheme: Bearer
+          authorization_credentials: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
+        disableResolveMessage: false

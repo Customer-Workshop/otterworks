@@ -1,0 +1,283 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: otterworks-chaos-scenarios
+    folder: OtterWorks
+    interval: 30s
+    rules:
+
+      # -----------------------------------------------------------------------
+      # Search Service: Autocomplete suggest endpoint returning 500s
+      # Fires when the search-service 5xx rate exceeds 5% over a 1-minute window.
+      # Triggered by chaos flag: chaos:search-service:suggest_500
+      # -----------------------------------------------------------------------
+      - uid: search-suggest-errors
+        title: SearchSuggestHighErrorRate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: >-
+                sum(rate(http_requests_total{job="search-service",status=~"5.."}[1m]))
+                /
+                sum(rate(http_requests_total{job="search-service"}[1m]))
+              instant: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.05
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: critical
+          team: otterworks
+          affected_service: search-service
+        annotations:
+          summary: "High 5xx error rate on search-service"
+          description: >-
+            The search-service is returning more than 5% server errors.
+            The /suggest endpoint is likely crashing with a KeyError in the
+            ranking-score enrichment step — check app logs for TypeError or
+            KeyError in suggest(). Possible regression in the autocomplete
+            ranking pipeline introduced in a recent deployment.
+
+      # -----------------------------------------------------------------------
+      # File Service: Uploads failing with S3 errors
+      # Fires when the file-service 5xx rate exceeds 10% over a 1-minute window.
+      # Triggered by chaos flag: chaos:file-service:upload_s3_error
+      # -----------------------------------------------------------------------
+      - uid: file-upload-errors
+        title: FileUploadHighErrorRate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: >-
+                sum(rate(http_requests_total{job="file-service",status=~"5.."}[1m]))
+                /
+                sum(rate(http_requests_total{job="file-service"}[1m]))
+              instant: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.10
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: high
+          team: otterworks
+          affected_service: file-service
+        annotations:
+          summary: "File upload failures spiking on file-service"
+          description: >-
+            The file-service is returning more than 10% server errors on upload
+            requests. Errors contain 'NoSuchBucket' in the AWS SDK response —
+            the S3 bucket name may be misconfigured. Check S3_BUCKET env var
+            and recent infrastructure changes.
+
+      # -----------------------------------------------------------------------
+      # Notification Service: SQS consumer failing to process messages
+      # Fires when notification processing errors are accumulating.
+      # Triggered by chaos flag: chaos:notification-service:consumer_strict_schema
+      # -----------------------------------------------------------------------
+      - uid: notification-consumer-errors
+        title: NotificationConsumerProcessingErrors
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              # notification-service exposes this counter via Micrometer/Prometheus.
+              # Rate > 0 means messages are failing to deserialize and being left
+              # in the queue — they will reappear after the visibility timeout,
+              # creating an infinite retry loop and unbounded queue depth growth.
+              expr: >-
+                sum(rate(notifications_processing_errors_total{job="notification-service"}[2m]))
+              instant: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: critical
+          team: otterworks
+          affected_service: notification-service
+        annotations:
+          summary: "Notification SQS consumer failing to process messages"
+          description: >-
+            The notification-service SQS consumer is generating sustained
+            processing errors. Messages are failing deserialization and are not
+            being deleted from the queue — they will re-enter after the SQS
+            visibility timeout, causing queue depth to grow unboundedly.
+            Likely cause: schema mismatch between the consumer's strict JSON
+            parser and the timestamp format in legacy messages.

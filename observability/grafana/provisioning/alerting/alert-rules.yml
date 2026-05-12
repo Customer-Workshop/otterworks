@@ -23,9 +23,9 @@ groups:
             datasourceUid: Prometheus
             model:
               expr: >-
-                sum(rate(http_requests_total{job="search-service",status=~"5.."}[1m]))
+                sum(rate(search_service_requests_total{job="search-service",status=~"5.."}[1m]))
                 /
-                sum(rate(http_requests_total{job="search-service"}[1m]))
+                sum(rate(search_service_requests_total{job="search-service"}[1m]))
               instant: false
               intervalMs: 15000
               maxDataPoints: 43200

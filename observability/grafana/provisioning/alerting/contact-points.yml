@@ -9,9 +9,8 @@ contactPoints:
         settings:
           url: http://admin-service:8089/api/v1/admin/alerts/ingest
           httpMethod: POST
-          # X-Alert-Secret is passed via Authorization header workaround since
-          # Grafana webhook contact points don't support custom headers directly.
-          # The alerts_controller accepts either header for flexibility.
+          username: ""
+          password: ""
           authorization_scheme: Bearer
-          authorization_credentials: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
+          authorization_credentials: $ALERT_WEBHOOK_SECRET
         disableResolveMessage: false

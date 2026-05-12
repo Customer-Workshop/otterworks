@@ -8,6 +8,4 @@ policies:
     group_interval: 30s
     repeat_interval: 4h
     matchers:
-      - label: team
-        match: =
-        value: otterworks
+      - team=otterworks

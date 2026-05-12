@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed
+.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db
 
 SHELL := /bin/bash
 
@@ -13,8 +13,11 @@ infra-up: ## Start local infrastructure (Postgres, Redis, LocalStack, MeiliSearc
 infra-down: ## Stop local infrastructure
 	docker compose -f docker-compose.infra.yml down
 
-up: ## Start all application services (requires infra-up first)
+up: ## Start all services (add seed=1 to seed after start)
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+ ifdef seed
+	@$(MAKE) --no-print-directory wait-for-db seed
+ endif
 
 down: ## Stop all application services
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml down
@@ -22,8 +25,15 @@ down: ## Stop all application services
 build: ## Build all service images
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml build
 
-seed: ## Seed development data
+seed: ## Seed development data (services must be running)
 	uv run scripts/seed.py
+
+wait-for-db: ## Wait for Postgres to accept connections
+	@echo "Waiting for Postgres to be healthy..."
+	@for i in $$(seq 1 30); do \
+		docker exec otterworks-postgres pg_isready -q 2>/dev/null && exit 0; \
+		sleep 1; \
+	done; echo "Timed out waiting for Postgres" && exit 1
 
 logs: ## Tail logs for all services
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml logs -f

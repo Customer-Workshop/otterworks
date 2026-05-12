@@ -27,7 +27,7 @@ class JwtAuthenticator
   private
 
   def skip_authentication?(request)
-    EXCLUDED_PATHS.any? { |path| request.path == path || request.path.start_with?(path) }
+    EXCLUDED_PATHS.any? { |path| request.path == path }
   end
 
   def extract_token(request)

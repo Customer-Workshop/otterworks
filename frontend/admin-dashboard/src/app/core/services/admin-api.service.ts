@@ -21,6 +21,14 @@ const SERVICE_META: Record<string, { version: string; port: number; language: st
   'audit-service':        { version: '2.0.1', port: 8090, language: 'C# 12',       details: 'Immutable audit trail, compliance' },
 };
 
+// Backend uses severity (info|warning|critical|maintenance), frontend uses priority (low|medium|high|critical)
+const SEVERITY_TO_PRIORITY: Record<string, Announcement['priority']> = {
+  info: 'low', warning: 'medium', critical: 'critical', maintenance: 'high',
+};
+const PRIORITY_TO_SEVERITY: Record<string, string> = {
+  low: 'info', medium: 'warning', critical: 'critical', high: 'maintenance',
+};
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly baseUrl = '/api/v1';
@@ -120,7 +128,7 @@ export class AdminApiService {
       announcement: {
         title: announcement.title,
         body: announcement.content,
-        severity: announcement.priority,
+        severity: PRIORITY_TO_SEVERITY[announcement.priority ?? 'medium'] ?? 'info',
         status: 'draft',
         target_audience: announcement.targetAudience ? { role: announcement.targetAudience } : {},
       },
@@ -297,7 +305,7 @@ export class AdminApiService {
       id: raw.id,
       title: raw.title,
       content: raw.body,
-      priority: raw.severity ?? 'medium',
+      priority: SEVERITY_TO_PRIORITY[raw.severity] ?? 'medium',
       status: raw.status,
       createdAt: raw.created_at,
       publishedAt: raw.status === 'published' ? (raw.starts_at ?? raw.updated_at) : undefined,

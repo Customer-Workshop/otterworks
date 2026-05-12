@@ -66,7 +66,7 @@ class DevinSessionService
         ## Incident Details
         - **Title**: #{incident.title}
         - **Severity**: #{incident.severity}
-        - **Affected Service**: #{incident.affected_service || 'Unknown'}
+        - **Affected Service**: #{incident.affected_service.presence || 'Unknown'}
         - **Description**: #{incident.description}
 
         ## OtterWorks Architecture

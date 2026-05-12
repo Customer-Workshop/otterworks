@@ -28,6 +28,9 @@ module Api
           redis_key = "chaos:#{svc}:#{scenario}"
           redis.setex(redis_key, CHAOS_TTL_SECONDS, '1')
 
+          # Start background probe to generate traffic → Prometheus metrics → Grafana alert
+          ChaosProbeService.start(service: svc, redis_key: redis_key)
+
           Rails.logger.warn("CHAOS TRIGGERED: #{redis_key} (TTL #{CHAOS_TTL_SECONDS}s)")
 
           render json: {
@@ -61,7 +64,7 @@ module Api
           return if expected.nil? || expected.empty? # secret not configured → allow (dev mode)
 
           provided = request.headers['X-Chaos-Secret']
-          return if provided == expected
+          return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
 
           render json: { error: 'Unauthorized' }, status: :unauthorized
         end

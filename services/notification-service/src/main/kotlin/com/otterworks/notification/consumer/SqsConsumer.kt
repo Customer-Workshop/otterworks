@@ -6,6 +6,8 @@ import aws.sdk.kotlin.services.sqs.model.ReceiveMessageRequest
 import com.otterworks.notification.config.AppConfig
 import com.otterworks.notification.model.SqsNotificationMessage
 import com.otterworks.notification.service.NotificationService
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -36,7 +38,10 @@ class SqsConsumer(
     private val sqsClient: SqsClient,
     private val notificationService: NotificationService,
     private val config: AppConfig,
+    meterRegistry: MeterRegistry? = null,
 ) {
+    private val processingErrorsCounter: Counter? =
+        meterRegistry?.counter("notifications.processing.errors")
     // Standard lenient parser used in normal operation.
     private val json = Json {
         ignoreUnknownKeys = true
@@ -89,6 +94,7 @@ class SqsConsumer(
                                 sqsClient.deleteMessage(deleteRequest)
                                 logger.debug { "Deleted SQS message: ${msg.messageId}" }
                             } else {
+                                processingErrorsCounter?.increment()
                                 logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
                             }
                         } catch (e: Exception) {

@@ -7,6 +7,7 @@ import aws.smithy.kotlin.runtime.net.url.Url
 import com.otterworks.notification.config.AppConfig
 import com.otterworks.notification.consumer.SqsConsumer
 import com.otterworks.notification.plugins.configureMonitoring
+import io.micrometer.core.instrument.MeterRegistry
 import com.otterworks.notification.repository.NotificationRepository
 import com.otterworks.notification.routes.configureRouting
 import com.otterworks.notification.service.EmailSender
@@ -141,7 +142,7 @@ fun Application.configureDependencyInjection(
                         meterRegistry = get<io.micrometer.core.instrument.MeterRegistry>(),
                     )
                 }
-                single { SqsConsumer(get<SqsClient>(), get<NotificationService>(), get<AppConfig>()) }
+                single { SqsConsumer(get<SqsClient>(), get<NotificationService>(), get<AppConfig>(), get<MeterRegistry>()) }
             }
         )
     }

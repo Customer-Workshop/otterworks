@@ -122,13 +122,28 @@ interface NavItem {
       border-radius: 8px;
     }
 
+    :host ::ng-deep .mat-mdc-list-item .mdc-list-item__primary-text,
+    :host ::ng-deep .mat-mdc-list-item .mat-mdc-list-item-title {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+
     :host ::ng-deep .mat-mdc-list-item:hover {
       background: rgba(255, 255, 255, 0.08) !important;
       color: #ffffff !important;
     }
 
+    :host ::ng-deep .mat-mdc-list-item:hover .mdc-list-item__primary-text,
+    :host ::ng-deep .mat-mdc-list-item:hover .mat-mdc-list-item-title {
+      color: #ffffff !important;
+    }
+
     :host ::ng-deep .active-link {
       background: rgba(79, 195, 247, 0.15) !important;
+      color: #4fc3f7 !important;
+    }
+
+    :host ::ng-deep .active-link .mdc-list-item__primary-text,
+    :host ::ng-deep .active-link .mat-mdc-list-item-title {
       color: #4fc3f7 !important;
     }
 

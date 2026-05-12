@@ -15,13 +15,13 @@ class ChaosProbeService
       headers: { 'X-User-ID' => 'chaos-probe' },
     },
     'file-service' => {
-      url: 'http://file-service:8080/api/v1/files/upload',
+      url: 'http://file-service:8082/api/v1/files/upload',
       method: :post,
       headers: { 'X-User-ID' => 'chaos-probe', 'Content-Type' => 'application/json' },
       body: '{"filename":"probe.txt"}',
     },
     'notification-service' => {
-      url: 'http://notification-service:8085/health',
+      url: 'http://notification-service:8086/health',
       headers: {},
     },
   }.freeze

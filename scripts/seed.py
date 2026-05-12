@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import psycopg2
-from psycopg2.extras import execute_values
+from psycopg2.extras import execute_values, Json
 
 # ── Connection ────────────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ ADMIN_ID = "a0000000-0000-0000-0000-000000000001"  # pre-existing admin from aut
 
 USERS = [
     {
-        "id":           "seed-0001-0000-0000-000000000001",
+        "id":           "5eed0001-0000-4000-a000-000000000001",
         "email":        "alice.johnson@otterworks.io",
         "display_name": "Alice Johnson",
         "role":         "super_admin",
@@ -76,7 +76,7 @@ USERS = [
         "used_gb":      38.4,
     },
     {
-        "id":           "seed-0002-0000-0000-000000000002",
+        "id":           "5eed0002-0000-4000-a000-000000000002",
         "email":        "bob.martinez@otterworks.io",
         "display_name": "Bob Martinez",
         "role":         "editor",
@@ -90,7 +90,7 @@ USERS = [
         "used_gb":      62.1,
     },
     {
-        "id":           "seed-0003-0000-0000-000000000003",
+        "id":           "5eed0003-0000-4000-a000-000000000003",
         "email":        "carol.chen@otterworks.io",
         "display_name": "Carol Chen",
         "role":         "editor",
@@ -104,7 +104,7 @@ USERS = [
         "used_gb":      148.7,
     },
     {
-        "id":           "seed-0004-0000-0000-000000000004",
+        "id":           "5eed0004-0000-4000-a000-000000000004",
         "email":        "david.kim@otterworks.io",
         "display_name": "David Kim",
         "role":         "viewer",
@@ -118,7 +118,7 @@ USERS = [
         "used_gb":      3.2,
     },
     {
-        "id":           "seed-0005-0000-0000-000000000005",
+        "id":           "5eed0005-0000-4000-a000-000000000005",
         "email":        "emily.davis@otterworks.io",
         "display_name": "Emily Davis",
         "role":         "editor",
@@ -132,7 +132,7 @@ USERS = [
         "used_gb":      91.5,
     },
     {
-        "id":           "seed-0006-0000-0000-000000000006",
+        "id":           "5eed0006-0000-4000-a000-000000000006",
         "email":        "frank.wilson@otterworks.io",
         "display_name": "Frank Wilson",
         "role":         "admin",
@@ -146,7 +146,7 @@ USERS = [
         "used_gb":      210.0,
     },
     {
-        "id":           "seed-0007-0000-0000-000000000007",
+        "id":           "5eed0007-0000-4000-a000-000000000007",
         "email":        "grace.lee@otterworks.io",
         "display_name": "Grace Lee",
         "role":         "viewer",
@@ -160,7 +160,7 @@ USERS = [
         "used_gb":      18.9,
     },
     {
-        "id":           "seed-0008-0000-0000-000000000008",
+        "id":           "5eed0008-0000-4000-a000-000000000008",
         "email":        "henry.thompson@otterworks.io",
         "display_name": "Henry Thompson",
         "role":         "editor",
@@ -174,7 +174,7 @@ USERS = [
         "used_gb":      177.3,
     },
     {
-        "id":           "seed-0009-0000-0000-000000000009",
+        "id":           "5eed0009-0000-4000-a000-000000000009",
         "email":        "irene.garcia@otterworks.io",
         "display_name": "Irene Garcia",
         "role":         "viewer",
@@ -188,7 +188,7 @@ USERS = [
         "used_gb":      2.1,
     },
     {
-        "id":           "seed-0010-0000-0000-000000000010",
+        "id":           "5eed0010-0000-4000-a000-000000000010",
         "email":        "james.park@otterworks.io",
         "display_name": "James Park",
         "role":         "editor",
@@ -285,7 +285,7 @@ def seed_users(cur) -> None:
         rows.append((
             u["id"], u["email"], u["display_name"], u["role"], u["status"],
             None,  # avatar_url
-            metadata,
+            Json(metadata),
             u["last_login_at"],
             u["created_at"], u["created_at"],
         ))

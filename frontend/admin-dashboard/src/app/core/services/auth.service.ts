@@ -74,11 +74,11 @@ export class AuthService {
       return throwError(() => new Error('Invalid credentials'));
     }
     const user: AuthUser = {
-      id: 'admin-001',
+      id: 'a0000000-0000-0000-0000-000000000001',
       email,
       displayName: 'Admin User',
       role: 'admin',
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbi0wMDEiLCJ1c2VyX2lkIjoiYWRtaW4tMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGVzIjpbImFkbWluIl0sImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.KxoIksSDwoJrkE_LNeHCpHJ9pEK-dGVSi5iS7SPHrj4',
+      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGVzIjpbImFkbWluIl0sImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.ZQJ82lsjJCGsEU8I68xgSIRoijnYOrXokQSccx0IhBo',
     };
     return of(user).pipe(delay(800));
   }

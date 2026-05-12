@@ -23,7 +23,7 @@ build: ## Build all service images
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml build
 
 seed: ## Seed development data
-	./scripts/seed-data.sh
+	uv run scripts/seed.py
 
 logs: ## Tail logs for all services
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml logs -f

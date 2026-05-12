@@ -5,9 +5,8 @@ module Api
         # GET /api/v1/admin/health/services
         def services
           result = HealthChecker.check_all
-          status = result[:status] == 'healthy' ? :ok : :service_unavailable
 
-          render json: result, status: status
+          render json: result, status: :ok
         end
       end
     end

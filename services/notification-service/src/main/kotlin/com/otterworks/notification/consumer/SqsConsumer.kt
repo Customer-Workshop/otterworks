@@ -12,17 +12,47 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import redis.clients.jedis.JedisPool
+import redis.clients.jedis.JedisPoolConfig
 
 private val logger = KotlinLogging.logger {}
+
+// Lazy Redis pool for chaos flag checks.
+private val redisPool: JedisPool by lazy {
+    val host = System.getenv("REDIS_HOST") ?: "localhost"
+    val port = System.getenv("REDIS_PORT")?.toIntOrNull() ?: 6379
+    JedisPool(JedisPoolConfig(), host, port, 1000)
+}
+
+private fun chaosActive(flag: String): Boolean {
+    return try {
+        redisPool.resource.use { jedis -> jedis.exists(flag) }
+    } catch (e: Exception) {
+        false
+    }
+}
 
 class SqsConsumer(
     private val sqsClient: SqsClient,
     private val notificationService: NotificationService,
     private val config: AppConfig,
 ) {
+    // Standard lenient parser used in normal operation.
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+    }
+
+    // CHAOS: strict parser that rejects messages whose timestamp field is not
+    // a valid RFC 3339 string.  Legacy events emitted by older service versions
+    // use Unix epoch integers for timestamps, which are rejected here.
+    // When the chaos flag is active, every such message throws
+    // SerializationException, is never deleted from the queue, and becomes
+    // visible again after the SQS visibility timeout — causing queue depth to
+    // climb indefinitely while the consumer appears healthy.
+    private val strictJson = Json {
+        ignoreUnknownKeys = false
+        isLenient = false
     }
 
     suspend fun startPolling() = coroutineScope {
@@ -78,14 +108,15 @@ class SqsConsumer(
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
+        val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
         return try {
             // Try parsing as direct message first
-            json.decodeFromString<SqsNotificationMessage>(body)
+            parser.decodeFromString<SqsNotificationMessage>(body)
         } catch (_: Exception) {
             try {
                 // Try unwrapping SNS envelope
-                val snsWrapper = json.decodeFromString<SnsEnvelope>(body)
-                json.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
+                parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
             } catch (e: Exception) {
                 logger.error(e) { "Failed to parse message body" }
                 null

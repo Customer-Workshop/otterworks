@@ -33,6 +33,7 @@ anyhow = "1"
 dotenvy = "0.15"
 prometheus = "0.13"
 lazy_static = "1.4"
+redis = { version = "0.25", features = ["tokio-comp"] }
 
 [dev-dependencies]
 actix-rt = "2"

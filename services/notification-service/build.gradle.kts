@@ -66,6 +66,9 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-sdk:1.36.0")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.36.0")
 
+    // Redis (chaos flag checks)
+    implementation("redis.clients:jedis:5.1.3")
+
     // Testing
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")

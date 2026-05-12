@@ -5,6 +5,16 @@ use chrono::Utc;
 use futures_util::StreamExt;
 use uuid::Uuid;
 
+fn chaos_active(flag: &str) -> bool {
+    let host = std::env::var("REDIS_HOST").unwrap_or_else(|_| "localhost".into());
+    let port = std::env::var("REDIS_PORT").unwrap_or_else(|_| "6379".into());
+    let url = format!("redis://{}:{}", host, port);
+    let Ok(client) = redis::Client::open(url) else { return false };
+    let Ok(mut conn) = client.get_connection() else { return false };
+    let result: redis::RedisResult<i64> = redis::cmd("EXISTS").arg(flag).query(&mut conn);
+    result.unwrap_or(0) > 0
+}
+
 use crate::config::AppConfig;
 use crate::errors::ServiceError;
 use crate::events::EventPublisher;
@@ -130,7 +140,20 @@ pub async fn upload_file(
     let now = Utc::now();
     let size = file_bytes.len() as u64;
 
-    s3.upload_object(&s3_key, file_bytes.freeze(), &content_type)
+    // CHAOS: when this flag is active the S3 client targets a nonexistent
+    // bucket, simulating a misconfigured bucket name after a recent infra
+    // change.  The AWS SDK returns NoSuchBucket which surfaces as a 500.
+    let effective_bucket = if chaos_active("chaos:file-service:upload_s3_error") {
+        tracing::warn!("Chaos flag active: redirecting upload to nonexistent bucket");
+        "otterworks-files-chaos-nonexistent".to_string()
+    } else {
+        s3.bucket.clone()
+    };
+    let chaos_s3 = crate::storage::S3Client {
+        client: s3.client.clone(),
+        bucket: effective_bucket,
+    };
+    chaos_s3.upload_object(&s3_key, file_bytes.freeze(), &content_type)
         .await?;
 
     let file_meta = FileMetadata {

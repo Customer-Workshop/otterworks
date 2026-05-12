@@ -229,7 +229,7 @@ FEATURE_FLAGS_EXTRA = [
 
 ANNOUNCEMENTS = [
     {
-        "id":        uid(),
+        "id":        "5eeda0a0-0000-4000-a000-000000000001",
         "title":     "Scheduled maintenance this Saturday",
         "body":      "The platform will be unavailable from 02:00–04:00 UTC on Saturday for database upgrades. "
                      "Please save your work beforehand.",
@@ -239,7 +239,7 @@ ANNOUNCEMENTS = [
         "ends_at":   days_ago(0),
     },
     {
-        "id":        uid(),
+        "id":        "5eeda0a0-0000-4000-a000-000000000002",
         "title":     "New AI document summary feature now in beta",
         "body":      "We've launched AI-powered document summaries for 25% of users. "
                      "Check the Feature Flags page to manage rollout.",
@@ -249,7 +249,7 @@ ANNOUNCEMENTS = [
         "ends_at":   None,
     },
     {
-        "id":        uid(),
+        "id":        "5eeda0a0-0000-4000-a000-000000000003",
         "title":     "Q3 storage quota review",
         "body":      "Several enterprise accounts are approaching quota limits. "
                      "Admins should review the Storage Quotas page and upgrade affected users.",
@@ -402,6 +402,7 @@ def seed_audit_logs(cur) -> None:
             created, created,
         ))
 
+    cur.execute("DELETE FROM audit_logs WHERE user_agent = 'Mozilla/5.0 (seed)'")
     execute_values(cur, """
         INSERT INTO audit_logs
             (id, actor_id, actor_email, action, resource_type, resource_id,

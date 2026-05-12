@@ -1,6 +1,14 @@
+require 'net/http'
+
 class HealthChecker
   SERVICES = %w[auth-service file-service document-service collab-service notification-service search-service
                 analytics-service audit-service].freeze
+
+  DEFAULT_PORTS = {
+    'auth-service' => '8081', 'file-service' => '8082', 'document-service' => '8083',
+    'collab-service' => '8084', 'notification-service' => '8086', 'search-service' => '8087',
+    'analytics-service' => '8088', 'audit-service' => '8090'
+  }.freeze
 
   ServiceStatus = Struct.new(:name, :status, :latency_ms, :message, keyword_init: true)
 
@@ -19,7 +27,7 @@ class HealthChecker
 
   def self.check_service(name)
     host = ENV.fetch("#{name.tr('-', '_').upcase}_HOST", name)
-    port = ENV.fetch("#{name.tr('-', '_').upcase}_PORT", nil)
+    port = ENV.fetch("#{name.tr('-', '_').upcase}_PORT", DEFAULT_PORTS[name])
     url = "http://#{host}:#{port}/health" if port.present?
 
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)

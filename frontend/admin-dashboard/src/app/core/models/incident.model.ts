@@ -20,7 +20,7 @@ export const AFFECTED_SERVICES = [
   { value: 'auth-service', label: 'Auth Service (Java)' },
   { value: 'file-service', label: 'File Service (Rust)' },
   { value: 'document-service', label: 'Document Service (Python)' },
-  { value: 'collaboration-service', label: 'Collaboration Service (Node.js)' },
+  { value: 'collab-service', label: 'Collaboration Service (Node.js)' },
   { value: 'notification-service', label: 'Notification Service (Kotlin)' },
   { value: 'search-service', label: 'Search Service (Python)' },
   { value: 'analytics-service', label: 'Analytics Service (Scala)' },

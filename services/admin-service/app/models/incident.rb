@@ -3,7 +3,7 @@ class Incident < ApplicationRecord
   STATUSES = %w[open investigating resolved closed].freeze
   AFFECTED_SERVICES = %w[
     api-gateway auth-service file-service document-service
-    collaboration-service notification-service search-service
+    collab-service notification-service search-service
     analytics-service admin-service audit-service report-service
   ].freeze
 

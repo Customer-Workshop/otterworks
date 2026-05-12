@@ -5,13 +5,8 @@ use chrono::Utc;
 use futures_util::StreamExt;
 use uuid::Uuid;
 
-fn chaos_active(flag: &str) -> bool {
-    let host = std::env::var("REDIS_HOST").unwrap_or_else(|_| "localhost".into());
-    let port = std::env::var("REDIS_PORT").unwrap_or_else(|_| "6379".into());
-    let url = format!("redis://{}:{}", host, port);
-    let Ok(client) = redis::Client::open(url) else { return false };
-    let Ok(mut conn) = client.get_connection() else { return false };
-    let result: redis::RedisResult<i64> = redis::cmd("EXISTS").arg(flag).query(&mut conn);
+async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> bool {
+    let result: redis::RedisResult<i64> = redis::cmd("EXISTS").arg(flag).query_async(cm).await;
     result.unwrap_or(0) > 0
 }
 
@@ -23,9 +18,9 @@ use crate::middleware;
 use crate::models::{
     ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
     FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
-    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest,
-    ShareFileResponse, UpdateFolderRequest, UploadResponse,
+    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
+    MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
+    UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -53,6 +48,7 @@ pub async fn upload_file(
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     config: web::Data<AppConfig>,
+    redis_cm: web::Data<redis::aio::ConnectionManager>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
     // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
@@ -143,7 +139,12 @@ pub async fn upload_file(
     // CHAOS: when this flag is active the S3 client targets a nonexistent
     // bucket, simulating a misconfigured bucket name after a recent infra
     // change.  The AWS SDK returns NoSuchBucket which surfaces as a 500.
-    let effective_bucket = if chaos_active("chaos:file-service:upload_s3_error") {
+    let effective_bucket = if chaos_active(
+        &mut redis_cm.get_ref().clone(),
+        "chaos:file-service:upload_s3_error",
+    )
+    .await
+    {
         tracing::warn!("Chaos flag active: redirecting upload to nonexistent bucket");
         "otterworks-files-chaos-nonexistent".to_string()
     } else {
@@ -153,7 +154,8 @@ pub async fn upload_file(
         client: s3.client.clone(),
         bucket: effective_bucket,
     };
-    chaos_s3.upload_object(&s3_key, file_bytes.freeze(), &content_type)
+    chaos_s3
+        .upload_object(&s3_key, file_bytes.freeze(), &content_type)
         .await?;
 
     let file_meta = FileMetadata {
@@ -496,7 +498,10 @@ pub async fn share_file(
     let file = meta.get_file(&file_id).await?;
 
     // Check if share already exists for this file + user
-    if let Some(existing) = meta.find_existing_share(&file_id, &body.shared_with).await? {
+    if let Some(existing) = meta
+        .find_existing_share(&file_id, &body.shared_with)
+        .await?
+    {
         // Update permission if different, otherwise return existing
         if existing.permission != body.permission {
             let updated = FileShare {

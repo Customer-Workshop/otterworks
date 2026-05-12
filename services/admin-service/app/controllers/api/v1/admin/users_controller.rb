@@ -6,7 +6,7 @@ module Api
 
         # GET /api/v1/admin/users
         def index
-          scope = AdminUser.all
+          scope = AdminUser.includes(:storage_quota)
           scope = scope.search(params[:q]) if params[:q].present?
           scope = scope.by_role(params[:role]) if params[:role].present?
           scope = scope.where(status: params[:status]) if params[:status].present?
@@ -15,7 +15,7 @@ module Api
           result = paginate(scope)
 
           render json: {
-            users: ActiveModelSerializers::SerializableResource.new(result[:records]),
+            users: ActiveModelSerializers::SerializableResource.new(result[:records], include_quota: true),
             total: result[:total],
             page: result[:page],
             per_page: result[:per_page]
@@ -40,7 +40,7 @@ module Api
               changes_made: { before: previous_attributes,
                               after: @user.attributes.slice('role', 'display_name', 'email') }
             )
-            render json: @user, serializer: AdminUserSerializer
+            render json: @user, serializer: AdminUserSerializer, include_quota: true
           else
             render json: { error: 'Validation failed', details: @user.errors.full_messages },
                    status: :unprocessable_entity
@@ -73,7 +73,7 @@ module Api
             changes_made: { reason: params[:reason] }
           )
 
-          render json: @user, serializer: AdminUserSerializer
+          render json: @user, serializer: AdminUserSerializer, include_quota: true
         end
 
         # PUT /api/v1/admin/users/:id/activate
@@ -87,13 +87,13 @@ module Api
             request: request
           )
 
-          render json: @user, serializer: AdminUserSerializer
+          render json: @user, serializer: AdminUserSerializer, include_quota: true
         end
 
         private
 
         def set_user
-          @user = AdminUser.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
+          @user = AdminUser.includes(:storage_quota).find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
         def user_params

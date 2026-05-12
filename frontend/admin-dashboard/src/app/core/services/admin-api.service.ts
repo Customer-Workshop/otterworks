@@ -391,7 +391,7 @@ export class AdminApiService {
         { label: 'Active',    value: users.active    ?? 0 },
         { label: 'Suspended', value: users.suspended ?? 0 },
       ],
-      topFileTypes: tierPoints,
+      topFileTypes: [],  // file-type breakdown not available from admin-service metrics
       peakHours: [],
     };
   }

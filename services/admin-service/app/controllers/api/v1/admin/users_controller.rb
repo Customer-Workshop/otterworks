@@ -40,7 +40,7 @@ module Api
               changes_made: { before: previous_attributes,
                               after: @user.attributes.slice('role', 'display_name', 'email') }
             )
-            render json: @user, serializer: AdminUserSerializer
+            render json: @user, serializer: AdminUserSerializer, include_quota: true
           else
             render json: { error: 'Validation failed', details: @user.errors.full_messages },
                    status: :unprocessable_entity
@@ -73,7 +73,7 @@ module Api
             changes_made: { reason: params[:reason] }
           )
 
-          render json: @user, serializer: AdminUserSerializer
+          render json: @user, serializer: AdminUserSerializer, include_quota: true
         end
 
         # PUT /api/v1/admin/users/:id/activate
@@ -87,13 +87,13 @@ module Api
             request: request
           )
 
-          render json: @user, serializer: AdminUserSerializer
+          render json: @user, serializer: AdminUserSerializer, include_quota: true
         end
 
         private
 
         def set_user
-          @user = AdminUser.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
+          @user = AdminUser.includes(:storage_quota).find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
         def user_params

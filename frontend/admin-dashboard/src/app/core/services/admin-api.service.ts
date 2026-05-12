@@ -199,6 +199,15 @@ export class AdminApiService {
     );
   }
 
+  // Chaos injection (demo/workshop controls)
+  triggerChaos(service: string, scenario: string): Observable<{ status: string; key: string; expires_in: number }> {
+    return this.http.post<any>(`${this.baseUrl}/admin/chaos`, { service, scenario });
+  }
+
+  resetChaos(): Observable<{ status: string; cleared: string[] }> {
+    return this.http.delete<any>(`${this.baseUrl}/admin/chaos`);
+  }
+
   private mapIncident(raw: any): Incident {
     return {
       id: raw.id,

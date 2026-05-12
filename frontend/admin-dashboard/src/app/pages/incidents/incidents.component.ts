@@ -37,6 +37,87 @@ import { Subscription, interval } from 'rxjs';
         </button>
       </div>
 
+      <!-- Demo Controls: chaos injection panel for workshop use -->
+      <mat-card class="demo-controls" [class.expanded]="showDemoControls">
+        <mat-card-header (click)="showDemoControls = !showDemoControls" style="cursor:pointer">
+          <mat-card-title>
+            <mat-icon>science</mat-icon>
+            Demo Controls
+            <span class="demo-badge" *ngIf="activeChaosCount > 0">{{ activeChaosCount }} active</span>
+          </mat-card-title>
+          <mat-card-subtitle>Inject realistic failures into running services to trigger Grafana alerts and auto-create Devin sessions</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content *ngIf="showDemoControls">
+          <div class="chaos-grid">
+
+            <div class="chaos-scenario" [class.chaos-active]="chaosState['search-service']">
+              <div class="chaos-scenario-header">
+                <mat-icon class="chaos-svc-icon">search</mat-icon>
+                <div>
+                  <div class="chaos-svc-name">Search Service <span class="chaos-lang">Python/Flask</span></div>
+                  <div class="chaos-svc-desc">Autocomplete suggest endpoint crashes with KeyError on ranking score enrichment → 500s</div>
+                </div>
+              </div>
+              <div class="chaos-status" *ngIf="chaosState['search-service']">
+                <mat-icon class="chaos-active-icon">bolt</mat-icon>
+                Chaos active — Grafana alert fires in ~30s
+              </div>
+              <button mat-raised-button color="warn" (click)="triggerChaos('search-service', 'suggest_500')"
+                [disabled]="!!chaosState['search-service'] || chaosLoading">
+                <mat-icon>{{ chaosState['search-service'] ? 'check' : 'bug_report' }}</mat-icon>
+                {{ chaosState['search-service'] ? 'Breaking...' : 'Break Search Autocomplete' }}
+              </button>
+            </div>
+
+            <div class="chaos-scenario" [class.chaos-active]="chaosState['file-service']">
+              <div class="chaos-scenario-header">
+                <mat-icon class="chaos-svc-icon">cloud_upload</mat-icon>
+                <div>
+                  <div class="chaos-svc-name">File Service <span class="chaos-lang">Rust/Actix-Web</span></div>
+                  <div class="chaos-svc-desc">Uploads routed to nonexistent S3 bucket → AWS NoSuchBucket errors → 500s</div>
+                </div>
+              </div>
+              <div class="chaos-status" *ngIf="chaosState['file-service']">
+                <mat-icon class="chaos-active-icon">bolt</mat-icon>
+                Chaos active — Grafana alert fires in ~30s
+              </div>
+              <button mat-raised-button color="warn" (click)="triggerChaos('file-service', 'upload_s3_error')"
+                [disabled]="!!chaosState['file-service'] || chaosLoading">
+                <mat-icon>{{ chaosState['file-service'] ? 'check' : 'bug_report' }}</mat-icon>
+                {{ chaosState['file-service'] ? 'Breaking...' : 'Break File Uploads' }}
+              </button>
+            </div>
+
+            <div class="chaos-scenario" [class.chaos-active]="chaosState['notification-service']">
+              <div class="chaos-scenario-header">
+                <mat-icon class="chaos-svc-icon">notifications</mat-icon>
+                <div>
+                  <div class="chaos-svc-name">Notification Service <span class="chaos-lang">Kotlin/Ktor</span></div>
+                  <div class="chaos-svc-desc">Strict JSON schema rejects legacy message timestamps → deserialization loop → queue backlog grows</div>
+                </div>
+              </div>
+              <div class="chaos-status" *ngIf="chaosState['notification-service']">
+                <mat-icon class="chaos-active-icon">bolt</mat-icon>
+                Chaos active — Grafana alert fires in ~2m
+              </div>
+              <button mat-raised-button color="warn" (click)="triggerChaos('notification-service', 'consumer_strict_schema')"
+                [disabled]="!!chaosState['notification-service'] || chaosLoading">
+                <mat-icon>{{ chaosState['notification-service'] ? 'check' : 'bug_report' }}</mat-icon>
+                {{ chaosState['notification-service'] ? 'Breaking...' : 'Break Notification Queue' }}
+              </button>
+            </div>
+
+          </div>
+          <div class="chaos-footer">
+            <span class="chaos-note">Chaos flags auto-expire after 10 minutes</span>
+            <button mat-stroked-button color="warn" (click)="resetAllChaos()" [disabled]="activeChaosCount === 0 || chaosLoading">
+              <mat-icon>refresh</mat-icon>
+              Reset All
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
       <!-- Status summary chips (only show when there are incidents) -->
       <div class="status-summary" *ngIf="!loading && incidents.length > 0">
         <div class="summary-chip active" (click)="filterStatus = filterStatus === 'active' ? '' : 'active'">
@@ -247,6 +328,21 @@ import { Subscription, interval } from 'rxjs';
     .onboarding-icon{font-size:56px;width:56px;height:56px;color:#1565c0}.onboarding-hero h2{margin:0 0 8px;font-size:1.3rem}.onboarding-hero p{color:#666;line-height:1.5;margin:0}
     .onboarding-steps{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}.step{display:flex;gap:12px}.step-number{min-width:28px;height:28px;border-radius:50%;background:#1565c0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem}
     .onboarding-cta{margin:0 auto}
+    .demo-controls{margin-bottom:24px;border-left:4px solid #7b1fa2;background:#fdf8ff}
+    .demo-controls mat-card-title{display:flex;align-items:center;gap:8px;font-size:1rem}
+    .demo-badge{background:#7b1fa2;color:#fff;border-radius:12px;padding:2px 8px;font-size:.7rem;font-weight:600}
+    .chaos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+    .chaos-scenario{background:#fff;border:1px solid #e8d5f5;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s}
+    .chaos-scenario.chaos-active{border-color:#7b1fa2;background:#fdf0ff}
+    .chaos-scenario-header{display:flex;gap:12px;align-items:flex-start}
+    .chaos-svc-icon{color:#7b1fa2;margin-top:2px}
+    .chaos-svc-name{font-weight:600;font-size:.9rem;color:#333}
+    .chaos-lang{background:#f3e5f5;color:#7b1fa2;border-radius:4px;padding:1px 6px;font-size:.7rem;font-weight:500;margin-left:6px}
+    .chaos-svc-desc{font-size:.8rem;color:#777;line-height:1.4;margin-top:4px}
+    .chaos-status{display:flex;align-items:center;gap:6px;font-size:.8rem;color:#7b1fa2;font-weight:600;background:#f3e5f5;border-radius:6px;padding:6px 10px}
+    .chaos-active-icon{font-size:16px;width:16px;height:16px}
+    .chaos-footer{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px solid #e8d5f5}
+    .chaos-note{font-size:.8rem;color:#999}
   `],
 })
 export class IncidentsComponent implements OnInit, OnDestroy {
@@ -257,6 +353,15 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   filterStatus = '';
   affectedServices = AFFECTED_SERVICES;
   newIncident: Partial<Incident> = { severity: 'high', affectedService: '' };
+
+  // Demo Controls state
+  showDemoControls = true;
+  chaosLoading = false;
+  chaosState: Record<string, boolean> = {};
+
+  get activeChaosCount(): number {
+    return Object.values(this.chaosState).filter(Boolean).length;
+  }
 
   private pollSub?: Subscription;
 
@@ -357,5 +462,40 @@ export class IncidentsComponent implements OnInit, OnDestroy {
       case 'closed': return 'cancel';
       default: return 'help_outline';
     }
+  }
+
+  triggerChaos(service: string, scenario: string): void {
+    this.chaosLoading = true;
+    this.api.triggerChaos(service, scenario).subscribe({
+      next: () => {
+        this.chaosState[service] = true;
+        this.chaosLoading = false;
+        this.snackBar.open(
+          `Chaos active on ${service} — watch Grafana for the alert (auto-resets in 10m)`,
+          'Dismiss',
+          { duration: 6000 },
+        );
+      },
+      error: () => {
+        this.chaosLoading = false;
+        this.snackBar.open(`Failed to trigger chaos on ${service}`, 'Dismiss', { duration: 3000 });
+      },
+    });
+  }
+
+  resetAllChaos(): void {
+    this.chaosLoading = true;
+    this.api.resetChaos().subscribe({
+      next: (res) => {
+        this.chaosState = {};
+        this.chaosLoading = false;
+        const cleared = res.cleared?.length ?? 0;
+        this.snackBar.open(`Reset complete — cleared ${cleared} chaos flag(s)`, 'Dismiss', { duration: 4000 });
+      },
+      error: () => {
+        this.chaosLoading = false;
+        this.snackBar.open('Failed to reset chaos flags', 'Dismiss', { duration: 3000 });
+      },
+    });
   }
 }

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  S3_BUCKET: {{ required "config.s3Bucket must be set" .Values.config.s3Bucket | quote }}
+  DYNAMODB_TABLE: {{ .Values.config.dynamodbTable | quote }}
+  DYNAMODB_FOLDERS_TABLE: {{ .Values.config.dynamodbFoldersTable | quote }}
+  DYNAMODB_VERSIONS_TABLE: {{ .Values.config.dynamodbVersionsTable | quote }}
+  DYNAMODB_SHARES_TABLE: {{ .Values.config.dynamodbSharesTable | quote }}
+  {{- if .Values.config.snsTopicArn }}
+  SNS_TOPIC_ARN: {{ .Values.config.snsTopicArn | quote }}
+  {{- end }}

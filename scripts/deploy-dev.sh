@@ -102,6 +102,15 @@ else
   log "Skipping Terraform provisioning."
 fi
 
+# ---------- Capture Terraform outputs for Helm ----------
+
+log "Reading Terraform outputs..."
+TF_S3_FILE_BUCKET=$(cd "${REPO_ROOT}/infrastructure/terraform" && terraform output -raw s3_file_bucket 2>/dev/null || echo "")
+TF_SNS_TOPIC_ARN=$(cd "${REPO_ROOT}/infrastructure/terraform" && terraform output -raw sns_events_topic_arn 2>/dev/null || echo "")
+if [ -z "${TF_S3_FILE_BUCKET}" ]; then
+  warn "Could not read s3_file_bucket from Terraform outputs; Helm will use chart defaults."
+fi
+
 # ---------- Step 3: Configure kubectl ----------
 
 log "Configuring kubectl for EKS cluster ${EKS_CLUSTER}..."
@@ -158,11 +167,20 @@ deploy_service() {
   fi
 
   local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}"
+  local extra_sets=()
+  if [ "${service}" = "file-service" ] && [ -n "${TF_S3_FILE_BUCKET:-}" ]; then
+    extra_sets+=(--set "config.s3Bucket=${TF_S3_FILE_BUCKET}")
+  fi
+  if [ "${service}" = "file-service" ] && [ -n "${TF_SNS_TOPIC_ARN:-}" ]; then
+    extra_sets+=(--set "config.snsTopicArn=${TF_SNS_TOPIC_ARN}")
+  fi
+
   log "Deploying ${service} via Helm..."
   helm upgrade --install "${service}" "${chart_dir}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${image}" \
     --set image.tag="${IMAGE_TAG}" \
+    ${extra_sets[@]+"${extra_sets[@]}"} \
     --wait \
     --timeout 5m \
     || { warn "Helm deploy failed for ${service}"; return 1; }

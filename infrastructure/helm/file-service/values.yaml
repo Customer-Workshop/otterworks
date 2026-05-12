@@ -47,5 +47,13 @@ networkPolicy:
   ingressNamespace: ingress-nginx
   monitoringNamespace: monitoring
 
+config:
+  s3Bucket: ""  # Set at deploy time (must match Terraform bucket name, e.g. otterworks-files-dev)
+  dynamodbTable: "otterworks-file-metadata"
+  dynamodbFoldersTable: "otterworks-folders"
+  dynamodbVersionsTable: "otterworks-file-versions"
+  dynamodbSharesTable: "otterworks-file-shares"
+  snsTopicArn: ""  # Set at deploy time from Terraform output
+
 serviceAccount:
   roleArn: ""

@@ -58,7 +58,7 @@ module Api
 
         def verify_chaos_secret
           expected = ENV.fetch('CHAOS_SECRET', nil)
-          return if expected.nil? # secret not configured → allow (dev mode)
+          return if expected.nil? || expected.empty? # secret not configured → allow (dev mode)
 
           provided = request.headers['X-Chaos-Secret']
           return if provided == expected

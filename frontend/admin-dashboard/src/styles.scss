@@ -56,3 +56,44 @@ a {
 ::-webkit-scrollbar-thumb:hover {
   background: #999;
 }
+
+/* ── Sidebar nav-list overrides ──────────────────────────────────────────────
+   Angular Material's light theme renders mat-list-item text in dark ink.
+   These rules force white text/icons inside the dark sidebar regardless of
+   the global theme, replacing the weaker ::ng-deep rules in the component. */
+app-sidebar .mat-mdc-list-item,
+app-sidebar .mat-mdc-list-item .mdc-list-item__primary-text,
+app-sidebar .mat-mdc-list-item .mat-mdc-list-item-title {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+app-sidebar .mat-mdc-list-item .mat-icon {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+app-sidebar .mat-mdc-list-item:hover .mdc-list-item__primary-text,
+app-sidebar .mat-mdc-list-item:hover .mat-mdc-list-item-title,
+app-sidebar .mat-mdc-list-item:hover {
+  color: #ffffff !important;
+}
+
+app-sidebar .mat-mdc-list-item:hover .mat-icon {
+  color: #ffffff !important;
+}
+
+app-sidebar .active-link,
+app-sidebar .active-link .mdc-list-item__primary-text,
+app-sidebar .active-link .mat-mdc-list-item-title {
+  color: #4fc3f7 !important;
+  background: rgba(79, 195, 247, 0.15) !important;
+}
+
+app-sidebar .active-link .mat-icon {
+  color: #4fc3f7 !important;
+}
+
+/* Ripple / focus state should also be light */
+app-sidebar .mat-mdc-list-item .mdc-list-item__ripple::before,
+app-sidebar .mat-mdc-list-item .mdc-list-item__ripple::after {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}

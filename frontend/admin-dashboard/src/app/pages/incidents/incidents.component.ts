@@ -16,6 +16,8 @@ import { AdminApiService } from '../../core/services/admin-api.service';
 import { Incident, AFFECTED_SERVICES } from '../../core/models/incident.model';
 import { Subscription, interval } from 'rxjs';
 
+const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
+
 @Component({
   selector: 'app-incidents',
   standalone: true,
@@ -371,6 +373,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.loadChaosState();
     this.loadIncidents();
     // Poll for status updates every 10 seconds
     this.pollSub = interval(10000).subscribe(() => {
@@ -401,6 +404,21 @@ export class IncidentsComponent implements OnInit, OnDestroy {
     if (this.filterStatus === 'active') return this.incidents.filter(i => i.active);
     if (this.filterStatus === 'investigating') return this.incidents.filter(i => i.status === 'investigating');
     return this.incidents.filter(i => i.status === this.filterStatus);
+  }
+
+  loadChaosState(): void {
+    const stored = localStorage.getItem(CHAOS_STATE_KEY);
+    if (stored) {
+      try {
+        this.chaosState = JSON.parse(stored);
+      } catch {
+        this.chaosState = {};
+      }
+    }
+  }
+
+  saveChaosState(): void {
+    localStorage.setItem(CHAOS_STATE_KEY, JSON.stringify(this.chaosState));
   }
 
   loadIncidents(): void {
@@ -469,6 +487,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
     this.api.triggerChaos(service, scenario).subscribe({
       next: () => {
         this.chaosState[service] = true;
+        this.saveChaosState();
         this.chaosLoading = false;
         this.snackBar.open(
           `Chaos active on ${service} — watch Grafana for the alert (auto-resets in 10m)`,
@@ -488,9 +507,15 @@ export class IncidentsComponent implements OnInit, OnDestroy {
     this.api.resetChaos().subscribe({
       next: (res) => {
         this.chaosState = {};
+        this.saveChaosState();
         this.chaosLoading = false;
         const cleared = res.cleared?.length ?? 0;
-        this.snackBar.open(`Reset complete — cleared ${cleared} chaos flag(s)`, 'Dismiss', { duration: 4000 });
+        const resolved = (res as any).resolved_incidents?.length ?? 0;
+        const msg = resolved > 0
+          ? `Reset complete — cleared ${cleared} chaos flag(s), resolved ${resolved} incident(s)`
+          : `Reset complete — cleared ${cleared} chaos flag(s)`;
+        this.snackBar.open(msg, 'Dismiss', { duration: 5000 });
+        this.loadIncidents();
       },
       error: () => {
         this.chaosLoading = false;

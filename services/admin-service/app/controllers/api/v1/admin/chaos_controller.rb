@@ -45,9 +45,21 @@ module Api
           keys = redis.keys('chaos:*')
           redis.del(*keys) if keys.any?
 
-          Rails.logger.warn("CHAOS RESET: cleared #{keys.size} flag(s): #{keys.join(', ')}")
+          # Resolve any open incidents for chaos-managed services so the next
+          # demo run can create fresh incidents without hitting the dedup guard.
+          resolved_incidents = []
+          VALID_SCENARIOS.each_key do |svc|
+            Incident.where(affected_service: svc)
+                    .where(status: %w[open investigating])
+                    .each do |incident|
+              incident.resolve!
+              resolved_incidents << incident.id
+            end
+          end
 
-          render json: { status: 'reset', cleared: keys }
+          Rails.logger.warn("CHAOS RESET: cleared #{keys.size} flag(s): #{keys.join(', ')}; resolved #{resolved_incidents.size} incident(s)")
+
+          render json: { status: 'reset', cleared: keys, resolved_incidents: resolved_incidents }
         end
 
         private

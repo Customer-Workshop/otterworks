@@ -405,9 +405,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReindexResponse"
               example:
-                status: "reindex_complete"
-                documents_indexed: 150
-                files_indexed: 340
+                status: "reindexed"
+                indices: ["documents", "files"]
+                indexed_counts:
+                  documents: 150
+                  files: 340
         "500":
           description: Internal server error
           content:
@@ -769,13 +771,24 @@ components:
 
     ReindexResponse:
       type: object
+      required:
+        - status
+        - indices
+        - indexed_counts
       properties:
         status:
           type: string
-        documents_indexed:
-          type: integer
-        files_indexed:
-          type: integer
+        indices:
+          type: array
+          items:
+            type: string
+        indexed_counts:
+          type: object
+          properties:
+            documents:
+              type: integer
+            files:
+              type: integer
 
     AnalyticsResponse:
       type: object

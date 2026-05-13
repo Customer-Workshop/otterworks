@@ -117,7 +117,10 @@ class TestSearchEndpoint:
 
     def test_search_requires_query(self, openapi_spec: dict[str, Any]) -> None:
         """Searching without q parameter returns 400."""
-        resp = requests.get(f"{BASE_URL}/api/v1/search/")
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/search/",
+            headers={"X-User-ID": "test-user-001"},
+        )
         assert resp.status_code == 400
         body = resp.json()
         _validate_response(openapi_spec, body, "/api/v1/search/", "get", "400")
@@ -128,6 +131,7 @@ class TestSearchEndpoint:
         resp = requests.get(
             f"{BASE_URL}/api/v1/search/",
             params={"q": "test", "page": "abc"},
+            headers={"X-User-ID": "test-user-001"},
         )
         assert resp.status_code == 400
         body = resp.json()
@@ -159,6 +163,7 @@ class TestSuggestEndpoint:
         resp = requests.get(
             f"{BASE_URL}/api/v1/search/suggest",
             params={"q": "a"},
+            headers={"X-User-ID": "test-user-001"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -171,6 +176,7 @@ class TestSuggestEndpoint:
         resp = requests.get(
             f"{BASE_URL}/api/v1/search/suggest",
             params={"q": "tes"},
+            headers={"X-User-ID": "test-user-001"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -270,7 +276,10 @@ class TestAnalyticsEndpoint:
 
     def test_analytics_response_schema(self, openapi_spec: dict[str, Any]) -> None:
         """Analytics endpoint returns valid schema."""
-        resp = requests.get(f"{BASE_URL}/api/v1/search/analytics")
+        resp = requests.get(
+            f"{BASE_URL}/api/v1/search/analytics",
+            headers={"X-User-ID": "test-user-001"},
+        )
         assert resp.status_code == 200
         body = resp.json()
         _validate_response(openapi_spec, body, "/api/v1/search/analytics", "get", "200")
@@ -289,7 +298,7 @@ class TestIndexEndpoints:
         """POST /api/v1/search/index/document without body returns 400."""
         resp = requests.post(
             f"{BASE_URL}/api/v1/search/index/document",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "X-User-ID": "test-user-001"},
         )
         # Flask returns 400 for missing JSON body
         assert resp.status_code == 400
@@ -301,6 +310,7 @@ class TestIndexEndpoints:
         resp = requests.post(
             f"{BASE_URL}/api/v1/search/index/document",
             json={"title": "Test Doc"},
+            headers={"X-User-ID": "test-user-001"},
         )
         assert resp.status_code == 400
         body = resp.json()
@@ -310,7 +320,7 @@ class TestIndexEndpoints:
         """POST /api/v1/search/index/file without body returns 400."""
         resp = requests.post(
             f"{BASE_URL}/api/v1/search/index/file",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "X-User-ID": "test-user-001"},
         )
         assert resp.status_code == 400
         body = resp.json()
@@ -321,6 +331,7 @@ class TestIndexEndpoints:
         resp = requests.post(
             f"{BASE_URL}/api/v1/search/index/file",
             json={"id": "file-001"},
+            headers={"X-User-ID": "test-user-001"},
         )
         assert resp.status_code == 400
         body = resp.json()

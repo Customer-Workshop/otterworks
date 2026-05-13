@@ -9,7 +9,7 @@ info:
     name: OtterWorks Platform Team
 
 servers:
-  - url: http://localhost:8085
+  - url: http://localhost:8087
     description: Local development
 
 paths:

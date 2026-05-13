@@ -32,6 +32,13 @@ class ChaosProbeService
       method: :sqs,
       headers: {},
     },
+    # document-service chaos injects 3-5s latency before every DB query.
+    # The probe hits GET /api/v1/documents so the slow response times show
+    # up in Prometheus histograms and trigger the P95 latency alert.
+    'document-service' => {
+      url: 'http://document-service:8083/api/v1/documents/',
+      headers: { 'X-User-ID' => '00000000-0000-0000-0000-000000000001' },
+    },
   }.freeze
 
   # Starts a background probe thread for the given service.

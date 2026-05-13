@@ -281,3 +281,94 @@ groups:
             visibility timeout, causing queue depth to grow unboundedly.
             Likely cause: schema mismatch between the consumer's strict JSON
             parser and the timestamp format in legacy messages.
+
+      # -----------------------------------------------------------------------
+      # Document Service: Latency injection causing slow queries
+      # Fires when document-service P95 latency exceeds 3s over a 1-minute window.
+      # Triggered by chaos flag: chaos:document-service:slow_queries
+      # -----------------------------------------------------------------------
+      - uid: document-service-high-latency
+        title: DocumentServiceHighLatency
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: >-
+                histogram_quantile(0.95,
+                  sum by (le) (rate(http_request_duration_seconds_bucket{job="document-service"}[1m]))
+                )
+              instant: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 3
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: high
+          team: otterworks
+          affected_service: document-service
+        annotations:
+          summary: "P95 latency spike on document-service"
+          description: >-
+            The document-service P95 latency has exceeded 3 seconds. All
+            database queries are experiencing 3-5s delays. Check whether the
+            chaos:document-service:slow_queries Redis flag is set, or
+            investigate database connection pool exhaustion and query
+            performance.

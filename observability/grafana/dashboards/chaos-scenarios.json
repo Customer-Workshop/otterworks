@@ -213,6 +213,63 @@
       "description": "Notification service chaos active when processing errors >0"
     },
     {
+      "title": "Document Service Chaos Active",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "INACTIVE",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "1": {
+                  "text": "ACTIVE",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"document-service\"}[1m]))) > 3",
+          "legendFormat": "Chaos Active"
+        }
+      ],
+      "description": "Document service chaos active when P95 latency >3s"
+    },
+    {
       "title": "Chaos Auto-Expiry",
       "type": "stat",
       "gridPos": {
@@ -598,6 +655,117 @@
       "description": "Queue backlog grows as messages fail to process and retry"
     },
     {
+      "title": "Document Service - Latency Injection",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Document Service P95 Latency",
+      "type": "gauge",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "max": 10,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"document-service\"}[1m])))",
+          "legendFormat": "P95 Latency"
+        }
+      ],
+      "description": "Alert fires when P95 latency >3s over 1m window"
+    },
+    {
+      "title": "Document Service Request Duration",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"document-service\"}[1m])))",
+          "legendFormat": "P95"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"document-service\"}[1m])))",
+          "legendFormat": "P50"
+        }
+      ],
+      "description": "Chaos probe generates traffic — latency spikes 3-5s when chaos active"
+    },
+    {
+      "title": "Document Service Request Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(http_request_duration_seconds_count{job=\"document-service\"}[1m])",
+          "legendFormat": "Requests/s"
+        }
+      ],
+      "description": "Document service throughput — should continue during latency injection"
+    },
+    {
       "title": "Alert States",
       "type": "row",
       "gridPos": {
@@ -867,7 +1035,7 @@
           "legendFormat": "Active Scenarios"
         }
       ],
-      "description": "Number of chaos scenarios currently active (max 3)"
+      "description": "Number of chaos scenarios currently active (max 4)"
     }
   ]
 }

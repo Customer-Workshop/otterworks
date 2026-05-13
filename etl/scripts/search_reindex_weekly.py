@@ -151,13 +151,13 @@ def main():
     print("[%s] Indexing documents from document-service..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     docs_indexed = 0
-    page = 0
+    page = 1
 
     while True:
         # No session reuse, no timeout, no retry -- just raw requests
         resp = requests.get(
             "%s/api/v1/documents" % document_service_url,
-            params={"page": page, "page_size": api_page_size},
+            params={"page": page, "size": api_page_size},
         )
         resp.raise_for_status()
         data = resp.json()
@@ -214,7 +214,7 @@ def main():
     print("[%s] Indexing files from file-service..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     files_indexed = 0
-    page = 0
+    page = 1
 
     while True:
         resp = requests.get(

@@ -74,7 +74,9 @@ def main():
                 MessageAttributeNames=["All"],
             )
         except:
-            pass
+            # TODO ETL-103: Add dead-letter queue for failed SQS calls (2020-01-08)
+            print("[%s] WARNING: SQS receive failed, retrying..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            continue
 
         messages = response.get("Messages", [])
         if not messages:

@@ -1,0 +1,851 @@
+openapi: "3.0.3"
+info:
+  title: OtterWorks Search Service
+  description: |
+    Full-text search and indexing service backed by MeiliSearch.
+    Results are scoped per-user via the X-User-ID header set by the API gateway.
+  version: "1.0.0"
+  contact:
+    name: OtterWorks Platform Team
+
+servers:
+  - url: http://localhost:8087
+    description: Local development
+
+paths:
+  /api/v1/search/:
+    get:
+      operationId: searchDocuments
+      summary: Full-text search across documents and files
+      description: |
+        Performs a full-text search across all indexed documents and files.
+        Results are automatically scoped to the authenticated user via the
+        X-User-ID header set by the API gateway.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query string
+          schema:
+            type: string
+            minLength: 1
+          example: "quarterly report"
+        - name: type
+          in: query
+          required: false
+          description: Filter by item type (document or file)
+          schema:
+            type: string
+            enum: [document, file]
+        - name: page
+          in: query
+          required: false
+          description: Page number (minimum 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          description: Results per page (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - $ref: "#/components/parameters/XUserID"
+      responses:
+        "200":
+          description: Successful search response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+              example:
+                results:
+                  - id: "doc-abc123"
+                    title: "Quarterly Report Q4"
+                    content_snippet: "Revenue increased by 15% in..."
+                    type: "document"
+                    owner_id: "user-001"
+                    tags: ["finance", "report"]
+                    score: 0.95
+                    highlights:
+                      title: ["<em>Quarterly</em> <em>Report</em> Q4"]
+                    created_at: "2024-01-15T10:30:00Z"
+                    updated_at: "2024-01-20T14:00:00Z"
+                total: 42
+                page: 1
+                page_size: 20
+                query: "quarterly report"
+        "400":
+          description: Invalid request (missing q or invalid page/size)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing_query:
+                  value:
+                    error: "Query parameter 'q' is required"
+                invalid_page:
+                  value:
+                    error: "Invalid page or size parameter"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Search failed"
+
+  /api/v1/search/suggest:
+    get:
+      operationId: suggest
+      summary: Autocomplete suggestions based on prefix
+      description: |
+        Returns autocomplete suggestions for a query prefix.
+        Requires at least 2 characters. Returns empty suggestions for
+        shorter prefixes without error.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Query prefix (minimum 2 characters for results)
+          schema:
+            type: string
+          example: "qua"
+      responses:
+        "200":
+          description: Suggestion results (always 200, even on internal failures)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestResponse"
+              example:
+                suggestions:
+                  - "quarterly report"
+                  - "quality assurance"
+                query: "qua"
+
+  /api/v1/search/advanced:
+    post:
+      operationId: advancedSearch
+      summary: Advanced search with filters
+      description: |
+        Performs an advanced search with additional filters including date range,
+        tags, and document type. The owner_id is always derived from the
+        X-User-ID header for tenant isolation (not from the request body).
+      parameters:
+        - $ref: "#/components/parameters/XUserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvancedSearchRequest"
+            example:
+              q: "budget"
+              type: "document"
+              tags: ["finance", "2024"]
+              date_from: "2024-01-01"
+              date_to: "2024-06-30"
+              page: 1
+              size: 20
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          description: Invalid page or size parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Invalid page or size parameter"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Advanced search failed"
+
+  /api/v1/search/index/document:
+    post:
+      operationId: indexDocument
+      summary: Index a document
+      description: |
+        Adds or updates a document in the search index. Called by the
+        document-service or via SQS event processing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IndexDocumentRequest"
+            example:
+              id: "doc-abc123"
+              title: "Quarterly Report Q4"
+              content: "Revenue increased by 15%..."
+              owner_id: "user-001"
+              tags: ["finance", "report"]
+              created_at: "2024-01-15T10:30:00Z"
+              updated_at: "2024-01-20T14:00:00Z"
+      responses:
+        "201":
+          description: Document indexed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResponse"
+              example:
+                status: "indexed"
+                id: "doc-abc123"
+                type: "document"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing_body:
+                  value:
+                    error: "Request body is required"
+                missing_id:
+                  value:
+                    error: "Document 'id' is required"
+                missing_title:
+                  value:
+                    error: "Document 'title' is required"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Failed to index document"
+
+  /api/v1/search/index/file:
+    post:
+      operationId: indexFile
+      summary: Index a file
+      description: |
+        Adds or updates a file in the search index. Called by the
+        file-service or via SQS event processing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IndexFileRequest"
+            example:
+              id: "file-xyz789"
+              name: "budget-2024.xlsx"
+              mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              owner_id: "user-001"
+              folder_id: "folder-abc"
+              tags: ["finance"]
+              size: 524288
+              created_at: "2024-02-01T09:00:00Z"
+              updated_at: "2024-02-01T09:00:00Z"
+      responses:
+        "201":
+          description: File indexed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResponse"
+              example:
+                status: "indexed"
+                id: "file-xyz789"
+                type: "file"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing_body:
+                  value:
+                    error: "Request body is required"
+                missing_id:
+                  value:
+                    error: "File 'id' is required"
+                missing_name:
+                  value:
+                    error: "File 'name' is required"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Failed to index file"
+
+  /api/v1/search/index/document/{id}:
+    delete:
+      operationId: removeDocument
+      summary: Remove a document from the search index
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Document ID to remove
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResponse"
+              example:
+                status: "deleted"
+                id: "doc-abc123"
+                type: "document"
+        "400":
+          description: Invalid type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Invalid type 'invalid'. Must be 'document' or 'file'."
+        "404":
+          description: Document not found in index
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResponse"
+              example:
+                status: "not_found"
+                id: "doc-abc123"
+                type: "document"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Failed to remove from index"
+
+  /api/v1/search/index/file/{id}:
+    delete:
+      operationId: removeFile
+      summary: Remove a file from the search index
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: File ID to remove
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResponse"
+              example:
+                status: "deleted"
+                id: "file-xyz789"
+                type: "file"
+        "400":
+          description: Invalid type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: File not found in index
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexResponse"
+              example:
+                status: "not_found"
+                id: "file-xyz789"
+                type: "file"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Failed to remove from index"
+
+  /api/v1/search/reindex:
+    post:
+      operationId: reindex
+      summary: Trigger a full reindex (admin operation)
+      description: |
+        Crawls the document-service and file-service to re-populate
+        the entire search index. This is an administrative operation.
+      responses:
+        "200":
+          description: Reindex triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReindexResponse"
+              example:
+                status: "reindexed"
+                indices: ["documents", "files"]
+                indexed_counts:
+                  documents: 150
+                  files: 340
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Failed to reindex"
+
+  /api/v1/search/analytics:
+    get:
+      operationId: searchAnalytics
+      summary: Search analytics
+      description: |
+        Returns analytics data including popular queries, zero-result queries,
+        total search count, and average results per query.
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsResponse"
+              example:
+                popular_queries:
+                  - query: "budget"
+                    count: 42
+                  - query: "meeting notes"
+                    count: 31
+                zero_result_queries:
+                  - query: "xyzabc"
+                    count: 5
+                total_searches: 1500
+                avg_results_per_query: 8.3
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Failed to retrieve analytics"
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Liveness check
+      description: Returns 200 if the process is running.
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "alive"
+                service: "search-service"
+
+  /health/ready:
+    get:
+      operationId: readinessCheck
+      summary: Readiness check
+      description: Returns 200 if MeiliSearch is reachable, 503 otherwise.
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+              example:
+                ready: true
+        "503":
+          description: MeiliSearch is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+              example:
+                ready: false
+                reason: "meilisearch_unavailable"
+
+  /metrics:
+    get:
+      operationId: metrics
+      summary: Prometheus metrics
+      description: Exposes Prometheus-format metrics for scraping.
+      responses:
+        "200":
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP search_service_requests_total Total number of requests
+                # TYPE search_service_requests_total counter
+                search_service_requests_total{method="GET",endpoint="/api/v1/search/",status="200"} 100
+
+components:
+  parameters:
+    XUserID:
+      name: X-User-ID
+      in: header
+      required: false
+      description: |
+        User ID for tenant isolation. Set by the API gateway from the
+        authenticated session. All search results are scoped to this user.
+      schema:
+        type: string
+      example: "user-001"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+    SearchHit:
+      type: object
+      required:
+        - id
+        - title
+        - content_snippet
+        - type
+        - owner_id
+        - tags
+        - score
+        - highlights
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the indexed item
+        title:
+          type: string
+          description: Title of the document or file name
+        content_snippet:
+          type: string
+          description: Relevant text snippet from content
+        type:
+          type: string
+          enum: [document, file]
+          description: Item type
+        owner_id:
+          type: string
+          description: ID of the owner user
+        tags:
+          type: array
+          items:
+            type: string
+          description: Associated tags
+        score:
+          type: number
+          format: float
+          description: Relevance score from MeiliSearch
+        highlights:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Highlighted matches per field
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        mime_type:
+          type: string
+          nullable: true
+          description: MIME type (files only)
+        folder_id:
+          type: string
+          nullable: true
+          description: Parent folder ID (files only)
+        size:
+          type: integer
+          nullable: true
+          description: File size in bytes (files only)
+
+    SearchResponse:
+      type: object
+      required:
+        - results
+        - total
+        - page
+        - page_size
+        - query
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchHit"
+        total:
+          type: integer
+          description: Total number of matching results
+        page:
+          type: integer
+          description: Current page number
+        page_size:
+          type: integer
+          description: Number of results per page
+        query:
+          type: string
+          description: The search query that was executed
+
+    SuggestResponse:
+      type: object
+      required:
+        - suggestions
+        - query
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: List of autocomplete suggestions
+        query:
+          type: string
+          description: The prefix that was searched
+
+    AdvancedSearchRequest:
+      type: object
+      properties:
+        q:
+          type: string
+          description: Search query (optional for advanced search)
+        type:
+          type: string
+          enum: [document, file]
+          description: Filter by item type
+        tags:
+          type: array
+          items:
+            type: string
+          description: Filter by tags
+        date_from:
+          type: string
+          format: date
+          description: Start of date range filter (ISO 8601)
+        date_to:
+          type: string
+          format: date
+          description: End of date range filter (ISO 8601)
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+
+    IndexDocumentRequest:
+      type: object
+      required:
+        - id
+        - title
+      properties:
+        id:
+          type: string
+          description: Unique document identifier
+        title:
+          type: string
+          description: Document title
+        content:
+          type: string
+          default: ""
+          description: Document content for full-text indexing
+        owner_id:
+          type: string
+          default: ""
+          description: ID of the document owner
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+          description: Document tags
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    IndexFileRequest:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique file identifier
+        name:
+          type: string
+          description: File name
+        mime_type:
+          type: string
+          default: ""
+          description: MIME type of the file
+        owner_id:
+          type: string
+          default: ""
+          description: ID of the file owner
+        folder_id:
+          type: string
+          default: ""
+          description: Parent folder identifier
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+          description: File tags
+        size:
+          type: integer
+          default: 0
+          description: File size in bytes
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    IndexResponse:
+      type: object
+      required:
+        - status
+        - id
+        - type
+      properties:
+        status:
+          type: string
+          enum: [indexed, deleted, not_found]
+          description: Operation result status
+        id:
+          type: string
+          description: Item identifier
+        type:
+          type: string
+          enum: [document, file]
+          description: Item type
+
+    ReindexResponse:
+      type: object
+      required:
+        - status
+        - indices
+        - indexed_counts
+      properties:
+        status:
+          type: string
+        indices:
+          type: array
+          items:
+            type: string
+        indexed_counts:
+          type: object
+          properties:
+            documents:
+              type: integer
+            files:
+              type: integer
+
+    AnalyticsResponse:
+      type: object
+      required:
+        - popular_queries
+        - zero_result_queries
+        - total_searches
+        - avg_results_per_query
+      properties:
+        popular_queries:
+          type: array
+          items:
+            $ref: "#/components/schemas/QueryCount"
+          description: Top 20 most popular queries
+        zero_result_queries:
+          type: array
+          items:
+            $ref: "#/components/schemas/QueryCount"
+          description: Top 20 queries that returned zero results
+        total_searches:
+          type: integer
+          description: Total number of searches executed
+        avg_results_per_query:
+          type: number
+          format: float
+          description: Average number of results per query
+
+    QueryCount:
+      type: object
+      required:
+        - query
+        - count
+      properties:
+        query:
+          type: string
+        count:
+          type: integer
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          enum: [alive]
+        service:
+          type: string
+
+    ReadinessResponse:
+      type: object
+      required:
+        - ready
+      properties:
+        ready:
+          type: boolean
+        reason:
+          type: string
+          description: Reason for not being ready (only present when ready=false)

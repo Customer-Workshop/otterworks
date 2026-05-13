@@ -1,0 +1,999 @@
+openapi: "3.0.3"
+info:
+  title: OtterWorks Document Service
+  description: |
+    Document management service built with FastAPI. Provides CRUD operations
+    for documents, versioning, comments, templates, and export functionality.
+    Authentication via JWT Bearer token or X-User-ID header fallback.
+  version: "1.0.0"
+  contact:
+    name: OtterWorks Platform Team
+
+servers:
+  - url: http://localhost:8083
+    description: Local development
+
+paths:
+  /api/v1/documents/:
+    get:
+      operationId: listDocuments
+      summary: List documents with optional filtering and pagination
+      description: |
+        Returns a paginated list of documents. If no owner_id is specified,
+        the user is extracted from the JWT token.
+      parameters:
+        - name: owner_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: folder_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Paginated document list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentListResponse"
+    post:
+      operationId: createDocument
+      summary: Create a new document
+      description: |
+        Creates a new document. If owner_id is not provided in the body,
+        it is extracted from the JWT token.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentCreate"
+            example:
+              title: "Meeting Notes"
+              content: "# Team Sync\n\nDiscussed roadmap..."
+              content_type: "text/markdown"
+              folder_id: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "201":
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "401":
+          description: Authentication required (no owner_id and no valid JWT)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "owner_id is required: provide it in the body or authenticate via JWT"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /api/v1/documents/search:
+    get:
+      operationId: searchDocuments
+      summary: Search documents by title or content
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentListResponse"
+        "422":
+          description: Validation error (empty query)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /api/v1/documents/{document_id}:
+    get:
+      operationId: getDocument
+      summary: Get a document by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Authentication required"
+        "403":
+          description: Access denied (not the owner)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Access denied"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Document not found"
+    put:
+      operationId: updateDocument
+      summary: Full replace of a document
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentUpdate"
+      responses:
+        "200":
+          description: Document updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+    patch:
+      operationId: patchDocument
+      summary: Partial update of a document
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentPatch"
+      responses:
+        "200":
+          description: Document patched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+    delete:
+      operationId: deleteDocument
+      summary: Delete a document (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Document deleted
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/documents/{document_id}/versions:
+    get:
+      operationId: listVersions
+      summary: List document versions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of document versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentVersionResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/documents/{document_id}/versions/{version_id}/restore:
+    post:
+      operationId: restoreVersion
+      summary: Restore a document to a previous version
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Document restored to version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Document or version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Document or version not found"
+
+  /api/v1/documents/{document_id}/export:
+    get:
+      operationId: exportDocument
+      summary: Export a document in the requested format
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          required: false
+          description: Export format
+          schema:
+            type: string
+            enum: [pdf, html, markdown]
+            default: markdown
+      responses:
+        "200":
+          description: Exported document content
+          content:
+            text/plain:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/documents/{document_id}/comments:
+    get:
+      operationId: listComments
+      summary: List comments for a document
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommentResponse"
+    post:
+      operationId: addComment
+      summary: Add a comment to a document
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentCreate"
+            example:
+              author_id: "550e8400-e29b-41d4-a716-446655440000"
+              content: "Great work on this section!"
+      responses:
+        "201":
+          description: Comment added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Document not found"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /api/v1/documents/{document_id}/comments/{comment_id}:
+    delete:
+      operationId: deleteComment
+      summary: Delete a comment
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Comment deleted
+        "404":
+          description: Comment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Comment not found"
+
+  /api/v1/documents/from-template/{template_id}:
+    post:
+      operationId: createFromTemplate
+      summary: Create a document from a template
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentFromTemplate"
+            example:
+              title: "Sprint Planning"
+              owner_id: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "201":
+          description: Document created from template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Template not found"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /api/v1/templates/:
+    get:
+      operationId: listTemplates
+      summary: List all templates
+      responses:
+        "200":
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateResponse"
+    post:
+      operationId: createTemplate
+      summary: Create a new template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateCreate"
+            example:
+              name: "Meeting Notes Template"
+              description: "Standard format for meeting notes"
+              content: "# Meeting Notes\n\n## Attendees\n\n## Agenda\n\n## Action Items"
+              content_type: "text/markdown"
+              created_by: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check with DB connectivity
+      responses:
+        "200":
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "healthy"
+                service: "document-service"
+                checks:
+                  database: "connected"
+
+  /metrics:
+    get:
+      operationId: metrics
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP document_service_up Document Service is running
+                # TYPE document_service_up gauge
+                document_service_up 1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token with user_id or sub claim
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+    ValidationError:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+              msg:
+                type: string
+              type:
+                type: string
+
+    DocumentCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        content:
+          type: string
+          default: ""
+        content_type:
+          type: string
+          default: "text/markdown"
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    DocumentUpdate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        content:
+          type: string
+          default: ""
+        content_type:
+          type: string
+          default: "text/markdown"
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    DocumentPatch:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          nullable: true
+        content:
+          type: string
+          nullable: true
+        content_type:
+          type: string
+          nullable: true
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    DocumentResponse:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - content_type
+        - owner_id
+        - is_deleted
+        - is_template
+        - word_count
+        - version
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        content_type:
+          type: string
+        owner_id:
+          type: string
+          format: uuid
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+        is_deleted:
+          type: boolean
+        is_template:
+          type: boolean
+        word_count:
+          type: integer
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DocumentListResponse:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - size
+        - pages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+        pages:
+          type: integer
+          description: Total number of pages
+
+    DocumentVersionResponse:
+      type: object
+      required:
+        - id
+        - document_id
+        - version_number
+        - title
+        - content
+        - created_by
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        version_number:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    CommentCreate:
+      type: object
+      required:
+        - author_id
+        - content
+      properties:
+        author_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+          minLength: 1
+
+    CommentResponse:
+      type: object
+      required:
+        - id
+        - document_id
+        - author_id
+        - content
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DocumentFromTemplate:
+      type: object
+      required:
+        - title
+        - owner_id
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        owner_id:
+          type: string
+          format: uuid
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    TemplateCreate:
+      type: object
+      required:
+        - name
+        - created_by
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          default: ""
+        content:
+          type: string
+          default: ""
+        content_type:
+          type: string
+          default: "text/markdown"
+        created_by:
+          type: string
+          format: uuid
+
+    TemplateResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - content
+        - content_type
+        - created_by
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        content:
+          type: string
+        content_type:
+          type: string
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded]
+        service:
+          type: string
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [connected, disconnected]

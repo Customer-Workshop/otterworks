@@ -1,0 +1,470 @@
+openapi: "3.0.3"
+info:
+  title: OtterWorks Notification Service
+  description: |
+    Real-time notification delivery service built with Kotlin/Ktor.
+    Supports in-app notifications via REST and WebSocket, with configurable
+    delivery preferences per event type.
+  version: "1.0.0"
+  contact:
+    name: OtterWorks Platform Team
+
+servers:
+  - url: http://localhost:8086
+    description: Local development
+
+paths:
+  /api/v1/notifications:
+    get:
+      operationId: listNotifications
+      summary: List notifications for a user
+      description: |
+        Returns a paginated list of notifications for the specified user.
+        User is identified via X-User-ID header or user_id query parameter.
+      parameters:
+        - $ref: "#/components/parameters/XUserID"
+        - name: user_id
+          in: query
+          required: false
+          description: User ID (alternative to X-User-ID header)
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedNotificationResponse"
+              example:
+                data:
+                  - id: "notif-001"
+                    userId: "user-001"
+                    type: "file_shared"
+                    title: "File shared with you"
+                    message: "Alice shared 'Report.pdf' with you"
+                    resourceId: "file-xyz"
+                    resourceType: "file"
+                    actorId: "user-002"
+                    read: false
+                    deliveredVia: ["IN_APP"]
+                    createdAt: "2024-01-20T10:30:00Z"
+                total: 45
+                page: 1
+                pageSize: 20
+                hasMore: true
+        "400":
+          description: Missing user_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "user_id is required (via X-User-ID header or query parameter)"
+
+  /api/v1/notifications/unread-count:
+    get:
+      operationId: getUnreadCount
+      summary: Get unread notification count
+      parameters:
+        - $ref: "#/components/parameters/XUserID"
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponse"
+              example:
+                userId: "user-001"
+                unreadCount: 7
+        "400":
+          description: Missing user_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "user_id is required (via X-User-ID header or query parameter)"
+
+  /api/v1/notifications/{id}:
+    get:
+      operationId: getNotification
+      summary: Get a single notification by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notification details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "400":
+          description: Missing notification ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Notification ID is required"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Notification not found"
+    delete:
+      operationId: deleteNotification
+      summary: Delete a notification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Notification deleted
+        "400":
+          description: Missing notification ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Notification ID is required"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Notification not found"
+
+  /api/v1/notifications/{id}/read:
+    put:
+      operationId: markAsRead
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Notification marked as read
+        "400":
+          description: Missing notification ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Notification ID is required"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Notification not found"
+
+  /api/v1/notifications/read-all:
+    put:
+      operationId: markAllAsRead
+      summary: Mark all notifications as read for a user
+      parameters:
+        - $ref: "#/components/parameters/XUserID"
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkAllReadResponse"
+              example:
+                markedCount: 12
+        "400":
+          description: Missing user_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "user_id is required (via X-User-ID header or query parameter)"
+
+  /api/v1/preferences:
+    get:
+      operationId: getPreferences
+      summary: Get notification preferences for a user
+      parameters:
+        - $ref: "#/components/parameters/XUserID"
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreference"
+              example:
+                userId: "user-001"
+                channels:
+                  file_shared: ["EMAIL", "IN_APP", "PUSH"]
+                  comment_added: ["IN_APP", "PUSH"]
+                  document_edited: ["IN_APP"]
+                  user_mentioned: ["EMAIL", "IN_APP", "PUSH"]
+        "400":
+          description: Missing user_id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "user_id is required (via X-User-ID header or query parameter)"
+    put:
+      operationId: updatePreferences
+      summary: Update notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferenceRequest"
+            example:
+              userId: "user-001"
+              eventType: "comment_added"
+              channels: ["EMAIL", "IN_APP"]
+      responses:
+        "204":
+          description: Preferences updated
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "healthy"
+                service: "notification-service"
+
+  /metrics:
+    get:
+      operationId: metrics
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /ws/notifications/{userId}:
+    get:
+      operationId: webSocketNotifications
+      summary: WebSocket connection for real-time notifications
+      description: |
+        Establishes a WebSocket connection for real-time notification delivery.
+        Supports ping/pong keepalive. Server pushes notification events as they occur.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID to subscribe to notifications for
+      responses:
+        "101":
+          description: WebSocket upgrade successful
+
+components:
+  parameters:
+    XUserID:
+      name: X-User-ID
+      in: header
+      required: false
+      description: User ID for tenant identification (set by API gateway)
+      schema:
+        type: string
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+
+    Notification:
+      type: object
+      required:
+        - id
+        - userId
+        - type
+        - title
+        - message
+        - createdAt
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        type:
+          type: string
+          enum: [file_shared, comment_added, document_edited, user_mentioned]
+        title:
+          type: string
+        message:
+          type: string
+        resourceId:
+          type: string
+          default: ""
+        resourceType:
+          type: string
+          default: ""
+        actorId:
+          type: string
+          default: ""
+        read:
+          type: boolean
+          default: false
+        deliveredVia:
+          type: array
+          items:
+            type: string
+            enum: [EMAIL, IN_APP, PUSH]
+          default: []
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedNotificationResponse:
+      type: object
+      required:
+        - data
+        - total
+        - page
+        - pageSize
+        - hasMore
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        hasMore:
+          type: boolean
+
+    UnreadCountResponse:
+      type: object
+      required:
+        - userId
+        - unreadCount
+      properties:
+        userId:
+          type: string
+        unreadCount:
+          type: integer
+
+    MarkAllReadResponse:
+      type: object
+      required:
+        - markedCount
+      properties:
+        markedCount:
+          type: integer
+
+    NotificationPreference:
+      type: object
+      required:
+        - userId
+        - channels
+      properties:
+        userId:
+          type: string
+        channels:
+          type: object
+          description: Map of event type to list of delivery channels
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              enum: [EMAIL, IN_APP, PUSH]
+
+    NotificationPreferenceRequest:
+      type: object
+      required:
+        - userId
+        - eventType
+        - channels
+      properties:
+        userId:
+          type: string
+        eventType:
+          type: string
+          description: Event type to configure
+        channels:
+          type: array
+          items:
+            type: string
+            enum: [EMAIL, IN_APP, PUSH]
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+        service:
+          type: string

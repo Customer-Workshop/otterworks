@@ -1,0 +1,5 @@
+[default]
+run-types = ["Tests"]
+out = ["Html", "Lcov"]
+output-dir = "target/tarpaulin"
+skip-clean = true

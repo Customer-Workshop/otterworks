@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OtterWorks Notification Events",
+  "definitions": {
+    "NotificationSentEvent": {
+      "type": "object",
+      "required": ["eventType", "notificationId", "userId", "type", "channel", "timestamp"],
+      "properties": {
+        "eventType": { "const": "notification_sent" },
+        "notificationId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "type": { "enum": ["mention", "share", "comment", "system"] },
+        "channel": { "enum": ["email", "in_app", "push"] },
+        "subject": { "type": "string" },
+        "resourceId": { "type": "string", "format": "uuid" },
+        "resourceType": { "enum": ["document", "file", "folder"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "NotificationReadEvent": {
+      "type": "object",
+      "required": ["eventType", "notificationId", "userId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "notification_read" },
+        "notificationId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "readAt": { "type": "string", "format": "date-time" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "NotificationFailedEvent": {
+      "type": "object",
+      "required": ["eventType", "notificationId", "userId", "channel", "errorCode", "timestamp"],
+      "properties": {
+        "eventType": { "const": "notification_failed" },
+        "notificationId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "channel": { "enum": ["email", "in_app", "push"] },
+        "errorCode": { "type": "string" },
+        "errorMessage": { "type": "string" },
+        "retryCount": { "type": "integer", "default": 0 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

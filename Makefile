@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report
 
 SHELL := /bin/bash
 
@@ -91,6 +91,15 @@ test: ## Run tests for all services
 	@echo "=== Audit Service (C#) ===" && cd services/audit-service && dotnet test
 	@echo "=== Web Frontend ===" && cd frontend/web-app && npm test
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm test
+
+test-coverage: ## Run tests with coverage for all services
+	@echo "=== Document Service ===" && cd services/document-service && pytest --cov=app --cov-report=term-missing || true
+	@echo "=== Search Service ===" && cd services/search-service && pytest --cov=app --cov-report=term-missing || true
+	@echo "=== Collab Service ===" && cd services/collab-service && npm test -- --coverage || true
+	@echo "=== API Gateway ===" && cd services/api-gateway && go test -cover ./... || true
+	@echo "=== Admin Service ===" && cd services/admin-service && bundle exec rspec --format documentation || true
+	@echo "=== Auth Service ===" && cd services/auth-service && ./gradlew test jacocoTestReport || true
+	@echo "=== File Service ===" && cd services/file-service && cargo test 2>&1 | tail -5 || true
 
 test-api-flows: ## Run black-box API flow tests against the local API gateway
 	UV_PROJECT_ENVIRONMENT=.venv uv run python -m pytest tests/api

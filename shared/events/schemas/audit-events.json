@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OtterWorks Audit Events",
+  "definitions": {
+    "EntityCreatedEvent": {
+      "type": "object",
+      "required": ["eventType", "auditId", "entityType", "entityId", "actorId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "entity_created" },
+        "auditId": { "type": "string", "format": "uuid" },
+        "entityType": { "enum": ["document", "file", "folder", "user", "group"] },
+        "entityId": { "type": "string", "format": "uuid" },
+        "actorId": { "type": "string", "format": "uuid" },
+        "metadata": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "EntityUpdatedEvent": {
+      "type": "object",
+      "required": ["eventType", "auditId", "entityType", "entityId", "actorId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "entity_updated" },
+        "auditId": { "type": "string", "format": "uuid" },
+        "entityType": { "enum": ["document", "file", "folder", "user", "group"] },
+        "entityId": { "type": "string", "format": "uuid" },
+        "actorId": { "type": "string", "format": "uuid" },
+        "changedFields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "previousValues": { "type": "object" },
+        "newValues": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "EntityDeletedEvent": {
+      "type": "object",
+      "required": ["eventType", "auditId", "entityType", "entityId", "actorId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "entity_deleted" },
+        "auditId": { "type": "string", "format": "uuid" },
+        "entityType": { "enum": ["document", "file", "folder", "user", "group"] },
+        "entityId": { "type": "string", "format": "uuid" },
+        "actorId": { "type": "string", "format": "uuid" },
+        "softDelete": { "type": "boolean", "default": true },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AccessGrantedEvent": {
+      "type": "object",
+      "required": ["eventType", "auditId", "resourceId", "grantedTo", "permission", "grantedBy", "timestamp"],
+      "properties": {
+        "eventType": { "const": "access_granted" },
+        "auditId": { "type": "string", "format": "uuid" },
+        "resourceId": { "type": "string", "format": "uuid" },
+        "resourceType": { "enum": ["document", "file", "folder"] },
+        "grantedTo": { "type": "string", "format": "uuid" },
+        "permission": { "enum": ["viewer", "editor", "admin"] },
+        "grantedBy": { "type": "string", "format": "uuid" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AccessRevokedEvent": {
+      "type": "object",
+      "required": ["eventType", "auditId", "resourceId", "revokedFrom", "revokedBy", "timestamp"],
+      "properties": {
+        "eventType": { "const": "access_revoked" },
+        "auditId": { "type": "string", "format": "uuid" },
+        "resourceId": { "type": "string", "format": "uuid" },
+        "resourceType": { "enum": ["document", "file", "folder"] },
+        "revokedFrom": { "type": "string", "format": "uuid" },
+        "revokedBy": { "type": "string", "format": "uuid" },
+        "reason": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

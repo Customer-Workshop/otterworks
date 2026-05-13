@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db
+.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan
 
 SHELL := /bin/bash
 
@@ -127,3 +127,20 @@ deploy-dev: ## Deploy all services to dev EKS
 
 teardown-dev: ## Tear down dev environment
 	./scripts/teardown-dev.sh
+
+# --- Security ---
+
+security-scan: ## Run security scans across all services
+	@echo "=== Trivy Filesystem Scan ==="
+	trivy fs --config security/scanning/trivy-config.yaml . || true
+	@echo ""
+	@echo "=== Node.js Audit (collab-service) ==="
+	cd services/collab-service && npm audit 2>/dev/null || true
+	@echo ""
+	@echo "=== Python Audit (search-service) ==="
+	cd services/search-service && pip-audit -r requirements.txt 2>/dev/null || true
+	@echo ""
+	@echo "=== Ruby Audit (admin-service) ==="
+	cd services/admin-service && bundle-audit check 2>/dev/null || true
+	@echo ""
+	@echo "=== Report Service (skipped - legacy) ==="

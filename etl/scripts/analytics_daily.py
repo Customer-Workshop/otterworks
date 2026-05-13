@@ -61,6 +61,7 @@ def main():
     messages_processed = 0
     max_messages = 10000  # hardcoded limit
     batch_size = 10
+    consecutive_errors = 0
 
     print("[%s] Polling SQS queue: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sqs_queue_url))
 
@@ -73,9 +74,14 @@ def main():
                 AttributeNames=["All"],
                 MessageAttributeNames=["All"],
             )
+            consecutive_errors = 0
         except:
             # TODO ETL-103: Add dead-letter queue for failed SQS calls (2020-01-08)
-            print("[%s] WARNING: SQS receive failed, retrying..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            consecutive_errors += 1
+            print("[%s] WARNING: SQS receive failed (%d consecutive)" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), consecutive_errors))
+            if consecutive_errors >= 3:
+                print("[%s] ERROR: Too many SQS failures, giving up" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                break
             continue
 
         messages = response.get("Messages", [])

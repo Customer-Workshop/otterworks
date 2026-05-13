@@ -1,540 +1,538 @@
 {
-  "dashboard": {
-    "id": null,
-    "uid": "otterworks-infrastructure",
-    "title": "OtterWorks Infrastructure",
-    "description": "Infrastructure monitoring: pod status, node utilization, network traffic, database connections, and queue depths.",
-    "tags": [
-      "otterworks",
-      "infrastructure"
-    ],
-    "timezone": "utc",
-    "editable": true,
-    "graphTooltip": 1,
-    "templating": {
-      "list": [
+  "id": null,
+  "uid": "otterworks-infrastructure",
+  "title": "OtterWorks Infrastructure",
+  "description": "Infrastructure monitoring: pod status, node utilization, network traffic, database connections, and queue depths.",
+  "tags": [
+    "otterworks",
+    "infrastructure"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Kubernetes Pods",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Pod Status by Service",
+      "type": "state-timeline",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "1": {
+                  "text": "Running",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "0": {
+                  "text": "Not Ready",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "targets": [
         {
-          "name": "datasource",
-          "type": "datasource",
-          "query": "prometheus",
-          "current": {
-            "text": "Prometheus",
-            "value": "Prometheus"
-          }
+          "expr": "kube_pod_status_ready{namespace=\"otterworks\", condition=\"true\"}",
+          "legendFormat": "{{ pod }}"
         }
       ]
     },
-    "panels": [
-      {
-        "title": "Kubernetes Pods",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 0
-        },
-        "collapsed": false
+    {
+      "title": "Pods Running",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 7
       },
-      {
-        "title": "Pod Status by Service",
-        "type": "state-timeline",
-        "gridPos": {
-          "h": 6,
-          "w": 24,
-          "x": 0,
-          "y": 1
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
               {
-                "options": {
-                  "1": {
-                    "text": "Running",
-                    "color": "green"
-                  }
-                },
-                "type": "value"
+                "color": "red",
+                "value": null
               },
               {
-                "options": {
-                  "0": {
-                    "text": "Not Ready",
-                    "color": "red"
-                  }
-                },
-                "type": "value"
+                "color": "green",
+                "value": 10
               }
             ]
           }
-        },
-        "targets": [
-          {
-            "expr": "kube_pod_status_ready{namespace=\"otterworks\", condition=\"true\"}",
-            "legendFormat": "{{ pod }}"
-          }
-        ]
+        }
       },
-      {
-        "title": "Pods Running",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 0,
-          "y": 7
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "green",
-                  "value": 10
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "count(kube_pod_status_phase{namespace=\"otterworks\", phase=\"Running\"} == 1)",
-            "legendFormat": "running"
-          }
-        ]
-      },
-      {
-        "title": "Pods Pending",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 6,
-          "y": 7
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 3
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "count(kube_pod_status_phase{namespace=\"otterworks\", phase=\"Pending\"} == 1) OR on() vector(0)",
-            "legendFormat": "pending"
-          }
-        ]
-      },
-      {
-        "title": "Pod Restarts (1h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 7
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 5
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"otterworks\"}[1h]))",
-            "legendFormat": "restarts"
-          }
-        ]
-      },
-      {
-        "title": "OOMKilled Events (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 7
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 1
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(increase(kube_pod_container_status_last_terminated_reason{namespace=\"otterworks\", reason=\"OOMKilled\"}[24h])) OR on() vector(0)",
-            "legendFormat": "OOMKilled"
-          }
-        ]
-      },
-      {
-        "title": "Node Resources",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 11
-        },
-        "collapsed": false
-      },
-      {
-        "title": "Node CPU Utilization",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 12
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit",
-            "max": 1
-          }
-        },
-        "targets": [
-          {
-            "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))",
-            "legendFormat": "{{ instance }}"
-          }
-        ]
-      },
-      {
-        "title": "Node Memory Utilization",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 12
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit",
-            "max": 1
-          }
-        },
-        "targets": [
-          {
-            "expr": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
-            "legendFormat": "{{ instance }}"
-          }
-        ]
-      },
-      {
-        "title": "Node Disk Usage",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit",
-            "max": 1
-          }
-        },
-        "targets": [
-          {
-            "expr": "1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})",
-            "legendFormat": "{{ instance }}"
-          }
-        ]
-      },
-      {
-        "title": "Node Network I/O",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "Bps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum by (instance) (rate(node_network_receive_bytes_total{device!=\"lo\"}[5m]))",
-            "legendFormat": "{{ instance }} rx"
-          },
-          {
-            "expr": "sum by (instance) (rate(node_network_transmit_bytes_total{device!=\"lo\"}[5m]))",
-            "legendFormat": "{{ instance }} tx"
-          }
-        ]
-      },
-      {
-        "title": "Database & Cache",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 28
-        },
-        "collapsed": false
-      },
-      {
-        "title": "PostgreSQL Active Connections",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 29
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "pg_stat_activity_count{datname=\"otterworks\"}",
-            "legendFormat": "{{ state }}"
-          }
-        ]
-      },
-      {
-        "title": "Redis Memory Usage",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 29
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "bytes"
-          }
-        },
-        "targets": [
-          {
-            "expr": "redis_memory_used_bytes",
-            "legendFormat": "used"
-          },
-          {
-            "expr": "redis_memory_max_bytes",
-            "legendFormat": "max"
-          }
-        ]
-      },
-      {
-        "title": "AWS Queues & Storage",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 37
-        },
-        "collapsed": false
-      },
-      {
-        "title": "SQS Queue Depth",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 38
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "aws_sqs_approximate_number_of_messages_visible",
-            "legendFormat": "{{ queue_name }}"
-          }
-        ]
-      },
-      {
-        "title": "DynamoDB Consumed Capacity",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 38
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "sum by (table_name, operation) (rate(aws_dynamodb_consumed_read_capacity_total[5m]))",
-            "legendFormat": "{{ table_name }} {{ operation }} read"
-          },
-          {
-            "expr": "sum by (table_name, operation) (rate(aws_dynamodb_consumed_write_capacity_total[5m]))",
-            "legendFormat": "{{ table_name }} {{ operation }} write"
-          }
-        ]
-      },
-      {
-        "title": "Network Traffic",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 46
-        },
-        "collapsed": false
-      },
-      {
-        "title": "Ingress Request Rate",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 47
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum by (ingress) (rate(nginx_ingress_controller_requests[5m]))",
-            "legendFormat": "{{ ingress }}"
-          }
-        ]
-      },
-      {
-        "title": "Ingress Bandwidth",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 47
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "Bps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum by (ingress) (rate(nginx_ingress_controller_request_size_sum[5m]))",
-            "legendFormat": "{{ ingress }} request"
-          },
-          {
-            "expr": "sum by (ingress) (rate(nginx_ingress_controller_response_size_sum[5m]))",
-            "legendFormat": "{{ ingress }} response"
-          }
-        ]
-      }
-    ],
-    "time": {
-      "from": "now-6h",
-      "to": "now"
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{namespace=\"otterworks\", phase=\"Running\"} == 1)",
+          "legendFormat": "running"
+        }
+      ]
     },
-    "refresh": "30s"
-  }
+    {
+      "title": "Pods Pending",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{namespace=\"otterworks\", phase=\"Pending\"} == 1) OR on() vector(0)",
+          "legendFormat": "pending"
+        }
+      ]
+    },
+    {
+      "title": "Pod Restarts (1h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"otterworks\"}[1h]))",
+          "legendFormat": "restarts"
+        }
+      ]
+    },
+    {
+      "title": "OOMKilled Events (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(kube_pod_container_status_last_terminated_reason{namespace=\"otterworks\", reason=\"OOMKilled\"}[24h])) OR on() vector(0)",
+          "legendFormat": "OOMKilled"
+        }
+      ]
+    },
+    {
+      "title": "Node Resources",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Node CPU Utilization",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1
+        }
+      },
+      "targets": [
+        {
+          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))",
+          "legendFormat": "{{ instance }}"
+        }
+      ]
+    },
+    {
+      "title": "Node Memory Utilization",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1
+        }
+      },
+      "targets": [
+        {
+          "expr": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+          "legendFormat": "{{ instance }}"
+        }
+      ]
+    },
+    {
+      "title": "Node Disk Usage",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1
+        }
+      },
+      "targets": [
+        {
+          "expr": "1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})",
+          "legendFormat": "{{ instance }}"
+        }
+      ]
+    },
+    {
+      "title": "Node Network I/O",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (instance) (rate(node_network_receive_bytes_total{device!=\"lo\"}[5m]))",
+          "legendFormat": "{{ instance }} rx"
+        },
+        {
+          "expr": "sum by (instance) (rate(node_network_transmit_bytes_total{device!=\"lo\"}[5m]))",
+          "legendFormat": "{{ instance }} tx"
+        }
+      ]
+    },
+    {
+      "title": "Database & Cache",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "collapsed": false
+    },
+    {
+      "title": "PostgreSQL Active Connections",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "pg_stat_activity_count{datname=\"otterworks\"}",
+          "legendFormat": "{{ state }}"
+        }
+      ]
+    },
+    {
+      "title": "Redis Memory Usage",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "used"
+        },
+        {
+          "expr": "redis_memory_max_bytes",
+          "legendFormat": "max"
+        }
+      ]
+    },
+    {
+      "title": "AWS Queues & Storage",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "collapsed": false
+    },
+    {
+      "title": "SQS Queue Depth",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 38
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "aws_sqs_approximate_number_of_messages_visible",
+          "legendFormat": "{{ queue_name }}"
+        }
+      ]
+    },
+    {
+      "title": "DynamoDB Consumed Capacity",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 38
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (table_name, operation) (rate(aws_dynamodb_consumed_read_capacity_total[5m]))",
+          "legendFormat": "{{ table_name }} {{ operation }} read"
+        },
+        {
+          "expr": "sum by (table_name, operation) (rate(aws_dynamodb_consumed_write_capacity_total[5m]))",
+          "legendFormat": "{{ table_name }} {{ operation }} write"
+        }
+      ]
+    },
+    {
+      "title": "Network Traffic",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Ingress Request Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 47
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (ingress) (rate(nginx_ingress_controller_requests[5m]))",
+          "legendFormat": "{{ ingress }}"
+        }
+      ]
+    },
+    {
+      "title": "Ingress Bandwidth",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 47
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (ingress) (rate(nginx_ingress_controller_request_size_sum[5m]))",
+          "legendFormat": "{{ ingress }} request"
+        },
+        {
+          "expr": "sum by (ingress) (rate(nginx_ingress_controller_response_size_sum[5m]))",
+          "legendFormat": "{{ ingress }} response"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "30s"
 }

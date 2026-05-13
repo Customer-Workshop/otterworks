@@ -1,470 +1,468 @@
 {
-  "dashboard": {
-    "id": null,
-    "uid": "otterworks-business-metrics",
-    "title": "OtterWorks Business Metrics",
-    "description": "Business KPIs: active users, documents created, files uploaded, collaboration sessions, storage growth.",
-    "tags": [
-      "otterworks",
-      "business",
-      "kpi"
-    ],
-    "timezone": "utc",
-    "editable": true,
-    "graphTooltip": 1,
-    "templating": {
-      "list": [
-        {
-          "name": "datasource",
-          "type": "datasource",
-          "query": "prometheus",
-          "current": {
-            "text": "Prometheus",
-            "value": "Prometheus"
+  "id": null,
+  "uid": "otterworks-business-metrics",
+  "title": "OtterWorks Business Metrics",
+  "description": "Business KPIs: active users, documents created, files uploaded, collaboration sessions, storage growth.",
+  "tags": [
+    "otterworks",
+    "business",
+    "kpi"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Active Users",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Daily Active Users (DAU)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "green",
+                "value": 500
+              }
+            ]
           }
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(auth_unique_logins_total[24h])",
+          "legendFormat": "DAU"
         }
       ]
     },
-    "panels": [
-      {
-        "title": "Active Users",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 0
-        },
-        "collapsed": false
+    {
+      "title": "Weekly Active Users (WAU)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 1
       },
-      {
-        "title": "Daily Active Users (DAU)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 0,
-          "y": 1
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 100
-                },
-                {
-                  "color": "green",
-                  "value": 500
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "increase(auth_unique_logins_total[24h])",
-            "legendFormat": "DAU"
-          }
-        ]
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
       },
-      {
-        "title": "Weekly Active Users (WAU)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 8,
-          "y": 1
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(auth_unique_logins_total[7d])",
-            "legendFormat": "WAU"
-          }
-        ]
-      },
-      {
-        "title": "Monthly Active Users (MAU)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 16,
-          "y": 1
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(auth_unique_logins_total[30d])",
-            "legendFormat": "MAU"
-          }
-        ]
-      },
-      {
-        "title": "Active Users Trend",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 6
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(auth_unique_logins_total[24h])",
-            "legendFormat": "DAU"
-          },
-          {
-            "expr": "increase(auth_unique_logins_total[7d]) / 7",
-            "legendFormat": "WAU (daily avg)"
-          }
-        ]
-      },
-      {
-        "title": "Content Creation",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 14
-        },
-        "collapsed": false
-      },
-      {
-        "title": "Documents Created (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 0,
-          "y": 15
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(documents_created_total[24h])",
-            "legendFormat": "created"
-          }
-        ]
-      },
-      {
-        "title": "Documents Edited (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 6,
-          "y": 15
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(documents_edited_total[24h])",
-            "legendFormat": "edited"
-          }
-        ]
-      },
-      {
-        "title": "Files Uploaded (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 12,
-          "y": 15
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(files_uploaded_total[24h])",
-            "legendFormat": "uploaded"
-          }
-        ]
-      },
-      {
-        "title": "Files Downloaded (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 18,
-          "y": 15
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(files_downloaded_total[24h])",
-            "legendFormat": "downloaded"
-          }
-        ]
-      },
-      {
-        "title": "Documents Created Per Day",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(documents_created_total[24h])",
-            "legendFormat": "documents created"
-          },
-          {
-            "expr": "increase(documents_edited_total[24h])",
-            "legendFormat": "documents edited"
-          }
-        ]
-      },
-      {
-        "title": "Files Uploaded Per Day",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(files_uploaded_total[24h])",
-            "legendFormat": "files uploaded"
-          },
-          {
-            "expr": "increase(files_downloaded_total[24h])",
-            "legendFormat": "files downloaded"
-          }
-        ]
-      },
-      {
-        "title": "Collaboration",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 28
-        },
-        "collapsed": false
-      },
-      {
-        "title": "Active Collaboration Sessions",
-        "type": "gauge",
-        "gridPos": {
-          "h": 6,
-          "w": 8,
-          "x": 0,
-          "y": 29
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 500
-                },
-                {
-                  "color": "red",
-                  "value": 2000
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "collab_active_sessions",
-            "legendFormat": "sessions"
-          }
-        ]
-      },
-      {
-        "title": "Active WebSocket Connections",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 6,
-          "w": 16,
-          "x": 8,
-          "y": 29
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "collab_active_connections",
-            "legendFormat": "connections"
-          },
-          {
-            "expr": "collab_active_sessions",
-            "legendFormat": "sessions"
-          }
-        ]
-      },
-      {
-        "title": "Storage",
-        "type": "row",
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 35
-        },
-        "collapsed": false
-      },
-      {
-        "title": "Total Storage Used",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 0,
-          "y": 36
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "bytes"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(file_storage_bytes_total)",
-            "legendFormat": "total"
-          }
-        ]
-      },
-      {
-        "title": "Total Files Stored",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 8,
-          "y": 36
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "file_objects_count",
-            "legendFormat": "files"
-          }
-        ]
-      },
-      {
-        "title": "Total Documents",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 16,
-          "y": 36
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "documents_count",
-            "legendFormat": "documents"
-          }
-        ]
-      },
-      {
-        "title": "Storage Growth Trend",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 41
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "bytes"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(file_storage_bytes_total)",
-            "legendFormat": "total storage"
-          },
-          {
-            "expr": "sum(increase(file_storage_bytes_total[24h]))",
-            "legendFormat": "daily growth"
-          }
-        ]
-      }
-    ],
-    "time": {
-      "from": "now-7d",
-      "to": "now"
+      "targets": [
+        {
+          "expr": "increase(auth_unique_logins_total[7d])",
+          "legendFormat": "WAU"
+        }
+      ]
     },
-    "refresh": "5m"
-  }
+    {
+      "title": "Monthly Active Users (MAU)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(auth_unique_logins_total[30d])",
+          "legendFormat": "MAU"
+        }
+      ]
+    },
+    {
+      "title": "Active Users Trend",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(auth_unique_logins_total[24h])",
+          "legendFormat": "DAU"
+        },
+        {
+          "expr": "increase(auth_unique_logins_total[7d]) / 7",
+          "legendFormat": "WAU (daily avg)"
+        }
+      ]
+    },
+    {
+      "title": "Content Creation",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Documents Created (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 15
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(documents_created_total[24h])",
+          "legendFormat": "created"
+        }
+      ]
+    },
+    {
+      "title": "Documents Edited (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 15
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(documents_edited_total[24h])",
+          "legendFormat": "edited"
+        }
+      ]
+    },
+    {
+      "title": "Files Uploaded (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 15
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(files_uploaded_total[24h])",
+          "legendFormat": "uploaded"
+        }
+      ]
+    },
+    {
+      "title": "Files Downloaded (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 15
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(files_downloaded_total[24h])",
+          "legendFormat": "downloaded"
+        }
+      ]
+    },
+    {
+      "title": "Documents Created Per Day",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(documents_created_total[24h])",
+          "legendFormat": "documents created"
+        },
+        {
+          "expr": "increase(documents_edited_total[24h])",
+          "legendFormat": "documents edited"
+        }
+      ]
+    },
+    {
+      "title": "Files Uploaded Per Day",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(files_uploaded_total[24h])",
+          "legendFormat": "files uploaded"
+        },
+        {
+          "expr": "increase(files_downloaded_total[24h])",
+          "legendFormat": "files downloaded"
+        }
+      ]
+    },
+    {
+      "title": "Collaboration",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Active Collaboration Sessions",
+      "type": "gauge",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "collab_active_sessions",
+          "legendFormat": "sessions"
+        }
+      ]
+    },
+    {
+      "title": "Active WebSocket Connections",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 6,
+        "w": 16,
+        "x": 8,
+        "y": 29
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "collab_active_connections",
+          "legendFormat": "connections"
+        },
+        {
+          "expr": "collab_active_sessions",
+          "legendFormat": "sessions"
+        }
+      ]
+    },
+    {
+      "title": "Storage",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Total Storage Used",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(file_storage_bytes_total)",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "title": "Total Files Stored",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "file_objects_count",
+          "legendFormat": "files"
+        }
+      ]
+    },
+    {
+      "title": "Total Documents",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "documents_count",
+          "legendFormat": "documents"
+        }
+      ]
+    },
+    {
+      "title": "Storage Growth Trend",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(file_storage_bytes_total)",
+          "legendFormat": "total storage"
+        },
+        {
+          "expr": "sum(increase(file_storage_bytes_total[24h]))",
+          "legendFormat": "daily growth"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "5m"
 }

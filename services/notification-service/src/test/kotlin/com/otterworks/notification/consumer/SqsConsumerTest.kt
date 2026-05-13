@@ -137,4 +137,86 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage parses snake_case field names`() {
+        val body = """
+            {
+                "event_type": "file_shared",
+                "file_id": "file-456",
+                "owner_id": "owner-2",
+                "shared_with_user_id": "user-3",
+                "timestamp": "2024-01-01T00:00:00Z"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-456", event.fileId)
+        assertEquals("owner-2", event.ownerId)
+        assertEquals("user-3", event.sharedWithUserId)
+    }
+
+    @Test
+    fun `parseMessage parses document-service envelope with nested payload`() {
+        val innerMessage = """{"event_type":"comment_added","timestamp":"2024-06-15T10:30:00+00:00","payload":{"comment_id":"c-99","document_id":"doc-100","author_id":"author-5"}}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-456",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("comment_added", event.eventType)
+        assertEquals("doc-100", event.documentId)
+        assertEquals("c-99", event.commentId)
+        assertEquals("author-5", event.actorId)
+        assertEquals("2024-06-15T10:30:00+00:00", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage normalizes document_updated to document_edited`() {
+        val innerMessage = """{"event_type":"document_updated","timestamp":"2024-06-15T10:30:00+00:00","payload":{"id":"doc-200","owner_id":"owner-3"}}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-789",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("document_edited", event.eventType)
+        assertEquals("doc-200", event.documentId)
+        assertEquals("owner-3", event.ownerId)
+    }
+
+    @Test
+    fun `parseMessage handles message with missing timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-789"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-789", event.fileId)
+        assertEquals("", event.timestamp)
+    }
 }

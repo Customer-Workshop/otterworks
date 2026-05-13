@@ -1,6 +1,7 @@
 package com.otterworks.notification.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 @Serializable
 enum class EventType {
@@ -30,16 +31,33 @@ data class NotificationEvent(
 
 @Serializable
 data class SqsNotificationMessage(
+    @JsonNames("event_type")
     val eventType: String,
+    @JsonNames("file_id")
     val fileId: String = "",
+    @JsonNames("owner_id")
     val ownerId: String = "",
+    @JsonNames("shared_with_user_id")
     val sharedWithUserId: String = "",
+    @JsonNames("document_id")
     val documentId: String = "",
+    @JsonNames("comment_id")
     val commentId: String = "",
+    @JsonNames("user_id")
     val userId: String = "",
+    @JsonNames("actor_id")
     val actorId: String = "",
+    @JsonNames("mentioned_user_id")
     val mentionedUserId: String = "",
-    val timestamp: String,
+    val timestamp: String = "",
+)
+
+@Serializable
+internal data class DocumentServiceEnvelope(
+    @JsonNames("event_type")
+    val eventType: String = "",
+    val timestamp: String = "",
+    val payload: Map<String, kotlinx.serialization.json.JsonElement> = emptyMap(),
 )
 
 @Serializable

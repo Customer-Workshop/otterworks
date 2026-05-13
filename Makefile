@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan
+.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report
 
 SHELL := /bin/bash
 
@@ -144,3 +144,9 @@ security-scan: ## Run security scans across all services
 	cd services/admin-service && bundle-audit check 2>/dev/null || true
 	@echo ""
 	@echo "=== Report Service (skipped - legacy) ==="
+
+test-report: ## Run report-service tests only
+	cd services/report-service && mvn test
+
+build-report: ## Build report-service
+	cd services/report-service && mvn package -DskipTests

@@ -98,6 +98,11 @@ def suggest() -> tuple:
     if _chaos_active("chaos:search-service:suggest_500"):
         service = _get_service()
         raw_suggestions = service.suggest(prefix)
+        if not raw_suggestions:
+            # Simulate the same KeyError that fires when results exist but
+            # _rankingScore is missing — ensures chaos fires even with an
+            # empty index.
+            raw_suggestions = [{}]
         # Sort by MeiliSearch ranking score for better relevance ordering.
         ranked = sorted(raw_suggestions, key=lambda s: s["_rankingScore"], reverse=True)  # type: ignore[index]
         return jsonify({"suggestions": ranked, "query": prefix}), 200

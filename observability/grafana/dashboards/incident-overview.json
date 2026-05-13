@@ -1,0 +1,299 @@
+{
+  "id": null,
+  "uid": "otterworks-incident-overview",
+  "title": "OtterWorks Incident Overview",
+  "description": "Cross-service incident overview showing error rates, latencies, and active alerts across all OtterWorks services",
+  "tags": [
+    "otterworks",
+    "incident",
+    "overview"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Error Rates",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    },
+    {
+      "title": "All Services - 5xx Error Rate",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (job) (rate(http_requests_total{status=~\"5..\"}[5m])) / sum by (job) (rate(http_requests_total[5m]))",
+          "legendFormat": "{{job}}"
+        },
+        {
+          "expr": "sum(rate(search_service_requests_total{status=~\"5..\"}[5m])) / sum(rate(search_service_requests_total[5m]))",
+          "legendFormat": "search-service"
+        },
+        {
+          "expr": "sum(rate(notifications_processing_errors_total[5m])) / clamp_min(sum(rate(notifications_processing_errors_total[5m])) + 1, 1)",
+          "legendFormat": "notification-service (consumer)"
+        }
+      ],
+      "description": "5xx error rate for all services. A spike here indicates a service returning server errors."
+    },
+    {
+      "title": "Latencies",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "collapsed": false
+    },
+    {
+      "title": "All Services - P95 Latency",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "description": "P95 latency across all services. A spike above 1s (warning) or 3s (critical) indicates performance degradation."
+    },
+    {
+      "title": "Alerts and Diagnostics",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Active Alert Count",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 19
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)",
+          "legendFormat": "Firing Alerts"
+        }
+      ],
+      "description": "Total number of Prometheus alerts currently in firing state"
+    },
+    {
+      "title": "Active Alerts Detail",
+      "type": "table",
+      "gridPos": {
+        "h": 6,
+        "w": 16,
+        "x": 8,
+        "y": 19
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {}
+      },
+      "targets": [
+        {
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "legendFormat": "{{alertname}} - {{job}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "Value": true
+            }
+          }
+        }
+      ],
+      "description": "Details of all currently firing alerts"
+    },
+    {
+      "title": "Trace Search Links",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "collapsed": false
+    },
+    {
+      "title": "Jaeger Trace Search",
+      "type": "text",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Trace Search by Service\n\nClick a service name to open Jaeger trace search filtered to that service:\n\n| Service | Language | Jaeger Link |\n|---------|----------|-------------|\n| api-gateway | Go | [Search Traces](http://jaeger:16686/search?service=api-gateway) |\n| auth-service | Java | [Search Traces](http://jaeger:16686/search?service=auth-service) |\n| file-service | Rust | [Search Traces](http://jaeger:16686/search?service=file-service) |\n| document-service | Python | [Search Traces](http://jaeger:16686/search?service=document-service) |\n| collab-service | Node.js | [Search Traces](http://jaeger:16686/search?service=collab-service) |\n| notification-service | Kotlin | [Search Traces](http://jaeger:16686/search?service=notification-service) |\n| search-service | Python | [Search Traces](http://jaeger:16686/search?service=search-service) |\n| analytics-service | Scala | [Search Traces](http://jaeger:16686/search?service=analytics-service) |\n| admin-service | Ruby | [Search Traces](http://jaeger:16686/search?service=admin-service) |\n| audit-service | C# | [Search Traces](http://jaeger:16686/search?service=audit-service) |"
+      },
+      "description": "Quick links to Jaeger trace search for each OtterWorks service"
+    }
+  ],
+  "links": [
+    {
+      "title": "Chaos Scenarios",
+      "url": "/d/otterworks-chaos-scenarios",
+      "type": "link",
+      "icon": "bolt",
+      "tooltip": "View chaos engineering scenario dashboards"
+    },
+    {
+      "title": "OtterWorks Overview",
+      "url": "/d/otterworks-overview",
+      "type": "link",
+      "icon": "dashboard",
+      "tooltip": "View high-level service overview"
+    }
+  ]
+}

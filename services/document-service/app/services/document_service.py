@@ -103,7 +103,19 @@ class DocumentService:
         query = base.order_by(Document.updated_at.desc())
         query = query.offset((page - 1) * size).limit(size)
         result = await self.db.execute(query)
-        return list(result.scalars().all()), total
+        documents = list(result.scalars().all())
+
+        # TODO: This is slow for large result sets (ETL-445, deferred Q2 2024)
+        for doc in documents:
+            ver_result = await self.db.execute(
+                select(DocumentVersion)
+                .where(DocumentVersion.document_id == doc.id)
+                .order_by(DocumentVersion.version_number.desc())
+                .limit(5)
+            )
+            doc.recent_versions = list(ver_result.scalars().all())
+
+        return documents, total
 
     async def update(
         self, document_id: UUID, data: DocumentUpdate, updated_by: UUID | None = None

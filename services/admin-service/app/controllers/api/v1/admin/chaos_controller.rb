@@ -8,6 +8,7 @@ module Api
           'search-service'       => 'suggest_500',
           'file-service'         => 'upload_s3_error',
           'notification-service' => 'consumer_strict_schema',
+          'document-service'     => 'slow_queries',
         }.freeze
 
         before_action :verify_chaos_secret

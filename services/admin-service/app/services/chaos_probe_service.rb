@@ -32,6 +32,14 @@ class ChaosProbeService
       method: :sqs,
       headers: {},
     },
+    # document-service chaos injects 3-5s latency before every DB query.
+    # The probe hits GET /api/v1/documents so the slow response times show
+    # up in Prometheus histograms and trigger the P95 latency alert.
+    'document-service' => {
+      url: 'http://document-service:8083/api/v1/documents/',
+      headers: { 'X-User-ID' => '00000000-0000-0000-0000-000000000001' },
+      read_timeout: 8,
+    },
   }.freeze
 
   # Starts a background probe thread for the given service.
@@ -69,7 +77,7 @@ class ChaosProbeService
     uri = URI.parse(config[:url])
     http = Net::HTTP.new(uri.host, uri.port)
     http.open_timeout = 3
-    http.read_timeout = 3
+    http.read_timeout = config.fetch(:read_timeout, 3)
 
     request = case config[:method]
               when :multipart

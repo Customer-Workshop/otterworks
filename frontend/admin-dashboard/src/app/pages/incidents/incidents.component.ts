@@ -109,6 +109,25 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
               </button>
             </div>
 
+            <div class="chaos-scenario" [class.chaos-active]="chaosState['document-service']">
+              <div class="chaos-scenario-header">
+                <mat-icon class="chaos-svc-icon">description</mat-icon>
+                <div>
+                  <div class="chaos-svc-name">Document Service <span class="chaos-lang">Python/FastAPI</span></div>
+                  <div class="chaos-svc-desc">Injected 3-5s latency before every database query → P95 latency spike → timeout cascade</div>
+                </div>
+              </div>
+              <div class="chaos-status" *ngIf="chaosState['document-service']">
+                <mat-icon class="chaos-active-icon">bolt</mat-icon>
+                Chaos active — Grafana alert fires in ~1m
+              </div>
+              <button mat-raised-button color="warn" (click)="triggerChaos('document-service', 'slow_queries')"
+                [disabled]="!!chaosState['document-service'] || chaosLoading">
+                <mat-icon>{{ chaosState['document-service'] ? 'check' : 'bug_report' }}</mat-icon>
+                {{ chaosState['document-service'] ? 'Slowing...' : 'Inject Query Latency' }}
+              </button>
+            </div>
+
           </div>
           <div class="chaos-footer">
             <span class="chaos-note">Chaos flags auto-expire after 10 minutes</span>

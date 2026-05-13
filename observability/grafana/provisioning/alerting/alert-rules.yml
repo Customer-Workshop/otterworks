@@ -82,7 +82,7 @@ groups:
               expression: B
               refId: C
               type: threshold
-        noDataState: NoData
+        noDataState: OK
         execErrState: Error
         for: 1m
         labels:
@@ -173,7 +173,7 @@ groups:
               expression: B
               refId: C
               type: threshold
-        noDataState: NoData
+        noDataState: OK
         execErrState: Error
         for: 1m
         labels:
@@ -265,7 +265,7 @@ groups:
               expression: B
               refId: C
               type: threshold
-        noDataState: NoData
+        noDataState: OK
         execErrState: Error
         for: 2m
         labels:

@@ -1,0 +1,876 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "otterworks-chaos-scenarios",
+    "title": "OtterWorks Chaos Scenarios",
+    "description": "Real-time monitoring of chaos engineering scenarios - trigger from admin dashboard and observe failures here",
+    "tags": [
+      "otterworks",
+      "chaos",
+      "demo"
+    ],
+    "timezone": "utc",
+    "editable": true,
+    "graphTooltip": 1,
+    "refresh": "5s",
+    "time": {
+      "from": "now-15m",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": {
+            "text": "Prometheus",
+            "value": "Prometheus"
+          }
+        }
+      ]
+    },
+    "panels": [
+      {
+        "title": "Chaos Status",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "collapsed": false
+      },
+      {
+        "title": "Search Service Chaos Active",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "INACTIVE",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "1": {
+                    "text": "ACTIVE",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(search_service_requests_total{status=~\"5..\"}[1m])) / sum(rate(search_service_requests_total[1m])) > 0.05",
+            "legendFormat": "Chaos Active"
+          }
+        ],
+        "description": "Search service chaos active when error rate >5%"
+      },
+      {
+        "title": "File Service Chaos Active",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "INACTIVE",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "1": {
+                    "text": "ACTIVE",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{path=~\"/api/v1/files.*\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{path=~\"/api/v1/files.*\"}[1m])) > 0.10",
+            "legendFormat": "Chaos Active"
+          }
+        ],
+        "description": "File service chaos active when error rate >10%"
+      },
+      {
+        "title": "Notification Service Chaos Active",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "INACTIVE",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "1": {
+                    "text": "ACTIVE",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(notifications_processing_errors_total[2m])) > 0",
+            "legendFormat": "Chaos Active"
+          }
+        ],
+        "description": "Notification service chaos active when processing errors >0"
+      },
+      {
+        "title": "Chaos Auto-Expiry",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 1
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "description": "Time until chaos flags auto-expire (10-minute TTL)",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 60
+                },
+                {
+                  "color": "green",
+                  "value": 300
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "600",
+            "legendFormat": "TTL (seconds)"
+          }
+        ],
+        "description": "Chaos flags auto-expire after 10 minutes (600 seconds)"
+      },
+      {
+        "title": "Search Service - Autocomplete Suggest Errors",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 5
+        },
+        "collapsed": false
+      },
+      {
+        "title": "Search Service 5xx Error Rate",
+        "type": "gauge",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.01
+                },
+                {
+                  "color": "red",
+                  "value": 0.05
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(search_service_requests_total{status=~\"5..\"}[1m])) / sum(rate(search_service_requests_total[1m]))",
+            "legendFormat": "5xx rate"
+          }
+        ],
+        "description": "Alert fires when >5% errors over 1m window"
+      },
+      {
+        "title": "Search Service Request Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(search_service_requests_total[1m])",
+            "legendFormat": "{{status}} {{method}}"
+          }
+        ],
+        "description": "Chaos probe generates synthetic traffic to /suggest endpoint"
+      },
+      {
+        "title": "Search Service Errors by Status",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 6
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "custom": {
+              "stacking": {
+                "mode": "normal"
+              }
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(search_service_requests_total{status=~\"5..\"}[1m])",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "description": "Spike in 500 errors when chaos is active"
+      },
+      {
+        "title": "File Service - Upload S3 Errors",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 12
+        },
+        "collapsed": false
+      },
+      {
+        "title": "File Service 5xx Error Rate",
+        "type": "gauge",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 13
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.05
+                },
+                {
+                  "color": "red",
+                  "value": 0.10
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{path=~\"/api/v1/files.*\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{path=~\"/api/v1/files.*\"}[1m]))",
+            "legendFormat": "5xx rate"
+          }
+        ],
+        "description": "Alert fires when >10% errors over 1m window"
+      },
+      {
+        "title": "File Service Request Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 13
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{path=~\"/api/v1/files.*\"}[1m])",
+            "legendFormat": "{{status}} {{method}}"
+          }
+        ],
+        "description": "Chaos probe generates synthetic upload requests"
+      },
+      {
+        "title": "File Service S3 Error Pattern",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 13
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{path=~\"/api/v1/files.*\",status=~\"5..\"}[1m])",
+            "legendFormat": "S3 Errors (5xx)"
+          }
+        ],
+        "description": "S3 NoSuchBucket errors when chaos redirects to nonexistent bucket"
+      },
+      {
+        "title": "Notification Service - Consumer Processing Errors",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 19
+        },
+        "collapsed": false
+      },
+      {
+        "title": "Notification Processing Error Rate",
+        "type": "gauge",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 20
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "min": 0,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.1
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(notifications_processing_errors_total[2m]))",
+            "legendFormat": "Error rate"
+          }
+        ],
+        "description": "Alert fires when processing errors accumulate (strict JSON schema)"
+      },
+      {
+        "title": "Notification Consumer Health",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 20
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(notifications_processing_errors_total[2m])",
+            "legendFormat": "Processing Errors"
+          }
+        ],
+        "description": "Errors spike when strict schema rejects legacy timestamps"
+      },
+      {
+        "title": "SQS Queue Depth (Approximate)",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 20
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "description": "Messages stuck in queue due to processing failures",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(notifications_processing_errors_total[2m]) * 120",
+            "legendFormat": "Est. Queue Depth"
+          }
+        ],
+        "description": "Queue backlog grows as messages fail to process and retry"
+      },
+      {
+        "title": "Alert States",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 26
+        },
+        "collapsed": false
+      },
+      {
+        "title": "Search Service Alert State",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 0,
+          "y": 27
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "NORMAL",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "1": {
+                    "text": "FIRING",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(search_service_requests_total{status=~\"5..\"}[1m])) / sum(rate(search_service_requests_total[1m])) > 0.05",
+            "legendFormat": "Alert State"
+          }
+        ],
+        "description": "SearchSuggestHighErrorRate alert (fires ~30s after chaos trigger)"
+      },
+      {
+        "title": "File Service Alert State",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 8,
+          "y": 27
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "NORMAL",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "1": {
+                    "text": "FIRING",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{path=~\"/api/v1/files.*\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{path=~\"/api/v1/files.*\"}[1m])) > 0.10",
+            "legendFormat": "Alert State"
+          }
+        ],
+        "description": "FileUploadHighErrorRate alert (fires ~30s after chaos trigger)"
+      },
+      {
+        "title": "Notification Service Alert State",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 16,
+          "y": 27
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "NORMAL",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              },
+              {
+                "options": {
+                  "1": {
+                    "text": "FIRING",
+                    "color": "red"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(notifications_processing_errors_total[2m])) > 0",
+            "legendFormat": "Alert State"
+          }
+        ],
+        "description": "NotificationConsumerProcessingErrors alert (fires ~2m after chaos trigger)"
+      },
+      {
+        "title": "Chaos Probe Activity",
+        "type": "row",
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 31
+        },
+        "collapsed": false
+      },
+      {
+        "title": "Chaos Probe Request Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "description": "Synthetic traffic generated by chaos probe service"
+          }
+        },
+        "targets": [
+          {
+            "expr": "rate(search_service_requests_total[1m])",
+            "legendFormat": "Search Probe"
+          },
+          {
+            "expr": "rate(http_requests_total{path=~\"/api/v1/files.*\"}[1m])",
+            "legendFormat": "File Probe"
+          },
+          {
+            "expr": "rate(notifications_processing_errors_total[1m])",
+            "legendFormat": "Notification Probe"
+          }
+        ],
+        "description": "Background probe service generates traffic to trigger alerts"
+      },
+      {
+        "title": "Total Chaos Scenarios Active",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "min": 0,
+            "max": 3,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 2
+                }
+              ]
+            }
+          }
+        },
+        "targets": [
+          {
+            "expr": "vector(0)",
+            "legendFormat": "Active Scenarios"
+          }
+        ],
+        "description": "Number of chaos scenarios currently active (max 3)"
+      }
+    ]
+  },
+  "overwrite": true
+}

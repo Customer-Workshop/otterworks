@@ -273,10 +273,10 @@
       "title": "Chaos Auto-Expiry",
       "type": "stat",
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 1
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -319,7 +319,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 7
       },
       "collapsed": false
     },
@@ -330,7 +330,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 6
+        "y": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -374,7 +374,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 6
+        "y": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -400,7 +400,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 6
+        "y": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -431,7 +431,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 14
       },
       "collapsed": false
     },
@@ -442,7 +442,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 13
+        "y": 15
       },
       "datasource": {
         "type": "prometheus",
@@ -486,7 +486,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 13
+        "y": 15
       },
       "datasource": {
         "type": "prometheus",
@@ -512,7 +512,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 13
+        "y": 15
       },
       "datasource": {
         "type": "prometheus",
@@ -538,7 +538,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 21
       },
       "collapsed": false
     },
@@ -549,7 +549,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "datasource": {
         "type": "prometheus",
@@ -592,7 +592,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 20
+        "y": 22
       },
       "datasource": {
         "type": "prometheus",
@@ -618,7 +618,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 20
+        "y": 22
       },
       "datasource": {
         "type": "prometheus",
@@ -661,7 +661,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 28
       },
       "collapsed": false
     },
@@ -672,7 +672,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 27
+        "y": 29
       },
       "datasource": {
         "type": "prometheus",
@@ -716,7 +716,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 27
+        "y": 29
       },
       "datasource": {
         "type": "prometheus",
@@ -737,7 +737,7 @@
           "legendFormat": "P50"
         }
       ],
-      "description": "Chaos probe generates traffic — latency spikes 3-5s when chaos active"
+      "description": "Chaos probe generates traffic \u2014 latency spikes 3-5s when chaos active"
     },
     {
       "title": "Document Service Request Rate",
@@ -746,7 +746,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 27
+        "y": 29
       },
       "datasource": {
         "type": "prometheus",
@@ -763,7 +763,7 @@
           "legendFormat": "Requests/s"
         }
       ],
-      "description": "Document service throughput — should continue during latency injection"
+      "description": "Document service throughput \u2014 should continue during latency injection"
     },
     {
       "title": "Alert States",
@@ -772,7 +772,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 35
       },
       "collapsed": false
     },
@@ -783,7 +783,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 27
+        "y": 36
       },
       "datasource": {
         "type": "prometheus",
@@ -840,7 +840,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 27
+        "y": 36
       },
       "datasource": {
         "type": "prometheus",
@@ -897,7 +897,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 27
+        "y": 36
       },
       "datasource": {
         "type": "prometheus",
@@ -954,7 +954,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 40
       },
       "collapsed": false
     },
@@ -965,7 +965,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 41
       },
       "datasource": {
         "type": "prometheus",
@@ -1000,7 +1000,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 41
       },
       "datasource": {
         "type": "prometheus",
@@ -1010,7 +1010,7 @@
         "defaults": {
           "unit": "short",
           "min": 0,
-          "max": 3,
+          "max": 4,
           "thresholds": {
             "steps": [
               {

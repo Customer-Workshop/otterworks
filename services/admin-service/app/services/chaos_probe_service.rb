@@ -38,6 +38,7 @@ class ChaosProbeService
     'document-service' => {
       url: 'http://document-service:8083/api/v1/documents/',
       headers: { 'X-User-ID' => '00000000-0000-0000-0000-000000000001' },
+      read_timeout: 8,
     },
   }.freeze
 
@@ -76,7 +77,7 @@ class ChaosProbeService
     uri = URI.parse(config[:url])
     http = Net::HTTP.new(uri.host, uri.port)
     http.open_timeout = 3
-    http.read_timeout = 3
+    http.read_timeout = config.fetch(:read_timeout, 3)
 
     request = case config[:method]
               when :multipart

@@ -264,6 +264,7 @@ async def patch_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Partial update of a document."""
+    await _maybe_inject_latency()
     user_id = _require_user_id(request)
     service = DocumentService(db)
     existing = await service.get(document_id)

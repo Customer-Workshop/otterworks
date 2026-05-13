@@ -29,7 +29,7 @@
     },
     "CursorMovedEvent": {
       "type": "object",
-      "required": ["eventType", "sessionId", "documentId", "userId", "position"],
+      "required": ["eventType", "sessionId", "documentId", "userId", "position", "timestamp"],
       "properties": {
         "eventType": { "const": "cursor_moved" },
         "sessionId": { "type": "string", "format": "uuid" },
@@ -48,7 +48,7 @@
     },
     "SelectionChangedEvent": {
       "type": "object",
-      "required": ["eventType", "sessionId", "documentId", "userId", "selection"],
+      "required": ["eventType", "sessionId", "documentId", "userId", "selection", "timestamp"],
       "properties": {
         "eventType": { "const": "selection_changed" },
         "sessionId": { "type": "string", "format": "uuid" },

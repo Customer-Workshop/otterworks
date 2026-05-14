@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { Incident, AFFECTED_SERVICES } from '../../core/models/incident.model';
 import { Subscription, interval } from 'rxjs';
@@ -24,7 +25,7 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
   imports: [
     CommonModule, FormsModule, MatCardModule, MatIconModule, MatButtonModule,
     MatProgressSpinnerModule, MatChipsModule, MatInputModule, MatFormFieldModule,
-    MatSelectModule, MatSnackBarModule, MatBadgeModule, MatTooltipModule,
+    MatSelectModule, MatSnackBarModule, MatBadgeModule, MatTooltipModule, MatSlideToggleModule,
   ],
   template: `
     <div class="page-container">
@@ -47,9 +48,29 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
             Demo Controls
             <span class="demo-badge" *ngIf="activeChaosCount > 0">{{ activeChaosCount }} active</span>
           </mat-card-title>
-          <mat-card-subtitle>Inject realistic failures into running services to trigger Grafana alerts and auto-create Devin sessions</mat-card-subtitle>
+          <mat-card-subtitle>Inject realistic failures and control the investigation flow: manual, one-click, or fully automatic</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content *ngIf="showDemoControls">
+          <div class="auto-investigate-toggle">
+            <div class="toggle-info">
+              <div class="toggle-label">
+                <mat-icon>smart_toy</mat-icon>
+                <span>Auto-Investigate with Devin</span>
+              </div>
+              <div class="toggle-description" *ngIf="autoInvestigate">
+                <strong>ON:</strong> Grafana alerts auto-create incidents AND launch Devin sessions (Flow 3: fully automatic)
+              </div>
+              <div class="toggle-description" *ngIf="!autoInvestigate">
+                <strong>OFF:</strong> Grafana alerts auto-create incidents but do NOT launch Devin. Use "Launch Devin" button on individual incidents (Flow 2) or investigate manually via Grafana (Flow 1)
+              </div>
+            </div>
+            <mat-slide-toggle
+              [checked]="autoInvestigate"
+              [disabled]="autoInvestigateLoading"
+              (change)="toggleAutoInvestigate($event.checked)"
+              color="primary">
+            </mat-slide-toggle>
+          </div>
           <div class="chaos-grid">
 
             <div class="chaos-scenario" [class.chaos-active]="chaosState['search-service']">
@@ -364,6 +385,9 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
     .chaos-active-icon{font-size:16px;width:16px;height:16px}
     .chaos-footer{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:16px;border-top:1px solid #e8d5f5}
     .chaos-note{font-size:.8rem;color:#999}
+    .auto-investigate-toggle{display:flex;align-items:center;justify-content:space-between;padding:16px;background:#e8f0fe;border:1px solid #c2d7f9;border-radius:8px;margin-bottom:16px}
+    .toggle-info{flex:1}.toggle-label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.9rem;color:#1565c0;margin-bottom:4px}
+    .toggle-description{font-size:.8rem;color:#555;line-height:1.4}
   `],
 })
 export class IncidentsComponent implements OnInit, OnDestroy {
@@ -380,6 +404,10 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   chaosLoading = false;
   chaosState: Record<string, boolean> = {};
 
+  // Auto-investigate toggle
+  autoInvestigate = true;
+  autoInvestigateLoading = false;
+
   get activeChaosCount(): number {
     return Object.values(this.chaosState).filter(Boolean).length;
   }
@@ -393,6 +421,10 @@ export class IncidentsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadChaosState();
+    this.api.getAutoInvestigate().subscribe({
+      next: (res) => this.autoInvestigate = res.enabled,
+      error: () => this.autoInvestigate = true,
+    });
     this.loadIncidents();
     // Poll for status updates every 10 seconds
     this.pollSub = interval(10000).subscribe(() => {
@@ -517,6 +549,27 @@ export class IncidentsComponent implements OnInit, OnDestroy {
       error: () => {
         this.chaosLoading = false;
         this.snackBar.open(`Failed to trigger chaos on ${service}`, 'Dismiss', { duration: 3000 });
+      },
+    });
+  }
+
+  toggleAutoInvestigate(enabled: boolean): void {
+    const previous = this.autoInvestigate;
+    this.autoInvestigate = enabled;
+    this.autoInvestigateLoading = true;
+    this.api.setAutoInvestigate(enabled).subscribe({
+      next: (res) => {
+        this.autoInvestigate = res.enabled;
+        this.autoInvestigateLoading = false;
+        const mode = res.enabled
+          ? 'ON — Devin sessions will be auto-created from alerts'
+          : 'OFF — Incidents created from alerts, but no auto Devin sessions';
+        this.snackBar.open(`Auto-Investigate: ${mode}`, 'Dismiss', { duration: 5000 });
+      },
+      error: () => {
+        this.autoInvestigate = previous;
+        this.autoInvestigateLoading = false;
+        this.snackBar.open('Failed to update auto-investigate setting', 'Dismiss', { duration: 3000 });
       },
     });
   }

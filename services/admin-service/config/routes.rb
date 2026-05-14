@@ -51,6 +51,10 @@ Rails.application.routes.draw do
         post  'chaos', to: 'chaos#trigger'
         delete 'chaos', to: 'chaos#reset'
 
+        # Settings
+        get 'settings/auto_investigate', to: 'settings#auto_investigate'
+        put 'settings/auto_investigate', to: 'settings#update_auto_investigate'
+
         # Grafana alert webhook (no JWT — protected by X-Alert-Secret header)
         post 'alerts/ingest', to: 'alerts#ingest'
       end

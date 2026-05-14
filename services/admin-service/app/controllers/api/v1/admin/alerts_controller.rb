@@ -68,16 +68,24 @@ module Api
             return { skipped: true, incident_id: existing.id, reason: 'duplicate' }
           end
 
+          auto_investigate = AdminSettingsService.auto_investigate_enabled?
+
           incident = Incident.create!(
             title:            summary.presence || "#{alert_name}: #{affected_service} alert firing",
             description:      build_description(alert_name, description, labels, annotations),
             severity:         severity,
-            status:           'investigating',
+            status:           auto_investigate ? 'investigating' : 'open',
             affected_service: affected_service,
             reporter_id:      nil, # system-generated
           )
 
-          session_result = DevinSessionService.create_session(incident: incident)
+          session_result = nil
+          if auto_investigate
+            session_result = DevinSessionService.create_session(incident: incident)
+          else
+            Rails.logger.info("Auto-investigate disabled — skipping Devin session for incident #{incident.id}")
+          end
+
           if session_result
             incident.update!(
               devin_session_id:     session_result[:session_id],

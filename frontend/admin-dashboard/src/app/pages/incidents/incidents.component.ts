@@ -554,6 +554,8 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   }
 
   toggleAutoInvestigate(enabled: boolean): void {
+    const previous = this.autoInvestigate;
+    this.autoInvestigate = enabled;
     this.autoInvestigateLoading = true;
     this.api.setAutoInvestigate(enabled).subscribe({
       next: (res) => {
@@ -565,6 +567,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
         this.snackBar.open(`Auto-Investigate: ${mode}`, 'Dismiss', { duration: 5000 });
       },
       error: () => {
+        this.autoInvestigate = previous;
         this.autoInvestigateLoading = false;
         this.snackBar.open('Failed to update auto-investigate setting', 'Dismiss', { duration: 3000 });
       },

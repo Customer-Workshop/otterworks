@@ -376,6 +376,7 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
     .chaos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
     .chaos-scenario{background:#fff;border:1px solid #e8d5f5;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s}
     .chaos-scenario.chaos-active{border-color:#7b1fa2;background:#fdf0ff}
+    .chaos-scenario .mat-icon{flex-shrink:0;overflow:visible}
     .chaos-scenario-header{display:flex;gap:12px;align-items:flex-start}
     .chaos-svc-icon{color:#7b1fa2;margin-top:2px}
     .chaos-svc-name{font-weight:600;font-size:.9rem;color:#333}

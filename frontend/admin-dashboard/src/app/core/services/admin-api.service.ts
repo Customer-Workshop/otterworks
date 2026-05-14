@@ -219,6 +219,16 @@ export class AdminApiService {
     return this.http.delete<any>(`${this.baseUrl}/admin/chaos`);
   }
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  getAutoInvestigate(): Observable<{ enabled: boolean }> {
+    return this.http.get<{ enabled: boolean }>(`${this.baseUrl}/admin/settings/auto_investigate`);
+  }
+
+  setAutoInvestigate(enabled: boolean): Observable<{ enabled: boolean }> {
+    return this.http.put<{ enabled: boolean }>(`${this.baseUrl}/admin/settings/auto_investigate`, { enabled });
+  }
+
   // ── Private mappers ──────────────────────────────────────────────────────
 
   private mapUser(raw: any): User {

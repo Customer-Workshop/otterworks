@@ -77,7 +77,13 @@ module Api
             reporter_id:      nil, # system-generated
           )
 
-          session_result = DevinSessionService.create_session(incident: incident)
+          session_result = nil
+          if AdminSettingsService.auto_investigate_enabled?
+            session_result = DevinSessionService.create_session(incident: incident)
+          else
+            Rails.logger.info("Auto-investigate disabled — skipping Devin session for incident #{incident.id}")
+          end
+
           if session_result
             incident.update!(
               devin_session_id:     session_result[:session_id],

@@ -1,431 +1,429 @@
 {
-  "dashboard": {
-    "id": null,
-    "uid": "otterworks-service-detail",
-    "title": "OtterWorks Service Detail",
-    "description": "Per-service deep dive: request rate by endpoint, latency percentiles, error breakdown, and resource usage.",
-    "tags": [
-      "otterworks",
-      "service",
-      "detail"
-    ],
-    "timezone": "utc",
-    "editable": true,
-    "graphTooltip": 1,
-    "templating": {
-      "list": [
+  "id": null,
+  "uid": "otterworks-service-detail",
+  "title": "OtterWorks Service Detail",
+  "description": "Per-service deep dive: request rate by endpoint, latency percentiles, error breakdown, and resource usage.",
+  "tags": [
+    "otterworks",
+    "service",
+    "detail"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        }
+      },
+      {
+        "name": "service",
+        "type": "query",
+        "query": "label_values(up, job)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "text": "api-gateway",
+          "value": "api-gateway"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Service Status: $service",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "targets": [
         {
-          "name": "datasource",
-          "type": "datasource",
-          "query": "prometheus",
-          "current": {
-            "text": "Prometheus",
-            "value": "Prometheus"
-          }
-        },
-        {
-          "name": "service",
-          "type": "query",
-          "query": "label_values(up, job)",
-          "refresh": 2,
-          "includeAll": false,
-          "multi": false,
-          "current": {
-            "text": "api-gateway",
-            "value": "api-gateway"
-          }
+          "expr": "up{job=\"$service\"}",
+          "legendFormat": "status"
         }
       ]
     },
-    "panels": [
-      {
-        "title": "Service Status: $service",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 0,
-          "y": 0
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
+    {
+      "title": "Request Rate",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "job:http_requests:rate5m{job=\"$service\"}",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate (5xx)",
+      "type": "gauge",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
               {
-                "options": {
-                  "0": {
-                    "text": "DOWN",
-                    "color": "red"
-                  }
-                },
-                "type": "value"
+                "color": "green",
+                "value": null
               },
               {
-                "options": {
-                  "1": {
-                    "text": "UP",
-                    "color": "green"
-                  }
-                },
-                "type": "value"
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
               }
             ]
           }
-        },
-        "targets": [
-          {
-            "expr": "up{job=\"$service\"}",
-            "legendFormat": "status"
-          }
-        ]
+        }
       },
-      {
-        "title": "Request Rate",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 6,
-          "y": 0
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_requests:rate5m{job=\"$service\"}",
-            "legendFormat": "req/s"
-          }
-        ]
-      },
-      {
-        "title": "Error Rate (5xx)",
-        "type": "gauge",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 0
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit",
-            "min": 0,
-            "max": 1,
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 0.01
-                },
-                {
-                  "color": "red",
-                  "value": 0.05
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_error_ratio:rate5m{job=\"$service\"}",
-            "legendFormat": "5xx rate"
-          }
-        ]
-      },
-      {
-        "title": "P99 Latency",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 0
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s",
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 2
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_request_duration_seconds:p99{job=\"$service\"}",
-            "legendFormat": "p99"
-          }
-        ]
-      },
-      {
-        "title": "Request Rate by Endpoint",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 4
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum by (method, path) (rate(http_requests_total{job=\"$service\"}[5m]))",
-            "legendFormat": "{{ method }} {{ path }}"
-          }
-        ]
-      },
-      {
-        "title": "Latency Percentiles",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 4
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s"
-          }
-        },
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
-            "legendFormat": "p50"
-          },
-          {
-            "expr": "histogram_quantile(0.90, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
-            "legendFormat": "p90"
-          },
-          {
-            "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
-            "legendFormat": "p95"
-          },
-          {
-            "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
-            "legendFormat": "p99"
-          }
-        ]
-      },
-      {
-        "title": "Latency by Endpoint (P95)",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 12
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s"
-          }
-        },
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, sum by (path, le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
-            "legendFormat": "{{ path }}"
-          }
-        ]
-      },
-      {
-        "title": "Error Breakdown by Status Code",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 12
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum by (status) (rate(http_requests_total{job=\"$service\", status=~\"[45]..\"}[5m]))",
-            "legendFormat": "{{ status }}"
-          }
-        ]
-      },
-      {
-        "title": "HTTP Status Distribution",
-        "type": "piechart",
-        "gridPos": {
-          "h": 8,
-          "w": 8,
-          "x": 0,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "sum by (status) (increase(http_requests_total{job=\"$service\"}[1h]))",
-            "legendFormat": "{{ status }}"
-          }
-        ]
-      },
-      {
-        "title": "CPU Usage",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 8,
-          "x": 8,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit"
-          }
-        },
-        "targets": [
-          {
-            "expr": "rate(process_cpu_seconds_total{job=\"$service\"}[5m])",
-            "legendFormat": "CPU usage"
-          }
-        ]
-      },
-      {
-        "title": "Memory Usage",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 8,
-          "x": 16,
-          "y": 20
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "bytes"
-          }
-        },
-        "targets": [
-          {
-            "expr": "process_resident_memory_bytes{job=\"$service\"}",
-            "legendFormat": "RSS"
-          },
-          {
-            "expr": "process_virtual_memory_bytes{job=\"$service\"}",
-            "legendFormat": "Virtual"
-          }
-        ]
-      },
-      {
-        "title": "Open File Descriptors",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 6,
-          "w": 12,
-          "x": 0,
-          "y": 28
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "process_open_fds{job=\"$service\"}",
-            "legendFormat": "open FDs"
-          },
-          {
-            "expr": "process_max_fds{job=\"$service\"}",
-            "legendFormat": "max FDs"
-          }
-        ]
-      },
-      {
-        "title": "Goroutines / Threads",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 6,
-          "w": 12,
-          "x": 12,
-          "y": 28
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "go_goroutines{job=\"$service\"} or process_threads_total{job=\"$service\"}",
-            "legendFormat": "goroutines/threads"
-          }
-        ]
-      }
-    ],
-    "time": {
-      "from": "now-3h",
-      "to": "now"
+      "targets": [
+        {
+          "expr": "job:http_error_ratio:rate5m{job=\"$service\"}",
+          "legendFormat": "5xx rate"
+        }
+      ]
     },
-    "refresh": "30s"
-  }
+    {
+      "title": "P99 Latency",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "job:http_request_duration_seconds:p99{job=\"$service\"}",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Request Rate by Endpoint",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (method, path) (rate(http_requests_total{job=\"$service\"}[5m]))",
+          "legendFormat": "{{ method }} {{ path }}"
+        }
+      ]
+    },
+    {
+      "title": "Latency Percentiles",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
+          "legendFormat": "p90"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Latency by Endpoint (P95)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (path, le) (rate(http_request_duration_seconds_bucket{job=\"$service\"}[5m])))",
+          "legendFormat": "{{ path }}"
+        }
+      ]
+    },
+    {
+      "title": "Error Breakdown by Status Code",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(http_requests_total{job=\"$service\", status=~\"[45]..\"}[5m]))",
+          "legendFormat": "{{ status }}"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Status Distribution",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (status) (increase(http_requests_total{job=\"$service\"}[1h]))",
+          "legendFormat": "{{ status }}"
+        }
+      ]
+    },
+    {
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total{job=\"$service\"}[5m])",
+          "legendFormat": "CPU usage"
+        }
+      ]
+    },
+    {
+      "title": "Memory Usage",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"$service\"}",
+          "legendFormat": "RSS"
+        },
+        {
+          "expr": "process_virtual_memory_bytes{job=\"$service\"}",
+          "legendFormat": "Virtual"
+        }
+      ]
+    },
+    {
+      "title": "Open File Descriptors",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "process_open_fds{job=\"$service\"}",
+          "legendFormat": "open FDs"
+        },
+        {
+          "expr": "process_max_fds{job=\"$service\"}",
+          "legendFormat": "max FDs"
+        }
+      ]
+    },
+    {
+      "title": "Goroutines / Threads",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "go_goroutines{job=\"$service\"} or process_threads_total{job=\"$service\"}",
+          "legendFormat": "goroutines/threads"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "refresh": "30s"
 }

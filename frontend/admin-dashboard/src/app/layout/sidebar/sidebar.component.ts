@@ -117,13 +117,23 @@ interface NavItem {
     }
 
     :host ::ng-deep .mat-mdc-list-item {
-      color: rgba(255, 255, 255, 0.7) !important;
+      color: rgba(255, 255, 255, 0.75) !important;
       margin: 2px 8px;
       border-radius: 8px;
     }
 
+    :host ::ng-deep .mat-mdc-list-item .mdc-list-item__primary-text,
+    :host ::ng-deep .mat-mdc-list-item .mat-mdc-list-item-title {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+
     :host ::ng-deep .mat-mdc-list-item:hover {
       background: rgba(255, 255, 255, 0.08) !important;
+      color: #ffffff !important;
+    }
+
+    :host ::ng-deep .mat-mdc-list-item:hover .mdc-list-item__primary-text,
+    :host ::ng-deep .mat-mdc-list-item:hover .mat-mdc-list-item-title {
       color: #ffffff !important;
     }
 
@@ -132,12 +142,17 @@ interface NavItem {
       color: #4fc3f7 !important;
     }
 
+    :host ::ng-deep .active-link .mdc-list-item__primary-text,
+    :host ::ng-deep .active-link .mat-mdc-list-item-title {
+      color: #4fc3f7 !important;
+    }
+
     :host ::ng-deep .active-link .mat-icon {
       color: #4fc3f7 !important;
     }
 
     :host ::ng-deep .mat-mdc-list-item .mat-icon {
-      color: rgba(255, 255, 255, 0.7);
+      color: rgba(255, 255, 255, 0.75);
     }
   `],
 })
@@ -153,6 +168,7 @@ export class SidebarComponent {
     { label: 'System Health', icon: 'monitor_heart', route: '/health' },
     { label: 'Announcements', icon: 'campaign', route: '/announcements' },
     { label: 'Storage Quotas', icon: 'storage', route: '/quotas' },
+    { label: 'Incidents', icon: 'report_problem', route: '/incidents' },
     { label: 'Analytics', icon: 'bar_chart', route: '/analytics' },
   ];
 

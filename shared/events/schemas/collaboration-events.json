@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OtterWorks Collaboration Events",
+  "definitions": {
+    "UserJoinedEvent": {
+      "type": "object",
+      "required": ["eventType", "sessionId", "documentId", "userId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "user_joined" },
+        "sessionId": { "type": "string", "format": "uuid" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "displayName": { "type": "string" },
+        "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "UserLeftEvent": {
+      "type": "object",
+      "required": ["eventType", "sessionId", "documentId", "userId", "timestamp"],
+      "properties": {
+        "eventType": { "const": "user_left" },
+        "sessionId": { "type": "string", "format": "uuid" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "reason": { "enum": ["navigated_away", "idle_timeout", "disconnected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CursorMovedEvent": {
+      "type": "object",
+      "required": ["eventType", "sessionId", "documentId", "userId", "position", "timestamp"],
+      "properties": {
+        "eventType": { "const": "cursor_moved" },
+        "sessionId": { "type": "string", "format": "uuid" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "position": {
+          "type": "object",
+          "required": ["line", "column"],
+          "properties": {
+            "line": { "type": "integer", "minimum": 0 },
+            "column": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SelectionChangedEvent": {
+      "type": "object",
+      "required": ["eventType", "sessionId", "documentId", "userId", "selection", "timestamp"],
+      "properties": {
+        "eventType": { "const": "selection_changed" },
+        "sessionId": { "type": "string", "format": "uuid" },
+        "documentId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "selection": {
+          "type": "object",
+          "required": ["anchor", "head"],
+          "properties": {
+            "anchor": {
+              "type": "object",
+              "required": ["line", "column"],
+              "properties": {
+                "line": { "type": "integer", "minimum": 0 },
+                "column": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "head": {
+              "type": "object",
+              "required": ["line", "column"],
+              "properties": {
+                "line": { "type": "integer", "minimum": 0 },
+                "column": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

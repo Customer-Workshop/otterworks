@@ -37,8 +37,22 @@ Rails.application.routes.draw do
         # Announcements
         resources :announcements, only: %i[index show create update destroy]
 
+        # Incidents (Automated Incident Response)
+        resources :incidents, only: %i[index show create] do
+          member do
+            post :trigger_session
+          end
+        end
+
         # Bulk Operations
         post 'bulk/users', to: 'bulk#users'
+
+        # Chaos injection (demo/workshop use — protected by X-Chaos-Secret header)
+        post  'chaos', to: 'chaos#trigger'
+        delete 'chaos', to: 'chaos#reset'
+
+        # Grafana alert webhook (no JWT — protected by X-Alert-Secret header)
+        post 'alerts/ingest', to: 'alerts#ingest'
       end
     end
   end

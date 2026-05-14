@@ -1,0 +1,17 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Default
+    isDefault: true
+    receivers:
+      - uid: otterworks-webhook-receiver
+        type: webhook
+        settings:
+          url: http://admin-service:8089/api/v1/admin/alerts/ingest
+          httpMethod: POST
+          username: ""
+          password: ""
+          authorization_scheme: Bearer
+          authorization_credentials: $ALERT_WEBHOOK_SECRET
+        disableResolveMessage: false

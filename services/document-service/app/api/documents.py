@@ -1,9 +1,12 @@
 """Document CRUD API endpoints."""
 
+import asyncio
 import os
+import random
 from uuid import UUID
 
 import jwt
+import redis as redis_lib
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
@@ -23,6 +26,37 @@ from app.services.document_service import DocumentService
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+_redis_client: redis_lib.Redis | None = None
+
+
+def _get_redis() -> redis_lib.Redis:
+    """Return a shared Redis client (lazy-initialised)."""
+    global _redis_client
+    if _redis_client is None:
+        host = os.getenv("REDIS_HOST", "localhost")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        _redis_client = redis_lib.Redis(
+            host=host, port=port, decode_responses=True, socket_timeout=1,
+        )
+    return _redis_client
+
+
+def _chaos_active(key: str) -> bool:
+    """Return True if the given chaos flag is set in Redis."""
+    try:
+        return bool(_get_redis().exists(key))
+    except Exception:
+        return False
+
+
+async def _maybe_inject_latency() -> None:
+    """Inject 3-5s delay when the slow_queries chaos flag is active."""
+    if _chaos_active("chaos:document-service:slow_queries"):
+        delay = random.uniform(3.0, 5.0)
+        logger.warning("chaos_latency_injected", delay_seconds=round(delay, 2))
+        await asyncio.sleep(delay)
+
 
 def _get_jwt_secret() -> str:
     return os.environ.get("JWT_SECRET", "")
@@ -92,6 +126,7 @@ async def create_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new document."""
+    await _maybe_inject_latency()
     return await _do_create_document(body, request, db)
 
 
@@ -107,6 +142,7 @@ async def create_document_no_slash(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new document (no trailing slash)."""
+    await _maybe_inject_latency()
     return await _do_create_document(body, request, db)
 
 
@@ -118,6 +154,7 @@ async def search_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """Search documents by title or content."""
+    await _maybe_inject_latency()
     service = DocumentService(db)
     items, total = await service.search(q, page=page, size=size)
     return DocumentListResponse(
@@ -136,6 +173,7 @@ async def _do_list_documents(
     size: int,
     db: AsyncSession,
 ) -> DocumentListResponse:
+    await _maybe_inject_latency()
     service = DocumentService(db)
     items, total = await service.list_documents(
         owner_id=owner_id, folder_id=folder_id, page=page, size=size
@@ -188,6 +226,7 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a document by ID."""
+    await _maybe_inject_latency()
     user_id = _require_user_id(request)
     service = DocumentService(db)
     document = await service.get(document_id)
@@ -205,6 +244,7 @@ async def update_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Full replace of a document."""
+    await _maybe_inject_latency()
     user_id = _require_user_id(request)
     service = DocumentService(db)
     existing = await service.get(document_id)
@@ -224,6 +264,7 @@ async def patch_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Partial update of a document."""
+    await _maybe_inject_latency()
     user_id = _require_user_id(request)
     service = DocumentService(db)
     existing = await service.get(document_id)
@@ -242,6 +283,7 @@ async def delete_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document (soft delete)."""
+    await _maybe_inject_latency()
     user_id = _require_user_id(request)
     service = DocumentService(db)
     existing = await service.get(document_id)

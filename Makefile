@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report
 
 SHELL := /bin/bash
 
@@ -13,8 +13,11 @@ infra-up: ## Start local infrastructure (Postgres, Redis, LocalStack, MeiliSearc
 infra-down: ## Stop local infrastructure
 	docker compose -f docker-compose.infra.yml down
 
-up: ## Start all application services (requires infra-up first)
+up: ## Start all services (add seed=1 to seed after start)
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+ ifdef seed
+	@$(MAKE) --no-print-directory wait-for-db seed
+ endif
 
 down: ## Stop all application services
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml down
@@ -22,8 +25,15 @@ down: ## Stop all application services
 build: ## Build all service images
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml build
 
-seed: ## Seed development data
-	./scripts/seed-data.sh
+seed: ## Seed development data (services must be running)
+	uv run scripts/seed.py
+
+wait-for-db: ## Wait for Postgres to accept connections
+	@echo "Waiting for Postgres to be healthy..."
+	@for i in $$(seq 1 30); do \
+		docker exec otterworks-postgres pg_isready -q 2>/dev/null && exit 0; \
+		sleep 1; \
+	done; echo "Timed out waiting for Postgres" && exit 1
 
 logs: ## Tail logs for all services
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml logs -f
@@ -82,6 +92,15 @@ test: ## Run tests for all services
 	@echo "=== Web Frontend ===" && cd frontend/web-app && npm test
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm test
 
+test-coverage: ## Run tests with coverage for all services
+	@echo "=== Document Service ===" && cd services/document-service && pytest --cov=app --cov-report=term-missing || true
+	@echo "=== Search Service ===" && cd services/search-service && pytest --cov=app --cov-report=term-missing || true
+	@echo "=== Collab Service ===" && cd services/collab-service && npm test -- --coverage || true
+	@echo "=== API Gateway ===" && cd services/api-gateway && go test -cover ./... || true
+	@echo "=== Admin Service ===" && cd services/admin-service && bundle exec rspec --format documentation || true
+	@echo "=== Auth Service ===" && cd services/auth-service && ./gradlew test jacocoTestReport || true
+	@echo "=== File Service ===" && cd services/file-service && cargo test 2>&1 | tail -5 || true
+
 test-api-flows: ## Run black-box API flow tests against the local API gateway
 	UV_PROJECT_ENVIRONMENT=.venv uv run python -m pytest tests/api
 
@@ -117,3 +136,26 @@ deploy-dev: ## Deploy all services to dev EKS
 
 teardown-dev: ## Tear down dev environment
 	./scripts/teardown-dev.sh
+
+# --- Security ---
+
+security-scan: ## Run security scans across all services
+	@echo "=== Trivy Filesystem Scan ==="
+	trivy fs --config security/scanning/trivy-config.yaml . || true
+	@echo ""
+	@echo "=== Node.js Audit (collab-service) ==="
+	cd services/collab-service && npm audit 2>/dev/null || true
+	@echo ""
+	@echo "=== Python Audit (search-service) ==="
+	cd services/search-service && pip-audit -r requirements.txt 2>/dev/null || true
+	@echo ""
+	@echo "=== Ruby Audit (admin-service) ==="
+	cd services/admin-service && bundle-audit check 2>/dev/null || true
+	@echo ""
+	@echo "=== Report Service (skipped - legacy) ==="
+
+test-report: ## Run report-service tests only
+	cd services/report-service && mvn test
+
+build-report: ## Build report-service
+	cd services/report-service && mvn package -DskipTests

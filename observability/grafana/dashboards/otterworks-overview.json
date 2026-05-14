@@ -1,522 +1,520 @@
 {
-  "dashboard": {
-    "id": null,
-    "uid": "otterworks-overview",
-    "title": "OtterWorks Overview",
-    "description": "High-level overview of all OtterWorks services, request rates, error rates, and key business metrics.",
-    "tags": [
-      "otterworks",
-      "overview"
-    ],
-    "timezone": "utc",
-    "editable": true,
-    "graphTooltip": 1,
-    "templating": {
-      "list": [
+  "id": null,
+  "uid": "otterworks-overview",
+  "title": "OtterWorks Overview",
+  "description": "High-level overview of all OtterWorks services, request rates, error rates, and key business metrics.",
+  "tags": [
+    "otterworks",
+    "overview"
+  ],
+  "timezone": "utc",
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "Prometheus",
+          "value": "Prometheus"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Service Health Grid",
+      "type": "state-timeline",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "targets": [
         {
-          "name": "datasource",
-          "type": "datasource",
-          "query": "prometheus",
-          "current": {
-            "text": "Prometheus",
-            "value": "Prometheus"
-          }
+          "expr": "up{job=~\"api-gateway|auth-service|file-service|document-service|collab-service|notification-service|search-service|analytics-service|admin-service|audit-service|web-app|admin-dashboard\"}",
+          "legendFormat": "{{ job }}"
         }
       ]
     },
-    "panels": [
-      {
-        "title": "Service Health Grid",
-        "type": "state-timeline",
-        "gridPos": {
-          "h": 5,
-          "w": 24,
-          "x": 0,
-          "y": 0
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
+    {
+      "title": "Services Up",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
               {
-                "options": {
-                  "0": {
-                    "text": "DOWN",
-                    "color": "red"
-                  }
-                },
-                "type": "value"
+                "color": "red",
+                "value": null
               },
               {
-                "options": {
-                  "1": {
-                    "text": "UP",
-                    "color": "green"
-                  }
-                },
-                "type": "value"
+                "color": "orange",
+                "value": 8
+              },
+              {
+                "color": "green",
+                "value": 12
               }
             ]
           }
-        },
-        "targets": [
-          {
-            "expr": "up{job=~\"api-gateway|auth-service|file-service|document-service|collab-service|notification-service|search-service|analytics-service|admin-service|audit-service|web-app|admin-dashboard\"}",
-            "legendFormat": "{{ job }}"
-          }
-        ]
+        }
       },
-      {
-        "title": "Services Up",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 0,
-          "y": 5
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "red",
-                  "value": null
-                },
-                {
-                  "color": "orange",
-                  "value": 8
-                },
-                {
-                  "color": "green",
-                  "value": 12
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "count(up{job=~\".*-service|api-gateway|web-app|admin-dashboard\"} == 1)",
-            "legendFormat": "services up"
-          }
-        ]
-      },
-      {
-        "title": "Services Down",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 6,
-          "y": 5
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 1
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "count(up{job=~\".*-service|api-gateway|web-app|admin-dashboard\"} == 0) OR on() vector(0)",
-            "legendFormat": "services down"
-          }
-        ]
-      },
-      {
-        "title": "Total Request Rate",
-        "type": "stat",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 5
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(job:http_requests:rate5m)",
-            "legendFormat": "req/s"
-          }
-        ]
-      },
-      {
-        "title": "Overall Error Rate",
-        "type": "gauge",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 5
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit",
-            "min": 0,
-            "max": 1,
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 0.01
-                },
-                {
-                  "color": "red",
-                  "value": 0.05
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
-            "legendFormat": "5xx rate"
-          }
-        ]
-      },
-      {
-        "title": "Request Rate by Service",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 9
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "reqps"
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_requests:rate5m",
-            "legendFormat": "{{ job }}"
-          }
-        ]
-      },
-      {
-        "title": "Error Rate by Service",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 9
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "percentunit",
-            "custom": {
-              "thresholdsStyle": {
-                "mode": "line"
-              }
-            },
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 0.05
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_error_ratio:rate5m",
-            "legendFormat": "{{ job }}"
-          }
-        ]
-      },
-      {
-        "title": "Latency P99 by Service",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 17
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s",
-            "custom": {
-              "thresholdsStyle": {
-                "mode": "line"
-              }
-            },
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 2
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_request_duration_seconds:p99",
-            "legendFormat": "{{ job }}"
-          }
-        ]
-      },
-      {
-        "title": "Latency P50 by Service",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 17
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s"
-          }
-        },
-        "targets": [
-          {
-            "expr": "job:http_request_duration_seconds:p50",
-            "legendFormat": "{{ job }}"
-          }
-        ]
-      },
-      {
-        "title": "Active WebSocket Connections",
-        "type": "gauge",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 0,
-          "y": 25
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "yellow",
-                  "value": 3000
-                },
-                {
-                  "color": "red",
-                  "value": 5000
-                }
-              ]
-            }
-          }
-        },
-        "targets": [
-          {
-            "expr": "collab_active_connections",
-            "legendFormat": "connections"
-          }
-        ]
-      },
-      {
-        "title": "Documents Created (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 6,
-          "y": 25
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(documents_created_total[24h])",
-            "legendFormat": "documents"
-          }
-        ]
-      },
-      {
-        "title": "Files Uploaded (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 12,
-          "y": 25
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(files_uploaded_total[24h])",
-            "legendFormat": "files"
-          }
-        ]
-      },
-      {
-        "title": "Storage Used (S3)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 6,
-          "x": 18,
-          "y": 25
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "unit": "bytes"
-          }
-        },
-        "targets": [
-          {
-            "expr": "sum(file_storage_bytes_total)",
-            "legendFormat": "total storage"
-          }
-        ]
-      },
-      {
-        "title": "Notifications Sent (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 0,
-          "y": 30
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(notifications_sent_total[24h])",
-            "legendFormat": "notifications"
-          }
-        ]
-      },
-      {
-        "title": "Search Queries (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 8,
-          "y": 30
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(search_queries_total[24h])",
-            "legendFormat": "queries"
-          }
-        ]
-      },
-      {
-        "title": "Audit Events (24h)",
-        "type": "stat",
-        "gridPos": {
-          "h": 5,
-          "w": 8,
-          "x": 16,
-          "y": 30
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "targets": [
-          {
-            "expr": "increase(audit_events_total[24h])",
-            "legendFormat": "events"
-          }
-        ]
-      }
-    ],
-    "time": {
-      "from": "now-6h",
-      "to": "now"
+      "targets": [
+        {
+          "expr": "count(up{job=~\".*-service|api-gateway|web-app|admin-dashboard\"} == 1)",
+          "legendFormat": "services up"
+        }
+      ]
     },
-    "refresh": "30s"
-  }
+    {
+      "title": "Services Down",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "count(up{job=~\".*-service|api-gateway|web-app|admin-dashboard\"} == 0) OR on() vector(0)",
+          "legendFormat": "services down"
+        }
+      ]
+    },
+    {
+      "title": "Total Request Rate",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(job:http_requests:rate5m)",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "title": "Overall Error Rate",
+      "type": "gauge",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "5xx rate"
+        }
+      ]
+    },
+    {
+      "title": "Request Rate by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "job:http_requests:rate5m",
+          "legendFormat": "{{ job }}"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "job:http_error_ratio:rate5m",
+          "legendFormat": "{{ job }}"
+        }
+      ]
+    },
+    {
+      "title": "Latency P99 by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "job:http_request_duration_seconds:p99",
+          "legendFormat": "{{ job }}"
+        }
+      ]
+    },
+    {
+      "title": "Latency P50 by Service",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "job:http_request_duration_seconds:p50",
+          "legendFormat": "{{ job }}"
+        }
+      ]
+    },
+    {
+      "title": "Active WebSocket Connections",
+      "type": "gauge",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 25
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3000
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "collab_active_connections",
+          "legendFormat": "connections"
+        }
+      ]
+    },
+    {
+      "title": "Documents Created (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 25
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(documents_created_total[24h])",
+          "legendFormat": "documents"
+        }
+      ]
+    },
+    {
+      "title": "Files Uploaded (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 25
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(files_uploaded_total[24h])",
+          "legendFormat": "files"
+        }
+      ]
+    },
+    {
+      "title": "Storage Used (S3)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 25
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(file_storage_bytes_total)",
+          "legendFormat": "total storage"
+        }
+      ]
+    },
+    {
+      "title": "Notifications Sent (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(notifications_sent_total[24h])",
+          "legendFormat": "notifications"
+        }
+      ]
+    },
+    {
+      "title": "Search Queries (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(search_queries_total[24h])",
+          "legendFormat": "queries"
+        }
+      ]
+    },
+    {
+      "title": "Audit Events (24h)",
+      "type": "stat",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 30
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "increase(audit_events_total[24h])",
+          "legendFormat": "events"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "30s"
 }

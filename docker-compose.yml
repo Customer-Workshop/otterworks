@@ -368,6 +368,10 @@ services:
       DATABASE_USER: otterworks
       DATABASE_PASSWORD: otterworks_dev
       SECRET_KEY_BASE: dev-secret-key-base-otterworks-change-in-production
+      DEVIN_API_KEY: ${DEVIN_API_KEY:-}
+      DEVIN_ORG_ID: ${DEVIN_ORG_ID:-}
+      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
+      CHAOS_SECRET: ${CHAOS_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy

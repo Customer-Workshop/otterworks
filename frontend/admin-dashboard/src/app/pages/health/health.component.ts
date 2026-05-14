@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
+import { catchError, of } from 'rxjs';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { ServiceHealth } from '../../core/models/system-health.model';
 
@@ -44,6 +45,12 @@ import { ServiceHealth } from '../../core/models/system-health.model';
 
       <div *ngIf="loading" class="loading-container">
         <mat-spinner diameter="40"></mat-spinner>
+      </div>
+
+      <div *ngIf="error" class="error-container">
+        <mat-icon>error_outline</mat-icon>
+        <p>Failed to load health data. The health endpoint may be unavailable.</p>
+        <button mat-raised-button color="primary" (click)="refresh()">Retry</button>
       </div>
 
       <div class="services-grid" *ngIf="!loading">
@@ -94,6 +101,9 @@ import { ServiceHealth } from '../../core/models/system-health.model';
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
     .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin: 0; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
+    .error-container { display: flex; flex-direction: column; align-items: center; padding: 60px; color: #c62828; }
+    .error-container .mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; }
+    .error-container p { margin-bottom: 16px; }
 
     .health-summary {
       display: flex; gap: 16px; margin-bottom: 24px;
@@ -158,6 +168,7 @@ import { ServiceHealth } from '../../core/models/system-health.model';
 export class HealthComponent implements OnInit {
   services: ServiceHealth[] = [];
   loading = true;
+  error = false;
   healthyCounts = { healthy: 0, degraded: 0, down: 0 };
 
   constructor(private api: AdminApiService) {}
@@ -168,7 +179,14 @@ export class HealthComponent implements OnInit {
 
   loadHealth(): void {
     this.loading = true;
-    this.api.getSystemHealth().subscribe(services => {
+    this.error = false;
+    this.api.getSystemHealth().pipe(
+      catchError(() => {
+        this.error = true;
+        this.loading = false;
+        return of([]);
+      }),
+    ).subscribe(services => {
       this.services = services;
       this.healthyCounts = {
         healthy: services.filter(s => s.status === 'healthy').length,

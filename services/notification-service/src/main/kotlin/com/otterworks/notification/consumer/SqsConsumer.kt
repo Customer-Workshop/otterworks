@@ -114,17 +114,30 @@ class SqsConsumer(
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
-        val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
+        val useStrictParser = chaosActive("chaos:notification-service:consumer_strict_schema")
+        val parser = if (useStrictParser) strictJson else json
+
+        val result = tryParse(parser, body)
+        if (result != null) return result
+
+        if (useStrictParser) {
+            logger.warn { "Strict parser failed, falling back to lenient parser" }
+            val fallbackResult = tryParse(json, body)
+            if (fallbackResult != null) return fallbackResult
+        }
+
+        logger.error { "Failed to parse message body with all available parsers" }
+        return null
+    }
+
+    private fun tryParse(parser: Json, body: String): SqsNotificationMessage? {
         return try {
-            // Try parsing as direct message first
             parser.decodeFromString<SqsNotificationMessage>(body)
         } catch (_: Exception) {
             try {
-                // Try unwrapping SNS envelope
                 val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
                 parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
-            } catch (e: Exception) {
-                logger.error(e) { "Failed to parse message body" }
+            } catch (_: Exception) {
                 null
             }
         }

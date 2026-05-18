@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report parse-scan-report trigger-remediation
 
 SHELL := /bin/bash
 
@@ -159,3 +159,17 @@ test-report: ## Run report-service tests only
 
 build-report: ## Build report-service
 	cd services/report-service && mvn package -DskipTests
+
+# --- Security Remediation ---
+
+parse-scan-report: ## Parse SARIF scan results into remediation report (SARIF_FILE=path)
+	python scripts/security/parse_scan_report.py \
+		--sarif-file $${SARIF_FILE:-semgrep-results.sarif} \
+		--severity CRITICAL,HIGH \
+		--output-file remediation-report.json
+
+trigger-remediation: ## Trigger Devin remediation from scan report (REPO=owner/repo BRANCH=branch)
+	python scripts/security/trigger_devin_remediation.py \
+		--report-file remediation-report.json \
+		--repo $${REPO} \
+		--branch $${BRANCH}

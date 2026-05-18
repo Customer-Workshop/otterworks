@@ -142,7 +142,7 @@ Run `make help` to list all available commands. Key targets:
 | `make down` | Stop all services and infrastructure |
 | `make build` | Build all service Docker images |
 | `make logs` | Tail logs for all services |
-| `make test` | Run tests for all services |
+| `make test` | Run all unit and integration tests for all services |
 | `make lint` | Lint all services |
 | `make tf-plan` | Plan Terraform changes (dev) |
 | `make deploy-dev` | Deploy all services to dev EKS |

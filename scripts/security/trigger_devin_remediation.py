@@ -99,6 +99,7 @@ def create_devin_session(
 
     payload: dict = {
         "prompt": prompt,
+        "repo": repo,
     }
 
     if playbook_id:

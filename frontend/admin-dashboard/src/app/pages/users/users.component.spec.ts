@@ -1,8 +1,14 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { RouterTestingModule } from '@angular/router/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { of } from 'rxjs';
 import { UsersComponent } from './users.component';
+import { AdminApiService } from '../../core/services/admin-api.service';
+
+const mockUsers = [
+  { id: '1', displayName: 'Alice', email: 'alice@test.com', role: 'admin', status: 'active', department: 'Engineering', lastLogin: new Date(), storageUsed: 500000, storageQuota: 1000000, createdAt: new Date(), lastActive: new Date() },
+  { id: '2', displayName: 'Bob', email: 'bob@test.com', role: 'user', status: 'active', department: 'Marketing', lastLogin: new Date(), storageUsed: 200000, storageQuota: 1000000, createdAt: new Date(), lastActive: new Date() },
+];
 
 describe('UsersComponent', () => {
   let component: UsersComponent;
@@ -12,9 +18,18 @@ describe('UsersComponent', () => {
     await TestBed.configureTestingModule({
       imports: [
         UsersComponent,
-        HttpClientTestingModule,
-        RouterTestingModule,
         NoopAnimationsModule,
+      ],
+      providers: [
+        { provide: Router, useValue: { navigate: jasmine.createSpy('navigate') } },
+        {
+          provide: AdminApiService,
+          useValue: {
+            getUsers: () => of(mockUsers),
+            updateUserStatus: () => of({}),
+            deleteUser: () => of({}),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -30,13 +45,11 @@ describe('UsersComponent', () => {
     expect(component.loading).toBeTrue();
   });
 
-  it('should load users', fakeAsync(() => {
-    fixture.detectChanges();
-    tick(700);
+  it('should load users', () => {
     fixture.detectChanges();
     expect(component.loading).toBeFalse();
     expect(component.dataSource.data.length).toBeGreaterThan(0);
-  }));
+  });
 
   it('should have correct displayed columns', () => {
     expect(component.displayedColumns).toEqual([
@@ -44,20 +57,16 @@ describe('UsersComponent', () => {
     ]);
   });
 
-  it('should apply text filter', fakeAsync(() => {
-    fixture.detectChanges();
-    tick(700);
+  it('should apply text filter', () => {
     fixture.detectChanges();
     const event = { target: { value: 'alice' } } as unknown as Event;
     component.applyFilter(event);
     expect(component.dataSource.filter).toBe('alice');
-  }));
+  });
 
-  it('should display page title', fakeAsync(() => {
-    fixture.detectChanges();
-    tick(700);
+  it('should display page title', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('User Management');
-  }));
+  });
 });

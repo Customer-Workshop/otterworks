@@ -19,19 +19,21 @@ module Api
           state       = params[:state].to_s
           description = params[:description].to_s.presence || params[:short_description].to_s.presence
 
-          unless number && sys_id && description
-            return render json: { error: 'Missing required fields (number, sys_id, description)' },
-                          status: :bad_request
-          end
-
           # Resolve/close if SNOW ticket is already resolved (6) or closed (7)
           if %w[6 7].include?(state)
+            return render json: { error: 'Missing required field: number' }, status: :bad_request unless number
+
             existing = Incident.find_by(snow_ticket_number: number)
             if existing&.active?
               existing.resolve!
               Rails.logger.info("Incident #{existing.id} resolved via SNOW state #{state}")
             end
             return render json: { status: 'resolved', incident_id: existing&.id }
+          end
+
+          unless number && sys_id && description
+            return render json: { error: 'Missing required fields (number, sys_id, description)' },
+                          status: :bad_request
           end
 
           # Deduplicate by snow_ticket_number

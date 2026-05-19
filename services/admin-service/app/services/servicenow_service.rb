@@ -4,18 +4,18 @@ require 'uri'
 
 class ServicenowService
   class << self
-    def update_work_notes(sys_id:, notes:)
-      patch_incident(sys_id, { work_notes: notes })
+    def update_work_notes(sys_id:, notes:, instance_url: nil)
+      patch_incident(sys_id, { work_notes: notes }, instance_url: instance_url)
     end
 
-    def update_state(sys_id:, state:, work_notes: nil)
+    def update_state(sys_id:, state:, work_notes: nil, instance_url: nil)
       body = { state: state }
       body[:work_notes] = work_notes if work_notes.present?
-      patch_incident(sys_id, body)
+      patch_incident(sys_id, body, instance_url: instance_url)
     end
 
-    def get_incident(sys_id:)
-      uri = URI("#{instance_url}/api/now/table/incident/#{sys_id}")
+    def get_incident(sys_id:, instance_url: nil)
+      uri = URI("#{resolve_instance_url(instance_url)}/api/now/table/incident/#{sys_id}")
       request = Net::HTTP::Get.new(uri)
       apply_headers(request)
 
@@ -30,8 +30,8 @@ class ServicenowService
 
     private
 
-    def patch_incident(sys_id, body)
-      uri = URI("#{instance_url}/api/now/table/incident/#{sys_id}")
+    def patch_incident(sys_id, body, instance_url: nil)
+      uri = URI("#{resolve_instance_url(instance_url)}/api/now/table/incident/#{sys_id}")
       request = Net::HTTP::Patch.new(uri)
       apply_headers(request)
       request.body = body.to_json
@@ -67,8 +67,8 @@ class ServicenowService
       response
     end
 
-    def instance_url
-      ENV.fetch('SNOW_INSTANCE_URL')
+    def resolve_instance_url(per_incident_url)
+      per_incident_url.presence || ENV.fetch('SNOW_INSTANCE_URL')
     end
 
     def api_user

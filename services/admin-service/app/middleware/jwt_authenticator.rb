@@ -5,6 +5,7 @@ class JwtAuthenticator
     /api/v1/admin/alerts/ingest
     /api/v1/admin/chaos
     /api/v1/admin/snow/ingest
+    /api/v1/admin/snow/resolve
     /api/v1/admin/servicenow/ingest
     /api/v1/admin/servicenow/resolve
   ].freeze

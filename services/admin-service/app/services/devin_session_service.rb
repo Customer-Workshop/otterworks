@@ -60,17 +60,21 @@ class DevinSessionService
     private
 
     def build_prompt(incident)
-      ticket_number = incident.snow_ticket_number.presence || incident.servicenow_number.presence
-      sys_id = incident.snow_sys_id.presence || incident.servicenow_sys_id.presence
+      ticket_number = incident.try(:servicenow_number).presence ||
+                      incident.try(:snow_ticket_number).presence
+      sys_id = incident.try(:servicenow_sys_id).presence ||
+               incident.try(:snow_sys_id).presence
+      instance_url = incident.try(:servicenow_instance_url).presence ||
+                     incident.try(:snow_instance_url).presence
 
       servicenow_context = if incident.respond_to?(:source) && incident.source == 'servicenow' && ticket_number
-                             <<~SNOW
-
-                               ## ServiceNow Ticket
-                               - **Ticket**: #{ticket_number}
-                               - **sys_id**: #{sys_id}
-                               This incident was auto-created from a ServiceNow bug ticket. After implementing a fix, open a PR. The ServiceNow ticket will be updated automatically with the remediation status and PR link.
-                             SNOW
+                             parts = []
+                             parts << "\n## ServiceNow Ticket"
+                             parts << "- **Ticket**: #{ticket_number}"
+                             parts << "- **sys_id**: #{sys_id}" if sys_id.present?
+                             parts << "- **Instance**: #{instance_url}" if instance_url.present?
+                             parts << 'This incident was auto-created from a ServiceNow bug ticket. After implementing a fix, open a PR. The ServiceNow ticket will be updated automatically with the remediation status and PR link.'
+                             parts.join("\n")
                            else
                              ''
                            end

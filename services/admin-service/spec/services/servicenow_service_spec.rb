@@ -24,6 +24,16 @@ RSpec.describe ServicenowService do
       expect(stub).to have_been_requested
     end
 
+    it 'uses per-incident instance_url when provided' do
+      custom_url = 'https://custom-instance.service-now.com'
+      stub = stub_request(:patch, "#{custom_url}/api/now/table/incident/#{sys_id}")
+             .with(body: { work_notes: 'Test note' }.to_json)
+             .to_return(status: 200, body: { result: {} }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.update_work_notes(sys_id: sys_id, notes: 'Test note', instance_url: custom_url)
+      expect(stub).to have_been_requested
+    end
+
     it 'handles auth failure gracefully' do
       stub_request(:patch, "#{instance_url}/api/now/table/incident/#{sys_id}")
         .to_return(status: 401, body: 'Unauthorized')
@@ -61,6 +71,16 @@ RSpec.describe ServicenowService do
       described_class.update_state(sys_id: sys_id, state: '2')
       expect(stub).to have_been_requested
     end
+
+    it 'uses per-incident instance_url when provided' do
+      custom_url = 'https://custom-instance.service-now.com'
+      stub = stub_request(:patch, "#{custom_url}/api/now/table/incident/#{sys_id}")
+             .with(body: { state: '2' }.to_json)
+             .to_return(status: 200, body: { result: {} }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.update_state(sys_id: sys_id, state: '2', instance_url: custom_url)
+      expect(stub).to have_been_requested
+    end
   end
 
   describe '.get_incident' do
@@ -71,6 +91,16 @@ RSpec.describe ServicenowService do
 
       result = described_class.get_incident(sys_id: sys_id)
       expect(result).to eq(incident_data)
+    end
+
+    it 'uses per-incident instance_url when provided' do
+      custom_url = 'https://custom-instance.service-now.com'
+      incident_data = { 'number' => 'INC001', 'state' => '1' }
+      stub = stub_request(:get, "#{custom_url}/api/now/table/incident/#{sys_id}")
+             .to_return(status: 200, body: { result: incident_data }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      described_class.get_incident(sys_id: sys_id, instance_url: custom_url)
+      expect(stub).to have_been_requested
     end
 
     it 'handles auth failure gracefully' do

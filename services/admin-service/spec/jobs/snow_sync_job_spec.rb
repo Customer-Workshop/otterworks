@@ -25,8 +25,27 @@ RSpec.describe SnowSyncJob do
         expect(ServicenowService).to have_received(:update_state).with(
           sys_id: incident.snow_sys_id,
           state: '6',
-          work_notes: 'Devin session completed investigation. Incident auto-resolved by OtterWorks.'
+          work_notes: 'Devin session completed investigation. Incident auto-resolved by OtterWorks.',
+          instance_url: incident.snow_instance_url
         )
+      end
+    end
+
+    context 'when Devin status changes to finished' do
+      let!(:incident) { create(:incident, :snow_linked_active) }
+
+      before do
+        allow(DevinSessionService).to receive(:get_session)
+          .with(session_id: incident.devin_session_id)
+          .and_return({ status: 'finished', url: incident.devin_session_url })
+      end
+
+      it 'updates SNOW ticket state to 6 and resolves incident' do
+        described_class.perform_now
+
+        expect(incident.reload.devin_session_status).to eq('finished')
+        expect(incident.reload.status).to eq('resolved')
+        expect(ServicenowService).to have_received(:update_state)
       end
     end
 
@@ -39,15 +58,17 @@ RSpec.describe SnowSyncJob do
           .and_return({ status: 'blocked', url: incident.devin_session_url })
       end
 
-      it 'updates SNOW ticket state to 3' do
+      it 'posts work note but does not change SNOW state or resolve incident' do
         described_class.perform_now
 
         expect(incident.reload.devin_session_status).to eq('blocked')
-        expect(ServicenowService).to have_received(:update_state).with(
+        expect(incident.reload.status).not_to eq('resolved')
+        expect(ServicenowService).to have_received(:update_work_notes).with(
           sys_id: incident.snow_sys_id,
-          state: '3',
-          work_notes: "Devin session blocked \u2014 needs human input. Session: #{incident.devin_session_url}"
+          notes: "Devin session blocked — needs human input. Session: #{incident.devin_session_url}",
+          instance_url: incident.snow_instance_url
         )
+        expect(ServicenowService).not_to have_received(:update_state)
       end
     end
 
@@ -66,7 +87,8 @@ RSpec.describe SnowSyncJob do
         expect(incident.reload.devin_session_status).to eq('failed')
         expect(ServicenowService).to have_received(:update_work_notes).with(
           sys_id: incident.snow_sys_id,
-          notes: "Devin session failed \u2014 manual investigation required. Session: #{incident.devin_session_url}"
+          notes: "Devin session failed — manual investigation required. Session: #{incident.devin_session_url}",
+          instance_url: incident.snow_instance_url
         )
         expect(ServicenowService).not_to have_received(:update_state)
       end
@@ -123,6 +145,22 @@ RSpec.describe SnowSyncJob do
 
         expect(ServicenowService).not_to have_received(:update_work_notes)
         expect(ServicenowService).not_to have_received(:update_state)
+      end
+    end
+
+    context 'when poll duration exceeds MAX_POLL_DURATION' do
+      let!(:incident) { create(:incident, :snow_linked_active, created_at: 25.hours.ago) }
+
+      it 'stops polling and marks session as poll_expired' do
+        described_class.perform_now
+
+        expect(incident.reload.devin_session_status).to eq('poll_expired')
+        expect(ServicenowService).to have_received(:update_work_notes).with(
+          hash_including(
+            sys_id: incident.snow_sys_id,
+            instance_url: incident.snow_instance_url
+          )
+        )
       end
     end
   end

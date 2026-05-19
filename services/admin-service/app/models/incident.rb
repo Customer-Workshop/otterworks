@@ -17,7 +17,7 @@ class Incident < ApplicationRecord
   scope :by_status, ->(status) { where(status: status) }
   scope :by_severity, ->(severity) { where(severity: severity) }
   scope :active, -> { where(status: %w[open investigating]) }
-  TERMINAL_DEVIN_STATUSES = %w[stopped failed blocked].freeze
+  TERMINAL_DEVIN_STATUSES = %w[stopped failed].freeze
 
   scope :snow_linked_active, lambda {
     where.not(snow_ticket_number: nil)

@@ -56,16 +56,17 @@ public class ReportDataFetcherTest {
         assertEquals("login", result.get(0).get("type"));
     }
 
-    @Test(expected = com.google.common.util.concurrent.UncheckedExecutionException.class)
-    public void fetchAnalyticsDataThrowsOnRestClientError() {
-        // RestClientException is unchecked, so Guava cache wraps in UncheckedExecutionException
-        // (not ExecutionException). The catch block only handles ExecutionException.
+    @Test
+    public void fetchAnalyticsDataFallsBackToSampleDataOnRestClientError() {
         when(restTemplate.getForEntity(anyString(), eq(Map.class)))
                 .thenThrow(new RestClientException("Connection refused"));
 
         Date from = new Date(System.currentTimeMillis() - 86400000);
         Date to = new Date();
-        fetcher.fetchAnalyticsData(from, to, null);
+        List<Map<String, Object>> result = fetcher.fetchAnalyticsData(from, to, null);
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
     }
 
     @Test

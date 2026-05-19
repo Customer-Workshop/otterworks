@@ -100,7 +100,7 @@ module Api
 
         def verify_snow_secret
           expected = ENV.fetch('SNOW_WEBHOOK_SECRET', nil)
-          return if expected.nil?
+          return if expected.nil? || expected.empty?
 
           provided = request.headers['X-Snow-Secret'].to_s
           return if ActiveSupport::SecurityUtils.secure_compare(provided, expected)

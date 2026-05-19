@@ -48,15 +48,12 @@ class SqsConsumer(
         isLenient = true
     }
 
-    // CHAOS: strict parser that rejects messages whose timestamp field is not
-    // a valid RFC 3339 string.  Legacy events emitted by older service versions
-    // use Unix epoch integers for timestamps, which are rejected here.
-    // When the chaos flag is active, every such message throws
-    // SerializationException, is never deleted from the queue, and becomes
-    // visible again after the SQS visibility timeout — causing queue depth to
-    // climb indefinitely while the consumer appears healthy.
+    // Strict parser kept for chaos testing.  ignoreUnknownKeys must stay true
+    // so SNS-wrapped messages with extra fields are accepted.  The timestamp
+    // deserialization issue is resolved by FlexibleTimestampSerializer on
+    // SqsNotificationMessage.timestamp.
     private val strictJson = Json {
-        ignoreUnknownKeys = false
+        ignoreUnknownKeys = true
         isLenient = false
     }
 

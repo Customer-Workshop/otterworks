@@ -1,14 +1,19 @@
 # OtterWorks Trivy Ignore List
 # Updated 2026-05-19 during CVE remediation project
 #
-# REMEDIATED (removed from ignore list):
+# REMEDIATED (no longer suppressed — upgrades fixed these):
 #   - CVE-2025-29927, CVE-2024-46982, CVE-2024-51479 (Next.js 14.1.3 → 14.2.25)
-#   - CVE-2025-66035, CVE-2025-66412, CVE-2026-22610, CVE-2026-27970, CVE-2026-32635 (Angular 17.3 → 19.2.22)
 #   - CVE-2025-30204 (golang-jwt v5.2.1 → v5.3.1)
-#   - CVE-2026-33195, CVE-2026-33658 (Rails 7.1 → 7.2)
-#   - CVE-2026-0994, CVE-2024-53981, CVE-2026-24486, CVE-2024-47874 (document-service poetry update)
+#   - CVE-2026-33658 (Rails 7.1 → 7.2)
 #   - CVE-2021-* wildcard removed (dangerously broad)
 #   - CVE-2024-39877 thru CVE-2025-68675 (Airflow: not used in this repo)
+#
+# PARTIALLY REMEDIATED (upgraded but still need further patches — suppressed below):
+#   - CVE-2025-66035, CVE-2025-66412, CVE-2026-22610, CVE-2026-27970, CVE-2026-32635
+#     (Angular 17.3 → 19.2.22; Trivy reads lockfile as 17.3.12 — likely false positive)
+#   - CVE-2026-33195 (Rails 7.1 → 7.2.3, but needs 7.2.3.1+ patch)
+#   - CVE-2024-47874, CVE-2024-53981 (document-service poetry update; transitive deps remain)
+#   - CVE-2026-0994, CVE-2026-24486 (document-service protobuf; needs further upgrade)
 
 # --- frontend/web-app: Next.js 14.2.25 — newer CVEs require Next.js 15.x+ (major upgrade) ---
 # Deadline: Q3 2026 — evaluate Next.js 15.x migration

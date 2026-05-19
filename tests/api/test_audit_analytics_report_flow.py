@@ -185,3 +185,123 @@ def test_report_generation_lifecycle_and_gateway_route(api_client):
         json={"category": "USAGE_ANALYTICS", "reportType": "CSV", "requestedBy": user.id},
     )
     assert invalid_report.status_code in {400, 422}
+
+
+def test_report_generation_pdf_format(api_client):
+    user = api_client.register_user("report-pdf-flow")
+
+    create_response = api_client.client.post(
+        "/api/v1/reports",
+        headers=user.auth_headers,
+        json={
+            "reportName": f"PDF Report {api_client.run_id}",
+            "category": "USAGE_ANALYTICS",
+            "reportType": "PDF",
+            "requestedBy": user.id,
+            "dateFrom": api_client.iso_time(-7),
+            "dateTo": api_client.iso_time(),
+            "parameters": {"source": "api-flow-test"},
+        },
+    )
+    api_client.assert_gateway_route_available(create_response, "/api/v1/reports")
+    assert create_response.status_code == 202, create_response.text
+    report = create_response.json()
+    report_id = report["id"]
+    api_client.created_reports.append(report_id)
+
+    get_response = api_client.client.get(f"/api/v1/reports/{report_id}", headers=user.auth_headers)
+    assert get_response.status_code == 200, get_response.text
+    report_data = get_response.json()
+    assert report_data.get("reportType") == "PDF"
+
+    download_response = api_client.client.get(
+        f"/api/v1/reports/{report_id}/download",
+        headers=user.auth_headers,
+    )
+    assert download_response.status_code in {200, 202, 404, 409}, download_response.text
+
+    delete_response = api_client.client.delete(f"/api/v1/reports/{report_id}", headers=user.auth_headers)
+    assert delete_response.status_code == 204, delete_response.text
+    api_client.created_reports.remove(report_id)
+
+
+def test_report_generation_excel_format(api_client):
+    user = api_client.register_user("report-excel-flow")
+
+    create_response = api_client.client.post(
+        "/api/v1/reports",
+        headers=user.auth_headers,
+        json={
+            "reportName": f"Excel Report {api_client.run_id}",
+            "category": "USAGE_ANALYTICS",
+            "reportType": "EXCEL",
+            "requestedBy": user.id,
+            "dateFrom": api_client.iso_time(-7),
+            "dateTo": api_client.iso_time(),
+            "parameters": {"source": "api-flow-test"},
+        },
+    )
+    api_client.assert_gateway_route_available(create_response, "/api/v1/reports")
+    assert create_response.status_code == 202, create_response.text
+    report = create_response.json()
+    report_id = report["id"]
+    api_client.created_reports.append(report_id)
+
+    get_response = api_client.client.get(f"/api/v1/reports/{report_id}", headers=user.auth_headers)
+    assert get_response.status_code == 200, get_response.text
+    report_data = get_response.json()
+    assert report_data.get("reportType") == "EXCEL"
+
+    download_response = api_client.client.get(
+        f"/api/v1/reports/{report_id}/download",
+        headers=user.auth_headers,
+    )
+    assert download_response.status_code in {200, 202, 404, 409}, download_response.text
+
+    delete_response = api_client.client.delete(f"/api/v1/reports/{report_id}", headers=user.auth_headers)
+    assert delete_response.status_code == 204, delete_response.text
+    api_client.created_reports.remove(report_id)
+
+
+def test_report_generation_audit_compliance_category(api_client):
+    user = api_client.register_user("report-audit-flow")
+
+    create_response = api_client.client.post(
+        "/api/v1/reports",
+        headers=user.auth_headers,
+        json={
+            "reportName": f"Audit Compliance Report {api_client.run_id}",
+            "category": "AUDIT_COMPLIANCE",
+            "reportType": "PDF",
+            "requestedBy": user.id,
+            "dateFrom": api_client.iso_time(-30),
+            "dateTo": api_client.iso_time(),
+        },
+    )
+    api_client.assert_gateway_route_available(create_response, "/api/v1/reports")
+    assert create_response.status_code == 202, create_response.text
+    report = create_response.json()
+    report_id = report["id"]
+    api_client.created_reports.append(report_id)
+
+    delete_response = api_client.client.delete(f"/api/v1/reports/{report_id}", headers=user.auth_headers)
+    assert delete_response.status_code == 204, delete_response.text
+    api_client.created_reports.remove(report_id)
+
+
+def test_report_invalid_type_rejected(api_client):
+    user = api_client.register_user("report-invalid-flow")
+
+    invalid_type_response = api_client.client.post(
+        "/api/v1/reports",
+        headers=user.auth_headers,
+        json={
+            "reportName": f"Invalid Report {api_client.run_id}",
+            "category": "USAGE_ANALYTICS",
+            "reportType": "DOCX",
+            "requestedBy": user.id,
+            "dateFrom": api_client.iso_time(-7),
+            "dateTo": api_client.iso_time(),
+        },
+    )
+    assert invalid_type_response.status_code in {400, 422}, invalid_type_response.text

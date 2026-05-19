@@ -7,7 +7,8 @@
     "start": "ng serve --port 4200",
     "build": "ng build --configuration production",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@angular/animations": "^17.3.0",
@@ -37,6 +38,7 @@
     "karma-coverage": "~2.2.1",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "@playwright/test": "^1.59.1",
     "typescript": "~5.4.2"
   }
 }

@@ -55,8 +55,13 @@ class SqsConsumer(
     // SerializationException, is never deleted from the queue, and becomes
     // visible again after the SQS visibility timeout — causing queue depth to
     // climb indefinitely while the consumer appears healthy.
+    //
+    // FIX: ignoreUnknownKeys must remain true because SNS/SQS messages
+    // legitimately contain metadata fields not modelled in the data classes.
+    // The timestamp format issue is resolved by FlexibleTimestampSerializer
+    // on the SqsNotificationMessage.timestamp field.
     private val strictJson = Json {
-        ignoreUnknownKeys = false
+        ignoreUnknownKeys = true
         isLenient = false
     }
 

@@ -4,6 +4,7 @@ RSpec.describe SnowSyncJob do
   before do
     allow(ServicenowService).to receive(:update_work_notes).and_return({})
     allow(ServicenowService).to receive(:update_state).and_return({})
+    allow(described_class).to receive_message_chain(:set, :perform_later) # rubocop:disable RSpec/MessageChain
   end
 
   describe '#perform' do

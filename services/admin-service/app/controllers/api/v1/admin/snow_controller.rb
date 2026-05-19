@@ -54,7 +54,7 @@ module Api
             title:               short_desc || "SNOW #{number}",
             description:         build_description(number, description, affected_service, caller_id),
             severity:            severity,
-            status:              auto_investigate ? 'investigating' : 'open',
+            status:              'open',
             affected_service:    normalize_service(affected_service),
             source:              'servicenow',
             snow_ticket_number:  number,
@@ -69,6 +69,7 @@ module Api
 
           if session_result
             incident.update!(
+              status:               'investigating',
               devin_session_id:     session_result[:session_id],
               devin_session_url:    session_result[:url],
               devin_session_status: 'running'

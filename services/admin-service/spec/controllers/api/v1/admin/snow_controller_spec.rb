@@ -1,8 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe Api::V1::Admin::SnowController do
+  let(:webhook_secret) { 'test-snow-secret' }
+
   before do
     set_jwt_env(request)
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('SNOW_WEBHOOK_SECRET', nil).and_return(webhook_secret)
+    request.headers['X-Snow-Secret'] = webhook_secret
     allow(AdminSettingsService).to receive(:auto_investigate_enabled?).and_return(true)
     allow(DevinSessionService).to receive(:create_session).and_return(
       { session_id: 'dev-123', url: 'https://app.devin.ai/sessions/dev-123' }
@@ -136,6 +141,19 @@ RSpec.describe Api::V1::Admin::SnowController do
         incident = Incident.last
         expect(incident.status).to eq('open')
         expect(incident.devin_session_id).to be_nil
+      end
+    end
+
+    context 'when Devin session creation fails' do
+      before { allow(DevinSessionService).to receive(:create_session).and_return(nil) }
+
+      it 'keeps incident as open and does not enqueue sync job' do
+        post :ingest, params: valid_params
+        incident = Incident.last
+        expect(incident.status).to eq('open')
+        expect(incident.devin_session_id).to be_nil
+        expect(ServicenowService).not_to have_received(:update_work_notes)
+        expect(ServicenowService).not_to have_received(:update_state)
       end
     end
   end

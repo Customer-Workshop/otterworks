@@ -43,6 +43,7 @@ public class AppConfig {
         connectionManager.setDefaultMaxPerRoute(20);
         connectionManager.setDefaultConnectionConfig(
                 ConnectionConfig.custom()
+                        .setConnectTimeout(connectionTimeout, TimeUnit.MILLISECONDS)
                         .setSocketTimeout(readTimeout, TimeUnit.MILLISECONDS)
                         .build());
 
@@ -51,7 +52,6 @@ public class AppConfig {
                 .build();
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
-        factory.setConnectTimeout(connectionTimeout);
 
         return new RestTemplate(factory);
     }

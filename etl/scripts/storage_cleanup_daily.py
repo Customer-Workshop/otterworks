@@ -11,6 +11,7 @@
 
 import configparser
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -24,9 +25,13 @@ def main():
     config = configparser.ConfigParser()
     config.read("/opt/etl/config.ini")
 
-    aws_access_key = config.get("aws", "access_key")
-    aws_secret_key = config.get("aws", "secret_key")
-    aws_region = config.get("aws", "region")
+    aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    aws_region = os.environ.get("AWS_DEFAULT_REGION") or config.get("aws", "region", fallback="us-east-1")
+
+    if not aws_access_key or not aws_secret_key:
+        print("FATAL: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set as environment variables")
+        sys.exit(1)
 
     file_storage_bucket = config.get("s3", "file_storage_bucket")
     quarantine_bucket = config.get("s3", "quarantine_bucket")

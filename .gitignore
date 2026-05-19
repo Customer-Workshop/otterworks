@@ -84,6 +84,9 @@ infrastructure/terraform/plan.out
 # --- Docker ---
 *.log
 
+# --- ETL ---
+etl/config.ini
+
 # --- Misc ---
 *.bak
 *.tmp

@@ -12,6 +12,7 @@
 import configparser
 import gzip
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -26,15 +27,23 @@ def main():
     config = configparser.ConfigParser()
     config.read("/opt/etl/config.ini")
 
-    aws_access_key = config.get("aws", "access_key")
-    aws_secret_key = config.get("aws", "secret_key")
-    aws_region = config.get("aws", "region")
+    aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    aws_region = os.environ.get("AWS_DEFAULT_REGION") or config.get("aws", "region", fallback="us-east-1")
+
+    if not aws_access_key or not aws_secret_key:
+        print("FATAL: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set as environment variables")
+        sys.exit(1)
 
     db_host = config.get("database", "host")
     db_port = config.getint("database", "port")
     db_name = config.get("database", "database")
-    db_user = config.get("database", "user")
-    db_password = config.get("database", "password")
+    db_user = os.environ.get("ETL_DB_USER") or config.get("database", "user", fallback="")
+    db_password = os.environ.get("ETL_DB_PASSWORD", "")
+
+    if not db_password:
+        print("FATAL: ETL_DB_PASSWORD must be set as an environment variable")
+        sys.exit(1)
 
     data_lake_bucket = config.get("s3", "data_lake_bucket")
 

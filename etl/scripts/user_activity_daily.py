@@ -41,8 +41,8 @@ def main():
     db_user = os.environ.get("ETL_DB_USER") or config.get("database", "user", fallback="")
     db_password = os.environ.get("ETL_DB_PASSWORD", "")
 
-    if not db_password:
-        print("FATAL: ETL_DB_PASSWORD must be set as an environment variable")
+    if not db_user or not db_password:
+        print("FATAL: ETL_DB_USER and ETL_DB_PASSWORD must be set as environment variables")
         sys.exit(1)
 
     data_lake_bucket = config.get("s3", "data_lake_bucket")

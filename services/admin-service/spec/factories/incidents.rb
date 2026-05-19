@@ -9,6 +9,7 @@ FactoryBot.define do
     trait :with_snow do
       snow_ticket_number { "INC#{Faker::Number.unique.number(digits: 7)}" }
       snow_sys_id { SecureRandom.hex(16) }
+      snow_instance_url { 'https://dev12345.service-now.com' }
     end
 
     trait :investigating do

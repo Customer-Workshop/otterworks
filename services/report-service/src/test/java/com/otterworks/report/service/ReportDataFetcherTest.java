@@ -1,20 +1,25 @@
 package com.otterworks.report.service;
 
 import com.otterworks.report.config.AppConfig;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class ReportDataFetcherTest {
 
     @Mock
@@ -25,9 +30,8 @@ public class ReportDataFetcherTest {
 
     private ReportDataFetcher fetcher;
 
-    @Before
+    @BeforeEach
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
         when(appConfig.getAnalyticsServiceUrl()).thenReturn("http://analytics:8088");
         when(appConfig.getAuditServiceUrl()).thenReturn("http://audit:8090");
         fetcher = new ReportDataFetcher(restTemplate, appConfig);

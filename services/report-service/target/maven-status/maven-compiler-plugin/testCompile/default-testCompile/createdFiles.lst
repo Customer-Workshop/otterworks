@@ -1,0 +1,11 @@
+com/otterworks/report/service/ReportDataFetcherTest.class
+com/otterworks/report/service/PdfReportGeneratorTest.class
+com/otterworks/report/util/ReportDateUtilsTest.class
+com/otterworks/report/ReportServiceTest.class
+com/otterworks/report/service/CsvReportGeneratorTest.class
+com/otterworks/report/model/ReportTest.class
+com/otterworks/report/service/ExcelReportGeneratorTest.class
+com/otterworks/report/model/ReportRequestTest.class
+com/otterworks/report/config/SecurityConfigTest.class
+com/otterworks/report/controller/ReportControllerIntegrationTest.class
+com/otterworks/report/model/ReportResponseTest.class

@@ -1,12 +1,12 @@
 package com.otterworks.report.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ReportDateUtilsTest {
 
@@ -82,9 +82,11 @@ public class ReportDateUtilsTest {
         assertNull(ReportDateUtils.parseIsoDate(null));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void parseIsoDateThrowsForInvalidFormat() {
-        ReportDateUtils.parseIsoDate("not-a-date");
+        assertThrows(IllegalArgumentException.class, () -> {
+            ReportDateUtils.parseIsoDate("not-a-date");
+        });
     }
 
     @Test

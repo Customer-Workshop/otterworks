@@ -77,6 +77,7 @@ module Api
             status:           auto_investigate ? 'investigating' : 'open',
             affected_service: affected_service,
             reporter_id:      nil, # system-generated
+            source:           'grafana',
           )
 
           session_result = nil

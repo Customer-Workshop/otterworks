@@ -60,12 +60,15 @@ class DevinSessionService
     private
 
     def build_prompt(incident)
-      servicenow_context = if incident.respond_to?(:source) && incident.source == 'servicenow'
+      ticket_number = incident.snow_ticket_number.presence || incident.servicenow_number.presence
+      sys_id = incident.snow_sys_id.presence || incident.servicenow_sys_id.presence
+
+      servicenow_context = if incident.respond_to?(:source) && incident.source == 'servicenow' && ticket_number
                              <<~SNOW
 
                                ## ServiceNow Ticket
-                               - **Ticket**: #{incident.servicenow_number}
-                               - **sys_id**: #{incident.servicenow_sys_id}
+                               - **Ticket**: #{ticket_number}
+                               - **sys_id**: #{sys_id}
                                This incident was auto-created from a ServiceNow bug ticket. After implementing a fix, open a PR. The ServiceNow ticket will be updated automatically with the remediation status and PR link.
                              SNOW
                            else
@@ -80,7 +83,6 @@ class DevinSessionService
         - **Severity**: #{incident.severity}
         - **Affected Service**: #{incident.affected_service.presence || 'Unknown'}
         - **Description**: #{incident.description}
-        #{incident.snow_ticket_number.present? ? "- **ServiceNow Ticket**: #{incident.snow_ticket_number}" : ''}
         #{servicenow_context}
         ## OtterWorks Architecture
         The platform has 11 microservices:

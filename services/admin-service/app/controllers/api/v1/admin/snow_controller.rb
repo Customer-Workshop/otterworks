@@ -56,6 +56,7 @@ module Api
             severity:            severity,
             status:              auto_investigate ? 'investigating' : 'open',
             affected_service:    normalize_service(affected_service),
+            source:              'servicenow',
             snow_ticket_number:  number,
             snow_sys_id:         sys_id,
             reporter_id:         nil

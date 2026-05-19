@@ -60,6 +60,10 @@ Rails.application.routes.draw do
 
         # ServiceNow webhook (no JWT — protected by X-Snow-Secret header)
         post 'snow/ingest', to: 'snow#ingest'
+
+        # ServiceNow webhook (no JWT — protected by X-ServiceNow-Secret header)
+        post 'servicenow/ingest', to: 'servicenow#ingest'
+        post 'servicenow/resolve', to: 'servicenow#resolve'
       end
     end
   end

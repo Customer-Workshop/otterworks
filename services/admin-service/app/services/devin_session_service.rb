@@ -60,6 +60,18 @@ class DevinSessionService
     private
 
     def build_prompt(incident)
+      servicenow_context = if incident.respond_to?(:source) && incident.source == 'servicenow'
+                             <<~SNOW
+
+                               ## ServiceNow Ticket
+                               - **Ticket**: #{incident.servicenow_number}
+                               - **sys_id**: #{incident.servicenow_sys_id}
+                               This incident was auto-created from a ServiceNow bug ticket. After implementing a fix, open a PR. The ServiceNow ticket will be updated automatically with the remediation status and PR link.
+                             SNOW
+                           else
+                             ''
+                           end
+
       <<~PROMPT
         You are investigating an incident in the OtterWorks platform, a collaborative file storage and document editing system (similar to Google Drive + Google Docs) built as a polyglot microservices architecture.
 
@@ -69,7 +81,7 @@ class DevinSessionService
         - **Affected Service**: #{incident.affected_service.presence || 'Unknown'}
         - **Description**: #{incident.description}
         #{incident.snow_ticket_number.present? ? "- **ServiceNow Ticket**: #{incident.snow_ticket_number}" : ''}
-
+        #{servicenow_context}
         ## OtterWorks Architecture
         The platform has 11 microservices:
         - API Gateway (Go/Chi, port 8080) - routing, rate limiting, JWT validation

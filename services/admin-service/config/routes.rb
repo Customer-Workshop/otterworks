@@ -57,6 +57,10 @@ Rails.application.routes.draw do
 
         # Grafana alert webhook (no JWT — protected by X-Alert-Secret header)
         post 'alerts/ingest', to: 'alerts#ingest'
+
+        # ServiceNow webhook (no JWT — protected by X-ServiceNow-Secret header)
+        post 'servicenow/ingest', to: 'servicenow#ingest'
+        post 'servicenow/resolve', to: 'servicenow#resolve'
       end
     end
   end

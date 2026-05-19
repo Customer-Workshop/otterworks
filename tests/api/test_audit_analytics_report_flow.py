@@ -271,7 +271,7 @@ def test_report_generation_audit_compliance_category(api_client):
         headers=user.auth_headers,
         json={
             "reportName": f"Audit Compliance Report {api_client.run_id}",
-            "category": "AUDIT_COMPLIANCE",
+            "category": "COMPLIANCE",
             "reportType": "PDF",
             "requestedBy": user.id,
             "dateFrom": api_client.iso_time(-30),

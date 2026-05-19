@@ -1,14 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:4200";
+const BASE_URL = process.env["BASE_URL"] || "http://localhost:4200";
 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "github" : "html",
+  forbidOnly: !!process.env["CI"],
+  retries: process.env["CI"] ? 2 : 0,
+  workers: process.env["CI"] ? 1 : undefined,
+  reporter: process.env["CI"] ? "github" : "html",
   timeout: 30_000,
   expect: { timeout: 10_000 },
 
@@ -26,7 +26,7 @@ export default defineConfig({
     },
   ],
 
-  ...(process.env.CI
+  ...(process.env["CI"]
     ? {}
     : {
         webServer: {

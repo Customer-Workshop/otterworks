@@ -14,4 +14,6 @@ Rails.application.configure do
   config.active_support.deprecation = :stderr
   config.active_support.disallowed_deprecation = :raise
   config.active_support.disallowed_deprecation_warnings = []
+
+  config.secret_key_base = ENV.fetch('SECRET_KEY_BASE', 'test_secret_key_base_for_testing_only')
 end

@@ -102,8 +102,8 @@ module Api
           expected = ENV.fetch('SNOW_WEBHOOK_SECRET', nil)
           return if expected.nil?
 
-          provided = request.headers['X-Snow-Secret'].presence
-          return if provided == expected
+          provided = request.headers['X-Snow-Secret'].to_s
+          return if ActiveSupport::SecurityUtils.secure_compare(provided, expected)
 
           render json: { error: 'Unauthorized' }, status: :unauthorized
         end

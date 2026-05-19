@@ -44,7 +44,7 @@ RSpec.describe 'ServiceNow end-to-end workflow', type: :request do
         }
       }, as: :json, headers: snow_headers
 
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:created)
       body = JSON.parse(response.body)
       expect(body['status']).to eq('created')
       expect(body['devin_session']).to be_present
@@ -189,7 +189,7 @@ RSpec.describe 'ServiceNow end-to-end workflow', type: :request do
         }
       }, as: :json, headers: snow_headers
 
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:created)
       incident = Incident.find_by(snow_ticket_number: 'INC0099007')
       expect(incident.snow_instance_url).to eq(custom_instance)
 

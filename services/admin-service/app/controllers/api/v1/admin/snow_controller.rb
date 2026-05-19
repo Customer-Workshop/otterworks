@@ -98,7 +98,7 @@ module Api
             status:        'created',
             incident_id:   incident.id,
             devin_session: session_result.present? ? { id: session_result[:session_id], url: session_result[:url] } : nil
-          }
+          }, status: :created
         rescue ActiveRecord::RecordInvalid => e
           Rails.logger.error("Failed to create incident from SNOW ticket: #{e.message}")
           render json: { error: e.message }, status: :unprocessable_entity

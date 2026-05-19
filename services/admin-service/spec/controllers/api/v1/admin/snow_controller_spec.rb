@@ -40,7 +40,7 @@ RSpec.describe Api::V1::Admin::SnowController do
         post :ingest, params: valid_params
       end.to change(Incident, :count).by(1)
 
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:created)
       body = JSON.parse(response.body)
       expect(body['status']).to eq('created')
       expect(body['incident_id']).to be_present

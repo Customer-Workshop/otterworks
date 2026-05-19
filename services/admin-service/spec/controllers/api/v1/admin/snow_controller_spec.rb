@@ -100,9 +100,8 @@ RSpec.describe Api::V1::Admin::SnowController do
     end
 
     it 'returns bad_request when incident key is missing entirely' do
-      expect do
-        post :ingest, params: { number: 'INC0010001' }
-      end.to raise_error(ActionController::ParameterMissing)
+      post :ingest, params: { number: 'INC0010001' }
+      expect(response).to have_http_status(:bad_request)
     end
 
     it 'posts Devin session URL back to SNOW as work_note with instance_url' do

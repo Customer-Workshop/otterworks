@@ -12,10 +12,12 @@ class Incident < ApplicationRecord
   validates :severity, presence: true, inclusion: { in: SEVERITIES }
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :affected_service, inclusion: { in: AFFECTED_SERVICES }, allow_blank: true
+  validates :snow_ticket_number, uniqueness: true, allow_blank: true
 
   scope :by_status, ->(status) { where(status: status) }
   scope :by_severity, ->(severity) { where(severity: severity) }
   scope :active, -> { where(status: %w[open investigating]) }
+  scope :snow_linked_active, -> { where.not(snow_ticket_number: nil).where.not(devin_session_id: nil).active }
 
   def investigate!
     update!(status: 'investigating')

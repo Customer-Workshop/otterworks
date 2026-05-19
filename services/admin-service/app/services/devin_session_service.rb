@@ -68,6 +68,7 @@ class DevinSessionService
         - **Severity**: #{incident.severity}
         - **Affected Service**: #{incident.affected_service.presence || 'Unknown'}
         - **Description**: #{incident.description}
+        #{incident.snow_ticket_number.present? ? "- **ServiceNow Ticket**: #{incident.snow_ticket_number}" : ''}
 
         ## OtterWorks Architecture
         The platform has 11 microservices:

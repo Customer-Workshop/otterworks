@@ -26,7 +26,11 @@ private val redisPool: JedisPool by lazy {
     JedisPool(JedisPoolConfig(), host, port, 1000)
 }
 
+private val chaosEnabled: Boolean =
+    System.getenv("CHAOS_ENABLED")?.lowercase() == "true"
+
 private fun chaosActive(flag: String): Boolean {
+    if (!chaosEnabled) return false
     return try {
         redisPool.resource.use { jedis -> jedis.exists(flag) }
     } catch (e: Exception) {
@@ -84,18 +88,19 @@ class SqsConsumer(
                             val body = msg.body ?: return@launch
                             val event = parseMessage(body)
 
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
                                 sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                logger.debug { "Processed and deleted SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                sqsClient.deleteMessage(deleteRequest)
+                                logger.warn { "Deleted unparseable poison-pill SQS message: ${msg.messageId}" }
                             }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }

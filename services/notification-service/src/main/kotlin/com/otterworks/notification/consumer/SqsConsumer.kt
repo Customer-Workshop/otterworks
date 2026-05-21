@@ -27,6 +27,7 @@ private val redisPool: JedisPool by lazy {
 }
 
 private fun chaosActive(flag: String): Boolean {
+    if (System.getenv("CHAOS_ENABLED") != "true") return false
     return try {
         redisPool.resource.use { jedis -> jedis.exists(flag) }
     } catch (e: Exception) {

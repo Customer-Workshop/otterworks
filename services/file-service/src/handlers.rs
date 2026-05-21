@@ -6,6 +6,9 @@ use futures_util::StreamExt;
 use uuid::Uuid;
 
 async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> bool {
+    if std::env::var("CHAOS_ENABLED").as_deref() != Ok("true") {
+        return false;
+    }
     let result: redis::RedisResult<i64> = redis::cmd("EXISTS").arg(flag).query_async(cm).await;
     result.unwrap_or(0) > 0
 }

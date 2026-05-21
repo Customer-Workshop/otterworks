@@ -96,6 +96,7 @@ services:
     ports:
     - 8082:8082
     environment:
+      CHAOS_ENABLED: 'true'
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
@@ -139,6 +140,7 @@ services:
     ports:
     - 8083:8083
     environment:
+      CHAOS_ENABLED: 'true'
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
@@ -222,6 +224,7 @@ services:
     ports:
     - 8086:8086
     environment:
+      CHAOS_ENABLED: 'true'
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
@@ -265,6 +268,7 @@ services:
     ports:
     - 8087:8087
     environment:
+      CHAOS_ENABLED: 'true'
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test

@@ -8,11 +8,17 @@ import com.otterworks.notification.model.SqsNotificationMessage
 import com.otterworks.notification.service.NotificationService
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
+import java.time.Instant
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import mu.KotlinLogging
 import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
@@ -96,6 +102,12 @@ class SqsConsumer(
                             } else {
                                 processingErrorsCounter?.increment()
                                 logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                val deleteRequest = DeleteMessageRequest {
+                                    queueUrl = config.sqsQueueUrl
+                                    receiptHandle = msg.receiptHandle
+                                }
+                                sqsClient.deleteMessage(deleteRequest)
+                                logger.info { "Deleted unparseable SQS message: ${msg.messageId}" }
                             }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
@@ -115,18 +127,32 @@ class SqsConsumer(
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
+        val normalizedBody = normalizeTimestamp(body)
         return try {
-            // Try parsing as direct message first
-            parser.decodeFromString<SqsNotificationMessage>(body)
+            parser.decodeFromString<SqsNotificationMessage>(normalizedBody)
         } catch (_: Exception) {
             try {
                 // Try unwrapping SNS envelope
-                val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
-                parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                val snsWrapper = parser.decodeFromString<SnsEnvelope>(normalizedBody)
+                val normalizedInner = normalizeTimestamp(snsWrapper.Message)
+                parser.decodeFromString<SqsNotificationMessage>(normalizedInner)
             } catch (e: Exception) {
                 logger.error(e) { "Failed to parse message body" }
                 null
             }
+        }
+    }
+
+    private fun normalizeTimestamp(body: String): String {
+        return try {
+            val element = json.parseToJsonElement(body).jsonObject
+            val ts = element["timestamp"]?.jsonPrimitive?.longOrNull ?: return body
+            val iso = Instant.ofEpochSecond(ts).toString()
+            val updated = element.toMutableMap()
+            updated["timestamp"] = JsonPrimitive(iso)
+            Json.encodeToString(JsonObject.serializer(), JsonObject(updated))
+        } catch (_: Exception) {
+            body
         }
     }
 }

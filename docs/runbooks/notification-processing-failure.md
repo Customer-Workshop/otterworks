@@ -27,8 +27,20 @@
 
 ## Resolution Steps
 
-<!-- TODO -->
+1. Remove the chaos flag from Redis to stop activating the strict parser:
+   ```
+   redis-cli DEL chaos:notification-service:consumer_strict_schema
+   ```
+2. The consumer now includes a lenient-parser fallback: when the strict parser
+   fails (e.g. on legacy epoch-format timestamps), the lenient parser retries
+   the message before giving up.  Deploy the updated notification-service image
+   to pick up the fix.
+3. Monitor the `notifications.processing.errors` metric and SQS queue depth to
+   confirm recovery.
 
 ## Post-Incident
 
-<!-- TODO -->
+- Verify SQS queue depth returns to normal after deployment.
+- Ensure no messages were permanently lost (failed messages were never deleted,
+  so they will be reprocessed once the fix is deployed).
+- Review chaos flag TTL settings to prevent unintended production impact.

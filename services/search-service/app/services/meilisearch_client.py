@@ -249,7 +249,16 @@ class MeiliSearchService:
 
     def suggest(self, prefix: str, size: int = 10) -> list[str]:
         """Autocomplete suggestions using MeiliSearch prefix matching."""
-        suggestions: list[str] = []
+        ranked_hits = self.suggest_with_scores(prefix, size=size)
+        return [h["text"] for h in ranked_hits]
+
+    def suggest_with_scores(self, prefix: str, size: int = 10) -> list[dict[str, Any]]:
+        """Autocomplete suggestions with ranking scores for relevance ordering.
+
+        Returns a list of dicts with ``text`` and ``_rankingScore`` keys,
+        sorted by descending relevance score.
+        """
+        suggestions: list[dict[str, Any]] = []
         seen: set[str] = set()
 
         for index_name in [self.documents_index_name, self.files_index_name]:
@@ -257,17 +266,22 @@ class MeiliSearchService:
             result = index.search(prefix, {
                 "limit": size,
                 "attributesToRetrieve": ["title", "name"],
+                "showRankingScore": True,
             })
             for hit in result["hits"]:
                 text = hit.get("title") or hit.get("name", "")
                 if text and text not in seen:
-                    suggestions.append(text)
+                    suggestions.append({
+                        "text": text,
+                        "_rankingScore": hit.get("_rankingScore", 0),
+                    })
                     seen.add(text)
                     if len(suggestions) >= size:
                         break
             if len(suggestions) >= size:
                 break
 
+        suggestions.sort(key=lambda s: s["_rankingScore"], reverse=True)
         return suggestions
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:

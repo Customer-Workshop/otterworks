@@ -56,7 +56,7 @@ class SqsConsumer(
     // visible again after the SQS visibility timeout — causing queue depth to
     // climb indefinitely while the consumer appears healthy.
     private val strictJson = Json {
-        ignoreUnknownKeys = false
+        ignoreUnknownKeys = true
         isLenient = false
     }
 
@@ -96,6 +96,13 @@ class SqsConsumer(
                             } else {
                                 processingErrorsCounter?.increment()
                                 logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+
+                                val deleteRequest = DeleteMessageRequest {
+                                    queueUrl = config.sqsQueueUrl
+                                    receiptHandle = msg.receiptHandle
+                                }
+                                sqsClient.deleteMessage(deleteRequest)
+                                logger.warn { "Deleted unparseable SQS message: ${msg.messageId}" }
                             }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }

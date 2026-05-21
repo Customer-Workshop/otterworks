@@ -137,4 +137,41 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage tolerates legacy epoch integer timestamps via lenient parser`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-legacy",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1700000000
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-legacy", event.fileId)
+    }
+
+    @Test
+    fun `parseMessage tolerates extra unknown fields via lenient parser`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-extra",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "unknownField": "should-be-ignored"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-extra", event.fileId)
+    }
 }

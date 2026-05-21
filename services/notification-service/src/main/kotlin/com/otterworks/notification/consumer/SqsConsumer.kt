@@ -42,19 +42,11 @@ class SqsConsumer(
 ) {
     private val processingErrorsCounter: Counter? =
         meterRegistry?.counter("notifications.processing.errors")
-    // Standard lenient parser used in normal operation.
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
     }
 
-    // CHAOS: strict parser that rejects messages whose timestamp field is not
-    // a valid RFC 3339 string.  Legacy events emitted by older service versions
-    // use Unix epoch integers for timestamps, which are rejected here.
-    // When the chaos flag is active, every such message throws
-    // SerializationException, is never deleted from the queue, and becomes
-    // visible again after the SQS visibility timeout — causing queue depth to
-    // climb indefinitely while the consumer appears healthy.
     private val strictJson = Json {
         ignoreUnknownKeys = false
         isLenient = false
@@ -86,17 +78,17 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.warn { "Discarding unparseable SQS message: ${msg.messageId}" }
                             }
+
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
+                            logger.debug { "Deleted SQS message: ${msg.messageId}" }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }
@@ -114,17 +106,34 @@ class SqsConsumer(
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
-        val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
+        val useStrict = chaosActive("chaos:notification-service:consumer_strict_schema")
+        val parser = if (useStrict) strictJson else json
         return try {
-            // Try parsing as direct message first
             parser.decodeFromString<SqsNotificationMessage>(body)
         } catch (_: Exception) {
             try {
-                // Try unwrapping SNS envelope
                 val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
                 parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+            } catch (_: Exception) {
+                if (useStrict) {
+                    tryLenientFallback(body)
+                } else {
+                    logger.error { "Failed to parse message body" }
+                    null
+                }
+            }
+        }
+    }
+
+    private fun tryLenientFallback(body: String): SqsNotificationMessage? {
+        return try {
+            json.decodeFromString<SqsNotificationMessage>(body)
+        } catch (_: Exception) {
+            try {
+                val snsWrapper = json.decodeFromString<SnsEnvelope>(body)
+                json.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
             } catch (e: Exception) {
-                logger.error(e) { "Failed to parse message body" }
+                logger.error(e) { "Failed to parse message body after lenient fallback" }
                 null
             }
         }

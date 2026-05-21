@@ -38,7 +38,7 @@ Rails.application.routes.draw do
         resources :announcements, only: %i[index show create update destroy]
 
         # Incidents (Automated Incident Response)
-        resources :incidents, only: %i[index show create] do
+        resources :incidents, only: %i[index show create update destroy] do
           member do
             post :trigger_session
           end

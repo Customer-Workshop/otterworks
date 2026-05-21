@@ -10,6 +10,7 @@ export interface Incident {
   devinSessionStatus: string | null;
   reporterId: string | null;
   resolvedAt: string | null;
+  closedAt: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;

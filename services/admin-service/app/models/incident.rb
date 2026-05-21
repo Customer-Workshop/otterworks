@@ -7,6 +7,13 @@ class Incident < ApplicationRecord
     analytics-service admin-service audit-service report-service
   ].freeze
 
+  VALID_TRANSITIONS = {
+    'open'          => %w[investigating resolved],
+    'investigating' => %w[resolved],
+    'resolved'      => %w[closed],
+    'closed'        => %w[]
+  }.freeze
+
   validates :title, presence: true, length: { maximum: 255 }
   validates :description, presence: true
   validates :severity, presence: true, inclusion: { in: SEVERITIES }
@@ -18,15 +25,19 @@ class Incident < ApplicationRecord
   scope :active, -> { where(status: %w[open investigating]) }
 
   def investigate!
-    update!(status: 'investigating')
+    transition_to!('investigating')
   end
 
   def resolve!
-    update!(status: 'resolved', resolved_at: Time.current)
+    transition_to!('resolved', resolved_at: Time.current)
   end
 
   def close!
-    update!(status: 'closed')
+    transition_to!('closed', closed_at: Time.current)
+  end
+
+  def can_transition_to?(new_status)
+    VALID_TRANSITIONS.fetch(status, []).include?(new_status)
   end
 
   def active?
@@ -36,4 +47,20 @@ class Incident < ApplicationRecord
   def has_devin_session?
     devin_session_id.present?
   end
+
+  def has_active_devin_session?
+    devin_session_id.present? && devin_session_status == 'running'
+  end
+
+  private
+
+  def transition_to!(new_status, extras = {})
+    unless can_transition_to?(new_status)
+      raise InvalidTransitionError, "Cannot transition from '#{status}' to '#{new_status}'"
+    end
+
+    update!(extras.merge(status: new_status))
+  end
+
+  class InvalidTransitionError < StandardError; end
 end

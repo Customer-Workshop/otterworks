@@ -13,8 +13,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { Incident, AFFECTED_SERVICES } from '../../core/models/incident.model';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 import { Subscription, interval } from 'rxjs';
 
 const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
@@ -26,6 +28,7 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
     CommonModule, FormsModule, MatCardModule, MatIconModule, MatButtonModule,
     MatProgressSpinnerModule, MatChipsModule, MatInputModule, MatFormFieldModule,
     MatSelectModule, MatSnackBarModule, MatBadgeModule, MatTooltipModule, MatSlideToggleModule,
+    MatDialogModule,
   ],
   template: `
     <div class="page-container">
@@ -174,6 +177,10 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
           <mat-icon>check_circle</mat-icon>
           <span>{{ resolvedCount }} Resolved</span>
         </div>
+        <div class="summary-chip closed" *ngIf="closedCount > 0" (click)="showClosed = !showClosed">
+          <mat-icon>{{ showClosed ? 'visibility' : 'visibility_off' }}</mat-icon>
+          <span>{{ closedCount }} Closed{{ showClosed ? '' : ' (hidden)' }}</span>
+        </div>
       </div>
 
       <!-- Create form -->
@@ -288,9 +295,24 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
               </button>
             </div>
 
+            <div class="incident-actions">
+              <button mat-stroked-button color="primary" *ngIf="incident.status === 'open' || incident.status === 'investigating'"
+                (click)="resolveIncident(incident)">
+                <mat-icon>check_circle</mat-icon> Resolve
+              </button>
+              <button mat-stroked-button *ngIf="incident.status === 'resolved'"
+                (click)="closeIncident(incident)">
+                <mat-icon>cancel</mat-icon> Close
+              </button>
+              <button mat-stroked-button color="warn" (click)="deleteIncident(incident)">
+                <mat-icon>delete</mat-icon> Delete
+              </button>
+            </div>
+
             <div class="incident-meta">
               <span>Created {{ incident.createdAt | date:'medium' }}</span>
               <span *ngIf="incident.resolvedAt">Resolved {{ incident.resolvedAt | date:'medium' }}</span>
+              <span *ngIf="incident.closedAt">Closed {{ incident.closedAt | date:'medium' }}</span>
             </div>
           </mat-card-content>
         </mat-card>
@@ -341,7 +363,7 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
     .loading-container{display:flex;justify-content:center;padding:60px}
     .status-summary{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
     .summary-chip{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.85rem;cursor:pointer}
-    .summary-chip.active{background:#fff3e0;color:#e65100}.summary-chip.investigating{background:#e3f2fd;color:#1565c0}.summary-chip.resolved{background:#e8f5e9;color:#2e7d32}
+    .summary-chip.active{background:#fff3e0;color:#e65100}.summary-chip.investigating{background:#e3f2fd;color:#1565c0}.summary-chip.resolved{background:#e8f5e9;color:#2e7d32}.summary-chip.closed{background:#eceff1;color:#546e7a}
     .create-form{margin-bottom:24px;border-left:4px solid #f44336}.create-form mat-card-title{display:flex;align-items:center;gap:8px}
     .full-width{width:100%}.form-row{display:flex;gap:16px}
     .incidents-list{display:flex;flex-direction:column;gap:16px}
@@ -364,6 +386,9 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
     .session-link{display:flex;align-items:center;gap:4px;color:#1565c0;text-decoration:none;font-weight:500}
     .session-link:hover{text-decoration:underline}.session-link .mat-icon{font-size:16px;width:16px;height:16px}
     .devin-pending{display:flex;align-items:center;gap:8px;color:#999;font-size:.85rem;background:#fafafa;border-color:#eee}.trigger-btn{margin-left:auto}
+    .incident-actions{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+    .incident-actions button{font-size:.8rem}
+    .incident-actions .mat-icon{font-size:16px;width:16px;height:16px;margin-right:2px}
     .incident-meta{display:flex;gap:16px;font-size:.8rem;color:#999;flex-wrap:wrap;margin-top:8px}
     .empty-state{display:flex;flex-direction:column;align-items:center;padding:60px;color:#999}.empty-state .mat-icon{font-size:48px;width:48px;height:48px;margin-bottom:12px}
     .onboarding-card{max-width:640px;margin:0 auto}.onboarding-hero{text-align:center;margin-bottom:24px}
@@ -396,6 +421,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   loading = true;
   creating = false;
   showCreateForm = false;
+  showClosed = false;
   filterStatus = '';
   affectedServices = AFFECTED_SERVICES;
   newIncident: Partial<Incident> = { severity: 'high', affectedService: '' };
@@ -418,6 +444,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   constructor(
     private api: AdminApiService,
     private snackBar: MatSnackBar,
+    private dialog: MatDialog,
   ) {}
 
   ngOnInit(): void {
@@ -451,11 +478,21 @@ export class IncidentsComponent implements OnInit, OnDestroy {
     return this.incidents.filter(i => i.status === 'resolved').length;
   }
 
+  get closedCount(): number {
+    return this.incidents.filter(i => i.status === 'closed').length;
+  }
+
   get filteredIncidents(): Incident[] {
-    if (!this.filterStatus) return this.incidents;
-    if (this.filterStatus === 'active') return this.incidents.filter(i => i.active);
-    if (this.filterStatus === 'investigating') return this.incidents.filter(i => i.status === 'investigating');
-    return this.incidents.filter(i => i.status === this.filterStatus);
+    let result = this.incidents;
+
+    if (!this.showClosed) {
+      result = result.filter(i => i.status !== 'closed');
+    }
+
+    if (!this.filterStatus) return result;
+    if (this.filterStatus === 'active') return result.filter(i => i.active);
+    if (this.filterStatus === 'investigating') return result.filter(i => i.status === 'investigating');
+    return result.filter(i => i.status === this.filterStatus);
   }
 
   loadChaosState(): void {
@@ -521,6 +558,80 @@ export class IncidentsComponent implements OnInit, OnDestroy {
         incident.devinSessionStatus = null;
         this.snackBar.open('Failed to launch Devin session', 'Dismiss', { duration: 3000 });
       },
+    });
+  }
+
+  resolveIncident(incident: Incident): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Resolve Incident',
+        message: `Mark "${incident.title}" as resolved?`,
+        confirmText: 'Resolve',
+        confirmColor: 'primary',
+      },
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.api.updateIncidentStatus(incident.id, 'resolved').subscribe({
+        next: (updated) => {
+          const idx = this.incidents.findIndex(i => i.id === incident.id);
+          if (idx !== -1) this.incidents[idx] = updated;
+          this.snackBar.open('Incident resolved', 'Dismiss', { duration: 3000 });
+        },
+        error: (err) => {
+          const detail = err.error?.details || 'Failed to resolve incident';
+          this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
+        },
+      });
+    });
+  }
+
+  closeIncident(incident: Incident): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Close Incident',
+        message: `Close "${incident.title}"? Closed incidents are hidden from the default view.`,
+        confirmText: 'Close',
+        confirmColor: 'accent',
+      },
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.api.updateIncidentStatus(incident.id, 'closed').subscribe({
+        next: (updated) => {
+          const idx = this.incidents.findIndex(i => i.id === incident.id);
+          if (idx !== -1) this.incidents[idx] = updated;
+          this.snackBar.open('Incident closed', 'Dismiss', { duration: 3000 });
+        },
+        error: (err) => {
+          const detail = err.error?.details || 'Failed to close incident';
+          this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
+        },
+      });
+    });
+  }
+
+  deleteIncident(incident: Incident): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Incident',
+        message: `Permanently delete "${incident.title}"? This cannot be undone.`,
+        confirmText: 'Delete',
+        confirmColor: 'warn',
+      },
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.api.deleteIncident(incident.id).subscribe({
+        next: () => {
+          this.incidents = this.incidents.filter(i => i.id !== incident.id);
+          this.snackBar.open('Incident deleted', 'Dismiss', { duration: 3000 });
+        },
+        error: (err) => {
+          const detail = err.error?.details || err.error?.error || 'Failed to delete incident';
+          this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
+        },
+      });
     });
   }
 

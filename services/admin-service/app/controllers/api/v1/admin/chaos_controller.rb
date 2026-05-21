@@ -53,8 +53,12 @@ module Api
             Incident.where(affected_service: svc)
                     .where(status: %w[open investigating])
                     .each do |incident|
-              incident.resolve!
-              resolved_incidents << incident.id
+              begin
+                incident.resolve!
+                resolved_incidents << incident.id
+              rescue Incident::InvalidTransitionError => e
+                Rails.logger.warn("CHAOS RESET: skipping incident #{incident.id}: #{e.message}")
+              end
             end
           end
 

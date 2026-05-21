@@ -209,6 +209,16 @@ export class AdminApiService {
     );
   }
 
+  updateIncidentStatus(id: string, status: string): Observable<Incident> {
+    return this.http.patch<any>(`${this.baseUrl}/admin/incidents/${id}`, { incident: { status } }).pipe(
+      map(res => this.mapIncident(res.incident || res)),
+    );
+  }
+
+  deleteIncident(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/admin/incidents/${id}`);
+  }
+
   // ── Chaos injection (demo/workshop controls) ─────────────────────────────
 
   triggerChaos(service: string, scenario: string): Observable<{ status: string; key: string; expires_in: number }> {
@@ -435,6 +445,7 @@ export class AdminApiService {
       devinSessionStatus: raw.devin_session_status,
       reporterId: raw.reporter_id,
       resolvedAt: raw.resolved_at,
+      closedAt: raw.closed_at,
       active: raw.active,
       createdAt: raw.created_at,
       updatedAt: raw.updated_at,

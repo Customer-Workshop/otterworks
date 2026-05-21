@@ -1,5 +1,5 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { AdminApiService } from './admin-api.service';
 
 describe('AdminApiService', () => {
@@ -107,4 +107,45 @@ describe('AdminApiService', () => {
     });
     tick(700);
   }));
+
+  describe('Incident API methods', () => {
+    let httpMock: HttpTestingController;
+
+    beforeEach(() => {
+      httpMock = TestBed.inject(HttpTestingController);
+    });
+
+    afterEach(() => {
+      httpMock.verify();
+    });
+
+    it('updateIncidentStatus should make a PATCH request', () => {
+      const mockResponse = {
+        id: 'inc-1', title: 'Test', description: 'Desc', severity: 'high',
+        status: 'resolved', affected_service: null, devin_session_id: null,
+        devin_session_url: null, devin_session_status: null, reporter_id: null,
+        resolved_at: '2026-01-01T00:00:00Z', closed_at: null, active: false,
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      service.updateIncidentStatus('inc-1', 'resolved').subscribe(incident => {
+        expect(incident).toBeTruthy();
+        expect(incident.status).toBe('resolved');
+        expect(incident.id).toBe('inc-1');
+      });
+
+      const req = httpMock.expectOne('/api/v1/admin/incidents/inc-1');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ incident: { status: 'resolved' } });
+      req.flush(mockResponse);
+    });
+
+    it('deleteIncident should make a DELETE request', () => {
+      service.deleteIncident('inc-1').subscribe();
+
+      const req = httpMock.expectOne('/api/v1/admin/incidents/inc-1');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+  });
 });

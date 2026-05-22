@@ -137,4 +137,38 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage normalizes Unix epoch timestamps to ISO-8601`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-999",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-999", event.fileId)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `normalizeTimestamps converts epoch seconds to ISO string`() {
+        val input = """{"timestamp": 1704067200}"""
+        val result = consumer.normalizeTimestamps(input)
+        assertEquals("""{"timestamp":"2024-01-01T00:00:00Z"}""", result)
+    }
+
+    @Test
+    fun `normalizeTimestamps leaves ISO string timestamps unchanged`() {
+        val input = """{"timestamp":"2024-01-01T00:00:00Z"}"""
+        val result = consumer.normalizeTimestamps(input)
+        assertEquals(input, result)
+    }
 }

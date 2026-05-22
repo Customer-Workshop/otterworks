@@ -49,3 +49,15 @@ networkPolicy:
 
 serviceAccount:
   roleArn: ""
+
+config:
+  awsRegion: us-east-1
+  s3Bucket: otterworks-files-dev
+  dynamodbTable: otterworks-file-metadata
+  dynamodbFoldersTable: otterworks-folders
+  dynamodbVersionsTable: otterworks-file-versions
+  dynamodbSharesTable: otterworks-file-shares
+  snsTopicArn: ""
+  redisHost: ""
+  redisPort: ""
+  rustLog: "file_service=info,actix_web=info"

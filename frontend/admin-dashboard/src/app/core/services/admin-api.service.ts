@@ -215,8 +215,11 @@ export class AdminApiService {
     );
   }
 
-  deleteIncident(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/admin/incidents/${id}`);
+  deleteIncident(id: string, force = false): Observable<void> {
+    const url = force
+      ? `${this.baseUrl}/admin/incidents/${id}?force=true`
+      : `${this.baseUrl}/admin/incidents/${id}`;
+    return this.http.delete<void>(url);
   }
 
   // ── Chaos injection (demo/workshop controls) ─────────────────────────────

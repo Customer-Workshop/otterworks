@@ -611,24 +611,54 @@ export class IncidentsComponent implements OnInit, OnDestroy {
     });
   }
 
-  deleteIncident(incident: Incident): void {
+  deleteIncident(incident: Incident, force = false): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Incident',
-        message: `Permanently delete "${incident.title}"? This cannot be undone.`,
-        confirmText: 'Delete',
+        title: force ? 'Force Delete Incident' : 'Delete Incident',
+        message: force
+          ? `Force delete "${incident.title}"? The linked Devin session will be orphaned.`
+          : `Permanently delete "${incident.title}"? This cannot be undone.`,
+        confirmText: force ? 'Force Delete' : 'Delete',
         confirmColor: 'warn',
       },
     });
     ref.afterClosed().subscribe(confirmed => {
       if (!confirmed) return;
-      this.api.deleteIncident(incident.id).subscribe({
+      this.api.deleteIncident(incident.id, force).subscribe({
         next: () => {
           this.incidents = this.incidents.filter(i => i.id !== incident.id);
           this.snackBar.open('Incident deleted', 'Dismiss', { duration: 3000 });
         },
         error: (err) => {
-          const detail = err.error?.details || err.error?.error || 'Failed to delete incident';
+          if (err.status === 409 && !force) {
+            this.forceDeleteIncident(incident);
+          } else {
+            const detail = err.error?.details || err.error?.error || 'Failed to delete incident';
+            this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
+          }
+        },
+      });
+    });
+  }
+
+  private forceDeleteIncident(incident: Incident): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Session Still Active',
+        message: `This incident has a Devin session that may still be running. Force delete anyway?`,
+        confirmText: 'Force Delete',
+        confirmColor: 'warn',
+      },
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.api.deleteIncident(incident.id, true).subscribe({
+        next: () => {
+          this.incidents = this.incidents.filter(i => i.id !== incident.id);
+          this.snackBar.open('Incident force deleted', 'Dismiss', { duration: 3000 });
+        },
+        error: (err) => {
+          const detail = err.error?.details || err.error?.error || 'Failed to force delete incident';
           this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
         },
       });

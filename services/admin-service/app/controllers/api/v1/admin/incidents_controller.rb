@@ -109,11 +109,17 @@ module Api
 
         # DELETE /api/v1/admin/incidents/:id
         def destroy
-          if @incident.has_active_devin_session?
-            return render json: {
-              error: 'Cannot delete incident with an active Devin session',
-              details: "Stop Devin session '#{@incident.devin_session_id}' before deleting"
-            }, status: :conflict
+          unless params[:force] == 'true'
+            if @incident.has_active_devin_session?
+              @incident.refresh_devin_session_status!
+
+              if @incident.has_active_devin_session?
+                return render json: {
+                  error: 'Cannot delete incident with an active Devin session',
+                  details: "Stop Devin session '#{@incident.devin_session_id}' before deleting"
+                }, status: :conflict
+              end
+            end
           end
 
           incident_attrs = @incident.attributes

@@ -147,5 +147,13 @@ describe('AdminApiService', () => {
       expect(req.request.method).toBe('DELETE');
       req.flush(null, { status: 204, statusText: 'No Content' });
     });
+
+    it('deleteIncident with force should append query param', () => {
+      service.deleteIncident('inc-1', true).subscribe();
+
+      const req = httpMock.expectOne('/api/v1/admin/incidents/inc-1?force=true');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
   });
 });

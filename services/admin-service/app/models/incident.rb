@@ -52,6 +52,18 @@ class Incident < ApplicationRecord
     devin_session_id.present? && devin_session_status == 'running'
   end
 
+  def refresh_devin_session_status!
+    return unless has_devin_session?
+
+    session_info = DevinSessionService.get_session(session_id: devin_session_id)
+    if session_info
+      update!(
+        devin_session_status: session_info[:status],
+        devin_session_url: session_info[:url] || devin_session_url
+      )
+    end
+  end
+
   private
 
   def transition_to!(new_status, extras = {})

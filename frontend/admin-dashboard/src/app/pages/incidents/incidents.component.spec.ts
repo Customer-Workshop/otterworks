@@ -177,7 +177,7 @@ describe('IncidentsComponent', () => {
       component.incidents = [incident];
       component.deleteIncident(incident);
 
-      expect(apiSpy.deleteIncident).toHaveBeenCalledWith('inc-001');
+      expect(apiSpy.deleteIncident).toHaveBeenCalledWith('inc-001', false);
       expect(component.incidents.length).toBe(0);
     });
 
@@ -188,6 +188,27 @@ describe('IncidentsComponent', () => {
       component.deleteIncident(incident);
 
       expect(apiSpy.deleteIncident).not.toHaveBeenCalled();
+    });
+
+    it('should prompt force delete on 409 conflict', () => {
+      const incident = makeIncident({ devinSessionId: 'sess-1', devinSessionStatus: 'running' });
+      let dialogCallCount = 0;
+      spyOn(component['dialog'], 'open').and.callFake(() => {
+        dialogCallCount++;
+        if (dialogCallCount === 1) {
+          return { afterClosed: () => of(true) } as any;
+        }
+        return { afterClosed: () => of(true) } as any;
+      });
+      const conflictErr = { status: 409, error: { error: 'Cannot delete incident with an active Devin session' } };
+      apiSpy.deleteIncident.and.returnValues(throwError(() => conflictErr), of(void 0));
+
+      component.incidents = [incident];
+      component.deleteIncident(incident);
+
+      expect(dialogCallCount).toBe(2);
+      expect(apiSpy.deleteIncident).toHaveBeenCalledWith('inc-001', true);
+      expect(component.incidents.length).toBe(0);
     });
   });
 });

@@ -137,4 +137,65 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage handles integer epoch timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-456",
+                "ownerId": "owner-2",
+                "sharedWithUserId": "user-3",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-456", event.fileId)
+        assertEquals("1704067200", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage handles unknown keys from upstream services`() {
+        val body = """
+            {
+                "eventType": "file_uploaded",
+                "fileId": "file-789",
+                "ownerId": "owner-3",
+                "timestamp": "2024-06-15T10:30:00Z",
+                "name": "report.pdf",
+                "mimeType": "application/pdf",
+                "sizeBytes": 12345
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_uploaded", event.eventType)
+        assertEquals("file-789", event.fileId)
+    }
+
+    @Test
+    fun `parseMessage handles SNS-wrapped message with integer epoch timestamp`() {
+        val innerMessage = """{"eventType":"file_shared","fileId":"file-sns","ownerId":"owner-sns","sharedWithUserId":"user-sns","timestamp":1704067200}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-456",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("1704067200", event.timestamp)
+    }
 }

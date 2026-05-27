@@ -109,6 +109,7 @@ services:
       REDIS_PORT: 6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: file-service
+      CHAOS_ENABLED: 'true'
       S3_BUCKET: otterworks-files
       DYNAMODB_TABLE: otterworks-file-metadata
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
@@ -152,6 +153,7 @@ services:
       REDIS_PORT: 6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: document-service
+      CHAOS_ENABLED: 'true'
       DOC_SVC_DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
       DOC_SVC_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
       DOC_SVC_AWS_ENDPOINT_URL: http://localstack:4566
@@ -235,6 +237,7 @@ services:
       REDIS_PORT: 6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: notification-service
+      CHAOS_ENABLED: 'true'
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-notifications
       SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
       DYNAMODB_TABLE_NOTIFICATIONS: otterworks-notifications
@@ -279,6 +282,7 @@ services:
       MEILISEARCH_URL: http://meilisearch:7700
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: search-service
+      CHAOS_ENABLED: 'true'
       SQS_ENABLED: 'true'
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-search-events
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}

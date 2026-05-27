@@ -86,17 +86,17 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                logger.debug { "Processed SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.error { "Unparseable SQS message will be deleted to prevent queue growth: ${msg.messageId}" }
                             }
+
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }
@@ -116,16 +116,25 @@ class SqsConsumer(
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
         return try {
-            // Try parsing as direct message first
             parser.decodeFromString<SqsNotificationMessage>(body)
         } catch (_: Exception) {
             try {
-                // Try unwrapping SNS envelope
                 val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
                 parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
-            } catch (e: Exception) {
-                logger.error(e) { "Failed to parse message body" }
-                null
+            } catch (_: Exception) {
+                // Strict parser failed — fall back to lenient parser so legacy
+                // messages (e.g. epoch timestamps, extra fields) are still processed.
+                try {
+                    json.decodeFromString<SqsNotificationMessage>(body)
+                } catch (_: Exception) {
+                    try {
+                        val snsWrapper = json.decodeFromString<SnsEnvelope>(body)
+                        json.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to parse message body" }
+                        null
+                    }
+                }
             }
         }
     }

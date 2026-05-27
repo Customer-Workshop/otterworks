@@ -8,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class SqsConsumerTest {
 
@@ -136,5 +137,67 @@ class SqsConsumerTest {
         assertEquals("", event.fileId)
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
+    }
+
+    @Test
+    fun `parseMessage handles integer epoch timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-999",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1716825600
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-999", event.fileId)
+        assertTrue(event.timestamp.contains("2024-05-27"))
+    }
+
+    @Test
+    fun `parseMessage handles epoch timestamp in SNS-wrapped message`() {
+        val innerMessage = """{"eventType":"comment_added","userId":"user-1","actorId":"actor-1","documentId":"doc-1","commentId":"c-1","timestamp":1716825600}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-456",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("comment_added", event.eventType)
+        assertTrue(event.timestamp.contains("2024-05-27"))
+    }
+
+    @Test
+    fun `normalizeTimestamp converts epoch integer to ISO string`() {
+        val raw = """{"eventType":"file_shared","timestamp":1716825600}"""
+        val normalized = consumer.normalizeTimestamp(raw)
+        assertTrue(normalized.contains("2024-05-27"))
+        assertTrue(normalized.contains("\"timestamp\":\""))
+    }
+
+    @Test
+    fun `normalizeTimestamp preserves valid ISO timestamp`() {
+        val raw = """{"eventType":"file_shared","timestamp":"2024-01-01T00:00:00Z"}"""
+        val normalized = consumer.normalizeTimestamp(raw)
+        assertEquals(raw, normalized)
+    }
+
+    @Test
+    fun `normalizeTimestamp returns raw string for non-JSON input`() {
+        val raw = "not json"
+        val normalized = consumer.normalizeTimestamp(raw)
+        assertEquals(raw, normalized)
     }
 }

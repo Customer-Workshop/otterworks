@@ -137,4 +137,29 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage parses message with epoch integer timestamp via lenient parser`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-999",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1700000000
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event, "Lenient parser should accept epoch integer timestamps")
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-999", event.fileId)
+    }
+
+    @Test
+    fun `parseMessage returns null for completely malformed body`() {
+        val event = consumer.parseMessage("{malformed")
+        assertNull(event)
+    }
 }

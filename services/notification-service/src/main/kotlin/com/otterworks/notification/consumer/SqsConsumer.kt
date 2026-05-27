@@ -42,6 +42,8 @@ class SqsConsumer(
 ) {
     private val processingErrorsCounter: Counter? =
         meterRegistry?.counter("notifications.processing.errors")
+    private val poisonMessagesCounter: Counter? =
+        meterRegistry?.counter("notifications.processing.poison_messages")
     // Standard lenient parser used in normal operation.
     private val json = Json {
         ignoreUnknownKeys = true
@@ -51,10 +53,8 @@ class SqsConsumer(
     // CHAOS: strict parser that rejects messages whose timestamp field is not
     // a valid RFC 3339 string.  Legacy events emitted by older service versions
     // use Unix epoch integers for timestamps, which are rejected here.
-    // When the chaos flag is active, every such message throws
-    // SerializationException, is never deleted from the queue, and becomes
-    // visible again after the SQS visibility timeout — causing queue depth to
-    // climb indefinitely while the consumer appears healthy.
+    // When the chaos flag is active, such messages fail deserialization and are
+    // deleted as poison messages to prevent unbounded queue growth.
     private val strictJson = Json {
         ignoreUnknownKeys = false
         isLenient = false
@@ -86,16 +86,12 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                deleteMessage(msg.receiptHandle, msg.messageId)
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                poisonMessagesCounter?.increment()
+                                logger.error { "Deleting poison SQS message that failed deserialization: ${msg.messageId}" }
+                                deleteMessage(msg.receiptHandle, msg.messageId)
                             }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
@@ -111,6 +107,15 @@ class SqsConsumer(
                 delay(config.sqsPollIntervalMs * 2)
             }
         }
+    }
+
+    private suspend fun deleteMessage(receiptHandle: String?, messageId: String?) {
+        val deleteRequest = DeleteMessageRequest {
+            queueUrl = config.sqsQueueUrl
+            this.receiptHandle = receiptHandle
+        }
+        sqsClient.deleteMessage(deleteRequest)
+        logger.debug { "Deleted SQS message: $messageId" }
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {

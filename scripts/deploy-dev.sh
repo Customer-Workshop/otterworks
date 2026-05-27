@@ -96,11 +96,14 @@ if [ "${SKIP_TERRAFORM}" = false ]; then
   cd "${REPO_ROOT}/infrastructure/terraform"
   terraform init -input=false
   terraform apply -var="db_password=${DB_PASSWORD}" -auto-approve -input=false
+  S3_FILE_BUCKET=$(terraform output -raw s3_file_bucket)
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."
 else
   log "Skipping Terraform provisioning."
 fi
+
+S3_FILE_BUCKET="${S3_FILE_BUCKET:-otterworks-files-dev}"
 
 # ---------- Step 3: Configure kubectl ----------
 
@@ -158,11 +161,17 @@ deploy_service() {
   fi
 
   local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}"
+  local extra_sets=()
+  if [ "${service}" = "file-service" ]; then
+    extra_sets+=(--set "aws.s3Bucket=${S3_FILE_BUCKET}")
+  fi
+
   log "Deploying ${service} via Helm..."
   helm upgrade --install "${service}" "${chart_dir}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${image}" \
     --set image.tag="${IMAGE_TAG}" \
+    "${extra_sets[@]}" \
     --wait \
     --timeout 5m \
     || { warn "Helm deploy failed for ${service}"; return 1; }

@@ -48,7 +48,10 @@ class DevinSessionPollJob < ApplicationJob
   end
 
   def handle_completion(incident, session_info)
-    incident.resolve! unless incident.status == 'resolved'
+    incident.reload
+    return if incident.status == 'resolved'
+
+    incident.resolve!
     IncidentEventPublisher.incident_resolved(incident)
     IncidentEventPublisher.devin_session_completed(incident)
 

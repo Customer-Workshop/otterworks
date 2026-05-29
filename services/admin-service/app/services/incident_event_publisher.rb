@@ -52,7 +52,7 @@ class IncidentEventPublisher
     end
 
     def sns_configured?
-      ENV['AWS_SNS_TOPIC_ARN'].present? || ENV['SNS_ENDPOINT'].present?
+      ENV['AWS_SNS_TOPIC_ARN'].present?
     end
 
     def publish_to_sns(payload)

@@ -23,7 +23,7 @@ class DevinSessionPollJob < ApplicationJob
     return unless session_info
 
     new_status = session_info[:status].to_s.downcase
-    return if new_status == incident.devin_session_status
+    return if new_status.blank? || new_status == incident.devin_session_status
 
     Rails.logger.info(
       "DevinSessionPollJob: incident #{incident.id} session status changed " \

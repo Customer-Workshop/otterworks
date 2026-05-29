@@ -13,6 +13,10 @@ module Api
             return render json: { error: 'Missing session_id' }, status: :bad_request
           end
 
+          if status.blank?
+            return render json: { error: 'Missing status' }, status: :bad_request
+          end
+
           incident = Incident.find_by(devin_session_id: session_id)
           unless incident
             return render json: { error: 'Incident not found for session' }, status: :not_found

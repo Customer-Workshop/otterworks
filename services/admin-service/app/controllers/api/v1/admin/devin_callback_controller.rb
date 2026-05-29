@@ -28,16 +28,18 @@ module Api
           )
 
           if %w[finished completed stopped].include?(status)
-            incident.resolve! unless incident.status == 'resolved'
-            IncidentEventPublisher.incident_resolved(incident)
-            IncidentEventPublisher.devin_session_completed(incident)
+            unless incident.status == 'resolved'
+              incident.resolve!
+              IncidentEventPublisher.incident_resolved(incident)
+              IncidentEventPublisher.devin_session_completed(incident)
 
-            if incident.source == 'servicenow'
-              ServicenowCallbackService.resolve_incident(
-                incident: incident,
-                pr_url: params[:pr_url].to_s.presence,
-                summary: params[:summary].to_s.presence || 'Devin session completed'
-              )
+              if incident.source == 'servicenow'
+                ServicenowCallbackService.resolve_incident(
+                  incident: incident,
+                  pr_url: params[:pr_url].to_s.presence,
+                  summary: params[:summary].to_s.presence || 'Devin session completed'
+                )
+              end
             end
           elsif %w[failed errored].include?(status) && incident.source == 'servicenow'
             ServicenowCallbackService.post_update(

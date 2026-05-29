@@ -49,7 +49,7 @@ module Api
 
         def verify_devin_secret
           expected = ENV.fetch('DEVIN_CALLBACK_SECRET', nil)
-          return if expected.blank?
+          return if expected.nil?
 
           provided = request.headers['X-Devin-Secret'].to_s
           return if ActiveSupport::SecurityUtils.secure_compare(provided, expected)

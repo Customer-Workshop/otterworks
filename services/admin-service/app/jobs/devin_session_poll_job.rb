@@ -49,6 +49,8 @@ class DevinSessionPollJob < ApplicationJob
 
   def handle_completion(incident, session_info)
     incident.resolve! unless incident.status == 'resolved'
+    IncidentEventPublisher.incident_resolved(incident)
+    IncidentEventPublisher.devin_session_completed(incident)
 
     return unless incident.source == 'servicenow'
 

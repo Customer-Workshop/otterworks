@@ -29,6 +29,8 @@ module Api
 
           if %w[finished completed stopped].include?(status)
             incident.resolve! unless incident.status == 'resolved'
+            IncidentEventPublisher.incident_resolved(incident)
+            IncidentEventPublisher.devin_session_completed(incident)
 
             if incident.source == 'servicenow'
               ServicenowCallbackService.resolve_incident(

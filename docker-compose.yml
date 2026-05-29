@@ -376,6 +376,7 @@ services:
       SERVICENOW_INSTANCE_URL: ${SERVICENOW_INSTANCE_URL:-}
       SERVICENOW_USERNAME: ${SERVICENOW_USERNAME:-}
       SERVICENOW_PASSWORD: ${SERVICENOW_PASSWORD:-}
+      DEVIN_CALLBACK_SECRET: ${DEVIN_CALLBACK_SECRET:-demo-devin-callback-secret}
     depends_on:
       postgres:
         condition: service_healthy

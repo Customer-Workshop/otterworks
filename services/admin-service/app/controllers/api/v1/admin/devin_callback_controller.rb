@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class DevinCallbackController < ApplicationController
+        before_action :verify_devin_secret
+
         # POST /api/v1/admin/devin/callback
         def callback
           session_id = params[:session_id].to_s
@@ -41,6 +43,18 @@ module Api
           end
 
           render json: { incident_id: incident.id, status: incident.status, devin_session_status: status }
+        end
+
+        private
+
+        def verify_devin_secret
+          expected = ENV.fetch('DEVIN_CALLBACK_SECRET', nil)
+          return if expected.blank?
+
+          provided = request.headers['X-Devin-Secret'].to_s
+          return if ActiveSupport::SecurityUtils.secure_compare(provided, expected)
+
+          render json: { error: 'Unauthorized' }, status: :unauthorized
         end
       end
     end

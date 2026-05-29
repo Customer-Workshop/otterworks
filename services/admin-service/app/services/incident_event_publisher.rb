@@ -56,7 +56,7 @@ class IncidentEventPublisher
     end
 
     def publish_to_sns(payload)
-      require 'aws-sdk-sns' if defined?(Aws::SNS)
+      require 'aws-sdk-sns' unless defined?(Aws::SNS)
 
       topic_arn = ENV.fetch('AWS_SNS_TOPIC_ARN', nil)
       endpoint = ENV.fetch('SNS_ENDPOINT', nil)

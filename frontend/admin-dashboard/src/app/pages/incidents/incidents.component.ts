@@ -330,7 +330,7 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
       </div>
 
       <!-- First-run onboarding (no incidents at all) -->
-      <div *ngIf="!loading && incidents.length === 0 && !filterStatus" class="onboarding">
+      <div *ngIf="!loading && incidents.length === 0 && !filterStatus && !filterSource" class="onboarding">
         <mat-card class="onboarding-card">
           <mat-card-content>
             <div class="onboarding-hero">

@@ -60,7 +60,7 @@ module Api
           return if expected.nil?
 
           provided = request.headers['X-Devin-Secret'].to_s
-          return if ActiveSupport::SecurityUtils.secure_compare(provided, expected)
+          return if provided.present? && ActiveSupport::SecurityUtils.secure_compare(provided, expected)
 
           render json: { error: 'Unauthorized' }, status: :unauthorized
         end

@@ -436,6 +436,9 @@ export class AdminApiService {
       reporterId: raw.reporter_id,
       resolvedAt: raw.resolved_at,
       active: raw.active,
+      source: raw.source || 'manual',
+      servicenowSysId: raw.servicenow_sys_id,
+      servicenowNumber: raw.servicenow_number,
       createdAt: raw.created_at,
       updatedAt: raw.updated_at,
     };

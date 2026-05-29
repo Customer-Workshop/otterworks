@@ -323,10 +323,10 @@ const CHAOS_STATE_KEY = 'ow_admin_chaos_state';
       </div>
 
       <!-- Empty state -->
-      <div *ngIf="!loading && filteredIncidents.length === 0 && filterStatus" class="empty-state">
+      <div *ngIf="!loading && filteredIncidents.length === 0 && (filterStatus || filterSource)" class="empty-state">
         <mat-icon>filter_list_off</mat-icon>
-        <p>No {{ filterStatus }} incidents</p>
-        <button mat-stroked-button (click)="filterStatus = ''">Clear Filter</button>
+        <p>No {{ filterSource || filterStatus || '' }} incidents found</p>
+        <button mat-stroked-button (click)="filterStatus = ''; filterSource = ''">Clear Filter</button>
       </div>
 
       <!-- First-run onboarding (no incidents at all) -->

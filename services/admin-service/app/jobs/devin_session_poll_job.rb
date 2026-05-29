@@ -54,8 +54,7 @@ class DevinSessionPollJob < ApplicationJob
 
     ServicenowCallbackService.resolve_incident(
       incident: incident,
-      summary: 'Devin AI session completed successfully',
-      pr_url: session_info[:url]
+      summary: 'Devin AI session completed successfully'
     )
   end
 

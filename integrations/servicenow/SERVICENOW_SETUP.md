@@ -149,7 +149,25 @@ This automatically fires the webhook when a qualifying incident is created.
 
 The webhook uses OAuth 2.0 Client Credentials to authenticate when posting work notes and resolving incidents back in ServiceNow.
 
-### 3a. Create an OAuth Application Registry entry
+### 3a. Enable the Client Credentials grant type (required)
+
+The `client_credentials` grant type is **disabled by default** on ServiceNow. You must enable it via a system property before OAuth will work:
+
+1. Navigate to **System Properties**:
+   **https://koniaggovernmentservicesllcdemo1.service-now.com/sys_properties_list.do**
+
+2. Click **New** and create the following property:
+   | Field | Value |
+   |-------|-------|
+   | **Name** | `glide.oauth.inbound.client.credential.grant_type.enabled` |
+   | **Type** | `true_false` |
+   | **Value** | `true` |
+
+3. Click **Submit**
+
+> **Tip:** You can also verify this via the Machine Identity Console (**System OAuth > Application Registry** → banner link to **New Inbound Integration Experience**). If the property is missing, a yellow warning banner will appear on client-credential app records.
+
+### 3b. Create an OAuth Application Registry entry
 
 1. Navigate to **System OAuth > Application Registry**:
    **https://koniaggovernmentservicesllcdemo1.service-now.com/oauth_entity_list.do**
@@ -165,11 +183,20 @@ The webhook uses OAuth 2.0 Client Credentials to authenticate when posting work 
    | **Token Lifespan** | `1800` (30 minutes, default) |
    | **Refresh Token Lifespan** | `0` (not used for client credentials) |
 
-4. Click **Submit**
+4. Configure the OAuth app for client credentials:
+   | Field | Value |
+   |-------|-------|
+   | **Default Grant Type** | `Client Credentials` |
+   | **Client Type** | `Integration as a Service` |
+   | **Scope Restriction** | `Broadly scoped` (or configure specific auth scopes) |
 
-5. Note down the **Client ID** and **Client Secret** — you will need them for the Lambda deployment.
+5. Set the **User** field to the service account that should be associated with tokens (see Step 3c).
 
-### 3b. Create a dedicated service account (recommended)
+6. Click **Submit**
+
+7. Note down the **Client ID** and **Client Secret** — you will need them for the Lambda deployment.
+
+### 3c. Create a dedicated service account (recommended)
 
 1. Navigate to **User Administration > Users**
 

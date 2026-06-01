@@ -3,7 +3,7 @@ FROM ruby:3.3-slim AS builder
 RUN apt-get update && apt-get install -y build-essential libpq-dev libyaml-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY Gemfile Gemfile.lock ./
-RUN bundle install
+RUN bundle config set --local without 'test development' && bundle install
 
 FROM ruby:3.3-slim
 RUN apt-get update && apt-get install -y libpq5 curl && rm -rf /var/lib/apt/lists/*
@@ -11,6 +11,7 @@ WORKDIR /app
 COPY --from=builder /usr/local/bundle /usr/local/bundle
 COPY . .
 ENV BUNDLE_FROZEN=true
+ENV BUNDLE_WITHOUT="test:development"
 
 RUN useradd -r -u 1001 appuser && mkdir -p /app/tmp/pids /app/tmp/cache /app/log && chown -R appuser:appuser /app/tmp /app/log
 USER appuser

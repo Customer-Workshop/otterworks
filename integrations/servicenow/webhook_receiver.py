@@ -285,6 +285,7 @@ def resolve():
         )
         if resp is None:
             log.error("ServiceNow resolve callback skipped — OAuth token failure")
+            return jsonify({"error": "ServiceNow OAuth token failure"}), 502
         elif not resp.ok:
             log.error("ServiceNow resolve callback failed: %d %s", resp.status_code, resp.text)
             return jsonify({"error": "ServiceNow update failed"}), 502

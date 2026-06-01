@@ -61,6 +61,9 @@ Rails.application.routes.draw do
         # ServiceNow webhook (no JWT — protected by X-ServiceNow-Secret header)
         post 'servicenow/ingest', to: 'servicenow#ingest'
         post 'servicenow/resolve', to: 'servicenow#resolve'
+
+        # Devin session callback (no JWT — called by Devin platform)
+        post 'devin/callback', to: 'devin_callback#callback'
       end
     end
   end

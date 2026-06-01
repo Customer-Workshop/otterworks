@@ -6,6 +6,7 @@ class JwtAuthenticator
     /api/v1/admin/chaos
     /api/v1/admin/servicenow/ingest
     /api/v1/admin/servicenow/resolve
+    /api/v1/admin/devin/callback
   ].freeze
 
   def initialize(app)

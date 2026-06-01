@@ -1,3 +1,5 @@
+export type IncidentSource = 'manual' | 'servicenow' | 'grafana';
+
 export interface Incident {
   id: string;
   title: string;
@@ -11,9 +13,18 @@ export interface Incident {
   reporterId: string | null;
   resolvedAt: string | null;
   active: boolean;
+  source: IncidentSource;
+  servicenowSysId: string | null;
+  servicenowNumber: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export const INCIDENT_SOURCES: { value: IncidentSource; label: string; icon: string }[] = [
+  { value: 'manual', label: 'Manual', icon: 'person' },
+  { value: 'servicenow', label: 'ServiceNow', icon: 'cloud' },
+  { value: 'grafana', label: 'Grafana', icon: 'monitoring' },
+];
 
 export const AFFECTED_SERVICES = [
   { value: 'api-gateway', label: 'API Gateway (Go)' },

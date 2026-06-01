@@ -1,0 +1,5 @@
+devin_session_poll:
+  every: '60s'
+  class: DevinSessionPollJob
+  queue: default
+  description: 'Poll Devin API for session status updates on active incidents'

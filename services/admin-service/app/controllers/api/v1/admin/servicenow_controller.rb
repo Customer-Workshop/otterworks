@@ -122,6 +122,9 @@ module Api
             }
           )
 
+          IncidentEventPublisher.incident_created(incident, metadata: { servicenow_number: number })
+          IncidentEventPublisher.devin_session_started(incident) if session_result
+
           Rails.logger.info(
             "Incident #{incident.id} created from ServiceNow #{number}, devin=#{session_result.present?}"
           )
@@ -157,6 +160,8 @@ module Api
             pr_url: pr_url,
             summary: summary
           )
+
+          IncidentEventPublisher.incident_resolved(incident, metadata: { pr_url: pr_url })
 
           render json: { incident_id: incident.id, status: 'resolved' }
         end

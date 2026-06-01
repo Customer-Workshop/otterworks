@@ -46,8 +46,8 @@ cd integrations/servicenow
   --devin-org-id "YOUR_DEVIN_ORG_ID" \
   --snow-secret "your-shared-secret" \
   --snow-instance "https://yourinstance.service-now.com" \
-  --snow-user "admin" \
-  --snow-pass "password"
+  --snow-client-id "YOUR_SNOW_CLIENT_ID" \
+  --snow-client-secret "YOUR_SNOW_CLIENT_SECRET"
 ```
 
 The script outputs the API Gateway URL — copy it for the next step.
@@ -76,8 +76,8 @@ Create an incident in ServiceNow with Category=Software and Priority=1-Critical.
 | `DEVIN_ORG_ID` | Yes | Devin organization ID |
 | `SERVICENOW_WEBHOOK_SECRET` | Recommended | Shared secret for `X-ServiceNow-Secret` header |
 | `SERVICENOW_INSTANCE_URL` | Optional | Instance URL for callbacks |
-| `SERVICENOW_USERNAME` | Optional | API user for callbacks |
-| `SERVICENOW_PASSWORD` | Optional | API password for callbacks |
+| `SERVICENOW_CLIENT_ID` | Optional | OAuth 2.0 client ID for callbacks |
+| `SERVICENOW_CLIENT_SECRET` | Optional | OAuth 2.0 client secret for callbacks |
 
 ## Teardown
 

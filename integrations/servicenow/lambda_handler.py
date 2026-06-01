@@ -18,6 +18,7 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
 
@@ -155,11 +156,11 @@ def _get_snow_oauth_token(instance_url, client_id, client_secret):
         return _snow_token_cache["access_token"]
 
     token_url = f"{instance_url.rstrip('/')}/oauth_token.do"
-    form_data = (
-        f"grant_type=client_credentials"
-        f"&client_id={client_id}"
-        f"&client_secret={client_secret}"
-    ).encode()
+    form_data = urllib_parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }).encode()
 
     req = urllib_request.Request(
         token_url,
@@ -188,11 +189,19 @@ def _invalidate_snow_token():
 
 
 def _snow_api_call(instance_url, client_id, client_secret, method, path, body=None):
-    """Make an authenticated SNOW API call with automatic 401 retry."""
+    """Make an authenticated SNOW API call with automatic 401 retry.
+
+    Returns (status, data).  On OAuth token failure returns (0, error_msg)
+    so callers never see an unhandled exception from a non-critical callback.
+    """
     url = f"{instance_url.rstrip('/')}{path}"
 
     for attempt in range(2):
-        token = _get_snow_oauth_token(instance_url, client_id, client_secret)
+        try:
+            token = _get_snow_oauth_token(instance_url, client_id, client_secret)
+        except Exception as exc:
+            log.error("Failed to acquire SNOW OAuth token: %s", exc)
+            return 0, str(exc)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",

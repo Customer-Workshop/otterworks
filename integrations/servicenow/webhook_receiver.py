@@ -161,7 +161,11 @@ def _invalidate_snow_token():
 
 def _snow_api_call(instance_url, client_id, client_secret, method, url, json_body=None):
     for attempt in range(2):
-        token = _get_snow_oauth_token(instance_url, client_id, client_secret)
+        try:
+            token = _get_snow_oauth_token(instance_url, client_id, client_secret)
+        except Exception as exc:
+            log.error("Failed to acquire SNOW OAuth token: %s", exc)
+            return None
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -194,6 +198,8 @@ def post_servicenow_work_note(sys_id: str, message: str):
     instance_url, client_id, client_secret = creds
     url = f"{instance_url.rstrip('/')}/api/now/table/incident/{sys_id}"
     resp = _snow_api_call(instance_url, client_id, client_secret, "PATCH", url, {"work_notes": message})
+    if resp is None:
+        return
     if resp.ok:
         log.info("Posted work note to ServiceNow %s", sys_id)
     else:
@@ -277,7 +283,9 @@ def resolve():
                 "close_notes": f"Auto-resolved by Devin AI. PR: {pr_url}",
             },
         )
-        if not resp.ok:
+        if resp is None:
+            log.error("ServiceNow resolve callback skipped — OAuth token failure")
+        elif not resp.ok:
             log.error("ServiceNow resolve callback failed: %d %s", resp.status_code, resp.text)
             return jsonify({"error": "ServiceNow update failed"}), 502
     else:

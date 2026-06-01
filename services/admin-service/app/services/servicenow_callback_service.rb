@@ -65,7 +65,8 @@ class ServicenowCallbackService
     end
 
     def fetch_oauth_token(base_url)
-      cached = Rails.cache.read('servicenow_oauth_token')
+      cache_key = "servicenow_oauth_token:#{base_url}"
+      cached = Rails.cache.read(cache_key)
       return cached if cached.present?
 
       token_uri = URI("#{base_url.chomp('/')}/oauth_token.do")
@@ -92,12 +93,16 @@ class ServicenowCallbackService
       access_token = body['access_token']
       expires_in = (body['expires_in'] || 1800).to_i
 
-      Rails.cache.write('servicenow_oauth_token', access_token, expires_in: [expires_in - 60, 60].max)
+      Rails.cache.write(cache_key, access_token, expires_in: [expires_in - 60, 60].max)
       access_token
     end
 
-    def invalidate_oauth_token
-      Rails.cache.delete('servicenow_oauth_token')
+    def invalidate_oauth_token(base_url = nil)
+      if base_url
+        Rails.cache.delete("servicenow_oauth_token:#{base_url}")
+      else
+        Rails.cache.delete_matched('servicenow_oauth_token:*')
+      end
     end
 
     def update_incident(incident, fields)
@@ -123,7 +128,7 @@ class ServicenowCallbackService
 
         if response.code == '401' && attempt == 0
           Rails.logger.warn("ServiceNow API returned 401 — refreshing OAuth token and retrying")
-          invalidate_oauth_token
+          invalidate_oauth_token(base_url)
           next
         end
 

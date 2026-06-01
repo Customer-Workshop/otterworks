@@ -239,7 +239,9 @@ def _post_servicenow_work_note(sys_id, message):
     status, data = _snow_api_call(
         instance_url, client_id, client_secret, "PATCH", path, {"work_notes": message}
     )
-    if status >= 300:
+    if status == 0:
+        log.error("ServiceNow callback skipped — OAuth token failure: %s", data)
+    elif status >= 300:
         log.error("ServiceNow callback failed: %d %s", status, data)
     else:
         log.info("Posted work note to ServiceNow %s", sys_id)
@@ -268,7 +270,9 @@ def _resolve_servicenow_incident(sys_id, pr_url, summary, session_url):
     status, data = _snow_api_call(
         instance_url, client_id, client_secret, "PATCH", path, body
     )
-    if status >= 300:
+    if status == 0:
+        log.error("ServiceNow resolve callback skipped — OAuth token failure: %s", data)
+    elif status >= 300:
         log.error("ServiceNow resolve callback failed: %d %s", status, data)
 
 

@@ -28,6 +28,7 @@ module Api
           )
 
           if %w[finished completed stopped].include?(status)
+            incident.reload
             unless incident.status == 'resolved'
               incident.resolve!
               IncidentEventPublisher.incident_resolved(incident)

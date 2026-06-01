@@ -29,16 +29,16 @@ Parameters:
       ServiceNow instance URL for callbacks (e.g. https://koniag...service-now.com).
       Leave blank to disable ServiceNow callbacks.
 
-  ServiceNowUsername:
+  ServiceNowClientId:
     Type: String
     Default: ''
-    Description: ServiceNow API username for posting work notes back to tickets
+    Description: OAuth 2.0 client ID for ServiceNow API callbacks
 
-  ServiceNowPassword:
+  ServiceNowClientSecret:
     Type: String
     NoEcho: true
     Default: ''
-    Description: ServiceNow API password for callbacks
+    Description: OAuth 2.0 client secret for ServiceNow API callbacks
 
   LambdaTimeout:
     Type: Number
@@ -82,8 +82,8 @@ Resources:
           DEVIN_ORG_ID: !Ref DevinOrgId
           SERVICENOW_WEBHOOK_SECRET: !Ref ServiceNowWebhookSecret
           SERVICENOW_INSTANCE_URL: !Ref ServiceNowInstanceUrl
-          SERVICENOW_USERNAME: !Ref ServiceNowUsername
-          SERVICENOW_PASSWORD: !Ref ServiceNowPassword
+          SERVICENOW_CLIENT_ID: !Ref ServiceNowClientId
+          SERVICENOW_CLIENT_SECRET: !Ref ServiceNowClientSecret
 
   # --- API Gateway (REST) ---
   WebhookApi:

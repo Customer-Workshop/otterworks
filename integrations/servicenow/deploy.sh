@@ -15,7 +15,7 @@ set -euo pipefail
 #
 # Environment variable overrides (fallback if flags not provided):
 #   DEVIN_API_KEY, DEVIN_ORG_ID, SERVICENOW_WEBHOOK_SECRET,
-#   SERVICENOW_INSTANCE_URL, SERVICENOW_USERNAME, SERVICENOW_PASSWORD
+#   SERVICENOW_INSTANCE_URL, SERVICENOW_CLIENT_ID, SERVICENOW_CLIENT_SECRET
 #
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,17 +27,17 @@ DEVIN_API_KEY="${DEVIN_API_KEY:-}"
 DEVIN_ORG_ID="${DEVIN_ORG_ID:-}"
 SNOW_SECRET="${SERVICENOW_WEBHOOK_SECRET:-}"
 SNOW_INSTANCE="${SERVICENOW_INSTANCE_URL:-}"
-SNOW_USER="${SERVICENOW_USERNAME:-}"
-SNOW_PASS="${SERVICENOW_PASSWORD:-}"
+SNOW_CLIENT_ID="${SERVICENOW_CLIENT_ID:-}"
+SNOW_CLIENT_SECRET="${SERVICENOW_CLIENT_SECRET:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --devin-api-key)  DEVIN_API_KEY="$2"; shift 2 ;;
     --devin-org-id)   DEVIN_ORG_ID="$2"; shift 2 ;;
     --snow-secret)    SNOW_SECRET="$2"; shift 2 ;;
-    --snow-instance)  SNOW_INSTANCE="$2"; shift 2 ;;
-    --snow-user)      SNOW_USER="$2"; shift 2 ;;
-    --snow-pass)      SNOW_PASS="$2"; shift 2 ;;
+    --snow-instance)      SNOW_INSTANCE="$2"; shift 2 ;;
+    --snow-client-id)     SNOW_CLIENT_ID="$2"; shift 2 ;;
+    --snow-client-secret) SNOW_CLIENT_SECRET="$2"; shift 2 ;;
     --stack-name)     STACK_NAME="$2"; shift 2 ;;
     --region)         REGION="$2"; shift 2 ;;
     *) echo "Unknown flag: $1"; exit 1 ;;
@@ -83,8 +83,8 @@ aws cloudformation deploy \
     "DevinOrgId=$DEVIN_ORG_ID" \
     "ServiceNowWebhookSecret=$SNOW_SECRET" \
     "ServiceNowInstanceUrl=$SNOW_INSTANCE" \
-    "ServiceNowUsername=$SNOW_USER" \
-    "ServiceNowPassword=$SNOW_PASS" \
+    "ServiceNowClientId=$SNOW_CLIENT_ID" \
+    "ServiceNowClientSecret=$SNOW_CLIENT_SECRET" \
   --no-fail-on-empty-changeset
 
 # ---- Update Lambda code (CloudFormation uses inline placeholder) ----

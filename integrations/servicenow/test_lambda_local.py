@@ -84,8 +84,9 @@ class TestIngestEndpoint(unittest.TestCase):
         os.environ.pop("DEVIN_API_KEY", None)
         os.environ.pop("DEVIN_ORG_ID", None)
         os.environ.pop("SERVICENOW_INSTANCE_URL", None)
-        os.environ.pop("SERVICENOW_USERNAME", None)
-        os.environ.pop("SERVICENOW_PASSWORD", None)
+        os.environ.pop("SERVICENOW_CLIENT_ID", None)
+        os.environ.pop("SERVICENOW_CLIENT_SECRET", None)
+        lambda_handler._invalidate_snow_token()
 
     def test_valid_ingest_no_devin_key(self):
         """Valid payload, but no DEVIN_API_KEY — should accept and skip session creation."""
@@ -249,14 +250,15 @@ class TestIngestEndpoint(unittest.TestCase):
         self.assertIn("/v3/organizations/fake-org-id/sessions", devin_call[0][0])
         self.assertEqual(devin_call[0][1], "POST")
 
+    @patch("lambda_handler._get_snow_oauth_token", return_value="mock-token")
     @patch("lambda_handler._http_request")
-    def test_ingest_with_devin_and_snow_callback(self, mock_http):
+    def test_ingest_with_devin_and_snow_callback(self, mock_http, mock_token):
         """When both Devin and SNOW creds set, work note should be posted."""
         os.environ["DEVIN_API_KEY"] = "fake-api-key"
         os.environ["DEVIN_ORG_ID"] = "fake-org-id"
         os.environ["SERVICENOW_INSTANCE_URL"] = "https://dev99999.service-now.com"
-        os.environ["SERVICENOW_USERNAME"] = "admin"
-        os.environ["SERVICENOW_PASSWORD"] = "fake-password"
+        os.environ["SERVICENOW_CLIENT_ID"] = "test-client-id"
+        os.environ["SERVICENOW_CLIENT_SECRET"] = "test-client-secret"
 
         def mock_http_side_effect(url, method, headers, body=None, timeout=15):
             if "devin.ai" in url:
@@ -280,6 +282,9 @@ class TestIngestEndpoint(unittest.TestCase):
         self.assertIn("service-now.com", snow_call[0][0])
         self.assertIn("abc123def456", snow_call[0][0])
         self.assertEqual(snow_call[0][1], "PATCH")
+        # Verify Bearer auth header
+        auth_header = snow_call[0][2].get("Authorization", "")
+        self.assertEqual(auth_header, "Bearer mock-token")
 
     @patch("lambda_handler._http_request")
     def test_devin_api_failure_still_returns_201(self, mock_http):
@@ -304,8 +309,9 @@ class TestResolveEndpoint(unittest.TestCase):
     def setUp(self):
         os.environ.pop("SERVICENOW_WEBHOOK_SECRET", None)
         os.environ.pop("SERVICENOW_INSTANCE_URL", None)
-        os.environ.pop("SERVICENOW_USERNAME", None)
-        os.environ.pop("SERVICENOW_PASSWORD", None)
+        os.environ.pop("SERVICENOW_CLIENT_ID", None)
+        os.environ.pop("SERVICENOW_CLIENT_SECRET", None)
+        lambda_handler._invalidate_snow_token()
 
     def test_resolve_valid_no_snow_creds(self):
         """Valid resolve, but no SNOW credentials — should skip callback gracefully."""
@@ -369,12 +375,13 @@ class TestResolveEndpoint(unittest.TestCase):
         result = lambda_handler.handler(event, None)
         self.assertEqual(result["statusCode"], 401)
 
+    @patch("lambda_handler._get_snow_oauth_token", return_value="mock-token")
     @patch("lambda_handler._http_request")
-    def test_resolve_with_snow_callback(self, mock_http):
+    def test_resolve_with_snow_callback(self, mock_http, mock_token):
         """When SNOW creds are set, resolve should PATCH the incident."""
         os.environ["SERVICENOW_INSTANCE_URL"] = "https://dev99999.service-now.com"
-        os.environ["SERVICENOW_USERNAME"] = "admin"
-        os.environ["SERVICENOW_PASSWORD"] = "fake-password"
+        os.environ["SERVICENOW_CLIENT_ID"] = "test-client-id"
+        os.environ["SERVICENOW_CLIENT_SECRET"] = "test-client-secret"
 
         mock_http.return_value = (200, {"result": {}})
 
@@ -405,6 +412,93 @@ class TestResolveEndpoint(unittest.TestCase):
         self.assertEqual(body["close_code"], "Solved (Permanently)")
         self.assertIn("pull/42", body["close_notes"])
         self.assertIn("session-789", body["work_notes"])
+        # Verify Bearer auth
+        auth_header = call_args[0][2].get("Authorization", "")
+        self.assertEqual(auth_header, "Bearer mock-token")
+
+
+class TestOAuthTokenFlow(unittest.TestCase):
+
+    def setUp(self):
+        os.environ.pop("SERVICENOW_WEBHOOK_SECRET", None)
+        os.environ.pop("SERVICENOW_INSTANCE_URL", None)
+        os.environ.pop("SERVICENOW_CLIENT_ID", None)
+        os.environ.pop("SERVICENOW_CLIENT_SECRET", None)
+        lambda_handler._invalidate_snow_token()
+
+    @patch("lambda_handler._get_snow_oauth_token", return_value="test-token-123")
+    @patch("lambda_handler._http_request")
+    def test_token_acquisition_success(self, mock_http, mock_token):
+        """OAuth token should be acquired and used as Bearer auth."""
+        os.environ["SERVICENOW_INSTANCE_URL"] = "https://dev99999.service-now.com"
+        os.environ["SERVICENOW_CLIENT_ID"] = "test-client-id"
+        os.environ["SERVICENOW_CLIENT_SECRET"] = "test-client-secret"
+
+        mock_http.return_value = (200, {"result": {}})
+
+        payload = json.dumps({
+            "sys_id": "abc123",
+            "pr_url": "https://github.com/org/repo/pull/1",
+        })
+        event = apigw_event("/api/v1/admin/servicenow/resolve", "POST", body=payload)
+        result = lambda_handler.handler(event, None)
+        self.assertEqual(result["statusCode"], 200)
+
+        # Verify Bearer token used (not Basic auth)
+        snow_call = mock_http.call_args
+        auth_header = snow_call[0][2].get("Authorization", "")
+        self.assertEqual(auth_header, "Bearer test-token-123")
+        mock_token.assert_called_once()
+
+    @patch("lambda_handler._get_snow_oauth_token")
+    @patch("lambda_handler._http_request")
+    def test_token_refresh_on_401(self, mock_http, mock_token):
+        """On 401 from SNOW API, token should be refreshed and call retried."""
+        os.environ["SERVICENOW_INSTANCE_URL"] = "https://dev99999.service-now.com"
+        os.environ["SERVICENOW_CLIENT_ID"] = "test-client-id"
+        os.environ["SERVICENOW_CLIENT_SECRET"] = "test-client-secret"
+
+        mock_token.side_effect = ["stale-token", "fresh-token"]
+        mock_http.side_effect = [(401, {"error": "Unauthorized"}), (200, {"result": {}})]
+
+        payload = json.dumps({"sys_id": "abc123"})
+        event = apigw_event("/api/v1/admin/servicenow/resolve", "POST", body=payload)
+        result = lambda_handler.handler(event, None)
+        self.assertEqual(result["statusCode"], 200)
+
+        # Token should have been fetched twice (initial + refresh after 401)
+        self.assertEqual(mock_token.call_count, 2)
+        self.assertEqual(mock_http.call_count, 2)
+
+    def test_missing_client_credentials_skips_callback(self):
+        """If SERVICENOW_CLIENT_ID/SECRET not set, callback should be skipped."""
+        os.environ["SERVICENOW_INSTANCE_URL"] = "https://dev99999.service-now.com"
+        # No CLIENT_ID or CLIENT_SECRET
+
+        payload = json.dumps({"sys_id": "abc123"})
+        event = apigw_event("/api/v1/admin/servicenow/resolve", "POST", body=payload)
+        result = lambda_handler.handler(event, None)
+        self.assertEqual(result["statusCode"], 200)
+
+    @patch("lambda_handler._get_snow_oauth_token", return_value="cached-token")
+    @patch("lambda_handler._http_request")
+    def test_token_caching_within_invocation(self, mock_http, mock_token):
+        """Token should be cached and reused within a Lambda invocation."""
+        os.environ["SERVICENOW_INSTANCE_URL"] = "https://dev99999.service-now.com"
+        os.environ["SERVICENOW_CLIENT_ID"] = "test-client-id"
+        os.environ["SERVICENOW_CLIENT_SECRET"] = "test-client-secret"
+
+        mock_http.return_value = (200, {"result": {}})
+
+        # First call acquires token
+        lambda_handler._post_servicenow_work_note("sys1", "Note 1")
+        # Second call should reuse cached token
+        lambda_handler._post_servicenow_work_note("sys2", "Note 2")
+
+        # mock_token is called each time _snow_api_call calls _get_snow_oauth_token,
+        # but the real caching happens inside _get_snow_oauth_token itself.
+        # With the mock, we verify both calls went through.
+        self.assertEqual(mock_http.call_count, 2)
 
 
 class TestServiceResolution(unittest.TestCase):

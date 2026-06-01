@@ -145,7 +145,73 @@ This automatically fires the webhook when a qualifying incident is created.
 
 ---
 
-## Step 3: (Optional) Create a Scripted REST API for Callbacks
+## Step 3: Configure OAuth 2.0 for API Callbacks
+
+The webhook uses OAuth 2.0 Client Credentials to authenticate when posting work notes and resolving incidents back in ServiceNow.
+
+### 3a. Create an OAuth Application Registry entry
+
+1. Navigate to **System OAuth > Application Registry**:
+   **https://koniaggovernmentservicesllcdemo1.service-now.com/oauth_entity_list.do**
+
+2. Click **New** → select **"Create an OAuth API endpoint for external clients"**
+
+3. Fill in:
+   | Field | Value |
+   |-------|-------|
+   | **Name** | `Devin AI Integration` |
+   | **Client ID** | *(auto-generated — copy this value)* |
+   | **Client Secret** | *(auto-generated — copy this value)* |
+   | **Token Lifespan** | `1800` (30 minutes, default) |
+   | **Refresh Token Lifespan** | `0` (not used for client credentials) |
+
+4. Click **Submit**
+
+5. Note down the **Client ID** and **Client Secret** — you will need them for the Lambda deployment.
+
+### 3b. Create a dedicated service account (recommended)
+
+1. Navigate to **User Administration > Users**
+
+2. Click **New** and create a non-interactive service account:
+   | Field | Value |
+   |-------|-------|
+   | **User ID** | `svc_devin_integration` |
+   | **First name** | `Devin` |
+   | **Last name** | `Integration (Service Account)` |
+   | **Active** | ✅ |
+   | **Web service access only** | ✅ |
+
+3. Assign the minimum required roles:
+   - `itil` — allows reading/writing incident records
+   - Or create a custom role scoped to the `incident` table with read/write permissions for `work_notes`, `state`, `close_code`, and `close_notes` fields.
+
+### 3c. Set environment variables for deployment
+
+When deploying the Lambda, provide these environment variables (via `deploy.sh` flags or environment):
+
+```bash
+export SERVICENOW_INSTANCE_URL="https://koniaggovernmentservicesllcdemo1.service-now.com"
+export SERVICENOW_CLIENT_ID="<your-client-id-from-step-3a>"
+export SERVICENOW_CLIENT_SECRET="<your-client-secret-from-step-3a>"
+```
+
+Or pass them as deploy flags:
+
+```bash
+./deploy.sh \
+  --snow-instance "https://koniaggovernmentservicesllcdemo1.service-now.com" \
+  --snow-client-id "<your-client-id>" \
+  --snow-client-secret "<your-client-secret>"
+```
+
+> **Note:** The previous `SERVICENOW_USERNAME` / `SERVICENOW_PASSWORD` environment variables
+> are no longer used. The integration now authenticates via OAuth 2.0 Client Credentials,
+> posting to `/oauth_token.do` to obtain a Bearer token before each API call batch.
+
+---
+
+## Step 4: (Optional) Create a Scripted REST API for Callbacks
 
 This lets the webhook post remediation results *back* to ServiceNow.
 
@@ -194,7 +260,7 @@ This lets the webhook post remediation results *back* to ServiceNow.
 
 ---
 
-## Step 4: Test End-to-End
+## Step 5: Test End-to-End
 
 1. Go to the incident list:
    **https://koniaggovernmentservicesllcdemo1.service-now.com/now/sow/list/incident**

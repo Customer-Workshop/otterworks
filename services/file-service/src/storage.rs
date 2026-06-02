@@ -26,7 +26,7 @@ impl S3Client {
             .force_path_style(true)
             .stalled_stream_protection(
                 aws_sdk_s3::config::StalledStreamProtectionConfig::enabled()
-                    .grace_period(Duration::from_secs(config.s3_operation_timeout_secs))
+                    .grace_period(Duration::from_secs(config.s3_stalled_stream_grace_secs))
                     .build(),
             )
             .build();

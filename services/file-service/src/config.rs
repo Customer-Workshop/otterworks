@@ -151,10 +151,7 @@ mod tests {
     fn aws_config_custom_endpoint() {
         env::set_var("AWS_ENDPOINT_URL", "http://localhost:4566");
         let cfg = AwsConfig::from_env();
-        assert_eq!(
-            cfg.endpoint_url,
-            Some("http://localhost:4566".to_string())
-        );
+        assert_eq!(cfg.endpoint_url, Some("http://localhost:4566".to_string()));
         env::remove_var("AWS_ENDPOINT_URL");
     }
 

@@ -1,4 +1,4 @@
-import { PresenceHandler, type PresenceInfo } from '../handlers/presence';
+import { PresenceHandler } from '../handlers/presence';
 import { AwarenessService } from '../services/awareness';
 
 const mockLogger = {

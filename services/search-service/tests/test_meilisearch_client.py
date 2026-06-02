@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import threading
-
 from app.services.meilisearch_client import (
+    _analytics_lock,
     _search_analytics,
     get_search_analytics,
     record_search_analytics,
@@ -13,7 +12,7 @@ from app.services.meilisearch_client import (
 
 def _reset_analytics():
     """Reset the module-level analytics state between tests."""
-    with threading.Lock():
+    with _analytics_lock:
         _search_analytics["queries"] = []
         _search_analytics["total_searches"] = 0
         _search_analytics["total_results"] = 0

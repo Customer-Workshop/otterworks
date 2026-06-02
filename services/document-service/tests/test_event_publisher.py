@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -66,7 +66,8 @@ class TestEventPublisher:
             assert message_body["payload"]["id"] == "doc-1"
             assert "timestamp" in message_body
 
-            assert call_args[1]["MessageAttributes"]["event_type"]["StringValue"] == "document_created"
+            attrs = call_args[1]["MessageAttributes"]
+            assert attrs["event_type"]["StringValue"] == "document_created"
 
     @pytest.mark.asyncio
     async def test_publish_handles_exception_gracefully(self):
@@ -90,7 +91,7 @@ class TestEventPublisher:
             mock_settings.aws_region = "us-east-1"
             mock_settings.aws_endpoint_url = ""
 
-            client = publisher._get_client()
+            publisher._get_client()
             mock_boto.assert_called_once_with("sns", region_name="us-east-1")
 
     def test_get_client_with_endpoint_url(self):
@@ -100,7 +101,7 @@ class TestEventPublisher:
             mock_settings.aws_region = "us-east-1"
             mock_settings.aws_endpoint_url = "http://localhost:4566"
 
-            client = publisher._get_client()
+            publisher._get_client()
             mock_boto.assert_called_once_with(
                 "sns",
                 region_name="us-east-1",

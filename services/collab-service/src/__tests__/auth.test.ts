@@ -48,7 +48,11 @@ describe('Auth Middleware', () => {
     });
 
     it('should accept valid token from handshake auth', () => {
-      const token = createToken({ sub: 'user-1', email: 'test@example.com', name: 'Test User' });
+      const token = createToken({
+        sub: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+      });
       const socket = createMockSocket({
         handshake: { auth: { token }, headers: {} },
       });

@@ -83,6 +83,7 @@ impl SnsConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::env;
 
     fn clear_env_vars() {
@@ -103,6 +104,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn server_config_defaults() {
         clear_env_vars();
         let cfg = ServerConfig::from_env();
@@ -111,6 +113,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn server_config_custom_port() {
         env::set_var("PORT", "9090");
         let cfg = ServerConfig::from_env();
@@ -119,6 +122,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn server_config_invalid_port_uses_default() {
         env::set_var("PORT", "not-a-number");
         let cfg = ServerConfig::from_env();
@@ -127,6 +131,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn server_config_custom_max_upload() {
         env::set_var("MAX_UPLOAD_BYTES", "5242880");
         let cfg = ServerConfig::from_env();
@@ -135,6 +140,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn aws_config_defaults() {
         clear_env_vars();
         let cfg = AwsConfig::from_env();
@@ -148,6 +154,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn aws_config_custom_endpoint() {
         env::set_var("AWS_ENDPOINT_URL", "http://localhost:4566");
         let cfg = AwsConfig::from_env();
@@ -156,6 +163,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn aws_config_custom_bucket() {
         env::set_var("S3_BUCKET", "my-custom-bucket");
         let cfg = AwsConfig::from_env();
@@ -164,6 +172,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn sns_config_default_no_topic() {
         clear_env_vars();
         let cfg = SnsConfig::from_env();
@@ -171,6 +180,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn sns_config_with_topic_arn() {
         env::set_var("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123:my-topic");
         let cfg = SnsConfig::from_env();
@@ -182,6 +192,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn app_config_composes_sub_configs() {
         clear_env_vars();
         let cfg = AppConfig::from_env();

@@ -16,9 +16,10 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
-    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
+    ActivityItem, ActivityQuery, ActivityResponse, ConfirmUploadRequest, CreateFolderRequest,
+    DownloadResponse, FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder,
+    HealthResponse, InitiateUploadRequest, InitiateUploadResponse, ListFilesQuery,
+    ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
     MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
     UploadResponse,
 };
@@ -196,6 +197,128 @@ pub async fn upload_file(
         .await;
 
     tracing::info!(file_id = %file_id, name = %file_meta.name, size = %size, "File uploaded");
+
+    Ok(HttpResponse::Created().json(UploadResponse { file: file_meta }))
+}
+
+pub async fn initiate_upload(
+    req: HttpRequest,
+    s3: web::Data<S3Client>,
+    config: web::Data<AppConfig>,
+    body: web::Json<InitiateUploadRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let owner_id: Uuid = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
+
+    if body.size_bytes > config.server.max_upload_bytes {
+        return Err(ServiceError::FileTooLarge {
+            max_bytes: config.server.max_upload_bytes,
+            actual_bytes: body.size_bytes,
+        });
+    }
+
+    let file_id = Uuid::new_v4();
+    let s3_key = format!("files/{}/{}", owner_id, file_id);
+    let content_type = body
+        .content_type
+        .as_deref()
+        .unwrap_or("application/octet-stream");
+    let expiry = config.aws.presigned_upload_expiry_secs;
+
+    let upload_url = s3
+        .presigned_upload_url(&s3_key, content_type, expiry)
+        .await?;
+
+    tracing::info!(
+        file_id = %file_id,
+        size = %body.size_bytes,
+        "Presigned upload URL generated"
+    );
+
+    Ok(HttpResponse::Ok().json(InitiateUploadResponse {
+        file_id,
+        upload_url,
+        s3_key,
+        expires_in_secs: expiry,
+    }))
+}
+
+pub async fn confirm_upload(
+    req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    path: web::Path<String>,
+    body: web::Json<ConfirmUploadRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let owner_id: Uuid = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
+
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let expected_prefix = format!("files/{}/{}", owner_id, file_id);
+    if !body.s3_key.starts_with(&expected_prefix) {
+        return Err(ServiceError::Forbidden(
+            "s3_key does not match file_id/owner".into(),
+        ));
+    }
+
+    let file_name = body
+        .s3_key
+        .rsplit('/')
+        .next()
+        .unwrap_or("unnamed")
+        .to_string();
+
+    let now = Utc::now();
+    let file_meta = FileMetadata {
+        id: file_id,
+        name: file_name,
+        mime_type: "application/octet-stream".into(),
+        size_bytes: body.size_bytes,
+        s3_key: body.s3_key.clone(),
+        folder_id: None,
+        owner_id,
+        version: 1,
+        is_trashed: false,
+        created_at: now,
+        updated_at: now,
+    };
+
+    meta.put_file(&file_meta).await?;
+
+    let version = FileVersion {
+        file_id,
+        version: 1,
+        s3_key: body.s3_key.clone(),
+        size_bytes: body.size_bytes,
+        created_by: owner_id,
+        created_at: now,
+    };
+    meta.put_version(&version).await?;
+
+    let _ = events
+        .file_uploaded(
+            &file_id,
+            &owner_id,
+            None,
+            &file_meta.name,
+            &file_meta.mime_type,
+            file_meta.size_bytes,
+        )
+        .await;
+
+    tracing::info!(file_id = %file_id, size = %body.size_bytes, "Presigned upload confirmed");
 
     Ok(HttpResponse::Created().json(UploadResponse { file: file_meta }))
 }

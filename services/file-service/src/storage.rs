@@ -24,6 +24,11 @@ impl S3Client {
         let aws_config = aws_config_builder.load().await;
         let s3_config = aws_sdk_s3::config::Builder::from(&aws_config)
             .force_path_style(true)
+            .stalled_stream_protection(
+                aws_sdk_s3::config::StalledStreamProtectionConfig::enabled()
+                    .grace_period(Duration::from_secs(config.s3_operation_timeout_secs))
+                    .build(),
+            )
             .build();
         let client = aws_sdk_s3::Client::from_conf(s3_config);
 
@@ -91,6 +96,29 @@ impl S3Client {
             .presigned(presigning)
             .await
             .map_err(|e| ServiceError::S3Error(format!("presign failed: {e}")))?;
+
+        Ok(presigned.uri().to_string())
+    }
+
+    /// Generate a presigned upload URL.
+    pub async fn presigned_upload_url(
+        &self,
+        key: &str,
+        content_type: &str,
+        expires_in_secs: u64,
+    ) -> Result<String, ServiceError> {
+        let presigning = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
+            .map_err(|e| ServiceError::S3Error(format!("presign config error: {e}")))?;
+
+        let presigned = self
+            .client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .content_type(content_type)
+            .presigned(presigning)
+            .await
+            .map_err(|e| ServiceError::S3Error(format!("presign upload failed: {e}")))?;
 
         Ok(presigned.uri().to_string())
     }

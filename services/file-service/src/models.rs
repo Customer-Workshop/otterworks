@@ -176,6 +176,30 @@ pub struct ShareFileResponse {
     pub share: FileShare,
 }
 
+// ── Presigned Upload ───────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct InitiateUploadRequest {
+    pub file_name: String,
+    pub content_type: Option<String>,
+    pub size_bytes: u64,
+    pub folder_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InitiateUploadResponse {
+    pub file_id: Uuid,
+    pub upload_url: String,
+    pub s3_key: String,
+    pub expires_in_secs: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfirmUploadRequest {
+    pub s3_key: String,
+    pub size_bytes: u64,
+}
+
 // ── Activity ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]

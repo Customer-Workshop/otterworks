@@ -9,14 +9,16 @@ Environment variables (set via CloudFormation Parameters → Lambda env):
   DEVIN_ORG_ID                - Devin organization ID
   SERVICENOW_WEBHOOK_SECRET   - Shared secret for X-ServiceNow-Secret header
   SERVICENOW_INSTANCE_URL     - e.g. https://koniag...service-now.com
-  SERVICENOW_USERNAME         - ServiceNow API user (for callbacks)
-  SERVICENOW_PASSWORD         - ServiceNow API password (for callbacks)
+  SERVICENOW_CLIENT_ID        - OAuth 2.0 client ID (for callbacks)
+  SERVICENOW_CLIENT_SECRET    - OAuth 2.0 client secret (for callbacks)
 """
 
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
 
@@ -24,6 +26,9 @@ log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 DEVIN_API = "https://api.devin.ai"
+
+# Module-level token cache (persists within a single Lambda invocation)
+_snow_token_cache = {"access_token": None, "expires_at": 0}
 
 PRIORITY_MAP = {"1": "critical", "2": "high", "3": "medium", "4": "low", "5": "low"}
 
@@ -139,46 +144,117 @@ def _create_devin_session(prompt):
     return {"session_id": data.get("session_id"), "url": data.get("url")}
 
 
-def _post_servicenow_work_note(sys_id, message):
+def _get_snow_oauth_token(instance_url, client_id, client_secret):
+    """Acquire an OAuth 2.0 access token from ServiceNow using client credentials.
+
+    Caches the token in module-level state and reuses it until 60 s before
+    expiry.  Callers that receive a 401 should call _invalidate_snow_token()
+    and retry.
+    """
+    now = time.time()
+    if _snow_token_cache["access_token"] and now < _snow_token_cache["expires_at"]:
+        return _snow_token_cache["access_token"]
+
+    token_url = f"{instance_url.rstrip('/')}/oauth_token.do"
+    form_data = urllib_parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }).encode()
+
+    req = urllib_request.Request(
+        token_url,
+        data=form_data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=15) as resp:
+            body = json.loads(resp.read().decode())
+    except (HTTPError, URLError) as exc:
+        log.error("OAuth token request failed: %s", exc)
+        raise
+
+    access_token = body["access_token"]
+    expires_in = int(body.get("expires_in", 1800))
+    _snow_token_cache["access_token"] = access_token
+    _snow_token_cache["expires_at"] = now + expires_in - 60
+    log.info("Acquired ServiceNow OAuth token (expires_in=%d s)", expires_in)
+    return access_token
+
+
+def _invalidate_snow_token():
+    _snow_token_cache["access_token"] = None
+    _snow_token_cache["expires_at"] = 0
+
+
+def _snow_api_call(instance_url, client_id, client_secret, method, path, body=None):
+    """Make an authenticated SNOW API call with automatic 401 retry.
+
+    Returns (status, data).  On OAuth token failure returns (0, error_msg)
+    so callers never see an unhandled exception from a non-critical callback.
+    """
+    url = f"{instance_url.rstrip('/')}{path}"
+
+    for attempt in range(2):
+        try:
+            token = _get_snow_oauth_token(instance_url, client_id, client_secret)
+        except Exception as exc:
+            log.error("Failed to acquire SNOW OAuth token: %s", exc)
+            return 0, str(exc)
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+        status, data = _http_request(url, method, headers, body)
+        if status == 401 and attempt == 0:
+            log.warning("SNOW API returned 401 — refreshing OAuth token and retrying")
+            _invalidate_snow_token()
+            continue
+        return status, data
+
+    return status, data
+
+
+def _snow_credentials():
+    """Return (instance_url, client_id, client_secret) or None if not configured."""
     instance_url = os.environ.get("SERVICENOW_INSTANCE_URL", "")
-    username = os.environ.get("SERVICENOW_USERNAME", "")
-    password = os.environ.get("SERVICENOW_PASSWORD", "")
-    if not all([instance_url, username, password]):
+    client_id = os.environ.get("SERVICENOW_CLIENT_ID", "")
+    client_secret = os.environ.get("SERVICENOW_CLIENT_SECRET", "")
+    if not all([instance_url, client_id, client_secret]):
+        return None
+    return instance_url, client_id, client_secret
+
+
+def _post_servicenow_work_note(sys_id, message):
+    creds = _snow_credentials()
+    if not creds:
         log.info("ServiceNow callback credentials not configured — skipping")
         return
 
-    import base64
-    url = f"{instance_url.rstrip('/')}/api/now/table/incident/{sys_id}"
-    auth = base64.b64encode(f"{username}:{password}".encode()).decode()
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": f"Basic {auth}",
-    }
+    instance_url, client_id, client_secret = creds
+    path = f"/api/now/table/incident/{sys_id}"
 
-    status, data = _http_request(url, "PATCH", headers, {"work_notes": message})
-    if status >= 300:
+    status, data = _snow_api_call(
+        instance_url, client_id, client_secret, "PATCH", path, {"work_notes": message}
+    )
+    if status == 0:
+        log.error("ServiceNow callback skipped — OAuth token failure: %s", data)
+    elif status >= 300:
         log.error("ServiceNow callback failed: %d %s", status, data)
     else:
         log.info("Posted work note to ServiceNow %s", sys_id)
 
 
 def _resolve_servicenow_incident(sys_id, pr_url, summary, session_url):
-    instance_url = os.environ.get("SERVICENOW_INSTANCE_URL", "")
-    username = os.environ.get("SERVICENOW_USERNAME", "")
-    password = os.environ.get("SERVICENOW_PASSWORD", "")
-    if not all([instance_url, username, password]):
+    creds = _snow_credentials()
+    if not creds:
         log.info("ServiceNow callback credentials not configured — skipping resolve")
         return
 
-    import base64
-    url = f"{instance_url.rstrip('/')}/api/now/table/incident/{sys_id}"
-    auth = base64.b64encode(f"{username}:{password}".encode()).decode()
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": f"Basic {auth}",
-    }
+    instance_url, client_id, client_secret = creds
+    path = f"/api/now/table/incident/{sys_id}"
 
     work_note = f"Devin AI Remediation Complete\nPR: {pr_url}\nSummary: {summary}"
     if session_url:
@@ -191,8 +267,12 @@ def _resolve_servicenow_incident(sys_id, pr_url, summary, session_url):
         "close_notes": f"Auto-resolved by Devin AI. PR: {pr_url}",
     }
 
-    status, data = _http_request(url, "PATCH", headers, body)
-    if status >= 300:
+    status, data = _snow_api_call(
+        instance_url, client_id, client_secret, "PATCH", path, body
+    )
+    if status == 0:
+        log.error("ServiceNow resolve callback skipped — OAuth token failure: %s", data)
+    elif status >= 300:
         log.error("ServiceNow resolve callback failed: %d %s", status, data)
 
 

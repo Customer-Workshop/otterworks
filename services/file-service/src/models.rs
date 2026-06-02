@@ -198,6 +198,9 @@ pub struct InitiateUploadResponse {
 pub struct ConfirmUploadRequest {
     pub s3_key: String,
     pub size_bytes: u64,
+    pub file_name: String,
+    pub content_type: Option<String>,
+    pub folder_id: Option<Uuid>,
 }
 
 // ── Activity ───────────────────────────────────────────────────────────

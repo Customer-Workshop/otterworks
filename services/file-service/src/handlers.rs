@@ -273,21 +273,23 @@ pub async fn confirm_upload(
         ));
     }
 
-    let file_name = body
-        .s3_key
-        .rsplit('/')
-        .next()
-        .unwrap_or("unnamed")
-        .to_string();
+    let file_name = body.file_name.trim();
+    if file_name.is_empty() {
+        return Err(ServiceError::BadRequest("file_name cannot be empty".into()));
+    }
+    let content_type = body
+        .content_type
+        .as_deref()
+        .unwrap_or("application/octet-stream");
 
     let now = Utc::now();
     let file_meta = FileMetadata {
         id: file_id,
-        name: file_name,
-        mime_type: "application/octet-stream".into(),
+        name: file_name.to_string(),
+        mime_type: content_type.to_string(),
         size_bytes: body.size_bytes,
         s3_key: body.s3_key.clone(),
-        folder_id: None,
+        folder_id: body.folder_id,
         owner_id,
         version: 1,
         is_trashed: false,
@@ -311,7 +313,7 @@ pub async fn confirm_upload(
         .file_uploaded(
             &file_id,
             &owner_id,
-            None,
+            body.folder_id.as_ref(),
             &file_meta.name,
             &file_meta.mime_type,
             file_meta.size_bytes,

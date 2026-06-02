@@ -2,8 +2,8 @@ use chrono::Utc;
 use uuid::Uuid;
 
 // Pull in the library crate so we can use its public types.
-use file_service::models::*;
 use file_service::errors::{ErrorResponse, ServiceError};
+use file_service::models::*;
 
 // ── SharePermission ────────────────────────────────────────────────────
 
@@ -187,7 +187,8 @@ fn health_response_serialization() {
 
 #[test]
 fn create_folder_request_deserialization() {
-    let json = r#"{"name":"Docs","parent_id":null,"owner_id":"550e8400-e29b-41d4-a716-446655440000"}"#;
+    let json =
+        r#"{"name":"Docs","parent_id":null,"owner_id":"550e8400-e29b-41d4-a716-446655440000"}"#;
     let req: CreateFolderRequest = serde_json::from_str(json).unwrap();
     assert_eq!(req.name, "Docs");
     assert!(req.parent_id.is_none());
@@ -298,10 +299,26 @@ async fn service_error_http_status_codes() {
     use actix_web::ResponseError;
 
     let cases: Vec<(ServiceError, u16, &str)> = vec![
-        (ServiceError::FileNotFound("x".into()), 404, "file_not_found"),
-        (ServiceError::FolderNotFound("x".into()), 404, "folder_not_found"),
-        (ServiceError::VersionNotFound("x".into()), 404, "version_not_found"),
-        (ServiceError::ShareNotFound("x".into()), 404, "share_not_found"),
+        (
+            ServiceError::FileNotFound("x".into()),
+            404,
+            "file_not_found",
+        ),
+        (
+            ServiceError::FolderNotFound("x".into()),
+            404,
+            "folder_not_found",
+        ),
+        (
+            ServiceError::VersionNotFound("x".into()),
+            404,
+            "version_not_found",
+        ),
+        (
+            ServiceError::ShareNotFound("x".into()),
+            404,
+            "share_not_found",
+        ),
         (ServiceError::BadRequest("x".into()), 400, "bad_request"),
         (
             ServiceError::FileTooLarge {

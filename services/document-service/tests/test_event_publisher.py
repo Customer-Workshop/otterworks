@@ -2,8 +2,8 @@
 
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, patch, patch as _patch
-from uuid import UUID, uuid4
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -83,7 +83,10 @@ class TestEventPublisher:
         import asyncio
 
         # Patch asyncio.to_thread to raise an exception
-        with patch("app.services.event_publisher.asyncio.to_thread", side_effect=Exception("SNS down")):
+        with patch(
+            "app.services.event_publisher.asyncio.to_thread",
+            side_effect=Exception("SNS down"),
+        ):
             # Should not raise
             asyncio.get_event_loop().run_until_complete(
                 pub.publish("document_deleted", {"id": "abc"})

@@ -1,5 +1,5 @@
 import { AwarenessService } from '../services/awareness';
-import { PresenceHandler, type PresenceInfo } from '../handlers/presence';
+import { PresenceHandler } from '../handlers/presence';
 
 const mockLogger = {
   info: jest.fn(),

@@ -70,10 +70,7 @@ describe('createAuthMiddleware', () => {
   });
 
   it('should authenticate with token from authorization header', () => {
-    const token = jwt.sign(
-      { sub: 'user-2', email: 'bob@test.com' },
-      JWT_SECRET,
-    );
+    const token = jwt.sign({ sub: 'user-2', email: 'bob@test.com' }, JWT_SECRET);
     const socket = createMockSocket({
       handshake: {
         auth: {},
@@ -104,11 +101,9 @@ describe('createAuthMiddleware', () => {
   });
 
   it('should reject with expired token', () => {
-    const token = jwt.sign(
-      { sub: 'user-1', email: 'test@test.com' },
-      JWT_SECRET,
-      { expiresIn: '-1h' },
-    );
+    const token = jwt.sign({ sub: 'user-1', email: 'test@test.com' }, JWT_SECRET, {
+      expiresIn: '-1h',
+    });
     const socket = createMockSocket({
       handshake: {
         auth: { token },
@@ -124,10 +119,7 @@ describe('createAuthMiddleware', () => {
   });
 
   it('should use display_name when name is absent', () => {
-    const token = jwt.sign(
-      { sub: 'user-3', display_name: 'Charlie Brown' },
-      JWT_SECRET,
-    );
+    const token = jwt.sign({ sub: 'user-3', display_name: 'Charlie Brown' }, JWT_SECRET);
     const socket = createMockSocket({
       handshake: {
         auth: { token },

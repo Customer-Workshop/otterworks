@@ -251,6 +251,7 @@ pub async fn confirm_upload(
     req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
+    config: web::Data<AppConfig>,
     path: web::Path<String>,
     body: web::Json<ConfirmUploadRequest>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -266,11 +267,18 @@ pub async fn confirm_upload(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    let expected_prefix = format!("files/{}/{}", owner_id, file_id);
-    if !body.s3_key.starts_with(&expected_prefix) {
+    let expected_key = format!("files/{}/{}", owner_id, file_id);
+    if body.s3_key != expected_key {
         return Err(ServiceError::Forbidden(
             "s3_key does not match file_id/owner".into(),
         ));
+    }
+
+    if body.size_bytes > config.server.max_upload_bytes {
+        return Err(ServiceError::FileTooLarge {
+            max_bytes: config.server.max_upload_bytes,
+            actual_bytes: body.size_bytes,
+        });
     }
 
     let file_name = body.file_name.trim();

@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -62,12 +62,14 @@ class TestEventPublisher:
         pub = EventPublisher()
         pub._client = mock_client
 
-        mock_asyncio.to_thread = MagicMock()
+        mock_asyncio.to_thread = AsyncMock()
 
         import asyncio
         asyncio.get_event_loop().run_until_complete(
             pub.publish("document_updated", {"title": "Test"})
         )
+
+        mock_asyncio.to_thread.assert_called_once()
 
     @patch("app.services.event_publisher.settings")
     def test_publish_handles_exception_gracefully(self, mock_settings):

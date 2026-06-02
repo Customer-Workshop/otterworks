@@ -1,6 +1,8 @@
 use file_service::config::{AppConfig, AwsConfig, ServerConfig, SnsConfig};
+use serial_test::serial;
 
 #[test]
+#[serial]
 fn server_config_defaults() {
     // Clear env vars that might override defaults
     std::env::remove_var("PORT");
@@ -12,6 +14,7 @@ fn server_config_defaults() {
 }
 
 #[test]
+#[serial]
 fn server_config_from_env() {
     std::env::set_var("PORT", "9999");
     std::env::set_var("MAX_UPLOAD_BYTES", "50000");
@@ -26,6 +29,7 @@ fn server_config_from_env() {
 }
 
 #[test]
+#[serial]
 fn server_config_invalid_port_uses_default() {
     std::env::set_var("PORT", "not-a-number");
     let cfg = ServerConfig::from_env();
@@ -34,6 +38,7 @@ fn server_config_invalid_port_uses_default() {
 }
 
 #[test]
+#[serial]
 fn aws_config_defaults() {
     std::env::remove_var("AWS_REGION");
     std::env::remove_var("AWS_ENDPOINT_URL");
@@ -54,6 +59,7 @@ fn aws_config_defaults() {
 }
 
 #[test]
+#[serial]
 fn aws_config_custom_endpoint() {
     std::env::set_var("AWS_ENDPOINT_URL", "http://localhost:4566");
     let cfg = AwsConfig::from_env();
@@ -62,6 +68,7 @@ fn aws_config_custom_endpoint() {
 }
 
 #[test]
+#[serial]
 fn sns_config_defaults() {
     std::env::remove_var("SNS_TOPIC_ARN");
     let cfg = SnsConfig::from_env();
@@ -69,6 +76,7 @@ fn sns_config_defaults() {
 }
 
 #[test]
+#[serial]
 fn sns_config_with_arn() {
     std::env::set_var("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456:my-topic");
     let cfg = SnsConfig::from_env();
@@ -80,6 +88,7 @@ fn sns_config_with_arn() {
 }
 
 #[test]
+#[serial]
 fn app_config_from_env_builds_all_sections() {
     // Just verify it doesn't panic
     std::env::remove_var("PORT");

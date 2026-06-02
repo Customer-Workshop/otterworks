@@ -1,6 +1,9 @@
 package com.otterworks.report.config;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,8 +53,13 @@ public class AppConfig {
         connectionManager.setMaxTotal(50);
         connectionManager.setDefaultMaxPerRoute(20);
 
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setResponseTimeout(readTimeout, TimeUnit.MILLISECONDS)
+                .build();
+
         HttpClient httpClient = HttpClients.custom()
                 .setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(requestConfig)
                 .build();
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);

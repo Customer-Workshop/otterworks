@@ -140,12 +140,16 @@ def main():
         dest_key = "%s/%s/%s" % (quarantine_prefix, ds, source_key)
 
         try:
+            copy_kwargs = {}
+            if expected_bucket_owner:
+                copy_kwargs["ExpectedBucketOwner"] = expected_bucket_owner
+                copy_kwargs["ExpectedSourceBucketOwner"] = expected_bucket_owner
             s3_client.copy_object(
                 Bucket=quarantine_bucket,
                 Key=dest_key,
                 CopySource={"Bucket": file_storage_bucket, "Key": source_key},
                 MetadataDirective="COPY",
-                **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
+                **copy_kwargs,
             )
             s3_client.delete_object(
                 Bucket=file_storage_bucket,

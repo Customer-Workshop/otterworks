@@ -56,6 +56,9 @@ RSpec.describe Api::V1::Admin::ServicenowController, type: :request do
       end
 
       it 'does not call DevinSessionService or ServicenowCallbackService' do
+        expect(DevinSessionService).not_to receive(:create_session)
+        expect(ServicenowCallbackService).not_to receive(:post_work_note)
+
         post '/api/v1/admin/servicenow/ingest', params: valid_payload, headers: secret_header, as: :json
 
         expect(response).to have_http_status(:created)

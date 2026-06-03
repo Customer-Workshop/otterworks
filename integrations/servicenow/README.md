@@ -1,85 +1,86 @@
-# ServiceNow → Devin AI Automated Bug Remediation
+# ServiceNow → Devin Automations Webhook Integration
 
-Receives incident webhooks from ServiceNow and auto-creates [Devin](https://devin.ai) sessions to investigate and fix reported bugs in the OtterWorks platform.
+Connects ServiceNow incident management to Devin AI for automated bug remediation using **Devin Automations webhooks** — no custom middleware (Lambda, Flask, or Rails session-creation code) required.
 
 ## Architecture
 
 ```
-┌─────────────┐    Business Rule    ┌──────────────────┐    Devin v3 API    ┌───────────┐
-│  ServiceNow │ ──── webhook ─────▶ │  Lambda + APIGW  │ ─── create ──────▶ │  Devin AI │
-│  Incident   │                     │  (this stack)    │                    │  Session  │
-│             │ ◀── work note ───── │                  │                    │           │
-└─────────────┘    callback         └──────────────────┘                    └───────────┘
+┌─────────────┐  Business Rule   ┌─────────────────────────┐  auto-start   ┌────────────────┐
+│  ServiceNow │ ─── webhook ───▶ │  Devin Automations      │ ───────────▶ │  Devin Session │
+│  Incident   │                  │  (managed by Devin)     │              │  (+ playbook)  │
+│             │ ◀── work note ─  │  payload → prompt ctx   │              │                │
+└─────────────┘  (from session)  └─────────────────────────┘              └────────────────┘
 ```
 
 **Flow:**
 1. User creates a Software/Critical incident in ServiceNow
-2. Business Rule fires → POSTs incident data to this webhook
-3. Lambda maps ServiceNow fields to a Devin prompt and creates a session
-4. Devin investigates the bug, identifies root cause, opens a PR
-5. (Optional) Webhook posts work notes back to ServiceNow with session URL and PR link
+2. Business Rule fires → POSTs incident JSON directly to the Devin Automation webhook URL
+3. Devin Automations starts a session with the ServiceNow payload as context
+4. The session follows the `ServiceNow Incident Auto-Remediation` playbook
+5. Devin investigates the bug, opens a PR, and posts a work note back to ServiceNow
+
+### What changed from the previous (direct API) approach
+
+| Before (Direct Devin API) | After (Automations Webhook) |
+|---|---|
+| ServiceNow → Lambda/Flask → `POST /v3/.../sessions` | ServiceNow → Devin Automation webhook (direct) |
+| Custom Lambda + API Gateway + CloudFormation | Zero infra — Devin-managed webhook endpoint |
+| `DEVIN_API_KEY` / `DEVIN_ORG_ID` in middleware | No API keys needed in your code |
+| Custom prompt-building code (Python + Ruby) | Prompt template in Devin Automation UI + playbook |
+| Sidekiq poller every 60s for session status | Playbook-driven callbacks from within the session |
+| ~800 lines of webhook/session code | Automation config + playbook |
+
+## Setup
+
+### 1. Create the Devin Playbook
+
+The playbook `ServiceNow Incident Auto-Remediation (Webhook)` should already exist in **Devin Settings → Playbooks**. If not, create it following the template in [PLAYBOOK.md](./PLAYBOOK.md).
+
+### 2. Create the Devin Automation
+
+See [AUTOMATION_SETUP.md](./AUTOMATION_SETUP.md) for step-by-step instructions to create the webhook automation in the Devin UI.
+
+### 3. Configure ServiceNow
+
+See [SERVICENOW_SETUP.md](./SERVICENOW_SETUP.md) for configuring the Business Rule and Outbound REST Message.
+
+**Key change:** The REST Message endpoint is now the Devin Automation webhook URL (from step 2) instead of a Lambda/API Gateway URL.
+
+### 4. Test
+
+```bash
+# Simulate a ServiceNow webhook hitting the Devin Automation:
+python3 test_webhook_e2e.py
+```
+
+Or create an incident in ServiceNow with Category=Software and Priority=1-Critical.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `template.yaml` | CloudFormation template — Lambda + API Gateway + IAM |
-| `lambda_handler.py` | Lambda function code — webhook receiver + Devin session creation |
-| `deploy.sh` | One-command deployment script |
-| `webhook_receiver.py` | Standalone Flask version (for local dev / Docker) |
-| `Dockerfile` | Container build for the Flask version |
-| `requirements.txt` | Python dependencies for the Flask version |
+| `AUTOMATION_SETUP.md` | Step-by-step Devin Automation creation guide |
+| `SERVICENOW_SETUP.md` | ServiceNow configuration (Business Rule + REST Message) |
+| `PLAYBOOK.md` | Devin playbook content for the remediation session |
+| `test_webhook_e2e.py` | E2E test: creates a SNOW incident → verifies work note callback |
+| `test_lambda_local.py` | Legacy tests for the old Lambda handler (archived) |
 
-## Quick Start
+## Legacy Files (Archived)
 
-### 1. Deploy to AWS
+The following files are from the previous direct-API approach and are no longer needed for the Automations webhook flow. They are kept for reference:
 
-```bash
-cd integrations/servicenow
+| File | Status |
+|------|--------|
+| `lambda_handler.py` | **Archived** — replaced by Devin Automation webhook |
+| `webhook_receiver.py` | **Archived** — replaced by Devin Automation webhook |
+| `template.yaml` | **Archived** — CloudFormation stack no longer needed |
+| `deploy.sh` | **Archived** — no deployment needed |
+| `Dockerfile` | **Archived** — no container needed |
+| `requirements.txt` | Used by `test_webhook_e2e.py` |
 
-# Interactive (prompts for secrets):
-./deploy.sh
+### Teardown (old Lambda stack)
 
-# Non-interactive:
-./deploy.sh \
-  --devin-api-key "YOUR_DEVIN_API_KEY" \
-  --devin-org-id "YOUR_DEVIN_ORG_ID" \
-  --snow-secret "your-shared-secret" \
-  --snow-instance "https://yourinstance.service-now.com" \
-  --snow-client-id "YOUR_SNOW_CLIENT_ID" \
-  --snow-client-secret "YOUR_SNOW_CLIENT_SECRET"
-```
-
-The script outputs the API Gateway URL — copy it for the next step.
-
-### 2. Configure ServiceNow
-
-See [SERVICENOW_SETUP.md](./SERVICENOW_SETUP.md) for step-by-step instructions.
-
-### 3. Test
-
-Create an incident in ServiceNow with Category=Software and Priority=1-Critical. The Business Rule fires the webhook, and a Devin session should appear within seconds.
-
-## Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Health check |
-| `POST` | `/api/v1/admin/servicenow/ingest` | Receive ServiceNow incident webhook |
-| `POST` | `/api/v1/admin/servicenow/resolve` | Resolve incident + update ServiceNow |
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DEVIN_API_KEY` | Yes | Devin v3 API bearer token |
-| `DEVIN_ORG_ID` | Yes | Devin organization ID |
-| `SERVICENOW_WEBHOOK_SECRET` | Recommended | Shared secret for `X-ServiceNow-Secret` header |
-| `SERVICENOW_INSTANCE_URL` | Optional | Instance URL for callbacks |
-| `SERVICENOW_CLIENT_ID` | Optional | OAuth 2.0 client ID for callbacks |
-| `SERVICENOW_CLIENT_SECRET` | Optional | OAuth 2.0 client secret for callbacks |
-
-## Teardown
+If the old Lambda stack is still deployed:
 
 ```bash
 aws cloudformation delete-stack --stack-name otterworks-servicenow-webhook --region us-east-1

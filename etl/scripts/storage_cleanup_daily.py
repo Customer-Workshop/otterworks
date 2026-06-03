@@ -54,7 +54,10 @@ def main():
     all_objects = []
     paginator = s3_client.get_paginator("list_objects_v2")
 
-    for page in paginator.paginate(Bucket=file_storage_bucket, Prefix=files_prefix):
+    paginate_kwargs = {"Bucket": file_storage_bucket, "Prefix": files_prefix}
+    if expected_bucket_owner:
+        paginate_kwargs["ExpectedBucketOwner"] = expected_bucket_owner
+    for page in paginator.paginate(**paginate_kwargs):
         for obj in page.get("Contents", []):
             all_objects.append({
                 "key": obj["Key"],

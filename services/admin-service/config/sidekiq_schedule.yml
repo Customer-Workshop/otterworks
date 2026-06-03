@@ -1,15 +1,7 @@
-# Devin session polling is no longer needed — session lifecycle is managed
-# by the Devin Automations playbook (work notes + resolution posted from
-# within the session) and DevinCallbackController (fallback).
-#
-# The job class is a no-op placeholder. This schedule entry is kept
-# commented out for reference and can be fully removed.
-#
-# devin_session_poll:
-#   every: '60s'
-#   class: DevinSessionPollJob
-#   queue: default
-#   description: 'Poll Devin API for session status updates on active incidents'
-
-# Empty hash so YAML.load_file returns {} instead of nil
-{}
+# Polls Devin API for session status on non-ServiceNow incidents.
+# ServiceNow incidents are handled by the Devin Automations playbook.
+devin_session_poll:
+  every: '60s'
+  class: DevinSessionPollJob
+  queue: default
+  description: 'Poll Devin API for session status updates on active incidents (excludes ServiceNow)'

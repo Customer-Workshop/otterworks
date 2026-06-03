@@ -69,6 +69,19 @@ export class AuthService {
     return null;
   }
 
+  private generateMockToken(): string {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({
+      sub: 'a0000000-0000-0000-0000-000000000001',
+      user_id: 'a0000000-0000-0000-0000-000000000001',
+      role: 'admin',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    }));
+    const signature = btoa('mock-signature');
+    return `${header}.${payload}.${signature}`;
+  }
+
   private mockLogin(email: string, password: string): Observable<AuthUser> {
     if (password.length < 1) {
       return throwError(() => new Error('Invalid credentials'));
@@ -78,7 +91,7 @@ export class AuthService {
       email,
       displayName: 'Admin User',
       role: 'admin',
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.hD5dwgrPNRTzbXa6lbA83Aru7BvQVIQc0rGVySkF1fA',
+      token: this.generateMockToken(),
     };
     return of(user).pipe(delay(800));
   }

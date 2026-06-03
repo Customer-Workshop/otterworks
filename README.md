@@ -129,7 +129,8 @@ GitHub Actions workflows in `.github/workflows/`:
 |----------|---------|-------------|
 | `ci.yml` | Push / PR to `main` | Lint, test, and build changed services (change-detection via path filters) |
 | `docker-build.yml` | Push to `main` / tags | Build and push Docker images to ECR |
-| `security-scan.yml` | Push / PR | SAST, dependency audit, and container scanning |
+| `security-scan.yml` | Push / PR | Trivy filesystem scan, Gitleaks secret detection, Semgrep SAST |
+| `sast-auto-remediate.yml` | PR / check_run | Event-driven Trivy + SonarCloud quality-gate scan with auto-remediation via Devin |
 
 ## Makefile Commands
 

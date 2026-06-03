@@ -4,8 +4,11 @@
 
 OtterWorks uses an event-driven SAST pipeline where security findings detected
 in pull requests are automatically routed to Devin for remediation. The pipeline
-runs without manual intervention for straightforward dependency upgrades and
-escalates to human reviewers when automated fixes are insufficient.
+supports **two scanner paths** — Trivy (dependency CVEs) and SonarCloud (code
+quality gate) — both feeding into the same Devin v3 API for autonomous fix
+sessions. The pipeline runs without manual intervention for straightforward
+fixes and escalates to human reviewers when automated remediation is
+insufficient.
 
 ## Flow
 
@@ -13,70 +16,127 @@ escalates to human reviewers when automated fixes are insufficient.
 Developer opens PR against main
         │
         ▼
-GitHub Actions: sast-auto-remediate.yml
-        │
-        ├── Is PR author devin-ai-integration[bot]?
-        │       YES → skip (prevent infinite loop)
-        │       NO  → continue
-        │
-        ▼
-Trivy filesystem scan (HIGH + CRITICAL severity)
-        │
-        ├── Findings = 0 → pass, no action
-        │
-        ├── Findings > 0, attempts < MAX_FIX_ATTEMPTS
-        │       │
-        │       ├── Post findings summary as PR comment
-        │       └── Call Devin API with:
-        │               • branch ref
-        │               • structured findings summary
-        │               • remediation instructions
-        │                       │
-        │                       ▼
-        │               Devin checks out branch,
-        │               upgrades dependencies,
-        │               runs service tests,
-        │               pushes fix commit
-        │                       │
-        │                       ▼
-        │               Push triggers re-scan (synchronize event)
-        │               → loop back to top
-        │
-        └── Findings > 0, attempts >= MAX_FIX_ATTEMPTS
-                │
-                ├── Open GitHub Issue with remaining findings
-                └── Comment on PR: escalated to human review
+┌───────────────────────────────────────────────────────┐
+│                TWO PARALLEL SCAN PATHS                │
+├─────────────────────┬─────────────────────────────────┤
+│                     │                                 │
+│  PATH 1: Trivy      │  PATH 2: SonarCloud             │
+│  (pull_request)      │  (check_run)                    │
+│                     │                                 │
+│  ├ Is PR author     │  ├ Is check_run from             │
+│  │ devin-bot?       │  │ sonarqubecloud app?           │
+│  │  YES → skip      │  │  NO → skip                   │
+│  │  NO  → scan      │  │  YES → continue               │
+│  │                  │  │                                │
+│  ├ Trivy fs scan    │  ├ Was quality gate FAILED?       │
+│  │ HIGH+CRITICAL    │  │  NO → skip                   │
+│  │                  │  │  YES → continue               │
+│  ├ Findings = 0?    │  │                                │
+│  │  YES → pass      │  ├ Already attempted fix?         │
+│  │                  │  │  YES → skip (one-time)        │
+│  ├ attempts < MAX?  │  │                                │
+│  │  NO → escalate   │  │                                │
+│  │                  │  │                                │
+│  └─── Devin API ────┴──┴─── Devin v3 API ──────────────┤
+│                                                       │
+│       Devin checks out branch,                        │
+│       fixes vulnerabilities,                          │
+│       runs service tests,                             │
+│       pushes fix commit                               │
+│              │                                        │
+│              ▼                                        │
+│       Push triggers re-scan                           │
+│       (Trivy: synchronize event)                      │
+│       (SonarCloud: new check_run)                     │
+│       → closed-loop verification                      │
+└───────────────────────────────────────────────────────┘
 ```
+
+## Scanner Paths
+
+### Path 1: Trivy (Dependency CVEs)
+
+Triggered by `pull_request` events (`opened`, `synchronize`). Trivy scans the
+full filesystem for known dependency vulnerabilities (HIGH and CRITICAL
+severity). Results are parsed into a structured findings summary and included
+in the Devin prompt.
+
+- **Re-scan loop:** Devin's fix push fires a `synchronize` event → Trivy
+  re-scans automatically.
+- **Escalation:** After `MAX_FIX_ATTEMPTS` (default: 2) fix cycles, a GitHub
+  Issue is opened for manual review.
+
+### Path 2: SonarCloud (Code Quality Gate)
+
+Triggered by `check_run` events when the SonarCloud GitHub App completes its
+analysis. The workflow filters for:
+
+1. `github.event.check_run.app.slug == 'sonarqubecloud'`
+2. `github.event.check_run.conclusion == 'failure'` (quality gate failed)
+
+This path is a **one-time remediation attempt** — if Devin has already posted
+a fix comment on the PR, no additional sessions are created.
+
+- **Re-scan loop:** Devin's fix push triggers a new SonarCloud analysis via
+  the GitHub App → if quality gate still fails, no new session (one-time).
+- **Dashboard link:** The Devin prompt includes the SonarCloud dashboard URL
+  for the specific PR.
 
 ## Bot-Loop Prevention
 
-The workflow checks `github.event.pull_request.user.login` against
-`devin-ai-integration[bot]`. PRs opened by Devin are never scanned by this
-workflow. For Devin's *commits* on human-authored PRs, the `synchronize` event
-still fires but the author check passes (it is the human's PR), so the re-scan
-runs — which is the desired closed-loop behavior.
+The workflow checks `github.event.pull_request.user.login` (Trivy path) and
+`PR_AUTHOR` (SonarCloud path) against `devin-ai-integration[bot]`. PRs opened
+by Devin are never scanned by this workflow. For Devin's *commits* on
+human-authored PRs, the `synchronize` event still fires but the author check
+passes (it is the human's PR), so the re-scan runs — which is the desired
+closed-loop behavior.
 
-A secondary guard counts how many commits Devin has already made on the PR. If
-that count reaches `MAX_FIX_ATTEMPTS` (default: 2), the pipeline stops
-triggering Devin and escalates instead.
+**Trivy path:** A secondary guard counts Devin's commits on the PR. If that
+count reaches `MAX_FIX_ATTEMPTS` (default: 2), the pipeline stops triggering
+Devin and escalates instead.
+
+**SonarCloud path:** Concurrency group `sast-fix-{pr_number}` ensures only one
+remediation session per PR. A comment-based check prevents re-triggering after
+the first attempt.
 
 ## Escalation Policy
 
-When automated remediation is exhausted:
+When automated remediation is exhausted (Trivy path only):
 
 1. A GitHub Issue is created with the `security` and `needs-human-review` labels
 2. The issue body contains the full findings summary
 3. A PR comment notifies the developer that manual review is required
 
+## Devin API
+
+Both paths use the **Devin v3 API** endpoint:
+
+```
+POST https://api.devin.ai/v3/organizations/{ORG_ID}/sessions
+```
+
+Request body includes:
+- `prompt`: Scanner-specific remediation instructions + findings context
+- `title`: Human-readable session title
+- `repos`: Target repository
+- `create_as_user_id`: Service user impersonation
+- `tags`: Scanner type, security category
+
+Required GitHub Actions secrets:
+- `DEVIN_API_KEY` — Service user API token
+- `DEVIN_ORG_ID` — Organization ID
+- `DEVIN_CREATE_AS_USER_ID` — User ID for session ownership
+
 ## Scan Configuration
 
 | Setting | Value | Source |
 |---------|-------|--------|
-| Scanner | Trivy | `.github/workflows/sast-auto-remediate.yml` |
-| Severity filter | CRITICAL, HIGH | `SEVERITY_THRESHOLD` env var |
-| Excluded dirs | `services/report-service` | Legacy Java 8 service (separate upgrade track) |
-| Suppressions | `.trivyignore` | Acknowledged CVEs with documented justification |
-| Trivy config | `security/scanning/trivy-config.yaml` | Severity and format settings |
+| Trivy scanner | Trivy v0.62.2 | `.github/workflows/sast-auto-remediate.yml` |
+| Trivy severity filter | CRITICAL, HIGH | `SEVERITY_THRESHOLD` env var |
+| Trivy excluded dirs | `services/report-service` | Legacy Java 8 service (separate upgrade track) |
+| Trivy suppressions | `.trivyignore` | Acknowledged CVEs with documented justification |
+| SonarCloud project key | `Cognition-Partner-Workshops_otterworks` | `sonar-project.properties` |
+| SonarCloud org | `cognition-partner-workshops` | `sonar-project.properties` |
 
 ## Services Covered
 
@@ -94,18 +154,11 @@ When automated remediation is exhausted:
 | audit-service | C# 12 | `AuditService.csproj` | NuGet packages |
 | report-service | Java 8 | `pom.xml` | **Excluded** (legacy upgrade track) |
 
-## Extending to Snyk or SonarQube
+## Extending to Snyk
 
-The pipeline is scanner-agnostic. To swap or add scanners:
+The pipeline is scanner-agnostic. To add Snyk as a third scanner path:
 
-**Snyk:** Replace the Trivy step with `snyk/actions/node@master` (or the
-appropriate ecosystem action). Parse `snyk test --json` output for `severity`
-fields. The Devin prompt structure stays the same.
-
-**SonarQube:** Add a `sonarqube-scan` step that runs
-`sonar-scanner -Dsonar.qualitygate.wait=true`. Parse the
-`/api/qualitygates/project_status` response. Route `ERROR` status findings to
-Devin with the SonarQube issue keys and descriptions.
-
-In either case, the Devin API call, bot-loop prevention, and escalation logic
-remain unchanged.
+Replace the Trivy step with `snyk/actions/node@master` (or the appropriate
+ecosystem action). Parse `snyk test --json` output for `severity` fields. The
+Devin prompt structure, bot-loop prevention, and escalation logic remain
+unchanged.

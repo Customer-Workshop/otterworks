@@ -2,8 +2,12 @@ module Api
   module V1
     module Admin
       # Receives inbound webhook payloads from ServiceNow Business Rules.
-      # Creates an OtterWorks Incident and auto-triggers a Devin session
-      # for AI-driven bug remediation.
+      #
+      # Creates an OtterWorks Incident record for tracking. Session creation
+      # is handled by the Devin Automation (webhook trigger) — the Business
+      # Rule POSTs directly to the Devin Automation endpoint, which starts a
+      # session with the playbook. This controller no longer calls the Devin
+      # API to create sessions.
       #
       # ServiceNow POST body shape (set up via Outbound REST Message):
       #   {
@@ -15,13 +19,7 @@ module Api
       #       "description":       "Users report...",
       #       "priority":          "1",
       #       "category":          "Software",
-      #       "subcategory":       "Operating System",
-      #       "assignment_group":  "Platform Engineering",
-      #       "assigned_to":       "Jane Doe",
-      #       "caller_id":         "John Smith",
-      #       "cmdb_ci":           "file-service",
-      #       "state":             "1",
-      #       "sys_created_on":    "2026-05-18 22:00:00"
+      #       ...
       #     }
       #   }
       class ServicenowController < ApplicationController
@@ -50,6 +48,10 @@ module Api
         }.freeze
 
         # POST /api/v1/admin/servicenow/ingest
+        #
+        # Creates a local Incident record for tracking. The Devin session is
+        # started separately by the Devin Automation webhook — this endpoint
+        # no longer calls the Devin API directly.
         def ingest
           snow = params[:incident]
           unless snow.is_a?(ActionController::Parameters) || snow.is_a?(Hash)
@@ -75,13 +77,12 @@ module Api
 
           affected_service = resolve_service(snow[:cmdb_ci].to_s, snow[:category].to_s, snow[:short_description].to_s)
           severity = PRIORITY_MAP.fetch(snow[:priority].to_s, 'medium')
-          auto_investigate = AdminSettingsService.auto_investigate_enabled?
 
           incident = Incident.create!(
             title: snow[:short_description].to_s.presence || "ServiceNow #{number}",
             description: build_description(snow),
             severity: severity,
-            status: auto_investigate ? 'investigating' : 'open',
+            status: 'open',
             affected_service: affected_service,
             reporter_id: nil,
             source: 'servicenow',
@@ -89,26 +90,6 @@ module Api
             servicenow_number: number,
             servicenow_instance_url: snow[:instance_url].to_s.presence
           )
-
-          session_result = nil
-          if auto_investigate
-            session_result = DevinSessionService.create_session(incident: incident)
-          else
-            Rails.logger.info("Auto-investigate disabled — skipping Devin session for ServiceNow incident #{number}")
-          end
-
-          if session_result
-            incident.update!(
-              devin_session_id: session_result[:session_id],
-              devin_session_url: session_result[:url],
-              devin_session_status: 'running'
-            )
-
-            ServicenowCallbackService.post_work_note(
-              incident: incident,
-              message: "Devin AI remediation session started.\nSession: #{session_result[:url]}"
-            )
-          end
 
           AuditLogger.log(
             action: 'incident.created_from_servicenow',
@@ -118,22 +99,20 @@ module Api
             changes_made: {
               servicenow_number: number,
               servicenow_sys_id: sys_id,
-              devin_session_created: session_result.present?
+              devin_automation: true
             }
           )
 
           IncidentEventPublisher.incident_created(incident, metadata: { servicenow_number: number })
-          IncidentEventPublisher.devin_session_started(incident) if session_result
 
           Rails.logger.info(
-            "Incident #{incident.id} created from ServiceNow #{number}, devin=#{session_result.present?}"
+            "Incident #{incident.id} created from ServiceNow #{number} (Devin Automation handles session)"
           )
 
           render json: {
             incident_id: incident.id,
             servicenow_number: number,
-            devin_session: session_result.present?,
-            devin_session_url: session_result&.dig(:url)
+            devin_automation: true
           }, status: :created
         end
 

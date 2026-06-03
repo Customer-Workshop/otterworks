@@ -35,10 +35,6 @@ RSpec.describe Api::V1::Admin::ServicenowController, type: :request do
     end
 
     context 'with valid payload' do
-      before do
-        allow(AdminSettingsService).to receive(:auto_investigate_enabled?).and_return(false)
-      end
-
       it 'creates an incident and returns 201' do
         expect {
           post '/api/v1/admin/servicenow/ingest', params: valid_payload, headers: secret_header, as: :json
@@ -48,6 +44,7 @@ RSpec.describe Api::V1::Admin::ServicenowController, type: :request do
         body = JSON.parse(response.body)
         expect(body['incident_id']).to be_present
         expect(body['servicenow_number']).to eq('INC0010042')
+        expect(body['devin_automation']).to be true
 
         incident = Incident.last
         expect(incident.source).to eq('servicenow')
@@ -55,24 +52,16 @@ RSpec.describe Api::V1::Admin::ServicenowController, type: :request do
         expect(incident.servicenow_number).to eq('INC0010042')
         expect(incident.severity).to eq('critical')
         expect(incident.affected_service).to eq('file-service')
+        expect(incident.status).to eq('open')
       end
 
-      it 'triggers a Devin session when auto-investigate is enabled' do
-        allow(AdminSettingsService).to receive(:auto_investigate_enabled?).and_return(true)
-        allow(DevinSessionService).to receive(:create_session).and_return(
-          { session_id: 'devin-123', url: 'https://app.devin.ai/sessions/devin-123' }
-        )
-        allow(ServicenowCallbackService).to receive(:post_work_note)
+      it 'does not call DevinSessionService or ServicenowCallbackService' do
+        expect(DevinSessionService).not_to receive(:create_session)
+        expect(ServicenowCallbackService).not_to receive(:post_work_note)
 
         post '/api/v1/admin/servicenow/ingest', params: valid_payload, headers: secret_header, as: :json
 
         expect(response).to have_http_status(:created)
-        body = JSON.parse(response.body)
-        expect(body['devin_session']).to be true
-        expect(body['devin_session_url']).to include('devin-123')
-
-        expect(DevinSessionService).to have_received(:create_session)
-        expect(ServicenowCallbackService).to have_received(:post_work_note)
       end
     end
 
@@ -99,7 +88,6 @@ RSpec.describe Api::V1::Admin::ServicenowController, type: :request do
 
     context 'with duplicate servicenow_sys_id' do
       before do
-        allow(AdminSettingsService).to receive(:auto_investigate_enabled?).and_return(false)
         create(:incident, :servicenow, servicenow_sys_id: 'abc123def456')
       end
 
@@ -132,8 +120,6 @@ RSpec.describe Api::V1::Admin::ServicenowController, type: :request do
       end
 
       it 'allows the request through' do
-        allow(AdminSettingsService).to receive(:auto_investigate_enabled?).and_return(false)
-
         post '/api/v1/admin/servicenow/ingest', params: valid_payload, as: :json
 
         expect(response).to have_http_status(:created)

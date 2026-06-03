@@ -2,6 +2,12 @@ require 'net/http'
 require 'json'
 require 'uri'
 
+# Service for interacting with the Devin AI session API.
+#
+# For ServiceNow incidents, session creation is now handled by the Devin
+# Automation (webhook trigger) rather than direct API calls. The
+# create_session method is retained for non-ServiceNow flows (Grafana
+# alerts, manual incident investigation via admin UI).
 class DevinSessionService
   API_HOST = 'https://api.devin.ai'.freeze
 

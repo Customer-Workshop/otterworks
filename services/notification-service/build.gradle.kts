@@ -8,6 +8,10 @@ plugins {
 group = "com.otterworks"
 version = "0.1.0"
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 application {
     mainClass.set("com.otterworks.notification.ApplicationKt")
 }

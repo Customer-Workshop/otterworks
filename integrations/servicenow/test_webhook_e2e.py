@@ -23,6 +23,7 @@ Usage:
 """
 
 import argparse
+import base64
 import json
 import logging
 import os
@@ -49,7 +50,6 @@ def snow_request(instance_url, username, password, method, path, body=None):
     req.add_header("Accept", "application/json")
 
     credentials = f"{username}:{password}"
-    import base64
     encoded = base64.b64encode(credentials.encode()).decode()
     req.add_header("Authorization", f"Basic {encoded}")
 
@@ -265,20 +265,23 @@ def main():
         results["verify_work_note"] = False
 
     # 5. Resolve the incident (simulating end-of-session callback from the playbook)
-    resolve_ok = resolve_test_incident(
-        args.instance, args.username, args.password, sys_id,
-    )
-    results["resolve_incident"] = resolve_ok
-
-    # 6. Verify resolution
-    if resolve_ok:
-        time.sleep(2)
-        resolution_ok = verify_resolution(
+    if args.skip_cleanup:
+        log.info("Skipping cleanup (--skip-cleanup was passed)")
+    else:
+        resolve_ok = resolve_test_incident(
             args.instance, args.username, args.password, sys_id,
         )
-        results["verify_resolution"] = resolution_ok
-    else:
-        results["verify_resolution"] = False
+        results["resolve_incident"] = resolve_ok
+
+        # 6. Verify resolution
+        if resolve_ok:
+            time.sleep(2)
+            resolution_ok = verify_resolution(
+                args.instance, args.username, args.password, sys_id,
+            )
+            results["verify_resolution"] = resolution_ok
+        else:
+            results["verify_resolution"] = False
 
     # Summary
     print("\n" + "=" * 60)

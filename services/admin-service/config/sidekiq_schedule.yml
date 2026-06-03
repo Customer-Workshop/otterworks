@@ -10,3 +10,6 @@
 #   class: DevinSessionPollJob
 #   queue: default
 #   description: 'Poll Devin API for session status updates on active incidents'
+
+# Empty hash so YAML.load_file returns {} instead of nil
+{}

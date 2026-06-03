@@ -41,6 +41,7 @@ def main():
 
     data_lake_bucket = config.get("s3", "data_lake_bucket")
     analytics_prefix = config.get("s3", "analytics_prefix")
+    expected_bucket_owner = config.get("s3", "expected_bucket_owner", fallback="")
 
     # today's date for partitioning
     ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
@@ -310,6 +311,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=summary_key,
         Body=summary_bytes,
+        **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
     )
     print("[%s] Uploaded summary to s3://%s/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data_lake_bucket, summary_key))
 
@@ -320,6 +322,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=hourly_key,
         Body=hourly_bytes,
+        **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
     )
 
     # Write top users as JSONL
@@ -333,6 +336,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=users_key,
         Body=buf.getvalue(),
+        **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
     )
 
     print("[%s] Loaded analytics data to s3://%s/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data_lake_bucket, partition_key))
@@ -434,6 +438,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
     )
 
     print("[%s] Generated daily analytics report: %d events, %d active users" % (

@@ -42,6 +42,7 @@ def main():
     aws_region = config.get("aws", "region")
 
     archive_bucket = config.get("s3", "archive_bucket")
+    expected_bucket_owner = config.get("s3", "expected_bucket_owner", fallback="")
 
     ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
     retention_days = 90
@@ -122,6 +123,7 @@ def main():
         Key=archive_key,
         Body=buf.getvalue(),
         StorageClass="GLACIER",
+        **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
     )
 
     print("[%s] Archived to s3://%s/%s (GLACIER)" % (
@@ -204,6 +206,7 @@ def main():
         Bucket=archive_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        **({"ExpectedBucketOwner": expected_bucket_owner} if expected_bucket_owner else {}),
     )
 
     print("[%s] Compliance report: %d archived, %d deleted, stored at s3://%s/%s" % (

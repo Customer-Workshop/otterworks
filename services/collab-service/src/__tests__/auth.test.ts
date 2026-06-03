@@ -19,7 +19,9 @@ function createToken(payload: Record<string, unknown>, secret = JWT_SECRET): str
   return jwt.sign(payload, secret, { expiresIn: '1h' }); // nosemgrep: javascript.jsonwebtoken.security.jwt-hardcode.hardcoded-jwt-secret
 }
 
-function createMockSocket(overrides: Partial<{ id: string; auth: any; headers: any }> = {}) {
+function createMockSocket(
+  overrides: Partial<{ id: string; auth: any; headers: any }> = {},
+) {
   return {
     id: overrides.id || 'socket-123',
     handshake: {
@@ -90,7 +92,11 @@ describe('createAuthMiddleware', () => {
   });
 
   it('should accept a valid token from Authorization header', () => {
-    const token = createToken({ sub: 'user-2', email: 'user2@test.com', name: 'User Two' });
+    const token = createToken({
+      sub: 'user-2',
+      email: 'user2@test.com',
+      name: 'User Two',
+    });
     const socket = createMockSocket({
       auth: {},
       headers: { authorization: `Bearer ${token}` },

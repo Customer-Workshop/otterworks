@@ -92,9 +92,15 @@ describe('MetricsCollector', () => {
       metrics.persistenceOperations.inc({ operation: 'load', status: 'success' });
 
       const output = await metrics.getMetrics();
-      expect(output).toContain('collab_persistence_operations_total{operation="save",status="success"} 1');
-      expect(output).toContain('collab_persistence_operations_total{operation="save",status="failure"} 1');
-      expect(output).toContain('collab_persistence_operations_total{operation="load",status="success"} 1');
+      expect(output).toContain(
+        'collab_persistence_operations_total{operation="save",status="success"} 1',
+      );
+      expect(output).toContain(
+        'collab_persistence_operations_total{operation="save",status="failure"} 1',
+      );
+      expect(output).toContain(
+        'collab_persistence_operations_total{operation="load",status="success"} 1',
+      );
     });
   });
 

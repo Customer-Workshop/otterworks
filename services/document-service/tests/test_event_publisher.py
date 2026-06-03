@@ -2,7 +2,7 @@
 
 import json
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -70,7 +70,8 @@ class TestEventPublisher:
             assert message["payload"] == {"id": "doc-1", "title": "Test"}
             assert "timestamp" in message
 
-            assert call_kwargs["MessageAttributes"]["event_type"]["StringValue"] == "document_created"
+            attrs = call_kwargs["MessageAttributes"]
+            assert attrs["event_type"]["StringValue"] == "document_created"
 
     @pytest.mark.asyncio
     async def test_publish_handles_uuid_in_payload(self):
@@ -118,7 +119,7 @@ class TestEventPublisher:
             with patch("boto3.client") as mock_boto3:
                 mock_boto3.return_value = MagicMock()
                 publisher = EventPublisher()
-                client = publisher._get_client()
+                publisher._get_client()
 
                 mock_boto3.assert_called_once_with(
                     "sns",

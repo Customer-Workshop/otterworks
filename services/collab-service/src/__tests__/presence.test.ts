@@ -115,7 +115,10 @@ describe('PresenceHandler', () => {
     });
 
     it('should return a timer handle', () => {
-      const mockIO = { to: jest.fn().mockReturnValue({ emit: jest.fn() }), sockets: { sockets: new Map() } } as any;
+      const mockIO = {
+        to: jest.fn().mockReturnValue({ emit: jest.fn() }),
+        sockets: { sockets: new Map() },
+      } as any;
       const timer = handler.startCleanupInterval(mockIO, 1000, 500);
       expect(timer).toBeDefined();
       clearInterval(timer);

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  AWS_REGION: {{ .Values.aws.region | default "us-east-1" | quote }}
+  S3_BUCKET: {{ required "aws.s3Bucket must be set" .Values.aws.s3Bucket | quote }}
+  DYNAMODB_TABLE: {{ .Values.aws.dynamodbTable | default "otterworks-file-metadata" | quote }}
+  DYNAMODB_FOLDERS_TABLE: {{ .Values.aws.dynamodbFoldersTable | default "otterworks-folders" | quote }}
+  DYNAMODB_VERSIONS_TABLE: {{ .Values.aws.dynamodbVersionsTable | default "otterworks-file-versions" | quote }}
+  DYNAMODB_SHARES_TABLE: {{ .Values.aws.dynamodbSharesTable | default "otterworks-file-shares" | quote }}
+  {{- if .Values.aws.snsTopicArn }}
+  SNS_TOPIC_ARN: {{ .Values.aws.snsTopicArn | quote }}
+  {{- end }}
+  {{- if .Values.redis }}
+  REDIS_HOST: {{ .Values.redis.host | default "localhost" | quote }}
+  REDIS_PORT: {{ .Values.redis.port | default "6379" | quote }}
+  {{- end }}

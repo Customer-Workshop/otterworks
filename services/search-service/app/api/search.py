@@ -30,6 +30,8 @@ def _get_redis() -> redis_lib.Redis:
 
 def _chaos_active(key: str) -> bool:
     """Return True if the given chaos flag is set in Redis."""
+    if os.environ.get("CHAOS_ENABLED") != "true":
+        return False
     try:
         return bool(_get_redis().exists(key))
     except Exception:

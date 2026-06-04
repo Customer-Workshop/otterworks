@@ -49,3 +49,12 @@ networkPolicy:
 
 serviceAccount:
   roleArn: ""
+
+aws:
+  region: us-east-1
+  s3Bucket: ""  # Set at deploy time (e.g. otterworks-files-dev)
+  dynamodbTable: otterworks-file-metadata
+  dynamodbFoldersTable: otterworks-folders
+  dynamodbVersionsTable: otterworks-file-versions
+  dynamodbSharesTable: otterworks-file-shares
+  snsTopicArn: ""

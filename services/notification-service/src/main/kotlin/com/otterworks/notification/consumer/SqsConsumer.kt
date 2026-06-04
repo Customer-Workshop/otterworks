@@ -16,6 +16,7 @@ import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
+import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
 
@@ -86,17 +87,17 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.warn { "Failed to parse SQS message, deleting poison message: ${msg.messageId}" }
                             }
+
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
+                            logger.debug { "Deleted SQS message: ${msg.messageId}" }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }
@@ -115,17 +116,29 @@ class SqsConsumer(
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
+        val normalizedBody = normalizeTimestamps(body)
         return try {
-            // Try parsing as direct message first
-            parser.decodeFromString<SqsNotificationMessage>(body)
+            parser.decodeFromString<SqsNotificationMessage>(normalizedBody)
         } catch (_: Exception) {
             try {
-                // Try unwrapping SNS envelope
-                val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
-                parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                val snsWrapper = parser.decodeFromString<SnsEnvelope>(normalizedBody)
+                val normalizedMessage = normalizeTimestamps(snsWrapper.Message)
+                parser.decodeFromString<SqsNotificationMessage>(normalizedMessage)
             } catch (e: Exception) {
                 logger.error(e) { "Failed to parse message body" }
                 null
+            }
+        }
+    }
+
+    companion object {
+        private val EPOCH_TIMESTAMP_RE = Regex(""""timestamp"\s*:\s*(\d{10,13})""")
+
+        internal fun normalizeTimestamps(body: String): String {
+            return EPOCH_TIMESTAMP_RE.replace(body) { match ->
+                val epoch = match.groupValues[1].toLong()
+                val seconds = if (epoch > 9_999_999_999L) epoch / 1000 else epoch
+                """"timestamp": "${Instant.ofEpochSecond(seconds)}""""
             }
         }
     }

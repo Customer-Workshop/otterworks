@@ -192,5 +192,9 @@ done < <(echo "$VULNS_JSON" | jq -c '.[]')
 echo ""
 echo "--- Summary ---"
 echo "Total vulnerabilities: $VULN_COUNT"
-echo "Created: $CREATED"
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo "Would create: $CREATED"
+else
+  echo "Created: $CREATED"
+fi
 echo "Skipped (already exist): $SKIPPED"

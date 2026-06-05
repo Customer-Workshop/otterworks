@@ -24,11 +24,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: classpath:db/migration,classpath:com/otterworks/auth/migration
     baseline-on-migrate: true
     baseline-version: 0
-    placeholders:
-      admin_seed_password: ${ADMIN_SEED_PASSWORD:Admin123!}
 
 jwt:
   secret: ${JWT_SECRET:dev-jwt-secret-otterworks-2024-change-in-production}

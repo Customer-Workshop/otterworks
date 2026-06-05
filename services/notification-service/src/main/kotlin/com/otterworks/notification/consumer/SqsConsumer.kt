@@ -86,17 +86,22 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                logger.debug { "Processed SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.error { "Unparseable SQS message (deleting to prevent queue poisoning): ${msg.messageId}" }
                             }
+
+                            // Always delete the message to prevent poison-message
+                            // buildup. Unparseable messages would otherwise re-enter
+                            // the queue after the visibility timeout and cause
+                            // unbounded queue depth growth.
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
+                            logger.debug { "Deleted SQS message: ${msg.messageId}" }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }

@@ -110,6 +110,14 @@ def main():
     ))
 
     # ---- Upload to S3 with Glacier storage class ----
+    sts_client = boto3.client(
+        "sts",
+        aws_access_key_id=aws_access_key,
+        aws_secret_access_key=aws_secret_key,
+        region_name=aws_region,
+    )
+    aws_account_id = sts_client.get_caller_identity()["Account"]
+
     s3_client = boto3.client(
         "s3",
         aws_access_key_id=aws_access_key,
@@ -122,6 +130,7 @@ def main():
         Key=archive_key,
         Body=buf.getvalue(),
         StorageClass="GLACIER",
+        ExpectedBucketOwner=aws_account_id,
     )
 
     print("[%s] Archived to s3://%s/%s (GLACIER)" % (
@@ -204,6 +213,7 @@ def main():
         Bucket=archive_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        ExpectedBucketOwner=aws_account_id,
     )
 
     print("[%s] Compliance report: %d archived, %d deleted, stored at s3://%s/%s" % (

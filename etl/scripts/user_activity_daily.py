@@ -126,6 +126,14 @@ def main():
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lookback_days
     ))
 
+    sts_client = boto3.client(
+        "sts",
+        aws_access_key_id=aws_access_key,
+        aws_secret_access_key=aws_secret_key,
+        region_name=aws_region,
+    )
+    aws_account_id = sts_client.get_caller_identity()["Account"]
+
     s3_client = boto3.client(
         "s3",
         aws_access_key_id=aws_access_key,
@@ -144,7 +152,7 @@ def main():
         key = "analytics/daily/year=%s/month=%s/day=%s/top_users.jsonl.gz" % (year, month, day)
 
         try:
-            response = s3_client.get_object(Bucket=data_lake_bucket, Key=key)
+            response = s3_client.get_object(Bucket=data_lake_bucket, Key=key, ExpectedBucketOwner=aws_account_id)
             body = response["Body"].read()
             decompressed = gzip.decompress(body).decode("utf-8")
 
@@ -217,6 +225,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
+        ExpectedBucketOwner=aws_account_id,
     )
 
     # Store latest pointer for admin-service
@@ -225,6 +234,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=latest_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
+        ExpectedBucketOwner=aws_account_id,
     )
 
     # Store per-user summaries as JSONL for individual user lookups
@@ -236,6 +246,7 @@ def main():
             Bucket=data_lake_bucket,
             Key=users_key,
             Body=("\n".join(lines) + "\n").encode("utf-8"),
+            ExpectedBucketOwner=aws_account_id,
         )
 
     print("[%s] Stored activity report: %d user summaries at s3://%s/%s" % (

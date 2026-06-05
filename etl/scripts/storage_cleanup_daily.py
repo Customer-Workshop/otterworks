@@ -43,6 +43,14 @@ def main():
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"), file_storage_bucket, files_prefix
     ))
 
+    sts_client = boto3.client(
+        "sts",
+        aws_access_key_id=aws_access_key,
+        aws_secret_access_key=aws_secret_key,
+        region_name=aws_region,
+    )
+    aws_account_id = sts_client.get_caller_identity()["Account"]
+
     s3_client = boto3.client(
         "s3",
         aws_access_key_id=aws_access_key,
@@ -141,8 +149,9 @@ def main():
                 Key=dest_key,
                 CopySource={"Bucket": file_storage_bucket, "Key": source_key},
                 MetadataDirective="COPY",
+                ExpectedBucketOwner=aws_account_id,
             )
-            s3_client.delete_object(Bucket=file_storage_bucket, Key=source_key)
+            s3_client.delete_object(Bucket=file_storage_bucket, Key=source_key, ExpectedBucketOwner=aws_account_id)
             moved_count += 1
         except Exception as e:
             print("[%s] WARNING: Failed to quarantine %s: %s" % (
@@ -200,6 +209,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        ExpectedBucketOwner=aws_account_id,
     )
 
     print("[%s] Storage cleanup report: %d orphans quarantined, %.4f GB freed, ~$%.4f/month saved" % (

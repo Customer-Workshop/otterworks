@@ -6,11 +6,11 @@ import org.flywaydb.core.api.migration.Context;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
- * Replaces the hardcoded bcrypt hash inserted by V1 with a freshly generated
- * one so the plaintext seed password no longer appears in the migration SQL.
+ * Replaces the hardcoded bcrypt hash inserted by V1 with a freshly generated one so the plaintext
+ * seed password no longer appears in the migration SQL.
  *
- * <p>The password is read from the {@code ADMIN_SEED_PASSWORD} environment
- * variable (defaults to {@code Admin123!} for local development).
+ * <p>The password is read from the {@code ADMIN_SEED_PASSWORD} environment variable (defaults to
+ * {@code Admin123!} for local development).
  */
 public class V5__RotateSeedAdminPassword extends BaseJavaMigration {
 

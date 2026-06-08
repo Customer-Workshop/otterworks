@@ -12,8 +12,8 @@ from app.services.meilisearch_client import MeiliSearchService
 
 logger = structlog.get_logger()
 
-DOCUMENT_SERVICE_URL = os.environ.get("DOCUMENT_SERVICE_URL", "http://document-service:8083")  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
-FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "http://file-service:8082")  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
+DOCUMENT_SERVICE_URL = os.environ.get("DOCUMENT_SERVICE_URL", "http://document-service:8083")
+FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "http://file-service:8082")
 FETCH_TIMEOUT = 30
 
 
@@ -110,7 +110,7 @@ class Indexer:
         page = 1
         while True:
             try:
-                resp = requests.get(
+                resp = requests.get(  # nosemgrep: request-with-http
                     f"{DOCUMENT_SERVICE_URL}/api/v1/documents/",
                     params={"page": page, "page_size": 100},
                     timeout=FETCH_TIMEOUT,
@@ -146,7 +146,7 @@ class Indexer:
         page = 1
         while True:
             try:
-                resp = requests.get(
+                resp = requests.get(  # nosemgrep: request-with-http
                     f"{FILE_SERVICE_URL}/api/v1/files",
                     params={"page": page, "page_size": 100},
                     timeout=FETCH_TIMEOUT,

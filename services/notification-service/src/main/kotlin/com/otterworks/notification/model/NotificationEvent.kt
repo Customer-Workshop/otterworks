@@ -1,6 +1,19 @@
 package com.otterworks.notification.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @Serializable
 enum class EventType {
@@ -11,6 +24,32 @@ enum class EventType {
 
     companion object {
         fun fromString(value: String): EventType? = entries.find { it.name == value }
+    }
+}
+
+object FlexibleTimestampSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("FlexibleTimestamp", PrimitiveKind.STRING)
+
+    private fun epochToIso(epoch: Long): String =
+        Instant.ofEpochSecond(epoch)
+            .atOffset(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ISO_INSTANT)
+
+    override fun deserialize(decoder: Decoder): String {
+        if (decoder is JsonDecoder) {
+            val element = decoder.decodeJsonElement().jsonPrimitive
+            if (element.isString) {
+                val epoch = element.content.toLongOrNull()
+                return if (epoch != null) epochToIso(epoch) else element.content
+            }
+            return epochToIso(element.long)
+        }
+        return decoder.decodeString()
+    }
+
+    override fun serialize(encoder: Encoder, value: String) {
+        encoder.encodeString(value)
     }
 }
 
@@ -25,6 +64,7 @@ data class NotificationEvent(
     val title: String = "",
     val message: String = "",
     val metadata: Map<String, String> = emptyMap(),
+    @Serializable(with = FlexibleTimestampSerializer::class)
     val timestamp: String,
 )
 
@@ -39,6 +79,7 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    @Serializable(with = FlexibleTimestampSerializer::class)
     val timestamp: String,
 )
 

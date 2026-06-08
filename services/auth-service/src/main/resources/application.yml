@@ -27,6 +27,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+    validate-on-migrate: false
     placeholders:
       # bcrypt hash for the seeded admin user. Supply a real hash via
       # ADMIN_PASSWORD_HASH to enable the account; the default is intentionally

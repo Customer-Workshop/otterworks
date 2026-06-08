@@ -73,12 +73,22 @@ export class AuthService {
     if (password.length < 1) {
       return throwError(() => new Error('Invalid credentials'));
     }
+    const userId = 'a0000000-0000-0000-0000-000000000001';
+    const payload = {
+      sub: userId,
+      user_id: userId,
+      email,
+      role: 'admin',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 86400,
+    };
+    const mockToken = `mock-admin-${btoa(JSON.stringify(payload))}`;
     const user: AuthUser = {
-      id: 'a0000000-0000-0000-0000-000000000001',
+      id: userId,
       email,
       displayName: 'Admin User',
       role: 'admin',
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.hD5dwgrPNRTzbXa6lbA83Aru7BvQVIQc0rGVySkF1fA',
+      token: mockToken,
     };
     return of(user).pipe(delay(800));
   }

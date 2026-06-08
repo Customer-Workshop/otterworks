@@ -80,10 +80,20 @@ resource "aws_iam_role_policy" "ecs_secrets_access" {
 
 # --- Secrets Manager ---
 
+resource "aws_kms_key" "search_encryption" {
+  description         = "KMS key for search-service secrets and logs"
+  enable_key_rotation = true
+
+  tags = merge(local.common_tags, {
+    Service = "search-service"
+  })
+}
+
 resource "aws_secretsmanager_secret" "meilisearch_master_key" {
   count       = var.meilisearch_master_key != "" ? 1 : 0
   name        = "${var.project}/${var.environment}/meilisearch-master-key"
   description = "MeiliSearch master key for ${var.environment}"
+  kms_key_id  = aws_kms_key.search_encryption.arn
 
   tags = merge(local.common_tags, {
     Service = "search-service"
@@ -111,6 +121,7 @@ resource "aws_ecs_cluster" "meilisearch" {
 resource "aws_cloudwatch_log_group" "meilisearch" {
   name              = "/ecs/${var.project}-meilisearch-${var.environment}"
   retention_in_days = 30
+  kms_key_id        = aws_kms_key.search_encryption.arn
 
   tags = local.common_tags
 }

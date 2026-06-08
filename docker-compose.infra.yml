@@ -70,6 +70,7 @@ services:
   meilisearch:
     image: getmeili/meilisearch:v1.6
     container_name: otterworks-meilisearch
+    read_only: true
     environment:
       MEILI_ENV: development
       MEILI_NO_ANALYTICS: 'true'
@@ -77,6 +78,8 @@ services:
     - 7700:7700
     volumes:
     - meilisearch_data:/meili_data
+    tmpfs:
+    - /tmp
     healthcheck:
       test:
       - CMD

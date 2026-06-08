@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import requests
@@ -11,8 +12,8 @@ from app.services.meilisearch_client import MeiliSearchService
 
 logger = structlog.get_logger()
 
-DOCUMENT_SERVICE_URL = "http://document-service:8083"
-FILE_SERVICE_URL = "http://file-service:8082"
+DOCUMENT_SERVICE_URL = os.environ.get("DOCUMENT_SERVICE_URL", "http://document-service:8083")
+FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "http://file-service:8082")
 FETCH_TIMEOUT = 30
 
 

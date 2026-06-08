@@ -73,13 +73,31 @@ export class AuthService {
     if (password.length < 1) {
       return throwError(() => new Error('Invalid credentials'));
     }
+    const id = 'a0000000-0000-0000-0000-000000000001';
     const user: AuthUser = {
-      id: 'a0000000-0000-0000-0000-000000000001',
+      id,
       email,
       displayName: 'Admin User',
       role: 'admin',
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.hD5dwgrPNRTzbXa6lbA83Aru7BvQVIQc0rGVySkF1fA',
+      token: this.buildMockToken(id, email),
     };
     return of(user).pipe(delay(800));
+  }
+
+  // Builds an unsigned, client-side mock JWT for the demo login flow.
+  // No secret is embedded — the signature segment is a static placeholder
+  // and the token is never verified server-side in this mock.
+  private buildMockToken(userId: string, email: string): string {
+    const base64url = (obj: object): string =>
+      btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const header = base64url({ alg: 'none', typ: 'JWT' });
+    const payload = base64url({
+      sub: userId,
+      user_id: userId,
+      email,
+      role: 'admin',
+      iat: Math.floor(Date.now() / 1000),
+    });
+    return `${header}.${payload}.unsigned-mock`;
   }
 }

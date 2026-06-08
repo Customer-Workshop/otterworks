@@ -12,8 +12,12 @@ admin dashboard shows real metrics instead of in-memory mock data.
 Usage:
     uv run scripts/seed.py
 
-Environment overrides (all optional — defaults match docker-compose):
-    DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+Environment:
+    DB_PASSWORD is required (no default) and must match the Postgres
+    POSTGRES_PASSWORD. The `make seed` target reads it straight from the
+    running otterworks-postgres container so no credential is committed.
+    DB_HOST, DB_PORT, DB_NAME, DB_USER are optional and default to the
+    docker-compose values.
 """
 
 import os
@@ -27,12 +31,20 @@ from psycopg2.extras import execute_values, Json
 
 # ── Connection ────────────────────────────────────────────────────────────────
 
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+if not DB_PASSWORD:
+    sys.exit(
+        "DB_PASSWORD environment variable is required. "
+        "Run via `make seed` (which sources it from the running Postgres "
+        "container) or export it manually before invoking this script."
+    )
+
 DB_CONFIG = {
     "host":     os.getenv("DB_HOST",     "localhost"),
     "port":     int(os.getenv("DB_PORT", "5432")),
     "dbname":   os.getenv("DB_NAME",     "otterworks"),
     "user":     os.getenv("DB_USER",     "otterworks"),
-    "password": os.getenv("DB_PASSWORD", "otterworks_dev"),
+    "password": DB_PASSWORD,
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -50,7 +62,7 @@ def uid() -> str:
     return str(uuid.uuid4())
 
 def hash_password(plain: str) -> str:
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(rounds=10)).decode()
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(rounds=12)).decode()
 
 def log(msg: str) -> None:
     print(f"  {msg}")

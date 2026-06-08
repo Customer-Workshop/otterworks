@@ -110,8 +110,8 @@ class Indexer:
         page = 1
         while True:
             try:
-                resp = requests.get(  # nosemgrep: request-with-http
-                    f"{DOCUMENT_SERVICE_URL}/api/v1/documents/",
+                resp = requests.get(
+                    f"{DOCUMENT_SERVICE_URL}/api/v1/documents/",  # nosemgrep: request-with-http
                     params={"page": page, "page_size": 100},
                     timeout=FETCH_TIMEOUT,
                 )
@@ -146,8 +146,8 @@ class Indexer:
         page = 1
         while True:
             try:
-                resp = requests.get(  # nosemgrep: request-with-http
-                    f"{FILE_SERVICE_URL}/api/v1/files",
+                resp = requests.get(
+                    f"{FILE_SERVICE_URL}/api/v1/files",  # nosemgrep: request-with-http
                     params={"page": page, "page_size": 100},
                     timeout=FETCH_TIMEOUT,
                 )

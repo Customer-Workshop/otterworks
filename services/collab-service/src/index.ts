@@ -143,7 +143,8 @@ httpServer.on('upgrade', (request, socket, head) => {
 
   // JWT authentication for y-websocket connections
   const url = new URL(request.url || '', `http://${request.headers.host}`);
-  const token = url.searchParams.get('token') ||
+  const token =
+    url.searchParams.get('token') ||
     request.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {

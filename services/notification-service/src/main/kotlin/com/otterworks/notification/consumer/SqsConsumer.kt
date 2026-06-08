@@ -48,15 +48,12 @@ class SqsConsumer(
         isLenient = true
     }
 
-    // CHAOS: strict parser that rejects messages whose timestamp field is not
-    // a valid RFC 3339 string.  Legacy events emitted by older service versions
-    // use Unix epoch integers for timestamps, which are rejected here.
-    // When the chaos flag is active, every such message throws
-    // SerializationException, is never deleted from the queue, and becomes
-    // visible again after the SQS visibility timeout — causing queue depth to
-    // climb indefinitely while the consumer appears healthy.
+    // Strict parser used when chaos flag is active. Still tolerates unknown
+    // keys (SNS envelopes carry extra fields) but disables lenient parsing.
+    // The FlexibleTimestampSerializer on the model handles legacy epoch
+    // timestamps, so strict mode no longer causes deserialization failures.
     private val strictJson = Json {
-        ignoreUnknownKeys = false
+        ignoreUnknownKeys = true
         isLenient = false
     }
 
@@ -86,17 +83,19 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                logger.debug { "Processed SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.error { "Poison message — deleting unprocessable SQS message: ${msg.messageId}" }
                             }
+
+                            // Always delete the message after processing attempt
+                            // to prevent poison messages from re-entering the queue.
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }

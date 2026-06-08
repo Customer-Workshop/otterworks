@@ -73,7 +73,12 @@ resource "aws_iam_role_policy" "ecs_secrets_access" {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = [aws_secretsmanager_secret.meilisearch_master_key[0].arn]
-      }
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = [aws_kms_key.search_encryption.arn]
+      },
     ]
   })
 }

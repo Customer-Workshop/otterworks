@@ -1,3 +1,7 @@
+# NOTE: POSTGRES_PASSWORD (default "otterworks_dev") must be URL-safe — the
+# document-service and admin-service embed it directly in connection-string URLs
+# (DOC_SVC_DATABASE_URL / DATABASE_URL). Avoid characters such as @ : / # % in
+# custom values, or URL-encode them before exporting POSTGRES_PASSWORD.
 version: '3.9'
 services:
   api-gateway:

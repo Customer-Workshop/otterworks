@@ -121,6 +121,47 @@ class SqsConsumerTest {
     }
 
     @Test
+    fun `parseMessage handles epoch integer timestamp from legacy producers`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-999",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-999", event.fileId)
+        assertEquals("1704067200", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage tolerates unknown fields from producers`() {
+        val body = """
+            {
+                "eventType": "file_uploaded",
+                "fileId": "file-500",
+                "ownerId": "owner-1",
+                "timestamp": "2024-06-15T10:30:00Z",
+                "name": "report.pdf",
+                "mimeType": "application/pdf",
+                "sizeBytes": 12345
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_uploaded", event.eventType)
+        assertEquals("file-500", event.fileId)
+    }
+
+    @Test
     fun `parseMessage handles missing optional fields`() {
         val body = """
             {

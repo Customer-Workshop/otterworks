@@ -62,6 +62,7 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(target)
+			pr.SetXForwarded()
 			pr.Out.Host = target.Host
 			if claims := middleware.GetJWTClaims(pr.In.Context()); claims != nil {
 				userID := claims.Subject

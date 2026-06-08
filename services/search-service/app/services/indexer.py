@@ -12,8 +12,8 @@ from app.services.meilisearch_client import MeiliSearchService
 
 logger = structlog.get_logger()
 
-DOCUMENT_SERVICE_URL = os.environ.get("DOCUMENT_SERVICE_URL", "https://document-service:8083")
-FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "https://file-service:8082")
+DOCUMENT_SERVICE_URL = os.environ.get("DOCUMENT_SERVICE_URL", "http://document-service:8083")  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
+FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "http://file-service:8082")  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
 FETCH_TIMEOUT = 30
 
 

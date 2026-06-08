@@ -68,11 +68,12 @@ router.get('/api/v1/admin/export', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Missing path parameter' });
     return;
   }
-  const resolved = path.resolve(EXPORT_BASE_DIR, filePath);
-  if (!resolved.startsWith(EXPORT_BASE_DIR + path.sep) && resolved !== EXPORT_BASE_DIR) {
-    res.status(403).json({ error: 'Access denied: path outside allowed directory' });
+  const fileName = path.basename(filePath);
+  if (!fileName || fileName.startsWith('.')) {
+    res.status(400).json({ error: 'Invalid file name' });
     return;
   }
+  const resolved = EXPORT_BASE_DIR + path.sep + fileName;
   try {
     const content = fs.readFileSync(resolved, 'utf-8');
     res.json({ content });

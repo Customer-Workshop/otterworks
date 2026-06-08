@@ -23,12 +23,21 @@
    redis-cli EXISTS chaos:notification-service:consumer_strict_schema
    ```
 
-<!-- TODO: Complete investigation steps -->
+3. Review consumer logs for "Strict parse failed" or "Failed to parse message body" entries.
+4. Check SQS queue depth in CloudWatch for the `otterworks-notifications` queue.
 
 ## Resolution Steps
 
-<!-- TODO -->
+1. If the chaos flag is active and was not intentionally set, remove it:
+   ```
+   redis-cli DEL chaos:notification-service:consumer_strict_schema
+   ```
+2. The consumer now falls back to the lenient parser when strict parsing fails,
+   so legacy epoch-timestamp messages are handled even while the chaos flag is set.
+3. Unparseable messages are always deleted from the queue after logging, preventing
+   unbounded queue growth from poison messages.
 
 ## Post-Incident
 
-<!-- TODO -->
+- Verify SQS queue depth returns to normal after the fix is deployed.
+- Review other services for similar chaos flags that lack fallback handling.

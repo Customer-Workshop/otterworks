@@ -121,7 +121,7 @@ lint: ## Lint all services
 
 # Guard: NS must be alphanumeric/underscore only (prevents SQL injection)
 define validate_ns
-$(if $(shell echo '$(NS)' | grep -qE '^[A-Za-z0-9_]+$$' && echo ok),,$(error NS must contain only letters, digits, and underscores))
+$(if $(filter ok,$(shell echo '$(NS)' | grep -qE '^[A-Za-z0-9_]+$$' && echo ok)),,$(error NS must contain only letters, digits, and underscores))
 endef
 
 testdata-validate: ## Validate generated test data (NS=<namespace>, CRITERIA=<file>)

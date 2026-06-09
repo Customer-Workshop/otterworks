@@ -328,6 +328,10 @@ def run_standard_checks(cur, schema: str) -> list[CheckResult]:
     results.append(
         check_fk_integrity(cur, schema, "storage_quotas", "user_id", "admin_users", "id")
     )
+    # FK integrity: audit_logs -> admin_users (actor_id, nullable)
+    results.append(
+        check_fk_integrity(cur, schema, "audit_logs", "actor_id", "admin_users", "id")
+    )
 
     # Temporal consistency: audit_logs should not reference future resources
     results.append(
@@ -447,7 +451,12 @@ def main() -> int:
     report.checks.extend(run_standard_checks(cur, schema))
 
     # Run criteria-based checks if provided
-    if args.criteria and args.criteria.exists():
+    if args.criteria:
+        if not args.criteria.exists():
+            print(f"ERROR: Criteria file '{args.criteria}' does not exist", file=sys.stderr)
+            cur.close()
+            conn.close()
+            return 2
         report.checks.extend(validate_criteria(cur, schema, args.criteria))
 
     cur.close()

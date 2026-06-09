@@ -119,16 +119,23 @@ lint: ## Lint all services
 
 # --- Synthetic Test Data ---
 
+# Guard: NS must be alphanumeric/underscore only (prevents SQL injection)
+define validate_ns
+$(if $(shell echo '$(NS)' | grep -qE '^[A-Za-z0-9_]+$$' && echo ok),,$(error NS must contain only letters, digits, and underscores))
+endef
+
 testdata-validate: ## Validate generated test data (NS=<namespace>, CRITERIA=<file>)
 ifndef NS
 	$(error NS is required, e.g. make testdata-validate NS=dev)
 endif
+	$(call validate_ns)
 	uv run testdata/harness/validate.py --ns $(NS) $(if $(CRITERIA),--criteria $(CRITERIA),)
 
 testdata-clean: ## Drop a test-data namespace schema (NS=<namespace>)
 ifndef NS
 	$(error NS is required, e.g. make testdata-clean NS=dev)
 endif
+	$(call validate_ns)
 	@echo "Dropping schema otterworks_$(NS)..."
 	PGPASSWORD=$${DB_PASSWORD:-otterworks_dev} psql \
 		-h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} \
@@ -140,6 +147,7 @@ testdata-setup-schema: ## Create a namespaced schema (NS=<namespace>)
 ifndef NS
 	$(error NS is required, e.g. make testdata-setup-schema NS=dev)
 endif
+	$(call validate_ns)
 	@echo "Creating schema otterworks_$(NS)..."
 	PGPASSWORD=$${DB_PASSWORD:-otterworks_dev} psql \
 		-h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} \

@@ -103,7 +103,7 @@ def check_row_count(
             "FAIL",
             f"got {count}, expected >= {expected_min}",
         )
-    if expected_max and count > expected_max:
+    if expected_max is not None and count > expected_max:
         return CheckResult(
             f"row_count:{schema}.{table}",
             "FAIL",
@@ -137,6 +137,7 @@ def check_unique(cur, schema: str, table: str, columns: list[str]) -> CheckResul
             f"""
             SELECT count(*) - count(DISTINCT "{col}")
             FROM "{schema}"."{table}"
+            WHERE "{col}" IS NOT NULL
             """  # noqa: S608
         )
         dup_count = cur.fetchone()[0]
@@ -373,6 +374,18 @@ def run_standard_checks(cur, schema: str) -> list[CheckResult]:
         check_enum_values(
             cur, schema, "storage_quotas", "tier",
             ["free", "basic", "pro", "enterprise"],
+        )
+    )
+    results.append(
+        check_enum_values(
+            cur, schema, "announcements", "severity",
+            ["info", "warning", "critical"],
+        )
+    )
+    results.append(
+        check_enum_values(
+            cur, schema, "announcements", "status",
+            ["draft", "active", "expired"],
         )
     )
 

@@ -137,4 +137,24 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage parses legacy epoch integer timestamp via lenient fallback`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-epoch",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1719500000
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-epoch", event.fileId)
+        assertEquals("1719500000", event.timestamp)
+    }
 }

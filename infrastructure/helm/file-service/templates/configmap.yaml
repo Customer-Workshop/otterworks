@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    platform/environment: {{ (.Values.global).environment | default "dev" }}
+    platform/team: otterworks
+data:
+  S3_BUCKET: {{ printf "%s-files-%s" ((.Values.global).project | default "otterworks") ((.Values.global).environment | default "dev") | quote }}
+  CHAOS_ENABLED: {{ .Values.chaosEnabled | default "false" | quote }}

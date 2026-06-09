@@ -49,3 +49,5 @@ networkPolicy:
 
 serviceAccount:
   roleArn: ""
+
+chaosEnabled: "false"

@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import java.time.Instant
 import mu.KotlinLogging
 import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
@@ -33,6 +34,8 @@ private fun chaosActive(flag: String): Boolean {
         false
     }
 }
+
+private val EPOCH_TIMESTAMP_REGEX = """"timestamp"\s*:\s*(\d{9,11})""".toRegex()
 
 class SqsConsumer(
     private val sqsClient: SqsClient,
@@ -86,17 +89,18 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                logger.debug { "Processed SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.warn { "Failed to parse SQS message, deleting to prevent redelivery: ${msg.messageId}" }
                             }
+
+                            val deleteRequest = DeleteMessageRequest {
+                                queueUrl = config.sqsQueueUrl
+                                receiptHandle = msg.receiptHandle
+                            }
+                            sqsClient.deleteMessage(deleteRequest)
+                            logger.debug { "Deleted SQS message: ${msg.messageId}" }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }
@@ -113,16 +117,23 @@ class SqsConsumer(
         }
     }
 
+    internal fun normalizeTimestamps(body: String): String {
+        return body.replace(EPOCH_TIMESTAMP_REGEX) { match ->
+            val epoch = match.groupValues[1].toLongOrNull() ?: return@replace match.value
+            val iso = Instant.ofEpochSecond(epoch).toString()
+            "\"timestamp\": \"$iso\""
+        }
+    }
+
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
         return try {
-            // Try parsing as direct message first
-            parser.decodeFromString<SqsNotificationMessage>(body)
+            parser.decodeFromString<SqsNotificationMessage>(normalizeTimestamps(body))
         } catch (_: Exception) {
             try {
                 // Try unwrapping SNS envelope
-                val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
-                parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                val snsWrapper = parser.decodeFromString<SnsEnvelope>(normalizeTimestamps(body))
+                parser.decodeFromString<SqsNotificationMessage>(normalizeTimestamps(snsWrapper.Message))
             } catch (e: Exception) {
                 logger.error(e) { "Failed to parse message body" }
                 null

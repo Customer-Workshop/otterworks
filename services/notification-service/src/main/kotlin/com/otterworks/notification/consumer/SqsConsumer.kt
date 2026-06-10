@@ -96,6 +96,12 @@ class SqsConsumer(
                             } else {
                                 processingErrorsCounter?.increment()
                                 logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                val deleteRequest = DeleteMessageRequest {
+                                    queueUrl = config.sqsQueueUrl
+                                    receiptHandle = msg.receiptHandle
+                                }
+                                sqsClient.deleteMessage(deleteRequest)
+                                logger.info { "Deleted unparseable SQS message: ${msg.messageId}" }
                             }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }

@@ -6,12 +6,19 @@ const DB_PASSWORD = process.env.DB_PASSWORD ?? '';
 
 const VALID_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
+const DOCUMENTS_BASE_DIR = '/data/documents';
+
 export function exportDocument(docId: string, format: string): Promise<string> {
   if (!VALID_ID_PATTERN.test(docId) || !VALID_ID_PATTERN.test(format)) {
     return Promise.reject(new Error('Invalid docId or format'));
   }
 
-  const filePath = path.join('/data/documents', `${docId}.${format}`);
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal
+  const filePath = path.resolve(DOCUMENTS_BASE_DIR, `${docId}.${format}`);
+
+  if (!filePath.startsWith(DOCUMENTS_BASE_DIR + path.sep)) {
+    return Promise.reject(new Error('Path traversal detected'));
+  }
 
   return fs.promises.readFile(filePath, 'utf-8');
 }

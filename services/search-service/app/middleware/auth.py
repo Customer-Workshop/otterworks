@@ -1,15 +1,17 @@
 """Authentication middleware for the search service.
 
 Public endpoints (health, metrics) are exempt. All other endpoints require
-one of three authentication modes:
+one of two authentication modes:
 
 * A valid JWT in the ``Authorization: Bearer <token>`` header, validated
   independently by this service using the shared ``JWT_SECRET``.
 * A valid service-to-service token via ``Authorization: Bearer <token>``
   (used by trusted internal callers such as the SQS indexer or admin
   reindex jobs).
-* The ``X-User-ID`` header injected by the API gateway — accepted only
-  when accompanied by a valid JWT (defense-in-depth).
+
+The ``X-User-ID`` header (set by the API gateway) is read downstream for
+tenant scoping but is no longer sufficient on its own — a valid JWT or
+service token must accompany every request.
 """
 
 from __future__ import annotations

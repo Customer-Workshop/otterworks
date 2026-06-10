@@ -211,8 +211,8 @@ The most severe finding is an **architecture-wide authentication bypass**: all 1
 
 | Finding | Remediated? | Verification |
 |---------|-------------|--------------|
-| F-007 | Yes | `report-service` SecurityConfig now requires authentication for `/api/v1/reports/**`; chain C-006 broken |
-| F-008 | Yes | `/api/v1/admin/alerts/ingest` and `/api/v1/admin/chaos` removed from `EXCLUDED_PATHS`; JWT is now validated first, then controller-level secret check provides defense-in-depth; chain C-007 broken |
-| F-001 | Yes | `search-service` auth middleware now validates JWT independently before falling back to X-User-ID; chain C-001 broken |
+| F-007 | Yes | `report-service` `ReportAuthFilter` validates JWT HMAC-SHA256 signature on `/api/v1/reports/**` using `JWT_SECRET` (no external library — uses `javax.crypto.Mac`); chain C-006 broken |
+| F-008 | Yes | `/api/v1/admin/chaos` removed from `EXCLUDED_PATHS`; JWT now required before chaos controller secret check (defense-in-depth). `/api/v1/admin/alerts/ingest` remains excluded because Grafana webhooks authenticate via `X-Alert-Secret` header, not JWT; chain C-007 broken |
+| F-001 | Yes | `search-service` auth middleware validates JWT independently; `X-User-ID` header alone is no longer sufficient — a valid JWT or service token must accompany every request; chain C-001 broken |
 | F-013 | Yes | Wildcard `CVE-2021-*` removed from `.trivyignore`; individual pre-existing low-priority entries retained with line-level comments |
 | F-009 | Yes | Notification-service WebSocket now requires `token` query parameter validated as JWT before connection is established |

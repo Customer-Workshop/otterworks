@@ -21,14 +21,14 @@ Developer opens PR against main
 ├─────────────────────┬─────────────────────────────────┤
 │                     │                                 │
 │  PATH 1: Trivy      │  PATH 2: SonarCloud             │
-│  (pull_request)      │  (check_run)                    │
+│  (pull_request)      │  (pull_request)                  │
 │                     │                                 │
-│  ├ Is PR author     │  ├ Is check_run from             │
-│  │ devin-bot?       │  │ sonarqubecloud app?           │
-│  │  YES → skip      │  │  NO → skip                   │
-│  │  NO  → scan      │  │  YES → continue               │
+│  ├ Is PR author     │  ├ Is PR author                  │
+│  │ devin-bot?       │  │ devin-bot?                    │
+│  │  YES → skip      │  │  YES → skip                   │
+│  │  NO  → scan      │  │  NO  → CI scan                │
 │  │                  │  │                                │
-│  ├ Trivy fs scan    │  ├ Was quality gate FAILED?       │
+│  ├ Trivy fs scan    │  ├ Quality gate FAILED?           │
 │  │ HIGH+CRITICAL    │  │  NO → skip                   │
 │  │                  │  │  YES → continue               │
 │  ├ Findings = 0?    │  │                                │
@@ -47,7 +47,7 @@ Developer opens PR against main
 │              ▼                                        │
 │       Push triggers re-scan                           │
 │       (Trivy: synchronize event)                      │
-│       (SonarCloud: new check_run)                     │
+│       (SonarCloud: synchronize event)                 │
 │       → closed-loop verification                      │
 └───────────────────────────────────────────────────────┘
 ```
@@ -68,24 +68,25 @@ in the Devin prompt.
 
 ### Path 2: SonarCloud (Code Quality Gate)
 
-Triggered by `check_run` events when the SonarCloud GitHub App completes its
-analysis. The workflow filters for:
+Triggered by `pull_request` events alongside the Trivy path. The workflow runs
+the SonarCloud scanner via `SonarSource/sonarqube-scan-action` in CI, then
+polls the SonarCloud API to check the quality gate status.
 
-1. `github.event.check_run.app.slug == 'sonarqubecloud'`
-2. `github.event.check_run.conclusion == 'failure'` (quality gate failed)
+If the quality gate **fails** (status `ERROR`), the workflow triggers the Devin
+webhook for a one-time remediation attempt.
 
 This path is a **one-time remediation attempt** — if Devin has already posted
 a fix comment on the PR, no additional sessions are created.
 
-- **Re-scan loop:** Devin's fix push triggers a new SonarCloud analysis via
-  the GitHub App → if quality gate still fails, no new session (one-time).
+- **Re-scan loop:** Devin's fix push fires a `synchronize` event → SonarCloud
+  re-scans in CI → if quality gate still fails, no new session (one-time).
 - **Dashboard link:** The Devin prompt includes the SonarCloud dashboard URL
   for the specific PR.
 
 ## Bot-Loop Prevention
 
-The workflow checks `github.event.pull_request.user.login` (Trivy path) and
-`PR_AUTHOR` (SonarCloud path) against `devin-ai-integration[bot]`. PRs opened
+Both paths check `github.event.pull_request.user.login` against
+`devin-ai-integration[bot]`. PRs opened
 by Devin are never scanned by this workflow. For Devin's *commits* on
 human-authored PRs, the `synchronize` event still fires but the author check
 passes (it is the human's PR), so the re-scan runs — which is the desired
@@ -95,9 +96,9 @@ closed-loop behavior.
 count reaches `MAX_FIX_ATTEMPTS` (default: 2), the pipeline stops triggering
 Devin and escalates instead.
 
-**SonarCloud path:** Concurrency group `sast-fix-{pr_number}` ensures only one
-remediation session per PR. A comment-based check prevents re-triggering after
-the first attempt.
+**SonarCloud path:** Concurrency group `sast-sonar-fix-{pr_number}` ensures
+only one remediation session per PR. A comment-based check prevents
+re-triggering after the first attempt.
 
 ## Escalation Policy
 
@@ -107,25 +108,25 @@ When automated remediation is exhausted (Trivy path only):
 2. The issue body contains the full findings summary
 3. A PR comment notifies the developer that manual review is required
 
-## Devin API
+## Devin Automation Webhooks
 
-Both paths use the **Devin v3 API** endpoint:
+Both paths trigger Devin sessions via **automation webhook endpoints**:
 
 ```
-POST https://api.devin.ai/v3/organizations/{ORG_ID}/sessions
+POST https://partner-workshops.devinenterprise.com/api/webhooks/automations/{ORG_ID}/{AUTOMATION_ID}
 ```
 
 Request body includes:
-- `prompt`: Scanner-specific remediation instructions + findings context
-- `title`: Human-readable session title
-- `repos`: Target repository
-- `create_as_user_id`: Service user impersonation
-- `tags`: Scanner type, security category
+- `source`: Scanner type (`trivy` or `sonarcloud`)
+- `branch`: PR head branch
+- `pr_number`: Pull request number
+- `repository`: Full repo name (`owner/repo`)
+- `findings_summary` (Trivy) or `sonarcloud_dashboard` (SonarCloud): Context
 
 Required GitHub Actions secrets:
-- `DEVIN_API_KEY` — Service user API token
-- `DEVIN_ORG_ID` — Organization ID
-- `DEVIN_CREATE_AS_USER_ID` — User ID for session ownership
+- `DEVIN_WEBHOOK_SECRET` — Webhook auth for Trivy automation
+- `DEVIN_SONAR_WEBHOOK_SECRET` — Webhook auth for SonarCloud automation
+- `SONAR_TOKEN` — SonarCloud API token for CI-based analysis
 
 ## Scan Configuration
 

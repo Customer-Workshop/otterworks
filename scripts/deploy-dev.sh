@@ -30,6 +30,7 @@ for arg in "$@"; do
   case "$arg" in
     --skip-platform)  SKIP_PLATFORM=true ;;
     --skip-terraform) SKIP_TERRAFORM=true ;;
+    *) ;;
   esac
 done
 
@@ -120,7 +121,7 @@ aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AW
 # ---------- Step 6: Build and push Docker images ----------
 
 build_and_push() {
-  local service=$1
+  local service="$1"
   local service_dir
 
   if [[ " ${FRONTEND_SERVICES[*]} " == *" ${service} "* ]]; then
@@ -149,7 +150,7 @@ done
 # ---------- Step 7: Deploy via Helm ----------
 
 deploy_service() {
-  local service=$1
+  local service="$1"
   local chart_dir="${REPO_ROOT}/infrastructure/helm/${service}"
 
   if [ ! -d "${chart_dir}" ]; then
@@ -179,7 +180,7 @@ done
 log "Checking pod status in namespace ${NAMESPACE}..."
 kubectl get pods -n "${NAMESPACE}" -o wide
 
-if [ ${#FAILED[@]} -gt 0 ]; then
+if [ "${#FAILED[@]}" -gt 0 ]; then
   warn "The following services failed to deploy: ${FAILED[*]}"
   exit 1
 fi

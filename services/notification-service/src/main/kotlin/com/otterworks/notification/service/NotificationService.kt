@@ -1,6 +1,7 @@
 package com.otterworks.notification.service
 
 import com.otterworks.notification.model.DeliveryChannel
+import com.otterworks.notification.model.EventType
 import com.otterworks.notification.model.Notification
 import com.otterworks.notification.model.NotificationPreference
 import com.otterworks.notification.model.SqsNotificationMessage
@@ -121,32 +122,37 @@ class NotificationService(
     }
 
     companion object {
+        private val FILE_SHARED = EventType.file_shared.name
+        private val COMMENT_ADDED = EventType.comment_added.name
+        private val DOCUMENT_EDITED = EventType.document_edited.name
+        private val USER_MENTIONED = EventType.user_mentioned.name
+
         fun resolveTargetUserId(event: SqsNotificationMessage): String {
             return when (event.eventType) {
-                "file_shared" -> event.sharedWithUserId
-                "comment_added" -> event.userId.ifEmpty { event.ownerId }
-                "document_edited" -> event.userId.ifEmpty { event.ownerId }
-                "user_mentioned" -> event.mentionedUserId.ifEmpty { event.userId }
+                FILE_SHARED -> event.sharedWithUserId
+                COMMENT_ADDED -> event.userId.ifEmpty { event.ownerId }
+                DOCUMENT_EDITED -> event.userId.ifEmpty { event.ownerId }
+                USER_MENTIONED -> event.mentionedUserId.ifEmpty { event.userId }
                 else -> event.userId
             }
         }
 
         fun resolveResourceId(event: SqsNotificationMessage): String {
             return when (event.eventType) {
-                "file_shared" -> event.fileId
-                "comment_added" -> event.commentId.ifEmpty { event.documentId }
-                "document_edited" -> event.documentId
-                "user_mentioned" -> event.documentId
+                FILE_SHARED -> event.fileId
+                COMMENT_ADDED -> event.commentId.ifEmpty { event.documentId }
+                DOCUMENT_EDITED -> event.documentId
+                USER_MENTIONED -> event.documentId
                 else -> ""
             }
         }
 
         fun resolveResourceType(event: SqsNotificationMessage): String {
             return when (event.eventType) {
-                "file_shared" -> "file"
-                "comment_added" -> "comment"
-                "document_edited" -> "document"
-                "user_mentioned" -> "document"
+                FILE_SHARED -> "file"
+                COMMENT_ADDED -> "comment"
+                DOCUMENT_EDITED -> "document"
+                USER_MENTIONED -> "document"
                 else -> "unknown"
             }
         }

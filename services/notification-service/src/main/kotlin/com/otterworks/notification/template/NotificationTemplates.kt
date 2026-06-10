@@ -1,5 +1,6 @@
 package com.otterworks.notification.template
 
+import com.otterworks.notification.model.EventType
 import com.otterworks.notification.model.SqsNotificationMessage
 
 data class RenderedNotification(
@@ -19,7 +20,7 @@ object NotificationTemplates {
     )
 
     private val templates = mapOf(
-        "file_shared" to Template(
+        EventType.file_shared.name to Template(
             titleTemplate = "File Shared With You",
             messageTemplate = "A file has been shared with you by user {{actorId}}.",
             emailSubjectTemplate = "OtterWorks: A file has been shared with you",
@@ -35,7 +36,7 @@ object NotificationTemplates {
                 </html>
             """.trimIndent(),
         ),
-        "comment_added" to Template(
+        EventType.comment_added.name to Template(
             titleTemplate = "New Comment",
             messageTemplate = "A new comment was added by user {{actorId}} on document {{documentId}}.",
             emailSubjectTemplate = "OtterWorks: New comment on your document",
@@ -51,7 +52,7 @@ object NotificationTemplates {
                 </html>
             """.trimIndent(),
         ),
-        "document_edited" to Template(
+        EventType.document_edited.name to Template(
             titleTemplate = "Document Edited",
             messageTemplate = "Document {{documentId}} was edited by user {{actorId}}.",
             emailSubjectTemplate = "OtterWorks: A document you follow was edited",
@@ -67,7 +68,7 @@ object NotificationTemplates {
                 </html>
             """.trimIndent(),
         ),
-        "user_mentioned" to Template(
+        EventType.user_mentioned.name to Template(
             titleTemplate = "You Were Mentioned",
             messageTemplate = "You were mentioned by user {{actorId}} in document {{documentId}}.",
             emailSubjectTemplate = "OtterWorks: You were mentioned in a document",

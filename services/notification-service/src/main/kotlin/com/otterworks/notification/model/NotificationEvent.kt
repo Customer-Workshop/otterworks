@@ -68,10 +68,10 @@ enum class DeliveryChannel {
 data class NotificationPreference(
     val userId: String,
     val channels: Map<String, List<DeliveryChannel>> = mapOf(
-        "file_shared" to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
-        "comment_added" to listOf(DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
-        "document_edited" to listOf(DeliveryChannel.IN_APP),
-        "user_mentioned" to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
+        EventType.file_shared.name to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
+        EventType.comment_added.name to listOf(DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
+        EventType.document_edited.name to listOf(DeliveryChannel.IN_APP),
+        EventType.user_mentioned.name to listOf(DeliveryChannel.EMAIL, DeliveryChannel.IN_APP, DeliveryChannel.PUSH),
     ),
 )
 

@@ -32,6 +32,7 @@ for arg in "$@"; do
   case "$arg" in
     --destroy-infra) DESTROY_INFRA=true ;;
     --destroy-all)   DESTROY_INFRA=true; DESTROY_ALL=true ;;
+    *) ;;
   esac
 done
 

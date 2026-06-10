@@ -65,42 +65,14 @@ class SqsConsumer(
 
         while (isActive) {
             try {
-                val request = ReceiveMessageRequest {
-                    queueUrl = config.sqsQueueUrl
-                    maxNumberOfMessages = config.sqsMaxMessages
-                    waitTimeSeconds = config.sqsWaitTimeSeconds
-                }
-
-                val response = sqsClient.receiveMessage(request)
-                val messages = response.messages ?: emptyList()
+                val messages = receiveMessages()
 
                 if (messages.isNotEmpty()) {
                     logger.info { "Received ${messages.size} messages from SQS" }
                 }
 
                 for (msg in messages) {
-                    launch {
-                        try {
-                            val body = msg.body ?: return@launch
-                            val event = parseMessage(body)
-
-                            if (event != null) {
-                                notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
-                            } else {
-                                processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
-                            }
-                        } catch (e: Exception) {
-                            logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
-                        }
-                    }
+                    launch { processMessage(msg) }
                 }
 
                 if (messages.isEmpty()) {
@@ -113,6 +85,38 @@ class SqsConsumer(
         }
     }
 
+    private suspend fun receiveMessages(): List<aws.sdk.kotlin.services.sqs.model.Message> {
+        val request = ReceiveMessageRequest {
+            queueUrl = config.sqsQueueUrl
+            maxNumberOfMessages = config.sqsMaxMessages
+            waitTimeSeconds = config.sqsWaitTimeSeconds
+        }
+        val response = sqsClient.receiveMessage(request)
+        return response.messages ?: emptyList()
+    }
+
+    private suspend fun processMessage(msg: aws.sdk.kotlin.services.sqs.model.Message) {
+        try {
+            val body = msg.body ?: return
+            val event = parseMessage(body)
+
+            if (event != null) {
+                notificationService.processEvent(event)
+                val deleteRequest = DeleteMessageRequest {
+                    queueUrl = config.sqsQueueUrl
+                    receiptHandle = msg.receiptHandle
+                }
+                sqsClient.deleteMessage(deleteRequest)
+                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+            } else {
+                processingErrorsCounter?.increment()
+                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
+        }
+    }
+
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
         return try {
@@ -122,7 +126,7 @@ class SqsConsumer(
             try {
                 // Try unwrapping SNS envelope
                 val snsWrapper = parser.decodeFromString<SnsEnvelope>(body)
-                parser.decodeFromString<SqsNotificationMessage>(snsWrapper.Message)
+                parser.decodeFromString<SqsNotificationMessage>(snsWrapper.message)
             } catch (e: Exception) {
                 logger.error(e) { "Failed to parse message body" }
                 null
@@ -133,8 +137,12 @@ class SqsConsumer(
 
 @kotlinx.serialization.Serializable
 internal data class SnsEnvelope(
-    val Message: String,
-    val MessageId: String = "",
-    val TopicArn: String = "",
-    val Type: String = "",
+    @kotlinx.serialization.SerialName("Message")
+    val message: String,
+    @kotlinx.serialization.SerialName("MessageId")
+    val messageId: String = "",
+    @kotlinx.serialization.SerialName("TopicArn")
+    val topicArn: String = "",
+    @kotlinx.serialization.SerialName("Type")
+    val type: String = "",
 )

@@ -22,12 +22,15 @@ import java.time.Instant
  */
 class AnalyticsRoutes(analyticsService: AnalyticsService):
 
+  private val DefaultPeriod = "7d"
+  private val PeriodParam = "period"
+
   val routes: Route = pathPrefix("api" / "v1" / "analytics") {
     concat(
       // Dashboard Summary
       path("dashboard") {
         get {
-          parameters("period".withDefault("7d")) { period =>
+          parameters(PeriodParam.withDefault(DefaultPeriod)) { period =>
             onSuccess(analyticsService.getDashboardSummary(period)) { summary =>
               complete(summary)
             }
@@ -62,7 +65,7 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
         get {
           parameters(
             "type".withDefault("documents"),
-            "period".withDefault("7d"),
+            PeriodParam.withDefault(DefaultPeriod),
             "limit".as[Int].withDefault(10)
           ) { (contentType, period, limit) =>
             onSuccess(analyticsService.getTopContent(contentType, period, limit)) { response =>
@@ -75,7 +78,7 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
       // Active Users
       path("active-users") {
         get {
-          parameters("period".withDefault("daily")) { period =>
+          parameters(PeriodParam.withDefault("daily")) { period =>
             onSuccess(analyticsService.getActiveUsers(period)) { response =>
               complete(response)
             }
@@ -99,7 +102,7 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
         get {
           parameters(
             "format".withDefault("json"),
-            "period".withDefault("7d")
+            PeriodParam.withDefault(DefaultPeriod)
           ) { (format, period) =>
             format match
               case "csv" =>
@@ -117,13 +120,14 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
     )
   }
 
+  private val CsvHeaders = List("event_id", "event_type", "user_id", "resource_id", "resource_type", "timestamp")
+
   private def buildCsvContent(data: List[Map[String, String]]): String =
-    if data.isEmpty then "event_id,event_type,user_id,resource_id,resource_type,timestamp\n"
+    if data.isEmpty then CsvHeaders.mkString(",") + "\n"
     else
-      val headers = List("event_id", "event_type", "user_id", "resource_id", "resource_type", "timestamp")
-      val headerLine = headers.mkString(",")
+      val headerLine = CsvHeaders.mkString(",")
       val rows = data.map { row =>
-        headers.map(h => escapeCsvField(row.getOrElse(h, ""))).mkString(",")
+        CsvHeaders.map(h => escapeCsvField(row.getOrElse(h, ""))).mkString(",")
       }
       (headerLine :: rows).mkString("\n") + "\n"
 

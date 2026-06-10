@@ -198,22 +198,25 @@ class NotificationRepository(
         logger.debug { "Saved preferences for user ${preference.userId}" }
     }
 
+    private fun stringAttr(item: Map<String, AttributeValue>, key: String): String? =
+        (item[key] as? AttributeValue.S)?.value
+
     private fun mapToNotification(item: Map<String, AttributeValue>): Notification? {
         return try {
             Notification(
-                id = (item["id"] as? AttributeValue.S)?.value ?: return null,
-                userId = (item["userId"] as? AttributeValue.S)?.value ?: return null,
-                type = (item["type"] as? AttributeValue.S)?.value ?: "",
-                title = (item["title"] as? AttributeValue.S)?.value ?: "",
-                message = (item["message"] as? AttributeValue.S)?.value ?: "",
-                resourceId = (item["resourceId"] as? AttributeValue.S)?.value ?: "",
-                resourceType = (item["resourceType"] as? AttributeValue.S)?.value ?: "",
-                actorId = (item["actorId"] as? AttributeValue.S)?.value ?: "",
+                id = stringAttr(item, "id") ?: return null,
+                userId = stringAttr(item, "userId") ?: return null,
+                type = stringAttr(item, "type") ?: "",
+                title = stringAttr(item, "title") ?: "",
+                message = stringAttr(item, "message") ?: "",
+                resourceId = stringAttr(item, "resourceId") ?: "",
+                resourceType = stringAttr(item, "resourceType") ?: "",
+                actorId = stringAttr(item, "actorId") ?: "",
                 read = (item["read"] as? AttributeValue.Bool)?.value ?: false,
                 deliveredVia = (item["deliveredVia"] as? AttributeValue.L)?.value?.mapNotNull {
                     (it as? AttributeValue.S)?.value
                 } ?: emptyList(),
-                createdAt = (item["createdAt"] as? AttributeValue.S)?.value ?: "",
+                createdAt = stringAttr(item, "createdAt") ?: "",
             )
         } catch (e: Exception) {
             logger.error(e) { "Failed to map DynamoDB item to Notification" }
@@ -223,7 +226,7 @@ class NotificationRepository(
 
     private fun mapToPreference(item: Map<String, AttributeValue>): NotificationPreference? {
         return try {
-            val userId = (item["userId"] as? AttributeValue.S)?.value ?: return null
+            val userId = stringAttr(item, "userId") ?: return null
             val channelsMap = (item["channels"] as? AttributeValue.M)?.value
 
             val channels = channelsMap?.mapValues { (_, value) ->

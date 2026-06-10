@@ -70,10 +70,7 @@ module Api
         private
 
         def redis
-          @redis ||= begin
-            url = ENV.fetch('REDIS_URL', "redis://#{ENV.fetch('REDIS_HOST', 'localhost')}:#{ENV.fetch('REDIS_PORT', '6379')}/0")
-            Redis.new(url: url, timeout: 2)
-          end
+          @redis ||= RedisConnection.new_client
         end
 
         def verify_chaos_secret

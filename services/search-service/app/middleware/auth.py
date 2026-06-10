@@ -1,23 +1,22 @@
 """Authentication middleware for the search service.
 
-Public endpoints (health, metrics) are exempt. All other endpoints accept
-either of two authentication modes:
+Public endpoints (health, metrics) are exempt. All other endpoints require
+one of three authentication modes:
 
+* A valid JWT in the ``Authorization: Bearer <token>`` header, validated
+  independently by this service using the shared ``JWT_SECRET``.
 * A valid service-to-service token via ``Authorization: Bearer <token>``
   (used by trusted internal callers such as the SQS indexer or admin
   reindex jobs).
-* The ``X-User-ID`` header injected by the API gateway after it has
-  validated the caller's JWT (used by user-facing requests proxied
-  through the gateway).
-
-If a service token is configured the middleware will accept it on any
-endpoint; if it is not configured (e.g. local dev), only the gateway
-identity path is available and internal endpoints become reachable only
-via the gateway.
+* The ``X-User-ID`` header injected by the API gateway — accepted only
+  when accompanied by a valid JWT (defense-in-depth).
 """
 
 from __future__ import annotations
 
+import os
+
+import jwt as pyjwt
 import structlog
 from flask import jsonify, request
 
@@ -27,13 +26,7 @@ PUBLIC_PREFIXES = ("/health", "/metrics")
 
 
 def require_auth(app):
-    """Register a ``before_request`` hook that enforces authentication.
-
-    * Requests to health/metrics paths are always allowed.
-    * All other requests must present either a valid service token in
-      the ``Authorization`` header or an ``X-User-ID`` header set by
-      the API gateway after JWT validation.
-    """
+    """Register a ``before_request`` hook that enforces authentication."""
     auth_config = app.config["APP_CONFIG"].auth
 
     @app.before_request
@@ -51,10 +44,15 @@ def require_auth(app):
             if token and token == auth_config.service_token:
                 return None
 
-        # Otherwise require gateway-injected user identity.
-        user_id = request.headers.get("X-User-ID", "").strip()
-        if user_id:
-            return None
+        # Validate JWT independently — do not trust X-User-ID alone.
+        bearer = _extract_bearer_token()
+        jwt_secret = os.environ.get("JWT_SECRET", "")
+        if bearer and jwt_secret:
+            try:
+                pyjwt.decode(bearer, jwt_secret, algorithms=["HS256", "HS384"])
+                return None
+            except pyjwt.PyJWTError:
+                pass
 
         endpoint = request.endpoint or ""
         logger.warning("auth_rejected", endpoint=endpoint, path=path)

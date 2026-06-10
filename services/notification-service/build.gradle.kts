@@ -66,6 +66,9 @@ dependencies {
     implementation("io.opentelemetry:opentelemetry-sdk:1.36.0")
     implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.36.0")
 
+    // JWT validation (WebSocket auth)
+    implementation("com.auth0:java-jwt:4.4.0")
+
     // Redis (chaos flag checks)
     implementation("redis.clients:jedis:5.1.3")
 

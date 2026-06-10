@@ -1,5 +1,7 @@
 package com.otterworks.notification.routes
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import com.otterworks.notification.model.NotificationPreferenceRequest
 import com.otterworks.notification.model.PaginatedResponse
 import com.otterworks.notification.model.UnreadCountResponse
@@ -23,6 +25,7 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import org.koin.ktor.ext.inject
 
 @Serializable
@@ -34,9 +37,12 @@ data class ErrorResponse(val error: String)
 @Serializable
 data class MarkAllReadResponse(val markedCount: Int)
 
+private val wsLogger = KotlinLogging.logger {}
+
 fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
     val notificationService by inject<NotificationService>()
     val webSocketManager by inject<WebSocketManager>()
+    val config by inject<com.otterworks.notification.config.AppConfig>()
 
     routing {
         get("/health") {
@@ -166,6 +172,28 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             val userId = call.parameters["userId"]
             if (userId.isNullOrBlank()) {
                 close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "userId is required"))
+                return@webSocket
+            }
+
+            // Require JWT token as query parameter for WebSocket auth
+            val token = call.request.queryParameters["token"]
+            val jwtSecret = config.jwtSecret
+            if (token.isNullOrBlank() || jwtSecret.isNullOrBlank()) {
+                wsLogger.warn { "ws_connection_rejected: missing token or JWT secret not configured" }
+                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "authentication required"))
+                return@webSocket
+            }
+            try {
+                val verifier = JWT.require(Algorithm.HMAC256(jwtSecret)).build()
+                val decoded = verifier.verify(token)
+                val tokenUserId = decoded.subject ?: decoded.getClaim("user_id").asString()
+                if (tokenUserId != userId) {
+                    close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "token userId mismatch"))
+                    return@webSocket
+                }
+            } catch (e: Exception) {
+                wsLogger.warn { "ws_connection_rejected: invalid token" }
+                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "invalid token"))
                 return@webSocket
             }
 

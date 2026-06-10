@@ -12,6 +12,7 @@ data class AppConfig(
     val sqsPollIntervalMs: Long,
     val sqsMaxMessages: Int,
     val sqsWaitTimeSeconds: Int,
+    val jwtSecret: String?,
 ) {
     companion object {
         fun load(): AppConfig {
@@ -32,6 +33,7 @@ data class AppConfig(
                 sqsPollIntervalMs = System.getenv("SQS_POLL_INTERVAL_MS")?.toLongOrNull() ?: 5000L,
                 sqsMaxMessages = System.getenv("SQS_MAX_MESSAGES")?.toIntOrNull() ?: 10,
                 sqsWaitTimeSeconds = System.getenv("SQS_WAIT_TIME_SECONDS")?.toIntOrNull() ?: 20,
+                jwtSecret = System.getenv("JWT_SECRET"),
             )
         }
     }

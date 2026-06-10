@@ -7,6 +7,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any
 
+import meilisearch.errors
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -85,7 +86,7 @@ class SQSConsumer:
                 for message in messages:
                     self._process_message(sqs, message)
 
-            except (BotoCoreError, ClientError, OSError, RuntimeError):
+            except (BotoCoreError, ClientError, meilisearch.errors.MeilisearchApiError, OSError, RuntimeError):
                 logger.exception("sqs_consumer_error")
                 time.sleep(5)
 
@@ -186,7 +187,7 @@ class SQSConsumer:
                 "sqs_message_validation_failed", message_id=message.get("MessageId")
             )
             sqs.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
-        except (BotoCoreError, ClientError, RuntimeError, OSError, KeyError):
+        except (BotoCoreError, ClientError, meilisearch.errors.MeilisearchApiError, RuntimeError, OSError, KeyError):
             logger.exception(
                 "sqs_message_processing_failed", message_id=message.get("MessageId")
             )

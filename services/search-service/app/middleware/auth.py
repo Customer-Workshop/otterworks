@@ -51,7 +51,7 @@ def require_auth(app):
         jwt_secret = os.environ.get("JWT_SECRET", "")
         if bearer and jwt_secret:
             try:
-                pyjwt.decode(bearer, jwt_secret, algorithms=["HS256", "HS384"])
+                pyjwt.decode(bearer, jwt_secret, algorithms=["HS256", "HS384", "HS512"])
                 return None
             except pyjwt.PyJWTError:
                 pass

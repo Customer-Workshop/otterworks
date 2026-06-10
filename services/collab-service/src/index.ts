@@ -14,6 +14,7 @@ import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
+import { createDiagnosticsRouter } from './handlers/diagnostics';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -74,6 +75,9 @@ app.get('/api/v1/collab/documents/:id/presence', (req, res) => {
   const presence = presenceHandler.getDocumentPresence(documentId);
   res.json(presence);
 });
+
+// Admin diagnostics
+app.use(createDiagnosticsRouter(logger));
 
 // Active documents listing
 app.get('/api/v1/collab/documents', (_req, res) => {

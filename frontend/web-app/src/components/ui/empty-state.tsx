@@ -2,14 +2,14 @@ import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
-  icon: LucideIcon;
-  title: string;
-  description?: string;
-  action?: {
-    label: string;
-    onClick: () => void;
+  readonly icon: LucideIcon;
+  readonly title: string;
+  readonly description?: string;
+  readonly action?: {
+    readonly label: string;
+    readonly onClick: () => void;
   };
-  className?: string;
+  readonly className?: string;
 }
 
 export function EmptyState({
@@ -18,7 +18,7 @@ export function EmptyState({
   description,
   action,
   className,
-}: EmptyStateProps) {
+}: EmptyStateProps): React.JSX.Element {
   return (
     <div
       className={cn(

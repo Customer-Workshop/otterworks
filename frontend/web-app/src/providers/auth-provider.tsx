@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { authApi } from "@/lib/api";
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { readonly children: ReactNode }): React.JSX.Element {
   const { setUser, setLoading } = useAuthStore();
 
   useEffect(() => {

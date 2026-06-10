@@ -5,14 +5,14 @@ import { getInitials, generateColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 interface UserPresenceAvatarsProps {
-  collaborators: Collaborator[];
-  maxVisible?: number;
+  readonly collaborators: Collaborator[];
+  readonly maxVisible?: number;
 }
 
 export function UserPresenceAvatars({
   collaborators,
   maxVisible = 5,
-}: UserPresenceAvatarsProps) {
+}: UserPresenceAvatarsProps): React.JSX.Element | null {
   const visible = collaborators.slice(0, maxVisible);
   const remaining = collaborators.length - maxVisible;
 

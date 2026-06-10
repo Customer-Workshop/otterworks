@@ -16,7 +16,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { ViewMode } from "@/types";
 
-export default function StarredPage() {
+export default function StarredPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -26,7 +26,7 @@ export default function StarredPage() {
   );
 }
 
-function StarredContent() {
+function StarredContent(): React.JSX.Element {
   const { viewMode, setViewMode } = useUIStore();
   const { user, isLoading: authLoading } = useAuthStore();
   const queryClient = useQueryClient();

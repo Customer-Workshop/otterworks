@@ -34,7 +34,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { ViewMode, SortField } from "@/types";
 
-function FileBrowserContent() {
+function FileBrowserContent(): React.JSX.Element {
   const searchParams = useSearchParams();
   const folderId = searchParams.get("folder");
   const queryClient = useQueryClient();
@@ -593,7 +593,7 @@ function SortableHeader({
   );
 }
 
-export default function FilesPage() {
+export default function FilesPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>

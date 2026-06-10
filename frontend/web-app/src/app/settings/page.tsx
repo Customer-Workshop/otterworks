@@ -19,7 +19,7 @@ const profileSchema = z.object({
 
 type ProfileForm = z.infer<typeof profileSchema>;
 
-export default function SettingsPage() {
+export default function SettingsPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -29,7 +29,7 @@ export default function SettingsPage() {
   );
 }
 
-function SettingsContent() {
+function SettingsContent(): React.JSX.Element {
   const { user, setUser } = useAuthStore();
   const queryClient = useQueryClient();
 

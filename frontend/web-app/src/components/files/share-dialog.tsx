@@ -8,17 +8,17 @@ import { filesApi } from "@/lib/api";
 import type { SharedUser } from "@/types";
 
 interface ShareDialogProps {
-  fileId: string;
-  fileName: string;
-  ownerId?: string;
-  ownerName?: string;
-  ownerEmail?: string;
-  sharedWith: SharedUser[];
-  resolvedUsers?: Record<string, { name: string; email: string }>;
-  onShare: (email: string, permission: "view" | "edit") => Promise<void>;
-  onClose: () => void;
-  onPermissionChange?: (userId: string, permission: "view" | "edit") => Promise<void>;
-  onRemoveAccess?: (userId: string) => Promise<void>;
+  readonly fileId: string;
+  readonly fileName: string;
+  readonly ownerId?: string;
+  readonly ownerName?: string;
+  readonly ownerEmail?: string;
+  readonly sharedWith: SharedUser[];
+  readonly resolvedUsers?: Record<string, { name: string; email: string }>;
+  readonly onShare: (email: string, permission: "view" | "edit") => Promise<void>;
+  readonly onClose: () => void;
+  readonly onPermissionChange?: (userId: string, permission: "view" | "edit") => Promise<void>;
+  readonly onRemoveAccess?: (userId: string) => Promise<void>;
 }
 
 type LinkAccess = "restricted" | "anyone";
@@ -35,7 +35,7 @@ export function ShareDialog({
   onClose,
   onPermissionChange,
   onRemoveAccess,
-}: ShareDialogProps) {
+}: ShareDialogProps): React.JSX.Element {
   const [email, setEmail] = useState("");
   const [permission, setPermission] = useState<"view" | "edit">("view");
   const [isSharing, setIsSharing] = useState(false);
@@ -107,9 +107,9 @@ export function ShareDialog({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 z-40" role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }} aria-label="Close dialog" />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">

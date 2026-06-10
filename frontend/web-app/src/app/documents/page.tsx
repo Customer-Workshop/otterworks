@@ -20,7 +20,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { Document, PaginatedResponse, ViewMode } from "@/types";
 
-export default function DocumentsPage() {
+export default function DocumentsPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -30,7 +30,7 @@ export default function DocumentsPage() {
   );
 }
 
-function DocumentsContent() {
+function DocumentsContent(): React.JSX.Element {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { viewMode, setViewMode } = useUIStore();

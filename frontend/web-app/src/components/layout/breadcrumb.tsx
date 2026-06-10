@@ -4,15 +4,15 @@ import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 
 export interface BreadcrumbItem {
-  label: string;
-  href?: string;
+  readonly label: string;
+  readonly href?: string;
 }
 
 interface BreadcrumbProps {
-  items: BreadcrumbItem[];
+  readonly items: BreadcrumbItem[];
 }
 
-export function Breadcrumb({ items }: BreadcrumbProps) {
+export function Breadcrumb({ items }: BreadcrumbProps): React.JSX.Element {
   return (
     <nav className="flex items-center gap-1 text-sm text-gray-500" aria-label="Breadcrumb">
       <Link

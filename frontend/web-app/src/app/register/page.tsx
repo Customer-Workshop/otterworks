@@ -24,7 +24,7 @@ const registerSchema = z
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
-export default function RegisterPage() {
+export default function RegisterPage(): React.JSX.Element {
   const router = useRouter();
   const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);

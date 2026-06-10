@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
-  size?: "sm" | "md" | "lg";
-  className?: string;
+  readonly size?: "sm" | "md" | "lg";
+  readonly className?: string;
 }
 
-export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps): React.JSX.Element {
   const sizeClasses = {
     sm: "w-4 h-4 border-2",
     md: "w-8 h-8 border-3",
@@ -25,7 +25,7 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
   );
 }
 
-export function PageLoader() {
+export function PageLoader(): React.JSX.Element {
   return (
     <div className="flex items-center justify-center min-h-[400px]">
       <LoadingSpinner size="lg" />

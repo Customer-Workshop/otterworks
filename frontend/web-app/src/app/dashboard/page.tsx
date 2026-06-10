@@ -15,7 +15,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { FileCard } from "@/components/files/file-card";
 import { DocumentCard } from "@/components/documents/document-card";
-import { PageLoader } from "@/components/ui/loading-spinner";
+
 import { DashboardSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -23,7 +23,7 @@ import { filesApi, documentsApi, activityApi, storageApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import type { ActivityItem } from "@/types";
 
-export default function DashboardPage() {
+export default function DashboardPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -33,7 +33,7 @@ export default function DashboardPage() {
   );
 }
 
-function DashboardContent() {
+function DashboardContent(): React.JSX.Element {
   const { data: recentFiles, isLoading: filesLoading } = useQuery({
     queryKey: ["files", "recent"],
     queryFn: () => filesApi.getRecent(6),

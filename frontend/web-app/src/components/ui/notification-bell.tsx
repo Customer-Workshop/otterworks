@@ -5,7 +5,7 @@ import { Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { notificationsApi } from "@/lib/api";
 
-export function NotificationBell() {
+export function NotificationBell(): React.JSX.Element {
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => notificationsApi.getUnreadCount(),

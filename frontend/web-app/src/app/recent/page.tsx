@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Clock, FolderOpen, FileText } from "lucide-react";
+import { Clock } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { FileCard } from "@/components/files/file-card";
 import { DocumentCard } from "@/components/documents/document-card";
@@ -45,7 +45,7 @@ function groupByTime(items: RecentItem[]): Record<string, RecentItem[]> {
   return groups;
 }
 
-export default function RecentPage() {
+export default function RecentPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -55,7 +55,7 @@ export default function RecentPage() {
   );
 }
 
-function RecentContent() {
+function RecentContent(): React.JSX.Element {
   const { data: recentFiles, isLoading: filesLoading } = useQuery({
     queryKey: ["files", "recent", "all"],
     queryFn: () => filesApi.getRecent(50),
@@ -164,7 +164,7 @@ function RecentContent() {
   );
 }
 
-function RecentSkeleton() {
+function RecentSkeleton(): React.JSX.Element {
   return (
     <div className="space-y-6">
       {[1, 2].map((section) => (

@@ -2,13 +2,13 @@ import { create } from "zustand";
 import type { ViewMode, SortConfig } from "@/types";
 
 interface UIState {
-  sidebarOpen: boolean;
-  viewMode: ViewMode;
-  sortConfig: SortConfig;
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  setViewMode: (mode: ViewMode) => void;
-  setSortConfig: (config: SortConfig) => void;
+  readonly sidebarOpen: boolean;
+  readonly viewMode: ViewMode;
+  readonly sortConfig: SortConfig;
+  readonly toggleSidebar: () => void;
+  readonly setSidebarOpen: (open: boolean) => void;
+  readonly setViewMode: (mode: ViewMode) => void;
+  readonly setSortConfig: (config: SortConfig) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({

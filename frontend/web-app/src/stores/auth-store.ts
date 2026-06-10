@@ -3,12 +3,12 @@ import { authApi } from "@/lib/api";
 import type { User } from "@/types";
 
 interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  setUser: (user: User | null) => void;
-  setLoading: (loading: boolean) => void;
-  logout: () => void;
+  readonly user: User | null;
+  readonly isAuthenticated: boolean;
+  readonly isLoading: boolean;
+  readonly setUser: (user: User | null) => void;
+  readonly setLoading: (loading: boolean) => void;
+  readonly logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

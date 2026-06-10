@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-function Skeleton({ className }: { className?: string }) {
+function Skeleton({ className }: { readonly className?: string }): React.JSX.Element {
   return (
     <div
       className={cn(
@@ -11,7 +11,7 @@ function Skeleton({ className }: { className?: string }) {
   );
 }
 
-export function FileCardSkeleton() {
+export function FileCardSkeleton(): React.JSX.Element {
   return (
     <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between mb-3">
@@ -24,7 +24,7 @@ export function FileCardSkeleton() {
   );
 }
 
-export function FileListRowSkeleton() {
+export function FileListRowSkeleton(): React.JSX.Element {
   return (
     <div className="flex items-center gap-4 px-4 py-2.5">
       <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
@@ -36,33 +36,33 @@ export function FileListRowSkeleton() {
   );
 }
 
-export function FileGridSkeleton({ count = 8 }: { count?: number }) {
+export function FileGridSkeleton({ count = 8 }: { readonly count?: number }): React.JSX.Element {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {Array.from({ length: count }).map((_, i) => (
-        <FileCardSkeleton key={i} />
+        <FileCardSkeleton key={`file-card-skeleton-${i}`} />
       ))}
     </div>
   );
 }
 
-export function FileListSkeleton({ count = 6 }: { count?: number }) {
+export function FileListSkeleton({ count = 6 }: { readonly count?: number }): React.JSX.Element {
   return (
     <div className="space-y-1">
       {Array.from({ length: count }).map((_, i) => (
-        <FileListRowSkeleton key={i} />
+        <FileListRowSkeleton key={`file-list-skeleton-${i}`} />
       ))}
     </div>
   );
 }
 
-export function DashboardSkeleton() {
+export function DashboardSkeleton(): React.JSX.Element {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+          <div key={`stat-skeleton-${i}`} className="bg-white rounded-xl border border-gray-200 p-5">
             <Skeleton className="h-3 w-20 mb-3" />
             <Skeleton className="h-8 w-16 mb-2" />
             <Skeleton className="h-2 w-24" />
@@ -75,7 +75,7 @@ export function DashboardSkeleton() {
           <Skeleton className="h-5 w-32 mb-4" />
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={`activity-skeleton-${i}`} className="flex items-center gap-3">
                 <Skeleton className="w-10 h-10 rounded-lg" />
                 <div className="flex-1">
                   <Skeleton className="h-4 w-40 mb-1" />

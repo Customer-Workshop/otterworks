@@ -28,14 +28,14 @@ import {
 import { cn } from "@/lib/utils";
 
 interface CollaborativeEditorProps {
-  documentId: string;
-  initialContent?: string;
-  onUpdate?: (content: string) => void;
+  readonly documentId: string;
+  readonly initialContent?: string;
+  readonly onUpdate?: (content: string) => void;
 }
 
 const COLLAB_WS_URL = process.env.NEXT_PUBLIC_COLLAB_WS_URL || "ws://localhost:8085";
 
-export function CollaborativeEditor({ documentId, initialContent, onUpdate }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ documentId, initialContent, onUpdate }: CollaborativeEditorProps): React.JSX.Element {
   const { user } = useAuthStore();
   const [ydoc] = useState(() => new Y.Doc());
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);

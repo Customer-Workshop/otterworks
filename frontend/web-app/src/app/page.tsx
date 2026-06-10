@@ -1,4 +1,4 @@
-export default function Home() {
+export default function Home(): React.JSX.Element {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero */}

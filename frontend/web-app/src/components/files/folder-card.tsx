@@ -7,14 +7,14 @@ import type { FileItem } from "@/types";
 import { formatRelativeTime } from "@/lib/utils";
 
 interface FolderCardProps {
-  folder: FileItem;
-  onDelete?: (id: string) => void;
-  onShare?: (id: string) => void;
-  onRename?: (id: string, name: string) => void;
-  view?: "grid" | "list";
-  selected?: boolean;
-  onSelect?: (id: string) => void;
-  selectionActive?: boolean;
+  readonly folder: FileItem;
+  readonly onDelete?: (id: string) => void;
+  readonly onShare?: (id: string) => void;
+  readonly onRename?: (id: string, name: string) => void;
+  readonly view?: "grid" | "list";
+  readonly selected?: boolean;
+  readonly onSelect?: (id: string) => void;
+  readonly selectionActive?: boolean;
 }
 
 export function FolderCard({
@@ -26,7 +26,7 @@ export function FolderCard({
   selected = false,
   onSelect,
   selectionActive = false,
-}: FolderCardProps) {
+}: FolderCardProps): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(folder.name);
@@ -50,7 +50,7 @@ export function FolderCard({
     setIsRenaming(false);
   };
 
-  const handleCheckboxClick = (e: React.MouseEvent) => {
+  const handleCheckboxClick = (e: React.SyntheticEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onSelect?.(folder.id);
@@ -60,7 +60,13 @@ export function FolderCard({
     return (
       <div className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition group border-b border-gray-100 last:border-0">
         {selectionActive && (
-          <div className="flex-shrink-0" onClick={handleCheckboxClick}>
+          <div
+            className="flex-shrink-0"
+            role="button"
+            tabIndex={0}
+            onClick={handleCheckboxClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCheckboxClick(e); }}
+          >
             <input
               type="checkbox"
               checked={selected}
@@ -78,7 +84,7 @@ export function FolderCard({
           </div>
           <div className="flex-1 min-w-0">
             {isRenaming ? (
-              <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+              <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()} onKeyDown={(e) => e.preventDefault()} role="presentation">
                 <input
                   ref={renameInputRef}
                   type="text"
@@ -130,7 +136,13 @@ export function FolderCard({
   return (
     <div className="group relative flex flex-col rounded-xl border border-gray-200 bg-white hover:shadow-md transition p-4">
       {selectionActive && (
-        <div className="absolute top-2 left-2 z-10" onClick={handleCheckboxClick}>
+        <div
+          className="absolute top-2 left-2 z-10"
+          role="button"
+          tabIndex={0}
+          onClick={handleCheckboxClick}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCheckboxClick(e); }}
+        >
           <input
             type="checkbox"
             checked={selected}
@@ -170,7 +182,7 @@ export function FolderCard({
           </div>
         </div>
         {isRenaming ? (
-          <div className="mb-1" onClick={(e) => e.preventDefault()}>
+          <div className="mb-1" onClick={(e) => e.preventDefault()} onKeyDown={(e) => e.preventDefault()} role="presentation">
             <input
               ref={renameInputRef}
               type="text"
@@ -211,7 +223,7 @@ function FolderMenu({
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-10" onClick={onClose} />
+      <div className="fixed inset-0 z-10" role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }} aria-label="Close menu" />
       <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
         <button
           onClick={(e) => {

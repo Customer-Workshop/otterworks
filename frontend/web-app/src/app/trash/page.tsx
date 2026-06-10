@@ -14,7 +14,7 @@ import { File, FileText, Folder, Image, Film } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FileItem } from "@/types";
 
-export default function TrashPage() {
+export default function TrashPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -24,7 +24,7 @@ export default function TrashPage() {
   );
 }
 
-function TrashContent() {
+function TrashContent(): React.JSX.Element {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<FileItem | null>(null);
   const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);

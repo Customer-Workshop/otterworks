@@ -29,7 +29,7 @@ import { TextFilePreview, PdfFilePreview, ImageFilePreview } from "@/components/
 import { filesApi, authApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
-export default function FileDetailPage() {
+export default function FileDetailPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -39,7 +39,7 @@ export default function FileDetailPage() {
   );
 }
 
-function FileDetailContent() {
+function FileDetailContent(): React.JSX.Element {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();

@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 
 interface AppShellProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps): React.JSX.Element {
   const { sidebarOpen, toggleSidebar } = useUIStore();
 
   return (

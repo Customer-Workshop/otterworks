@@ -24,7 +24,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { documentsApi } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/utils";
 
-export default function DocumentEditorPage() {
+export default function DocumentEditorPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -34,7 +34,7 @@ export default function DocumentEditorPage() {
   );
 }
 
-function DocumentEditorContent() {
+function DocumentEditorContent(): React.JSX.Element {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -158,10 +158,13 @@ function DocumentEditorContent() {
           ) : (
             <h1
               className="text-xl font-bold text-gray-900 cursor-pointer hover:text-otter-700 truncate"
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 setTitle(document.title);
                 setIsTitleEditing(true);
               }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setTitle(document.title); setIsTitleEditing(true); } }}
               title="Click to rename"
             >
               {displayTitle}

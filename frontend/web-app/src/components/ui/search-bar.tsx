@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 
-export function SearchBar() {
+export function SearchBar(): React.JSX.Element {
   const [query, setQuery] = useState("");
   const router = useRouter();
 

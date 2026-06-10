@@ -9,14 +9,14 @@ import { starredApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface DocumentCardProps {
-  document: Document;
-  onDelete?: (id: string) => void;
-  onShare?: (id: string) => void;
-  view?: "grid" | "list";
-  onStarToggle?: () => void;
+  readonly document: Document;
+  readonly onDelete?: (id: string) => void;
+  readonly onShare?: (id: string) => void;
+  readonly view?: "grid" | "list";
+  readonly onStarToggle?: () => void;
 }
 
-export function DocumentCard({ document, onDelete, onShare, view = "grid", onStarToggle }: DocumentCardProps) {
+export function DocumentCard({ document, onDelete, onShare, view = "grid", onStarToggle }: DocumentCardProps): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuthStore();
   const userId = user?.id ?? "";
@@ -189,7 +189,7 @@ function DocMenu({
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-10" onClick={onClose} />
+      <div className="fixed inset-0 z-10" role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }} aria-label="Close menu" />
       <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
         <Link
           href={`/documents/${docId}`}

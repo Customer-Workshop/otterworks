@@ -13,7 +13,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { ViewMode } from "@/types";
 
-export default function SharedPage() {
+export default function SharedPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -23,7 +23,7 @@ export default function SharedPage() {
   );
 }
 
-function SharedContent() {
+function SharedContent(): React.JSX.Element {
   const { viewMode, setViewMode } = useUIStore();
 
   const { data, isLoading } = useQuery({

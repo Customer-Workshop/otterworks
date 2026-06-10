@@ -19,7 +19,7 @@ import { notificationsApi } from "@/lib/api";
 import { formatRelativeTime, cn, getInitials, generateColor } from "@/lib/utils";
 import type { Notification } from "@/types";
 
-export default function NotificationsPage() {
+export default function NotificationsPage(): React.JSX.Element {
   return (
     <AppShell>
       <ErrorBoundary>
@@ -29,7 +29,7 @@ export default function NotificationsPage() {
   );
 }
 
-function NotificationsContent() {
+function NotificationsContent(): React.JSX.Element {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -128,12 +128,12 @@ function NotificationRow({
   const Icon = notificationIcons[notification.type] || Bell;
   const color = notificationColors[notification.type] || "text-gray-600 bg-gray-100";
 
-  const href =
-    notification.resourceId && notification.resourceType === "document"
-      ? `/documents/${notification.resourceId}`
-      : notification.resourceId && notification.resourceType === "file"
-      ? `/files/${notification.resourceId}`
-      : undefined;
+  let href: string | undefined;
+  if (notification.resourceId && notification.resourceType === "document") {
+    href = `/documents/${notification.resourceId}`;
+  } else if (notification.resourceId && notification.resourceType === "file") {
+    href = `/files/${notification.resourceId}`;
+  }
 
   const content = (
     <div
@@ -141,9 +141,12 @@ function NotificationRow({
         "flex items-start gap-4 px-5 py-4 transition cursor-pointer",
         !notification.read ? "bg-otter-50/30" : "hover:bg-gray-50"
       )}
+      role="button"
+      tabIndex={0}
       onClick={() => {
         if (!notification.read) onMarkRead();
       }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (!notification.read) onMarkRead(); } }}
     >
       {notification.actorName ? (
         <div

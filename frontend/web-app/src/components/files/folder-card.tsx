@@ -84,7 +84,7 @@ export function FolderCard({
           </div>
           <div className="flex-1 min-w-0">
             {isRenaming ? (
-              <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()} onKeyDown={(e) => e.preventDefault()} role="presentation">
+              <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()} role="presentation">
                 <input
                   ref={renameInputRef}
                   type="text"
@@ -182,7 +182,7 @@ export function FolderCard({
           </div>
         </div>
         {isRenaming ? (
-          <div className="mb-1" onClick={(e) => e.preventDefault()} onKeyDown={(e) => e.preventDefault()} role="presentation">
+          <div className="mb-1" onClick={(e) => e.preventDefault()} role="presentation">
             <input
               ref={renameInputRef}
               type="text"

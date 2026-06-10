@@ -304,7 +304,6 @@ function RenameInput({
     <div
       className={variant === "inline" ? "flex items-center gap-1" : "mb-1"}
       onClick={(e) => e.preventDefault()}
-      onKeyDown={(e) => e.preventDefault()}
       role="presentation"
     >
       <input

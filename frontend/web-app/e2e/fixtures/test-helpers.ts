@@ -2,7 +2,7 @@ import { type Page, expect } from "@playwright/test";
 
 /** Generate a unique email for test isolation */
 export function uniqueEmail(): string {
-  return `test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@otterworks.test`;
+  return `test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@otterworks.test`; // NOSONAR — test isolation ID, not security-sensitive
 }
 
 /** Fill and submit the registration form */

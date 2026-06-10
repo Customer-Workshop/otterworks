@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+*.secret
+*.pem
+*.key
+Dockerfile
+.dockerignore
+README.md
+LICENSE
+.vscode
+.idea
+vendor
+bin

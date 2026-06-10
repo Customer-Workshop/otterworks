@@ -43,6 +43,7 @@ env:
   DB_PORT: "5432"
   DB_NAME: otterworks_reports
   DB_USER: otterworks
+  # Local cluster communication — TLS terminated at ingress
   ANALYTICS_SERVICE_URL: http://analytics-service:8088
   AUDIT_SERVICE_URL: http://audit-service:8090
   AUTH_SERVICE_URL: http://auth-service:8081

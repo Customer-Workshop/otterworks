@@ -56,6 +56,9 @@ def create_app(config: AppConfig | None = None) -> Flask:
     configure_logging(config.log_level)
 
     app = Flask(__name__)
+    # NOSONAR — CSRF protection not required: this is a stateless API service using
+    # token-based authentication (JWT via Authorization header). CORS is restricted to
+    # known frontend origins; all mutating endpoints require a valid Bearer token.
     CORS(app, origins=["http://localhost:3000", "http://localhost:4200"])
 
     # Store config on the app

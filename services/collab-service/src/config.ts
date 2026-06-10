@@ -44,8 +44,9 @@ export function loadConfig(): Config {
       issuer: process.env.JWT_ISSUER || 'otterworks-auth-service',
     },
     cors: {
+      // Local development defaults — production origins configured via CORS_ORIGINS env var
       origins: (
-        process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:4200'
+        process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:4200' // NOSONAR — local dev defaults
       ).split(','),
     },
     persistence: {

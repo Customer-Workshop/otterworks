@@ -13,7 +13,8 @@ locals {
 # --- SNS Topic: System Events ---
 
 resource "aws_sns_topic" "events" {
-  name = "${var.project}-events-${var.environment}"
+  name              = "${var.project}-events-${var.environment}"
+  kms_master_key_id = "alias/aws/sns"
 
   tags = merge(local.common_tags, {
     Service = "shared-events"

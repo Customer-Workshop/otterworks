@@ -376,8 +376,8 @@ def seed_audit_logs(cur) -> None:
         log("  No seeded users found — skipping audit logs.")
         return
 
-    import random
-    rng = random.Random(42)  # deterministic
+    import random  # NOSONAR — deterministic seed data generation, not security-sensitive
+    rng = random.Random(42)  # deterministic, reproducible test data
 
     rows = []
     for i in range(80):

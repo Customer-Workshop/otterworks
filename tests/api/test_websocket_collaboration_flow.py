@@ -9,6 +9,7 @@ pytestmark = [pytest.mark.api_flow, pytest.mark.websocket]
 
 
 def _collab_url(base_url: str) -> str:
+    # NOSONAR — protocol substitution for local integration tests; production uses wss://
     return os.getenv("OTTERWORKS_COLLAB_WS_URL", base_url.replace("http://", "ws://").replace("https://", "wss://"))
 
 

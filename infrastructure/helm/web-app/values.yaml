@@ -37,6 +37,7 @@ healthCheck:
   path: /
   port: 3000
 
+# Local cluster communication — TLS terminated at ingress
 env:
   API_GATEWAY_URL: "http://api-gateway:8080"
 

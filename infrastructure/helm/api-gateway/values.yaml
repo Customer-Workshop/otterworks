@@ -42,6 +42,7 @@ monitoring:
   path: /metrics
   port: 8080
 
+# Local cluster communication — TLS terminated at ingress
 env:
   AUTH_SERVICE_URL: "http://auth-service:8081"
   FILE_SERVICE_URL: "http://file-service:8082"

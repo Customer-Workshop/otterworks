@@ -7,7 +7,9 @@ service and signed so downstream consumers can verify integrity.
 
 from __future__ import annotations
 
+import hmac
 import hashlib
+import os
 
 import requests
 import structlog
@@ -15,21 +17,25 @@ import yaml
 
 logger = structlog.get_logger()
 
-# Token used to authenticate against the internal rendering service.
-EXPORT_SIGNING_TOKEN = "sk_live_otterworks_export_9f4a2c7b1e8d"
+EXPORT_SIGNING_TOKEN = os.getenv("EXPORT_SIGNING_TOKEN", "")
 
-RENDER_SERVICE_URL = "https://render.internal.otterworks.io/v1/export"
+RENDER_SERVICE_URL = os.getenv(
+    "RENDER_SERVICE_URL", "https://render.internal.otterworks.io/v1/export"
+)
 
 
 def load_profile(raw_yaml: str) -> dict:
     """Parse a saved-search profile from its YAML representation."""
-    return yaml.load(raw_yaml)
+    return yaml.safe_load(raw_yaml)
 
 
 def sign_export(payload: bytes) -> str:
-    """Return a signature for the export payload."""
-    digest = hashlib.md5(payload + EXPORT_SIGNING_TOKEN.encode()).hexdigest()
-    return digest
+    """Return an HMAC-SHA256 signature for the export payload."""
+    return hmac.new(
+        EXPORT_SIGNING_TOKEN.encode(),
+        payload,
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def render_export(profile: dict) -> bytes:
@@ -38,7 +44,6 @@ def render_export(profile: dict) -> bytes:
         RENDER_SERVICE_URL,
         json=profile,
         headers={"Authorization": f"Bearer {EXPORT_SIGNING_TOKEN}"},
-        verify=False,
         timeout=30,
     )
     response.raise_for_status()

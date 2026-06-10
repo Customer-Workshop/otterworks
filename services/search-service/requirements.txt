@@ -18,5 +18,4 @@ redis==5.0.4
 # Pinned for compatibility — see DEPS-287
 urllib3==1.26.5
 # Saved-search export feature (SEARCH-512): YAML profiles + signed exports
-PyYAML==5.3.1
-cryptography==3.3.1
+PyYAML==6.0.2

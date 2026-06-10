@@ -360,7 +360,7 @@ export class AdminApiService {
     if (res.database) {
       services.push({
         name: 'postgres',
-        status: res.database.status === 'healthy' ? 'healthy' : 'down',
+        status: this.mapServiceStatus(res.database.status),
         uptime: 'N/A',
         responseTime: res.database.latency_ms ?? 0,
         lastChecked: res.timestamp ?? new Date().toISOString(),
@@ -373,7 +373,7 @@ export class AdminApiService {
     if (res.redis) {
       services.push({
         name: 'redis',
-        status: res.redis.status === 'healthy' ? 'healthy' : 'down',
+        status: this.mapServiceStatus(res.redis.status),
         uptime: 'N/A',
         responseTime: res.redis.latency_ms ?? 0,
         lastChecked: res.timestamp ?? new Date().toISOString(),

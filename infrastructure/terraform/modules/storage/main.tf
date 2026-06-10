@@ -10,6 +10,84 @@ locals {
   }
 }
 
+# --- Access Logging Bucket ---
+
+resource "aws_s3_bucket" "access_logs" {
+  bucket = "${var.project}-access-logs-${var.environment}"
+
+  tags = merge(local.common_tags, {
+    Service = "access-logging"
+  })
+}
+
+resource "aws_s3_bucket_public_access_block" "access_logs" {
+  bucket                  = aws_s3_bucket.access_logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+
+  rule {
+    id     = "expire-old-logs"
+    status = "Enabled"
+    filter {}
+    expiration {
+      days = 90
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnforceHTTPS"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.access_logs.arn,
+          "${aws_s3_bucket.access_logs.arn}/*",
+        ]
+        Condition = {
+          Bool = { "aws:SecureTransport" = "false" }
+        }
+      },
+      {
+        Sid       = "AllowS3Logging"
+        Effect    = "Allow"
+        Principal = { Service = "logging.s3.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.access_logs.arn}/*"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+    ]
+  })
+}
+
+data "aws_caller_identity" "current" {}
+
 # --- File Storage Bucket ---
 
 resource "aws_s3_bucket" "files" {
@@ -48,8 +126,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
 resource "aws_s3_bucket_logging" "files" {
   bucket = aws_s3_bucket.files.id
 
-  target_bucket = aws_s3_bucket.files.id
-  target_prefix = "access-logs/files/"
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "files/"
 }
 
 resource "aws_s3_bucket_policy" "files" {
@@ -110,8 +188,8 @@ resource "aws_s3_bucket_public_access_block" "data_lake" {
 resource "aws_s3_bucket_logging" "data_lake" {
   bucket = aws_s3_bucket.data_lake.id
 
-  target_bucket = aws_s3_bucket.data_lake.id
-  target_prefix = "access-logs/data-lake/"
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "data-lake/"
 }
 
 resource "aws_s3_bucket_policy" "data_lake" {
@@ -166,8 +244,8 @@ resource "aws_s3_bucket_public_access_block" "audit_archive" {
 resource "aws_s3_bucket_logging" "audit_archive" {
   bucket = aws_s3_bucket.audit_archive.id
 
-  target_bucket = aws_s3_bucket.audit_archive.id
-  target_prefix = "access-logs/audit-archive/"
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "audit-archive/"
 }
 
 resource "aws_s3_bucket_policy" "audit_archive" {

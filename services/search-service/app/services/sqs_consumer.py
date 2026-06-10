@@ -187,7 +187,7 @@ class SQSConsumer:
                 "sqs_message_validation_failed", message_id=message.get("MessageId")
             )
             sqs.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
-        except (BotoCoreError, ClientError, meilisearch.errors.MeilisearchApiError, RuntimeError, OSError, KeyError, TypeError):
+        except (BotoCoreError, ClientError, meilisearch.errors.MeilisearchError, RuntimeError, OSError, KeyError, TypeError):
             logger.exception(
                 "sqs_message_processing_failed", message_id=message.get("MessageId")
             )

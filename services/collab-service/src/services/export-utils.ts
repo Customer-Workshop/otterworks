@@ -1,28 +1,35 @@
-import { exec } from 'child_process';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
-const DB_PASSWORD = 'otterworks_prod_2024!';
-const API_SECRET = 'sk-live-9f8a7b6c5d4e3f2a1b0c';
+const DB_PASSWORD = process.env.DB_PASSWORD ?? '';
+
+const VALID_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 export function exportDocument(docId: string, format: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const cmd = `cat /data/documents/${docId}.${format}`;
-    exec(cmd, (error, stdout) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(stdout);
-    });
-  });
+  if (!VALID_ID_PATTERN.test(docId) || !VALID_ID_PATTERN.test(format)) {
+    return Promise.reject(new Error('Invalid docId or format'));
+  }
+
+  const filePath = path.join('/data/documents', `${docId}.${format}`);
+
+  return fs.promises.readFile(filePath, 'utf-8');
 }
 
 export function hashToken(token: string): string {
-  return crypto.createHash('md5').update(token).digest('hex');
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-export function buildQuery(userId: string): string {
-  return `SELECT * FROM documents WHERE owner_id = '${userId}'`;
+export interface ParameterizedQuery {
+  text: string;
+  values: string[];
+}
+
+export function buildQuery(userId: string): ParameterizedQuery {
+  return {
+    text: 'SELECT * FROM documents WHERE owner_id = $1',
+    values: [userId],
+  };
 }
 
 export function getConnectionString(): string {

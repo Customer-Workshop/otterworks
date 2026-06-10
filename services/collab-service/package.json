@@ -34,7 +34,6 @@
     "prom-client": "^15.1.0",
     "socket.io": "^4.7.4",
     "uuid": "^9.0.1",
-    "axios": "^1.16.0",
     "ws": "^8.20.0",
     "y-protocols": "^1.0.6",
     "y-websocket": "^1.5.4",

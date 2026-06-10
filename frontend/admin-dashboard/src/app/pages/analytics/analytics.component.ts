@@ -126,19 +126,19 @@ export class AnalyticsComponent implements OnInit {
   signupsChart: ChartConfiguration<'bar'>['data'] = { labels: [], datasets: [] };
   peakHoursChart: ChartConfiguration<'bar'>['data'] = { labels: [], datasets: [] };
 
-  lineChartOptions: ChartConfiguration<'line'>['options'] = {
+  readonly lineChartOptions: ChartConfiguration<'line'>['options'] = {
     responsive: true,
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true } },
   };
 
-  barChartOptions: ChartConfiguration<'bar'>['options'] = {
+  readonly barChartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true } },
   };
 
-  pieChartOptions: ChartConfiguration<'pie'>['options'] = {
+  readonly pieChartOptions: ChartConfiguration<'pie'>['options'] = {
     responsive: true,
     plugins: { legend: { position: 'right' } },
   };

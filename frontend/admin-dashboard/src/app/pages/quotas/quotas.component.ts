@@ -134,10 +134,10 @@ import { User } from '../../core/models/user.model';
   `],
 })
 export class QuotasComponent implements OnInit {
-  displayedColumns = ['displayName', 'storageUsed', 'storageQuota', 'usage', 'actions'];
+  readonly displayedColumns = ['displayName', 'storageUsed', 'storageQuota', 'usage', 'actions'];
   dataSource = new MatTableDataSource<User>([]);
   loading = true;
-  gb = 1024 * 1024 * 1024;
+  readonly gb = 1024 * 1024 * 1024;
 
   @ViewChild(MatPaginator) set matPaginator(paginator: MatPaginator) {
     this.dataSource.paginator = paginator;

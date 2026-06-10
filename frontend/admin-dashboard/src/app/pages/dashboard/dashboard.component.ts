@@ -170,19 +170,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   signupChartData: ChartConfiguration<'line'>['data'] = { labels: [], datasets: [] };
   activityChartData: ChartConfiguration<'bar'>['data'] = { labels: [], datasets: [] };
 
-  lineChartOptions: ChartConfiguration<'line'>['options'] = {
+  readonly lineChartOptions: ChartConfiguration<'line'>['options'] = {
     responsive: true,
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true } },
   };
 
-  barChartOptions: ChartConfiguration<'bar'>['options'] = {
+  readonly barChartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true } },
   };
 
-  private destroy$ = new Subject<void>();
+  private readonly destroy$ = new Subject<void>();
 
   constructor(private api: AdminApiService) {}
 

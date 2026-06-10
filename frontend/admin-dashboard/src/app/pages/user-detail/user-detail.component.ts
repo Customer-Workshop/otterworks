@@ -216,7 +216,7 @@ export class UserDetailComponent implements OnInit {
   activities: UserActivity[] = [];
   loading = true;
   storagePercentage = 0;
-  activityColumns = ['timestamp', 'action', 'resource', 'ipAddress'];
+  readonly activityColumns = ['timestamp', 'action', 'resource', 'ipAddress'];
 
   constructor(
     private route: ActivatedRoute,

@@ -160,7 +160,7 @@ export class SidebarComponent {
   @Input() collapsed = false;
   @Output() collapsedChange = new EventEmitter<boolean>();
 
-  navItems: NavItem[] = [
+  readonly navItems: NavItem[] = [
     { label: 'Dashboard', icon: 'dashboard', route: '/' },
     { label: 'Users', icon: 'people', route: '/users' },
     { label: 'Audit Logs', icon: 'history', route: '/audit' },

@@ -423,7 +423,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
   showCreateForm = false;
   showClosed = false;
   filterStatus = '';
-  affectedServices = AFFECTED_SERVICES;
+  readonly affectedServices = AFFECTED_SERVICES;
   newIncident: Partial<Incident> = { severity: 'high', affectedService: '' };
 
   // Demo Controls state
@@ -694,10 +694,12 @@ export class IncidentsComponent implements OnInit, OnDestroy {
         this.saveChaosState();
         this.chaosLoading = false;
         const cleared = res.cleared?.length ?? 0;
-        const resolved = (res as any).resolved_incidents?.length ?? 0;
-        const msg = resolved > 0
-          ? `Reset complete — cleared ${cleared} chaos flag(s), resolved ${resolved} incident(s)`
-          : `Reset complete — cleared ${cleared} chaos flag(s)`;
+        const resObj = res as { cleared?: string[]; resolved_incidents?: string[] };
+        const resolved = resObj.resolved_incidents?.length ?? 0;
+        let msg = `Reset complete — cleared ${cleared} chaos flag(s)`;
+        if (resolved > 0) {
+          msg += `, resolved ${resolved} incident(s)`;
+        }
         this.snackBar.open(msg, 'Dismiss', { duration: 5000 });
         this.loadIncidents();
       },

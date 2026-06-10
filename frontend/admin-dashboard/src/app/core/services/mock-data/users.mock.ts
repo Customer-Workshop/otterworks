@@ -1,5 +1,13 @@
 import { User, UserActivity } from '../../models/user.model';
 
+const MOCK_IP_ALICE = '192.168.1.10';
+const MOCK_IP_BOB = '10.0.0.25';
+const MOCK_IP_CAROL = '10.0.0.42';
+const MOCK_IP_EMILY = '172.16.0.5';
+const MOCK_IP_FRANK = '192.168.1.15';
+const MOCK_IP_HENRY = '10.0.0.80';
+const MOCK_IP_IRENE = '172.16.0.12';
+
 export const MOCK_USERS: User[] = [
   {
     id: 'usr-001',
@@ -134,16 +142,16 @@ export const MOCK_USERS: User[] = [
 ];
 
 export const MOCK_USER_ACTIVITIES: UserActivity[] = [
-  { id: 'act-001', userId: 'usr-001', action: 'Uploaded file', resource: 'Q4-Report.docx', timestamp: '2026-04-17T10:30:00Z', ipAddress: '192.168.1.10' },
-  { id: 'act-002', userId: 'usr-001', action: 'Shared document', resource: 'Budget-2026.xlsx', timestamp: '2026-04-17T09:15:00Z', ipAddress: '192.168.1.10' },
-  { id: 'act-003', userId: 'usr-001', action: 'Edited document', resource: 'Team-Notes.docx', timestamp: '2026-04-16T16:00:00Z', ipAddress: '192.168.1.10' },
-  { id: 'act-004', userId: 'usr-002', action: 'Created folder', resource: 'Marketing-Assets', timestamp: '2026-04-17T09:00:00Z', ipAddress: '10.0.0.25' },
-  { id: 'act-005', userId: 'usr-002', action: 'Uploaded file', resource: 'Campaign-Brief.pdf', timestamp: '2026-04-16T14:30:00Z', ipAddress: '10.0.0.25' },
-  { id: 'act-006', userId: 'usr-003', action: 'Downloaded file', resource: 'Design-System.fig', timestamp: '2026-04-16T16:45:00Z', ipAddress: '10.0.0.42' },
-  { id: 'act-007', userId: 'usr-003', action: 'Edited document', resource: 'UI-Guidelines.docx', timestamp: '2026-04-16T15:00:00Z', ipAddress: '10.0.0.42' },
-  { id: 'act-008', userId: 'usr-005', action: 'Shared document', resource: 'Product-Roadmap.docx', timestamp: '2026-04-17T08:20:00Z', ipAddress: '172.16.0.5' },
-  { id: 'act-009', userId: 'usr-006', action: 'Deleted file', resource: 'old-backup.zip', timestamp: '2026-04-17T12:00:00Z', ipAddress: '192.168.1.15' },
-  { id: 'act-010', userId: 'usr-008', action: 'Created document', resource: 'API-Docs-v2.md', timestamp: '2026-04-16T14:30:00Z', ipAddress: '10.0.0.80' },
-  { id: 'act-011', userId: 'usr-009', action: 'Uploaded file', resource: 'Blog-Post-Draft.docx', timestamp: '2026-04-17T11:00:00Z', ipAddress: '172.16.0.12' },
-  { id: 'act-012', userId: 'usr-001', action: 'Login', resource: 'Admin Portal', timestamp: '2026-04-17T08:00:00Z', ipAddress: '192.168.1.10' },
+  { id: 'act-001', userId: 'usr-001', action: 'Uploaded file', resource: 'Q4-Report.docx', timestamp: '2026-04-17T10:30:00Z', ipAddress: MOCK_IP_ALICE },
+  { id: 'act-002', userId: 'usr-001', action: 'Shared document', resource: 'Budget-2026.xlsx', timestamp: '2026-04-17T09:15:00Z', ipAddress: MOCK_IP_ALICE },
+  { id: 'act-003', userId: 'usr-001', action: 'Edited document', resource: 'Team-Notes.docx', timestamp: '2026-04-16T16:00:00Z', ipAddress: MOCK_IP_ALICE },
+  { id: 'act-004', userId: 'usr-002', action: 'Created folder', resource: 'Marketing-Assets', timestamp: '2026-04-17T09:00:00Z', ipAddress: MOCK_IP_BOB },
+  { id: 'act-005', userId: 'usr-002', action: 'Uploaded file', resource: 'Campaign-Brief.pdf', timestamp: '2026-04-16T14:30:00Z', ipAddress: MOCK_IP_BOB },
+  { id: 'act-006', userId: 'usr-003', action: 'Downloaded file', resource: 'Design-System.fig', timestamp: '2026-04-16T16:45:00Z', ipAddress: MOCK_IP_CAROL },
+  { id: 'act-007', userId: 'usr-003', action: 'Edited document', resource: 'UI-Guidelines.docx', timestamp: '2026-04-16T15:00:00Z', ipAddress: MOCK_IP_CAROL },
+  { id: 'act-008', userId: 'usr-005', action: 'Shared document', resource: 'Product-Roadmap.docx', timestamp: '2026-04-17T08:20:00Z', ipAddress: MOCK_IP_EMILY },
+  { id: 'act-009', userId: 'usr-006', action: 'Deleted file', resource: 'old-backup.zip', timestamp: '2026-04-17T12:00:00Z', ipAddress: MOCK_IP_FRANK },
+  { id: 'act-010', userId: 'usr-008', action: 'Created document', resource: 'API-Docs-v2.md', timestamp: '2026-04-16T14:30:00Z', ipAddress: MOCK_IP_HENRY },
+  { id: 'act-011', userId: 'usr-009', action: 'Uploaded file', resource: 'Blog-Post-Draft.docx', timestamp: '2026-04-17T11:00:00Z', ipAddress: MOCK_IP_IRENE },
+  { id: 'act-012', userId: 'usr-001', action: 'Login', resource: 'Admin Portal', timestamp: '2026-04-17T08:00:00Z', ipAddress: MOCK_IP_ALICE },
 ];

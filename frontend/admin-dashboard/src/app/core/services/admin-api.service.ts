@@ -286,18 +286,23 @@ export class AdminApiService {
     };
   }
 
+  private static readonly ACTION_KEYWORDS: [string, AuditEvent['action']][] = [
+    ['created',   'create'],
+    ['deleted',   'delete'],
+    ['suspended', 'suspend'],
+    ['activated', 'restore'],
+    ['restored',  'restore'],
+    ['login',     'login'],
+    ['logout',    'logout'],
+    ['upload',    'upload'],
+    ['download',  'download'],
+    ['share',     'share'],
+  ];
+
   private normalizeAuditAction(action: string): AuditEvent['action'] {
     if (!action) return 'update';
-    if (action.includes('created'))                          return 'create';
-    if (action.includes('deleted'))                          return 'delete';
-    if (action.includes('suspended'))                        return 'suspend';
-    if (action.includes('activated') || action.includes('restored')) return 'restore';
-    if (action.includes('login'))                            return 'login';
-    if (action.includes('logout'))                           return 'logout';
-    if (action.includes('upload'))                           return 'upload';
-    if (action.includes('download'))                         return 'download';
-    if (action.includes('share'))                            return 'share';
-    return 'update';
+    const match = AdminApiService.ACTION_KEYWORDS.find(([keyword]) => action.includes(keyword));
+    return match ? match[1] : 'update';
   }
 
   private auditSeverity(action: string): AuditEvent['severity'] {
@@ -340,7 +345,7 @@ export class AdminApiService {
       const meta = SERVICE_META[s.name] ?? { version: 'unknown', port: 0, language: 'unknown', details: s.message ?? '' };
       return {
         name: s.name,
-        status: s.status === 'healthy' ? 'healthy' : (s.status === 'unhealthy' ? 'down' : 'degraded'),
+        status: this.mapServiceStatus(s.status),
         uptime: 'N/A',
         responseTime: s.latency_ms ?? 0,
         lastChecked: res.timestamp ?? new Date().toISOString(),
@@ -348,7 +353,7 @@ export class AdminApiService {
         port: meta.port,
         language: meta.language,
         details: s.message ?? meta.details,
-      } as ServiceHealth;
+      };
     });
 
     // Append database and redis as pseudo-services if present in the response
@@ -382,6 +387,12 @@ export class AdminApiService {
     return services;
   }
 
+  private mapServiceStatus(status: string): ServiceHealth['status'] {
+    if (status === 'healthy') return 'healthy';
+    if (status === 'unhealthy') return 'down';
+    return 'degraded';
+  }
+
   private mapDashboardStats(res: any): DashboardStats {
     const users = res.users ?? {};
     const storage = res.storage ?? {};
@@ -407,9 +418,9 @@ export class AdminApiService {
     const byTier: Record<string, number> = storage.by_tier ?? {};
     const topActions: Record<string, number> = audit.top_actions ?? {};
 
-    const rolePoints: ChartDataPoint[] = Object.entries(byRole).map(([label, value]) => ({ label, value: value as number }));
-    const tierPoints: ChartDataPoint[] = Object.entries(byTier).map(([label, value]) => ({ label, value: value as number }));
-    const actionPoints: ChartDataPoint[] = Object.entries(topActions).map(([label, value]) => ({ label, value: value as number }));
+    const rolePoints: ChartDataPoint[] = Object.entries(byRole).map(([label, value]) => ({ label, value }));
+    const tierPoints: ChartDataPoint[] = Object.entries(byTier).map(([label, value]) => ({ label, value }));
+    const actionPoints: ChartDataPoint[] = Object.entries(topActions).map(([label, value]) => ({ label, value }));
 
     return {
       userSignups: rolePoints.length ? rolePoints : [{ label: 'Users', value: users.total ?? 0 }],

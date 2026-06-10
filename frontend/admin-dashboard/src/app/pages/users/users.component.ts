@@ -176,7 +176,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
   `],
 })
 export class UsersComponent implements OnInit {
-  displayedColumns = ['displayName', 'role', 'status', 'department', 'lastLogin', 'actions'];
+  readonly displayedColumns = ['displayName', 'role', 'status', 'department', 'lastLogin', 'actions'];
   dataSource = new MatTableDataSource<User>([]);
   loading = true;
   roleFilter = '';

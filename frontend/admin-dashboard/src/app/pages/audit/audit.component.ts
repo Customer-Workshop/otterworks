@@ -168,7 +168,7 @@ import { AuditEvent } from '../../core/models/audit.model';
   `],
 })
 export class AuditComponent implements OnInit {
-  displayedColumns = ['timestamp', 'userName', 'action', 'resourceName', 'severity', 'details'];
+  readonly displayedColumns = ['timestamp', 'userName', 'action', 'resourceName', 'severity', 'details'];
   dataSource = new MatTableDataSource<AuditEvent>([]);
   loading = true;
   actionFilter = '';

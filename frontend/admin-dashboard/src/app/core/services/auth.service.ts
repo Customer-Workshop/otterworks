@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { tap, delay, map } from 'rxjs/operators';
+import { tap, delay } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 export interface AuthUser {
@@ -12,17 +12,12 @@ export interface AuthUser {
   token: string;
 }
 
-interface LoginResponse {
-  user: AuthUser;
-  token: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'ow_admin_token';
   private readonly USER_KEY = 'ow_admin_user';
-  private currentUserSubject = new BehaviorSubject<AuthUser | null>(this.getStoredUser());
-  currentUser$ = this.currentUserSubject.asObservable();
+  private readonly currentUserSubject = new BehaviorSubject<AuthUser | null>(this.getStoredUser());
+  readonly currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient, private router: Router) {}
 

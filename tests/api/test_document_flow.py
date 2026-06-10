@@ -1,7 +1,9 @@
 import pytest
 
-
 pytestmark = pytest.mark.api_flow
+
+_DOCUMENTS_URL = "/api/v1/documents/"
+_TEMPLATES_URL = "/api/v1/templates/"
 
 
 def test_document_crud_versions_export_comments_and_template_flow(api_client):
@@ -9,7 +11,7 @@ def test_document_crud_versions_export_comments_and_template_flow(api_client):
     headers = user.auth_headers
 
     create_response = api_client.client.post(
-        "/api/v1/documents/",
+        _DOCUMENTS_URL,
         headers=headers,
         json={
             "title": f"Flow Document {api_client.run_id}",
@@ -28,7 +30,7 @@ def test_document_crud_versions_export_comments_and_template_flow(api_client):
     assert get_response.json()["id"] == document_id
 
     list_response = api_client.client.get(
-        "/api/v1/documents/",
+        _DOCUMENTS_URL,
         headers=headers,
         params={"owner_id": user.id, "page": 1, "size": 10},
     )
@@ -105,7 +107,7 @@ def test_document_crud_versions_export_comments_and_template_flow(api_client):
     assert delete_comment_response.status_code == 204, delete_comment_response.text
 
     template_response = api_client.client.post(
-        "/api/v1/templates/",
+        _TEMPLATES_URL,
         headers=headers,
         json={
             "name": f"Flow Template {api_client.run_id}",
@@ -137,20 +139,20 @@ def test_document_validation_and_ownership_risk_cases(api_client):
     user_b = api_client.register_user("document-owner-b")
 
     missing_owner = api_client.client.post(
-        "/api/v1/documents/",
+        _DOCUMENTS_URL,
         json={"title": "No owner", "content": "body"},
     )
     assert missing_owner.status_code == 401
 
     invalid_title = api_client.client.post(
-        "/api/v1/documents/",
+        _DOCUMENTS_URL,
         headers=user_a.auth_headers,
         json={"title": "", "content": "body"},
     )
     assert invalid_title.status_code in {400, 422}
 
     create_response = api_client.client.post(
-        "/api/v1/documents/",
+        _DOCUMENTS_URL,
         headers=user_a.auth_headers,
         json={"title": "Ownership probe", "content": "private body"},
     )

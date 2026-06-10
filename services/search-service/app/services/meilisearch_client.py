@@ -117,7 +117,7 @@ class MeiliSearchService:
         try:
             self.client.health()
             return True
-        except Exception:
+        except (meilisearch.errors.MeilisearchApiError, OSError):
             return False
 
     def _build_search_params(

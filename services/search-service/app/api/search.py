@@ -32,7 +32,7 @@ def _chaos_active(key: str) -> bool:
     """Return True if the given chaos flag is set in Redis."""
     try:
         return bool(_get_redis().exists(key))
-    except Exception:
+    except (redis_lib.ConnectionError, redis_lib.TimeoutError, OSError):
         return False
 
 
@@ -75,7 +75,7 @@ def search_documents() -> tuple:
         return jsonify(results.to_dict()), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    except Exception:
+    except (RuntimeError, OSError):
         logger.exception("search_failed", query=query)
         return jsonify({"error": "Search failed"}), 500
 
@@ -111,7 +111,7 @@ def suggest() -> tuple:
         service = _get_service()
         suggestions = service.suggest(prefix)
         return jsonify({"suggestions": suggestions, "query": prefix}), 200
-    except Exception:
+    except (RuntimeError, OSError, KeyError):
         logger.exception("suggest_failed", prefix=prefix)
         return jsonify({"suggestions": [], "query": prefix}), 200
 
@@ -152,7 +152,7 @@ def advanced_search() -> tuple:
         SEARCH_COUNT.inc()
         logger.info("advanced_search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
-    except Exception:
+    except (RuntimeError, OSError):
         logger.exception("advanced_search_failed")
         return jsonify({"error": "Advanced search failed"}), 500
 
@@ -163,6 +163,6 @@ def search_analytics() -> tuple:
     try:
         analytics = get_search_analytics()
         return jsonify(analytics.to_dict()), 200
-    except Exception:
+    except (RuntimeError, OSError, ZeroDivisionError):
         logger.exception("analytics_failed")
         return jsonify({"error": "Failed to retrieve analytics"}), 500

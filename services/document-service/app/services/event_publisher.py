@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 import structlog
+from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
 
@@ -60,7 +61,7 @@ class EventPublisher:
                 },
             )
             logger.info("sns_event_published", event_type=event_type)
-        except Exception:
+        except (BotoCoreError, ClientError):
             logger.exception("sns_publish_failed", event_type=event_type)
 
 

@@ -23,7 +23,7 @@ async def add_comment(
     document_id: UUID,
     body: CommentCreate,
     db: AsyncSession = Depends(get_db),
-):
+) -> CommentResponse:
     """Add a comment to a document."""
     service = DocumentService(db)
     comment = await service.add_comment(document_id, body)
@@ -37,7 +37,7 @@ async def add_comment(
 async def list_comments(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> list[CommentResponse]:
     """List comments for a document."""
     service = DocumentService(db)
     return await service.list_comments(document_id)
@@ -51,7 +51,7 @@ async def delete_comment(
     document_id: UUID,
     comment_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a comment."""
     service = DocumentService(db)
     deleted = await service.delete_comment(document_id, comment_id)

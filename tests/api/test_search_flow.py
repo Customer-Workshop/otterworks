@@ -1,8 +1,10 @@
-import pytest
 import uuid
 
+import pytest
 
 pytestmark = pytest.mark.api_flow
+
+_SEARCH_URL = "/api/v1/search/"
 
 
 def test_search_index_query_suggest_advanced_and_delete_flow(api_client):
@@ -27,7 +29,7 @@ def test_search_index_query_suggest_advanced_and_delete_flow(api_client):
     api_client.indexed_documents.append(document_id)
 
     search_response = api_client.client.get(
-        "/api/v1/search/",
+        _SEARCH_URL,
         headers=user.auth_headers,
         params={"q": "unique searchable", "owner_id": user.id, "page": 1, "size": 10},
     )
@@ -61,11 +63,11 @@ def test_search_index_query_suggest_advanced_and_delete_flow(api_client):
 def test_search_validation_and_pagination_bounds(api_client):
     user = api_client.register_user("search-validation")
 
-    missing_query = api_client.client.get("/api/v1/search/", headers=user.auth_headers)
+    missing_query = api_client.client.get(_SEARCH_URL, headers=user.auth_headers)
     assert missing_query.status_code == 400
 
     invalid_page = api_client.client.get(
-        "/api/v1/search/",
+        _SEARCH_URL,
         headers=user.auth_headers,
         params={"q": "anything", "page": "not-a-number"},
     )

@@ -105,7 +105,6 @@ class DocumentService:
         result = await self.db.execute(query)
         documents = list(result.scalars().all())
 
-        # TODO: This is slow for large result sets (ETL-445, deferred Q2 2024)
         for doc in documents:
             ver_result = await self.db.execute(
                 select(DocumentVersion)

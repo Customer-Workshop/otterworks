@@ -1,7 +1,10 @@
 import pytest
 
-
 pytestmark = pytest.mark.api_flow
+
+_FILES_URL = "/api/v1/files"
+_FILES_UPLOAD_URL = "/api/v1/files/upload"
+_FOLDERS_URL = "/api/v1/folders"
 
 
 def test_file_folder_upload_lifecycle_share_and_download(api_client):
@@ -9,17 +12,17 @@ def test_file_folder_upload_lifecycle_share_and_download(api_client):
     collaborator = api_client.register_user("file-collaborator")
 
     folder_response = api_client.client.post(
-        "/api/v1/folders",
+        _FOLDERS_URL,
         headers=owner.auth_headers,
         json={"name": f"Flow Folder {api_client.run_id}", "owner_id": owner.id},
     )
-    api_client.assert_gateway_route_available(folder_response, "/api/v1/folders")
+    api_client.assert_gateway_route_available(folder_response, _FOLDERS_URL)
     assert folder_response.status_code == 201, folder_response.text
     folder = folder_response.json()
     api_client.created_folders.append(folder["id"])
 
     upload_response = api_client.client.post(
-        "/api/v1/files/upload",
+        _FILES_UPLOAD_URL,
         headers=owner.auth_headers,
         files={"file": ("flow.txt", b"hello file flow", "text/plain")},
         data={"folder_id": folder["id"]},
@@ -33,7 +36,7 @@ def test_file_folder_upload_lifecycle_share_and_download(api_client):
     assert file_metadata["version"] == 1
 
     list_response = api_client.client.get(
-        "/api/v1/files",
+        _FILES_URL,
         headers=owner.auth_headers,
         params={"owner_id": owner.id, "page": 1, "page_size": 10},
     )
@@ -94,7 +97,7 @@ def test_file_folder_upload_lifecycle_share_and_download(api_client):
     assert deleted_get_response.status_code == 404
 
     delete_folder_response = api_client.client.delete(
-        f"/api/v1/folders/{folder['id']}",
+        f"{_FOLDERS_URL}/{folder['id']}",
         headers=owner.auth_headers,
     )
     assert delete_folder_response.status_code == 204, delete_folder_response.text
@@ -106,24 +109,24 @@ def test_file_validation_and_route_gaps(api_client):
     owner = api_client.register_user("file-validation")
 
     empty_upload_response = api_client.client.post(
-        "/api/v1/files/upload",
+        _FILES_UPLOAD_URL,
         headers=owner.auth_headers,
         files={"file": ("empty.txt", b"", "text/plain")},
     )
     assert empty_upload_response.status_code in {400, 422}
 
     missing_owner_upload = api_client.client.post(
-        "/api/v1/files/upload",
+        _FILES_UPLOAD_URL,
         files={"file": ("no-owner.txt", b"body", "text/plain")},
     )
     assert missing_owner_upload.status_code in {400, 401, 403}
 
-    invalid_file_id = api_client.client.get("/api/v1/files/not-a-uuid", headers=owner.auth_headers)
+    invalid_file_id = api_client.client.get(f"{_FILES_URL}/not-a-uuid", headers=owner.auth_headers)
     assert invalid_file_id.status_code in {400, 422}
 
     folder_route_response = api_client.client.post(
-        "/api/v1/folders",
+        _FOLDERS_URL,
         headers=owner.auth_headers,
         json={"name": "route probe", "owner_id": owner.id},
     )
-    api_client.assert_gateway_route_available(folder_route_response, "/api/v1/folders")
+    api_client.assert_gateway_route_available(folder_route_response, _FOLDERS_URL)

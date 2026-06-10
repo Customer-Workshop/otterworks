@@ -37,7 +37,7 @@ def index_document() -> tuple:
         return jsonify(result), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    except Exception:
+    except (RuntimeError, OSError):
         logger.exception("api_index_document_failed")
         return jsonify({"error": "Failed to index document"}), 500
 
@@ -57,7 +57,7 @@ def index_file() -> tuple:
         return jsonify(result), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    except Exception:
+    except (RuntimeError, OSError):
         logger.exception("api_index_file_failed")
         return jsonify({"error": "Failed to index file"}), 500
 
@@ -75,7 +75,7 @@ def remove_from_index(doc_type: str, doc_id: str) -> tuple:
         return jsonify(result), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    except Exception:
+    except (RuntimeError, OSError):
         logger.exception("api_remove_from_index_failed")
         return jsonify({"error": "Failed to remove from index"}), 500
 
@@ -88,6 +88,6 @@ def reindex() -> tuple:
         result = indexer.reindex()
         logger.info("api_reindex_triggered")
         return jsonify(result), 200
-    except Exception:
+    except (RuntimeError, OSError):
         logger.exception("api_reindex_failed")
         return jsonify({"error": "Failed to reindex"}), 500

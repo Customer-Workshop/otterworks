@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get("/", response_model=list[TemplateResponse])
 async def list_templates(
     db: AsyncSession = Depends(get_db),
-):
+) -> list[TemplateResponse]:
     """List all templates."""
     service = DocumentService(db)
     return await service.list_templates()
@@ -27,7 +27,7 @@ async def list_templates(
 async def create_template(
     body: TemplateCreate,
     db: AsyncSession = Depends(get_db),
-):
+) -> TemplateResponse:
     """Create a new template."""
     service = DocumentService(db)
     template = await service.create_template(body)

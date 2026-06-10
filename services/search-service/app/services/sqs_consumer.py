@@ -84,7 +84,7 @@ class SQSConsumer:
                 for message in messages:
                     self._process_message(sqs, message)
 
-            except Exception:
+            except (OSError, RuntimeError):
                 logger.exception("sqs_consumer_error")
                 time.sleep(5)
 
@@ -185,7 +185,7 @@ class SQSConsumer:
                 "sqs_message_validation_failed", message_id=message.get("MessageId")
             )
             sqs.delete_message(QueueUrl=self.queue_url, ReceiptHandle=receipt_handle)
-        except Exception:
+        except (RuntimeError, OSError, KeyError):
             logger.exception(
                 "sqs_message_processing_failed", message_id=message.get("MessageId")
             )

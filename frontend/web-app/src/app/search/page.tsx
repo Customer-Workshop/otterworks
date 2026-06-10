@@ -44,10 +44,10 @@ function sanitizeSnippet(html: string): string {
 
 function escapeHtml(text: string): string {
   return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 import type { SearchResult } from "@/types";
 
@@ -161,7 +161,7 @@ function SearchContent(): React.JSX.Element {
       ) : submittedQuery ? (
         <div className="space-y-1">
           <p className="text-sm text-gray-500 mb-4">
-            {data?.total || results.length} result{results.length !== 1 ? "s" : ""} for &ldquo;{submittedQuery}&rdquo;
+            {data?.total || results.length} result{results.length === 1 ? "" : "s"} for &ldquo;{submittedQuery}&rdquo;
           </p>
           {results.map((result) => (
             <SearchResultRow key={result.id} result={result} />

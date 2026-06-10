@@ -74,6 +74,32 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
     };
   }, [uploadingFiles]);
 
+  const updateFileProgress = useCallback((id: string, percent: number) => {
+    setUploadingFiles((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, progress: percent } : f)),
+    );
+  }, []);
+
+  const markFileDone = useCallback((id: string) => {
+    setUploadingFiles((prev) =>
+      prev.map((f) =>
+        f.id === id
+          ? { ...f, status: "done" as const, progress: 100, abortController: undefined }
+          : f,
+      ),
+    );
+  }, []);
+
+  const markFileError = useCallback((id: string, error: string) => {
+    setUploadingFiles((prev) =>
+      prev.map((f) =>
+        f.id === id
+          ? { ...f, status: "error" as const, error, abortController: undefined }
+          : f,
+      ),
+    );
+  }, []);
+
   const startUpload = useCallback(
     (entry: UploadingFile) => {
       const abortController = new AbortController();
@@ -87,38 +113,22 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
       );
 
       uploadFile(entry.file, {
-        onProgress: (percent) => {
-          setUploadingFiles((prev) =>
-            prev.map((f) => (f.id === entry.id ? { ...f, progress: percent } : f)),
-          );
-        },
+        onProgress: (percent) => updateFileProgress(entry.id, percent),
         signal: abortController.signal,
       })
         .then(() => {
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === entry.id
-                ? { ...f, status: "done" as const, progress: 100, abortController: undefined }
-                : f,
-            ),
-          );
+          markFileDone(entry.id);
           onUploadComplete?.();
         })
         .catch(() => {
           if (abortController.signal.aborted) {
             setUploadingFiles((prev) => prev.filter((f) => f.id !== entry.id));
           } else {
-            setUploadingFiles((prev) =>
-              prev.map((f) =>
-                f.id === entry.id
-                  ? { ...f, status: "error" as const, error: "Upload failed", abortController: undefined }
-                  : f,
-              ),
-            );
+            markFileError(entry.id, "Upload failed");
           }
         });
     },
-    [uploadFile, onUploadComplete],
+    [uploadFile, onUploadComplete, updateFileProgress, markFileDone, markFileError],
   );
 
   const addFiles = useCallback(

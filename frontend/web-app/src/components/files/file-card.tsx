@@ -148,21 +148,14 @@ export function FileCard({
           </div>
           <div className="flex-1 min-w-0">
             {isRenaming ? (
-              <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()} onKeyDown={(e) => e.preventDefault()} role="presentation">
-                <input
-                  ref={renameInputRef}
-                  type="text"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submitRename();
-                    if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }
-                  }}
-                  onBlur={submitRename}
-                  className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                />
-              </div>
+              <RenameInput
+                inputRef={renameInputRef}
+                value={renameValue}
+                onChange={setRenameValue}
+                onSubmit={submitRename}
+                onCancel={() => { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }}
+                variant="inline"
+              />
             ) : (
               <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
             )}
@@ -272,21 +265,13 @@ export function FileCard({
           </div>
         </div>
         {isRenaming ? (
-          <div className="mb-1" onClick={(e) => e.preventDefault()} onKeyDown={(e) => e.preventDefault()} role="presentation">
-            <input
-              ref={renameInputRef}
-              type="text"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitRename();
-                if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }
-              }}
-              onBlur={submitRename}
-              className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            />
-          </div>
+          <RenameInput
+            inputRef={renameInputRef}
+            value={renameValue}
+            onChange={setRenameValue}
+            onSubmit={submitRename}
+            onCancel={() => { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }}
+          />
         ) : (
           <p className="text-sm font-medium text-gray-900 truncate mb-1">{file.name}</p>
         )}
@@ -296,6 +281,45 @@ export function FileCard({
           {formatRelativeTime(file.updatedAt)}
         </p>
       </Link>
+    </div>
+  );
+}
+
+function RenameInput({
+  inputRef,
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+  variant = "default",
+}: {
+  inputRef: React.RefObject<HTMLInputElement>;
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  variant?: "default" | "inline";
+}) {
+  return (
+    <div
+      className={variant === "inline" ? "flex items-center gap-1" : "mb-1"}
+      onClick={(e) => e.preventDefault()}
+      onKeyDown={(e) => e.preventDefault()}
+      role="presentation"
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSubmit();
+          if (e.key === "Escape") onCancel();
+        }}
+        onBlur={onSubmit}
+        className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      />
     </div>
   );
 }

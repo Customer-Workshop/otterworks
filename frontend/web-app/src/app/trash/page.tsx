@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, RotateCcw, AlertTriangle, X } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle, X, File, FileText, Folder, Image, Film } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -10,7 +10,6 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { filesApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
-import { File, FileText, Folder, Image, Film } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FileItem } from "@/types";
 

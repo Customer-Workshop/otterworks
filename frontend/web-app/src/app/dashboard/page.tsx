@@ -163,7 +163,7 @@ function DashboardContent(): React.JSX.Element {
                     a.rel = "noopener";
                     document.body.appendChild(a);
                     a.click();
-                    document.body.removeChild(a);
+                    a.remove();
                     toast.success("File downloaded successfully");
                   } catch {
                     toast.error("Download failed. Please try again.");

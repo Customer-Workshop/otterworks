@@ -113,44 +113,68 @@ function DocumentsContent(): React.JSX.Element {
       </div>
 
       {/* Document listing */}
-      {isLoading ? (
-        <PageLoader />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title={searchQuery ? "No matching documents" : "No documents yet"}
-          description={
-            searchQuery
-              ? "Try a different search term"
-              : "Create your first document to start collaborating"
-          }
-          action={
-            !searchQuery
-              ? {
-                  label: "Create document",
-                  onClick: () => createMutation.mutate("Untitled document"),
-                }
-              : undefined
-          }
-        />
-      ) : (
-        <div
-          className={cn(
-            viewMode === "grid"
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-              : "space-y-1"
-          )}
-        >
-          {filtered.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              view={viewMode}
-              onDelete={(id) => deleteMutation.mutate(id)}
-            />
-          ))}
-        </div>
+      <DocumentListing
+        isLoading={isLoading}
+        filtered={filtered}
+        searchQuery={searchQuery}
+        viewMode={viewMode}
+        onCreateDocument={() => createMutation.mutate("Untitled document")}
+        onDeleteDocument={(id) => deleteMutation.mutate(id)}
+      />
+    </div>
+  );
+}
+
+function DocumentListing({
+  isLoading,
+  filtered,
+  searchQuery,
+  viewMode,
+  onCreateDocument,
+  onDeleteDocument,
+}: {
+  isLoading: boolean;
+  filtered: Document[];
+  searchQuery: string;
+  viewMode: ViewMode;
+  onCreateDocument: () => void;
+  onDeleteDocument: (id: string) => void;
+}): React.JSX.Element {
+  if (isLoading) return <PageLoader />;
+  if (filtered.length === 0) {
+    return (
+      <EmptyState
+        icon={FileText}
+        title={searchQuery ? "No matching documents" : "No documents yet"}
+        description={
+          searchQuery
+            ? "Try a different search term"
+            : "Create your first document to start collaborating"
+        }
+        action={
+          searchQuery
+            ? undefined
+            : { label: "Create document", onClick: onCreateDocument }
+        }
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        viewMode === "grid"
+          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          : "space-y-1"
       )}
+    >
+      {filtered.map((doc) => (
+        <DocumentCard
+          key={doc.id}
+          document={doc}
+          view={viewMode}
+          onDelete={(id) => onDeleteDocument(id)}
+        />
+      ))}
     </div>
   );
 }

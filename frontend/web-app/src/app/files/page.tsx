@@ -34,6 +34,31 @@ import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { ViewMode, SortField } from "@/types";
 
+async function bulkDelete(
+  ids: string[],
+  deleteFn: (id: string) => Promise<unknown>,
+): Promise<{ succeeded: number; failed: number }> {
+  let succeeded = 0;
+  let failed = 0;
+  for (const id of ids) {
+    try {
+      await deleteFn(id);
+      succeeded++;
+    } catch {
+      failed++;
+    }
+  }
+  return { succeeded, failed };
+}
+
+function showBulkDeleteToasts(trashedFiles: number, deletedFolders: number, failed: number): void {
+  const msgs: string[] = [];
+  if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles === 1 ? "" : "s"} moved to trash`);
+  if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders === 1 ? "" : "s"} deleted`);
+  if (msgs.length > 0) toast.success(msgs.join(", "));
+  if (failed > 0) toast.error(`${failed} item${failed === 1 ? "" : "s"} failed to delete`);
+}
+
 function FileBrowserContent(): React.JSX.Element {
   const searchParams = useSearchParams();
   const folderId = searchParams.get("folder");
@@ -201,34 +226,13 @@ function FileBrowserContent(): React.JSX.Element {
     if (ids.length === 0) return;
     const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
     const fileIds = ids.filter((id) => !folderIds.includes(id));
-    let trashedFiles = 0;
-    let deletedFolders = 0;
-    let failed = 0;
-    for (const id of fileIds) {
-      try {
-        await filesApi.delete(id);
-        trashedFiles++;
-      } catch {
-        failed++;
-      }
-    }
-    for (const id of folderIds) {
-      try {
-        await filesApi.deleteFolder(id);
-        deletedFolders++;
-      } catch {
-        failed++;
-      }
-    }
+    const fileResult = await bulkDelete(fileIds, filesApi.delete);
+    const folderResult = await bulkDelete(folderIds, filesApi.deleteFolder);
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
-    const msgs: string[] = [];
-    if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles > 1 ? "s" : ""} moved to trash`);
-    if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders > 1 ? "s" : ""} deleted`);
-    if (msgs.length > 0) toast.success(msgs.join(", "));
-    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
+    showBulkDeleteToasts(fileResult.succeeded, folderResult.succeeded, fileResult.failed + folderResult.failed);
     clearSelection();
   };
 
@@ -242,7 +246,7 @@ function FileBrowserContent(): React.JSX.Element {
         a.rel = "noopener";
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
         toast.success(`Downloading ${name}`);
       } catch {
         toast.error("Download failed");

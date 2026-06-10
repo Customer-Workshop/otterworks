@@ -1,8 +1,7 @@
 "use client";
 
 import type { Collaborator } from "@/types";
-import { getInitials, generateColor } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { getInitials, generateColor, cn } from "@/lib/utils";
 
 interface UserPresenceAvatarsProps {
   readonly collaborators: Collaborator[];

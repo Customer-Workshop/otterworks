@@ -135,11 +135,11 @@ export const authApi = {
 // ── Helpers ───────────────────────────────────────────────────
 // Extract the user ID from the JWT stored in localStorage.
 function getOwnerIdFromJwt(): string | null {
-  if (typeof window === "undefined") return null;
+  if (typeof globalThis.window === "undefined") return null;
   const token = localStorage.getItem("otter_access_token");
   if (!token) return null;
   try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const payload = JSON.parse(atob(token.split(".")[1].replaceAll('-', '+').replaceAll('_', '/')));
     return payload.sub ?? null;
   } catch {
     return null;
@@ -387,14 +387,16 @@ export const searchApi = {
     const total = (data.total as number) ?? rawResults.length;
     const pg = (data.page as number) ?? 1;
     const ps = (data.page_size as number) ?? (data.pageSize as number) ?? 20;
+    const str = (v: unknown): string =>
+      typeof v === "string" ? v : typeof v === "number" ? String(v) : "";
     return {
       data: rawResults.map((r): SearchResult => ({
-        id: String(r.id ?? ""),
+        id: str(r.id),
         type: (r.type as SearchResult["type"]) ?? "file",
-        name: String(r.title ?? r.name ?? r.id ?? ""),
-        snippet: String(r.content_snippet ?? r.contentSnippet ?? ""),
+        name: str(r.title) || str(r.name) || str(r.id),
+        snippet: str(r.content_snippet) || str(r.contentSnippet),
         path: "",
-        updatedAt: String(r.updated_at ?? r.updatedAt ?? ""),
+        updatedAt: str(r.updated_at) || str(r.updatedAt),
         ownerName: "",
       })),
       total,
@@ -521,7 +523,7 @@ interface StarredEntry {
 }
 
 function getStarredMap(): Record<string, StarredEntry> {
-  if (typeof window === "undefined") return {};
+  if (typeof globalThis.window === "undefined") return {};
   try {
     const raw = localStorage.getItem(STARRED_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as Record<string, StarredEntry>) : {};
@@ -531,7 +533,7 @@ function getStarredMap(): Record<string, StarredEntry> {
 }
 
 function saveStarredMap(map: Record<string, StarredEntry>): void {
-  if (typeof window === "undefined") return;
+  if (typeof globalThis.window === "undefined") return;
   localStorage.setItem(STARRED_STORAGE_KEY, JSON.stringify(map));
 }
 

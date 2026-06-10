@@ -273,7 +273,7 @@ function DocumentEditorContent(): React.JSX.Element {
           <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
             <button
               onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
+                navigator.clipboard.writeText(globalThis.location.href);
                 setShareCopied(true);
                 setTimeout(() => setShareCopied(false), 2000);
               }}

@@ -45,7 +45,9 @@ export function loadConfig(): Config {
     },
     cors: {
       // NOSONAR — local development defaults; production origins configured via CORS_ORIGINS env var
-      origins: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:4200').split(','),
+      origins: (
+        process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:4200'
+      ).split(','),
     },
     persistence: {
       intervalMs: parseInt(process.env.PERSIST_INTERVAL_MS || '30000', 10),

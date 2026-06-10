@@ -40,7 +40,10 @@ public class ReportAuthFilter extends OncePerRequestFilter {
                                     FilterChain chain)
             throws ServletException, IOException {
 
-        String path = request.getRequestURI();
+        String path = request.getServletPath();
+        if (request.getPathInfo() != null) {
+            path = path + request.getPathInfo();
+        }
         if (!path.startsWith("/api/v1/reports")) {
             chain.doFilter(request, response);
             return;
@@ -101,12 +104,14 @@ public class ReportAuthFilter extends OncePerRequestFilter {
                     Base64.getUrlDecoder().decode(padBase64(parts[1])),
                     StandardCharsets.UTF_8);
             JsonNode payload = mapper.readTree(payloadJson);
-            if (payload.has("exp")) {
-                long exp = payload.get("exp").asLong();
-                if (System.currentTimeMillis() / 1000 > exp) {
-                    log.debug("JWT expired");
-                    return false;
-                }
+            if (!payload.has("exp")) {
+                log.debug("JWT missing exp claim");
+                return false;
+            }
+            long exp = payload.get("exp").asLong();
+            if (System.currentTimeMillis() / 1000 > exp) {
+                log.debug("JWT expired");
+                return false;
             }
 
             return true;

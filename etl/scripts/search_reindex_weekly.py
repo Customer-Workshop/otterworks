@@ -3,11 +3,6 @@
 # Originally Python 2.7, minimally ported to Python 3 in 2021
 # Clears MeiliSearch indices, paginates through document-service and
 # file-service APIs, bulk-indexes into MeiliSearch, validates counts
-#
-# Owner: Jake (data-team@otterworks.dev) -- Jake left mid-2020
-# TODO ETL-112: Add retry logic for transient API failures (2019-12-20)
-# TODO ETL-145: Use connection pooling for requests (deferred Q3 2020)
-# TODO ETL-188: Add timeout handling everywhere (never done)
 
 import configparser
 import json
@@ -17,9 +12,27 @@ from datetime import datetime
 
 import requests
 
+_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def _wait_for_task(meilisearch_url, meili_headers, task_uid, timeout=60):
+    """Poll MeiliSearch until a task reaches a terminal state."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        task_resp = requests.get(
+            "%s/tasks/%s" % (meilisearch_url, task_uid),
+            headers=meili_headers,
+        )
+        task_resp.raise_for_status()
+        status = task_resp.json().get("status")
+        if status in ("succeeded", "failed"):
+            return task_resp.json()
+        time.sleep(1)
+    return None
+
 
 def main():
-    print("[%s] search_reindex_weekly.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] search_reindex_weekly.py starting..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     # ---- Load config ----
     config = configparser.ConfigParser()
@@ -32,7 +45,6 @@ def main():
 
     documents_index = "documents"
     files_index = "files"
-    bulk_batch_size = 500
     api_page_size = 100
 
     meili_headers = {"Content-Type": "application/json"}
@@ -40,7 +52,7 @@ def main():
         meili_headers["Authorization"] = "Bearer %s" % meilisearch_api_key
 
     # ---- Clear existing indices ----
-    print("[%s] Clearing MeiliSearch indices..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] Clearing MeiliSearch indices..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     for index_name in [documents_index, files_index]:
         try:
@@ -51,24 +63,12 @@ def main():
             if resp.ok:
                 task_uid = resp.json().get("taskUid")
                 if task_uid is not None:
-                    # poll until done
-                    deadline = time.monotonic() + 60
-                    while time.monotonic() < deadline:
-                        task_resp = requests.get(
-                            "%s/tasks/%s" % (meilisearch_url, task_uid),
-                            headers=meili_headers,
-                        )
-                        task_resp.raise_for_status()
-                        status = task_resp.json().get("status")
-                        if status == "succeeded":
-                            break
-                        if status == "failed":
-                            print("[%s] WARNING: Delete task %s failed" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), task_uid))
-                            break
-                        time.sleep(1)
-                print("[%s] Deleted index: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), index_name))
-        except:
-            print("[%s] Index %s did not exist, skipping delete" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), index_name))
+                    result = _wait_for_task(meilisearch_url, meili_headers, task_uid)
+                    if result and result.get("status") == "failed":
+                        print("[%s] WARNING: Delete task %s failed" % (datetime.now().strftime(_TIMESTAMP_FMT), task_uid))
+                print("[%s] Deleted index: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), index_name))
+        except Exception:
+            print("[%s] Index %s did not exist, skipping delete" % (datetime.now().strftime(_TIMESTAMP_FMT), index_name))
 
     # ---- Create indices ----
     for index_name in [documents_index, files_index]:
@@ -80,18 +80,8 @@ def main():
         resp.raise_for_status()
         task_uid = resp.json().get("taskUid")
         if task_uid is not None:
-            deadline = time.monotonic() + 60
-            while time.monotonic() < deadline:
-                task_resp = requests.get(
-                    "%s/tasks/%s" % (meilisearch_url, task_uid),
-                    headers=meili_headers,
-                )
-                task_resp.raise_for_status()
-                status = task_resp.json().get("status")
-                if status in ("succeeded", "failed"):
-                    break
-                time.sleep(1)
-        print("[%s] Created index: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), index_name))
+            _wait_for_task(meilisearch_url, meili_headers, task_uid)
+        print("[%s] Created index: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), index_name))
 
     # ---- Configure documents index settings ----
     docs_settings = {
@@ -108,16 +98,7 @@ def main():
     resp.raise_for_status()
     task_uid = resp.json().get("taskUid")
     if task_uid is not None:
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            task_resp = requests.get(
-                "%s/tasks/%s" % (meilisearch_url, task_uid),
-                headers=meili_headers,
-            )
-            task_resp.raise_for_status()
-            if task_resp.json().get("status") in ("succeeded", "failed"):
-                break
-            time.sleep(1)
+        _wait_for_task(meilisearch_url, meili_headers, task_uid)
 
     # ---- Configure files index settings ----
     files_settings = {
@@ -134,27 +115,17 @@ def main():
     resp.raise_for_status()
     task_uid = resp.json().get("taskUid")
     if task_uid is not None:
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline:
-            task_resp = requests.get(
-                "%s/tasks/%s" % (meilisearch_url, task_uid),
-                headers=meili_headers,
-            )
-            task_resp.raise_for_status()
-            if task_resp.json().get("status") in ("succeeded", "failed"):
-                break
-            time.sleep(1)
+        _wait_for_task(meilisearch_url, meili_headers, task_uid)
 
-    print("[%s] MeiliSearch indices configured" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] MeiliSearch indices configured" % datetime.now().strftime(_TIMESTAMP_FMT))
 
     # ---- Fetch and index documents ----
-    print("[%s] Indexing documents from document-service..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] Indexing documents from document-service..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     docs_indexed = 0
     page = 1
 
     while True:
-        # No session reuse, no timeout, no retry -- just raw requests
         resp = requests.get(
             "%s/api/v1/documents" % document_service_url,
             params={"page": page, "size": api_page_size},
@@ -187,31 +158,20 @@ def main():
         index_resp.raise_for_status()
         task_uid = index_resp.json().get("taskUid")
         if task_uid is not None:
-            deadline = time.monotonic() + 120
-            while time.monotonic() < deadline:
-                task_resp = requests.get(
-                    "%s/tasks/%s" % (meilisearch_url, task_uid),
-                    headers=meili_headers,
-                )
-                task_resp.raise_for_status()
-                st = task_resp.json().get("status")
-                if st == "succeeded":
-                    break
-                if st == "failed":
-                    error = task_resp.json().get("error", {})
-                    print("[%s] WARNING: Index task failed: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), error))
-                    break
-                time.sleep(1)
+            result = _wait_for_task(meilisearch_url, meili_headers, task_uid, timeout=120)
+            if result and result.get("status") == "failed":
+                error = result.get("error", {})
+                print("[%s] WARNING: Index task failed: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), error))
         docs_indexed += len(documents)
 
         if len(documents) < api_page_size:
             break
         page += 1
 
-    print("[%s] Indexed %d documents into %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), docs_indexed, documents_index))
+    print("[%s] Indexed %d documents into %s" % (datetime.now().strftime(_TIMESTAMP_FMT), docs_indexed, documents_index))
 
     # ---- Fetch and index files ----
-    print("[%s] Indexing files from file-service..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] Indexing files from file-service..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     files_indexed = 0
     page = 1
@@ -251,31 +211,20 @@ def main():
         index_resp.raise_for_status()
         task_uid = index_resp.json().get("taskUid")
         if task_uid is not None:
-            deadline = time.monotonic() + 120
-            while time.monotonic() < deadline:
-                task_resp = requests.get(
-                    "%s/tasks/%s" % (meilisearch_url, task_uid),
-                    headers=meili_headers,
-                )
-                task_resp.raise_for_status()
-                st = task_resp.json().get("status")
-                if st == "succeeded":
-                    break
-                if st == "failed":
-                    error = task_resp.json().get("error", {})
-                    print("[%s] WARNING: Index task failed: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), error))
-                    break
-                time.sleep(1)
+            result = _wait_for_task(meilisearch_url, meili_headers, task_uid, timeout=120)
+            if result and result.get("status") == "failed":
+                error = result.get("error", {})
+                print("[%s] WARNING: Index task failed: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), error))
         files_indexed += len(files)
 
         if len(files) < api_page_size:
             break
         page += 1
 
-    print("[%s] Indexed %d files into %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), files_indexed, files_index))
+    print("[%s] Indexed %d files into %s" % (datetime.now().strftime(_TIMESTAMP_FMT), files_indexed, files_index))
 
     # ---- Validate index counts ----
-    print("[%s] Validating index counts..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] Validating index counts..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     docs_stats = requests.get(
         "%s/indexes/%s/stats" % (meilisearch_url, documents_index),
@@ -292,28 +241,28 @@ def main():
     files_count = files_stats.json().get("numberOfDocuments", 0)
 
     print("[%s] Validation: documents=%d (expected %d), files=%d (expected %d)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         docs_count, docs_indexed,
         files_count, files_indexed,
     ))
 
     if docs_count != docs_indexed:
         print("[%s] ERROR: Documents index count mismatch: %d != %d" % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), docs_count, docs_indexed
+            datetime.now().strftime(_TIMESTAMP_FMT), docs_count, docs_indexed
         ))
         sys.exit(1)
     if files_count != files_indexed:
         print("[%s] ERROR: Files index count mismatch: %d != %d" % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), files_count, files_indexed
+            datetime.now().strftime(_TIMESTAMP_FMT), files_count, files_indexed
         ))
         sys.exit(1)
 
-    print("[%s] search_reindex_weekly.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] search_reindex_weekly.py completed successfully" % datetime.now().strftime(_TIMESTAMP_FMT))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), str(e)))
         sys.exit(1)

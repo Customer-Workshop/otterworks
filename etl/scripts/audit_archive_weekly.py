@@ -3,25 +3,23 @@
 # Originally Python 2.7, minimally ported to Python 3 in 2021
 # Scans DynamoDB for old events, compresses to JSONL.gz, uploads to Glacier,
 # batch-deletes from DynamoDB, generates compliance report
-#
-# Owner: Jake (data-team@otterworks.dev) -- Jake left mid-2020
-# TODO ETL-134: Add incremental archival instead of full scan (deferred Q2 2020)
-# TODO ETL-167: Handle DynamoDB throughput throttling properly (2020-04-10)
-# TODO ETL-199: This script has no tests whatsoever (never prioritized)
 
 import configparser
 import gzip
 import io
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import boto3
 
+_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+
 
 class DecimalEncoder(json.JSONEncoder):
-    """Handle DynamoDB Decimal types -- copied from StackOverflow"""
+    """Handle DynamoDB Decimal types."""
     def default(self, o):
         if isinstance(o, Decimal):
             if o == int(o):
@@ -31,7 +29,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def main():
-    print("[%s] audit_archive_weekly.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] audit_archive_weekly.py starting..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     # ---- Load config ----
     config = configparser.ConfigParser()
@@ -40,6 +38,7 @@ def main():
     aws_access_key = config.get("aws", "access_key")
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
+    expected_account_id = config.get("aws", "account_id", fallback=os.environ.get("AWS_ACCOUNT_ID", ""))
 
     archive_bucket = config.get("s3", "archive_bucket")
 
@@ -54,7 +53,7 @@ def main():
     ).isoformat() + "Z"
 
     print("[%s] Archiving events older than %d days (cutoff: %s)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), retention_days, cutoff_date
+        datetime.now().strftime(_TIMESTAMP_FMT), retention_days, cutoff_date
     ))
 
     # ---- Scan DynamoDB for old audit events ----
@@ -85,11 +84,11 @@ def main():
 
     archive_count = len(events_to_archive)
     print("[%s] Found %d audit events older than %d days" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), archive_count, retention_days
+        datetime.now().strftime(_TIMESTAMP_FMT), archive_count, retention_days
     ))
 
     if archive_count == 0:
-        print("[%s] No events to archive, exiting" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        print("[%s] No events to archive, exiting" % datetime.now().strftime(_TIMESTAMP_FMT))
         sys.exit(0)
 
     # ---- Compress to JSONL.gz ----
@@ -104,7 +103,7 @@ def main():
 
     compressed_size = buf.tell()
     print("[%s] Compressed %d events to %.2f MB" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         archive_count,
         compressed_size / (1024 * 1024),
     ))
@@ -122,15 +121,16 @@ def main():
         Key=archive_key,
         Body=buf.getvalue(),
         StorageClass="GLACIER",
+        ExpectedBucketOwner=expected_account_id,
     )
 
     print("[%s] Archived to s3://%s/%s (GLACIER)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), archive_bucket, archive_key
+        datetime.now().strftime(_TIMESTAMP_FMT), archive_bucket, archive_key
     ))
 
     # ---- Batch-delete archived records from DynamoDB ----
     print("[%s] Deleting %d archived events from DynamoDB..." % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), archive_count
+        datetime.now().strftime(_TIMESTAMP_FMT), archive_count
     ))
 
     deleted_count = 0
@@ -149,8 +149,7 @@ def main():
                     for k in batch:
                         batch_writer.delete_item(Key=k)
                 deleted_count += len(batch)
-            except:
-                # TODO ETL-167: Handle throttling / partial failures
+            except Exception:
                 pass
             batch = []
 
@@ -161,11 +160,11 @@ def main():
                 for k in batch:
                     batch_writer.delete_item(Key=k)
             deleted_count += len(batch)
-        except:
+        except Exception:
             pass
 
     print("[%s] Deleted %d events from DynamoDB" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), deleted_count
+        datetime.now().strftime(_TIMESTAMP_FMT), deleted_count
     ))
 
     # ---- Generate compliance report ----
@@ -204,21 +203,22 @@ def main():
         Bucket=archive_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        ExpectedBucketOwner=expected_account_id,
     )
 
     print("[%s] Compliance report: %d archived, %d deleted, stored at s3://%s/%s" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         archive_count,
         deleted_count,
         archive_bucket,
         report_key,
     ))
-    print("[%s] audit_archive_weekly.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] audit_archive_weekly.py completed successfully" % datetime.now().strftime(_TIMESTAMP_FMT))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), str(e)))
         sys.exit(1)

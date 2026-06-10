@@ -2,28 +2,113 @@
 # analytics_daily.py - Daily analytics aggregation pipeline
 # Originally Python 2.7, minimally ported to Python 3 in 2021
 # Pulls events from SQS + DynamoDB, aggregates, loads to S3 and PostgreSQL
-#
-# Owner: Jake (data-team@otterworks.dev) -- Jake left mid-2020
-# TODO ETL-078: Refactor this into proper modules (deferred Q4 2019)
-# TODO ETL-142: Move credentials to secrets manager (deferred Q3 2020)
-# TODO ETL-201: Add unit tests (never prioritized)
 
 import configparser
 import gzip
 import io
 import json
+import os
 import sys
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
 import pandas as pd
 import psycopg2
 
+_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def _parse_hour(ts):
+    """Extract zero-padded hour string from a timestamp value."""
+    try:
+        if isinstance(ts, str):
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            return "%02d" % dt.hour
+    except (ValueError, TypeError):
+        pass
+    return "00"
+
+
+def _poll_sqs_events(sqs_client, queue_url, max_messages, batch_size):
+    """Poll SQS queue and return collected events."""
+    all_events = []
+    messages_processed = 0
+    consecutive_errors = 0
+
+    print("[%s] Polling SQS queue: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), queue_url))
+
+    while messages_processed < max_messages:
+        try:
+            response = sqs_client.receive_message(
+                QueueUrl=queue_url,
+                MaxNumberOfMessages=batch_size,
+                WaitTimeSeconds=5,
+                AttributeNames=["All"],
+                MessageAttributeNames=["All"],
+            )
+            consecutive_errors = 0
+        except Exception:
+            consecutive_errors += 1
+            print("[%s] WARNING: SQS receive failed (%d consecutive)" % (datetime.now().strftime(_TIMESTAMP_FMT), consecutive_errors))
+            if consecutive_errors >= 3:
+                print("[%s] ERROR: Too many SQS failures, giving up" % datetime.now().strftime(_TIMESTAMP_FMT))
+                break
+            continue
+
+        messages = response.get("Messages", [])
+        if not messages:
+            print("[%s] No more messages after %d processed" % (datetime.now().strftime(_TIMESTAMP_FMT), messages_processed))
+            break
+
+        entries_to_delete = []
+        for msg in messages:
+            try:
+                event = json.loads(msg["Body"])
+                all_events.append(event)
+                entries_to_delete.append(
+                    {"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]}
+                )
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+        if entries_to_delete:
+            sqs_client.delete_message_batch(QueueUrl=queue_url, Entries=entries_to_delete)
+
+        messages_processed += len(messages)
+
+    print("[%s] Extracted %d events from SQS" % (datetime.now().strftime(_TIMESTAMP_FMT), len(all_events)))
+    return all_events
+
+
+def _scan_dynamo_events(table, ds):
+    """Scan DynamoDB for events matching the given date."""
+    all_events = []
+    scan_kwargs = {
+        "FilterExpression": "begins_with(event_date, :ds)",
+        "ExpressionAttributeValues": {":ds": ds},
+    }
+
+    while True:
+        response = table.scan(**scan_kwargs)
+        items = response.get("Items", [])
+        for item in items:
+            for k, v in item.items():
+                if isinstance(v, Decimal):
+                    item[k] = int(v) if v == int(v) else float(v)
+        all_events.extend(items)
+
+        last_key = response.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        scan_kwargs["ExclusiveStartKey"] = last_key
+
+    print("[%s] Extracted %d events from DynamoDB for %s" % (datetime.now().strftime(_TIMESTAMP_FMT), len(all_events), ds))
+    return all_events
+
 
 def main():
-    print("[%s] analytics_daily.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] analytics_daily.py starting..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     # ---- Load config ----
     config = configparser.ConfigParser()
@@ -32,6 +117,7 @@ def main():
     aws_access_key = config.get("aws", "access_key")
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
+    expected_account_id = config.get("aws", "account_id", fallback=os.environ.get("AWS_ACCOUNT_ID", ""))
 
     db_host = config.get("database", "host")
     db_port = config.getint("database", "port")
@@ -45,10 +131,9 @@ def main():
     # today's date for partitioning
     ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
 
-    print("[%s] Processing analytics for date: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ds))
+    print("[%s] Processing analytics for date: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), ds))
 
     # ---- Extract from SQS ----
-    # TODO ETL-089: Make queue URL configurable per environment (2019-11-15)
     sqs_queue_url = "https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics"
     sqs_client = boto3.client(
         "sqs",
@@ -57,56 +142,10 @@ def main():
         region_name=aws_region,
     )
 
-    all_sqs_events = []
-    messages_processed = 0
     max_messages = 10000  # hardcoded limit
     batch_size = 10
-    consecutive_errors = 0
 
-    print("[%s] Polling SQS queue: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sqs_queue_url))
-
-    while messages_processed < max_messages:
-        try:
-            response = sqs_client.receive_message(
-                QueueUrl=sqs_queue_url,
-                MaxNumberOfMessages=batch_size,
-                WaitTimeSeconds=5,
-                AttributeNames=["All"],
-                MessageAttributeNames=["All"],
-            )
-            consecutive_errors = 0
-        except:
-            # TODO ETL-103: Add dead-letter queue for failed SQS calls (2020-01-08)
-            consecutive_errors += 1
-            print("[%s] WARNING: SQS receive failed (%d consecutive)" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), consecutive_errors))
-            if consecutive_errors >= 3:
-                print("[%s] ERROR: Too many SQS failures, giving up" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                break
-            continue
-
-        messages = response.get("Messages", [])
-        if not messages:
-            print("[%s] No more messages after %d processed" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), messages_processed))
-            break
-
-        entries_to_delete = []
-        for msg in messages:
-            try:
-                event = json.loads(msg["Body"])
-                all_sqs_events.append(event)
-                entries_to_delete.append(
-                    {"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]}
-                )
-            except:
-                # TODO ETL-103: Add dead-letter queue for malformed messages (2020-01-08)
-                pass
-
-        if entries_to_delete:
-            sqs_client.delete_message_batch(QueueUrl=sqs_queue_url, Entries=entries_to_delete)
-
-        messages_processed += len(messages)
-
-    print("[%s] Extracted %d events from SQS" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(all_sqs_events)))
+    all_sqs_events = _poll_sqs_events(sqs_client, sqs_queue_url, max_messages, batch_size)
 
     # ---- Extract from DynamoDB ----
     dynamodb_table_name = "otterworks-analytics-events"
@@ -118,39 +157,17 @@ def main():
     )
     table = dynamodb.Table(dynamodb_table_name)
 
-    all_dynamo_events = []
-    scan_kwargs = {
-        "FilterExpression": "begins_with(event_date, :ds)",
-        "ExpressionAttributeValues": {":ds": ds},
-    }
-
-    while True:
-        response = table.scan(**scan_kwargs)
-        items = response.get("Items", [])
-        # convert Decimals to native types for json serialization later
-        for item in items:
-            for k, v in item.items():
-                if isinstance(v, Decimal):
-                    item[k] = int(v) if v == int(v) else float(v)
-        all_dynamo_events.extend(items)
-
-        last_key = response.get("LastEvaluatedKey")
-        if not last_key:
-            break
-        scan_kwargs["ExclusiveStartKey"] = last_key
-
-    print("[%s] Extracted %d events from DynamoDB for %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(all_dynamo_events), ds))
+    all_dynamo_events = _scan_dynamo_events(table, ds)
 
     # ---- Combine all events ----
     all_events = all_sqs_events + all_dynamo_events
-    print("[%s] Total events to process: %d" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(all_events)))
+    print("[%s] Total events to process: %d" % (datetime.now().strftime(_TIMESTAMP_FMT), len(all_events)))
 
     if len(all_events) == 0:
-        print("[%s] WARNING: No events found, exiting" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        print("[%s] WARNING: No events found, exiting" % datetime.now().strftime(_TIMESTAMP_FMT))
         sys.exit(0)
 
     # ---- Transform and aggregate using pandas ----
-    # TODO ETL-155: This pandas approach is slow for large datasets, consider PySpark (2020-03-22)
     df = pd.DataFrame(all_events)
 
     # Normalize event type field name
@@ -169,15 +186,7 @@ def main():
     # Parse timestamps for hourly bucketing
     df["hour"] = "00"
     if "timestamp" in df.columns:
-        def parse_hour(ts):
-            try:
-                if isinstance(ts, str):
-                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                    return "%02d" % dt.hour
-            except:
-                pass
-            return "00"
-        df["hour"] = df["timestamp"].apply(parse_hour)
+        df["hour"] = df["timestamp"].apply(_parse_hour)
 
     # ---- Aggregate user actions ----
     active_users = set(df["resolved_user_id"].unique()) - {"unknown"}
@@ -286,7 +295,7 @@ def main():
     }
 
     print("[%s] Aggregation complete: %d events, %d active users, %d documents, %d files" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         len(all_events),
         len(active_users),
         len(active_documents),
@@ -310,8 +319,9 @@ def main():
         Bucket=data_lake_bucket,
         Key=summary_key,
         Body=summary_bytes,
+        ExpectedBucketOwner=expected_account_id,
     )
-    print("[%s] Uploaded summary to s3://%s/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data_lake_bucket, summary_key))
+    print("[%s] Uploaded summary to s3://%s/%s" % (datetime.now().strftime(_TIMESTAMP_FMT), data_lake_bucket, summary_key))
 
     # Write hourly breakdown
     hourly_key = "%s/hourly_breakdown.json.gz" % partition_key
@@ -320,6 +330,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=hourly_key,
         Body=hourly_bytes,
+        ExpectedBucketOwner=expected_account_id,
     )
 
     # Write top users as JSONL
@@ -333,12 +344,13 @@ def main():
         Bucket=data_lake_bucket,
         Key=users_key,
         Body=buf.getvalue(),
+        ExpectedBucketOwner=expected_account_id,
     )
 
-    print("[%s] Loaded analytics data to s3://%s/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data_lake_bucket, partition_key))
+    print("[%s] Loaded analytics data to s3://%s/%s" % (datetime.now().strftime(_TIMESTAMP_FMT), data_lake_bucket, partition_key))
 
     # ---- Upsert PostgreSQL aggregates ----
-    print("[%s] Connecting to PostgreSQL at %s:%d/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), db_host, db_port, db_name))
+    print("[%s] Connecting to PostgreSQL at %s:%d/%s" % (datetime.now().strftime(_TIMESTAMP_FMT), db_host, db_port, db_name))
 
     conn = None
     cursor = None
@@ -391,9 +403,9 @@ def main():
             summary["bytes_uploaded"],
         ))
         conn.commit()
-        print("[%s] Updated PostgreSQL daily aggregates for %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ds))
+        print("[%s] Updated PostgreSQL daily aggregates for %s" % (datetime.now().strftime(_TIMESTAMP_FMT), ds))
     except Exception as e:
-        print("[%s] ERROR: PostgreSQL update failed: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] ERROR: PostgreSQL update failed: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), str(e)))
         if conn:
             conn.rollback()
         # don't exit -- still try to generate report
@@ -434,19 +446,20 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        ExpectedBucketOwner=expected_account_id,
     )
 
     print("[%s] Generated daily analytics report: %d events, %d active users" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         summary["total_events"],
         summary["active_users"],
     ))
-    print("[%s] analytics_daily.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] analytics_daily.py completed successfully" % datetime.now().strftime(_TIMESTAMP_FMT))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), str(e)))
         sys.exit(1)

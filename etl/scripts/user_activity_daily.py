@@ -3,24 +3,22 @@
 # Originally Python 2.7, minimally ported to Python 3 in 2021
 # Queries PostgreSQL aggregates, reads per-user S3 data, generates
 # activity reports, stores to S3 for admin-service consumption
-#
-# Owner: Jake (data-team@otterworks.dev) -- Jake left mid-2020
-# TODO ETL-098: Optimize S3 reads with range requests (2019-12-01)
-# TODO ETL-160: Cache PostgreSQL connection across runs (deferred Q2 2020)
-# TODO ETL-210: Add email notification for report generation (never done)
 
 import configparser
 import gzip
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 
 import boto3
 import psycopg2
 
+_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+
 
 def main():
-    print("[%s] user_activity_daily.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] user_activity_daily.py starting..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     # ---- Load config ----
     config = configparser.ConfigParser()
@@ -29,6 +27,7 @@ def main():
     aws_access_key = config.get("aws", "access_key")
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
+    expected_account_id = config.get("aws", "account_id", fallback=os.environ.get("AWS_ACCOUNT_ID", ""))
 
     db_host = config.get("database", "host")
     db_port = config.getint("database", "port")
@@ -44,7 +43,7 @@ def main():
 
     # ---- Query PostgreSQL for analytics aggregates ----
     print("[%s] Querying PostgreSQL for analytics aggregates (lookback: %d days)..." % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lookback_days
+        datetime.now().strftime(_TIMESTAMP_FMT), lookback_days
     ))
 
     conn = None
@@ -108,11 +107,11 @@ def main():
             daily_summaries.append(record)
 
         print("[%s] Retrieved %d daily summary records" % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(daily_summaries)
+            datetime.now().strftime(_TIMESTAMP_FMT), len(daily_summaries)
         ))
     except Exception as e:
         print("[%s] ERROR: PostgreSQL query failed: %s" % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)
+            datetime.now().strftime(_TIMESTAMP_FMT), str(e)
         ))
         sys.exit(1)
     finally:
@@ -123,7 +122,7 @@ def main():
 
     # ---- Read per-user activity data from S3 ----
     print("[%s] Reading per-user activity data from S3 (lookback: %d days)..." % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lookback_days
+        datetime.now().strftime(_TIMESTAMP_FMT), lookback_days
     ))
 
     s3_client = boto3.client(
@@ -144,7 +143,11 @@ def main():
         key = "analytics/daily/year=%s/month=%s/day=%s/top_users.jsonl.gz" % (year, month, day)
 
         try:
-            response = s3_client.get_object(Bucket=data_lake_bucket, Key=key)
+            response = s3_client.get_object(
+                Bucket=data_lake_bucket,
+                Key=key,
+                ExpectedBucketOwner=expected_account_id,
+            )
             body = response["Body"].read()
             decompressed = gzip.decompress(body).decode("utf-8")
 
@@ -170,14 +173,13 @@ def main():
                     prev = user_totals[uid]["actions_by_type"].get(action_type, 0)
                     user_totals[uid]["actions_by_type"][action_type] = prev + count
 
-        except:
+        except Exception:
             # S3 key might not exist for every day -- silently skip
-            # TODO ETL-098: Log missing days for debugging
             pass
 
     user_list = sorted(user_totals.values(), key=lambda x: x["total_actions"], reverse=True)
     print("[%s] Aggregated activity for %d users over %d days" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(user_list), lookback_days
+        datetime.now().strftime(_TIMESTAMP_FMT), len(user_list), lookback_days
     ))
 
     # ---- Generate user activity report ----
@@ -202,7 +204,7 @@ def main():
     }
 
     # ---- Store reports to S3 ----
-    print("[%s] Storing reports to S3..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] Storing reports to S3..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     s3_client_upload = boto3.client(
         "s3",
@@ -217,6 +219,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
+        ExpectedBucketOwner=expected_account_id,
     )
 
     # Store latest pointer for admin-service
@@ -225,6 +228,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=latest_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
+        ExpectedBucketOwner=expected_account_id,
     )
 
     # Store per-user summaries as JSONL for individual user lookups
@@ -236,20 +240,21 @@ def main():
             Bucket=data_lake_bucket,
             Key=users_key,
             Body=("\n".join(lines) + "\n").encode("utf-8"),
+            ExpectedBucketOwner=expected_account_id,
         )
 
     print("[%s] Stored activity report: %d user summaries at s3://%s/%s" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         len(user_summaries),
         data_lake_bucket,
         report_key,
     ))
-    print("[%s] user_activity_daily.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] user_activity_daily.py completed successfully" % datetime.now().strftime(_TIMESTAMP_FMT))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), str(e)))
         sys.exit(1)

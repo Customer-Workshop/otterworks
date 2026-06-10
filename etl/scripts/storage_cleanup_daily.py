@@ -3,22 +3,20 @@
 # Originally Python 2.7, minimally ported to Python 3 in 2021
 # Lists S3 objects, compares with DynamoDB metadata, quarantines orphans,
 # generates storage savings report
-#
-# Owner: Jake (data-team@otterworks.dev) -- Jake left mid-2020
-# TODO ETL-091: Add S3 lifecycle rules instead of manual cleanup (2019-11-20)
-# TODO ETL-156: Parallelize S3 listing for large buckets (deferred Q1 2020)
-# TODO ETL-203: Add dry-run mode for testing (never implemented)
 
 import configparser
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
 import boto3
 
+_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+
 
 def main():
-    print("[%s] storage_cleanup_daily.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] storage_cleanup_daily.py starting..." % datetime.now().strftime(_TIMESTAMP_FMT))
 
     # ---- Load config ----
     config = configparser.ConfigParser()
@@ -27,6 +25,7 @@ def main():
     aws_access_key = config.get("aws", "access_key")
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
+    expected_account_id = config.get("aws", "account_id", fallback=os.environ.get("AWS_ACCOUNT_ID", ""))
 
     file_storage_bucket = config.get("s3", "file_storage_bucket")
     quarantine_bucket = config.get("s3", "quarantine_bucket")
@@ -40,7 +39,7 @@ def main():
 
     # ---- List all S3 objects ----
     print("[%s] Listing objects in s3://%s/%s" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), file_storage_bucket, files_prefix
+        datetime.now().strftime(_TIMESTAMP_FMT), file_storage_bucket, files_prefix
     ))
 
     s3_client = boto3.client(
@@ -53,7 +52,7 @@ def main():
     all_objects = []
     paginator = s3_client.get_paginator("list_objects_v2")
 
-    for page in paginator.paginate(Bucket=file_storage_bucket, Prefix=files_prefix):
+    for page in paginator.paginate(Bucket=file_storage_bucket, Prefix=files_prefix, ExpectedBucketOwner=expected_account_id):
         for obj in page.get("Contents", []):
             all_objects.append({
                 "key": obj["Key"],
@@ -65,12 +64,12 @@ def main():
     total_size_bytes = sum(o["size"] for o in all_objects)
 
     print("[%s] Found %d objects in S3 (%d bytes total)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), total_objects, total_size_bytes
+        datetime.now().strftime(_TIMESTAMP_FMT), total_objects, total_size_bytes
     ))
 
     # ---- List metadata references from DynamoDB ----
     print("[%s] Scanning DynamoDB table %s for metadata references..." % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dynamodb_table_name
+        datetime.now().strftime(_TIMESTAMP_FMT), dynamodb_table_name
     ))
 
     dynamodb = boto3.resource(
@@ -99,7 +98,7 @@ def main():
         scan_kwargs["ExclusiveStartKey"] = last_key
 
     print("[%s] Found %d S3 keys referenced in metadata" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(referenced_keys)
+        datetime.now().strftime(_TIMESTAMP_FMT), len(referenced_keys)
     ))
 
     # ---- Find orphaned objects ----
@@ -114,18 +113,18 @@ def main():
     orphaned_count = len(orphaned)
 
     print("[%s] Found %d orphaned objects (%.2f MB)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         orphaned_count,
         orphaned_bytes / (1024 * 1024),
     ))
 
     if orphaned_count == 0:
-        print("[%s] No orphaned objects to quarantine" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        print("[%s] No orphaned objects to quarantine" % datetime.now().strftime(_TIMESTAMP_FMT))
         # Still generate report even with 0 orphans
     else:
         # ---- Move orphaned objects to quarantine ----
         print("[%s] Moving %d orphaned objects to quarantine..." % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), orphaned_count
+            datetime.now().strftime(_TIMESTAMP_FMT), orphaned_count
         ))
 
     moved_count = 0
@@ -141,18 +140,23 @@ def main():
                 Key=dest_key,
                 CopySource={"Bucket": file_storage_bucket, "Key": source_key},
                 MetadataDirective="COPY",
+                ExpectedBucketOwner=expected_account_id,
             )
-            s3_client.delete_object(Bucket=file_storage_bucket, Key=source_key)
+            s3_client.delete_object(
+                Bucket=file_storage_bucket,
+                Key=source_key,
+                ExpectedBucketOwner=expected_account_id,
+            )
             moved_count += 1
         except Exception as e:
             print("[%s] WARNING: Failed to quarantine %s: %s" % (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"), source_key, str(e)
+                datetime.now().strftime(_TIMESTAMP_FMT), source_key, str(e)
             ))
             failed_count += 1
 
     if orphaned_count > 0:
         print("[%s] Quarantined %d objects (%d failed) to s3://%s/%s/%s/" % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            datetime.now().strftime(_TIMESTAMP_FMT),
             moved_count, failed_count,
             quarantine_bucket, quarantine_prefix, ds,
         ))
@@ -200,18 +204,19 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        ExpectedBucketOwner=expected_account_id,
     )
 
     print("[%s] Storage cleanup report: %d orphans quarantined, %.4f GB freed, ~$%.4f/month saved" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now().strftime(_TIMESTAMP_FMT),
         moved_count, savings_gb, estimated_monthly_savings,
     ))
-    print("[%s] storage_cleanup_daily.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] storage_cleanup_daily.py completed successfully" % datetime.now().strftime(_TIMESTAMP_FMT))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (datetime.now().strftime(_TIMESTAMP_FMT), str(e)))
         sys.exit(1)

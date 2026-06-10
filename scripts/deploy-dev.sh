@@ -98,6 +98,12 @@ if [ "${SKIP_TERRAFORM}" = false ]; then
   terraform apply -var="db_password=${DB_PASSWORD}" -auto-approve -input=false
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."
+
+  # Capture Terraform outputs for Helm values
+  S3_FILE_BUCKET=$(cd "${REPO_ROOT}/infrastructure/terraform" && terraform output -raw s3_file_bucket 2>/dev/null || echo "")
+  SNS_EVENTS_TOPIC=$(cd "${REPO_ROOT}/infrastructure/terraform" && terraform output -raw sns_events_topic_arn 2>/dev/null || echo "")
+  REDIS_ENDPOINT=$(cd "${REPO_ROOT}/infrastructure/terraform" && terraform output -raw redis_endpoint 2>/dev/null || echo "")
+  export S3_FILE_BUCKET SNS_EVENTS_TOPIC REDIS_ENDPOINT
 else
   log "Skipping Terraform provisioning."
 fi
@@ -159,10 +165,18 @@ deploy_service() {
 
   local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}"
   log "Deploying ${service} via Helm..."
+  local extra_sets=()
+  if [ "${service}" = "file-service" ] && [ -n "${S3_FILE_BUCKET:-}" ]; then
+    extra_sets+=(--set "config.s3Bucket=${S3_FILE_BUCKET}")
+    [ -n "${SNS_EVENTS_TOPIC:-}" ] && extra_sets+=(--set "config.snsTopicArn=${SNS_EVENTS_TOPIC}")
+    [ -n "${REDIS_ENDPOINT:-}" ]   && extra_sets+=(--set "config.redisHost=${REDIS_ENDPOINT}")
+  fi
+
   helm upgrade --install "${service}" "${chart_dir}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${image}" \
     --set image.tag="${IMAGE_TAG}" \
+    ${extra_sets[@]+"${extra_sets[@]}"} \
     --wait \
     --timeout 5m \
     || { warn "Helm deploy failed for ${service}"; return 1; }

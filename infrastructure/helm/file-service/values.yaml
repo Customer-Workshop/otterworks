@@ -49,3 +49,16 @@ networkPolicy:
 
 serviceAccount:
   roleArn: ""
+
+config:
+  s3Bucket: ""  # REQUIRED — set to Terraform output s3_file_bucket (e.g. otterworks-files-dev)
+  dynamodbTable: otterworks-file-metadata
+  dynamodbFoldersTable: otterworks-folders
+  dynamodbVersionsTable: otterworks-file-versions
+  dynamodbSharesTable: otterworks-file-shares
+  awsRegion: us-east-1
+  snsTopicArn: ""
+  redisHost: ""
+  redisPort: "6379"
+  rustLog: "file_service=info,actix_web=info"
+  chaosEnabled: "false"

@@ -5,6 +5,7 @@ pub struct AppConfig {
     pub server: ServerConfig,
     pub aws: AwsConfig,
     pub sns: SnsConfig,
+    pub chaos_enabled: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -35,6 +36,9 @@ impl AppConfig {
             server: ServerConfig::from_env(),
             aws: AwsConfig::from_env(),
             sns: SnsConfig::from_env(),
+            chaos_enabled: env::var("CHAOS_ENABLED")
+                .unwrap_or_else(|_| "false".into())
+                .eq_ignore_ascii_case("true"),
         }
     }
 }

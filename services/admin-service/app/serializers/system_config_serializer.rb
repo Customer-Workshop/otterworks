@@ -1,5 +1,5 @@
 class SystemConfigSerializer < ActiveModel::Serializer
-  attributes :id, :key, :value, :value_type, :description, :is_secret,
+  attributes :id, :config_key, :value, :value_type, :description, :is_secret,
              :created_at, :updated_at
 
   def value

@@ -137,4 +137,45 @@ class SqsConsumerTest {
         assertEquals("", event.ownerId)
         assertEquals("", event.sharedWithUserId)
     }
+
+    @Test
+    fun `parseMessage handles integer epoch timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-456",
+                "ownerId": "owner-2",
+                "sharedWithUserId": "user-3",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("file-456", event.fileId)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage handles integer epoch timestamp in SNS envelope`() {
+        val innerMessage = """{"eventType":"comment_added","userId":"user-1","actorId":"actor-1","documentId":"doc-1","commentId":"c-1","timestamp":1718444400}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """
+            {
+                "Type": "Notification",
+                "MessageId": "msg-456",
+                "TopicArn": "arn:aws:sns:us-east-1:000000000000:test-topic",
+                "Message": "$escapedInner"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("comment_added", event.eventType)
+        assertEquals("user-1", event.userId)
+        assertEquals("2024-06-15T09:40:00Z", event.timestamp)
+    }
 }

@@ -39,6 +39,7 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    @kotlinx.serialization.Serializable(with = FlexibleTimestampSerializer::class)
     val timestamp: String,
 )
 

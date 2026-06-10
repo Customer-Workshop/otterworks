@@ -1,5 +1,7 @@
 """Application configuration via pydantic-settings."""
 
+import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -9,7 +11,9 @@ class Settings(BaseSettings):
     debug: bool = False
 
     database_url: str = (
-        "postgresql+asyncpg://otterworks:otterworks_dev@localhost:5432/otterworks"
+        "postgresql+asyncpg://otterworks:"
+        + os.environ.get("DB_PASSWORD", "otterworks_dev")
+        + "@localhost:5432/otterworks"
     )
     db_pool_size: int = 10
     db_max_overflow: int = 20

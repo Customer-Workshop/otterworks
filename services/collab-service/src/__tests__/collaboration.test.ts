@@ -11,7 +11,7 @@ import { MetricsCollector } from '../metrics';
 import { createAuthMiddleware } from '../middleware/auth';
 import { RedisAdapter } from '../services/redis-adapter';
 
-const JWT_SECRET = 'test-secret-key-for-unit-tests';
+const JWT_SECRET = process.env.TEST_JWT_SECRET || 'test-secret-key-for-unit-tests'; // NOSONAR
 let PORT: number;
 
 function createToken(payload: Record<string, unknown>): string {

@@ -42,7 +42,7 @@ class ApiClient:
         return f"{prefix}-{self.run_id}-{uuid.uuid4().hex[:8]}@example.test"
 
     def register_user(self, prefix: str = "api-flow-user") -> RegisteredUser:
-        password = "OtterworksTest123!"
+        password = os.environ.get("TEST_USER_PASSWORD", "OtterworksTest123!")  # NOSONAR
         payload = {
             "email": self.unique_email(prefix),
             "password": password,

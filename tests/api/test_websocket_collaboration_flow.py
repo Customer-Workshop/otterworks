@@ -21,7 +21,7 @@ def test_socketio_rejects_missing_or_invalid_token(base_url):
     with pytest.raises(socketio.exceptions.ConnectionError):
         invalid.connect(
             _collab_url(base_url),
-            auth={"token": "not-a-valid-token"},
+            auth={"token": "not-a-valid-token"},  # NOSONAR - intentionally invalid for rejection test
             transports=["websocket"],
         )
 

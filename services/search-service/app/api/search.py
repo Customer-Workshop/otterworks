@@ -33,7 +33,7 @@ def _chaos_active(key: str) -> bool:
     """Return True if the given chaos flag is set in Redis."""
     try:
         return bool(_get_redis().exists(key))
-    except (redis_lib.ConnectionError, redis_lib.TimeoutError, OSError):
+    except (redis_lib.RedisError, OSError):
         return False
 
 

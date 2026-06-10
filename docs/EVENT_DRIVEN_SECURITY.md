@@ -108,20 +108,20 @@ When automated remediation is exhausted (Trivy path only):
 2. The issue body contains the full findings summary
 3. A PR comment notifies the developer that manual review is required
 
-## Devin API
+## Devin Automation Webhooks
 
-Both paths use the **Devin v3 API** endpoint:
+Both paths trigger Devin sessions via **automation webhook endpoints**:
 
 ```
-POST https://api.devin.ai/v3/organizations/{ORG_ID}/sessions
+POST https://partner-workshops.devinenterprise.com/api/webhooks/automations/{ORG_ID}/{AUTOMATION_ID}
 ```
 
 Request body includes:
-- `prompt`: Scanner-specific remediation instructions + findings context
-- `title`: Human-readable session title
-- `repos`: Target repository
-- `create_as_user_id`: Service user impersonation
-- `tags`: Scanner type, security category
+- `source`: Scanner type (`trivy` or `sonarcloud`)
+- `branch`: PR head branch
+- `pr_number`: Pull request number
+- `repository`: Full repo name (`owner/repo`)
+- `findings_summary` (Trivy) or `sonarcloud_dashboard` (SonarCloud): Context
 
 Required GitHub Actions secrets:
 - `DEVIN_WEBHOOK_SECRET` — Webhook auth for Trivy automation

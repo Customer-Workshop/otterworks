@@ -28,6 +28,7 @@ def main():
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
     expected_account_id = config.get("aws", "account_id", fallback=os.environ.get("AWS_ACCOUNT_ID", ""))
+    bucket_owner_kwargs = {"ExpectedBucketOwner": expected_account_id} if expected_account_id else {}
 
     db_host = config.get("database", "host")
     db_port = config.getint("database", "port")
@@ -146,7 +147,7 @@ def main():
             response = s3_client.get_object(
                 Bucket=data_lake_bucket,
                 Key=key,
-                ExpectedBucketOwner=expected_account_id,
+                **bucket_owner_kwargs,
             )
             body = response["Body"].read()
             decompressed = gzip.decompress(body).decode("utf-8")
@@ -219,7 +220,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
-        ExpectedBucketOwner=expected_account_id,
+        **bucket_owner_kwargs,
     )
 
     # Store latest pointer for admin-service
@@ -228,7 +229,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=latest_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
-        ExpectedBucketOwner=expected_account_id,
+        **bucket_owner_kwargs,
     )
 
     # Store per-user summaries as JSONL for individual user lookups
@@ -240,7 +241,7 @@ def main():
             Bucket=data_lake_bucket,
             Key=users_key,
             Body=("\n".join(lines) + "\n").encode("utf-8"),
-            ExpectedBucketOwner=expected_account_id,
+            **bucket_owner_kwargs,
         )
 
     print("[%s] Stored activity report: %d user summaries at s3://%s/%s" % (

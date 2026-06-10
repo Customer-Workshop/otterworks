@@ -26,6 +26,7 @@ def main():
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
     expected_account_id = config.get("aws", "account_id", fallback=os.environ.get("AWS_ACCOUNT_ID", ""))
+    bucket_owner_kwargs = {"ExpectedBucketOwner": expected_account_id} if expected_account_id else {}
 
     file_storage_bucket = config.get("s3", "file_storage_bucket")
     quarantine_bucket = config.get("s3", "quarantine_bucket")
@@ -52,7 +53,7 @@ def main():
     all_objects = []
     paginator = s3_client.get_paginator("list_objects_v2")
 
-    for page in paginator.paginate(Bucket=file_storage_bucket, Prefix=files_prefix, ExpectedBucketOwner=expected_account_id):
+    for page in paginator.paginate(Bucket=file_storage_bucket, Prefix=files_prefix, **bucket_owner_kwargs):
         for obj in page.get("Contents", []):
             all_objects.append({
                 "key": obj["Key"],
@@ -140,12 +141,12 @@ def main():
                 Key=dest_key,
                 CopySource={"Bucket": file_storage_bucket, "Key": source_key},
                 MetadataDirective="COPY",
-                ExpectedBucketOwner=expected_account_id,
+                **bucket_owner_kwargs,
             )
             s3_client.delete_object(
                 Bucket=file_storage_bucket,
                 Key=source_key,
-                ExpectedBucketOwner=expected_account_id,
+                **bucket_owner_kwargs,
             )
             moved_count += 1
         except Exception as e:
@@ -204,7 +205,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
-        ExpectedBucketOwner=expected_account_id,
+        **bucket_owner_kwargs,
     )
 
     print("[%s] Storage cleanup report: %d orphans quarantined, %.4f GB freed, ~$%.4f/month saved" % (

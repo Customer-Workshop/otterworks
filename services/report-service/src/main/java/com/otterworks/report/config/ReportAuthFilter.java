@@ -1,5 +1,7 @@
 package com.otterworks.report.config;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -18,8 +20,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /**
- * Validates JWT bearer tokens on report API endpoints using HMAC-SHA256
- * signature verification (no external JWT library required).
+ * Validates JWT bearer tokens on report API endpoints using HMAC
+ * signature verification (supports HS256 and HS384).
  *
  * Active only outside the {@code test} profile so that existing
  * functional tests continue to pass.
@@ -30,7 +32,7 @@ import java.util.Base64;
 public class ReportAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ReportAuthFilter.class);
-    private static final String HMAC_SHA256 = "HmacSHA256";
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -69,15 +71,45 @@ public class ReportAuthFilter extends OncePerRequestFilter {
             if (parts.length != 3) {
                 return false;
             }
+
+            String headerJson = new String(
+                    Base64.getUrlDecoder().decode(padBase64(parts[0])),
+                    StandardCharsets.UTF_8);
+            JsonNode header = mapper.readTree(headerJson);
+            String alg = header.has("alg") ? header.get("alg").asText() : "HS256";
+
+            String hmacAlgorithm;
+            switch (alg) {
+                case "HS384": hmacAlgorithm = "HmacSHA384"; break;
+                case "HS512": hmacAlgorithm = "HmacSHA512"; break;
+                default:      hmacAlgorithm = "HmacSHA256"; break;
+            }
+
             byte[] signingInput = (parts[0] + "." + parts[1])
                     .getBytes(StandardCharsets.UTF_8);
-            Mac mac = Mac.getInstance(HMAC_SHA256);
+            Mac mac = Mac.getInstance(hmacAlgorithm);
             mac.init(new SecretKeySpec(
-                    secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA256));
+                    secret.getBytes(StandardCharsets.UTF_8), hmacAlgorithm));
             byte[] expected = mac.doFinal(signingInput);
-            byte[] actual = Base64.getUrlDecoder().decode(
-                    padBase64(parts[2]));
-            return java.security.MessageDigest.isEqual(expected, actual);
+            byte[] actual = Base64.getUrlDecoder().decode(padBase64(parts[2]));
+
+            if (!java.security.MessageDigest.isEqual(expected, actual)) {
+                return false;
+            }
+
+            String payloadJson = new String(
+                    Base64.getUrlDecoder().decode(padBase64(parts[1])),
+                    StandardCharsets.UTF_8);
+            JsonNode payload = mapper.readTree(payloadJson);
+            if (payload.has("exp")) {
+                long exp = payload.get("exp").asLong();
+                if (System.currentTimeMillis() / 1000 > exp) {
+                    log.debug("JWT expired");
+                    return false;
+                }
+            }
+
+            return true;
         } catch (Exception e) {
             log.debug("JWT verification failed: {}", e.getMessage());
             return false;

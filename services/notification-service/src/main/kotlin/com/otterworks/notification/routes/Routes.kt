@@ -184,7 +184,12 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
                 return@webSocket
             }
             try {
-                val verifier = JWT.require(Algorithm.HMAC256(jwtSecret)).build()
+                val algorithm = when (JWT.decode(token).algorithm) {
+                    "HS384" -> Algorithm.HMAC384(jwtSecret)
+                    "HS512" -> Algorithm.HMAC512(jwtSecret)
+                    else -> Algorithm.HMAC256(jwtSecret)
+                }
+                val verifier = JWT.require(algorithm).build()
                 val decoded = verifier.verify(token)
                 val tokenUserId = decoded.subject ?: decoded.getClaim("user_id").asString()
                 if (tokenUserId != userId) {

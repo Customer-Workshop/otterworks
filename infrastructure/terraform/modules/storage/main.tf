@@ -10,6 +10,46 @@ locals {
   }
 }
 
+# --- Access Logging Bucket ---
+
+resource "aws_s3_bucket" "access_logs" {
+  bucket = "${var.project}-access-logs-${var.environment}"
+
+  tags = merge(local.common_tags, {
+    Service = "logging"
+  })
+}
+
+resource "aws_s3_bucket_public_access_block" "access_logs" {
+  bucket                  = aws_s3_bucket.access_logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+
+  rule {
+    id     = "expire-old-logs"
+    status = "Enabled"
+    filter {}
+    expiration {
+      days = 90
+    }
+  }
+}
+
 # --- File Storage Bucket ---
 
 resource "aws_s3_bucket" "files" {
@@ -61,6 +101,32 @@ resource "aws_s3_bucket_lifecycle_configuration" "files" {
   }
 }
 
+resource "aws_s3_bucket_logging" "files" {
+  bucket        = aws_s3_bucket.files.id
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "files/"
+}
+
+resource "aws_s3_bucket_policy" "files_https_only" {
+  bucket = aws_s3_bucket.files.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource = [
+        aws_s3_bucket.files.arn,
+        "${aws_s3_bucket.files.arn}/*"
+      ]
+      Condition = {
+        Bool = { "aws:SecureTransport" = "false" }
+      }
+    }]
+  })
+}
+
 # --- Data Lake Bucket ---
 
 resource "aws_s3_bucket" "data_lake" {
@@ -89,6 +155,32 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "data_lake" {
   }
 }
 
+resource "aws_s3_bucket_logging" "data_lake" {
+  bucket        = aws_s3_bucket.data_lake.id
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "data-lake/"
+}
+
+resource "aws_s3_bucket_policy" "data_lake_https_only" {
+  bucket = aws_s3_bucket.data_lake.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource = [
+        aws_s3_bucket.data_lake.arn,
+        "${aws_s3_bucket.data_lake.arn}/*"
+      ]
+      Condition = {
+        Bool = { "aws:SecureTransport" = "false" }
+      }
+    }]
+  })
+}
+
 # --- Audit Archive Bucket ---
 
 resource "aws_s3_bucket" "audit_archive" {
@@ -115,4 +207,30 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "audit_archive" {
     }
     bucket_key_enabled = true
   }
+}
+
+resource "aws_s3_bucket_logging" "audit_archive" {
+  bucket        = aws_s3_bucket.audit_archive.id
+  target_bucket = aws_s3_bucket.access_logs.id
+  target_prefix = "audit-archive/"
+}
+
+resource "aws_s3_bucket_policy" "audit_archive_https_only" {
+  bucket = aws_s3_bucket.audit_archive.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource = [
+        aws_s3_bucket.audit_archive.arn,
+        "${aws_s3_bucket.audit_archive.arn}/*"
+      ]
+      Condition = {
+        Bool = { "aws:SecureTransport" = "false" }
+      }
+    }]
+  })
 }

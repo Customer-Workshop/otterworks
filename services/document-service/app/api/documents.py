@@ -373,7 +373,8 @@ async def create_from_template(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document from a template."""
-    _require_user_id(request)
+    user_id = _require_user_id(request)
+    body.owner_id = user_id
     service = DocumentService(db)
     document = await service.create_from_template(template_id, body)
     if not document:

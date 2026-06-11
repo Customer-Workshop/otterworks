@@ -1,0 +1,126 @@
+# Synthetic Test-Data Generation Framework
+
+Generate and validate synthetic data for OtterWorks lower environments (dev, QA,
+staging, load-test) driven by **GitHub Issue acceptance criteria**.
+
+## How It Works
+
+1. A GitHub Issue describes a user story with acceptance criteria (row counts,
+   distributions, relationships, activity patterns).
+2. Devin reads the issue, introspects the OtterWorks schema, and generates
+   Python scripts in `testdata/generated/<namespace>/`.
+3. The scripts create a namespaced Postgres schema (`otterworks_<ns>`), generate
+   data, and load it.
+4. The validation harness (`make testdata-validate NS=<ns>`) programmatically
+   proves the data satisfies the schema invariants **and** the issue's criteria.
+
+## Quick Start
+
+```bash
+# Prerequisites: running Postgres (make infra-up) with OtterWorks schemas
+export DB_HOST=localhost DB_PORT=5432 DB_NAME=otterworks DB_USER=otterworks DB_PASSWORD=otterworks_dev
+
+# Generate data for a namespace (produced by Devin from a GH Issue)
+python testdata/generated/dev/generate.py --ns dev
+
+# Validate the generated data
+make testdata-validate NS=dev
+
+# Validate with acceptance-criteria file (from the GH Issue)
+make testdata-validate NS=dev CRITERIA=testdata/generated/dev/criteria.json
+
+# Clean up the namespace (drop schema)
+make testdata-clean NS=dev
+```
+
+## Directory Layout
+
+```
+testdata/
+├── README.md                   # this file
+├── harness/
+│   ├── validate.py             # validation framework (schema, FK, temporal, criteria)
+│   └── requirements.txt        # Python dependencies
+└── generated/                  # output dir (gitignored except examples)
+    └── <namespace>/
+        ├── generate.py         # data-generation script (Devin-produced)
+        ├── criteria.json       # acceptance criteria extracted from the GH Issue
+        └── simulate.py         # optional: activity-simulation script
+```
+
+## Validation Checks
+
+The harness runs two layers of checks:
+
+### Standard Suite (always runs)
+
+| Category | What it checks |
+|----------|----------------|
+| Table existence | All core OtterWorks tables present in the namespace |
+| FK integrity | `user_roles`, `user_settings`, `refresh_tokens`, `storage_quotas` reference valid parents |
+| Temporal consistency | Audit logs do not reference resources created after the log timestamp |
+| Enum values | Roles, statuses, severities, tiers contain only valid values |
+| Business rules | `used_bytes <= quota_bytes` in storage quotas |
+| Uniqueness | Email addresses are unique across users and admin_users |
+
+### Criteria-Based (from the GH Issue)
+
+A `criteria.json` file maps tables to constraints from the acceptance criteria:
+
+```json
+{
+  "users": {
+    "min_rows": 500,
+    "max_rows": 1000,
+    "required_columns": ["email", "display_name", "created_at"],
+    "unique_columns": ["email"]
+  },
+  "audit_logs": {
+    "min_rows": 2000,
+    "required_columns": ["action", "actor_id", "resource_type"],
+    "enum_constraints": {
+      "action": ["create", "update", "delete", "login", "logout", "share"]
+    }
+  },
+  "storage_quotas": {
+    "min_rows": 500,
+    "required_columns": ["user_id", "quota_bytes", "used_bytes", "tier"]
+  }
+}
+```
+
+## Namespacing
+
+Every run writes to an isolated Postgres schema (`otterworks_<ns>`) so:
+- Concurrent runs never collide (each Devin session gets its own namespace)
+- The durable seed data in the default `public` schema is never touched
+- Cleanup is a single `DROP SCHEMA ... CASCADE`
+
+## The Verification Loop
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  GH Issue (user story + acceptance criteria)            │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│  Devin generates scripts → testdata/generated/<ns>/     │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│  Scripts load data into otterworks_<ns> schema          │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│  make testdata-validate NS=<ns>                         │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ Standard checks: FK, temporal, enum, uniqueness   │  │
+│  │ Criteria checks: row counts, distributions, etc.  │  │
+│  └───────────────────────────────────────────────────┘  │
+│         │ FAIL → fix generator → re-run                 │
+│         │ PASS → open PR with the scripts               │
+└─────────────────────────────────────────────────────────┘
+```

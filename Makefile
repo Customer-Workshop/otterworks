@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema
 
 SHELL := /bin/bash
 
@@ -116,6 +116,45 @@ lint: ## Lint all services
 	@echo "=== Search Service ===" && cd services/search-service && ruff check .
 	@echo "=== Web Frontend ===" && cd frontend/web-app && npm run lint
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm run lint
+
+# --- Synthetic Test Data ---
+
+# Guard: NS must be alphanumeric/underscore only (prevents SQL injection)
+define validate_ns
+$(if $(filter ok,$(shell echo '$(NS)' | grep -qE '^[A-Za-z0-9_]+$$' && echo ok)),,$(error NS must contain only letters, digits, and underscores))
+endef
+
+testdata-validate: ## Validate generated test data (NS=<namespace>, CRITERIA=<file>)
+ifndef NS
+	$(error NS is required, e.g. make testdata-validate NS=dev)
+endif
+	$(call validate_ns)
+	uv run testdata/harness/validate.py --ns $(NS) $(if $(CRITERIA),--criteria $(CRITERIA),)
+
+testdata-clean: ## Drop a test-data namespace schema (NS=<namespace>)
+ifndef NS
+	$(error NS is required, e.g. make testdata-clean NS=dev)
+endif
+	$(call validate_ns)
+	@echo "Dropping schema otterworks_$(NS)..."
+	PGPASSWORD=$${DB_PASSWORD:-otterworks_dev} psql \
+		-h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} \
+		-U $${DB_USER:-otterworks} -d $${DB_NAME:-otterworks} \
+		-c "DROP SCHEMA IF EXISTS otterworks_$(NS) CASCADE;"
+	@echo "Done."
+
+testdata-setup-schema: ## Create a namespaced schema (NS=<namespace>)
+ifndef NS
+	$(error NS is required, e.g. make testdata-setup-schema NS=dev)
+endif
+	$(call validate_ns)
+	@echo "Creating schema otterworks_$(NS)..."
+	PGPASSWORD=$${DB_PASSWORD:-otterworks_dev} psql \
+		-h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} \
+		-U $${DB_USER:-otterworks} -d $${DB_NAME:-otterworks} \
+		-f testdata/harness/create_schema.sql \
+		-v ns=$(NS)
+	@echo "Done."
 
 # --- Infrastructure ---
 

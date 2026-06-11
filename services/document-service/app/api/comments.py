@@ -6,7 +6,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.documents import _require_user_id
+from app.api.documents import _ensure_owner, _require_user_id
 from app.db.session import get_db
 from app.schemas.document import CommentCreate, CommentResponse
 from app.services.document_service import DocumentService
@@ -30,6 +30,10 @@ async def add_comment(
     user_id = _require_user_id(request)
     body.author_id = user_id
     service = DocumentService(db)
+    document = await service.get(document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _ensure_owner(document, user_id)
     comment = await service.add_comment(document_id, body)
     if not comment:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -44,8 +48,12 @@ async def list_comments(
     db: AsyncSession = Depends(get_db),
 ):
     """List comments for a document."""
-    _require_user_id(request)
+    user_id = _require_user_id(request)
     service = DocumentService(db)
+    document = await service.get(document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _ensure_owner(document, user_id)
     return await service.list_comments(document_id)
 
 

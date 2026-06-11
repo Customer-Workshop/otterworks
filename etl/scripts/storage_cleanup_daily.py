@@ -148,7 +148,7 @@ def main():
                 Key=dest_key,
                 CopySource={"Bucket": file_storage_bucket, "Key": source_key},
                 MetadataDirective="COPY",
-                **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
+                **({"ExpectedBucketOwner": AWS_ACCOUNT_ID, "ExpectedSourceBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
             )
             s3_client.delete_object(
                 Bucket=file_storage_bucket,

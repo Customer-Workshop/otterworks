@@ -171,9 +171,11 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             put {
+                val authenticatedUserId = call.request.headers["X-User-ID"]!!
                 val request = call.receive<NotificationPreferenceRequest>()
+                // Use the authenticated identity from the gateway header, not the body.
                 notificationService.updatePreferences(
-                    userId = request.userId,
+                    userId = authenticatedUserId,
                     eventType = request.eventType,
                     channels = request.channels,
                 )

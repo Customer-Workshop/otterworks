@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hmac
+
 import structlog
 from flask import Blueprint, current_app, jsonify, request
 
@@ -33,7 +35,7 @@ def _require_service_token() -> tuple | None:
         logger.error("index_auth_misconfigured", hint="SEARCH_SERVICE_TOKEN not set")
         return jsonify({"error": "indexing endpoints require a configured service token"}), 503
 
-    if token and token == auth_config.service_token:
+    if token and hmac.compare_digest(token, auth_config.service_token):
         return None
 
     return jsonify({"error": "unauthorized — service token required"}), 401

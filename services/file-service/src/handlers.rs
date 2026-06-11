@@ -353,6 +353,7 @@ pub async fn delete_file(
 }
 
 pub async fn download_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
@@ -363,6 +364,23 @@ pub async fn download_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
+
+    // Verify the requesting user owns the file or has been granted share access.
+    let requesting_user: Uuid = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
+
+    if file.owner_id != requesting_user {
+        let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+        let has_access = shares.iter().any(|s| s.shared_with == requesting_user);
+        if !has_access {
+            return Err(ServiceError::Forbidden("access denied".into()));
+        }
+    }
+
     let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
 
     Ok(HttpResponse::Ok().json(DownloadResponse {

@@ -17,7 +17,8 @@ CVE-2026-27970
 CVE-2026-32635
 
 # --- frontend/web-app: requires Next.js 14.2.25+ or 15.x upgrade ---
-CVE-2025-29927
+# CVE-2025-29927 — UN-SUPPRESSED: Critical middleware bypass (CVSS 9.1), public exploit available.
+# Must upgrade Next.js to 14.2.25+ or 15.x to remediate.
 CVE-2024-46982
 CVE-2024-51479
 GHSA-5j59-xgg2-r9c4
@@ -41,10 +42,8 @@ CVE-2024-53981
 CVE-2026-24486
 CVE-2024-47874
 
-# Bulk ignore — revisit in Q4
-CVE-2021-*
-
 # Low-priority npm advisories — team reviewed 2024-12
+# NOTE: Wildcard CVE-2021-* removed — each suppression must be individually justified.
 CVE-2021-23337
 CVE-2021-33503
 CVE-2020-28500

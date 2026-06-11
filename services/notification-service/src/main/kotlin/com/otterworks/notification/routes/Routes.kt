@@ -7,6 +7,7 @@ import com.otterworks.notification.service.NotificationService
 import com.otterworks.notification.websocket.WebSocketManager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -51,8 +52,18 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
         }
 
         route("/api/v1/notifications") {
+            // Require X-User-ID header on all endpoints in this route group.
+            // The gateway injects this header only after successful JWT validation.
+            intercept(ApplicationCallPipeline.Plugins) {
+                val userId = call.request.headers["X-User-ID"]
+                if (userId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required (missing X-User-ID header)"))
+                    finish()
+                }
+            }
+
             get {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
                     return@get
@@ -75,7 +86,7 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             get("/unread-count") {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
                     return@get
@@ -114,7 +125,7 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             put("/read-all") {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
                     return@put
@@ -140,8 +151,16 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
         }
 
         route("/api/v1/preferences") {
+            intercept(ApplicationCallPipeline.Plugins) {
+                val userId = call.request.headers["X-User-ID"]
+                if (userId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required (missing X-User-ID header)"))
+                    finish()
+                }
+            }
+
             get {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
                     return@get

@@ -78,7 +78,10 @@ module Api
 
         def verify_chaos_secret
           expected = ENV.fetch('CHAOS_SECRET', nil)
-          return if expected.nil? || expected.empty? # secret not configured → allow (dev mode)
+          if expected.nil? || expected.empty?
+            render json: { error: 'CHAOS_SECRET not configured — endpoint disabled' }, status: :forbidden
+            return
+          end
 
           provided = request.headers['X-Chaos-Secret']
           return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)

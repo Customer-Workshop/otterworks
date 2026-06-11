@@ -12,6 +12,7 @@ import configparser
 import gzip
 import io
 import json
+import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,8 @@ from decimal import Decimal
 import boto3
 import pandas as pd
 import psycopg2
+
+AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "")
 
 
 def main():
@@ -310,6 +313,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=summary_key,
         Body=summary_bytes,
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
     print("[%s] Uploaded summary to s3://%s/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data_lake_bucket, summary_key))
 
@@ -320,6 +324,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=hourly_key,
         Body=hourly_bytes,
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     # Write top users as JSONL
@@ -333,6 +338,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=users_key,
         Body=buf.getvalue(),
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     print("[%s] Loaded analytics data to s3://%s/%s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data_lake_bucket, partition_key))
@@ -434,6 +440,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     print("[%s] Generated daily analytics report: %d events, %d active users" % (

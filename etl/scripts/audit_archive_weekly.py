@@ -13,11 +13,14 @@ import configparser
 import gzip
 import io
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import boto3
+
+AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "")
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -122,6 +125,7 @@ def main():
         Key=archive_key,
         Body=buf.getvalue(),
         StorageClass="GLACIER",
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     print("[%s] Archived to s3://%s/%s (GLACIER)" % (
@@ -204,6 +208,7 @@ def main():
         Bucket=archive_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2).encode("utf-8"),
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     print("[%s] Compliance report: %d archived, %d deleted, stored at s3://%s/%s" % (

@@ -12,11 +12,14 @@
 import configparser
 import gzip
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 
 import boto3
 import psycopg2
+
+AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "")
 
 
 def main():
@@ -144,7 +147,11 @@ def main():
         key = "analytics/daily/year=%s/month=%s/day=%s/top_users.jsonl.gz" % (year, month, day)
 
         try:
-            response = s3_client.get_object(Bucket=data_lake_bucket, Key=key)
+            response = s3_client.get_object(
+                Bucket=data_lake_bucket,
+                Key=key,
+                **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
+            )
             body = response["Body"].read()
             decompressed = gzip.decompress(body).decode("utf-8")
 
@@ -217,6 +224,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=report_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     # Store latest pointer for admin-service
@@ -225,6 +233,7 @@ def main():
         Bucket=data_lake_bucket,
         Key=latest_key,
         Body=json.dumps(report, indent=2, default=str).encode("utf-8"),
+        **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
     )
 
     # Store per-user summaries as JSONL for individual user lookups
@@ -236,6 +245,7 @@ def main():
             Bucket=data_lake_bucket,
             Key=users_key,
             Body=("\n".join(lines) + "\n").encode("utf-8"),
+            **({"ExpectedBucketOwner": AWS_ACCOUNT_ID} if AWS_ACCOUNT_ID else {}),
         )
 
     print("[%s] Stored activity report: %d user summaries at s3://%s/%s" % (

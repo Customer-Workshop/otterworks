@@ -50,6 +50,44 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
   }
 }
 
+resource "aws_s3_bucket_policy" "access_logs" {
+  bucket = aws_s3_bucket.access_logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "S3ServerAccessLogsPolicy"
+        Effect    = "Allow"
+        Principal = { Service = "logging.s3.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.access_logs.arn}/*"
+        Condition = {
+          ArnLike = {
+            "aws:SourceArn" = [
+              aws_s3_bucket.files.arn,
+              aws_s3_bucket.data_lake.arn,
+              aws_s3_bucket.audit_archive.arn
+            ]
+          }
+        }
+      },
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.access_logs.arn,
+          "${aws_s3_bucket.access_logs.arn}/*"
+        ]
+        Condition = {
+          Bool = { "aws:SecureTransport" = "false" }
+        }
+      }
+    ]
+  })
+}
+
 # --- File Storage Bucket ---
 
 resource "aws_s3_bucket" "files" {

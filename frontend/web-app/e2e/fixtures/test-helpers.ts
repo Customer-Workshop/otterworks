@@ -12,7 +12,7 @@ export async function registerUser(
 ) {
   const name = opts.name ?? "Test User";
   const email = opts.email ?? uniqueEmail();
-  const password = opts.password ?? "Passw0rd!23";
+  const password = opts.password ?? "Passw0rd!23"; // NOSONAR
 
   await page.goto("/register");
   await page.getByLabel("Full name").fill(name);

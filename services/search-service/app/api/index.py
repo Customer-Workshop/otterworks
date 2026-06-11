@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from app.api.health import INDEX_COUNT
 from app.services.indexer import Indexer
@@ -14,10 +14,33 @@ logger = structlog.get_logger()
 index_bp = Blueprint("index", __name__)
 
 
+def _require_service_token() -> tuple | None:
+    """Reject requests that do not carry a valid service-to-service token.
+
+    Index mutation endpoints must only be reachable by trusted internal
+    callers (SQS consumer, admin CLI) — never by regular users.
+    """
+    auth_config = current_app.config["APP_CONFIG"].auth
+    if not auth_config.require_auth:
+        return None
+
+    token = ""
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+
+    if not auth_config.service_token:
+        logger.error("index_auth_misconfigured", hint="SEARCH_SERVICE_TOKEN not set")
+        return jsonify({"error": "indexing endpoints require a configured service token"}), 503
+
+    if token and token == auth_config.service_token:
+        return None
+
+    return jsonify({"error": "unauthorized — service token required"}), 401
+
+
 def _get_indexer() -> Indexer:
     """Get an Indexer instance from the current app config."""
-    from flask import current_app
-
     search_service: MeiliSearchService = current_app.config["SEARCH_SERVICE"]
     return Indexer(search_service)
 
@@ -25,6 +48,9 @@ def _get_indexer() -> Indexer:
 @index_bp.route("/index/document", methods=["POST"])
 def index_document() -> tuple:
     """Index a document (called by document-service or SQS)."""
+    denied = _require_service_token()
+    if denied:
+        return denied
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body is required"}), 400
@@ -45,6 +71,9 @@ def index_document() -> tuple:
 @index_bp.route("/index/file", methods=["POST"])
 def index_file() -> tuple:
     """Index a file (called by file-service or SQS)."""
+    denied = _require_service_token()
+    if denied:
+        return denied
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body is required"}), 400
@@ -65,6 +94,9 @@ def index_file() -> tuple:
 @index_bp.route("/index/<doc_type>/<doc_id>", methods=["DELETE"])
 def remove_from_index(doc_type: str, doc_id: str) -> tuple:
     """Remove a document or file from the search index."""
+    denied = _require_service_token()
+    if denied:
+        return denied
     try:
         indexer = _get_indexer()
         result = indexer.remove(doc_type, doc_id)
@@ -83,6 +115,9 @@ def remove_from_index(doc_type: str, doc_id: str) -> tuple:
 @index_bp.route("/reindex", methods=["POST"])
 def reindex() -> tuple:
     """Reindex all data (admin operation)."""
+    denied = _require_service_token()
+    if denied:
+        return denied
     try:
         indexer = _get_indexer()
         result = indexer.reindex()

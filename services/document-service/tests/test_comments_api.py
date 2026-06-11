@@ -10,19 +10,18 @@ from httpx import AsyncClient
 async def test_add_comment(client: AsyncClient, owner_id: uuid.UUID):
     create_resp = await client.post(
         "/api/v1/documents/",
-        json={"title": "Commented Doc", "content": "", "owner_id": str(owner_id)},
+        json={"title": "Commented Doc", "content": ""},
     )
     doc_id = create_resp.json()["id"]
-    author_id = str(uuid.uuid4())
 
     resp = await client.post(
         f"/api/v1/documents/{doc_id}/comments",
-        json={"author_id": author_id, "content": "Great document!"},
+        json={"author_id": str(uuid.uuid4()), "content": "Great document!"},
     )
     assert resp.status_code == 201
     data = resp.json()
     assert data["content"] == "Great document!"
-    assert data["author_id"] == author_id
+    assert data["author_id"] == str(owner_id)
     assert data["document_id"] == doc_id
 
 
@@ -39,7 +38,7 @@ async def test_add_comment_document_not_found(client: AsyncClient):
 async def test_list_comments(client: AsyncClient, owner_id: uuid.UUID):
     create_resp = await client.post(
         "/api/v1/documents/",
-        json={"title": "Doc", "content": "", "owner_id": str(owner_id)},
+        json={"title": "Doc", "content": ""},
     )
     doc_id = create_resp.json()["id"]
 
@@ -58,7 +57,7 @@ async def test_list_comments(client: AsyncClient, owner_id: uuid.UUID):
 async def test_delete_comment(client: AsyncClient, owner_id: uuid.UUID):
     create_resp = await client.post(
         "/api/v1/documents/",
-        json={"title": "Doc", "content": "", "owner_id": str(owner_id)},
+        json={"title": "Doc", "content": ""},
     )
     doc_id = create_resp.json()["id"]
 
@@ -79,7 +78,7 @@ async def test_delete_comment(client: AsyncClient, owner_id: uuid.UUID):
 async def test_delete_comment_not_found(client: AsyncClient, owner_id: uuid.UUID):
     create_resp = await client.post(
         "/api/v1/documents/",
-        json={"title": "Doc", "content": "", "owner_id": str(owner_id)},
+        json={"title": "Doc", "content": ""},
     )
     doc_id = create_resp.json()["id"]
 

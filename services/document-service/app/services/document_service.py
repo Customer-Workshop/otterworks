@@ -207,7 +207,7 @@ class DocumentService:
         result = await self.db.execute(
             select(DocumentVersion)
             .where(DocumentVersion.document_id == document_id)
-            .order_by(DocumentVersion.version_number.asc())
+            .order_by(DocumentVersion.version_number.desc())
         )
         return list(result.scalars().all())
 
@@ -256,7 +256,7 @@ class DocumentService:
     # ---- Search ----
 
     async def search(
-        self, query: str, page: int = 1, size: int = 20
+        self, query: str, owner_id: UUID | None = None, page: int = 1, size: int = 20
     ) -> tuple[list[Document], int]:
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
@@ -268,6 +268,8 @@ class DocumentService:
                 Document.content.ilike(pattern),
             ),
         )
+        if owner_id is not None:
+            base = base.where(Document.owner_id == owner_id)
         count_q = select(func.count()).select_from(base.subquery())
         total = (await self.db.execute(count_q)).scalar_one()
 
@@ -330,6 +332,14 @@ class DocumentService:
             .order_by(Comment.created_at.asc())
         )
         return list(result.scalars().all())
+
+    async def get_comment(self, document_id: UUID, comment_id: UUID) -> Comment | None:
+        result = await self.db.execute(
+            select(Comment).where(
+                Comment.id == comment_id, Comment.document_id == document_id
+            )
+        )
+        return result.scalar_one_or_none()
 
     async def delete_comment(self, document_id: UUID, comment_id: UUID) -> bool:
         result = await self.db.execute(

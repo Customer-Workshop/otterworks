@@ -1,5 +1,6 @@
 package com.otterworks.report.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -19,9 +20,12 @@ import java.util.Set;
  * Verifies that requests to protected endpoints carry the X-User-ID header
  * injected by the API gateway after JWT validation. Requests without this
  * header are rejected with 401 Unauthorized.
+ *
+ * Activated by default (gateway.auth.enabled=true). Disabled in test profile.
  */
 @Component
 @Order(1)
+@ConditionalOnProperty(name = "gateway.auth.enabled", havingValue = "true", matchIfMissing = true)
 public class GatewayAuthFilter implements Filter {
 
     private static final Set<String> PUBLIC_PREFIXES = new HashSet<>(Arrays.asList(

@@ -161,8 +161,9 @@ pub async fn upload_file(
         }
     }
 
-    let owner = header_owner_id
-        .ok_or_else(|| ServiceError::Unauthorized("owner_id must come from authenticated user".into()))?;
+    let owner = header_owner_id.ok_or_else(|| {
+        ServiceError::Unauthorized("owner_id must come from authenticated user".into())
+    })?;
 
     if file_bytes.is_empty() {
         return Err(ServiceError::BadRequest("file field is required".into()));

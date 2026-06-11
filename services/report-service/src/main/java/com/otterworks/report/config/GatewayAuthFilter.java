@@ -11,6 +11,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -22,9 +24,9 @@ import java.util.Set;
 @Order(1)
 public class GatewayAuthFilter implements Filter {
 
-    private static final Set<String> PUBLIC_PREFIXES = Set.of(
+    private static final Set<String> PUBLIC_PREFIXES = new HashSet<>(Arrays.asList(
         "/health", "/metrics", "/actuator", "/swagger-ui", "/swagger-resources", "/v2/api-docs"
-    );
+    ));
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)

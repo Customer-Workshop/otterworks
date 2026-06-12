@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -184,11 +184,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   };
 
   private destroy$ = new Subject<void>();
+  private lastReport: { userSignups: { label: string; value: number }[]; documentActivity: { label: string; value: number }[] } | null = null;
 
   constructor(
     private api: AdminApiService,
     private themeService: ThemeService,
-  ) {}
+  ) {
+    effect(() => {
+      this.themeService.darkMode();
+      if (this.lastReport) this.buildCharts(this.lastReport);
+    });
+  }
 
   ngOnInit(): void {
     this.loadStats();
@@ -198,6 +204,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe(() => this.loadStats());
 
     this.api.getAnalyticsReport().subscribe(report => {
+      this.lastReport = report;
       this.buildCharts(report);
     });
   }

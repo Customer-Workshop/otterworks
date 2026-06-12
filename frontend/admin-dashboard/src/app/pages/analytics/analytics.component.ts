@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -144,13 +144,21 @@ export class AnalyticsComponent implements OnInit {
     plugins: { legend: { position: 'right' } },
   };
 
+  private lastReport: AnalyticsReport | null = null;
+
   constructor(
     private api: AdminApiService,
     private themeService: ThemeService,
-  ) {}
+  ) {
+    effect(() => {
+      this.themeService.darkMode();
+      if (this.lastReport) this.buildCharts(this.lastReport);
+    });
+  }
 
   ngOnInit(): void {
     this.api.getAnalyticsReport().subscribe(report => {
+      this.lastReport = report;
       this.buildCharts(report);
       this.loading = false;
     });

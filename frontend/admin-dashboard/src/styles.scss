@@ -85,6 +85,17 @@ $admin-dark-theme: mat.define-dark-theme((
   --purple-text: #7b1fa2;
   --purple-bg: #f3e5f5;
 
+  --upload-bg: #e0f7fa;
+  --upload-color: #00695c;
+  --download-bg: #fce4ec;
+  --download-color: #ad1457;
+  --suspend-color: #b71c1c;
+  --restore-color: #1b5e20;
+
+  --severity-info-color: #4caf50;
+  --severity-warning-color: #ff9800;
+  --severity-critical-color: #f44336;
+
   --link-color: #1565c0;
 }
 
@@ -140,6 +151,17 @@ $admin-dark-theme: mat.define-dark-theme((
 
   --purple-text: #ce93d8;
   --purple-bg: #261a2b;
+
+  --upload-bg: #1a2b2b;
+  --upload-color: #4db6ac;
+  --download-bg: #2b1a22;
+  --download-color: #f48fb1;
+  --suspend-color: #ef5350;
+  --restore-color: #66bb6a;
+
+  --severity-info-color: #66bb6a;
+  --severity-warning-color: #ffa726;
+  --severity-critical-color: #ef5350;
 
   --link-color: #42a5f5;
 }

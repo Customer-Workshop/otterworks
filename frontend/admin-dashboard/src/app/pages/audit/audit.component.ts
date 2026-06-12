@@ -142,10 +142,10 @@ import { AuditEvent } from '../../core/models/audit.model';
     .action-share { background: var(--purple-bg); color: var(--purple-text); }
     .action-login { background: var(--warning-bg); color: var(--warning-color); }
     .action-logout { background: var(--chip-bg); color: var(--chip-color); }
-    .action-upload { background: #e0f7fa; color: #00695c; }
-    .action-download { background: #fce4ec; color: #ad1457; }
-    .action-suspend { background: var(--error-bg); color: #b71c1c; }
-    .action-restore { background: var(--success-bg); color: #1b5e20; }
+    .action-upload { background: var(--upload-bg); color: var(--upload-color); }
+    .action-download { background: var(--download-bg); color: var(--download-color); }
+    .action-suspend { background: var(--error-bg); color: var(--suspend-color); }
+    .action-restore { background: var(--success-bg); color: var(--restore-color); }
 
     .resource-cell { display: flex; flex-direction: column; }
     .resource-type { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
@@ -159,12 +159,12 @@ import { AuditEvent } from '../../core/models/audit.model';
       width: 8px; height: 8px; border-radius: 50%; display: inline-block;
     }
 
-    .severity-info .severity-dot { background: #4caf50; }
-    .severity-info { color: #4caf50; }
-    .severity-warning .severity-dot { background: #ff9800; }
-    .severity-warning { color: #ff9800; }
-    .severity-critical .severity-dot { background: #f44336; }
-    .severity-critical { color: #f44336; }
+    .severity-info .severity-dot { background: var(--severity-info-color); }
+    .severity-info { color: var(--severity-info-color); }
+    .severity-warning .severity-dot { background: var(--severity-warning-color); }
+    .severity-warning { color: var(--severity-warning-color); }
+    .severity-critical .severity-dot { background: var(--severity-critical-color); }
+    .severity-critical { color: var(--severity-critical-color); }
   `],
 })
 export class AuditComponent implements OnInit {

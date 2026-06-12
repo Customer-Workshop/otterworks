@@ -88,12 +88,12 @@ import { AuthService } from '../../core/services/auth.service';
     .login-header h1 {
       margin: 0;
       font-size: 1.5rem;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .login-header p {
       margin: 8px 0 0;
-      color: #666;
+      color: var(--text-secondary);
       font-size: 0.9rem;
     }
 

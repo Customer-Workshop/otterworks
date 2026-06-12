@@ -150,7 +150,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
   styles: [`
     .page-container { padding: 0; }
     .page-header { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin: 0; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
 
     .user-detail-grid {
@@ -164,9 +164,9 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
     .activity-card { grid-column: 1 / -1; }
 
     .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
-    .profile-avatar { font-size: 80px; width: 80px; height: 80px; color: #bdbdbd; }
+    .profile-avatar { font-size: 80px; width: 80px; height: 80px; color: var(--avatar-color); }
     .profile-info h2 { margin: 0; font-size: 1.4rem; }
-    .profile-info p { margin: 4px 0 8px; color: #666; }
+    .profile-info p { margin: 4px 0 8px; color: var(--text-secondary); }
     .profile-badges { display: flex; gap: 8px; }
 
     .role-chip, .status-chip {
@@ -174,37 +174,37 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
       font-weight: 600; text-transform: uppercase;
     }
 
-    .role-admin { background: #e3f2fd; color: #1565c0; }
-    .role-editor { background: #e8f5e9; color: #2e7d32; }
-    .role-viewer { background: #f3e5f5; color: #7b1fa2; }
-    .status-active { background: #e8f5e9; color: #2e7d32; }
-    .status-suspended { background: #ffebee; color: #c62828; }
-    .status-pending { background: #fff3e0; color: #e65100; }
+    .role-admin { background: var(--info-bg); color: var(--info-color); }
+    .role-editor { background: var(--success-bg); color: var(--success-color); }
+    .role-viewer { background: var(--purple-bg); color: var(--purple-text); }
+    .status-active { background: var(--success-bg); color: var(--success-color); }
+    .status-suspended { background: var(--error-bg); color: var(--error-color); }
+    .status-pending { background: var(--warning-bg); color: var(--warning-color); }
 
     .profile-details { margin-bottom: 24px; }
-    .detail-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; color: #555; }
-    .detail-row .mat-icon { color: #999; font-size: 20px; width: 20px; height: 20px; }
+    .detail-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; color: var(--text-secondary); }
+    .detail-row .mat-icon { color: var(--text-muted); font-size: 20px; width: 20px; height: 20px; }
 
     .profile-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
     .storage-info { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
-    .storage-used { font-size: 1.5rem; font-weight: 700; color: #333; }
-    .storage-separator { color: #999; }
-    .storage-quota { font-size: 1rem; color: #666; }
-    .storage-percent { font-size: 0.85rem; color: #999; margin-top: 8px; display: block; }
+    .storage-used { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+    .storage-separator { color: var(--text-muted); }
+    .storage-quota { font-size: 1rem; color: var(--text-secondary); }
+    .storage-percent { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; display: block; }
 
     .activity-table { width: 100%; }
 
     .empty-state {
       display: flex; flex-direction: column; align-items: center;
-      padding: 40px; color: #999;
+      padding: 40px; color: var(--text-muted);
     }
 
     .empty-state .mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 12px; }
 
     .not-found {
       display: flex; flex-direction: column; align-items: center;
-      padding: 80px; color: #999;
+      padding: 80px; color: var(--text-muted);
     }
 
     .not-found .mat-icon { font-size: 64px; width: 64px; height: 64px; margin-bottom: 16px; }

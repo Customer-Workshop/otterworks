@@ -9,6 +9,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AdminApiService } from '../../core/services/admin-api.service';
 import { DashboardStats } from '../../core/models/analytics.model';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -107,7 +108,7 @@ import { DashboardStats } from '../../core/models/analytics.model';
   `,
   styles: [`
     .page-container { padding: 0; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin-bottom: 24px; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
 
     .stats-grid {
@@ -133,14 +134,14 @@ import { DashboardStats } from '../../core/models/analytics.model';
       box-sizing: content-box;
     }
 
-    .users-icon { background: #e3f2fd; color: #1976d2; }
-    .docs-icon { background: #e8f5e9; color: #388e3c; }
-    .storage-icon { background: #fff3e0; color: #f57c00; }
-    .sessions-icon { background: #f3e5f5; color: #7b1fa2; }
+    .users-icon { background: var(--icon-bg-blue); color: #1976d2; }
+    .docs-icon { background: var(--icon-bg-green); color: #388e3c; }
+    .storage-icon { background: var(--icon-bg-orange); color: #f57c00; }
+    .sessions-icon { background: var(--icon-bg-purple); color: #7b1fa2; }
 
     .stat-info { display: flex; flex-direction: column; }
-    .stat-label { font-size: 0.8rem; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-value { font-size: 1.8rem; font-weight: 700; color: #333; }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); }
 
     .stat-growth {
       display: flex;
@@ -151,8 +152,8 @@ import { DashboardStats } from '../../core/models/analytics.model';
     }
 
     .stat-growth .mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .stat-growth.positive { color: #388e3c; }
-    .stat-growth.negative { color: #d32f2f; }
+    .stat-growth.positive { color: var(--success-color); }
+    .stat-growth.negative { color: var(--error-color); }
 
     .charts-row {
       display: grid;
@@ -184,7 +185,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  constructor(private api: AdminApiService) {}
+  constructor(
+    private api: AdminApiService,
+    private themeService: ThemeService,
+  ) {}
 
   ngOnInit(): void {
     this.loadStats();
@@ -194,25 +198,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe(() => this.loadStats());
 
     this.api.getAnalyticsReport().subscribe(report => {
-      this.signupChartData = {
-        labels: report.userSignups.map(d => d.label),
-        datasets: [{
-          data: report.userSignups.map(d => d.value),
-          borderColor: '#1976d2',
-          backgroundColor: 'rgba(25, 118, 210, 0.1)',
-          fill: true,
-          tension: 0.4,
-        }],
-      };
-
-      this.activityChartData = {
-        labels: report.documentActivity.map(d => d.label),
-        datasets: [{
-          data: report.documentActivity.map(d => d.value),
-          backgroundColor: '#4fc3f7',
-          borderRadius: 4,
-        }],
-      };
+      this.buildCharts(report);
     });
   }
 
@@ -226,5 +212,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.stats = stats;
       this.loading = false;
     });
+  }
+
+  private buildCharts(report: { userSignups: { label: string; value: number }[]; documentActivity: { label: string; value: number }[] }): void {
+    const isDark = this.themeService.darkMode();
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    const tickColor = isDark ? '#aaa' : '#666';
+
+    this.lineChartOptions = {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor } },
+        x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+      },
+    };
+
+    this.barChartOptions = {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor } },
+        x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+      },
+    };
+
+    this.signupChartData = {
+      labels: report.userSignups.map(d => d.label),
+      datasets: [{
+        data: report.userSignups.map(d => d.value),
+        borderColor: '#1976d2',
+        backgroundColor: isDark ? 'rgba(25, 118, 210, 0.2)' : 'rgba(25, 118, 210, 0.1)',
+        fill: true,
+        tension: 0.4,
+      }],
+    };
+
+    this.activityChartData = {
+      labels: report.documentActivity.map(d => d.label),
+      datasets: [{
+        data: report.documentActivity.map(d => d.value),
+        backgroundColor: '#4fc3f7',
+        borderRadius: 4,
+      }],
+    };
   }
 }

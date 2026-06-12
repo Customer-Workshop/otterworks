@@ -125,7 +125,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
   styles: [`
     .page-container { padding: 0; }
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin: 0; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
 
     .create-form { margin-bottom: 24px; }
@@ -150,28 +150,28 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
       font-weight: 600; text-transform: uppercase;
     }
 
-    .priority-low { background: #e8f5e9; color: #2e7d32; }
-    .priority-medium { background: #e3f2fd; color: #1565c0; }
-    .priority-high { background: #fff3e0; color: #e65100; }
-    .priority-critical { background: #ffebee; color: #c62828; }
+    .priority-low { background: var(--success-bg); color: var(--success-color); }
+    .priority-medium { background: var(--info-bg); color: var(--info-color); }
+    .priority-high { background: var(--warning-bg); color: var(--warning-color); }
+    .priority-critical { background: var(--error-bg); color: var(--error-color); }
 
-    .ann-status-draft { background: #eceff1; color: #546e7a; }
-    .ann-status-published { background: #e8f5e9; color: #2e7d32; }
-    .ann-status-archived { background: #f5f5f5; color: #999; }
+    .ann-status-draft { background: var(--chip-bg); color: var(--chip-color); }
+    .ann-status-published { background: var(--success-bg); color: var(--success-color); }
+    .ann-status-archived { background: var(--bg-surface-hover); color: var(--text-muted); }
 
     .audience-chip {
       display: flex; align-items: center; gap: 4px;
-      background: #f3e5f5; color: #7b1fa2;
+      background: var(--purple-bg); color: var(--purple-text);
     }
 
     .audience-chip .mat-icon { font-size: 14px; width: 14px; height: 14px; }
 
-    .ann-content { color: #555; line-height: 1.6; margin: 16px 0; }
+    .ann-content { color: var(--text-secondary); line-height: 1.6; margin: 16px 0; }
 
-    .ann-meta { display: flex; gap: 16px; font-size: 0.8rem; color: #999; flex-wrap: wrap; }
+    .ann-meta { display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap; }
 
     .empty-state {
-      display: flex; flex-direction: column; align-items: center; padding: 60px; color: #999;
+      display: flex; flex-direction: column; align-items: center; padding: 60px; color: var(--text-muted);
     }
 
     .empty-state .mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 12px; }

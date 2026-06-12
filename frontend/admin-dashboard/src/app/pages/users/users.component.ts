@@ -136,7 +136,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
   `,
   styles: [`
     .page-container { padding: 0; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin-bottom: 24px; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
 
     .toolbar { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -144,35 +144,35 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
     .filter-field { width: 160px; }
 
     .table-container {
-      background: white;
+      background: var(--bg-surface);
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 4px var(--shadow-color);
       overflow: hidden;
     }
 
     .users-table { width: 100%; }
     .table-row { cursor: pointer; }
-    .table-row:hover { background: #f5f5f5; }
+    .table-row:hover { background: var(--bg-surface-hover); }
 
     .user-cell { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
-    .user-avatar { color: #bdbdbd; font-size: 36px; width: 36px; height: 36px; }
+    .user-avatar { color: var(--avatar-color); font-size: 36px; width: 36px; height: 36px; }
     .user-name { font-weight: 500; }
-    .user-email { font-size: 0.8rem; color: #999; }
+    .user-email { font-size: 0.8rem; color: var(--text-muted); }
 
     .role-chip, .status-chip {
       padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;
       font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
     }
 
-    .role-admin { background: #e3f2fd; color: #1565c0; }
-    .role-editor { background: #e8f5e9; color: #2e7d32; }
-    .role-viewer { background: #f3e5f5; color: #7b1fa2; }
+    .role-admin { background: var(--info-bg); color: var(--info-color); }
+    .role-editor { background: var(--success-bg); color: var(--success-color); }
+    .role-viewer { background: var(--purple-bg); color: var(--purple-text); }
 
-    .status-active { background: #e8f5e9; color: #2e7d32; }
-    .status-suspended { background: #ffebee; color: #c62828; }
-    .status-pending { background: #fff3e0; color: #e65100; }
+    .status-active { background: var(--success-bg); color: var(--success-color); }
+    .status-suspended { background: var(--error-bg); color: var(--error-color); }
+    .status-pending { background: var(--warning-bg); color: var(--warning-color); }
 
-    .delete-action { color: #d32f2f; }
+    .delete-action { color: var(--error-color); }
   `],
 })
 export class UsersComponent implements OnInit {
@@ -236,12 +236,12 @@ export class UsersComponent implements OnInit {
 
   suspendUser(user: User): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Suspend User', message: `Are you sure you want to suspend ${user.displayName}?`, confirmText: 'Suspend', confirmColor: 'warn' },
+      data: { title: 'Suspend User', message: `Suspend ${user.displayName}?`, confirmText: 'Suspend', confirmColor: 'warn' },
     });
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.api.suspendUser(user.id).subscribe(() => {
-          this.snackBar.open(`${user.displayName} has been suspended`, 'Dismiss', { duration: 3000 });
+          this.snackBar.open(`${user.displayName} suspended`, 'Dismiss', { duration: 3000 });
           this.loadUsers();
         });
       }
@@ -250,19 +250,19 @@ export class UsersComponent implements OnInit {
 
   restoreUser(user: User): void {
     this.api.restoreUser(user.id).subscribe(() => {
-      this.snackBar.open(`${user.displayName} has been restored`, 'Dismiss', { duration: 3000 });
+      this.snackBar.open(`${user.displayName} restored`, 'Dismiss', { duration: 3000 });
       this.loadUsers();
     });
   }
 
   deleteUser(user: User): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Delete User', message: `Are you sure you want to permanently delete ${user.displayName}? This action cannot be undone.`, confirmText: 'Delete', confirmColor: 'warn' },
+      data: { title: 'Delete User', message: `Permanently delete ${user.displayName}?`, confirmText: 'Delete', confirmColor: 'warn' },
     });
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.api.deleteUser(user.id).subscribe(() => {
-          this.snackBar.open(`${user.displayName} has been deleted`, 'Dismiss', { duration: 3000 });
+          this.snackBar.open(`${user.displayName} deleted`, 'Dismiss', { duration: 3000 });
           this.loadUsers();
         });
       }

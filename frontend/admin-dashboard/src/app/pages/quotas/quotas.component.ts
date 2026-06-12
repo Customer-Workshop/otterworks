@@ -106,23 +106,23 @@ import { User } from '../../core/models/user.model';
   `,
   styles: [`
     .page-container { padding: 0; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin-bottom: 24px; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
 
     .toolbar { display: flex; gap: 16px; margin-bottom: 16px; }
     .search-field { flex: 1; max-width: 400px; }
 
     .table-container {
-      background: white; border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08); overflow: hidden;
+      background: var(--bg-surface); border-radius: 8px;
+      box-shadow: 0 2px 4px var(--shadow-color); overflow: hidden;
     }
 
     .quotas-table { width: 100%; }
 
     .user-cell { display: flex; align-items: center; gap: 12px; }
-    .user-avatar { color: #bdbdbd; font-size: 32px; width: 32px; height: 32px; }
+    .user-avatar { color: var(--avatar-color); font-size: 32px; width: 32px; height: 32px; }
     .user-name { font-weight: 500; }
-    .user-email { font-size: 0.8rem; color: #999; }
+    .user-email { font-size: 0.8rem; color: var(--text-muted); }
 
     .usage-cell { display: flex; align-items: center; gap: 12px; min-width: 150px; }
     .usage-label { font-size: 0.85rem; font-weight: 500; min-width: 40px; }

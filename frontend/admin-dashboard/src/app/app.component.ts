@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
 import { ToolbarComponent } from './layout/toolbar/toolbar.component';
 import { AuthService } from './core/services/auth.service';
+import { ThemeService } from './services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -39,7 +40,7 @@ import { AuthService } from './core/services/auth.service';
     .content {
       flex: 1;
       padding: 24px;
-      background: #f5f5f5;
+      background: var(--bg-primary);
       overflow-y: auto;
     }
   `],
@@ -47,5 +48,8 @@ import { AuthService } from './core/services/auth.service';
 export class AppComponent {
   sidebarCollapsed = false;
 
-  constructor(public authService: AuthService) {}
+  constructor(
+    public authService: AuthService,
+    private themeService: ThemeService,
+  ) {}
 }

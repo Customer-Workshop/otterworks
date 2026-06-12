@@ -99,9 +99,9 @@ import { ServiceHealth } from '../../core/models/system-health.model';
   styles: [`
     .page-container { padding: 0; }
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin: 0; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin: 0; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
-    .error-container { display: flex; flex-direction: column; align-items: center; padding: 60px; color: #c62828; }
+    .error-container { display: flex; flex-direction: column; align-items: center; padding: 60px; color: var(--error-color); }
     .error-container .mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; }
     .error-container p { margin-bottom: 16px; }
 
@@ -114,9 +114,9 @@ import { ServiceHealth } from '../../core/models/system-health.model';
       padding: 16px 24px; border-radius: 8px; flex: 1;
     }
 
-    .summary-card.healthy { background: #e8f5e9; color: #2e7d32; }
-    .summary-card.degraded { background: #fff3e0; color: #e65100; }
-    .summary-card.down { background: #ffebee; color: #c62828; }
+    .summary-card.healthy { background: var(--success-bg); color: var(--success-color); }
+    .summary-card.degraded { background: var(--warning-bg); color: var(--warning-color); }
+    .summary-card.down { background: var(--error-bg); color: var(--error-color); }
 
     .summary-count { font-size: 2rem; font-weight: 700; }
     .summary-label { font-size: 0.9rem; font-weight: 500; }
@@ -135,21 +135,21 @@ import { ServiceHealth } from '../../core/models/system-health.model';
     .service-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .service-name-row { display: flex; align-items: center; gap: 8px; }
     .service-name-row h3 { margin: 0; font-size: 1rem; }
-    .service-version { font-size: 0.8rem; color: #999; font-family: monospace; }
+    .service-version { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
 
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .dot-healthy { background: #4caf50; }
     .dot-degraded { background: #ff9800; }
     .dot-down { background: #f44336; }
 
-    .service-details { color: #666; font-size: 0.85rem; line-height: 1.4; margin: 0 0 16px; }
+    .service-details { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.4; margin: 0 0 16px; }
 
     .service-meta {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;
     }
 
-    .meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #666; }
-    .meta-item .mat-icon { font-size: 16px; width: 16px; height: 16px; color: #999; }
+    .meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); }
+    .meta-item .mat-icon { font-size: 16px; width: 16px; height: 16px; color: var(--text-muted); }
 
     .service-status { display: flex; justify-content: space-between; align-items: center; }
 
@@ -158,11 +158,11 @@ import { ServiceHealth } from '../../core/models/system-health.model';
       font-weight: 700; letter-spacing: 0.5px;
     }
 
-    .badge-healthy { background: #e8f5e9; color: #2e7d32; }
-    .badge-degraded { background: #fff3e0; color: #e65100; }
-    .badge-down { background: #ffebee; color: #c62828; }
+    .badge-healthy { background: var(--success-bg); color: var(--success-color); }
+    .badge-degraded { background: var(--warning-bg); color: var(--warning-color); }
+    .badge-down { background: var(--error-bg); color: var(--error-color); }
 
-    .last-checked { font-size: 0.75rem; color: #999; }
+    .last-checked { font-size: 0.75rem; color: var(--text-muted); }
   `],
 })
 export class HealthComponent implements OnInit {

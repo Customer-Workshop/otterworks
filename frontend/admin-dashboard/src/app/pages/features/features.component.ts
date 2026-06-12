@@ -70,7 +70,7 @@ import { FeatureFlag } from '../../core/models/feature-flag.model';
   `,
   styles: [`
     .page-container { padding: 0; }
-    .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin-bottom: 24px; }
+    .page-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; }
     .loading-container { display: flex; justify-content: center; padding: 60px; }
     .search-field { width: 100%; max-width: 400px; margin-bottom: 16px; }
 
@@ -81,13 +81,13 @@ import { FeatureFlag } from '../../core/models/feature-flag.model';
     }
 
     .flag-card { transition: box-shadow 0.2s; }
-    .flag-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .flag-card:hover { box-shadow: 0 4px 12px var(--shadow-color); }
 
     .flag-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
     .flag-info h3 { margin: 0 0 4px; font-size: 1rem; }
-    .flag-key { font-family: monospace; font-size: 0.8rem; color: #999; background: #f5f5f5; padding: 2px 6px; border-radius: 4px; }
+    .flag-key { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); background: var(--flag-key-bg); padding: 2px 6px; border-radius: 4px; }
 
-    .flag-description { color: #666; font-size: 0.9rem; line-height: 1.5; margin: 0 0 16px; }
+    .flag-description { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0 0 16px; }
 
     .flag-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 
@@ -97,10 +97,10 @@ import { FeatureFlag } from '../../core/models/feature-flag.model';
     }
 
     .flag-category .mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .flag-updated { font-size: 0.75rem; color: #999; }
+    .flag-updated { font-size: 0.75rem; color: var(--text-muted); }
 
     .empty-state {
-      display: flex; flex-direction: column; align-items: center; padding: 60px; color: #999;
+      display: flex; flex-direction: column; align-items: center; padding: 60px; color: var(--text-muted);
     }
 
     .empty-state .mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 12px; }
@@ -133,11 +133,8 @@ export class FeaturesComponent implements OnInit {
   toggleFlag(flag: FeatureFlag): void {
     const newState = !flag.enabled;
     this.api.toggleFeatureFlag(flag.id, newState).subscribe(() => {
-      this.snackBar.open(
-        `${flag.name} ${newState ? 'enabled' : 'disabled'}`,
-        'Dismiss',
-        { duration: 3000 },
-      );
+      flag.enabled = newState;
+      this.snackBar.open(`${flag.name} ${newState ? 'enabled' : 'disabled'}`, 'Dismiss', { duration: 3000 });
     });
   }
 }

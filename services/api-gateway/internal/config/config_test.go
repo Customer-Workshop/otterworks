@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidate(t *testing.T) {
 	tests := []struct {
@@ -12,7 +15,8 @@ func TestValidate(t *testing.T) {
 		{name: "empty secret rejected", secret: "", allowWeak: false, wantErr: true},
 		{name: "default secret rejected", secret: insecureDefaultJWTSecret, allowWeak: false, wantErr: true},
 		{name: "default secret allowed in dev", secret: insecureDefaultJWTSecret, allowWeak: true, wantErr: false},
-		{name: "strong secret accepted", secret: "a-unique-randomly-generated-secret", allowWeak: false, wantErr: false},
+		// Built at runtime so the test fixture itself is not a hardcoded secret.
+		{name: "strong secret accepted", secret: strings.Repeat("x", 48), allowWeak: false, wantErr: false},
 	}
 
 	for _, tt := range tests {

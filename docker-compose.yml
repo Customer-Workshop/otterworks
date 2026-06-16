@@ -32,6 +32,9 @@ services:
       AUDIT_SERVICE_URL: http://audit-service:8090
       REPORT_SERVICE_URL: http://report-service:8091
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      # Local dev only: permit the well-known default JWT secret. Unset in real
+      # deployments so the gateway fails closed on the committed default.
+      ALLOW_INSECURE_JWT_SECRET: ${ALLOW_INSECURE_JWT_SECRET:-true}
     depends_on:
     - auth-service
     healthcheck:
@@ -370,7 +373,7 @@ services:
       SECRET_KEY_BASE: dev-secret-key-base-otterworks-change-in-production
       DEVIN_API_KEY: ${DEVIN_API_KEY:-}
       DEVIN_ORG_ID: ${DEVIN_ORG_ID:-}
-      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
+      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-}
       CHAOS_SECRET: ${CHAOS_SECRET:-}
     depends_on:
       postgres:

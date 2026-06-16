@@ -51,8 +51,9 @@ pub async fn upload_file(
     redis_cm: web::Data<redis::aio::ConnectionManager>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
-    // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
-    // Fall back to the multipart field for direct/internal callers.
+    // Identity comes only from the X-User-ID header injected by the api-gateway
+    // after JWT validation. A client-supplied owner_id is NOT trusted, otherwise
+    // a direct caller could upload files as any user.
     let header_owner_id = req
         .headers()
         .get("X-User-ID")
@@ -62,7 +63,6 @@ pub async fn upload_file(
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
     let mut content_type = String::from("application/octet-stream");
-    let mut owner_id: Option<Uuid> = None;
     let mut folder_id: Option<Uuid> = None;
 
     while let Some(item) = payload.next().await {
@@ -92,19 +92,6 @@ pub async fn upload_file(
                     }
                 }
             }
-            "owner_id" => {
-                let mut value = BytesMut::new();
-                while let Some(chunk) = field.next().await {
-                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
-                    value.extend_from_slice(&data);
-                }
-                let s = String::from_utf8_lossy(&value).to_string();
-                owner_id = Some(
-                    s.trim()
-                        .parse::<Uuid>()
-                        .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
-                );
-            }
             "folder_id" => {
                 let mut value = BytesMut::new();
                 while let Some(chunk) = field.next().await {
@@ -124,8 +111,7 @@ pub async fn upload_file(
     }
 
     let owner = header_owner_id
-        .or(owner_id)
-        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
 
     if file_bytes.is_empty() {
         return Err(ServiceError::BadRequest("file field is required".into()));
@@ -218,18 +204,16 @@ pub async fn get_file_metadata(
 
 /// Resolve the effective owner_id for list operations.
 ///
-/// Prefer the `X-User-ID` header injected by the api-gateway from the
-/// authenticated JWT. This prevents a caller from spoofing another user's
-/// `owner_id` via the query string. Fall back to `query.owner_id` only when
-/// no header is present (direct/internal callers).
-fn resolve_owner_id(req: &HttpRequest, query_owner_id: Option<Uuid>) -> Option<Uuid> {
-    let header_owner_id = req
-        .headers()
+/// Resolve the effective owner_id for list operations.
+///
+/// Identity is taken **only** from the `X-User-ID` header injected by the
+/// api-gateway after JWT validation. A client-supplied `owner_id` (query
+/// string) is ignored so a caller cannot enumerate another user's resources.
+fn resolve_owner_id(req: &HttpRequest, _query_owner_id: Option<Uuid>) -> Option<Uuid> {
+    req.headers()
         .get("X-User-ID")
         .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok());
-
-    header_owner_id.or(query_owner_id)
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
 }
 
 pub async fn list_files(

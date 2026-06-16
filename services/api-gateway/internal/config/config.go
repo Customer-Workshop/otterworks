@@ -31,6 +31,10 @@ type Config struct {
 	// JWT
 	JWTSecret string
 
+	// AllowInsecureJWTSecret permits booting with the well-known committed
+	// development JWT secret. Must be explicitly enabled (local dev only).
+	AllowInsecureJWTSecret bool
+
 	// CORS
 	CORSAllowedOrigins []string
 	CORSAllowedMethods []string
@@ -41,16 +45,27 @@ type Config struct {
 	ShutdownTimeout time.Duration
 
 	// Circuit breaker
-	CBMaxRequests   uint32
-	CBInterval      time.Duration
-	CBTimeout       time.Duration
-	CBFailureRatio  float64
+	CBMaxRequests  uint32
+	CBInterval     time.Duration
+	CBTimeout      time.Duration
+	CBFailureRatio float64
 }
+
+// insecureDefaultJWTSecret is the well-known JWT signing secret shipped as a
+// development default across the compose stack. The same value signing tokens
+// for every service means anyone who has seen the repo can forge an ADMIN
+// token accepted platform-wide, so the gateway refuses to start with it unless
+// insecure mode is explicitly enabled.
+const insecureDefaultJWTSecret = "otterworks-local-dev-jwt-secret-change-me-in-production"
 
 // Validate checks that required security-sensitive configuration is present.
 func (c *Config) Validate() error {
 	if c.JWTSecret == "" {
 		return fmt.Errorf("JWT_SECRET environment variable is required but not set")
+	}
+	if c.JWTSecret == insecureDefaultJWTSecret && !c.AllowInsecureJWTSecret {
+		return fmt.Errorf("JWT_SECRET is set to the well-known insecure default; " +
+			"set a unique secret or ALLOW_INSECURE_JWT_SECRET=true for local development")
 	}
 	return nil
 }
@@ -74,7 +89,8 @@ func Load() *Config {
 
 		RateLimitRPS: getEnvInt("RATE_LIMIT_RPS", 100),
 
-		JWTSecret: getEnv("JWT_SECRET", ""),
+		JWTSecret:              getEnv("JWT_SECRET", ""),
+		AllowInsecureJWTSecret: getEnvBool("ALLOW_INSECURE_JWT_SECRET", false),
 
 		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:4200"}),
 		CORSAllowedMethods: getEnvSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
@@ -122,6 +138,15 @@ func getEnvInt(key string, fallback int) int {
 	if val, ok := os.LookupEnv(key); ok {
 		if i, err := strconv.Atoi(val); err == nil {
 			return i
+		}
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	if val, ok := os.LookupEnv(key); ok {
+		if b, err := strconv.ParseBool(val); err == nil {
+			return b
 		}
 	}
 	return fallback

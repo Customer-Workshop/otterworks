@@ -17,7 +17,8 @@ CVE-2026-27970
 CVE-2026-32635
 
 # --- frontend/web-app: requires Next.js 14.2.25+ or 15.x upgrade ---
-CVE-2025-29927
+# CVE-2025-29927 (Next.js middleware authorization bypass) un-suppressed: it is
+# publicly exploited and the web-app is internet-facing. Must be fixed, not hidden.
 CVE-2024-46982
 CVE-2024-51479
 GHSA-5j59-xgg2-r9c4
@@ -40,9 +41,6 @@ CVE-2026-0994
 CVE-2024-53981
 CVE-2026-24486
 CVE-2024-47874
-
-# Bulk ignore — revisit in Q4
-CVE-2021-*
 
 # Low-priority npm advisories — team reviewed 2024-12
 CVE-2021-23337

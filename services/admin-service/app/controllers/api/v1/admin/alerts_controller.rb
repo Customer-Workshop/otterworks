@@ -128,13 +128,19 @@ module Api
 
         def verify_alert_secret
           expected = ENV.fetch('ALERT_WEBHOOK_SECRET', nil)
-          return if expected.nil? # not configured → allow (dev/test)
+          if expected.nil? || expected.empty?
+            # Allow the unconfigured-secret bypass only in local dev/test;
+            # fail closed everywhere else.
+            return if Rails.env.development? || Rails.env.test?
+
+            return render json: { error: 'Unauthorized' }, status: :unauthorized
+          end
 
           # Accept either X-Alert-Secret header or Authorization: Bearer <secret>
           # (Grafana webhook contact points send the token as a Bearer header)
           provided = request.headers['X-Alert-Secret'].presence ||
                      request.headers['Authorization'].to_s.delete_prefix('Bearer ').presence
-          return if provided == expected
+          return if provided && ActiveSupport::SecurityUtils.secure_compare(provided, expected)
 
           render json: { error: 'Unauthorized' }, status: :unauthorized
         end

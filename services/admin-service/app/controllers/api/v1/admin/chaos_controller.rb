@@ -78,7 +78,13 @@ module Api
 
         def verify_chaos_secret
           expected = ENV.fetch('CHAOS_SECRET', nil)
-          return if expected.nil? || expected.empty? # secret not configured → allow (dev mode)
+          if expected.nil? || expected.empty?
+            # Allow the unconfigured-secret bypass only in local dev/test.
+            # Outside those environments, fail closed.
+            return if Rails.env.development? || Rails.env.test?
+
+            return render json: { error: 'Unauthorized' }, status: :unauthorized
+          end
 
           provided = request.headers['X-Chaos-Secret']
           return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)

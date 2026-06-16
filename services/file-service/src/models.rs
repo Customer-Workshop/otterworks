@@ -111,7 +111,6 @@ pub struct DownloadResponse {
 #[derive(Debug, Deserialize)]
 pub struct ListFilesQuery {
     pub folder_id: Option<Uuid>,
-    pub owner_id: Option<Uuid>,
     pub page: Option<u32>,
     pub page_size: Option<u32>,
     pub include_trashed: Option<bool>,
@@ -133,7 +132,6 @@ pub struct ListVersionsResponse {
 #[derive(Debug, Deserialize)]
 pub struct ListFoldersQuery {
     pub parent_id: Option<Uuid>,
-    pub owner_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize)]
@@ -145,7 +143,8 @@ pub struct ListFoldersResponse {
 pub struct CreateFolderRequest {
     pub name: String,
     pub parent_id: Option<Uuid>,
-    pub owner_id: Uuid,
+    // owner_id is intentionally absent: ownership is derived from the
+    // gateway-injected X-User-ID header, not from the request body.
 }
 
 #[derive(Debug, Deserialize)]
@@ -168,7 +167,8 @@ pub struct RenameFileRequest {
 pub struct ShareFileRequest {
     pub shared_with: Uuid,
     pub permission: SharePermission,
-    pub shared_by: Uuid,
+    // shared_by is intentionally absent: the sharer identity is derived from
+    // the gateway-injected X-User-ID header, not from the request body.
 }
 
 #[derive(Debug, Serialize)]

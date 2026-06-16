@@ -204,16 +204,17 @@ pub async fn get_file_metadata(
 
 /// Resolve the effective owner_id for list operations.
 ///
-/// Resolve the effective owner_id for list operations.
-///
 /// Identity is taken **only** from the `X-User-ID` header injected by the
 /// api-gateway after JWT validation. A client-supplied `owner_id` (query
 /// string) is ignored so a caller cannot enumerate another user's resources.
-fn resolve_owner_id(req: &HttpRequest, _query_owner_id: Option<Uuid>) -> Option<Uuid> {
+/// Missing the header is a hard error: returning an unscoped query would leak
+/// every user's records, so list endpoints must fail closed instead.
+fn require_owner_id(req: &HttpRequest) -> Result<Uuid, ServiceError> {
     req.headers()
         .get("X-User-ID")
         .and_then(|v| v.to_str().ok())
         .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))
 }
 
 pub async fn list_files(
@@ -222,9 +223,9 @@ pub async fn list_files(
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
     let include_trashed = query.include_trashed.unwrap_or(false);
-    let owner_id = resolve_owner_id(&req, query.owner_id);
+    let owner_id = require_owner_id(&req)?;
     let files = meta
-        .list_files(query.folder_id, owner_id, include_trashed)
+        .list_files(query.folder_id, Some(owner_id), include_trashed)
         .await?;
 
     let page = query.page.unwrap_or(1).max(1);
@@ -295,8 +296,8 @@ pub async fn list_trashed(
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let owner_id = resolve_owner_id(&req, query.owner_id);
-    let files = meta.list_trashed(owner_id).await?;
+    let owner_id = require_owner_id(&req)?;
+    let files = meta.list_trashed(Some(owner_id)).await?;
 
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).min(100);
@@ -468,6 +469,7 @@ pub async fn restore_file(
 }
 
 pub async fn share_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
@@ -477,6 +479,9 @@ pub async fn share_file(
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    // The sharer is the gateway-authenticated caller, not a client-supplied field.
+    let shared_by = require_owner_id(&req)?;
 
     // Ensure file exists
     let file = meta.get_file(&file_id).await?;
@@ -493,7 +498,7 @@ pub async fn share_file(
                 file_id,
                 shared_with: body.shared_with,
                 permission: body.permission.clone(),
-                shared_by: body.shared_by,
+                shared_by,
                 created_at: existing.created_at,
             };
             meta.put_share(&updated).await?;
@@ -509,7 +514,7 @@ pub async fn share_file(
         file_id,
         shared_with: body.shared_with,
         permission: body.permission.clone(),
-        shared_by: body.shared_by,
+        shared_by,
         created_at: Utc::now(),
     };
 
@@ -557,21 +562,24 @@ pub async fn list_folders(
     meta: web::Data<MetadataClient>,
     query: web::Query<ListFoldersQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let owner_id = resolve_owner_id(&req, query.owner_id);
-    let folders = meta.list_folders(query.parent_id, owner_id).await?;
+    let owner_id = require_owner_id(&req)?;
+    let folders = meta.list_folders(query.parent_id, Some(owner_id)).await?;
     Ok(HttpResponse::Ok().json(ListFoldersResponse { folders }))
 }
 
 pub async fn create_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     body: web::Json<CreateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    // Owner is the gateway-authenticated caller, never a client-supplied field.
+    let owner_id = require_owner_id(&req)?;
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),
         name: body.name.clone(),
         parent_id: body.parent_id,
-        owner_id: body.owner_id,
+        owner_id,
         created_at: now,
         updated_at: now,
     };

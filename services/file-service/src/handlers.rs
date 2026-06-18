@@ -17,11 +17,27 @@ use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
     // re-export all used types
-
-    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
-    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
-    MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
+    ActivityItem,
+    ActivityQuery,
+    ActivityResponse,
+    CreateFolderRequest,
+    DownloadResponse,
+    FileDetailResponse,
+    FileMetadata,
+    FileShare,
+    FileVersion,
+    Folder,
+    HealthResponse,
+    ListFilesQuery,
+    ListFilesResponse,
+    ListFoldersQuery,
+    ListFoldersResponse,
+    ListVersionsResponse,
+    MoveFileRequest,
+    RenameFileRequest,
+    ShareFileRequest,
+    ShareFileResponse,
+    UpdateFolderRequest,
     UploadResponse,
 };
 use crate::storage::S3Client;

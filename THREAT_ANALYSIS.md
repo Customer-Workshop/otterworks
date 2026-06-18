@@ -265,7 +265,7 @@ The WebSocket endpoint `/ws/notifications/{userId}` in the Notification Service 
 
 ### Full Attack Chain
 
-1. Attacker opens a WebSocket connection to `ws://host/ws/notifications/<victim_uuid>`
+1. Attacker opens a WebSocket connection to `wss://host/ws/notifications/<victim_uuid>`
 2. No token or auth is required — the connection is accepted
 3. Attacker receives all real-time notifications intended for the victim (file shares, document edits, etc.)
 4. Combined with Chain 4, the attacker gets both historical and real-time notification access

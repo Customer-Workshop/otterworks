@@ -23,14 +23,10 @@ dependencyManagement {
 }
 
 dependencies {
-    api 'org.ehrbase:configuration'
-    api 'org.ehrbase:api'
+    api 'ca.uhn.hapi.fhir:hapi-fhir-structures-r4:7.6.0'
+    api 'ca.uhn.hapi.fhir:hapi-fhir-base:7.6.0'
 
     implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'ca.uhn.hapi.fhir:hapi-fhir-structures-r4:7.6.0'
-    implementation 'ca.uhn.hapi.fhir:hapi-fhir-base:7.6.0'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

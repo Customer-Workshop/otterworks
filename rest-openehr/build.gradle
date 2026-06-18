@@ -1,6 +1,6 @@
 plugins {
-    id 'java-library'
-    id 'org.springframework.boot' version '3.5.0' apply false
+    id 'java'
+    id 'org.springframework.boot' version '3.5.0'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -16,17 +16,9 @@ repositories {
     mavenCentral()
 }
 
-dependencyManagement {
-    imports {
-        mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
-    }
-}
-
 dependencies {
-    api 'org.ehrbase:configuration'
-    api 'org.ehrbase:api'
+    implementation 'org.ehrbase:service'
 
-    implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'ca.uhn.hapi.fhir:hapi-fhir-structures-r4:7.6.0'

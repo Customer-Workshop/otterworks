@@ -23,6 +23,14 @@ services/api-gateway/vendor/
 services/auth-service/build/
 services/auth-service/.gradle/
 services/auth-service/out/
+api/.gradle/
+api/build/
+service/.gradle/
+service/build/
+configuration/.gradle/
+configuration/build/
+rest-openehr/.gradle/
+rest-openehr/build/
 *.class
 *.jar
 

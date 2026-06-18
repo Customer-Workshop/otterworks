@@ -34,6 +34,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/health", "/metrics", "/actuator/**").permitAll()
                 .antMatchers("/swagger-ui/**", "/swagger-resources/**", "/v2/api-docs/**").permitAll()
                 .antMatchers("/api/v1/reports/**").permitAll()  // TODO: Add JWT validation
+                .antMatchers("/rest/fhir/r4/**").permitAll()  // FHIR R4 endpoints
             .and()
             .headers()
                 .frameOptions().deny()

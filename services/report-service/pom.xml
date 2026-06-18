@@ -38,6 +38,8 @@
         <commons-io.version>2.6</commons-io.version>
         <!-- LEGACY: Guava 28.0 (2019, many CVEs). Upgrade target: 33+ -->
         <guava.version>28.0-jre</guava.version>
+        <!-- HAPI FHIR 5.7.0: last release supporting Java 8 (published 2022-02-18) -->
+        <hapi-fhir.version>5.7.0</hapi-fhir.version>
     </properties>
 
     <dependencies>
@@ -130,6 +132,18 @@
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
             <version>4.5.13</version>
+        </dependency>
+
+        <!-- HAPI FHIR R4 for ExplanationOfBenefit resource serialization -->
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-base</artifactId>
+            <version>${hapi-fhir.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-structures-r4</artifactId>
+            <version>${hapi-fhir.version}</version>
         </dependency>
 
         <!-- Observability (also legacy versions) -->

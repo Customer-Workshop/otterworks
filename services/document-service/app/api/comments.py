@@ -3,7 +3,7 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -22,9 +22,14 @@ router = APIRouter()
 async def add_comment(
     document_id: UUID,
     body: CommentCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Add a comment to a document."""
+    from app.api.documents import _extract_user_id
+    user_id = _extract_user_id(request)
+    if user_id:
+        body.author_id = user_id
     service = DocumentService(db)
     comment = await service.add_comment(document_id, body)
     if not comment:
@@ -36,6 +41,7 @@ async def add_comment(
 @router.get("/{document_id}/comments", response_model=list[CommentResponse])
 async def list_comments(
     document_id: UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """List comments for a document."""
@@ -50,6 +56,7 @@ async def list_comments(
 async def delete_comment(
     document_id: UUID,
     comment_id: UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a comment."""

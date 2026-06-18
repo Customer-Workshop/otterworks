@@ -52,9 +52,9 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
 
         route("/api/v1/notifications") {
             get {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
                     return@get
                 }
 
@@ -75,9 +75,9 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             get("/unread-count") {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
                     return@get
                 }
 
@@ -86,37 +86,52 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             get("/{id}") {
+                val callerId = call.request.headers["X-User-ID"]
+                if (callerId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
+                    return@get
+                }
                 val id = call.parameters["id"] ?: return@get call.respond(
                     HttpStatusCode.BadRequest,
                     ErrorResponse("Notification ID is required"),
                 )
 
                 val notification = notificationService.getNotificationById(id)
-                if (notification != null) {
-                    call.respond(notification)
-                } else {
+                if (notification == null) {
                     call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                } else if (notification.userId != callerId) {
+                    call.respond(HttpStatusCode.Forbidden, ErrorResponse("Access denied"))
+                } else {
+                    call.respond(notification)
                 }
             }
 
             put("/{id}/read") {
+                val callerId = call.request.headers["X-User-ID"]
+                if (callerId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
+                    return@put
+                }
                 val id = call.parameters["id"] ?: return@put call.respond(
                     HttpStatusCode.BadRequest,
                     ErrorResponse("Notification ID is required"),
                 )
 
-                val success = notificationService.markAsRead(id)
-                if (success) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
+                val notification = notificationService.getNotificationById(id)
+                if (notification == null) {
                     call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                } else if (notification.userId != callerId) {
+                    call.respond(HttpStatusCode.Forbidden, ErrorResponse("Access denied"))
+                } else {
+                    notificationService.markAsRead(id)
+                    call.respond(HttpStatusCode.NoContent)
                 }
             }
 
             put("/read-all") {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
                     return@put
                 }
 
@@ -125,25 +140,33 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             delete("/{id}") {
+                val callerId = call.request.headers["X-User-ID"]
+                if (callerId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
+                    return@delete
+                }
                 val id = call.parameters["id"] ?: return@delete call.respond(
                     HttpStatusCode.BadRequest,
                     ErrorResponse("Notification ID is required"),
                 )
 
-                val success = notificationService.deleteNotification(id)
-                if (success) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
+                val notification = notificationService.getNotificationById(id)
+                if (notification == null) {
                     call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                } else if (notification.userId != callerId) {
+                    call.respond(HttpStatusCode.Forbidden, ErrorResponse("Access denied"))
+                } else {
+                    notificationService.deleteNotification(id)
+                    call.respond(HttpStatusCode.NoContent)
                 }
             }
         }
 
         route("/api/v1/preferences") {
             get {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
+                val userId = call.request.headers["X-User-ID"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
                     return@get
                 }
 
@@ -152,9 +175,14 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             put {
+                val callerId = call.request.headers["X-User-ID"]
+                if (callerId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Authentication required"))
+                    return@put
+                }
                 val request = call.receive<NotificationPreferenceRequest>()
                 notificationService.updatePreferences(
-                    userId = request.userId,
+                    userId = callerId,
                     eventType = request.eventType,
                     channels = request.channels,
                 )

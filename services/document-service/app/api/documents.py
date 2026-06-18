@@ -63,7 +63,7 @@ def _get_jwt_secret() -> str:
 
 
 def _extract_user_id(request: Request) -> UUID | None:
-    """Extract user ID from the Authorization JWT."""
+    """Extract user ID from the Authorization JWT or gateway-forwarded header."""
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[len("Bearer "):]
@@ -148,6 +148,7 @@ async def create_document_no_slash(
 
 @router.get("/search", response_model=DocumentListResponse)
 async def search_documents(
+    request: Request,
     q: str = Query(..., min_length=1),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -155,8 +156,9 @@ async def search_documents(
 ):
     """Search documents by title or content."""
     await _maybe_inject_latency()
+    user_id = _extract_user_id(request)
     service = DocumentService(db)
-    items, total = await service.search(q, page=page, size=size)
+    items, total = await service.search(q, page=page, size=size, owner_id=user_id)
     return DocumentListResponse(
         items=items,
         total=total,
@@ -368,9 +370,13 @@ async def export_document(
 async def create_from_template(
     template_id: UUID,
     body: DocumentFromTemplate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document from a template."""
+    user_id = _extract_user_id(request)
+    if user_id:
+        body.owner_id = user_id
     service = DocumentService(db)
     document = await service.create_from_template(template_id, body)
     if not document:

@@ -1,5 +1,6 @@
 class ApplicationController < ActionController::API
   before_action :set_request_metadata
+  before_action :require_admin_role
 
   rescue_from StandardError do |e|
     Rails.logger.error("Unhandled error: #{e.message}")
@@ -30,6 +31,16 @@ class ApplicationController < ActionController::API
 
   def current_user_role
     request.env['jwt.user_role']
+  end
+
+  def require_admin_role
+    jwt_payload = request.env['jwt.payload']
+    return if jwt_payload.nil? # already handled by JwtAuthenticator (excluded paths)
+
+    roles = jwt_payload['roles'] || [jwt_payload['role']].compact
+    return if roles.any? { |r| r.to_s.casecmp('ADMIN').zero? }
+
+    render json: { error: 'Forbidden: admin role required' }, status: :forbidden
   end
 
   def set_request_metadata

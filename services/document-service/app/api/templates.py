@@ -1,7 +1,7 @@
 """Template API endpoints."""
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -26,9 +26,14 @@ async def list_templates(
 )
 async def create_template(
     body: TemplateCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new template."""
+    from app.api.documents import _extract_user_id
+    user_id = _extract_user_id(request)
+    if user_id:
+        body.created_by = user_id
     service = DocumentService(db)
     template = await service.create_template(body)
     logger.info("template_created", template_id=str(template.id))

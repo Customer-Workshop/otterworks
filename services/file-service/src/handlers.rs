@@ -16,6 +16,8 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
+    // re-export all used types
+
     ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
     FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
     ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
@@ -23,6 +25,30 @@ use crate::models::{
     UploadResponse,
 };
 use crate::storage::S3Client;
+
+fn require_user_id(req: &HttpRequest) -> Result<Uuid, ServiceError> {
+    req.headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::Forbidden("missing user context".into()))
+}
+
+fn verify_file_access(
+    file: &FileMetadata,
+    user_id: &Uuid,
+    shares: Option<&[FileShare]>,
+) -> Result<(), ServiceError> {
+    if file.owner_id == *user_id {
+        return Ok(());
+    }
+    if let Some(shares) = shares {
+        if shares.iter().any(|s| s.shared_with == *user_id) {
+            return Ok(());
+        }
+    }
+    Err(ServiceError::Forbidden("access denied".into()))
+}
 
 // -- Health & Metrics --
 
@@ -201,15 +227,18 @@ pub async fn upload_file(
 }
 
 pub async fn get_file_metadata(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
     let file = meta.get_file(&file_id).await?;
     let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    verify_file_access(&file, &user_id, Some(&shares))?;
     Ok(HttpResponse::Ok().json(FileDetailResponse {
         file,
         shared_with: shares,
@@ -332,17 +361,20 @@ pub async fn list_trashed(
     }))
 }
 pub async fn delete_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
+    verify_file_access(&file, &user_id, None)?;
     meta.delete_file(&file_id).await?;
     s3.delete_object(&file.s3_key).await?;
 
@@ -353,16 +385,20 @@ pub async fn delete_file(
 }
 
 pub async fn download_file(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
+    let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    verify_file_access(&file, &user_id, Some(&shares))?;
     let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
 
     Ok(HttpResponse::Ok().json(DownloadResponse {
@@ -372,16 +408,20 @@ pub async fn download_file(
 }
 
 pub async fn move_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<MoveFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    let existing = meta.get_file(&file_id).await?;
+    verify_file_access(&existing, &user_id, None)?;
     let file = meta.move_file(&file_id, body.folder_id).await?;
 
     let _ = events
@@ -393,16 +433,20 @@ pub async fn move_file(
 }
 
 pub async fn rename_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<RenameFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    let existing = meta.get_file(&file_id).await?;
+    verify_file_access(&existing, &user_id, None)?;
     let name = body.name.trim();
     if name.is_empty() {
         return Err(ServiceError::BadRequest("name cannot be empty".into()));
@@ -426,28 +470,37 @@ pub async fn rename_file(
 }
 
 pub async fn list_versions(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    let file = meta.get_file(&file_id).await?;
+    let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    verify_file_access(&file, &user_id, Some(&shares))?;
     let versions = meta.list_versions(&file_id).await?;
     Ok(HttpResponse::Ok().json(ListVersionsResponse { versions }))
 }
 
 pub async fn trash_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    let existing = meta.get_file(&file_id).await?;
+    verify_file_access(&existing, &user_id, None)?;
     let file = meta.trash_file(&file_id).await?;
 
     let _ = events.file_trashed(&file_id, &file.owner_id).await;
@@ -457,15 +510,19 @@ pub async fn trash_file(
 }
 
 pub async fn restore_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    let existing = meta.get_file(&file_id).await?;
+    verify_file_access(&existing, &user_id, None)?;
     let file = meta.restore_file(&file_id).await?;
 
     let _ = events
@@ -484,18 +541,21 @@ pub async fn restore_file(
 }
 
 pub async fn share_file(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
     body: web::Json<ShareFileRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let file_id: Uuid = path
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    // Ensure file exists
+    // Ensure file exists and requester is the owner
     let file = meta.get_file(&file_id).await?;
+    verify_file_access(&file, &user_id, None)?;
 
     // Check if share already exists for this file + user
     if let Some(existing) = meta
@@ -540,9 +600,11 @@ pub async fn share_file(
 }
 
 pub async fn remove_share(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, ServiceError> {
+    let caller_id = require_user_id(&req)?;
     let (file_id_str, user_id_str) = path.into_inner();
     let file_id: Uuid = file_id_str
         .parse()
@@ -551,8 +613,9 @@ pub async fn remove_share(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid user id: {e}")))?;
 
-    // Ensure file exists
-    let _file = meta.get_file(&file_id).await?;
+    // Ensure file exists and caller owns it
+    let file = meta.get_file(&file_id).await?;
+    verify_file_access(&file, &caller_id, None)?;
 
     // Find the existing share
     let share = meta
@@ -579,15 +642,17 @@ pub async fn list_folders(
 }
 
 pub async fn create_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     body: web::Json<CreateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let user_id = require_user_id(&req)?;
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),
         name: body.name.clone(),
         parent_id: body.parent_id,
-        owner_id: body.owner_id,
+        owner_id: user_id,
         created_at: now,
         updated_at: now,
     };

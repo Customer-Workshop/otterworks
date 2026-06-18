@@ -2,6 +2,12 @@
 
 @include mat.core();
 
+@import '@fontsource/roboto/300.css';
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+@import 'material-icons/iconfont/material-icons.css';
+
 $admin-primary: mat.define-palette(mat.$blue-palette);
 $admin-accent: mat.define-palette(mat.$light-blue-palette);
 $admin-warn: mat.define-palette(mat.$red-palette);

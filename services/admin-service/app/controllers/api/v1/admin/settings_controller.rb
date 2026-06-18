@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class SettingsController < ApplicationController
+        before_action :require_admin_role!
+
         # GET /api/v1/admin/settings/auto_investigate
         def auto_investigate
           render json: { enabled: AdminSettingsService.auto_investigate_enabled? }

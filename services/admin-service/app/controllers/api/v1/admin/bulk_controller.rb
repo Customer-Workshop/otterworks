@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class BulkController < ApplicationController
+        before_action :require_admin_role!
+
         # POST /api/v1/admin/bulk/users
         def users
           operation = params.require(:operation)
@@ -41,7 +43,9 @@ module Api
         end
 
         def bulk_params
-          params.permit(:reason, :role).to_h.symbolize_keys # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
+          permitted = params.permit(:reason).to_h.symbolize_keys
+          permitted[:role] = params[:role] if params.key?(:role) && current_user_role == 'super_admin'
+          permitted
         end
       end
     end

@@ -3,6 +3,62 @@ require 'rails_helper'
 RSpec.describe Api::V1::Admin::UsersController do
   before { set_jwt_env(request) }
 
+  describe 'role-based authorization' do
+    let!(:user) { create(:admin_user) }
+
+    %w[viewer editor].each do |role|
+      context "when authenticated as #{role}" do
+        before { set_jwt_env(request, role: role) }
+
+        it 'returns 403 for index' do
+          get :index
+          expect(response).to have_http_status(:forbidden)
+        end
+
+        it 'returns 403 for show' do
+          get :show, params: { id: user.id }
+          expect(response).to have_http_status(:forbidden)
+        end
+
+        it 'returns 403 for update' do
+          put :update, params: { id: user.id, user: { display_name: 'Hacked' } }
+          expect(response).to have_http_status(:forbidden)
+        end
+
+        it 'returns 403 for destroy' do
+          delete :destroy, params: { id: user.id }
+          expect(response).to have_http_status(:forbidden)
+        end
+
+        it 'returns 403 for suspend' do
+          put :suspend, params: { id: user.id, reason: 'test' }
+          expect(response).to have_http_status(:forbidden)
+        end
+
+        it 'returns 403 for activate' do
+          put :activate, params: { id: user.id }
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+    end
+
+    %w[admin super_admin].each do |role|
+      context "when authenticated as #{role}" do
+        before { set_jwt_env(request, role: role) }
+
+        it 'allows access to index' do
+          get :index
+          expect(response).to have_http_status(:ok)
+        end
+
+        it 'allows access to show' do
+          get :show, params: { id: user.id }
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+  end
+
   describe 'GET #index' do
     let!(:users) { create_list(:admin_user, 3) }
 
@@ -63,9 +119,33 @@ RSpec.describe Api::V1::Admin::UsersController do
       expect(body['display_name']).to eq('New Name')
     end
 
-    it 'returns errors for invalid params' do
-      put :update, params: { id: user.id, user: { role: 'invalid_role' } }
-      expect(response).to have_http_status(:unprocessable_entity)
+    context 'role changes' do
+      it 'allows super_admin to change roles' do
+        put :update, params: { id: user.id, user: { role: 'admin' } }
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.role).to eq('admin')
+      end
+
+      it 'rejects invalid role values from super_admin' do
+        put :update, params: { id: user.id, user: { role: 'invalid_role' } }
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      context 'when authenticated as admin' do
+        before { set_jwt_env(request, role: 'admin') }
+
+        it 'forbids role changes by non-super_admin' do
+          put :update, params: { id: user.id, user: { role: 'super_admin' } }
+          expect(response).to have_http_status(:forbidden)
+          expect(user.reload.role).not_to eq('super_admin')
+        end
+
+        it 'allows non-role attribute updates' do
+          put :update, params: { id: user.id, user: { display_name: 'Updated' } }
+          expect(response).to have_http_status(:ok)
+          expect(user.reload.display_name).to eq('Updated')
+        end
+      end
     end
   end
 

@@ -32,6 +32,18 @@ class ApplicationController < ActionController::API
     request.env['jwt.user_role']
   end
 
+  def require_admin_role!
+    return if %w[admin super_admin].include?(current_user_role)
+
+    render json: { error: 'Forbidden: admin privileges required' }, status: :forbidden
+  end
+
+  def require_super_admin_role!
+    return if current_user_role == 'super_admin'
+
+    render json: { error: 'Forbidden: super_admin privileges required' }, status: :forbidden
+  end
+
   def set_request_metadata
     @request_metadata = {
       ip_address: request.remote_ip,

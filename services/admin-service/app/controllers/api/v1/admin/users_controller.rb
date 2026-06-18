@@ -2,6 +2,7 @@ module Api
   module V1
     module Admin
       class UsersController < ApplicationController
+        before_action :require_admin_role!
         before_action :set_user, only: %i[show update destroy suspend activate]
 
         # GET /api/v1/admin/users
@@ -29,9 +30,17 @@ module Api
 
         # PUT /api/v1/admin/users/:id
         def update
+          if params[:user]&.key?(:role) && current_user_role != 'super_admin'
+            render json: { error: 'Forbidden: only super_admin can change user roles' }, status: :forbidden
+            return
+          end
+
           previous_attributes = @user.attributes.slice('role', 'display_name', 'email')
 
-          if @user.update(user_params)
+          update_attrs = user_params
+          update_attrs = update_attrs.merge(role: params[:user][:role]) if params[:user]&.key?(:role)
+
+          if @user.update(update_attrs)
             AuditLogger.log(
               action: 'user.updated',
               resource_type: 'AdminUser',
@@ -97,7 +106,7 @@ module Api
         end
 
         def user_params
-          params.require(:user).permit(:email, :display_name, :role, :avatar_url) # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
+          params.require(:user).permit(:email, :display_name, :avatar_url)
         end
       end
     end

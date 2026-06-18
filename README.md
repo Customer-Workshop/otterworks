@@ -131,6 +131,96 @@ GitHub Actions workflows in `.github/workflows/`:
 | `docker-build.yml` | Push to `main` / tags | Build and push Docker images to ECR |
 | `security-scan.yml` | Push / PR | SAST, dependency audit, and container scanning |
 
+## Security Vulnerability Management
+
+OtterWorks uses [Trivy](https://github.com/aquasecurity/trivy) as its primary vulnerability scanner, integrated into CI and backed by an automated remediation pipeline. This section covers how vulnerabilities are detected, how each service should be remediated, and how the auto-fix loop works.
+
+### Scanning Overview
+
+| Layer | Tool | Where It Runs |
+|-------|------|---------------|
+| Dependency CVEs (CRITICAL/HIGH) | Trivy | CI (`security-scan.yml`, `sast-auto-remediate.yml`), local (`make security-scan`) |
+| Code quality / bugs | SonarCloud | CI (`sast-auto-remediate.yml`) |
+| Secret detection | Gitleaks | CI (`security-scan.yml`) |
+| Static analysis (OWASP) | Semgrep | CI (`security-scan.yml`) |
+
+Trivy configuration lives in `security/scanning/trivy-config.yaml` and filters to CRITICAL and HIGH severity for both OS packages and language-specific libraries.
+
+### Per-Service Remediation Guide
+
+Each microservice uses a different language and package manager. The table below shows how to upgrade dependencies when Trivy reports a vulnerable package in a given service.
+
+| Service | Language | Manifest | Lock File | Upgrade Command | Notes |
+|---------|----------|----------|-----------|-----------------|-------|
+| api-gateway | Go 1.22 | `go.mod` | `go.sum` | `go get <pkg>@<version> && go mod tidy` | Run `go vet ./...` and `go test ./...` after upgrading |
+| auth-service | Java 17 | `build.gradle` | — | Update version in `build.gradle`, run `./gradlew dependencies` | Gradle resolution; check Spring Boot BOM compatibility |
+| file-service | Rust | `Cargo.toml` | `Cargo.lock` | `cargo update -p <crate>` or edit version in `Cargo.toml` | Run `cargo clippy` and `cargo test` after upgrading |
+| document-service | Python 3.12 | `pyproject.toml` | `poetry.lock` | `poetry update <pkg>` or `poetry add <pkg>@^<version>` | Poetry-managed; regenerates lock file automatically |
+| collab-service | Node.js 20 | `package.json` | `package-lock.json` | `npm install <pkg>@<version>` | Run `npm audit` to verify fix, then `npm test` |
+| notification-service | Kotlin 1.9 | `build.gradle.kts` | — | Update version in `build.gradle.kts`, run `./gradlew dependencies` | Kotlin DSL; check Ktor BOM compatibility |
+| search-service | Python 3.12 | `requirements.txt` | — | Edit version pin in `requirements.txt`, `pip install -r requirements.txt` | No lock file — pin exact versions |
+| analytics-service | Scala 3.4 | `build.sbt` | — | Update version in `build.sbt`, run `sbt update` | Check Akka HTTP cross-version compatibility |
+| admin-service | Ruby 3.3 | `Gemfile` | `Gemfile.lock` | `bundle update <gem>` | Run `bundle exec rspec` after upgrading; Rails 7.1 constraints apply |
+| audit-service | C# 12 | `AuditService.csproj` | — | `dotnet add package <pkg> --version <version>` | Run `dotnet test` after upgrading |
+| report-service | Java 8 | `pom.xml` | — | **Excluded from scans** — intentionally legacy | Earmarked for a separate Java 17 / Spring Boot 3 framework upgrade exercise |
+| web-app | Node.js 20 | `package.json` | `package-lock.json` | `npm install <pkg>@<version>` | Next.js 14 — some CVEs require a major upgrade to 14.2.25+ or 15.x |
+| admin-dashboard | Node.js 20 | `package.json` | `package-lock.json` | `npm install <pkg>@<version>` | Angular 17 — some CVEs require a major upgrade to 19+ |
+
+### Automated Remediation Pipeline
+
+The `sast-auto-remediate.yml` workflow implements a closed-loop scan → fix → re-scan cycle:
+
+```
+PR opened/updated → Trivy scan → findings? ──NO──→ ✓ pass
+                                    │
+                                   YES
+                                    │
+                      attempts < MAX (2)? ──NO──→ escalate (GitHub Issue)
+                                    │
+                                   YES
+                                    │
+                      trigger Devin webhook → Devin fixes deps,
+                      runs service tests, pushes commit → re-scan
+```
+
+Key behaviors:
+- **Bot-loop prevention**: PRs authored by `devin-ai-integration[bot]` are never scanned by this workflow. Devin's fix commits on human-authored PRs *do* trigger a re-scan (the desired closed-loop verification).
+- **Attempt cap**: After `MAX_FIX_ATTEMPTS` (default: 2) Devin fix cycles, the pipeline stops and opens a GitHub Issue labeled `security` + `needs-human-review` with the remaining findings.
+- **SonarCloud path**: A parallel path triggers a one-time Devin remediation session when the SonarCloud quality gate fails. Unlike the Trivy path, it does not retry.
+
+### `.trivyignore` — Suppressed CVEs
+
+Acknowledged vulnerabilities that cannot be fixed without a major version upgrade are listed in `.trivyignore` at the repo root, grouped by service with comments explaining the blocker:
+
+```
+# --- services/admin-service: requires Rails 7.2+ upgrade (activestorage CVEs) ---
+CVE-2026-33195
+CVE-2026-33658
+```
+
+**Rules for `.trivyignore` entries:**
+- Each entry must reference a specific CVE (no glob patterns like `CVE-2021-*`).
+- Each entry must have a comment explaining which service/package is affected, what blocks remediation, and when it will be revisited.
+- CRITICAL/HIGH CVEs with RCE or auth-bypass impact require strong justification.
+- Remove entries as soon as the blocking upgrade is completed.
+
+See `docs/labs/security-sprint-guide.md` for the full triage and audit process.
+
+### Running Scans Locally
+
+```bash
+# Full scan suite (Trivy + npm audit + pip-audit + bundle-audit)
+make security-scan
+
+# Trivy only (all services, CRITICAL+HIGH)
+trivy fs --config security/scanning/trivy-config.yaml .
+
+# Trivy without severity filter (see everything)
+trivy fs .
+```
+
+The `report-service` directory is excluded from CI scans via `--skip-dirs` and from `.trivyignore` scope. It is a legacy Java 8 service intentionally kept at outdated dependency versions for framework upgrade exercises.
+
 ## Makefile Commands
 
 Run `make help` to list all available commands. Key targets:

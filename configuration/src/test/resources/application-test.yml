@@ -1,0 +1,30 @@
+ehrbase:
+  validation:
+    external:
+      enabled: true
+      fhir-url: http://test-fhir:8080/fhir
+      billing-profiles:
+        us-hospital:
+          enabled: true
+          code-systems:
+            diagnosis:
+              - "http://hl7.org/fhir/sid/icd-10-cm"
+            procedure:
+              - "http://www.ama-assn.org/go/cpt"
+              - "https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets"
+            clinical-justification:
+              - "http://snomed.info/sct"
+          strictness:
+            fail-on-unknown-system: false
+            require-all-categories: true
+        eu-clinic:
+          enabled: false
+          code-systems:
+            diagnosis:
+              - "http://hl7.org/fhir/sid/icd-10"
+            procedure: []
+            clinical-justification:
+              - "http://snomed.info/sct"
+          strictness:
+            fail-on-unknown-system: false
+            require-all-categories: false

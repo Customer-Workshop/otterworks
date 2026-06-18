@@ -96,10 +96,16 @@ if [ "${SKIP_TERRAFORM}" = false ]; then
   cd "${REPO_ROOT}/infrastructure/terraform"
   terraform init -input=false
   terraform apply -var="db_password=${DB_PASSWORD}" -auto-approve -input=false
+  # Capture Terraform outputs for Helm values
+  S3_FILE_BUCKET=$(terraform -chdir="${REPO_ROOT}/infrastructure/terraform" output -raw s3_file_bucket)
+  SNS_EVENTS_TOPIC_ARN=$(terraform -chdir="${REPO_ROOT}/infrastructure/terraform" output -raw sns_events_topic_arn)
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."
+  log "S3 file bucket: ${S3_FILE_BUCKET}"
 else
   log "Skipping Terraform provisioning."
+  S3_FILE_BUCKET="${S3_FILE_BUCKET:-}"
+  SNS_EVENTS_TOPIC_ARN="${SNS_EVENTS_TOPIC_ARN:-}"
 fi
 
 # ---------- Step 3: Configure kubectl ----------
@@ -158,11 +164,22 @@ deploy_service() {
   fi
 
   local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}"
+  local extra_args=()
+
+  # Pass infrastructure outputs to service-specific Helm values
+  if [ "${service}" = "file-service" ] && [ -n "${S3_FILE_BUCKET}" ]; then
+    extra_args+=(--set "config.s3Bucket=${S3_FILE_BUCKET}")
+  fi
+  if [ "${service}" = "file-service" ] && [ -n "${SNS_EVENTS_TOPIC_ARN}" ]; then
+    extra_args+=(--set "config.snsTopicArn=${SNS_EVENTS_TOPIC_ARN}")
+  fi
+
   log "Deploying ${service} via Helm..."
   helm upgrade --install "${service}" "${chart_dir}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${image}" \
     --set image.tag="${IMAGE_TAG}" \
+    "${extra_args[@]}" \
     --wait \
     --timeout 5m \
     || { warn "Helm deploy failed for ${service}"; return 1; }

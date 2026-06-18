@@ -1,0 +1,7 @@
+ehrbase:
+  validation:
+    external-terminology:
+      enabled: true
+      fhir-url: https://tx.fhir.org/r4
+      fail-on-error: false
+      billing-profiles: {}

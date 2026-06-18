@@ -1,0 +1,37 @@
+ehrbase:
+  validation:
+    external-terminology:
+      enabled: true
+      fhir-url: https://tx.fhir.org/r4
+      fail-on-error: false
+
+      billing-profiles:
+        us-hospital:
+          enabled: true
+          diagnosis:
+            - http://hl7.org/fhir/sid/icd-10-cm
+            - http://hl7.org/fhir/sid/icd-10
+          procedure:
+            - http://www.ama-assn.org/go/cpt
+            - https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets
+          clinical-justification:
+            - http://snomed.info/sct
+          strictness:
+            required-categories:
+              - diagnosis
+              - procedure
+            validate-only-known-billing-systems: true
+            fail-unknown-billing-system: false
+
+        # Example disabled profile
+        eu-clinic:
+          enabled: false
+          diagnosis:
+            - http://hl7.org/fhir/sid/icd-10
+          procedure: []
+          clinical-justification:
+            - http://snomed.info/sct
+          strictness:
+            required-categories: []
+            validate-only-known-billing-systems: true
+            fail-unknown-billing-system: false

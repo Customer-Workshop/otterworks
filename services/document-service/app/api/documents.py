@@ -190,14 +190,13 @@ async def _do_list_documents(
 @router.get("/", response_model=DocumentListResponse)
 async def list_documents(
     request: Request,
-    owner_id: UUID | None = None,
     folder_id: UUID | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """List documents with optional filtering and pagination."""
-    effective_owner = owner_id or _extract_user_id(request)
+    effective_owner = _require_user_id(request)
     return await _do_list_documents(effective_owner, folder_id, page, size, db)
 
 
@@ -208,14 +207,13 @@ async def list_documents(
 )
 async def list_documents_no_slash(
     request: Request,
-    owner_id: UUID | None = None,
     folder_id: UUID | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """List documents (no trailing slash)."""
-    effective_owner = owner_id or _extract_user_id(request)
+    effective_owner = _require_user_id(request)
     return await _do_list_documents(effective_owner, folder_id, page, size, db)
 
 

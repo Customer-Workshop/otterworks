@@ -47,7 +47,9 @@ async fn authorize_file_read(
     if meta.find_existing_share(&file.id, user_id).await?.is_some() {
         return Ok(());
     }
-    Err(ServiceError::Forbidden("not authorized to access this file".into()))
+    Err(ServiceError::Forbidden(
+        "not authorized to access this file".into(),
+    ))
 }
 
 /// Verify the user owns the file or has editor-level share access.
@@ -64,7 +66,9 @@ async fn authorize_file_write(
             return Ok(());
         }
     }
-    Err(ServiceError::Forbidden("not authorized to modify this file".into()))
+    Err(ServiceError::Forbidden(
+        "not authorized to modify this file".into(),
+    ))
 }
 
 /// Verify the user is the owner of the file (required for destructive/admin operations).
@@ -72,7 +76,9 @@ fn authorize_file_owner(file: &FileMetadata, user_id: &Uuid) -> Result<(), Servi
     if file.owner_id == *user_id {
         return Ok(());
     }
-    Err(ServiceError::Forbidden("only the file owner can perform this action".into()))
+    Err(ServiceError::Forbidden(
+        "only the file owner can perform this action".into(),
+    ))
 }
 
 /// Verify the user is the owner of the folder.
@@ -80,7 +86,9 @@ fn authorize_folder_owner(folder: &Folder, user_id: &Uuid) -> Result<(), Service
     if folder.owner_id == *user_id {
         return Ok(());
     }
-    Err(ServiceError::Forbidden("not authorized to access this folder".into()))
+    Err(ServiceError::Forbidden(
+        "not authorized to access this folder".into(),
+    ))
 }
 
 // -- Health & Metrics --

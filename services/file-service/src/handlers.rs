@@ -16,11 +16,12 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
-    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
-    MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
-    UploadResponse,
+    ActivityItem, ActivityQuery, ActivityResponse, BulkDeleteRequest, BulkDeleteResponse,
+    BulkDeleteResponseItem, BulkUploadResponse, BulkUploadResponseItem, CreateFolderRequest,
+    DownloadResponse, FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder,
+    HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
+    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse,
+    UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -481,6 +482,272 @@ pub async fn restore_file(
 
     tracing::info!(file_id = %file_id, "File restored");
     Ok(HttpResponse::Ok().json(file))
+}
+
+// -- Bulk Operations --
+
+pub async fn bulk_upload(
+    req: HttpRequest,
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    config: web::Data<AppConfig>,
+    mut payload: Multipart,
+) -> Result<HttpResponse, ServiceError> {
+    let header_owner_id = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok());
+
+    let mut owner_id: Option<Uuid> = None;
+    let mut folder_id: Option<Uuid> = None;
+
+    struct PendingFile {
+        name: String,
+        content_type: String,
+        bytes: bytes::Bytes,
+    }
+    let mut pending_files: Vec<PendingFile> = Vec::new();
+
+    while let Some(item) = payload.next().await {
+        let mut field = item.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+        let disposition = field.content_disposition().cloned();
+        let field_name = disposition
+            .as_ref()
+            .and_then(|d| d.get_name().map(|s| s.to_string()))
+            .unwrap_or_default();
+
+        match field_name.as_str() {
+            "files" | "file" => {
+                let file_name = disposition
+                    .as_ref()
+                    .and_then(|d| d.get_filename())
+                    .unwrap_or("unnamed")
+                    .to_string();
+                let content_type = field
+                    .content_type()
+                    .map(|ct| ct.to_string())
+                    .unwrap_or_else(|| "application/octet-stream".to_string());
+                let mut file_bytes = BytesMut::new();
+                while let Some(chunk) = field.next().await {
+                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+                    file_bytes.extend_from_slice(&data);
+                    if file_bytes.len() as u64 > config.server.max_upload_bytes {
+                        return Err(ServiceError::FileTooLarge {
+                            max_bytes: config.server.max_upload_bytes,
+                            actual_bytes: file_bytes.len() as u64,
+                        });
+                    }
+                }
+                if !file_bytes.is_empty() {
+                    pending_files.push(PendingFile {
+                        name: file_name,
+                        content_type,
+                        bytes: file_bytes.freeze(),
+                    });
+                }
+            }
+            "owner_id" => {
+                let mut value = BytesMut::new();
+                while let Some(chunk) = field.next().await {
+                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+                    value.extend_from_slice(&data);
+                }
+                let s = String::from_utf8_lossy(&value).to_string();
+                owner_id = Some(
+                    s.trim()
+                        .parse::<Uuid>()
+                        .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
+                );
+            }
+            "folder_id" => {
+                let mut value = BytesMut::new();
+                while let Some(chunk) = field.next().await {
+                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
+                    value.extend_from_slice(&data);
+                }
+                let s = String::from_utf8_lossy(&value).to_string();
+                let trimmed = s.trim();
+                if !trimmed.is_empty() {
+                    folder_id = Some(trimmed.parse::<Uuid>().map_err(|e| {
+                        ServiceError::BadRequest(format!("invalid folder_id: {e}"))
+                    })?);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let owner = header_owner_id
+        .or(owner_id)
+        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+
+    if pending_files.is_empty() {
+        return Err(ServiceError::BadRequest(
+            "at least one file field is required".into(),
+        ));
+    }
+
+    let total_requested = pending_files.len();
+    let mut results: Vec<BulkUploadResponseItem> = Vec::with_capacity(total_requested);
+    let mut total_uploaded = 0usize;
+
+    for pending in pending_files {
+        let file_id = Uuid::new_v4();
+        let s3_key = format!("files/{}/{}", owner, file_id);
+        let now = Utc::now();
+        let size = pending.bytes.len() as u64;
+
+        let upload_result = s3
+            .upload_object(&s3_key, pending.bytes, &pending.content_type)
+            .await;
+
+        match upload_result {
+            Ok(()) => {
+                let file_meta = FileMetadata {
+                    id: file_id,
+                    name: pending.name.clone(),
+                    mime_type: pending.content_type.clone(),
+                    size_bytes: size,
+                    s3_key: s3_key.clone(),
+                    folder_id,
+                    owner_id: owner,
+                    version: 1,
+                    is_trashed: false,
+                    created_at: now,
+                    updated_at: now,
+                };
+
+                if let Err(e) = meta.put_file(&file_meta).await {
+                    results.push(BulkUploadResponseItem {
+                        name: pending.name,
+                        success: false,
+                        file: None,
+                        error: Some(format!("metadata write failed: {e}")),
+                    });
+                    continue;
+                }
+
+                let version = FileVersion {
+                    file_id,
+                    version: 1,
+                    s3_key,
+                    size_bytes: size,
+                    created_by: owner,
+                    created_at: now,
+                };
+                let _ = meta.put_version(&version).await;
+
+                let _ = events
+                    .file_uploaded(
+                        &file_id,
+                        &owner,
+                        folder_id.as_ref(),
+                        &file_meta.name,
+                        &file_meta.mime_type,
+                        file_meta.size_bytes,
+                    )
+                    .await;
+
+                tracing::info!(file_id = %file_id, name = %file_meta.name, size = %size, "Bulk file uploaded");
+                total_uploaded += 1;
+                results.push(BulkUploadResponseItem {
+                    name: pending.name,
+                    success: true,
+                    file: Some(file_meta),
+                    error: None,
+                });
+            }
+            Err(e) => {
+                results.push(BulkUploadResponseItem {
+                    name: pending.name,
+                    success: false,
+                    file: None,
+                    error: Some(format!("upload failed: {e}")),
+                });
+            }
+        }
+    }
+
+    let total_failed = total_requested - total_uploaded;
+    tracing::info!(
+        total_requested = total_requested,
+        total_uploaded = total_uploaded,
+        total_failed = total_failed,
+        "Bulk upload complete"
+    );
+
+    Ok(HttpResponse::Ok().json(BulkUploadResponse {
+        results,
+        total_requested,
+        total_uploaded,
+        total_failed,
+    }))
+}
+
+pub async fn bulk_delete(
+    req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    body: web::Json<BulkDeleteRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    let _owner_id = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok());
+
+    let file_ids = &body.file_ids;
+    if file_ids.is_empty() {
+        return Err(ServiceError::BadRequest("file_ids cannot be empty".into()));
+    }
+    if file_ids.len() > 100 {
+        return Err(ServiceError::BadRequest(
+            "bulk delete limited to 100 files per request".into(),
+        ));
+    }
+
+    let total_requested = file_ids.len();
+    let mut results: Vec<BulkDeleteResponseItem> = Vec::with_capacity(total_requested);
+    let mut total_deleted = 0usize;
+
+    for file_id in file_ids {
+        match meta.trash_file(file_id).await {
+            Ok(file) => {
+                let _ = events.file_trashed(file_id, &file.owner_id).await;
+                tracing::info!(file_id = %file_id, "Bulk file trashed");
+                total_deleted += 1;
+                results.push(BulkDeleteResponseItem {
+                    id: *file_id,
+                    success: true,
+                    error: None,
+                });
+            }
+            Err(e) => {
+                results.push(BulkDeleteResponseItem {
+                    id: *file_id,
+                    success: false,
+                    error: Some(e.to_string()),
+                });
+            }
+        }
+    }
+
+    let total_failed = total_requested - total_deleted;
+    tracing::info!(
+        total_requested = total_requested,
+        total_deleted = total_deleted,
+        total_failed = total_failed,
+        "Bulk delete complete"
+    );
+
+    Ok(HttpResponse::Ok().json(BulkDeleteResponse {
+        results,
+        total_requested,
+        total_deleted,
+        total_failed,
+    }))
 }
 
 pub async fn share_file(

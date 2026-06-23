@@ -137,6 +137,19 @@ function FileBrowserContent() {
     [folderId],
   );
 
+  const handleBulkUploadFiles = useCallback(
+    async (
+      files: File[],
+      options: { onProgress: (percent: number) => void; signal: AbortSignal },
+    ) => {
+      await filesApi.bulkUpload(files, folderId, {
+        onUploadProgress: options.onProgress,
+        signal: options.signal,
+      });
+    },
+    [folderId],
+  );
+
   const handleUploadComplete = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -196,22 +209,28 @@ function FileBrowserContent() {
     setSelectionActive(false);
   };
 
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
+    setBulkDeleting(true);
     const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
     const fileIds = ids.filter((id) => !folderIds.includes(id));
     let trashedFiles = 0;
     let deletedFolders = 0;
     let failed = 0;
-    for (const id of fileIds) {
+
+    if (fileIds.length > 0) {
       try {
-        await filesApi.delete(id);
-        trashedFiles++;
+        const result = await filesApi.bulkDelete(fileIds);
+        trashedFiles = result.totalDeleted;
+        failed += result.totalFailed;
       } catch {
-        failed++;
+        failed += fileIds.length;
       }
     }
+
     for (const id of folderIds) {
       try {
         await filesApi.deleteFolder(id);
@@ -230,6 +249,7 @@ function FileBrowserContent() {
     if (msgs.length > 0) toast.success(msgs.join(", "));
     if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
     clearSelection();
+    setBulkDeleting(false);
   };
 
   const handleDownload = useCallback(
@@ -292,10 +312,11 @@ function FileBrowserContent() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleBulkDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition"
+              disabled={bulkDeleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Trash2 size={14} />
-              Delete
+              {bulkDeleting ? "Deleting..." : "Delete"}
             </button>
             <button
               onClick={clearSelection}
@@ -417,6 +438,7 @@ function FileBrowserContent() {
         <FileUploadDropzone
           ref={uploadDropzoneRef}
           uploadFile={handleUploadFile}
+          bulkUploadFiles={handleBulkUploadFiles}
           onUploadComplete={handleUploadComplete}
           onDismiss={() => setShowUpload(false)}
         />

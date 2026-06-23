@@ -11,6 +11,10 @@ interface FileUploadDropzoneProps {
     file: File,
     options: { onProgress: (percent: number) => void; signal: AbortSignal },
   ) => Promise<void>;
+  bulkUploadFiles?: (
+    files: File[],
+    options: { onProgress: (percent: number) => void; signal: AbortSignal },
+  ) => Promise<void>;
   onUploadComplete?: () => void;
   onDismiss?: () => void;
   className?: string;
@@ -32,7 +36,7 @@ interface UploadingFile {
 let fileIdCounter = 0;
 
 export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
-  { uploadFile, onUploadComplete, onDismiss, className }: FileUploadDropzoneProps,
+  { uploadFile, bulkUploadFiles, onUploadComplete, onDismiss, className }: FileUploadDropzoneProps,
   ref: Ref<FileUploadDropzoneHandle>,
 ) {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
@@ -121,6 +125,65 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
     [uploadFile, onUploadComplete],
   );
 
+  const startBulkUpload = useCallback(
+    (entries: UploadingFile[]) => {
+      if (!bulkUploadFiles || entries.length === 0) return;
+      const abortController = new AbortController();
+
+      for (const entry of entries) {
+        setUploadingFiles((prev) =>
+          prev.map((f) =>
+            f.id === entry.id
+              ? { ...f, status: "uploading" as const, progress: 0, error: undefined, abortController }
+              : f,
+          ),
+        );
+      }
+
+      bulkUploadFiles(
+        entries.map((e) => e.file),
+        {
+          onProgress: (percent) => {
+            for (const entry of entries) {
+              setUploadingFiles((prev) =>
+                prev.map((f) => (f.id === entry.id ? { ...f, progress: percent } : f)),
+              );
+            }
+          },
+          signal: abortController.signal,
+        },
+      )
+        .then(() => {
+          for (const entry of entries) {
+            setUploadingFiles((prev) =>
+              prev.map((f) =>
+                f.id === entry.id
+                  ? { ...f, status: "done" as const, progress: 100, abortController: undefined }
+                  : f,
+              ),
+            );
+          }
+          onUploadComplete?.();
+        })
+        .catch(() => {
+          if (abortController.signal.aborted) {
+            setUploadingFiles((prev) => prev.filter((f) => !entries.some((e) => e.id === f.id)));
+          } else {
+            for (const entry of entries) {
+              setUploadingFiles((prev) =>
+                prev.map((f) =>
+                  f.id === entry.id
+                    ? { ...f, status: "error" as const, error: "Upload failed", abortController: undefined }
+                    : f,
+                ),
+              );
+            }
+          }
+        });
+    },
+    [bulkUploadFiles, onUploadComplete],
+  );
+
   const addFiles = useCallback(
     (files: File[]) => {
       const newFiles: UploadingFile[] = files.map((file) => ({
@@ -130,9 +193,13 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
         status: "uploading" as const,
       }));
       setUploadingFiles((prev) => [...prev, ...newFiles]);
-      newFiles.forEach((entry) => startUpload(entry));
+      if (bulkUploadFiles && files.length > 1) {
+        startBulkUpload(newFiles);
+      } else {
+        newFiles.forEach((entry) => startUpload(entry));
+      }
     },
-    [startUpload],
+    [startUpload, startBulkUpload, bulkUploadFiles],
   );
 
   useImperativeHandle(ref, () => ({ addFiles }), [addFiles]);

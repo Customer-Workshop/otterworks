@@ -176,6 +176,47 @@ pub struct ShareFileResponse {
     pub share: FileShare,
 }
 
+// ── Bulk Operations ────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct BulkDeleteRequest {
+    pub file_ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkDeleteResponseItem {
+    pub id: Uuid,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkDeleteResponse {
+    pub results: Vec<BulkDeleteResponseItem>,
+    pub total_requested: usize,
+    pub total_deleted: usize,
+    pub total_failed: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkUploadResponseItem {
+    pub name: String,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<FileMetadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkUploadResponse {
+    pub results: Vec<BulkUploadResponseItem>,
+    pub total_requested: usize,
+    pub total_uploaded: usize,
+    pub total_failed: usize,
+}
+
 // ── Activity ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]

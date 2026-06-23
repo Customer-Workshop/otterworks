@@ -324,6 +324,61 @@ export const filesApi = {
     const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
     return (data.files ?? []).map((f) => normalizeFileItem(f as unknown as Record<string, unknown>));
   },
+  bulkUpload: async (
+    files: File[],
+    parentId?: string | null,
+    options?: { onUploadProgress?: (percent: number) => void; signal?: AbortSignal },
+  ): Promise<{ results: Array<{ name: string; success: boolean; file?: FileItem; error?: string }>; totalRequested: number; totalUploaded: number; totalFailed: number }> => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    if (parentId) formData.append("folder_id", parentId);
+    const ownerId = getOwnerIdFromJwt();
+    if (ownerId) formData.append("owner_id", ownerId);
+
+    const { data } = await apiClient.post<{
+      results: Array<{ name: string; success: boolean; file?: RawFileItem; error?: string }>;
+      totalRequested: number;
+      totalUploaded: number;
+      totalFailed: number;
+    }>("/files/bulk-upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      signal: options?.signal,
+      onUploadProgress: options?.onUploadProgress
+        ? (event) => {
+            if (event.total) {
+              options.onUploadProgress!(Math.round((event.loaded * 100) / event.total));
+            }
+          }
+        : undefined,
+    });
+    return {
+      results: (data.results ?? []).map((r) => ({
+        name: r.name,
+        success: r.success,
+        file: r.file ? mapRawFile(r.file) : undefined,
+        error: r.error,
+      })),
+      totalRequested: data.totalRequested ?? files.length,
+      totalUploaded: data.totalUploaded ?? 0,
+      totalFailed: data.totalFailed ?? 0,
+    };
+  },
+  bulkDelete: async (fileIds: string[]): Promise<{ results: Array<{ id: string; success: boolean; error?: string }>; totalRequested: number; totalDeleted: number; totalFailed: number }> => {
+    const { data } = await apiClient.post<{
+      results: Array<{ id: string; success: boolean; error?: string }>;
+      totalRequested: number;
+      totalDeleted: number;
+      totalFailed: number;
+    }>("/files/bulk-delete", { file_ids: fileIds });
+    return {
+      results: data.results ?? [],
+      totalRequested: data.totalRequested ?? fileIds.length,
+      totalDeleted: data.totalDeleted ?? 0,
+      totalFailed: data.totalFailed ?? 0,
+    };
+  },
 };
 
 // ── Documents ─────────────────────────────────────────────────

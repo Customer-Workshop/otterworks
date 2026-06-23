@@ -215,25 +215,25 @@ pub struct BulkMoveRequest {
     pub target_folder_id: Option<Uuid>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BulkActionResponse {
     pub succeeded: u32,
     pub failed: u32,
     pub errors: Vec<BulkItemError>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BulkItemError {
     pub id: String,
     pub error: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BulkDownloadResponse {
     pub urls: Vec<BulkDownloadUrl>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BulkDownloadUrl {
     pub file_id: String,
     pub name: String,

@@ -843,17 +843,21 @@ mod tests {
 
     // -- Bulk operation integration tests --
     //
-    // These tests spin up an actix-web test server wired to LocalStack
-    // (DynamoDB, S3, SNS). They require the same environment variables as the
-    // service itself (AWS_ENDPOINT_URL, etc.).  When those aren't available the
-    // tests are silently skipped so `cargo test` still passes in bare CI
-    // environments.
+    // These tests use actix_web::test helpers (init_service + TestRequest)
+    // wired to LocalStack (DynamoDB, S3, SNS). They require the same
+    // environment variables as the service itself (AWS_ENDPOINT_URL, etc.).
+    // When those aren't available the tests are silently skipped so
+    // `cargo test` still passes in bare CI environments.
 
-    async fn build_test_app() -> Option<(
-        actix_web::test::TestServer,
-        web::Data<MetadataClient>,
-        web::Data<S3Client>,
-    )> {
+    use actix_web::test::{call_service, init_service, TestRequest};
+
+    struct TestEnv {
+        meta: web::Data<MetadataClient>,
+        s3: web::Data<S3Client>,
+        events: web::Data<EventPublisher>,
+    }
+
+    async fn build_test_env() -> Option<TestEnv> {
         dotenvy::dotenv().ok();
 
         let config = match std::panic::catch_unwind(crate::config::AppConfig::from_env) {
@@ -865,26 +869,11 @@ mod tests {
         let meta = crate::metadata::MetadataClient::new(&config.aws).await;
         let events = crate::events::EventPublisher::new(&config.sns, &config.aws).await;
 
-        let s3_data = web::Data::new(s3);
-        let meta_data = web::Data::new(meta);
-        let events_data = web::Data::new(events);
-
-        let s3_ret = s3_data.clone();
-        let meta_ret = meta_data.clone();
-
-        let srv = actix_web::test::start(move || {
-            actix_web::App::new()
-                .app_data(s3_data.clone())
-                .app_data(meta_data.clone())
-                .app_data(events_data.clone())
-                .service(
-                    web::scope("/api/v1/files")
-                        .route("/bulk/trash", web::post().to(bulk_trash))
-                        .route("/bulk/move", web::post().to(bulk_move))
-                        .route("/bulk/download", web::post().to(bulk_download)),
-                )
-        });
-        Some((srv, meta_ret, s3_ret))
+        Some(TestEnv {
+            meta: web::Data::new(meta),
+            s3: web::Data::new(s3),
+            events: web::Data::new(events),
+        })
     }
 
     async fn seed_file(meta: &MetadataClient, s3: &S3Client) -> FileMetadata {
@@ -916,54 +905,74 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_bulk_trash_happy_path() {
-        let Some((srv, meta, s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_trash_happy_path: env not available");
             return;
         };
-        let f1 = seed_file(&meta, &s3).await;
-        let f2 = seed_file(&meta, &s3).await;
+        let f1 = seed_file(&env.meta, &env.s3).await;
+        let f2 = seed_file(&env.meta, &env.s3).await;
 
-        let payload = serde_json::json!({
-            "file_ids": [f1.id.to_string(), f2.id.to_string()]
-        });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/trash")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files").route("/bulk/trash", web::post().to(bulk_trash)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/trash")
+            .set_json(serde_json::json!({
+                "file_ids": [f1.id.to_string(), f2.id.to_string()]
+            }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkActionResponse = resp.json().await.unwrap();
+        let body: BulkActionResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.succeeded, 2);
         assert_eq!(body.failed, 0);
         assert!(body.errors.is_empty());
 
-        let trashed1 = meta.get_file(&f1.id).await.unwrap();
+        let trashed1 = env.meta.get_file(&f1.id).await.unwrap();
         assert!(trashed1.is_trashed);
-        let trashed2 = meta.get_file(&f2.id).await.unwrap();
+        let trashed2 = env.meta.get_file(&f2.id).await.unwrap();
         assert!(trashed2.is_trashed);
     }
 
     #[actix_rt::test]
     async fn test_bulk_trash_partial_failure() {
-        let Some((srv, meta, s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_trash_partial_failure: env not available");
             return;
         };
-        let f1 = seed_file(&meta, &s3).await;
+        let f1 = seed_file(&env.meta, &env.s3).await;
         let bad_id = Uuid::new_v4();
 
-        let payload = serde_json::json!({
-            "file_ids": [f1.id.to_string(), bad_id.to_string()]
-        });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/trash")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files").route("/bulk/trash", web::post().to(bulk_trash)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/trash")
+            .set_json(serde_json::json!({
+                "file_ids": [f1.id.to_string(), bad_id.to_string()]
+            }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkActionResponse = resp.json().await.unwrap();
+        let body: BulkActionResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.succeeded, 1);
         assert_eq!(body.failed, 1);
         assert_eq!(body.errors.len(), 1);
@@ -972,120 +981,171 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_bulk_trash_empty_list() {
-        let Some((srv, _meta, _s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_trash_empty_list: env not available");
             return;
         };
-        let payload = serde_json::json!({ "file_ids": [] });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/trash")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files").route("/bulk/trash", web::post().to(bulk_trash)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/trash")
+            .set_json(serde_json::json!({ "file_ids": [] }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkActionResponse = resp.json().await.unwrap();
+        let body: BulkActionResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.succeeded, 0);
         assert_eq!(body.failed, 0);
     }
 
     #[actix_rt::test]
     async fn test_bulk_move_happy_path() {
-        let Some((srv, meta, s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_move_happy_path: env not available");
             return;
         };
-        let f1 = seed_file(&meta, &s3).await;
-        let f2 = seed_file(&meta, &s3).await;
+        let f1 = seed_file(&env.meta, &env.s3).await;
+        let f2 = seed_file(&env.meta, &env.s3).await;
         let target = Uuid::new_v4();
 
-        let payload = serde_json::json!({
-            "file_ids": [f1.id.to_string(), f2.id.to_string()],
-            "target_folder_id": target.to_string()
-        });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/move")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files").route("/bulk/move", web::post().to(bulk_move)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/move")
+            .set_json(serde_json::json!({
+                "file_ids": [f1.id.to_string(), f2.id.to_string()],
+                "target_folder_id": target.to_string()
+            }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkActionResponse = resp.json().await.unwrap();
+        let body: BulkActionResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.succeeded, 2);
         assert_eq!(body.failed, 0);
 
-        let moved1 = meta.get_file(&f1.id).await.unwrap();
+        let moved1 = env.meta.get_file(&f1.id).await.unwrap();
         assert_eq!(moved1.folder_id, Some(target));
     }
 
     #[actix_rt::test]
     async fn test_bulk_move_partial_failure() {
-        let Some((srv, meta, s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_move_partial_failure: env not available");
             return;
         };
-        let f1 = seed_file(&meta, &s3).await;
+        let f1 = seed_file(&env.meta, &env.s3).await;
         let bad_id = Uuid::new_v4();
         let target = Uuid::new_v4();
 
-        let payload = serde_json::json!({
-            "file_ids": [f1.id.to_string(), bad_id.to_string()],
-            "target_folder_id": target.to_string()
-        });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/move")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files").route("/bulk/move", web::post().to(bulk_move)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/move")
+            .set_json(serde_json::json!({
+                "file_ids": [f1.id.to_string(), bad_id.to_string()],
+                "target_folder_id": target.to_string()
+            }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkActionResponse = resp.json().await.unwrap();
+        let body: BulkActionResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.succeeded, 1);
         assert_eq!(body.failed, 1);
     }
 
     #[actix_rt::test]
     async fn test_bulk_move_empty_list() {
-        let Some((srv, _meta, _s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_move_empty_list: env not available");
             return;
         };
-        let payload = serde_json::json!({
-            "file_ids": [],
-            "target_folder_id": null
-        });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/move")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files").route("/bulk/move", web::post().to(bulk_move)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/move")
+            .set_json(serde_json::json!({
+                "file_ids": [],
+                "target_folder_id": null
+            }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkActionResponse = resp.json().await.unwrap();
+        let body: BulkActionResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.succeeded, 0);
         assert_eq!(body.failed, 0);
     }
 
     #[actix_rt::test]
     async fn test_bulk_download_happy_path() {
-        let Some((srv, meta, s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_download_happy_path: env not available");
             return;
         };
-        let f1 = seed_file(&meta, &s3).await;
-        let f2 = seed_file(&meta, &s3).await;
+        let f1 = seed_file(&env.meta, &env.s3).await;
+        let f2 = seed_file(&env.meta, &env.s3).await;
 
-        let payload = serde_json::json!({
-            "file_ids": [f1.id.to_string(), f2.id.to_string()]
-        });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/download")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files")
+                        .route("/bulk/download", web::post().to(bulk_download)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/download")
+            .set_json(serde_json::json!({
+                "file_ids": [f1.id.to_string(), f2.id.to_string()]
+            }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkDownloadResponse = resp.json().await.unwrap();
+        let body: BulkDownloadResponse = actix_web::test::read_body_json(resp).await;
         assert_eq!(body.urls.len(), 2);
         assert!(!body.urls[0].url.is_empty());
         assert!(!body.urls[1].url.is_empty());
@@ -1094,19 +1154,30 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_bulk_download_empty_list() {
-        let Some((srv, _meta, _s3)) = build_test_app().await else {
+        let Some(env) = build_test_env().await else {
             eprintln!("Skipping test_bulk_download_empty_list: env not available");
             return;
         };
-        let payload = serde_json::json!({ "file_ids": [] });
-        let mut resp = srv
-            .post("/api/v1/files/bulk/download")
-            .send_json(&payload)
-            .await
-            .unwrap();
+        let app = init_service(
+            actix_web::App::new()
+                .app_data(env.s3.clone())
+                .app_data(env.meta.clone())
+                .app_data(env.events.clone())
+                .service(
+                    web::scope("/api/v1/files")
+                        .route("/bulk/download", web::post().to(bulk_download)),
+                ),
+        )
+        .await;
+
+        let req = TestRequest::post()
+            .uri("/api/v1/files/bulk/download")
+            .set_json(serde_json::json!({ "file_ids": [] }))
+            .to_request();
+        let resp = call_service(&app, req).await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
-        let body: BulkDownloadResponse = resp.json().await.unwrap();
+        let body: BulkDownloadResponse = actix_web::test::read_body_json(resp).await;
         assert!(body.urls.is_empty());
     }
 }

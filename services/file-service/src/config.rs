@@ -84,6 +84,9 @@ impl SnsConfig {
 mod tests {
     use super::*;
     use std::env;
+    use std::sync::Mutex;
+
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     fn clear_config_env_vars() {
         for key in &[
@@ -106,6 +109,7 @@ mod tests {
 
     #[test]
     fn test_server_config_defaults() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         let cfg = ServerConfig::from_env();
         assert_eq!(cfg.port, 8082);
@@ -114,6 +118,7 @@ mod tests {
 
     #[test]
     fn test_server_config_from_env() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         unsafe {
             env::set_var("PORT", "9090");
@@ -127,6 +132,7 @@ mod tests {
 
     #[test]
     fn test_server_config_invalid_port_falls_back_to_default() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         unsafe {
             env::set_var("PORT", "not_a_number");
@@ -138,6 +144,7 @@ mod tests {
 
     #[test]
     fn test_server_config_invalid_max_upload_falls_back_to_default() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         unsafe {
             env::set_var("MAX_UPLOAD_BYTES", "bad");
@@ -149,6 +156,7 @@ mod tests {
 
     #[test]
     fn test_aws_config_defaults() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         let cfg = AwsConfig::from_env();
         assert_eq!(cfg.region, "us-east-1");
@@ -162,6 +170,7 @@ mod tests {
 
     #[test]
     fn test_aws_config_from_env() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         unsafe {
             env::set_var("AWS_REGION", "eu-west-1");
@@ -185,6 +194,7 @@ mod tests {
 
     #[test]
     fn test_sns_config_without_topic_arn() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         let cfg = SnsConfig::from_env();
         assert!(cfg.topic_arn.is_none());
@@ -192,6 +202,7 @@ mod tests {
 
     #[test]
     fn test_sns_config_with_topic_arn() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         unsafe {
             env::set_var("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456:my-topic");
@@ -206,6 +217,7 @@ mod tests {
 
     #[test]
     fn test_app_config_from_env_composes_all() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         clear_config_env_vars();
         let cfg = AppConfig::from_env();
         assert_eq!(cfg.server.port, 8082);

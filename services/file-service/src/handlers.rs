@@ -710,17 +710,275 @@ pub async fn list_activity(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actix_web::http::StatusCode;
     use actix_web::test;
+    use crate::models::SharePermission;
+
+    async fn dummy_meta() -> web::Data<MetadataClient> {
+        let cfg = aws_config::defaults(aws_config::BehaviorVersion::latest())
+            .region(aws_config::Region::new("us-east-1"))
+            .endpoint_url("http://localhost:4566")
+            .load()
+            .await;
+        web::Data::new(MetadataClient {
+            client: aws_sdk_dynamodb::Client::new(&cfg),
+            files_table: "t".into(),
+            folders_table: "t".into(),
+            versions_table: "t".into(),
+            shares_table: "t".into(),
+        })
+    }
+
+    async fn dummy_s3() -> web::Data<S3Client> {
+        let cfg = aws_config::defaults(aws_config::BehaviorVersion::latest())
+            .region(aws_config::Region::new("us-east-1"))
+            .endpoint_url("http://localhost:4566")
+            .load()
+            .await;
+        web::Data::new(S3Client {
+            client: aws_sdk_s3::Client::new(&cfg),
+            bucket: "t".into(),
+        })
+    }
+
+    async fn dummy_events() -> web::Data<EventPublisher> {
+        let aws_cfg = crate::config::AwsConfig {
+            region: "us-east-1".into(),
+            endpoint_url: Some("http://localhost:4566".into()),
+            s3_bucket: "t".into(),
+            dynamodb_table: "t".into(),
+            dynamodb_folders_table: "t".into(),
+            dynamodb_versions_table: "t".into(),
+            dynamodb_shares_table: "t".into(),
+        };
+        let sns_cfg = crate::config::SnsConfig { topic_arn: None };
+        web::Data::new(EventPublisher::new(&sns_cfg, &aws_cfg).await)
+    }
+
+    // ── Existing tests ─────────────────────────────────────────
 
     #[actix_rt::test]
     async fn test_health_endpoint() {
         let resp = health().await;
-        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[actix_rt::test]
     async fn test_metrics_endpoint() {
         let resp = metrics().await;
-        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    // ── resolve_owner_id ───────────────────────────────────────
+
+    #[actix_rt::test]
+    async fn test_resolve_owner_id_from_header() {
+        let user_id = Uuid::new_v4();
+        let req = test::TestRequest::default()
+            .insert_header(("X-User-ID", user_id.to_string()))
+            .to_http_request();
+        assert_eq!(resolve_owner_id(&req, None), Some(user_id));
+    }
+
+    #[actix_rt::test]
+    async fn test_resolve_owner_id_fallback_to_query() {
+        let query_id = Uuid::new_v4();
+        let req = test::TestRequest::default().to_http_request();
+        assert_eq!(resolve_owner_id(&req, Some(query_id)), Some(query_id));
+    }
+
+    #[actix_rt::test]
+    async fn test_resolve_owner_id_none_when_neither_present() {
+        let req = test::TestRequest::default().to_http_request();
+        assert_eq!(resolve_owner_id(&req, None), None);
+    }
+
+    #[actix_rt::test]
+    async fn test_resolve_owner_id_invalid_header_falls_back_to_query() {
+        let query_id = Uuid::new_v4();
+        let req = test::TestRequest::default()
+            .insert_header(("X-User-ID", "not-a-valid-uuid"))
+            .to_http_request();
+        assert_eq!(resolve_owner_id(&req, Some(query_id)), Some(query_id));
+    }
+
+    // ── Input validation: invalid UUID in path ─────────────────
+
+    #[actix_rt::test]
+    async fn test_get_file_metadata_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = get_file_metadata(meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_list_versions_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = list_versions(meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_trash_file_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = trash_file(meta, events, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_restore_file_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = restore_file(meta, events, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_delete_file_invalid_uuid() {
+        let s3 = dummy_s3().await;
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = delete_file(s3, meta, events, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_download_file_invalid_uuid() {
+        let s3 = dummy_s3().await;
+        let meta = dummy_meta().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = download_file(s3, meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_move_file_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let body = web::Json(MoveFileRequest { folder_id: None });
+        let err = move_file(meta, events, path, body).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_rename_file_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let body = web::Json(RenameFileRequest { name: "test".into() });
+        let err = rename_file(meta, events, path, body).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_rename_file_empty_name() {
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from(Uuid::new_v4().to_string());
+        let body = web::Json(RenameFileRequest { name: "   ".into() });
+        let err = rename_file(meta, events, path, body).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_share_file_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let events = dummy_events().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let body = web::Json(ShareFileRequest {
+            shared_with: Uuid::new_v4(),
+            permission: SharePermission::Viewer,
+            shared_by: Uuid::new_v4(),
+        });
+        let err = share_file(meta, events, path, body).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_remove_share_invalid_file_id() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from((
+            "not-a-uuid".to_string(),
+            Uuid::new_v4().to_string(),
+        ));
+        let err = remove_share(meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_remove_share_invalid_user_id() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from((
+            Uuid::new_v4().to_string(),
+            "not-a-uuid".to_string(),
+        ));
+        let err = remove_share(meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    // ── Folder handler validation ──────────────────────────────
+
+    #[actix_rt::test]
+    async fn test_create_folder_missing_required_field() {
+        let meta = dummy_meta().await;
+        let app = test::init_service(
+            actix_web::App::new()
+                .app_data(meta)
+                .route("/folders", web::post().to(create_folder)),
+        )
+        .await;
+
+        let req = test::TestRequest::post()
+            .uri("/folders")
+            .set_json(serde_json::json!({"name": "test-folder"}))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[actix_rt::test]
+    async fn test_get_folder_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = get_folder(meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_update_folder_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let body = web::Json(UpdateFolderRequest {
+            name: Some("test".into()),
+            parent_id: None,
+        });
+        let err = update_folder(meta, path, body).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    #[actix_rt::test]
+    async fn test_delete_folder_invalid_uuid() {
+        let meta = dummy_meta().await;
+        let path = web::Path::from("not-a-uuid".to_string());
+        let err = delete_folder(meta, path).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+    }
+
+    // ── list_activity validation ───────────────────────────────
+
+    #[actix_rt::test]
+    async fn test_list_activity_missing_user_id_header() {
+        let meta = dummy_meta().await;
+        let req = test::TestRequest::default().to_http_request();
+        let query = web::Query(ActivityQuery { limit: None });
+        let err = list_activity(req, meta, query).await.unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
     }
 }

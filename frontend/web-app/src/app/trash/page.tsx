@@ -65,9 +65,14 @@ function TrashContent() {
 
   const emptyTrashMutation = useMutation({
     mutationFn: async () => {
-      const allIds = items.map((i) => i.id);
-      if (allIds.length > 0) {
-        await filesApi.bulkDelete(allIds);
+      const pageSize = 100;
+      let page = 1;
+      let batch = await filesApi.getTrashed(page, pageSize);
+      while (batch.data.length > 0) {
+        const ids = batch.data.map((i) => i.id);
+        await filesApi.bulkDelete(ids);
+        page = 1;
+        batch = await filesApi.getTrashed(page, pageSize);
       }
     },
     onSuccess: () => {
@@ -105,11 +110,11 @@ function TrashContent() {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
-      if (result.success_count > 0) {
-        toast.success(`${result.success_count} file${result.success_count > 1 ? "s" : ""} restored`);
+      if (result.successCount > 0) {
+        toast.success(`${result.successCount} file${result.successCount > 1 ? "s" : ""} restored`);
       }
-      if (result.failure_count > 0) {
-        toast.error(`${result.failure_count} file${result.failure_count > 1 ? "s" : ""} failed to restore`);
+      if (result.failureCount > 0) {
+        toast.error(`${result.failureCount} file${result.failureCount > 1 ? "s" : ""} failed to restore`);
       }
     } catch {
       toast.error("Failed to restore files");
@@ -125,11 +130,11 @@ function TrashContent() {
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
-      if (result.success_count > 0) {
-        toast.success(`${result.success_count} file${result.success_count > 1 ? "s" : ""} permanently deleted`);
+      if (result.successCount > 0) {
+        toast.success(`${result.successCount} file${result.successCount > 1 ? "s" : ""} permanently deleted`);
       }
-      if (result.failure_count > 0) {
-        toast.error(`${result.failure_count} file${result.failure_count > 1 ? "s" : ""} failed to delete`);
+      if (result.failureCount > 0) {
+        toast.error(`${result.failureCount} file${result.failureCount > 1 ? "s" : ""} failed to delete`);
       }
     } catch {
       toast.error("Failed to delete files");

@@ -212,8 +212,8 @@ function FileBrowserContent() {
     if (fileIds.length > 0) {
       try {
         const result = await filesApi.bulkTrash(fileIds);
-        trashedFiles = result.success_count;
-        failed += result.failure_count;
+        trashedFiles = result.successCount;
+        failed += result.failureCount;
       } catch {
         failed += fileIds.length;
       }
@@ -250,11 +250,11 @@ function FileBrowserContent() {
       const result = await filesApi.bulkMove(fileIds, targetFolderId);
       queryClient.invalidateQueries({ queryKey: ["files"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
-      if (result.success_count > 0) {
-        toast.success(`${result.success_count} file${result.success_count > 1 ? "s" : ""} moved`);
+      if (result.successCount > 0) {
+        toast.success(`${result.successCount} file${result.successCount > 1 ? "s" : ""} moved`);
       }
-      if (result.failure_count > 0) {
-        toast.error(`${result.failure_count} file${result.failure_count > 1 ? "s" : ""} failed to move`);
+      if (result.failureCount > 0) {
+        toast.error(`${result.failureCount} file${result.failureCount > 1 ? "s" : ""} failed to move`);
       }
     } catch {
       toast.error("Failed to move files");

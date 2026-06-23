@@ -135,9 +135,12 @@ def seed(cur, ns: str) -> int:
     rng = random.Random(42)
     total = 650
 
+    # Load actual admin_users created_at to guarantee temporal consistency
+    cur.execute("SELECT id, created_at FROM admin_users")
+    admin_created = {str(row[0]): row[1] for row in cur.fetchall()}
+
     # Flatten resource_type -> actions for weighted selection
     resource_types = list(RESOURCE_ACTIONS.keys())
-    # Weight AdminUser and FeatureFlag higher (more common ops)
     weights = []
     for rt in resource_types:
         if rt in ("AdminUser", "FeatureFlag", "SystemConfig"):
@@ -153,6 +156,7 @@ def seed(cur, ns: str) -> int:
         "created_at", "updated_at",
     ]
 
+    _now = now()
     rows: list[tuple] = []
     for i in range(total):
         log_id = stable_id("audit-log", i)
@@ -174,7 +178,6 @@ def seed(cur, ns: str) -> int:
             action = rng.choice(RESOURCE_ACTIONS[resource_type])
             user_agent = rng.choice(BROWSER_UAS)
 
-            # Mix of internal and external IPs (80% internal, 20% external)
             if rng.random() < 0.80:
                 if rng.random() < 0.5:
                     ip_addr = f"10.{rng.randint(0,255)}.{rng.randint(0,255)}.{rng.randint(1,254)}"
@@ -186,9 +189,13 @@ def seed(cur, ns: str) -> int:
         resource_id = stable_id(resource_type.lower(), rng.randint(0, 499))
         changes = _changes_for_action(rng, action)
 
-        # All timestamps within the last 30 days (guarantees temporal consistency)
+        # Timestamp within last 30 days, but always after the actor's created_at
         offset_minutes = rng.randint(0, 30 * 24 * 60)
-        created_at = now() - timedelta(minutes=offset_minutes)
+        created_at = _now - timedelta(minutes=offset_minutes)
+        if actor_id and actor_id in admin_created:
+            earliest = admin_created[actor_id] + timedelta(minutes=1)
+            if created_at < earliest:
+                created_at = earliest
         updated_at = created_at
 
         rows.append((

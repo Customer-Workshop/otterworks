@@ -866,6 +866,16 @@ mod tests {
         };
 
         let s3 = crate::storage::S3Client::new(&config.aws).await;
+
+        // Verify LocalStack is reachable before running integration tests
+        if s3
+            .upload_object("__healthcheck__", bytes::Bytes::from("ok"), "text/plain")
+            .await
+            .is_err()
+        {
+            return None;
+        }
+
         let meta = crate::metadata::MetadataClient::new(&config.aws).await;
         let events = crate::events::EventPublisher::new(&config.sns, &config.aws).await;
 

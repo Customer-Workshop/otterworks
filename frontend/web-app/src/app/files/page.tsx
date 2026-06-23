@@ -244,6 +244,7 @@ function FileBrowserContent() {
     const fileIds = ids.filter((id) => !folders.some((f) => f.id === id));
     if (fileIds.length === 0) {
       toast.error("No files selected to move");
+      setShowBulkMove(false);
       return;
     }
     try {

@@ -82,7 +82,12 @@ function TrashContent() {
       queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
       toast.success("Trash emptied");
     },
-    onError: () => toast.error("Failed to empty trash"),
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
+      toast.error("Failed to empty trash — some items may have been deleted");
+    },
   });
 
   const toggleSelect = (id: string) => {

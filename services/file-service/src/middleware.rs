@@ -114,3 +114,90 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_metrics_returns_non_empty_string() {
+        // Ensure at least one metric family is registered by touching the counters.
+        HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "/ping", "200"])
+            .inc();
+        let output = render_metrics();
+        assert!(!output.is_empty());
+    }
+
+    #[test]
+    fn render_metrics_contains_prometheus_format() {
+        // Force the lazy_static metrics to be initialised by touching them.
+        HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "/health", "200"])
+            .inc();
+        HTTP_REQUEST_DURATION
+            .with_label_values(&["GET", "/health"])
+            .observe(0.005);
+
+        let output = render_metrics();
+        assert!(
+            output.contains("http_requests_total") || output.contains("# HELP"),
+            "expected prometheus metric names or comments"
+        );
+    }
+
+    #[test]
+    fn http_requests_total_increment_does_not_panic() {
+        HTTP_REQUESTS_TOTAL
+            .with_label_values(&["POST", "/upload", "201"])
+            .inc();
+        HTTP_REQUESTS_TOTAL
+            .with_label_values(&["DELETE", "/files/123", "204"])
+            .inc();
+    }
+
+    #[test]
+    fn http_requests_total_counter_registered() {
+        let val = HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "/test_registered", "200"]);
+        val.inc();
+        assert!(val.get() >= 1);
+    }
+
+    #[test]
+    fn http_request_duration_observe_does_not_panic() {
+        HTTP_REQUEST_DURATION
+            .with_label_values(&["GET", "/files"])
+            .observe(0.1);
+        HTTP_REQUEST_DURATION
+            .with_label_values(&["PUT", "/files/move"])
+            .observe(1.5);
+    }
+
+    #[test]
+    fn http_request_duration_histogram_registered() {
+        let hist = HTTP_REQUEST_DURATION
+            .with_label_values(&["GET", "/test_hist_registered"]);
+        hist.observe(0.042);
+        let count = hist.get_sample_count();
+        assert!(count >= 1);
+    }
+
+    #[test]
+    fn render_metrics_includes_request_counter_after_increment() {
+        HTTP_REQUESTS_TOTAL
+            .with_label_values(&["GET", "/metrics_check", "200"])
+            .inc();
+        let output = render_metrics();
+        assert!(output.contains("http_requests_total"));
+    }
+
+    #[test]
+    fn render_metrics_includes_duration_histogram_after_observe() {
+        HTTP_REQUEST_DURATION
+            .with_label_values(&["GET", "/duration_check"])
+            .observe(0.01);
+        let output = render_metrics();
+        assert!(output.contains("http_request_duration_seconds"));
+    }
+}

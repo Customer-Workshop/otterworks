@@ -710,9 +710,9 @@ pub async fn list_activity(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::SharePermission;
     use actix_web::http::StatusCode;
     use actix_web::test;
-    use crate::models::SharePermission;
 
     async fn dummy_meta() -> web::Data<MetadataClient> {
         let cfg = aws_config::defaults(aws_config::BehaviorVersion::latest())
@@ -872,7 +872,9 @@ mod tests {
         let meta = dummy_meta().await;
         let events = dummy_events().await;
         let path = web::Path::from("not-a-uuid".to_string());
-        let body = web::Json(RenameFileRequest { name: "test".into() });
+        let body = web::Json(RenameFileRequest {
+            name: "test".into(),
+        });
         let err = rename_file(meta, events, path, body).await.unwrap_err();
         assert!(matches!(err, ServiceError::BadRequest(_)));
     }
@@ -904,10 +906,7 @@ mod tests {
     #[actix_rt::test]
     async fn test_remove_share_invalid_file_id() {
         let meta = dummy_meta().await;
-        let path = web::Path::from((
-            "not-a-uuid".to_string(),
-            Uuid::new_v4().to_string(),
-        ));
+        let path = web::Path::from(("not-a-uuid".to_string(), Uuid::new_v4().to_string()));
         let err = remove_share(meta, path).await.unwrap_err();
         assert!(matches!(err, ServiceError::BadRequest(_)));
     }
@@ -915,10 +914,7 @@ mod tests {
     #[actix_rt::test]
     async fn test_remove_share_invalid_user_id() {
         let meta = dummy_meta().await;
-        let path = web::Path::from((
-            Uuid::new_v4().to_string(),
-            "not-a-uuid".to_string(),
-        ));
+        let path = web::Path::from((Uuid::new_v4().to_string(), "not-a-uuid".to_string()));
         let err = remove_share(meta, path).await.unwrap_err();
         assert!(matches!(err, ServiceError::BadRequest(_)));
     }

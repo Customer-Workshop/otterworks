@@ -66,13 +66,14 @@ function TrashContent() {
   const emptyTrashMutation = useMutation({
     mutationFn: async () => {
       const pageSize = 100;
-      let page = 1;
-      let batch = await filesApi.getTrashed(page, pageSize);
+      let batch = await filesApi.getTrashed(1, pageSize);
       while (batch.data.length > 0) {
         const ids = batch.data.map((i) => i.id);
-        await filesApi.bulkDelete(ids);
-        page = 1;
-        batch = await filesApi.getTrashed(page, pageSize);
+        const result = await filesApi.bulkDelete(ids);
+        if (result.successCount === 0) {
+          throw new Error(`Failed to delete ${result.failureCount} items`);
+        }
+        batch = await filesApi.getTrashed(1, pageSize);
       }
     },
     onSuccess: () => {

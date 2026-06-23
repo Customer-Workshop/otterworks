@@ -692,7 +692,9 @@ pub async fn bulk_trash(
         "Bulk trash completed"
     );
 
-    if failure_count > 0 && success_count > 0 {
+    if failure_count > 0 && success_count == 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY).json(response))
+    } else if failure_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
     } else {
         Ok(HttpResponse::Ok().json(response))
@@ -755,7 +757,9 @@ pub async fn bulk_restore(
         "Bulk restore completed"
     );
 
-    if failure_count > 0 && success_count > 0 {
+    if failure_count > 0 && success_count == 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY).json(response))
+    } else if failure_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
     } else {
         Ok(HttpResponse::Ok().json(response))
@@ -819,7 +823,9 @@ pub async fn bulk_delete(
         "Bulk delete completed"
     );
 
-    if failure_count > 0 && success_count > 0 {
+    if failure_count > 0 && success_count == 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY).json(response))
+    } else if failure_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
     } else {
         Ok(HttpResponse::Ok().json(response))
@@ -871,7 +877,9 @@ pub async fn bulk_move(
 
     tracing::info!(success = success_count, failed = failure_count, folder_id = ?body.folder_id, "Bulk move completed");
 
-    if failure_count > 0 && success_count > 0 {
+    if failure_count > 0 && success_count == 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::UNPROCESSABLE_ENTITY).json(response))
+    } else if failure_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
     } else {
         Ok(HttpResponse::Ok().json(response))

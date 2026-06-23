@@ -158,8 +158,7 @@ mod tests {
 
     #[test]
     fn http_requests_total_counter_registered() {
-        let val = HTTP_REQUESTS_TOTAL
-            .with_label_values(&["GET", "/test_registered", "200"]);
+        let val = HTTP_REQUESTS_TOTAL.with_label_values(&["GET", "/test_registered", "200"]);
         val.inc();
         assert!(val.get() >= 1);
     }
@@ -176,8 +175,7 @@ mod tests {
 
     #[test]
     fn http_request_duration_histogram_registered() {
-        let hist = HTTP_REQUEST_DURATION
-            .with_label_values(&["GET", "/test_hist_registered"]);
+        let hist = HTTP_REQUEST_DURATION.with_label_values(&["GET", "/test_hist_registered"]);
         hist.observe(0.042);
         let count = hist.get_sample_count();
         assert!(count >= 1);

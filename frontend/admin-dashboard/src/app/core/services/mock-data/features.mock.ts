@@ -34,7 +34,7 @@ export const MOCK_FEATURE_FLAGS: FeatureFlag[] = [
   {
     id: 'ff-007', name: 'Bulk File Operations', key: 'bulk-file-ops',
     description: 'Allow selecting and performing operations on multiple files at once',
-    enabled: false, category: 'Storage', updatedAt: '2026-04-05T09:00:00Z', updatedBy: 'Alice Johnson',
+    enabled: true, category: 'Storage', updatedAt: '2026-04-05T09:00:00Z', updatedBy: 'Alice Johnson',
   },
   {
     id: 'ff-008', name: 'Public Link Sharing', key: 'public-link-sharing',

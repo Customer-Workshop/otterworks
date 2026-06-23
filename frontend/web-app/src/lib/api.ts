@@ -324,6 +324,27 @@ export const filesApi = {
     const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
     return (data.files ?? []).map((f) => normalizeFileItem(f as unknown as Record<string, unknown>));
   },
+  bulkTrash: async (fileIds: string[], folderIds: string[]): Promise<{ succeeded: number; failed: number }> => {
+    const { data } = await apiClient.post<{ succeeded: number; failed: number; errors: Array<{ id: string; error: string }> }>(
+      "/files/bulk/trash",
+      { file_ids: fileIds, folder_ids: folderIds }
+    );
+    return data;
+  },
+  bulkMove: async (fileIds: string[], targetFolderId: string | null): Promise<{ succeeded: number; failed: number }> => {
+    const { data } = await apiClient.post<{ succeeded: number; failed: number }>(
+      "/files/bulk/move",
+      { file_ids: fileIds, target_folder_id: targetFolderId }
+    );
+    return data;
+  },
+  bulkDownload: async (fileIds: string[]): Promise<Array<{ file_id: string; name: string; url: string }>> => {
+    const { data } = await apiClient.post<{ urls: Array<{ file_id: string; name: string; url: string; expires_in_secs: number }> }>(
+      "/files/bulk/download",
+      { file_ids: fileIds }
+    );
+    return data.urls.map(u => ({ ...u, url: u.url.replace("://localstack:", "://localhost:") }));
+  },
 };
 
 // ── Documents ─────────────────────────────────────────────────

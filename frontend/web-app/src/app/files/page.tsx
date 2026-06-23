@@ -17,6 +17,8 @@ import {
   Trash2,
   X,
   CheckSquare,
+  Download,
+  FolderInput,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb";
@@ -25,6 +27,7 @@ import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
 import type { FileUploadDropzoneHandle } from "@/components/files/file-upload-dropzone";
 import { ShareDialog } from "@/components/files/share-dialog";
+import { MoveDialog } from "@/components/files/move-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -46,6 +49,8 @@ function FileBrowserContent() {
   const [shareFileId, setShareFileId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionActive, setSelectionActive] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const bulkOpsEnabled = process.env.NEXT_PUBLIC_ENABLE_BULK_OPS !== "false";
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -199,37 +204,56 @@ function FileBrowserContent() {
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
-    const fileIds = ids.filter((id) => !folderIds.includes(id));
-    let trashedFiles = 0;
-    let deletedFolders = 0;
-    let failed = 0;
-    for (const id of fileIds) {
-      try {
-        await filesApi.delete(id);
-        trashedFiles++;
-      } catch {
-        failed++;
-      }
-    }
-    for (const id of folderIds) {
-      try {
-        await filesApi.deleteFolder(id);
-        deletedFolders++;
-      } catch {
-        failed++;
-      }
+    const folderIdList = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
+    const fileIdList = ids.filter((id) => !folderIdList.includes(id));
+    try {
+      const result = await filesApi.bulkTrash(fileIdList, folderIdList);
+      if (result.succeeded > 0) toast.success(`${result.succeeded} item(s) deleted`);
+      if (result.failed > 0) toast.error(`${result.failed} item(s) failed to delete`);
+    } catch {
+      toast.error("Bulk delete failed");
     }
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
-    const msgs: string[] = [];
-    if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles > 1 ? "s" : ""} moved to trash`);
-    if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders > 1 ? "s" : ""} deleted`);
-    if (msgs.length > 0) toast.success(msgs.join(", "));
-    if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
     clearSelection();
+  };
+
+  const handleBulkMove = async (targetFolderId: string | null) => {
+    const fileIds = Array.from(selectedIds).filter(id => !folders.some(f => f.id === id));
+    if (fileIds.length === 0) return;
+    try {
+      const result = await filesApi.bulkMove(fileIds, targetFolderId);
+      if (result.succeeded > 0) toast.success(`${result.succeeded} file(s) moved`);
+      if (result.failed > 0) toast.error(`${result.failed} file(s) failed to move`);
+    } catch {
+      toast.error("Bulk move failed");
+    }
+    queryClient.invalidateQueries({ queryKey: ["files"] });
+    queryClient.invalidateQueries({ queryKey: ["folders"] });
+    clearSelection();
+    setShowMoveDialog(false);
+  };
+
+  const handleBulkDownload = async () => {
+    const fileIds = Array.from(selectedIds).filter(id => !folders.some(f => f.id === id));
+    if (fileIds.length === 0) return;
+    try {
+      const urls = await filesApi.bulkDownload(fileIds);
+      for (const { url, name } of urls) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      toast.success(`Downloading ${urls.length} file(s)`);
+    } catch {
+      toast.error("Bulk download failed");
+    }
   };
 
   const handleDownload = useCallback(
@@ -276,7 +300,7 @@ function FileBrowserContent() {
       {breadcrumbs && <Breadcrumb items={breadcrumbs} />}
 
       {/* Bulk action bar */}
-      {selectionActive && selectedIds.size > 0 && (
+      {bulkOpsEnabled && selectionActive && selectedIds.size > 0 && (
         <div className="flex items-center justify-between px-4 py-3 bg-otter-50 border border-otter-200 rounded-lg">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-otter-800">
@@ -290,6 +314,20 @@ function FileBrowserContent() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowMoveDialog(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <FolderInput size={14} />
+              Move
+            </button>
+            <button
+              onClick={handleBulkDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <Download size={14} />
+              Download
+            </button>
             <button
               onClick={handleBulkDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition"
@@ -312,21 +350,23 @@ function FileBrowserContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Files</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setSelectionActive(!selectionActive);
-              if (selectionActive) clearSelection();
-            }}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition",
-              selectionActive
-                ? "text-otter-700 bg-otter-50 border-otter-300"
-                : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
-            )}
-          >
-            <CheckSquare size={16} />
-            Select
-          </button>
+          {bulkOpsEnabled && (
+            <button
+              onClick={() => {
+                setSelectionActive(!selectionActive);
+                if (selectionActive) clearSelection();
+              }}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition",
+                selectionActive
+                  ? "text-otter-700 bg-otter-50 border-otter-300"
+                  : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
+              )}
+            >
+              <CheckSquare size={16} />
+              Select
+            </button>
+          )}
           <button
             onClick={() => setShowNewFolder(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -500,6 +540,14 @@ function FileBrowserContent() {
             </section>
           )}
         </div>
+      )}
+      {showMoveDialog && (
+        <MoveDialog
+          folders={folders}
+          currentFolderId={folderId}
+          onMove={handleBulkMove}
+          onClose={() => setShowMoveDialog(false)}
+        />
       )}
       {shareFileId && (() => {
         const shareFile = files.find((f) => f.id === shareFileId);

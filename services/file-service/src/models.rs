@@ -200,3 +200,43 @@ pub struct ActivityQuery {
 pub struct ActivityResponse {
     pub items: Vec<ActivityItem>,
 }
+
+// ── Bulk Operations ────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct BulkActionRequest {
+    pub file_ids: Vec<Uuid>,
+    pub folder_ids: Option<Vec<Uuid>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkMoveRequest {
+    pub file_ids: Vec<Uuid>,
+    pub target_folder_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkActionResponse {
+    pub succeeded: u32,
+    pub failed: u32,
+    pub errors: Vec<BulkItemError>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkItemError {
+    pub id: String,
+    pub error: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkDownloadResponse {
+    pub urls: Vec<BulkDownloadUrl>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkDownloadUrl {
+    pub file_id: String,
+    pub name: String,
+    pub url: String,
+    pub expires_in_secs: u64,
+}

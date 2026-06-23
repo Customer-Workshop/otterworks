@@ -293,6 +293,8 @@ function FileBrowserContent() {
     }
     if (downloaded > 0) {
       toast.success(`Downloading ${downloaded} file${downloaded > 1 ? "s" : ""}`);
+    } else {
+      toast.error("Failed to download files");
     }
   };
 

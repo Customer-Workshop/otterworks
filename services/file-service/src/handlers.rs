@@ -686,7 +686,11 @@ pub async fn bulk_trash(
         errors,
     };
 
-    tracing::info!(success = success_count, failed = failure_count, "Bulk trash completed");
+    tracing::info!(
+        success = success_count,
+        failed = failure_count,
+        "Bulk trash completed"
+    );
 
     if failure_count > 0 && success_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
@@ -745,7 +749,11 @@ pub async fn bulk_restore(
         errors,
     };
 
-    tracing::info!(success = success_count, failed = failure_count, "Bulk restore completed");
+    tracing::info!(
+        success = success_count,
+        failed = failure_count,
+        "Bulk restore completed"
+    );
 
     if failure_count > 0 && success_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
@@ -805,7 +813,11 @@ pub async fn bulk_delete(
         errors,
     };
 
-    tracing::info!(success = success_count, failed = failure_count, "Bulk delete completed");
+    tracing::info!(
+        success = success_count,
+        failed = failure_count,
+        "Bulk delete completed"
+    );
 
     if failure_count > 0 && success_count > 0 {
         Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))

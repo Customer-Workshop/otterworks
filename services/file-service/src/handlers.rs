@@ -685,7 +685,11 @@ pub async fn bulk_trash(
         }
     }
 
-    tracing::info!(succeeded = succeeded, failed = failed, "Bulk trash completed");
+    tracing::info!(
+        succeeded = succeeded,
+        failed = failed,
+        "Bulk trash completed"
+    );
     Ok(HttpResponse::Ok().json(BulkActionResponse {
         succeeded,
         failed,
@@ -720,7 +724,11 @@ pub async fn bulk_move(
         }
     }
 
-    tracing::info!(succeeded = succeeded, failed = failed, "Bulk move completed");
+    tracing::info!(
+        succeeded = succeeded,
+        failed = failed,
+        "Bulk move completed"
+    );
     Ok(HttpResponse::Ok().json(BulkActionResponse {
         succeeded,
         failed,
@@ -879,10 +887,7 @@ mod tests {
         Some((srv, meta_ret, s3_ret))
     }
 
-    async fn seed_file(
-        meta: &MetadataClient,
-        s3: &S3Client,
-    ) -> FileMetadata {
+    async fn seed_file(meta: &MetadataClient, s3: &S3Client) -> FileMetadata {
         let id = Uuid::new_v4();
         let owner = Uuid::new_v4();
         let now = chrono::Utc::now();

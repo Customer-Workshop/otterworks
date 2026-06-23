@@ -17,6 +17,8 @@ import {
   Trash2,
   X,
   CheckSquare,
+  Download,
+  FolderInput,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/layout/breadcrumb";
@@ -25,6 +27,7 @@ import { FolderCard } from "@/components/files/folder-card";
 import { FileUploadDropzone } from "@/components/files/file-upload-dropzone";
 import type { FileUploadDropzoneHandle } from "@/components/files/file-upload-dropzone";
 import { ShareDialog } from "@/components/files/share-dialog";
+import { FolderPickerDialog } from "@/components/files/folder-picker-dialog";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -46,6 +49,7 @@ function FileBrowserContent() {
   const [shareFileId, setShareFileId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionActive, setSelectionActive] = useState(false);
+  const [showBulkMove, setShowBulkMove] = useState(false);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -204,14 +208,17 @@ function FileBrowserContent() {
     let trashedFiles = 0;
     let deletedFolders = 0;
     let failed = 0;
-    for (const id of fileIds) {
+
+    if (fileIds.length > 0) {
       try {
-        await filesApi.delete(id);
-        trashedFiles++;
+        const result = await filesApi.bulkTrash(fileIds);
+        trashedFiles = result.success_count;
+        failed += result.failure_count;
       } catch {
-        failed++;
+        failed += fileIds.length;
       }
     }
+
     for (const id of folderIds) {
       try {
         await filesApi.deleteFolder(id);
@@ -230,6 +237,62 @@ function FileBrowserContent() {
     if (msgs.length > 0) toast.success(msgs.join(", "));
     if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
     clearSelection();
+  };
+
+  const handleBulkMove = async (targetFolderId: string | null) => {
+    const ids = Array.from(selectedIds);
+    const fileIds = ids.filter((id) => !folders.some((f) => f.id === id));
+    if (fileIds.length === 0) {
+      toast.error("No files selected to move");
+      return;
+    }
+    try {
+      const result = await filesApi.bulkMove(fileIds, targetFolderId);
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      if (result.success_count > 0) {
+        toast.success(`${result.success_count} file${result.success_count > 1 ? "s" : ""} moved`);
+      }
+      if (result.failure_count > 0) {
+        toast.error(`${result.failure_count} file${result.failure_count > 1 ? "s" : ""} failed to move`);
+      }
+    } catch {
+      toast.error("Failed to move files");
+    }
+    clearSelection();
+    setShowBulkMove(false);
+  };
+
+  const handleBulkDownload = async () => {
+    const ids = Array.from(selectedIds);
+    const fileIds = ids.filter((id) => !folders.some((f) => f.id === id));
+    if (fileIds.length === 0) {
+      toast.error("No files selected to download");
+      return;
+    }
+    let downloaded = 0;
+    for (const id of fileIds) {
+      try {
+        const file = files.find((f) => f.id === id);
+        const url = await filesApi.getDownloadUrl(id);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file?.name ?? "download";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        downloaded++;
+        if (downloaded < fileIds.length) {
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      } catch {
+        // continue with next file
+      }
+    }
+    if (downloaded > 0) {
+      toast.success(`Downloading ${downloaded} file${downloaded > 1 ? "s" : ""}`);
+    }
   };
 
   const handleDownload = useCallback(
@@ -290,6 +353,20 @@ function FileBrowserContent() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBulkMove(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <FolderInput size={14} />
+              Move
+            </button>
+            <button
+              onClick={handleBulkDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <Download size={14} />
+              Download
+            </button>
             <button
               onClick={handleBulkDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition"
@@ -526,6 +603,13 @@ function FileBrowserContent() {
           />
         );
       })()}
+      {showBulkMove && (
+        <FolderPickerDialog
+          currentFolderId={folderId}
+          onSelect={handleBulkMove}
+          onClose={() => setShowBulkMove(false)}
+        />
+      )}
     </div>
   );
 }

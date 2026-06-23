@@ -324,6 +324,22 @@ export const filesApi = {
     const { data } = await apiClient.get<RawFileListResponse>("/files", { params });
     return (data.files ?? []).map((f) => normalizeFileItem(f as unknown as Record<string, unknown>));
   },
+  bulkTrash: async (fileIds: string[]): Promise<{ success_count: number; failure_count: number; errors: Array<{ file_id: string; error: string }> }> => {
+    const { data } = await apiClient.post("/files/bulk/trash", { file_ids: fileIds });
+    return data;
+  },
+  bulkRestore: async (fileIds: string[]): Promise<{ success_count: number; failure_count: number; errors: Array<{ file_id: string; error: string }> }> => {
+    const { data } = await apiClient.post("/files/bulk/restore", { file_ids: fileIds });
+    return data;
+  },
+  bulkDelete: async (fileIds: string[]): Promise<{ success_count: number; failure_count: number; errors: Array<{ file_id: string; error: string }> }> => {
+    const { data } = await apiClient.post("/files/bulk/delete", { file_ids: fileIds });
+    return data;
+  },
+  bulkMove: async (fileIds: string[], folderId: string | null): Promise<{ success_count: number; failure_count: number; errors: Array<{ file_id: string; error: string }> }> => {
+    const { data } = await apiClient.post("/files/bulk/move", { file_ids: fileIds, folder_id: folderId });
+    return data;
+  },
 };
 
 // ── Documents ─────────────────────────────────────────────────

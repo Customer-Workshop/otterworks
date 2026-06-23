@@ -16,7 +16,8 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
+    ActivityItem, ActivityQuery, ActivityResponse, BulkFileIdsRequest, BulkMoveRequest,
+    BulkOperationError, BulkOperationResponse, CreateFolderRequest, DownloadResponse,
     FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
     ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
     MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
@@ -638,6 +639,231 @@ pub async fn delete_folder(
     meta.delete_folder(&folder_id).await?;
     tracing::info!(folder_id = %folder_id, "Folder deleted");
     Ok(HttpResponse::NoContent().finish())
+}
+
+// -- Bulk Operation Handlers --
+
+const MAX_BULK_ITEMS: usize = 100;
+
+pub async fn bulk_trash(
+    _req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    body: web::Json<BulkFileIdsRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    if body.file_ids.is_empty() {
+        return Err(ServiceError::BadRequest("file_ids cannot be empty".into()));
+    }
+    if body.file_ids.len() > MAX_BULK_ITEMS {
+        return Err(ServiceError::BadRequest(format!(
+            "file_ids cannot exceed {} items",
+            MAX_BULK_ITEMS
+        )));
+    }
+
+    let mut success_count: usize = 0;
+    let mut errors: Vec<BulkOperationError> = Vec::new();
+
+    for file_id in &body.file_ids {
+        match meta.trash_file(file_id).await {
+            Ok(file) => {
+                let _ = events.file_trashed(file_id, &file.owner_id).await;
+                success_count += 1;
+            }
+            Err(e) => {
+                errors.push(BulkOperationError {
+                    file_id: *file_id,
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    let failure_count = errors.len();
+    let response = BulkOperationResponse {
+        success_count,
+        failure_count,
+        errors,
+    };
+
+    tracing::info!(success = success_count, failed = failure_count, "Bulk trash completed");
+
+    if failure_count > 0 && success_count > 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
+    } else {
+        Ok(HttpResponse::Ok().json(response))
+    }
+}
+
+pub async fn bulk_restore(
+    _req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    body: web::Json<BulkFileIdsRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    if body.file_ids.is_empty() {
+        return Err(ServiceError::BadRequest("file_ids cannot be empty".into()));
+    }
+    if body.file_ids.len() > MAX_BULK_ITEMS {
+        return Err(ServiceError::BadRequest(format!(
+            "file_ids cannot exceed {} items",
+            MAX_BULK_ITEMS
+        )));
+    }
+
+    let mut success_count: usize = 0;
+    let mut errors: Vec<BulkOperationError> = Vec::new();
+
+    for file_id in &body.file_ids {
+        match meta.restore_file(file_id).await {
+            Ok(file) => {
+                let _ = events
+                    .file_restored(
+                        file_id,
+                        &file.owner_id,
+                        file.folder_id.as_ref(),
+                        &file.name,
+                        &file.mime_type,
+                        file.size_bytes,
+                    )
+                    .await;
+                success_count += 1;
+            }
+            Err(e) => {
+                errors.push(BulkOperationError {
+                    file_id: *file_id,
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    let failure_count = errors.len();
+    let response = BulkOperationResponse {
+        success_count,
+        failure_count,
+        errors,
+    };
+
+    tracing::info!(success = success_count, failed = failure_count, "Bulk restore completed");
+
+    if failure_count > 0 && success_count > 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
+    } else {
+        Ok(HttpResponse::Ok().json(response))
+    }
+}
+
+pub async fn bulk_delete(
+    _req: HttpRequest,
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    body: web::Json<BulkFileIdsRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    if body.file_ids.is_empty() {
+        return Err(ServiceError::BadRequest("file_ids cannot be empty".into()));
+    }
+    if body.file_ids.len() > MAX_BULK_ITEMS {
+        return Err(ServiceError::BadRequest(format!(
+            "file_ids cannot exceed {} items",
+            MAX_BULK_ITEMS
+        )));
+    }
+
+    let mut success_count: usize = 0;
+    let mut errors: Vec<BulkOperationError> = Vec::new();
+
+    for file_id in &body.file_ids {
+        match meta.get_file(file_id).await {
+            Ok(file) => match meta.delete_file(file_id).await {
+                Ok(_) => {
+                    let _ = s3.delete_object(&file.s3_key).await;
+                    let _ = events.file_deleted(file_id, &file.owner_id).await;
+                    success_count += 1;
+                }
+                Err(e) => {
+                    errors.push(BulkOperationError {
+                        file_id: *file_id,
+                        error: e.to_string(),
+                    });
+                }
+            },
+            Err(e) => {
+                errors.push(BulkOperationError {
+                    file_id: *file_id,
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    let failure_count = errors.len();
+    let response = BulkOperationResponse {
+        success_count,
+        failure_count,
+        errors,
+    };
+
+    tracing::info!(success = success_count, failed = failure_count, "Bulk delete completed");
+
+    if failure_count > 0 && success_count > 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
+    } else {
+        Ok(HttpResponse::Ok().json(response))
+    }
+}
+
+pub async fn bulk_move(
+    _req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+    events: web::Data<EventPublisher>,
+    body: web::Json<BulkMoveRequest>,
+) -> Result<HttpResponse, ServiceError> {
+    if body.file_ids.is_empty() {
+        return Err(ServiceError::BadRequest("file_ids cannot be empty".into()));
+    }
+    if body.file_ids.len() > MAX_BULK_ITEMS {
+        return Err(ServiceError::BadRequest(format!(
+            "file_ids cannot exceed {} items",
+            MAX_BULK_ITEMS
+        )));
+    }
+
+    let mut success_count: usize = 0;
+    let mut errors: Vec<BulkOperationError> = Vec::new();
+
+    for file_id in &body.file_ids {
+        match meta.move_file(file_id, body.folder_id).await {
+            Ok(file) => {
+                let _ = events
+                    .file_moved(file_id, &file.owner_id, body.folder_id.as_ref())
+                    .await;
+                success_count += 1;
+            }
+            Err(e) => {
+                errors.push(BulkOperationError {
+                    file_id: *file_id,
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    let failure_count = errors.len();
+    let response = BulkOperationResponse {
+        success_count,
+        failure_count,
+        errors,
+    };
+
+    tracing::info!(success = success_count, failed = failure_count, folder_id = ?body.folder_id, "Bulk move completed");
+
+    if failure_count > 0 && success_count > 0 {
+        Ok(HttpResponse::build(actix_web::http::StatusCode::MULTI_STATUS).json(response))
+    } else {
+        Ok(HttpResponse::Ok().json(response))
+    }
 }
 
 // -- Activity Handler --

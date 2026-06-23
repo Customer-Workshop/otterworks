@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, RotateCcw, AlertTriangle, X } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle, X, CheckSquare } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,6 +28,9 @@ function TrashContent() {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<FileItem | null>(null);
   const [showEmptyTrashConfirm, setShowEmptyTrashConfirm] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionActive, setSelectionActive] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["files", "trash"],
@@ -62,11 +65,9 @@ function TrashContent() {
 
   const emptyTrashMutation = useMutation({
     mutationFn: async () => {
-      const pageSize = 50;
-      let batch = await filesApi.getTrashed(1, pageSize);
-      while (batch.data.length > 0) {
-        await Promise.all(batch.data.map((item) => filesApi.permanentDelete(item.id)));
-        batch = await filesApi.getTrashed(1, pageSize);
+      const allIds = items.map((i) => i.id);
+      if (allIds.length > 0) {
+        await filesApi.bulkDelete(allIds);
       }
     },
     onSuccess: () => {
@@ -78,6 +79,65 @@ function TrashContent() {
     onError: () => toast.error("Failed to empty trash"),
   });
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(items.map((i) => i.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectionActive(false);
+  };
+
+  const handleBulkRestore = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    try {
+      const result = await filesApi.bulkRestore(ids);
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
+      if (result.success_count > 0) {
+        toast.success(`${result.success_count} file${result.success_count > 1 ? "s" : ""} restored`);
+      }
+      if (result.failure_count > 0) {
+        toast.error(`${result.failure_count} file${result.failure_count > 1 ? "s" : ""} failed to restore`);
+      }
+    } catch {
+      toast.error("Failed to restore files");
+    }
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    try {
+      const result = await filesApi.bulkDelete(ids);
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
+      if (result.success_count > 0) {
+        toast.success(`${result.success_count} file${result.success_count > 1 ? "s" : ""} permanently deleted`);
+      }
+      if (result.failure_count > 0) {
+        toast.error(`${result.failure_count} file${result.failure_count > 1 ? "s" : ""} failed to delete`);
+      }
+    } catch {
+      toast.error("Failed to delete files");
+    }
+    clearSelection();
+    setShowBulkDeleteConfirm(false);
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -87,17 +147,75 @@ function TrashContent() {
             Items in trash will be permanently deleted after 30 days
           </p>
         </div>
-        {items.length > 0 && (
-          <button
-            onClick={() => setShowEmptyTrashConfirm(true)}
-            disabled={emptyTrashMutation.isPending}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition disabled:opacity-50"
-          >
-            <Trash2 size={16} />
-            Empty Trash
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <button
+              onClick={() => {
+                setSelectionActive(!selectionActive);
+                if (selectionActive) clearSelection();
+              }}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition ${
+                selectionActive
+                  ? "text-otter-700 bg-otter-50 border border-otter-300"
+                  : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <CheckSquare size={16} />
+              Select
+            </button>
+          )}
+          {items.length > 0 && (
+            <button
+              onClick={() => setShowEmptyTrashConfirm(true)}
+              disabled={emptyTrashMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              Empty Trash
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selectionActive && selectedIds.size > 0 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-otter-50 border border-otter-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-otter-800">
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={selectAll}
+              className="text-sm text-otter-600 hover:text-otter-800 underline"
+            >
+              Select all
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkRestore}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-otter-600 bg-white border border-otter-200 rounded-lg hover:bg-otter-50 transition"
+            >
+              <RotateCcw size={14} />
+              Restore selected
+            </button>
+            <button
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition"
+            >
+              <Trash2 size={14} />
+              Delete selected
+            </button>
+            <button
+              onClick={clearSelection}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            >
+              <X size={14} />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Warning banner */}
       {items.length > 0 && (
@@ -127,6 +245,9 @@ function TrashContent() {
               onRestore={() => restoreMutation.mutate(item.id)}
               onDelete={() => setDeleteTarget(item)}
               isRestoring={restoreMutation.isPending}
+              selected={selectedIds.has(item.id)}
+              onSelect={toggleSelect}
+              selectionActive={selectionActive}
             />
           ))}
         </div>
@@ -144,6 +265,17 @@ function TrashContent() {
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Confirm bulk permanent delete */}
+      <ConfirmDialog
+        open={showBulkDeleteConfirm}
+        title="Permanently delete selected"
+        description={`This will permanently delete ${selectedIds.size} item${selectedIds.size === 1 ? "" : "s"}. This action cannot be undone.`}
+        confirmLabel="Delete permanently"
+        variant="destructive"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteConfirm(false)}
       />
 
       {/* Confirm empty trash */}
@@ -177,16 +309,31 @@ function TrashRow({
   onRestore,
   onDelete,
   isRestoring,
+  selected,
+  onSelect,
+  selectionActive,
 }: {
   item: FileItem;
   onRestore: () => void;
   onDelete: () => void;
   isRestoring: boolean;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
+  selectionActive?: boolean;
 }) {
   const Icon = getTrashIcon(item);
 
   return (
     <div className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition">
+      {selectionActive && (
+        <input
+          type="checkbox"
+          checked={selected ?? false}
+          onChange={() => onSelect?.(item.id)}
+          className="w-4 h-4 rounded border-gray-300 text-otter-600 focus:ring-otter-500"
+          aria-label={`Select ${item.name}`}
+        />
+      )}
       <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
         <Icon size={20} className="text-gray-400" />
       </div>

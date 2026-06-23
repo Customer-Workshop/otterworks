@@ -231,6 +231,7 @@ pub struct BulkItemError {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BulkDownloadResponse {
     pub urls: Vec<BulkDownloadUrl>,
+    pub errors: Vec<BulkItemError>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

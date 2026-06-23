@@ -222,7 +222,10 @@ function FileBrowserContent() {
 
   const handleBulkMove = async (targetFolderId: string | null) => {
     const fileIds = Array.from(selectedIds).filter(id => !folders.some(f => f.id === id));
-    if (fileIds.length === 0) return;
+    if (fileIds.length === 0) {
+      setShowMoveDialog(false);
+      return;
+    }
     try {
       const result = await filesApi.bulkMove(fileIds, targetFolderId);
       if (result.succeeded > 0) toast.success(`${result.succeeded} file(s) moved`);

@@ -742,19 +742,36 @@ pub async fn bulk_download(
     body: web::Json<BulkActionRequest>,
 ) -> Result<HttpResponse, ServiceError> {
     let mut urls: Vec<BulkDownloadUrl> = Vec::new();
+    let mut errors: Vec<BulkItemError> = Vec::new();
 
     for file_id in &body.file_ids {
-        let file = meta.get_file(file_id).await?;
-        let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
-        urls.push(BulkDownloadUrl {
-            file_id: file_id.to_string(),
-            name: file.name,
-            url,
-            expires_in_secs: 3600,
-        });
+        match meta.get_file(file_id).await {
+            Ok(file) => match s3.presigned_download_url(&file.s3_key, 3600).await {
+                Ok(url) => {
+                    urls.push(BulkDownloadUrl {
+                        file_id: file_id.to_string(),
+                        name: file.name,
+                        url,
+                        expires_in_secs: 3600,
+                    });
+                }
+                Err(e) => {
+                    errors.push(BulkItemError {
+                        id: file_id.to_string(),
+                        error: e.to_string(),
+                    });
+                }
+            },
+            Err(e) => {
+                errors.push(BulkItemError {
+                    id: file_id.to_string(),
+                    error: e.to_string(),
+                });
+            }
+        }
     }
 
-    Ok(HttpResponse::Ok().json(BulkDownloadResponse { urls }))
+    Ok(HttpResponse::Ok().json(BulkDownloadResponse { urls, errors }))
 }
 
 // -- Activity Handler --
@@ -1160,6 +1177,7 @@ mod tests {
         assert!(!body.urls[0].url.is_empty());
         assert!(!body.urls[1].url.is_empty());
         assert_eq!(body.urls[0].expires_in_secs, 3600);
+        assert!(body.errors.is_empty());
     }
 
     #[actix_rt::test]
@@ -1189,5 +1207,6 @@ mod tests {
 
         let body: BulkDownloadResponse = actix_web::test::read_body_json(resp).await;
         assert!(body.urls.is_empty());
+        assert!(body.errors.is_empty());
     }
 }

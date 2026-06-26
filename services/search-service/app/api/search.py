@@ -241,7 +241,7 @@ async def search_analytics(
 ):
     """Search analytics: popular queries, zero-result queries."""
     try:
-        analytics = get_search_analytics()
+        analytics = await asyncio.to_thread(get_search_analytics)
         return JSONResponse(status_code=200, content=analytics.to_dict())
     except Exception:
         logger.exception("analytics_failed")

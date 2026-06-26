@@ -63,8 +63,9 @@ def app(app_config: AppConfig, mock_meilisearch_client: MagicMock):
     with patch("app.services.meilisearch_client.meilisearch.Client") as mock_cls:
         mock_cls.return_value = mock_meilisearch_client
         fastapi_app = create_app(app_config)
-        # Manually set the search_service on app state for tests
-        # (lifespan doesn't run in tests using TestClient directly)
+        # Lifespan only runs when TestClient is used as a context manager;
+        # since our client fixture calls TestClient(app) directly, we set
+        # search_service here to ensure handlers can access it.
         search_service = MeiliSearchService(app_config.meilisearch)
         fastapi_app.state.search_service = search_service
         yield fastapi_app

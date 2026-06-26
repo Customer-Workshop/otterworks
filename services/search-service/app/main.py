@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
 import time
 
 import structlog
-from flask import Flask, g, request as flask_request
-from flask_cors import CORS
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.health import REQUEST_COUNT, REQUEST_LATENCY, health_bp
-from app.api.index import index_bp
-from app.api.search import search_bp
+from app.api.health import REQUEST_COUNT, REQUEST_LATENCY, health_router
+from app.api.index import index_router
+from app.api.search import search_router
 from app.config import AppConfig
-from app.middleware.auth import require_auth
+from app.middleware.auth import AuthMiddleware
 from app.services.meilisearch_client import MeiliSearchService
 from app.services.sqs_consumer import SQSConsumer
 
@@ -48,55 +51,43 @@ def configure_logging(log_level: str) -> None:
     )
 
 
-def create_app(config: AppConfig | None = None) -> Flask:
-    """Create and configure the Flask application."""
-    if config is None:
-        config = AppConfig()
+class PrometheusMiddleware(BaseHTTPMiddleware):
+    """Record request count and latency for Prometheus."""
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in ("/metrics", "/health"):
+            return await call_next(request)
+        start = time.monotonic()
+        response = await call_next(request)
+        elapsed = time.monotonic() - start
+        endpoint = request.url.path
+        REQUEST_COUNT.labels(
+            method=request.method, endpoint=endpoint, status=response.status_code
+        ).inc()
+        REQUEST_LATENCY.labels(method=request.method, endpoint=endpoint).observe(elapsed)
+        return response
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown."""
+    config: AppConfig = app.state.config
 
     configure_logging(config.log_level)
 
-    app = Flask(__name__)
-    CORS(app, origins=["http://localhost:3000", "http://localhost:4200"])
-
-    # Store config on the app
-    app.config["APP_CONFIG"] = config
-
     # Initialize MeiliSearch service
     search_service = MeiliSearchService(config.meilisearch)
-    app.config["SEARCH_SERVICE"] = search_service
+    app.state.search_service = search_service
 
     # Try to create indices on startup (non-fatal if MeiliSearch is not available)
     try:
-        search_service.ensure_indices()
+        await asyncio.to_thread(search_service.ensure_indices)
         logger.info("meilisearch_indices_ensured")
     except Exception:
         logger.warning("meilisearch_indices_creation_deferred", reason="MeiliSearch not available")
 
-    # Register blueprints
-    app.register_blueprint(health_bp)
-    app.register_blueprint(search_bp, url_prefix="/api/v1/search")
-    app.register_blueprint(index_bp, url_prefix="/api/v1/search")
-
-    # Register authentication middleware
-    require_auth(app)
-
-    # Prometheus request instrumentation
-    @app.before_request
-    def _start_timer() -> None:
-        g.start_time = time.monotonic()
-
-    @app.after_request
-    def _record_metrics(response):  # type: ignore[no-untyped-def]
-        if flask_request.path in ("/metrics", "/health"):
-            return response
-        elapsed = time.monotonic() - g.get("start_time", time.monotonic())
-        endpoint = flask_request.url_rule.rule if flask_request.url_rule else "unknown"
-        method = flask_request.method
-        REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=response.status_code).inc()
-        REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(elapsed)
-        return response
-
     # Start SQS consumer if enabled
+    sqs_consumer: SQSConsumer | None = None
     if config.sqs.enabled:
         from app.services.indexer import Indexer
 
@@ -111,7 +102,6 @@ def create_app(config: AppConfig | None = None) -> Flask:
             visibility_timeout=config.sqs.visibility_timeout,
         )
         sqs_consumer.start()
-        app.config["SQS_CONSUMER"] = sqs_consumer
 
     logger.info(
         "search_service_created",
@@ -119,10 +109,49 @@ def create_app(config: AppConfig | None = None) -> Flask:
         meilisearch_url=config.meilisearch.url,
         sqs_enabled=config.sqs.enabled,
     )
+
+    yield
+
+    # Shutdown
+    if sqs_consumer:
+        sqs_consumer.stop()
+
+
+def create_app(config: AppConfig | None = None) -> FastAPI:
+    """Create and configure the FastAPI application."""
+    if config is None:
+        config = AppConfig()
+
+    configure_logging(config.log_level)
+
+    app = FastAPI(title="OtterWorks Search Service", lifespan=lifespan)
+    app.state.config = config
+
+    # CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://localhost:4200"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Prometheus metrics middleware
+    app.add_middleware(PrometheusMiddleware)
+
+    # Authentication middleware
+    app.add_middleware(AuthMiddleware, auth_config=config.auth)
+
+    # Include routers
+    app.include_router(health_router)
+    app.include_router(search_router, prefix="/api/v1/search")
+    app.include_router(index_router, prefix="/api/v1/search")
+
     return app
 
 
 if __name__ == "__main__":
+    import uvicorn
+
     app_config = AppConfig()
-    app = create_app(app_config)
-    app.run(host=app_config.host, port=app_config.port, debug=app_config.debug)
+    application = create_app(app_config)
+    uvicorn.run(application, host=app_config.host, port=app_config.port)

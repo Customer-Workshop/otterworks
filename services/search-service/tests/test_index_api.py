@@ -19,7 +19,7 @@ class TestIndexDocumentEndpoint:
             },
         )
         assert response.status_code == 201
-        data = response.get_json()
+        data = response.json()
         assert data["status"] == "indexed"
         assert data["id"] == "doc-123"
         assert data["type"] == "document"
@@ -28,7 +28,7 @@ class TestIndexDocumentEndpoint:
         """Index with empty body returns 400."""
         response = client.post(
             "/api/v1/search/index/document",
-            content_type="application/json",
+            headers={"Content-Type": "application/json"},
         )
         assert response.status_code == 400
 
@@ -67,7 +67,7 @@ class TestIndexFileEndpoint:
             },
         )
         assert response.status_code == 201
-        data = response.get_json()
+        data = response.json()
         assert data["status"] == "indexed"
         assert data["id"] == "file-123"
         assert data["type"] == "file"
@@ -90,7 +90,7 @@ class TestDeleteFromIndexEndpoint:
         mock_index.get_document.return_value = {"id": "doc-123"}
         response = client.delete("/api/v1/search/index/document/doc-123")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["status"] == "deleted"
 
     def test_delete_invalid_type(self, client, mock_meilisearch_client):
@@ -106,5 +106,5 @@ class TestReindexEndpoint:
         """Reindex returns 200."""
         response = client.post("/api/v1/search/reindex")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["status"] == "reindexed"

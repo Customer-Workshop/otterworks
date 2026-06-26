@@ -59,18 +59,23 @@ def mock_meilisearch_client() -> MagicMock:
 
 @pytest.fixture()
 def app(app_config: AppConfig, mock_meilisearch_client: MagicMock):
-    """Create a Flask test app with mocked MeiliSearch."""
+    """Create a FastAPI test app with mocked MeiliSearch."""
     with patch("app.services.meilisearch_client.meilisearch.Client") as mock_cls:
         mock_cls.return_value = mock_meilisearch_client
-        flask_app = create_app(app_config)
-        flask_app.config["TESTING"] = True
-        yield flask_app
+        fastapi_app = create_app(app_config)
+        # Manually set the search_service on app state for tests
+        # (lifespan doesn't run in tests using TestClient directly)
+        search_service = MeiliSearchService(app_config.meilisearch)
+        fastapi_app.state.search_service = search_service
+        yield fastapi_app
 
 
 @pytest.fixture()
 def client(app):
-    """Create a Flask test client."""
-    return app.test_client()
+    """Create a sync test client using httpx."""
+    from starlette.testclient import TestClient
+
+    return TestClient(app)
 
 
 @pytest.fixture()

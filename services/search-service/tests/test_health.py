@@ -10,7 +10,7 @@ class TestHealthEndpoint:
         """Liveness always returns 200 without contacting dependencies."""
         response = client.get("/health")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["status"] == "alive"
         assert data["service"] == "search-service"
 
@@ -23,7 +23,7 @@ class TestReadinessEndpoint:
         mock_meilisearch_client.health.return_value = {"status": "available"}
         response = client.get("/health/ready")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["ready"] is True
 
     def test_not_ready_when_meilisearch_disconnected(self, client, mock_meilisearch_client):
@@ -31,7 +31,7 @@ class TestReadinessEndpoint:
         mock_meilisearch_client.health.side_effect = Exception("unreachable")
         response = client.get("/health/ready")
         assert response.status_code == 503
-        data = response.get_json()
+        data = response.json()
         assert data["ready"] is False
 
 
@@ -42,4 +42,4 @@ class TestMetricsEndpoint:
         """Metrics endpoint returns Prometheus text format."""
         response = client.get("/metrics")
         assert response.status_code == 200
-        assert b"search_service" in response.data
+        assert b"search_service" in response.content

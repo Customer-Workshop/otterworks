@@ -10,7 +10,7 @@ class TestSearchEndpoint:
         """Search without 'q' returns 400."""
         response = client.get("/api/v1/search/")
         assert response.status_code == 400
-        data = response.get_json()
+        data = response.json()
         assert "error" in data
 
     def test_search_with_query(self, client, mock_meilisearch_client):
@@ -36,7 +36,7 @@ class TestSearchEndpoint:
 
         response = client.get("/api/v1/search/?q=test")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["total"] >= 1
         assert len(data["results"]) >= 1
         assert data["query"] == "test"
@@ -62,7 +62,7 @@ class TestSearchEndpoint:
 
         response = client.get("/api/v1/search/?q=test&page=2&size=10")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["page"] == 2
         assert data["page_size"] == 10
 
@@ -79,7 +79,7 @@ class TestSuggestEndpoint:
         """Suggest with query shorter than 2 chars returns empty."""
         response = client.get("/api/v1/search/suggest?q=a")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["suggestions"] == []
 
     def test_suggest_with_prefix(self, client, mock_meilisearch_client):
@@ -95,14 +95,14 @@ class TestSuggestEndpoint:
 
         response = client.get("/api/v1/search/suggest?q=te")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert len(data["suggestions"]) >= 1
 
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""
         response = client.get("/api/v1/search/suggest?q=")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert data["suggestions"] == []
 
 
@@ -131,7 +131,7 @@ class TestAdvancedSearchEndpoint:
             },
         )
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert "results" in data
         assert "total" in data
 
@@ -154,7 +154,7 @@ class TestAnalyticsEndpoint:
         """Analytics endpoint returns analytics data."""
         response = client.get("/api/v1/search/analytics")
         assert response.status_code == 200
-        data = response.get_json()
+        data = response.json()
         assert "popular_queries" in data
         assert "zero_result_queries" in data
         assert "total_searches" in data

@@ -61,7 +61,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         elapsed = time.monotonic() - start
         route = request.scope.get("route")
-        endpoint = route.path if route else request.url.path
+        endpoint = route.path if route else "unknown"
         REQUEST_COUNT.labels(
             method=request.method, endpoint=endpoint, status=response.status_code
         ).inc()
@@ -128,19 +128,17 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     app = FastAPI(title="OtterWorks Search Service", lifespan=lifespan)
     app.state.config = config
 
-    # CORS
+    # Middleware stack (Starlette: last-added = outermost).
+    # Execution order: Prometheus → CORS → Auth → App
+    # This ensures: preflight OPTIONS handled before auth, metrics see all
+    # responses, and auth-rejected 401s get CORS headers on the way back.
+    app.add_middleware(AuthMiddleware, auth_config=config.auth)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:3000", "http://localhost:4200"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Authentication middleware (added before Prometheus so metrics still
-    # record auth-rejected 401 responses, matching original Flask behaviour)
-    app.add_middleware(AuthMiddleware, auth_config=config.auth)
-
-    # Prometheus metrics middleware (outermost — sees all responses)
     app.add_middleware(PrometheusMiddleware)
 
     # Include routers

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
@@ -50,7 +52,7 @@ async def readiness(request: Request):
 
     healthy = False
     if search_service:
-        healthy = search_service.ping()
+        healthy = await asyncio.to_thread(search_service.ping)
 
     if healthy:
         return {"ready": True}

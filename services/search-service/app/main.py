@@ -135,11 +135,12 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Prometheus metrics middleware
-    app.add_middleware(PrometheusMiddleware)
-
-    # Authentication middleware
+    # Authentication middleware (added before Prometheus so metrics still
+    # record auth-rejected 401 responses, matching original Flask behaviour)
     app.add_middleware(AuthMiddleware, auth_config=config.auth)
+
+    # Prometheus metrics middleware (outermost — sees all responses)
+    app.add_middleware(PrometheusMiddleware)
 
     # Include routers
     app.include_router(health_router)

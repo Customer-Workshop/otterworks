@@ -162,7 +162,7 @@ async def suggest(
             content={"suggestions": [], "query": prefix},
         )
 
-    if _chaos_active("chaos:search-service:suggest_500"):
+    if await asyncio.to_thread(_chaos_active, "chaos:search-service:suggest_500"):
         service = _get_service(request)
         raw_suggestions = await asyncio.to_thread(service.suggest, prefix)
         if not raw_suggestions:

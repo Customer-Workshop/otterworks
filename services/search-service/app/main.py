@@ -60,7 +60,8 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         start = time.monotonic()
         response = await call_next(request)
         elapsed = time.monotonic() - start
-        endpoint = request.url.path
+        route = request.scope.get("route")
+        endpoint = route.path if route else request.url.path
         REQUEST_COUNT.labels(
             method=request.method, endpoint=endpoint, status=response.status_code
         ).inc()

@@ -102,10 +102,11 @@ func main() {
 
 	// Mount reverse proxy routes
 	proxyRouter := proxy.NewRouter(proxy.RouterConfig{
-		Routes:        routes,
-		CBManager:     cbManager,
-		Logger:        logger,
-		EnableTracing: true,
+		Routes:                routes,
+		CBManager:             cbManager,
+		Logger:                logger,
+		EnableTracing:         true,
+		IdentitySigningSecret: cfg.JWTSecret,
 	})
 	r.Mount("/", proxyRouter)
 

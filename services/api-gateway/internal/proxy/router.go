@@ -1,6 +1,9 @@
 package proxy
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httputil"
@@ -13,6 +16,22 @@ import (
 	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware"
 )
 
+// Headers used to convey the gateway-authenticated user identity to backend
+// services. The signature lets backends verify the identity was injected by
+// the gateway (which holds the shared secret) rather than spoofed by a client.
+const (
+	userIDHeader          = "X-User-ID"
+	userIDSignatureHeader = "X-User-ID-Signature"
+)
+
+// signUserID returns the hex-encoded HMAC-SHA256 of the user ID using the
+// shared secret, matching the verification performed by backend services.
+func signUserID(secret, userID string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(userID))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
 // Route defines a mapping from a URL prefix to a backend service.
 type Route struct {
 	Prefix    string
@@ -21,10 +40,14 @@ type Route struct {
 
 // RouterConfig holds configuration for the reverse proxy router.
 type RouterConfig struct {
-	Routes         []Route
-	CBManager      *CircuitBreakerManager
-	Logger         zerolog.Logger
-	EnableTracing  bool
+	Routes        []Route
+	CBManager     *CircuitBreakerManager
+	Logger        zerolog.Logger
+	EnableTracing bool
+	// IdentitySigningSecret is the shared secret used to sign the
+	// gateway-injected X-User-ID header so backend services can verify its
+	// provenance. When empty, no signature is attached.
+	IdentitySigningSecret string
 }
 
 // NewRouter creates a chi router with all service routes mounted.
@@ -64,16 +87,25 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	// Wrap the default director to forward authenticated user identity.
 	// The auth-service issues JWTs with the user ID in the standard "sub" claim
 	// (claims.Subject). Fall back to the custom "user_id" claim for compatibility.
+	signingSecret := cfg.IdentitySigningSecret
 	defaultDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		defaultDirector(req)
+		// Never trust client-supplied identity headers: strip them before
+		// deriving identity from the validated JWT so a spoofed X-User-ID
+		// can never reach a backend service.
+		req.Header.Del(userIDHeader)
+		req.Header.Del(userIDSignatureHeader)
 		if claims := middleware.GetJWTClaims(req.Context()); claims != nil {
 			userID := claims.Subject
 			if userID == "" {
 				userID = claims.UserID
 			}
 			if userID != "" {
-				req.Header.Set("X-User-ID", userID)
+				req.Header.Set(userIDHeader, userID)
+				if signingSecret != "" {
+					req.Header.Set(userIDSignatureHeader, signUserID(signingSecret, userID))
+				}
 			}
 		}
 	}

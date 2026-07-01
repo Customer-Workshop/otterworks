@@ -43,6 +43,14 @@ class AuthConfig:
     require_auth: bool = field(
         default_factory=lambda: os.getenv("REQUIRE_AUTH", "true").lower() == "true"
     )
+    # Shared secret used by the API gateway to HMAC-sign the X-User-ID header.
+    # The gateway signs identities with this secret; the search service verifies
+    # the signature so a spoofed X-User-ID header cannot authenticate a request
+    # sent directly to the service. Reuses JWT_SECRET, which the gateway also
+    # holds.
+    gateway_signing_secret: str = field(
+        default_factory=lambda: os.getenv("JWT_SECRET", "")
+    )
 
 
 @dataclass(frozen=True)

@@ -17,17 +17,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Generates CSV reports using OpenCSV 4.6.
- *
- * LEGACY PATTERNS:
- * - OpenCSV 4.x (2018). Upgrade target: 5.9+ (different bean mapping API)
- * - FileWriter without explicit charset (platform-dependent encoding)
- * - Manual column extraction from Map keys
- *
- * UPGRADE NOTES:
- * - OpenCSV 5.x changed CSVWriter constructor signatures
- * - Bean-to-CSV mapping API completely rewritten in 5.x
- * - Should specify charset explicitly (StandardCharsets.UTF_8)
+ * Generates CSV reports using OpenCSV.
  */
 @Component
 public class CsvReportGenerator {

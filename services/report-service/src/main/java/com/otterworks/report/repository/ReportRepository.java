@@ -13,11 +13,7 @@ import java.util.List;
 
 /**
  * JPA repository for Report entities.
- *
- * LEGACY PATTERNS:
- * - Uses java.util.Date in query parameters (target: java.time.Instant)
- * - JPQL queries with positional-style named params
- * - No use of Specifications or QueryDSL for dynamic filtering
+
  */
 @Repository
 public interface ReportRepository extends JpaRepository<Report, Long> {

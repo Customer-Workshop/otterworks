@@ -83,7 +83,11 @@ the recommended stack (Java 17 / Spring Boot 3.2), following the 11 upgrade axes
 ## What Did NOT Change
 - Public REST API surface (`/api/v1/reports` CRUD + `/download`) — request/response
   JSON is byte-compatible; API-gateway routing unaffected.
-- Database schema and JPA entity mapping.
+- Database schema: column names, types, and table layout are unchanged. One entity
+  annotation did change: `error_message` was `@Lob` (Hibernate 5 → `text` on PostgreSQL)
+  and is now `@Column(columnDefinition = "TEXT")`, because Hibernate 6 maps `@Lob String`
+  to `oid`, which breaks `ddl-auto=update` against the existing `text` column. The
+  resulting DDL is the same `text` type, so no data migration is needed.
 - Report file formats and content (PDF/CSV/Excel generators produce identical output).
 - Remaining tech debt intentionally out of scope for this migration (tracked in code
   comments): `java.util.Date` → `java.time`, RestTemplate → RestClient/WebClient,

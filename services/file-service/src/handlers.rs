@@ -469,10 +469,13 @@ pub async fn move_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let existing = meta.get_file(&file_id).await?;
-    authorize_file_write(&meta, &existing, &user_id).await?;
-    // Verify ownership of the destination folder. Folders have no share
-    // mechanism, so only the owner may place files inside one — mirroring the
-    // check in upload_file. Moving to the root (no folder) requires no check.
+    // Moving a file is a structural/organizational operation over the owner's
+    // folder tree, so it is owner-only (like trash/restore/delete). Content
+    // edits such as rename remain write-level for shared editors.
+    authorize_file_owner(&existing, &user_id)?;
+    // Verify ownership of the destination folder too. Folders have no share
+    // mechanism, so a file cannot be moved into a folder the caller doesn't own
+    // — mirroring the check in upload_file. Moving to root needs no check.
     if let Some(fid) = body.folder_id {
         let folder = meta.get_folder(&fid).await?;
         authorize_folder_owner(&folder, &user_id)?;

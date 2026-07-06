@@ -145,7 +145,10 @@ pub struct ListFoldersResponse {
 pub struct CreateFolderRequest {
     pub name: String,
     pub parent_id: Option<Uuid>,
-    pub owner_id: Uuid,
+    // Optional: the api-gateway injects the authenticated user via the
+    // X-User-ID header, which takes precedence. Kept for direct/internal
+    // callers that address the file-service without the gateway.
+    pub owner_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -168,7 +171,10 @@ pub struct RenameFileRequest {
 pub struct ShareFileRequest {
     pub shared_with: Uuid,
     pub permission: SharePermission,
-    pub shared_by: Uuid,
+    // Ignored by the server: the sharer identity is derived from the
+    // authenticated X-User-ID header. Optional for backward compatibility
+    // with clients that still send it.
+    pub shared_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize)]

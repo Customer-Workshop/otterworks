@@ -652,7 +652,13 @@ pub async fn remove_share(
         .map_err(|e| ServiceError::BadRequest(format!("invalid user id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
-    authorize_file_owner(&file, &caller_id)?;
+    // The file owner may remove any share; a shared user may remove only
+    // their own share (voluntarily revoking their own access).
+    if file.owner_id != caller_id && caller_id != target_user {
+        return Err(ServiceError::Forbidden(
+            "not authorized to remove this share".into(),
+        ));
+    }
 
     // Find the existing share
     let share = meta
@@ -679,15 +685,22 @@ pub async fn list_folders(
 }
 
 pub async fn create_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     body: web::Json<CreateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    // Prefer owner_id from the X-User-ID header injected by the api-gateway
+    // from the authenticated JWT. Fall back to the request body only for
+    // direct/internal callers, preventing a caller from creating folders
+    // attributed to another user via the gateway.
+    let owner_id = resolve_owner_id(&req, body.owner_id)
+        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),
         name: body.name.clone(),
         parent_id: body.parent_id,
-        owner_id: body.owner_id,
+        owner_id,
         created_at: now,
         updated_at: now,
     };

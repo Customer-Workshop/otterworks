@@ -198,6 +198,14 @@ pub async fn upload_file(
         return Err(ServiceError::BadRequest("file field is required".into()));
     }
 
+    // If uploading into a folder, verify the caller owns it. Folders have no
+    // share mechanism, so only the owner may place files inside one. This
+    // prevents writing files into another user's folder by supplying its UUID.
+    if let Some(fid) = folder_id {
+        let folder = meta.get_folder(&fid).await?;
+        authorize_folder_owner(&folder, &owner)?;
+    }
+
     let file_id = Uuid::new_v4();
     let s3_key = format!("files/{}/{}", owner, file_id);
     let now = Utc::now();

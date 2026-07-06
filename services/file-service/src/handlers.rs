@@ -761,6 +761,12 @@ pub async fn update_folder(
 
     let existing = meta.get_folder(&folder_id).await?;
     authorize_folder_owner(&existing, &user_id)?;
+    // When re-parenting, verify the caller also owns the new parent folder so a
+    // folder cannot be nested under another user's hierarchy.
+    if let Some(parent_id) = body.parent_id {
+        let parent = meta.get_folder(&parent_id).await?;
+        authorize_folder_owner(&parent, &user_id)?;
+    }
     let folder = meta
         .update_folder(&folder_id, body.name.clone(), body.parent_id)
         .await?;

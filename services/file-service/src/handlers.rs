@@ -470,6 +470,13 @@ pub async fn move_file(
 
     let existing = meta.get_file(&file_id).await?;
     authorize_file_write(&meta, &existing, &user_id).await?;
+    // Verify ownership of the destination folder. Folders have no share
+    // mechanism, so only the owner may place files inside one — mirroring the
+    // check in upload_file. Moving to the root (no folder) requires no check.
+    if let Some(fid) = body.folder_id {
+        let folder = meta.get_folder(&fid).await?;
+        authorize_folder_owner(&folder, &user_id)?;
+    }
     let file = meta.move_file(&file_id, body.folder_id).await?;
 
     let _ = events
@@ -703,6 +710,12 @@ pub async fn create_folder(
     // attributed to another user via the gateway.
     let owner_id = resolve_owner_id(&req, body.owner_id)
         .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+    // When nesting under a parent folder, verify the caller owns it so a user
+    // cannot create subfolders inside another user's folder hierarchy.
+    if let Some(parent_id) = body.parent_id {
+        let parent = meta.get_folder(&parent_id).await?;
+        authorize_folder_owner(&parent, &owner_id)?;
+    }
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),

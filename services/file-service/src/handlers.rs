@@ -118,18 +118,16 @@ pub async fn upload_file(
     redis_cm: web::Data<redis::aio::ConnectionManager>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
-    // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
-    // Fall back to the multipart field for direct/internal callers.
-    let header_owner_id = req
-        .headers()
-        .get("X-User-ID")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok());
+    // Identity is derived solely from the X-User-ID header injected by the
+    // api-gateway from the authenticated JWT. This endpoint previously accepted
+    // a client-supplied owner_id, which allowed self-asserted identity when
+    // called without the gateway; require the header so every mutating endpoint
+    // authenticates uniformly.
+    let owner = extract_user_id(&req)?;
 
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
     let mut content_type = String::from("application/octet-stream");
-    let mut owner_id: Option<Uuid> = None;
     let mut folder_id: Option<Uuid> = None;
 
     while let Some(item) = payload.next().await {
@@ -160,17 +158,11 @@ pub async fn upload_file(
                 }
             }
             "owner_id" => {
-                let mut value = BytesMut::new();
+                // Drain and ignore any client-supplied owner_id: identity comes
+                // from the authenticated X-User-ID header, not the request body.
                 while let Some(chunk) = field.next().await {
-                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
-                    value.extend_from_slice(&data);
+                    let _ = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
                 }
-                let s = String::from_utf8_lossy(&value).to_string();
-                owner_id = Some(
-                    s.trim()
-                        .parse::<Uuid>()
-                        .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
-                );
             }
             "folder_id" => {
                 let mut value = BytesMut::new();
@@ -189,10 +181,6 @@ pub async fn upload_file(
             _ => {}
         }
     }
-
-    let owner = header_owner_id
-        .or(owner_id)
-        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
 
     if file_bytes.is_empty() {
         return Err(ServiceError::BadRequest("file field is required".into()));
@@ -711,8 +699,9 @@ pub async fn create_folder(
     // from the authenticated JWT. Fall back to the request body only for
     // direct/internal callers, preventing a caller from creating folders
     // attributed to another user via the gateway.
-    let owner_id = resolve_owner_id(&req, body.owner_id)
-        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+    // Derive identity from the authenticated X-User-ID header only, consistent
+    // with every other mutating handler (no client-supplied owner_id fallback).
+    let owner_id = extract_user_id(&req)?;
     // When nesting under a parent folder, verify the caller owns it so a user
     // cannot create subfolders inside another user's folder hierarchy.
     if let Some(parent_id) = body.parent_id {

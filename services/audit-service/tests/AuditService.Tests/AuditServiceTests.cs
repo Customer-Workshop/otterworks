@@ -241,12 +241,94 @@ public class AuditServiceTests
             It.Is<DateTime>(d => d < DateTime.UtcNow.AddDays(-89))), Times.Once);
     }
 
+    [Theory]
+    [InlineData("day")]
+    [InlineData("24h")]
+    [InlineData("week")]
+    [InlineData("7d")]
+    [InlineData("month")]
+    [InlineData("30d")]
+    [InlineData("quarter")]
+    [InlineData("90d")]
+    [InlineData("year")]
+    [InlineData("365d")]
+    [InlineData("unrecognized-period")]
+    public async Task GetUserActivityReportAsync_ShouldAcceptAllSupportedPeriods(string period)
+    {
+        _mockRepository.Setup(r => r.GetAllUserEventsAsync("user-1")).ReturnsAsync(new List<AuditEvent>());
+
+        var report = await _service.GetUserActivityReportAsync("user-1", period);
+
+        Assert.Equal(period, report.Period);
+        Assert.Equal(0, report.TotalEvents);
+    }
+
+    [Fact]
+    public async Task GetUserActivityReportAsync_ShouldExcludeEventsOutsidePeriodAndCapRecentEventsAtTen()
+    {
+        var now = DateTime.UtcNow;
+        var recent = Enumerable.Range(0, 15)
+            .Select(i => CreateSampleEvent($"e{i}", timestamp: now.AddMinutes(-i)))
+            .ToList();
+        var stale = CreateSampleEvent("old", timestamp: now.AddDays(-40));
+
+        _mockRepository
+            .Setup(r => r.GetAllUserEventsAsync("user-1"))
+            .ReturnsAsync(recent.Append(stale).ToList());
+
+        var report = await _service.GetUserActivityReportAsync("user-1", "30d");
+
+        Assert.Equal(15, report.TotalEvents);
+        Assert.Equal(10, report.RecentEvents.Count);
+        Assert.Equal(now.AddMinutes(0), report.LastActivity);
+        Assert.Equal(now.AddMinutes(-14), report.FirstActivity);
+    }
+
+    [Fact]
+    public async Task GetComplianceReportAsync_ShouldFlagUsersExceedingSuspiciousThreshold()
+    {
+        var events = new List<AuditEvent>();
+        events.AddRange(Enumerable.Range(0, 150)
+            .Select(i => CreateSampleEvent($"noisy-{i}", userId: "noisy-user")));
+        // Many low-activity users keep the average low so the threshold floors at 100.
+        events.AddRange(Enumerable.Range(0, 200)
+            .Select(i => CreateSampleEvent($"quiet-{i}", userId: $"quiet-user-{i}")));
+
+        _mockRepository
+            .Setup(r => r.GetEventsByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(events);
+
+        var report = await _service.GetComplianceReportAsync("30d");
+
+        Assert.Equal(350, report.TotalEvents);
+        Assert.Equal(201, report.UniqueUsers);
+        var suspicious = Assert.Single(report.SuspiciousActivities);
+        Assert.Equal("noisy-user", suspicious.UserId);
+        Assert.Equal(150, suspicious.EventCount);
+        Assert.Contains("Unusually high activity", suspicious.Reason);
+    }
+
+    [Fact]
+    public async Task GetComplianceReportAsync_WithNoEvents_ShouldReturnEmptyReport()
+    {
+        _mockRepository
+            .Setup(r => r.GetEventsByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<AuditEvent>());
+
+        var report = await _service.GetComplianceReportAsync("30d");
+
+        Assert.Equal(0, report.TotalEvents);
+        Assert.Equal(0, report.UniqueUsers);
+        Assert.Empty(report.SuspiciousActivities);
+    }
+
     private static AuditEvent CreateSampleEvent(
         string id = "test-id",
         string userId = "user-1",
         string action = "create",
         string resourceType = "document",
-        string resourceId = "doc-1")
+        string resourceId = "doc-1",
+        DateTime? timestamp = null)
     {
         return new AuditEvent
         {
@@ -255,7 +337,7 @@ public class AuditServiceTests
             Action = action,
             ResourceType = resourceType,
             ResourceId = resourceId,
-            Timestamp = DateTime.UtcNow,
+            Timestamp = timestamp ?? DateTime.UtcNow,
             IpAddress = "10.0.0.1",
             UserAgent = "TestAgent",
         };

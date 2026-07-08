@@ -250,6 +250,143 @@ public class DynamoDbAuditRepositoryTests
             default), Times.Once);
     }
 
+    [Fact]
+    public async Task GetEventAsync_ShouldMapOptionalFieldsAndFallBackToLowercaseId()
+    {
+        var item = new Dictionary<string, AttributeValue>
+        {
+            ["id"] = new AttributeValue { S = "lower-id" },
+            ["UserId"] = new AttributeValue { S = "user-1" },
+            ["Action"] = new AttributeValue { S = "create" },
+            ["ResourceType"] = new AttributeValue { S = "document" },
+            ["ResourceId"] = new AttributeValue { S = "doc-1" },
+            ["Timestamp"] = new AttributeValue { S = DateTime.UtcNow.ToString("O") },
+            ["IpAddress"] = new AttributeValue { S = "10.0.0.9" },
+            ["UserAgent"] = new AttributeValue { S = "agent" },
+            ["Details"] = new AttributeValue
+            {
+                M = new Dictionary<string, AttributeValue> { ["k"] = new AttributeValue { S = "v" } },
+            },
+        };
+        _mockDynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), default))
+            .ReturnsAsync(new GetItemResponse { Item = item });
+
+        var result = await _repository.GetEventAsync("lower-id");
+
+        Assert.NotNull(result);
+        Assert.Equal("lower-id", result.Id);
+        Assert.Equal("10.0.0.9", result.IpAddress);
+        Assert.Equal("agent", result.UserAgent);
+        Assert.NotNull(result.Details);
+        Assert.Equal("v", result.Details["k"]);
+    }
+
+    [Fact]
+    public async Task GetEventAsync_WithUnparseableTimestamp_ShouldFallBackToMinValue()
+    {
+        var item = CreateDynamoDbItem("e1", "user-1", "create", "document", "doc-1");
+        item["Timestamp"] = new AttributeValue { S = "not-a-date" };
+        _mockDynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), default))
+            .ReturnsAsync(new GetItemResponse { Item = item });
+
+        var result = await _repository.GetEventAsync("e1");
+
+        Assert.NotNull(result);
+        Assert.Equal(DateTime.MinValue, result.Timestamp);
+    }
+
+    [Fact]
+    public async Task QueryEventsAsync_ShouldFollowPaginationAcrossMultipleScanPages()
+    {
+        var firstKey = new Dictionary<string, AttributeValue> { ["id"] = new AttributeValue { S = "e1" } };
+        _mockDynamoDb
+            .SetupSequence(d => d.ScanAsync(It.IsAny<ScanRequest>(), default))
+            .ReturnsAsync(new ScanResponse
+            {
+                Items = new List<Dictionary<string, AttributeValue>>
+                {
+                    CreateDynamoDbItem("e1", "user-1", "create", "document", "doc-1"),
+                },
+                LastEvaluatedKey = firstKey,
+            })
+            .ReturnsAsync(new ScanResponse
+            {
+                Items = new List<Dictionary<string, AttributeValue>>
+                {
+                    CreateDynamoDbItem("e2", "user-1", "update", "document", "doc-2"),
+                },
+                LastEvaluatedKey = new Dictionary<string, AttributeValue>(),
+            });
+
+        var result = await _repository.QueryEventsAsync(null, null, null, null, null, null, 1, 20);
+
+        Assert.Equal(2, result.Total);
+        _mockDynamoDb.Verify(d => d.ScanAsync(It.IsAny<ScanRequest>(), default), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task QueryEventsAsync_WithDateRange_ShouldApplyTimestampFilters()
+    {
+        _mockDynamoDb
+            .Setup(d => d.ScanAsync(It.IsAny<ScanRequest>(), default))
+            .ReturnsAsync(new ScanResponse
+            {
+                Items = new List<Dictionary<string, AttributeValue>>(),
+                LastEvaluatedKey = new Dictionary<string, AttributeValue>(),
+            });
+
+        await _repository.QueryEventsAsync(null, null, null, null,
+            DateTime.UtcNow.AddDays(-7), DateTime.UtcNow, 1, 20);
+
+        _mockDynamoDb.Verify(d => d.ScanAsync(It.Is<ScanRequest>(req =>
+            req.FilterExpression.Contains("#ts >= :fromTs") &&
+            req.FilterExpression.Contains("#ts <= :toTs") &&
+            req.ExpressionAttributeNames["#ts"] == "Timestamp"),
+            default), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteEventsAsync_WhenItemsRemainUnprocessed_ShouldReturnReducedCount()
+    {
+        var eventIds = new List<string> { "e1", "e2" };
+        var unprocessed = new Dictionary<string, List<WriteRequest>>
+        {
+            ["test-audit-events"] = new List<WriteRequest>
+            {
+                new()
+                {
+                    DeleteRequest = new DeleteRequest
+                    {
+                        Key = new Dictionary<string, AttributeValue> { ["id"] = new AttributeValue { S = "e1" } },
+                    },
+                },
+            },
+        };
+
+        _mockDynamoDb
+            .Setup(d => d.BatchWriteItemAsync(It.IsAny<BatchWriteItemRequest>(), default))
+            .ReturnsAsync(new BatchWriteItemResponse { UnprocessedItems = unprocessed });
+
+        var deleted = await _repository.DeleteEventsAsync(eventIds);
+
+        Assert.Equal(1, deleted);
+        // 1 initial attempt + 5 retries (all still unprocessed)
+        _mockDynamoDb.Verify(d => d.BatchWriteItemAsync(It.IsAny<BatchWriteItemRequest>(), default), Times.Exactly(6));
+    }
+
+    [Fact]
+    public async Task DeleteEventsAsync_WithEmptyList_ShouldNotCallDynamoDb()
+    {
+        var deleted = await _repository.DeleteEventsAsync(new List<string>());
+
+        Assert.Equal(0, deleted);
+        _mockDynamoDb.Verify(
+            d => d.BatchWriteItemAsync(It.IsAny<BatchWriteItemRequest>(), default),
+            Times.Never);
+    }
+
     private static Dictionary<string, AttributeValue> CreateDynamoDbItem(
         string id, string userId, string action, string resourceType, string resourceId)
     {

@@ -58,6 +58,19 @@ make down
 
 > **Note:** The Report Service intentionally uses outdated dependencies (Java 8, Spring Boot 2.5, JUnit 4, javax.\*) and is a candidate for a framework-upgrade exercise. See `services/report-service/pom.xml` for details.
 
+### Gradle Dependency Locking
+
+The Gradle-based services (`auth-service` and `notification-service`) use [Gradle dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) for reproducible builds. Each service enables `dependencyLocking { lockAllConfigurations() }` in its build script and commits a `gradle.lockfile` that pins every resolved dependency version.
+
+When you change dependencies in these services, regenerate the lockfile and commit it:
+
+```bash
+cd services/auth-service          # or services/notification-service
+./gradlew dependencies --write-locks
+```
+
+> **Note:** `auth-service` requires JDK 17+ to resolve its build (Spring Boot 3.x). If your `JAVA_HOME` points at an older JDK, set it explicitly, e.g. `JAVA_HOME=/path/to/jdk-17 ./gradlew dependencies --write-locks`.
+
 ## Frontend Applications
 
 | App | Framework | Port | Description |

@@ -56,3 +56,6 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-config
                 optional: true
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+                optional: true

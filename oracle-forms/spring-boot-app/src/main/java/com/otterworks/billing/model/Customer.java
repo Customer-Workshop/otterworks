@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "billing_customers")
@@ -25,7 +26,8 @@ public class Customer {
   @Column(name = "status")
   private String status;
 
-  @Column(name = "created_at")
+  @Column(name = "created_at", updatable = false)
+  @CreationTimestamp
   private Instant createdAt;
 
   public Long getCustomerId() {

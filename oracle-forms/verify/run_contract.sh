@@ -30,7 +30,13 @@ JAVA_BIN="$(find_java)"
 JAR="$APP_DIR/build/libs/billing-service.jar"
 if [[ ! -f "$JAR" ]]; then
   echo ">> building billing-service.jar"
-  ( cd "$APP_DIR" && JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")" ./gradlew bootJar -q --console=plain )
+  # Only export JAVA_HOME when JAVA_BIN is an absolute path we resolved; a bare
+  # "java" on PATH must not become JAVA_HOME="." (which breaks the Gradle wrapper).
+  if [[ "$JAVA_BIN" == /* ]]; then
+    ( cd "$APP_DIR" && JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")" ./gradlew bootJar -q --console=plain )
+  else
+    ( cd "$APP_DIR" && ./gradlew bootJar -q --console=plain )
+  fi
 fi
 
 # --- start the service --------------------------------------------------------

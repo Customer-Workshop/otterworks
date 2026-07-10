@@ -169,7 +169,7 @@ forms-run: forms-build ## Run the modernized billing service (H2, in-memory) on 
 	java -jar $(FORMS_JAR) --server.port=$(FORMS_PORT)
 
 forms-verify: ## Boot the service and run the contract-parity harness, then tear down
-	bash oracle-forms/verify/run_contract.sh
+	PORT=$(FORMS_PORT) bash oracle-forms/verify/run_contract.sh
 
 forms-clean: ## Remove Spring Boot build artifacts
 	cd $(FORMS_APP) && ./gradlew clean -q --console=plain || rm -rf $(FORMS_APP)/build

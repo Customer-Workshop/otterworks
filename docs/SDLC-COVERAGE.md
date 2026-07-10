@@ -7,7 +7,7 @@
 > mapping OtterWorks to customer stories.
 >
 > Findings are based on the actual repo contents (file paths cited) plus a live end-to-end AWS
-> deployment performed against account `599083837640` / `us-east-1` (EKS `otterworks-dev`, v1.32).
+> deployment performed against account `<AWS_ACCOUNT_ID>` / `us-east-1` (EKS `otterworks-dev`, v1.32).
 > Status legend: **Present** = works / demonstrable as-is · **Partial** = present but incomplete,
 > stubbed, or config-only · **Missing** = claimed or expected but absent.
 

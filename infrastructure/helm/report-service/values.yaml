@@ -4,7 +4,7 @@ global:
   environment: dev
 
 image:
-  repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-report-service
+  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-report-service
   tag: ""  # Set at deploy time (ECR uses IMMUTABLE tags)
   pullPolicy: IfNotPresent
 

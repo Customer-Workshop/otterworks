@@ -172,7 +172,7 @@ forms-verify: ## Boot the service and run the contract-parity harness, then tear
 	PORT=$(FORMS_PORT) bash oracle-forms/verify/run_contract.sh
 
 forms-clean: ## Remove Spring Boot build artifacts
-	cd $(FORMS_APP) && ./gradlew clean -q --console=plain || rm -rf $(FORMS_APP)/build
+	cd $(FORMS_APP) && { ./gradlew clean -q --console=plain || rm -rf build; }
 
 # --- Infrastructure ---
 

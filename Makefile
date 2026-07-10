@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema forms-build forms-run forms-verify forms-clean
 
 SHELL := /bin/bash
 
@@ -155,6 +155,24 @@ endif
 		-f testdata/harness/create_schema.sql \
 		-v ns=$(NS)
 	@echo "Done."
+
+# --- Oracle Forms Modernization ---
+
+FORMS_APP := oracle-forms/spring-boot-app
+FORMS_JAR := $(FORMS_APP)/build/libs/billing-service.jar
+FORMS_PORT ?= 8092
+
+forms-build: ## Build the modernized billing service (Spring Boot)
+	cd $(FORMS_APP) && ./gradlew bootJar -q --console=plain
+
+forms-run: forms-build ## Run the modernized billing service (H2, in-memory) on FORMS_PORT
+	java -jar $(FORMS_JAR) --server.port=$(FORMS_PORT)
+
+forms-verify: ## Boot the service and run the contract-parity harness, then tear down
+	bash oracle-forms/verify/run_contract.sh
+
+forms-clean: ## Remove Spring Boot build artifacts
+	cd $(FORMS_APP) && ./gradlew clean -q --console=plain || rm -rf $(FORMS_APP)/build
 
 # --- Infrastructure ---
 

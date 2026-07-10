@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Oracle Forms module export (frmf2xml output) for the legacy
+  "OtterWorks Storage Billing" back-office screen (BILLING.fmb).
+
+  This is the SOURCE OF TRUTH for the modernization: every block maps to a
+  base table, every item carries its data type / required / length / LOV
+  constraints, and every WHEN-VALIDATE-* trigger encodes a business rule that
+  the modern REST service must reproduce. The PL/SQL trigger bodies are also
+  extracted, one file per trigger, under legacy/triggers/ for readability.
+-->
+<Module xmlns="http://xmlns.oracle.com/Forms" version="12.2.1">
+  <FormModule Name="BILLING" Title="OtterWorks Storage Billing"
+              ConsoleWindow="ROOT_WINDOW" CursorMode="OPEN"
+              FirstNavigationBlock="CUSTOMERS" MenuModule="DEFAULT&amp;SMARTBAR">
+
+    <!-- ============================ CUSTOMERS ============================ -->
+    <Block Name="CUSTOMERS" QueryDataSourceName="BILLING_CUSTOMERS"
+           QueryDataSourceType="Table" DMLDataTargetName="BILLING_CUSTOMERS"
+           DMLDataTargetType="Table" InsertAllowed="true" UpdateAllowed="true"
+           DeleteAllowed="true" QueryAllowed="true">
+      <Item Name="CUSTOMER_ID" ColumnName="CUSTOMER_ID" DataType="NUMBER"
+            Primary_Key="true" Required="true" Enabled="true" Insert_Allowed="false"
+            Update_Allowed="false" Maximum_Length="10"/>
+      <Item Name="COMPANY_NAME" ColumnName="COMPANY_NAME" DataType="CHAR"
+            Required="true" Enabled="true" Maximum_Length="100"/>
+      <Item Name="CONTACT_EMAIL" ColumnName="CONTACT_EMAIL" DataType="CHAR"
+            Required="true" Enabled="true" Maximum_Length="120">
+        <Trigger Name="WHEN-VALIDATE-ITEM" Fire_in_Enter_Query_Mode="false"
+                 Execution_Style="Override"
+                 TriggerText="-- see legacy/triggers/CUSTOMERS-WVI-CONTACT_EMAIL.plsql&#10;DECLARE&#10;  v_email VARCHAR2(120) := :CUSTOMERS.CONTACT_EMAIL;&#10;BEGIN&#10;  IF v_email IS NULL&#10;     OR INSTR(v_email, '@') = 0&#10;     OR INSTR(v_email, '.', INSTR(v_email, '@')) = 0 THEN&#10;    FND_MESSAGE.SET_STRING('Contact email must be a valid email address');&#10;    FND_MESSAGE.ERROR;&#10;    RAISE FORM_TRIGGER_FAILURE;&#10;  END IF;&#10;END;"/>
+      </Item>
+      <Item Name="STATUS" ColumnName="STATUS" DataType="CHAR" Required="true"
+            Enabled="true" Maximum_Length="10" Initial_Value="ACTIVE"
+            LOV_Name="STATUS_LOV" Validate_from_List="true"/>
+      <Item Name="CREATED_AT" ColumnName="CREATED_AT" DataType="DATETIME"
+            Required="true" Enabled="false" Insert_Allowed="false" Update_Allowed="false"/>
+    </Block>
+
+    <!-- ========================== SUBSCRIPTIONS ========================== -->
+    <Block Name="SUBSCRIPTIONS" QueryDataSourceName="SUBSCRIPTIONS"
+           QueryDataSourceType="Table" DMLDataTargetName="SUBSCRIPTIONS"
+           DMLDataTargetType="Table" InsertAllowed="true" UpdateAllowed="true"
+           DeleteAllowed="true" QueryAllowed="true">
+      <Item Name="SUBSCRIPTION_ID" ColumnName="SUBSCRIPTION_ID" DataType="NUMBER"
+            Primary_Key="true" Required="true" Enabled="true" Insert_Allowed="false"
+            Update_Allowed="false" Maximum_Length="10"/>
+      <Item Name="CUSTOMER_ID" ColumnName="CUSTOMER_ID" DataType="NUMBER"
+            Required="true" Enabled="true" Maximum_Length="10"/>
+      <Item Name="PLAN_CODE" ColumnName="PLAN_CODE" DataType="CHAR" Required="true"
+            Enabled="true" Maximum_Length="12" LOV_Name="PLAN_LOV"
+            Validate_from_List="true"/>
+      <Item Name="SEATS" ColumnName="SEATS" DataType="NUMBER" Required="true"
+            Enabled="true" Maximum_Length="6" Initial_Value="1">
+        <Trigger Name="WHEN-VALIDATE-ITEM" Fire_in_Enter_Query_Mode="false"
+                 Execution_Style="Override"
+                 TriggerText="-- see legacy/triggers/SUBSCRIPTIONS-WVI-SEATS.plsql&#10;DECLARE&#10;  v_max_seats NUMBER;&#10;BEGIN&#10;  SELECT MAX_SEATS INTO v_max_seats&#10;    FROM STORAGE_PLANS WHERE PLAN_CODE = :SUBSCRIPTIONS.PLAN_CODE;&#10;  IF :SUBSCRIPTIONS.SEATS IS NULL OR :SUBSCRIPTIONS.SEATS &lt; 1 THEN&#10;    FND_MESSAGE.SET_STRING('Seats must be at least 1');&#10;    FND_MESSAGE.ERROR; RAISE FORM_TRIGGER_FAILURE;&#10;  END IF;&#10;  IF :SUBSCRIPTIONS.SEATS &gt; v_max_seats THEN&#10;    FND_MESSAGE.SET_STRING('Seats exceed plan maximum');&#10;    FND_MESSAGE.ERROR; RAISE FORM_TRIGGER_FAILURE;&#10;  END IF;&#10;END;"/>
+      </Item>
+      <Item Name="DISCOUNT_PCT" ColumnName="DISCOUNT_PCT" DataType="NUMBER"
+            Required="false" Enabled="true" Maximum_Length="5" Initial_Value="0"
+            Format_Mask="990D99" Lowest_Allowed_Value="0" Highest_Allowed_Value="100">
+        <Trigger Name="WHEN-VALIDATE-ITEM" Fire_in_Enter_Query_Mode="false"
+                 Execution_Style="Override"
+                 TriggerText="-- see legacy/triggers/SUBSCRIPTIONS-WVI-DISCOUNT_PCT.plsql&#10;DECLARE&#10;  v_max_discount NUMBER;&#10;BEGIN&#10;  SELECT MAX_DISCOUNT_PCT INTO v_max_discount&#10;    FROM STORAGE_PLANS WHERE PLAN_CODE = :SUBSCRIPTIONS.PLAN_CODE;&#10;  IF NVL(:SUBSCRIPTIONS.DISCOUNT_PCT, 0) &gt; v_max_discount THEN&#10;    FND_MESSAGE.SET_STRING('Discount exceeds plan maximum');&#10;    FND_MESSAGE.ERROR; RAISE FORM_TRIGGER_FAILURE;&#10;  END IF;&#10;END;"/>
+      </Item>
+      <Item Name="START_DATE" ColumnName="START_DATE" DataType="DATE" Required="true"
+            Enabled="true"/>
+      <Item Name="END_DATE" ColumnName="END_DATE" DataType="DATE" Required="false"
+            Enabled="true"/>
+      <Item Name="STATUS" ColumnName="STATUS" DataType="CHAR" Required="true"
+            Enabled="true" Maximum_Length="10" Initial_Value="ACTIVE"/>
+      <Trigger Name="WHEN-VALIDATE-RECORD" Fire_in_Enter_Query_Mode="false"
+               Execution_Style="Override"
+               TriggerText="-- see legacy/triggers/SUBSCRIPTIONS-WVR.plsql&#10;BEGIN&#10;  IF :SUBSCRIPTIONS.END_DATE IS NOT NULL&#10;     AND :SUBSCRIPTIONS.END_DATE &lt;= :SUBSCRIPTIONS.START_DATE THEN&#10;    FND_MESSAGE.SET_STRING('End date must be after start date');&#10;    FND_MESSAGE.ERROR; RAISE FORM_TRIGGER_FAILURE;&#10;  END IF;&#10;END;"/>
+      <Trigger Name="PRE-INSERT" Fire_in_Enter_Query_Mode="false"
+               Execution_Style="Override"
+               TriggerText="-- see legacy/triggers/SUBSCRIPTIONS-PRE-INSERT.plsql&#10;DECLARE&#10;  v_cust_status VARCHAR2(10);&#10;BEGIN&#10;  SELECT STATUS INTO v_cust_status&#10;    FROM BILLING_CUSTOMERS WHERE CUSTOMER_ID = :SUBSCRIPTIONS.CUSTOMER_ID;&#10;  IF v_cust_status = 'CLOSED' THEN&#10;    FND_MESSAGE.SET_STRING('Cannot add subscription for a closed customer');&#10;    FND_MESSAGE.ERROR; RAISE FORM_TRIGGER_FAILURE;&#10;  END IF;&#10;END;"/>
+    </Block>
+
+    <!-- ===================== RECORD GROUPS / LOVs ======================= -->
+    <RecordGroup Name="PLAN_RG" RecordGroupType="Query"
+                 RecordGroupQuery="SELECT PLAN_CODE, PLAN_NAME FROM STORAGE_PLANS ORDER BY MONTHLY_PRICE"/>
+    <LOV Name="PLAN_LOV" RecordGroupName="PLAN_RG" Title="Storage Plans"
+         AutoDisplay="true" ValidateOnSelection="true"/>
+    <RecordGroup Name="STATUS_RG" RecordGroupType="Static"
+                 RecordGroupQuery="ACTIVE,SUSPENDED,CLOSED"/>
+    <LOV Name="STATUS_LOV" RecordGroupName="STATUS_RG" Title="Customer Status"
+         AutoDisplay="true" ValidateOnSelection="true"/>
+
+    <!-- ========================= PROGRAM UNITS ========================== -->
+    <ProgramUnit Name="POST_QUERY_TOTALS" ProgramUnitType="Procedure"
+                 ProgramUnitText="PROCEDURE POST_QUERY_TOTALS IS BEGIN NULL; END;"/>
+  </FormModule>
+</Module>

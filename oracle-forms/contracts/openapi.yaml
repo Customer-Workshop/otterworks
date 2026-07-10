@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: OtterWorks Storage Billing API
+  version: 1.0.0
+  description: >
+    REST contract for the modernized OtterWorks Storage Billing back-office,
+    distilled from the legacy Oracle Forms module BILLING.fmb. Each path and
+    validation rule below maps to a Forms block, item, or WHEN-VALIDATE-*
+    trigger. This contract is the SOURCE OF TRUTH the parity harness verifies
+    the Spring Boot implementation against.
+
+    Validation-rule provenance (Forms trigger -> contract rule):
+      - CUSTOMERS.CONTACT_EMAIL  WHEN-VALIDATE-ITEM   -> email format, required, maxLength 120
+      - CUSTOMERS.STATUS         LOV STATUS_LOV       -> enum ACTIVE|SUSPENDED|CLOSED
+      - SUBSCRIPTIONS.PLAN_CODE  LOV PLAN_LOV         -> must exist in STORAGE_PLANS
+      - SUBSCRIPTIONS.SEATS      WHEN-VALIDATE-ITEM   -> 1 <= seats <= plan.maxSeats  (cross-field)
+      - SUBSCRIPTIONS.DISCOUNT_PCT WHEN-VALIDATE-ITEM -> 0 <= discountPct <= plan.maxDiscountPct (cross-field)
+      - SUBSCRIPTIONS            WHEN-VALIDATE-RECORD -> endDate > startDate when present
+      - SUBSCRIPTIONS            PRE-INSERT           -> customer.status != CLOSED
+servers:
+  - url: http://localhost:8092
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        "200":
+          description: service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: healthy }
+  /api/plans:
+    get:
+      operationId: listPlans
+      responses:
+        "200":
+          description: all storage plans (the LOV source)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Plan" }
+  /api/plans/{planCode}:
+    get:
+      operationId: getPlan
+      parameters:
+        - { name: planCode, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: a plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Plan" }
+        "404": { description: unknown plan }
+  /api/customers:
+    get:
+      operationId: listCustomers
+      responses:
+        "200":
+          description: all customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Customer" }
+    post:
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+        "400":
+          description: validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /api/customers/{customerId}:
+    get:
+      operationId: getCustomer
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: a customer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+        "404": { description: unknown customer }
+  /api/customers/{customerId}/subscriptions:
+    get:
+      operationId: listSubscriptions
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: the customer's subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Subscription" }
+        "404": { description: unknown customer }
+    post:
+      operationId: createSubscription
+      parameters:
+        - { name: customerId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubscriptionInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subscription" }
+        "400":
+          description: validation error (see error.message for the Forms rule)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { description: unknown customer }
+components:
+  schemas:
+    Plan:
+      type: object
+      required: [planCode, planName, monthlyPrice, includedGb, maxSeats, maxDiscountPct]
+      properties:
+        planCode: { type: string, enum: [FREE, BASIC, PRO, ENTERPRISE] }
+        planName: { type: string }
+        monthlyPrice: { type: number }
+        includedGb: { type: integer }
+        maxSeats: { type: integer }
+        maxDiscountPct: { type: number }
+    Customer:
+      type: object
+      required: [customerId, companyName, contactEmail, status, createdAt]
+      properties:
+        customerId: { type: integer }
+        companyName: { type: string, maxLength: 100 }
+        contactEmail: { type: string, maxLength: 120 }
+        status: { type: string, enum: [ACTIVE, SUSPENDED, CLOSED] }
+        createdAt: { type: string, format: date-time }
+    CustomerInput:
+      type: object
+      required: [companyName, contactEmail]
+      properties:
+        companyName: { type: string, maxLength: 100 }
+        contactEmail: { type: string, maxLength: 120 }
+        status: { type: string, enum: [ACTIVE, SUSPENDED, CLOSED], default: ACTIVE }
+    Subscription:
+      type: object
+      required: [subscriptionId, customerId, planCode, seats, discountPct, startDate, status]
+      properties:
+        subscriptionId: { type: integer }
+        customerId: { type: integer }
+        planCode: { type: string }
+        seats: { type: integer }
+        discountPct: { type: number }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [ACTIVE, CANCELLED] }
+    SubscriptionInput:
+      type: object
+      required: [planCode, startDate]
+      properties:
+        planCode: { type: string }
+        seats: { type: integer, default: 1 }
+        discountPct: { type: number, default: 0 }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date, nullable: true }
+    Error:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }

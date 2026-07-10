@@ -39,6 +39,18 @@ variable "redis_node_type" {
   default     = "cache.t3.micro"
 }
 
+variable "redis_transit_encryption_enabled" {
+  description = "Enable in-transit (TLS) encryption. The services connect with plain redis://, so this defaults to false to match the application; enable it only alongside rediss:// client support."
+  type        = bool
+  default     = false
+}
+
+variable "redis_apply_immediately" {
+  description = "Apply ElastiCache modifications immediately instead of during the next maintenance window (dev convenience)."
+  type        = bool
+  default     = true
+}
+
 variable "redis_num_cache_clusters" {
   description = "Number of cache clusters (nodes) in the replication group"
   type        = number

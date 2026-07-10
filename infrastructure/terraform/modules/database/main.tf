@@ -197,13 +197,19 @@ resource "aws_dynamodb_table" "notifications" { # nosemgrep: terraform.aws.secur
   }
 
   attribute {
-    name = "user_id"
+    name = "userId"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
     type = "S"
   }
 
   global_secondary_index {
-    name            = "user-index"
-    hash_key        = "user_id"
+    name            = "userId-createdAt-index"
+    hash_key        = "userId"
+    range_key       = "createdAt"
     projection_type = "ALL"
   }
 

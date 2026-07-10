@@ -177,6 +177,7 @@ module "irsa" {
             "dynamodb:UpdateItem",
             "dynamodb:DeleteItem",
             "dynamodb:Query",
+            "dynamodb:Scan",
           ]
           Resource = [
             module.database.file_metadata_table_arn,

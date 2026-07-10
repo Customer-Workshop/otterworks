@@ -83,6 +83,7 @@ command -v docker >/dev/null 2>&1    || { err "docker not found"; exit 1; }
 command -v helm >/dev/null 2>&1      || { err "helm not found"; exit 1; }
 command -v kubectl >/dev/null 2>&1   || { err "kubectl not found"; exit 1; }
 command -v terraform >/dev/null 2>&1 || { err "terraform not found"; exit 1; }
+command -v jq >/dev/null 2>&1        || { err "jq not found (required to read IRSA role ARNs from Terraform outputs)"; exit 1; }
 
 # ---------- Step 1: Provision Platform (VPC, EKS, ECR) ----------
 
@@ -304,6 +305,11 @@ deploy_service() {
 
 log "Loading application-infra Terraform outputs for config wiring..."
 load_infra_outputs
+
+# Every DB-backed service (auth/document/analytics/admin/report) gets DB_PASSWORD
+# injected below, so require it here too — not only inside the Terraform block,
+# which is skipped on the --skip-terraform redeploy path.
+DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set (exported or via Terraform run) before deploying services}"
 
 log "Deploying services to EKS..."
 FAILED=()

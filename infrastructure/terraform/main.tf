@@ -182,6 +182,12 @@ module "irsa" {
           Resource = [
             module.database.file_metadata_table_arn,
             "${module.database.file_metadata_table_arn}/index/*",
+            module.database.folders_table_arn,
+            "${module.database.folders_table_arn}/index/*",
+            module.database.file_versions_table_arn,
+            "${module.database.file_versions_table_arn}/index/*",
+            module.database.file_shares_table_arn,
+            "${module.database.file_shares_table_arn}/index/*",
           ]
         },
       ]

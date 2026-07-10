@@ -221,3 +221,84 @@ resource "aws_dynamodb_table" "notifications" { # nosemgrep: terraform.aws.secur
     Service = "notification-service"
   })
 }
+
+# --- DynamoDB: Folders (file-service) ---
+
+resource "aws_dynamodb_table" "folders" { # nosemgrep: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
+  name         = "${var.project}-folders-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = var.environment != "dev"
+  }
+
+  tags = merge(local.common_tags, {
+    Service = "file-service"
+  })
+}
+
+# --- DynamoDB: File Versions (file-service) ---
+
+resource "aws_dynamodb_table" "file_versions" { # nosemgrep: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
+  name         = "${var.project}-file-versions-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "file_id"
+  range_key    = "version"
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  attribute {
+    name = "file_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "version"
+    type = "N"
+  }
+
+  point_in_time_recovery {
+    enabled = var.environment != "dev"
+  }
+
+  tags = merge(local.common_tags, {
+    Service = "file-service"
+  })
+}
+
+# --- DynamoDB: File Shares (file-service) ---
+
+resource "aws_dynamodb_table" "file_shares" { # nosemgrep: terraform.aws.security.aws-dynamodb-table-unencrypted.aws-dynamodb-table-unencrypted
+  name         = "${var.project}-file-shares-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = var.environment != "dev"
+  }
+
+  tags = merge(local.common_tags, {
+    Service = "file-service"
+  })
+}

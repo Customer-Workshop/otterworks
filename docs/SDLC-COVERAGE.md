@@ -161,18 +161,32 @@ three more **app↔IaC contract gaps**, all fixed in this PR's Terraform:
 - **`file-service` IRSA lacked `dynamodb:Scan`.** `list_files` does a filtered `Scan`, but the role
   only granted `Query` → every `/files` list 500'd with AccessDenied. Added `Scan` (`main.tf` IRSA).
 
+**Search backend now wired in-cluster.** `search-service` previously 500'd on `/search` because it
+depends on Meilisearch, which the IaC only provisions on ECS (`modules/search`) — not reachable from
+the golden all-in-cluster app. `deploy-dev.sh` now deploys a single-replica in-cluster Meilisearch
+(`getmeili/meilisearch`, dev mode) and points `search-service` at `http://meilisearch:7700`;
+`/search` and `/health/ready` now return `200`.
+
+**file-service advanced tables now created.** folders / versions / shares each need a DynamoDB table
+the IaC never defined; only file-metadata was present. Added `otterworks-folders-*`,
+`otterworks-file-versions-*` (hash `file_id`, range `version`), and `otterworks-file-shares-*` in
+`modules/database`, extended the file-service IRSA policy to cover them, and wired the table names
+into the chart. Verified end-to-end: `POST /api/v1/folders` → `201` and `GET /api/v1/folders` lists
+it back; `/api/v1/files`, `/api/v1/files/shared` return `200`.
+
+**Intentional (do not "fix").**
+- **`admin-service` (Rails) crash-loops** by design: `config/environments/production.rb` calls
+  `ActiveSupport::TaggedLogging.logger(...)` (should be `.new(Logger.new(...))`), invalid on
+  Rails 7.1 → boot fails. This is a **planted bug** for bug-hunt / remediation labs and is kept on
+  the golden app (see `AGENTS.md`). Demos that need a passing admin-service fix it in their variant.
+
 **Remaining, honest gaps.**
-- **`admin-service` (Rails) crash-loops** on an application bug unrelated to wiring:
-  `config/environments/production.rb` calls `ActiveSupport::TaggedLogging.logger(...)` (should be
-  `.new(Logger.new(...))`), which does not exist in Rails 7.1 → boot fails. Left as-is (likely
-  intentional workshop content); flagged for the owner.
-- **`search-service`** is `Running` but `/search` 500s because it depends on the **Meilisearch ECS
-  cluster** (`modules/search`), which is provisioned as ECS, not in-cluster, and isn't serving.
-- **`file-service`** advanced features (folders / versions / shares) need three DynamoDB tables the IaC
-  never created; only file-metadata list/read is wired here.
 - Still needed for a clean CD story: ingress-nginx + cert-manager + Prometheus Operator (per org
   standards, in `platform-engineering-shared-services`); real DNS/TLS; delivery via External Secrets
   Operator rather than `helm --set`; and a GitOps controller (ArgoCD/Flux) with environment promotion.
+- Meilisearch runs in-cluster in dev mode (no master key) and its index isn't yet backfilled from
+  existing documents/files (the SQS indexer path stays disabled here), so `/search` returns valid but
+  empty results until content is indexed.
 
 ## 4. Infrastructure as Code — Present
 

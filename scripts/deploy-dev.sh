@@ -198,10 +198,18 @@ load_infra_outputs() {
 
 irsa_arn() { echo "${IRSA_JSON:-{}}" | jq -r --arg s "$1" '.[$s] // empty' 2>/dev/null; }
 
-# Build the per-service Helm --set flags into the global EXTRA_ARGS array.
+# Collect secret key/value pairs for a service. These are written to a temp
+# values file and passed to helm via -f (see deploy_service) rather than
+# --set-string, so secret values never appear in the process argument list
+# (visible via ps / /proc/*/cmdline).
+add_secret() { SECRET_KV+=("$1" "$2"); }
+
+# Build the per-service Helm --set flags into the global EXTRA_ARGS array, and
+# secret values into the global SECRET_KV array.
 build_helm_args() {
   local service=$1
   EXTRA_ARGS=()
+  SECRET_KV=()
   local role; role="$(irsa_arn "$service")"
   if [ -n "$role" ]; then EXTRA_ARGS+=(--set "serviceAccount.roleArn=${role}"); fi
   if [[ " ${JVM_SERVICES} " == *" ${service} "* ]]; then
@@ -222,7 +230,7 @@ build_helm_args() {
   if [ -n "${JWT_SECRET}" ]; then
     case "$service" in
       api-gateway|auth-service|document-service|collab-service|admin-service)
-        EXTRA_ARGS+=(--set-string "secrets.JWT_SECRET=${JWT_SECRET}") ;;
+        add_secret JWT_SECRET "${JWT_SECRET}" ;;
     esac
   fi
 
@@ -232,7 +240,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.SPRING_PROFILES_ACTIVE=prod")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_USERNAME=${DB_USER}")
-      EXTRA_ARGS+=(--set-string "secrets.SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}") ;;
+      add_secret SPRING_DATASOURCE_PASSWORD "${DB_PASSWORD}" ;;
     file-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.S3_BUCKET=${S3_FILE_BUCKET}")
@@ -243,7 +251,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
-      EXTRA_ARGS+=(--set-string "secrets.DOC_SVC_DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${RDS_HOST}:${RDS_PORT}/${DB_NAME}") ;;
+      add_secret DOC_SVC_DATABASE_URL "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
     collab-service)
       EXTRA_ARGS+=(--set-string "config.HTTP_PORT=8084" --set-string "config.NODE_ENV=production")
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379") ;;
@@ -263,13 +271,13 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")
       EXTRA_ARGS+=(--set-string "config.DATABASE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
-      EXTRA_ARGS+=(--set-string "secrets.DATABASE_PASSWORD=${DB_PASSWORD}") ;;
+      add_secret DATABASE_PASSWORD "${DB_PASSWORD}" ;;
     admin-service)
       EXTRA_ARGS+=(--set-string "config.DATABASE_HOST=${RDS_HOST}" --set-string "config.DATABASE_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
       EXTRA_ARGS+=(--set-string "config.RAILS_ENV=production" --set-string "config.RAILS_LOG_TO_STDOUT=true")
-      EXTRA_ARGS+=(--set-string "secrets.DATABASE_PASSWORD=${DB_PASSWORD}")
-      EXTRA_ARGS+=(--set-string "secrets.SECRET_KEY_BASE=${SECRET_KEY_BASE}") ;;
+      add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
+      add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}" ;;
     audit-service)
       EXTRA_ARGS+=(--set-string "config.Aws__Region=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.Aws__DynamoDbTable=${DDB_AUDIT}")
@@ -277,7 +285,7 @@ build_helm_args() {
     report-service)
       EXTRA_ARGS+=(--set-string "config.DB_HOST=${RDS_HOST}" --set-string "config.DB_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DB_NAME=${DB_NAME}" --set-string "config.DB_USER=${DB_USER}")
-      EXTRA_ARGS+=(--set-string "secrets.DB_PASSWORD=${DB_PASSWORD}") ;;
+      add_secret DB_PASSWORD "${DB_PASSWORD}" ;;
   esac
 }
 
@@ -292,15 +300,31 @@ deploy_service() {
 
   local image="${ECR_REGISTRY}/${ECR_PREFIX}${service}"
   build_helm_args "${service}"
+
+  # Write secrets to a locked-down temp values file passed via -f, so the values
+  # are never exposed in the process argument list (ps / /proc/*/cmdline).
+  local secret_file="" secret_args=()
+  if [ "${#SECRET_KV[@]}" -gt 0 ]; then
+    secret_file="$(mktemp)"
+    chmod 600 "${secret_file}"
+    jq -n --args '{secrets: (reduce range(0; ($ARGS.positional | length); 2) as $i
+      ({}; . + {($ARGS.positional[$i]): $ARGS.positional[$i + 1]}))}' \
+      "${SECRET_KV[@]}" > "${secret_file}"
+    secret_args=(-f "${secret_file}")
+  fi
+
   log "Deploying ${service} via Helm..."
   helm upgrade --install "${service}" "${chart_dir}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${image}" \
     --set image.tag="${IMAGE_TAG}" \
     "${EXTRA_ARGS[@]}" \
+    "${secret_args[@]}" \
     --wait \
     --timeout 3m \
-    || { warn "Helm deploy failed for ${service}"; return 1; }
+    && local rc=0 || local rc=1
+  [ -n "${secret_file}" ] && rm -f "${secret_file}"
+  if [ "${rc}" -ne 0 ]; then warn "Helm deploy failed for ${service}"; return 1; fi
 }
 
 log "Loading application-infra Terraform outputs for config wiring..."

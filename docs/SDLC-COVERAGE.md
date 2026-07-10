@@ -26,7 +26,7 @@
 | 9 | Observability — tracing | **Partial** | OTel SDK wired in services + Collector/Jaeger configs, but Collector/Jaeger **not deployed to EKS** |
 | 10 | Logging | **Partial** | Structured stdout logging + Fluent Bit → CloudWatch config, but Fluent Bit **not deployed to EKS** |
 | 11 | Alerting / incident mgmt | **Partial** | PrometheusRule/Grafana alerts + admin-service incident→Devin flow, but no Alertmanager deployed |
-| 12 | Secrets management | **Partial** | IRSA for AWS access is solid; `deploy-dev.sh` now delivers app secrets (DB/JWT/Rails) via a Helm-rendered k8s Secret, but it's `--set`-injected, not External Secrets Operator / Secrets Manager |
+| 12 | Secrets management | **Partial** | IRSA for AWS access is solid; `deploy-dev.sh` now delivers app secrets (DB/JWT/Rails) into a Helm-rendered k8s Secret via a temp values file, but it's still deploy-time injection, not External Secrets Operator / Secrets Manager |
 | 13 | Data / ETL | **Partial** | Cron + Python ETL scripts present; README-advertised Airflow/Spark are **absent** |
 | 14 | Documentation | **Present** | README, ARCHITECTURE, runbooks, CI/security strategy docs, API route matrix |
 
@@ -137,7 +137,8 @@ v4). Config/secret values were passed at deploy time via `helm --set` and are **
 
 **Full-stack wiring applied in this PR.** `scripts/deploy-dev.sh` now closes the ConfigMap/Secret gap
 for the **whole** stack: it reads the app-infra Terraform outputs (`load_infra_outputs()`) and, per
-service (`build_helm_args()`), injects the correct config + secrets via `helm --set` — RDS JDBC/asyncpg
+service (`build_helm_args()`), injects config via `helm --set` and secrets via a locked-down temp
+values file (`-f`, so secret values never hit the process arg list) — RDS JDBC/asyncpg
 URLs + credentials, Redis host/port, S3 buckets, DynamoDB tables, SNS topic + SQS queue, a shared
 `JWT_SECRET` across the gateway and every token-validating service, a Rails `SECRET_KEY_BASE`, plus the
 per-service IRSA role ARN. It also (a) exposes each backend Service on its real container port so the

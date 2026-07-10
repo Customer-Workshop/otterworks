@@ -105,7 +105,10 @@ if [ "${SKIP_TERRAFORM}" = false ]; then
   log "Provisioning application infrastructure (RDS, DynamoDB, S3, SQS, etc.)..."
   cd "${REPO_ROOT}/infrastructure/terraform"
   terraform init -input=false
-  terraform apply -var="db_password=${DB_PASSWORD}" -auto-approve -input=false
+  # Pass the DB password via TF_VAR_ env, not -var on the command line, so it is
+  # not visible in the process argument list (ps / /proc/*/cmdline). Consistent
+  # with the Helm secret handling below.
+  TF_VAR_db_password="${DB_PASSWORD}" terraform apply -auto-approve -input=false
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."
 else

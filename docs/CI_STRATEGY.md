@@ -41,7 +41,7 @@ Uses `dorny/paths-filter` for **change detection** — only services with modifi
 
 **Trigger:** Push to `main`, version tags (`v*`)
 
-Builds all 12 service Docker images in a matrix and pushes to ECR (`599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-<service>`). Requires `AWS_ROLE_ARN` secret for OIDC-based ECR authentication.
+Builds all 12 service Docker images in a matrix and pushes to ECR (`<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-<service>`). Requires `AWS_ROLE_ARN` secret for OIDC-based ECR authentication.
 
 ## Current State (Post-Fix)
 

@@ -1,7 +1,10 @@
 replicaCount: 1
 
+global:
+  environment: dev
+
 image:
-  repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-report-service
+  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-report-service
   tag: ""  # Set at deploy time (ECR uses IMMUTABLE tags)
   pullPolicy: IfNotPresent
 
@@ -38,6 +41,19 @@ healthCheck:
   initialDelaySeconds: 30
   periodSeconds: 15
 
+monitoring:
+  enabled: true
+  path: /metrics
+  port: 8091
+
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx
+  monitoringNamespace: monitoring
+
+serviceAccount:
+  roleArn: ""
+
 env:
   DB_HOST: postgres
   DB_PORT: "5432"
@@ -47,3 +63,11 @@ env:
   AUDIT_SERVICE_URL: http://audit-service:8090
   AUTH_SERVICE_URL: http://auth-service:8081
   REPORT_OUTPUT_DIR: /tmp/reports
+
+# Non-sensitive service configuration rendered into {{ .Release.Name }}-config
+# and injected via envFrom. Populate at deploy time (e.g. from Terraform outputs).
+config: {}
+
+# Sensitive configuration rendered into {{ .Release.Name }}-secrets (Opaque,
+# stringData) and injected via envFrom. Populate at deploy time; never commit values.
+secrets: {}

@@ -65,6 +65,14 @@ make down
 | Web App | React 18 / Next.js 14 | 3000 | Main user-facing application |
 | Admin Dashboard | Angular 17 | 4200 | Administrative interface |
 
+## Client apps
+
+Native/other clients live under [`clients/`](clients/):
+
+| Client | Stack | Description |
+|--------|-------|-------------|
+| [Android](clients/android/) | Kotlin / Jetpack Compose (Retrofit) | Native Android app mirroring the web client's core flow (register, login, documents, create). Points at the API gateway via `http://10.0.2.2:8080/api/v1` from the emulator. |
+
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design, data flow, and infrastructure details.

@@ -61,7 +61,7 @@ describe('socket authentication', () => {
         display_name: 'User One',
         roles: ['editor'],
       },
-      'secret',
+      'secret', // nosemgrep: javascript.jsonwebtoken.security.jwt-hardcode.hardcoded-jwt-secret
     );
     const socket = {
       id: 'socket-1',

@@ -41,29 +41,33 @@ T_DB_NAME="$(tenant_db_name "${ATTENDEE_ID}")"
 
 aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null 2>&1 || true
 
+# --- Step 1: delete the namespace (everything in it) FIRST ---
+# This stops every application pod so nothing is still holding a connection to
+# the per-tenant database when we drop it in step 2 (avoids DROP racing the
+# connection-pool reconnects of live pods). The namespace may already be gone
+# (e.g. the TTL reaper deleted it) — that's fine, we still drop the DB below.
 if ! kubectl get ns "${NS}" >/dev/null 2>&1; then
-  warn "Namespace ${NS} not found; nothing to delete (will still clean IRSA trust)."
+  warn "Namespace ${NS} not found (already deleted / reaped); still dropping DB + cleaning IRSA trust."
 else
-  # --- Step 1: delete the namespace (everything in it) FIRST ---
-  # This stops every application pod so nothing is still holding a connection to
-  # the per-tenant database when we drop it in step 2 (avoids DROP racing the
-  # connection-pool reconnects of live pods).
   log "Deleting namespace ${NS}..."
   kubectl delete namespace "${NS}" --wait=true --timeout=180s || \
     warn "Namespace deletion timed out; it may still be terminating."
+fi
 
-  # --- Step 2: drop the per-tenant database (now that no pods are connected) ---
-  if [ "${KEEP_DB}" = false ] && [ -n "${DB_PASSWORD:-}" ]; then
-    load_infra_outputs
-    if [ -n "${RDS_HOST}" ]; then
-      log "Dropping per-tenant database ${T_DB_NAME} (in-cluster job in ${SYSTEM_NAMESPACE})..."
-      kubectl get ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || kubectl create ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || true
-      drop_tenant_db "${T_DB_NAME}" "${SYSTEM_NAMESPACE}" || \
-        warn "  check RDS manually for ${T_DB_NAME}."
-    fi
-  elif [ "${KEEP_DB}" = false ]; then
-    warn "DB_PASSWORD not set; skipping DB drop. Set it or drop ${T_DB_NAME} manually."
+# --- Step 2: drop the per-tenant database (now that no pods are connected) ---
+# Runs regardless of whether the namespace still existed: the drop Job executes
+# in ${SYSTEM_NAMESPACE}, not the tenant namespace, so it works even after the
+# reaper has removed the tenant namespace (the reaper does NOT drop DBs).
+if [ "${KEEP_DB}" = false ] && [ -n "${DB_PASSWORD:-}" ]; then
+  load_infra_outputs
+  if [ -n "${RDS_HOST}" ]; then
+    log "Dropping per-tenant database ${T_DB_NAME} (in-cluster job in ${SYSTEM_NAMESPACE})..."
+    kubectl get ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || kubectl create ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || true
+    drop_tenant_db "${T_DB_NAME}" "${SYSTEM_NAMESPACE}" || \
+      warn "  check RDS manually for ${T_DB_NAME}."
   fi
+elif [ "${KEEP_DB}" = false ]; then
+  warn "DB_PASSWORD not set; skipping DB drop. Set it or drop ${T_DB_NAME} manually."
 fi
 
 # --- Step 3: remove this tenant's subs from the shared IRSA role trust policies ---

@@ -319,12 +319,16 @@ External Secrets Operator (pulling from Secrets Manager/SSM) for a credible secr
 
 **Evidence.** `etl/` contains Python batch jobs (`scripts/{storage_cleanup_daily,audit_archive_weekly,
 user_activity_daily,search_reindex_weekly,analytics_daily}.py`), a `crontab`, `run.sh`, `config.ini`,
-and `ETL_UPGRADE_GUIDE.md`. Analytics writes to an S3 **data lake** bucket (`s3_data_lake_bucket`).
+and `ETL_UPGRADE_GUIDE.md`. `analytics-service` now persists events + a daily aggregate rollup to a
+**durable PostgreSQL store** via Slick/Flyway (`analytics_events`, `analytics_daily_metrics`) and also
+has the S3 **data lake** bucket wired (`s3_data_lake_bucket`) — see `services/analytics-service/README.md`.
 
 **Gap / what a demo needs.** `README.md` advertises `etl/airflow/` (DAGs) and `etl/spark/` (Scala
 Spark jobs), but **neither directory exists** — ETL is cron-driven Python only. Either build out
 Airflow/Spark or correct the README. Good candidate for a **"legacy cron → orchestrated data
-pipeline"** modernization demo.
+pipeline"** modernization demo. The durable analytics store is also the **"before"** for an
+**S3 + Apache Iceberg lakehouse** (Glue/Athena) re-architecture, with an old-vs-new reconciliation
+check as continuous validation (baseline: `PostgresMetricsRepositorySpec`).
 
 ## 14. Documentation — Present
 
@@ -347,6 +351,7 @@ shared-services EKS + Airflow/Spark; actual is standalone `platform/terraform` +
 | **Cloud-native IaC provisioning** | §4, §3 | Real two-layer Terraform + EKS + IRSA; live apply, including finding & fixing a managed-policy bug |
 | **Observability / incident-response with Devin** | §8–§11 | admin-service incident→Devin auto-investigation is a unique narrative (needs runtime wired) |
 | **Legacy modernization** | §13, §2 (report-service Java 8) | Cron ETL and the intentionally-legacy `report-service` are ready-made "before" states |
+| **Analytics lakehouse re-architecture** | §13 | Durable PostgreSQL analytics store is the "before" for an S3 + Apache Iceberg (Glue/Athena) migration, with old-vs-new reconciliation as continuous validation |
 
 ## Top gaps to fix before OtterWorks is a clean all-around reference
 

@@ -100,7 +100,9 @@ mid-demo is the same lever scoped to the one namespace (seconds).
   caps each tenant (4 CPU / 8Gi requests, 40 pods).
 - One shared ingress/NLB for all tenants (no per-tenant ELB).
 - **Scale-to-zero** idle tenants: `./scripts/tenant-scale.sh <ID> down`.
-- **TTL reaper** CronJob (every 15m) deletes namespaces past `demo/expires-at`.
+- **TTL reaper** CronJob (every 15m) deletes tenant namespaces whose
+  `demo/expires-at-epoch` annotation is in the past (integer compare only, so the
+  reaper image needs nothing more than `date +%s`).
 - Tenants reuse the golden ECR image tags; only variants build new images.
 
 ## Teardown
@@ -108,6 +110,32 @@ mid-demo is the same lever scoped to the one namespace (seconds).
 ```bash
 ./scripts/teardown-tenant.sh a01     # drops ns + per-tenant DB + IRSA trust subs
 ```
+
+## Verified live (2026-07-13, cluster `otterworks-dev`)
+
+Stood up `a01` + `a02` concurrently on the shared cluster and confirmed:
+
+- **Separate namespaces**, each 12/13 pods Running (`admin-service` crash-loops by
+  design). Every tenant Service is `ClusterIP` — **no per-tenant LoadBalancer**;
+  the only ELBs are the one shared `ingress-nginx` NLB and the golden app's.
+- **Shared ingress routing:** `curl -H "Host: api-t-a01..." $NLB/health` → 200 and
+  the same for `a02`; web hosts `t-a01/t-a02` → 200; unknown host → 404 — all
+  through the single NLB.
+- **Relational isolation:** a user registered in `a01` (`201`, login `200`) does
+  **not** exist in `a02` (login `400`); re-registering the same email in `a02`
+  succeeds (`201`) — proving independent per-tenant databases.
+- **Bug isolation:** injecting `search-suggest-500` into `a01` only → `a01`
+  `/search/suggest` returns `500` while `a02` stays `200`; `reset` restores `a01`.
+- **Cost controls:** `tenant-scale.sh a02 down` → 15/15 deployments at 0 replicas
+  (0 running pods), `up` restores them; the reaper kept both live tenants and
+  deleted a synthetic expired namespace.
+- **Teardown/cleanup:** both tenants removed — namespaces gone, per-tenant DBs
+  dropped, and tenant subjects removed from the shared IRSA role trust policies.
+
+Note: the 2-node SPOT group is sized for the golden app; running two extra full
+tenants required scaling the shared node group to 4 (`t3.large` SPOT). Size the
+shared group for the expected number of concurrent tenants (or enable an
+autoscaler) rather than per-tenant node groups.
 
 ## Known limitations / honest gaps
 

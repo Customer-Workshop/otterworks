@@ -13,7 +13,7 @@ import com.otterworks.analytics.service.{AnalyticsService, EventProcessor}
 
 import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 object Main:
   def main(args: Array[String]): Unit =
@@ -30,17 +30,18 @@ object Main:
     // SQS handling below.
     val repository: MetricsRepository =
       if config.repository.isPostgres then
-        Try {
-          val db = new AnalyticsDb(config.postgres)
+        val db = new AnalyticsDb(config.postgres)
+        try
           db.migrate()
           sys.addShutdownHook(db.close())
           system.log.info("Analytics using durable PostgreSQL metrics store")
           new PostgresMetricsRepository(db)
-        }.recover { case ex =>
-          system.log.warn(
-            s"Durable PostgreSQL store unavailable (${ex.getMessage}); falling back to in-memory store")
-          new InMemoryMetricsRepository(config.postgres)
-        }.get
+        catch
+          case ex: Throwable =>
+            db.close()
+            system.log.warn(
+              s"Durable PostgreSQL store unavailable (${ex.getMessage}); falling back to in-memory store")
+            new InMemoryMetricsRepository(config.postgres)
       else
         system.log.info("Analytics using in-memory metrics store (per configuration)")
         new InMemoryMetricsRepository(config.postgres)

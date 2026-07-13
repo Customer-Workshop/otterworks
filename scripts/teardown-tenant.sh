@@ -44,49 +44,26 @@ aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --ali
 if ! kubectl get ns "${NS}" >/dev/null 2>&1; then
   warn "Namespace ${NS} not found; nothing to delete (will still clean IRSA trust)."
 else
-  # --- Step 1: drop per-tenant database (best-effort, before deleting the ns) ---
+  # --- Step 1: delete the namespace (everything in it) FIRST ---
+  # This stops every application pod so nothing is still holding a connection to
+  # the per-tenant database when we drop it in step 2 (avoids DROP racing the
+  # connection-pool reconnects of live pods).
+  log "Deleting namespace ${NS}..."
+  kubectl delete namespace "${NS}" --wait=true --timeout=180s || \
+    warn "Namespace deletion timed out; it may still be terminating."
+
+  # --- Step 2: drop the per-tenant database (now that no pods are connected) ---
   if [ "${KEEP_DB}" = false ] && [ -n "${DB_PASSWORD:-}" ]; then
     load_infra_outputs
     if [ -n "${RDS_HOST}" ]; then
-      log "Dropping per-tenant database ${T_DB_NAME} (in-cluster job)..."
-      kubectl -n "${NS}" delete job tenant-db-drop --ignore-not-found >/dev/null 2>&1 || true
-      kubectl -n "${NS}" create secret generic tenant-db-admin \
-        --from-literal=PGPASSWORD="${DB_PASSWORD}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
-      kubectl apply -n "${NS}" -f - <<YAML
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: tenant-db-drop
-spec:
-  backoffLimit: 1
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: psql
-          image: postgres:16-alpine
-          env:
-            - name: PGPASSWORD
-              valueFrom: { secretKeyRef: { name: tenant-db-admin, key: PGPASSWORD } }
-          command: ["/bin/sh","-c"]
-          args:
-            - |
-              CONN="host=${RDS_HOST} port=${RDS_PORT} dbname=otterworks user=${DB_USER} sslmode=prefer connect_timeout=10"
-              psql "\$CONN" -c "DROP DATABASE IF EXISTS \"${T_DB_NAME}\" WITH (FORCE)" || \
-                psql "\$CONN" -c "DROP DATABASE IF EXISTS \"${T_DB_NAME}\""
-YAML
-      kubectl -n "${NS}" wait --for=condition=complete job/tenant-db-drop --timeout=90s >/dev/null 2>&1 \
-        && log "  database dropped." \
-        || warn "  DB drop did not confirm; check RDS manually for ${T_DB_NAME}."
+      log "Dropping per-tenant database ${T_DB_NAME} (in-cluster job in ${SYSTEM_NAMESPACE})..."
+      kubectl get ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || kubectl create ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || true
+      drop_tenant_db "${T_DB_NAME}" "${SYSTEM_NAMESPACE}" || \
+        warn "  check RDS manually for ${T_DB_NAME}."
     fi
   elif [ "${KEEP_DB}" = false ]; then
     warn "DB_PASSWORD not set; skipping DB drop. Set it or drop ${T_DB_NAME} manually."
   fi
-
-  # --- Step 2: delete the namespace (everything in it) ---
-  log "Deleting namespace ${NS}..."
-  kubectl delete namespace "${NS}" --wait=true --timeout=180s || \
-    warn "Namespace deletion timed out; it may still be terminating."
 fi
 
 # --- Step 3: remove this tenant's subs from the shared IRSA role trust policies ---

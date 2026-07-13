@@ -201,8 +201,7 @@ create_tenant_database() {
   [ -n "${RDS_HOST}" ] || { warn "RDS endpoint unknown; skipping per-tenant DB (services will share the default DB)"; return 0; }
   log "Ensuring per-tenant database ${T_DB_NAME} exists on shared RDS (in-cluster job)..."
   kubectl -n "${NS}" delete job tenant-db-init --ignore-not-found >/dev/null 2>&1 || true
-  kubectl -n "${NS}" create secret generic tenant-db-admin \
-    --from-literal=PGPASSWORD="${DB_PASSWORD}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  apply_db_admin_secret "${NS}"
   kubectl apply -n "${NS}" -f - <<YAML
 apiVersion: batch/v1
 kind: Job

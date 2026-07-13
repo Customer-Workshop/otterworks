@@ -86,6 +86,70 @@ load_infra_outputs() {
 
 irsa_arn() { echo "${IRSA_JSON:-{}}" | jq -r --arg s "$1" '.[$s] // empty' 2>/dev/null; }
 
+# Create/replace the tenant-db-admin secret in a namespace WITHOUT ever putting
+# the password on a process argv: the value is base64'd via a stdin pipe and the
+# manifest is applied via stdin (heredoc), so it never appears in ps/cmdline.
+# Requires DB_PASSWORD in the environment.
+apply_db_admin_secret() {
+  local ns="$1" b64
+  b64="$(printf '%s' "${DB_PASSWORD}" | base64 | tr -d '\n')"
+  kubectl -n "${ns}" apply -f - >/dev/null <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tenant-db-admin
+type: Opaque
+data:
+  PGPASSWORD: ${b64}
+EOF
+}
+
+# Drop a per-tenant database via an in-cluster Job in ${run_ns}. Callers MUST
+# delete the tenant namespace first so no application pods are still connected
+# (otherwise DROP DATABASE races the pods' connection-pool reconnects). Requires
+# load_infra_outputs to have set RDS_HOST/RDS_PORT/DB_USER, and DB_PASSWORD set.
+drop_tenant_db() {
+  local db="$1" run_ns="$2"
+  apply_db_admin_secret "${run_ns}"
+  kubectl -n "${run_ns}" delete job tenant-db-drop --ignore-not-found >/dev/null 2>&1 || true
+  kubectl apply -n "${run_ns}" -f - >/dev/null <<YAML
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tenant-db-drop
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: psql
+          image: postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: tenant-db-admin, key: PGPASSWORD } }
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              CONN="host=${RDS_HOST} port=${RDS_PORT} dbname=otterworks user=${DB_USER} sslmode=prefer connect_timeout=10"
+              psql "\$CONN" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${db}\" WITH (FORCE)"
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+YAML
+  local ok=1
+  if kubectl -n "${run_ns}" wait --for=condition=complete job/tenant-db-drop --timeout=90s >/dev/null 2>&1; then
+    log "  database ${db} dropped."; ok=0
+  else
+    warn "  DB drop for ${db} did not confirm; last log lines:"
+    kubectl -n "${run_ns}" logs job/tenant-db-drop 2>/dev/null | tail -5 || true
+  fi
+  kubectl -n "${run_ns}" delete secret tenant-db-admin --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "${run_ns}" delete job tenant-db-drop --ignore-not-found >/dev/null 2>&1 || true
+  return "${ok}"
+}
+
 # Secret handling: values are collected into SECRET_KV and later written to a
 # locked-down temp values file passed to helm via -f, so secret values never
 # appear in the process argument list (ps / /proc/*/cmdline). Mirrors deploy-dev.sh.

@@ -25,6 +25,91 @@ Guidance for AI agents (and humans) working in this repo.
   golden baseline. See `docs/MULTI-TENANT-DEMO-PLAN.md` for the namespace-per-tenant model,
   cost controls, and how to inject bugs / do immediate redeploys without stepping on others.
 
+## Tenant isolation (for crafting bespoke demo branches)
+
+Each demo runs as an **ephemeral tenant** on the shared EKS cluster (`otterworks-dev`).
+`scripts/deploy-tenant.sh <ATTENDEE_ID>` stamps the golden app into a dedicated namespace so
+many attendees run "their own OtterWorks" side by side without touching each other or `main`.
+Full operator detail lives in `docs/MULTI-TENANT-DEMO-PLAN.md` (design) and
+`docs/MULTI-TENANT-RUNBOOK.md` (step-by-step); this section is the mental model you need
+before building a bespoke variant.
+
+### What a tenant gets (isolated) vs. what it shares
+
+Deploying tenant `<ID>` (namespace `otterworks-<ID>`) creates, **per tenant**:
+
+- All 11 backend microservices + both frontends (`web-app`, `admin-dashboard`) via Helm,
+  `replicas=1`, each with a per-tenant `ConfigMap`/`Secret`.
+- A dedicated in-cluster **Redis** and **MeiliSearch** (so chaos flags, sessions, collab
+  state, and search indexes never leak across tenants).
+- A dedicated **PostgreSQL database** `otterworks_<ID>` on the shared RDS instance (all
+  SQL-backed service data is isolated at the database level).
+- Guardrails: `ResourceQuota`, `LimitRange`, and a `NetworkPolicy` that denies cross-tenant
+  pod-to-pod traffic; ingress rules on the shared controller; a TTL label + reaper for
+  auto-cleanup.
+
+**Shared across all tenants (out of scope for per-tenant isolation):**
+
+- The EKS cluster + SPOT node group (shared compute), the ingress-nginx controller and its
+  single NLB (shared entry point), cert-manager, and monitoring — these are platform
+  concerns and must **not** be duplicated per tenant.
+- The RDS **instance** (isolated only logically, via the per-tenant database), and the
+  physical **S3 buckets** / **DynamoDB tables** (Tier-A logical prefixing/partitioning only —
+  see below). IAM/IRSA service roles are shared across `otterworks-*` via a wildcard trust.
+- SNS/SQS eventing is **disabled** for tenants to avoid cross-tenant queue consumers.
+
+### Isolation tiers
+
+- **Tier A (default)** — logical isolation using the app's existing config knobs: per-tenant
+  RDS database, Redis/MeiliSearch instances, and S3 key / DynamoDB owner prefixes on the
+  shared buckets/tables. Cheap and instant; good enough for almost every demo.
+- **Tier B** — physical isolation (on-demand per-tenant RDS schema + DynamoDB tables +
+  scoped IRSA). Implement per `deploy-tenant.sh --tier B` where feasible; otherwise the
+  limitation is documented in the plan doc.
+
+### Ingress / URL model
+
+Frontends ride the **shared** ingress-nginx NLB (never one LoadBalancer per tenant). With a
+DNS zone, prefer host-based routing: `deploy-tenant.sh <ID> --host-suffix <domain>` →
+`t-<ID>.<domain>` (web) and `api-t-<ID>.<domain>` (api). Without wildcard DNS it falls back
+to path routing on the shared NLB (`/<ID>/` and `/<ID>/api/...`). Note the Next.js SPA emits
+absolute `/_next/...` asset paths, so a sub-path only fully renders in a browser when that
+tenant is served at the ingress **root** (fine when it's the only tenant); multi-tenant
+browser use wants host-based routing.
+
+### Crafting a bespoke demo branch
+
+The golden app is the base for every variant; **never mutate `main`** to build a demo. Two
+ways to make a tenant behave differently:
+
+1. **No code change (preferred, instant, per-tenant):** inject a scenario from
+   `scripts/bug-catalog.yaml` with `scripts/inject-bug.sh <ID> <scenario>` (clear with
+   `... <ID> reset`). Mechanisms, lightest first: a **chaos** Redis flag in the tenant's own
+   Redis (no redeploy, auto-expires), a **config** override (`helm upgrade` one release +
+   rollout restart), or an **image** swap. All are scoped to `otterworks-<ID>` and never
+   affect other tenants or `main`.
+
+2. **Code-level variant (bespoke branch):**
+   - Branch off `main` — participants use `workshop-<attendee_id>`; never point them at
+     internal `devin/...` branches. Plant the demo-specific change on that branch.
+   - Build the affected service image and push it to ECR under a unique tag (the deploy
+     script derives the registry from `$AWS_ACCOUNT_ID`).
+   - Deploy the tenant pinned to that image: `deploy-tenant.sh <ID> --image-tag <tag>`, or
+     override a single service with `BUG_IMAGE_TAG_<service_with_underscores>=<tag>`
+     (e.g. `BUG_IMAGE_TAG_file_service`). Roll back by redeploying with the golden tag.
+
+**Isolation guarantees to rely on:** a write in one tenant is invisible to another (separate
+DB + Redis + MeiliSearch); injecting a bug in one tenant does not degrade others; and none of
+the above changes `main`. Verify per the "Live verification" section of the runbook.
+
+### Lifecycle / cleanup
+
+- Tenants are TTL-labeled (`deploy-tenant.sh <ID> --ttl 8h`); a reaper CronJob in
+  `otterworks-system` deletes expired namespaces. The reaper does **not** drop databases —
+  use `scripts/teardown-tenant.sh <ID>` to remove the namespace **and** drop
+  `otterworks_<ID>` and clean up IRSA trust.
+- Idle cost control: `scripts/tenant-scale.sh <ID> down|up` scales a tenant to/from zero.
+
 ## Deploy
 
 - `scripts/deploy-dev.sh` wires all services' config/secrets from Terraform outputs and

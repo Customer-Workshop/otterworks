@@ -30,9 +30,6 @@ namespace OtterWorks.Desktop.Services
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _baseUrl = settings.ApiBaseUrl.TrimEnd('/');
 
-            ServicePointManager.SecurityProtocol =
-                SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
-
             _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         }
 
@@ -107,6 +104,13 @@ namespace OtterWorks.Desktop.Services
                     "Could not reach the OtterWorks backend. Verify it is running and that the " +
                     "API base URL is correct.\n\n" + ex.Message);
             }
+            catch (TaskCanceledException)
+            {
+                throw new ApiException(
+                    0,
+                    "The request to the OtterWorks backend timed out. Verify the server is " +
+                    "running and responsive.");
+            }
 
             using (response)
             {
@@ -124,7 +128,16 @@ namespace OtterWorks.Desktop.Services
                     return default(T);
                 }
 
-                return JsonConvert.DeserializeObject<T>(content);
+                try
+                {
+                    return JsonConvert.DeserializeObject<T>(content);
+                }
+                catch (JsonException)
+                {
+                    throw new ApiException(
+                        response.StatusCode,
+                        "The OtterWorks backend returned an unexpected (non-JSON) response.");
+                }
             }
         }
 

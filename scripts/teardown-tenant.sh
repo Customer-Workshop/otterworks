@@ -84,10 +84,19 @@ remove_irsa_trust() {
     sub="system:serviceaccount:${NS}:${svc}"
     local doc; doc="$(aws iam get-role --role-name "${role}" --query 'Role.AssumeRolePolicyDocument' --output json 2>/dev/null || echo "")"
     [ -n "${doc}" ] || continue
+    # Remove ONLY legacy per-tenant statements that pin this exact sub via
+    # StringEquals (added by older deploys). Statements without a
+    # StringEquals[:sub] — notably the shared Terraform-managed StringLike
+    # wildcard statement that grants every otterworks-* namespace — MUST be left
+    # untouched; stripping it would break AWS access for the golden app and all
+    # other tenants. The current deploy relies on that wildcard and adds no
+    # per-tenant StringEquals statement, so this is normally a no-op.
     local new; new="$(echo "${doc}" | jq --arg sub "${sub}" --arg url "${oidc_url}" '
-      .Statement |= map(select(
-        (.Condition.StringEquals[$url+":sub"] // empty
-         | (if type=="array" then . else [.] end) | index($sub)) | not))')"
+      .Statement |= map(
+        if (.Condition.StringEquals[$url+":sub"] // null) != null then
+          select((.Condition.StringEquals[$url+":sub"]
+            | (if type=="array" then . else [.] end) | index($sub)) | not)
+        else . end)')"
     # Only update if something actually changed.
     if [ "$(echo "${doc}" | jq -cS .)" != "$(echo "${new}" | jq -cS .)" ]; then
       aws iam update-assume-role-policy --role-name "${role}" --policy-document "${new}" >/dev/null \

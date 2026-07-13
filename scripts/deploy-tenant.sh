@@ -174,12 +174,25 @@ ensure_irsa_trust() {
     sub="system:serviceaccount:${NS}:${svc}"
     local doc; doc="$(aws iam get-role --role-name "${role}" --query 'Role.AssumeRolePolicyDocument' --output json 2>/dev/null || echo "")"
     [ -n "${doc}" ] || { warn "role ${role} not found; skipping"; continue; }
-    # Skip if the sub is already trusted (wildcard or exact).
-    if echo "${doc}" | jq -e --arg sub "${sub}" --arg url "${oidc_url}" '
-        .Statement[] | select(.Condition.StringEquals[$url+":sub"] // empty
-        | (if type=="array" then . else [.] end) | index($sub))' >/dev/null 2>&1; then
-      continue
-    fi
+    # Skip if the sub is already trusted — either an exact StringEquals entry or
+    # a StringLike wildcard (e.g. the Terraform-managed "otterworks-*" pattern)
+    # that already matches this namespace. Checking only StringEquals would make
+    # us append a redundant statement on every deploy and bloat the trust policy
+    # (IAM trust docs cap at 2048/4096 chars) until deploys start failing.
+    local trusted already=false pat
+    trusted="$(echo "${doc}" | jq -r --arg url "${oidc_url}" '
+      [ .Statement[]?.Condition
+        | (.StringEquals[$url+":sub"], .StringLike[$url+":sub"])
+        | select(. != null)
+        | if type=="array" then .[] else . end ] | .[]' 2>/dev/null)"
+    while IFS= read -r pat; do
+      [ -n "${pat}" ] || continue
+      # shellcheck disable=SC2254  # glob-match the exact sub against trust patterns
+      case "${sub}" in ${pat}) already=true; break ;; esac
+    done <<EOF
+${trusted}
+EOF
+    [ "${already}" = true ] && continue
     # Append an AssumeRoleWithWebIdentity statement scoped to this namespace SA.
     local new; new="$(echo "${doc}" | jq --arg sub "${sub}" --arg url "${oidc_url}" '
       .Statement += [{

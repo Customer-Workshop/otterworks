@@ -52,6 +52,7 @@ case "${SCENARIO}" in
     grep -E '^  [a-z].*:$|mechanism:|description:' "${SCRIPT_DIR}/bug-catalog.yaml" | sed 's/^/  /'
     exit 0 ;;
   reset)
+    kubectl get ns "${NS}" >/dev/null 2>&1 || { err "Namespace ${NS} not found; deploy the tenant first."; exit 1; }
     log "Clearing all chaos flags in ${NS}..."
     keys="$(redis_exec --scan --pattern 'chaos:*' 2>/dev/null || true)"
     if [ -n "${keys}" ]; then echo "${keys}" | xargs -r -n1 kubectl -n "${NS}" exec deploy/redis -- redis-cli DEL >/dev/null; fi

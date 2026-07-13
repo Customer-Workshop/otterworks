@@ -102,3 +102,33 @@ impl fmt::Display for ErrorResponse {
         write!(f, "{}: {}", self.error, self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::ResponseError;
+
+    #[test]
+    fn maps_domain_errors_to_http_responses() {
+        let response = ServiceError::FileNotFound("file-1".into()).error_response();
+        assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
+        let response = ServiceError::FileTooLarge {
+            max_bytes: 10,
+            actual_bytes: 11,
+        }
+        .error_response();
+        assert_eq!(
+            response.status(),
+            actix_web::http::StatusCode::PAYLOAD_TOO_LARGE
+        );
+    }
+
+    #[test]
+    fn formats_error_response() {
+        let response = ErrorResponse {
+            error: "bad_request".into(),
+            message: "invalid input".into(),
+        };
+        assert_eq!(response.to_string(), "bad_request: invalid input");
+    }
+}

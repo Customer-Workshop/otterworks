@@ -88,6 +88,30 @@ impl SharePermission {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_permissions_case_insensitively() {
+        assert_eq!(
+            SharePermission::from_str_value("VIEWER"),
+            Some(SharePermission::Viewer)
+        );
+        assert_eq!(
+            SharePermission::from_str_value("Editor"),
+            Some(SharePermission::Editor)
+        );
+        assert_eq!(SharePermission::from_str_value("owner"), None);
+    }
+
+    #[test]
+    fn displays_permissions_in_lowercase() {
+        assert_eq!(SharePermission::Viewer.to_string(), "viewer");
+        assert_eq!(SharePermission::Editor.to_string(), "editor");
+    }
+}
+
 // ── Request / Response Types ───────────────────────────────────────────
 
 #[derive(Debug, Serialize)]

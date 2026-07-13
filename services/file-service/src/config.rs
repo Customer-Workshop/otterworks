@@ -79,3 +79,67 @@ impl SnsConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+    }
+
+    #[test]
+    fn uses_defaults_when_environment_is_missing() {
+        let _lock = env_lock();
+        for key in [
+            "PORT",
+            "MAX_UPLOAD_BYTES",
+            "AWS_REGION",
+            "AWS_ENDPOINT_URL",
+            "S3_BUCKET",
+            "DYNAMODB_TABLE",
+            "DYNAMODB_FOLDERS_TABLE",
+            "DYNAMODB_VERSIONS_TABLE",
+            "DYNAMODB_SHARES_TABLE",
+            "SNS_TOPIC_ARN",
+        ] {
+            std::env::remove_var(key);
+        }
+
+        let config = AppConfig::from_env();
+        assert_eq!(config.server.port, 8082);
+        assert_eq!(config.server.max_upload_bytes, 104_857_600);
+        assert_eq!(config.aws.region, "us-east-1");
+        assert_eq!(config.aws.s3_bucket, "otterworks-files");
+        assert_eq!(config.sns.topic_arn, None);
+    }
+
+    #[test]
+    fn parses_configured_values() {
+        let _lock = env_lock();
+        std::env::set_var("PORT", "9000");
+        std::env::set_var("MAX_UPLOAD_BYTES", "2048");
+        std::env::set_var("AWS_ENDPOINT_URL", "http://localhost:4566");
+        std::env::set_var("SNS_TOPIC_ARN", "arn:test");
+
+        let config = AppConfig::from_env();
+        assert_eq!(config.server.port, 9000);
+        assert_eq!(config.server.max_upload_bytes, 2048);
+        assert_eq!(
+            config.aws.endpoint_url.as_deref(),
+            Some("http://localhost:4566")
+        );
+        assert_eq!(config.sns.topic_arn.as_deref(), Some("arn:test"));
+
+        for key in [
+            "PORT",
+            "MAX_UPLOAD_BYTES",
+            "AWS_ENDPOINT_URL",
+            "SNS_TOPIC_ARN",
+        ] {
+            std::env::remove_var(key);
+        }
+    }
+}

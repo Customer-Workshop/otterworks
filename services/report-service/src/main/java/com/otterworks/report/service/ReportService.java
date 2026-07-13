@@ -89,7 +89,11 @@ public class ReportService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                generationWorker.generateReportAsync(reportId);
+                if (appConfig.isAsyncGenerationEnabled()) {
+                    generationWorker.generateReportAsync(reportId);
+                } else {
+                    generationWorker.generateReport(reportId);
+                }
             }
         });
 

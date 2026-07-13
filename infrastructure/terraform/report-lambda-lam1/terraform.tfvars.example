@@ -1,0 +1,7 @@
+aws_region      = "us-east-2"
+namespace       = "lam1"
+db_name         = "otterworks_reports"
+db_user         = "otterworks"
+db_password     = "replace-with-a-strong-password"
+lambda_memory   = 2048
+lambda_jar_path = "../../../services/report-service/target/report-service-lambda.jar"

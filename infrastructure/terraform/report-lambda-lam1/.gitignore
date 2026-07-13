@@ -1,0 +1,7 @@
+# Local state and provider plugins for this standalone module
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+# Real variable values (contains the DB password); commit only the example
+terraform.tfvars

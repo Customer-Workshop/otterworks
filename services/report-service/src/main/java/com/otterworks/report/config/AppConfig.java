@@ -45,6 +45,9 @@ public class AppConfig {
     @Value("${otterworks.report.read-timeout:30000}")
     private int readTimeout;
 
+    @Value("${otterworks.report.async-generation.enabled:true}")
+    private boolean asyncGenerationEnabled;
+
     // LEGACY: RestTemplate with Apache HttpComponents 4.x connection pool
     @Bean
     public RestTemplate restTemplate() {
@@ -81,5 +84,9 @@ public class AppConfig {
 
     public int getMaxRows() {
         return maxRows;
+    }
+
+    public boolean isAsyncGenerationEnabled() {
+        return asyncGenerationEnabled;
     }
 }

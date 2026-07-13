@@ -66,7 +66,24 @@ T_MEILI_URL="http://meilisearch:7700"
 # Tier A shares SNS/SQS eventing off by default to avoid cross-tenant queue
 # consumption; Tier B (data-isolated) can opt in later. Kept off for both here.
 T_WIRE_EVENTING="false"
-EXPIRES_AT="$(date -u -d "+${TTL}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v+"${TTL}" +%Y-%m-%dT%H:%M:%SZ)"
+# Convert a compact TTL (e.g. 8h, 30m, 2d) into an absolute UTC expiry, working
+# with both GNU date (-d "8 hours") and BSD/macOS date (-v+8H).
+ttl_to_expiry() {
+  local ttl="$1" num unit gnu bsd
+  num="${ttl%%[!0-9]*}"; unit="${ttl##*[0-9]}"
+  [ -n "${num}" ] || { err "Invalid --ttl '${ttl}' (use e.g. 8h, 30m, 2d)"; exit 1; }
+  case "${unit}" in
+    h|H|"") gnu="${num} hours";   bsd="+${num}H" ;;
+    m|M)    gnu="${num} minutes"; bsd="+${num}M" ;;
+    d|D)    gnu="${num} days";    bsd="+${num}d" ;;
+    *)      err "Invalid --ttl unit in '${ttl}' (use h, m, or d)"; exit 1 ;;
+  esac
+  date -u -d "+${gnu}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v"${bsd}" +%Y-%m-%dT%H:%M:%SZ
+}
+EXPIRES_AT="$(ttl_to_expiry "${TTL}")"
+# Epoch form for the reaper: it compares integers only (no ISO parsing), so the
+# reaper image needs nothing more than `date +%s`.
+EXPIRES_EPOCH="$(date -u -d "${EXPIRES_AT}" +%s 2>/dev/null || date -u -jf %Y-%m-%dT%H:%M:%SZ "${EXPIRES_AT}" +%s)"
 
 log "Tenant '${ATTENDEE_ID}' -> namespace ${NS} (tier ${TIER}, ttl ${TTL} -> expires ${EXPIRES_AT})"
 
@@ -91,6 +108,7 @@ metadata:
     kubernetes.io/metadata.name: ${NS}
   annotations:
     demo/expires-at: "${EXPIRES_AT}"
+    demo/expires-at-epoch: "${EXPIRES_EPOCH}"
     demo/attendee-id: "${ATTENDEE_ID}"
 ---
 apiVersion: v1
@@ -353,7 +371,11 @@ deploy_service() {
     --timeout 4m \
     && local rc=0 || local rc=1
   [ -n "${secret_file}" ] && rm -f "${secret_file}"
-  [ "${rc}" -ne 0 ] && { warn "Helm deploy failed for ${service}"; return 1; }
+  if [ "${rc}" -ne 0 ]; then
+    warn "Helm deploy failed for ${service}"
+    return 1
+  fi
+  return 0
 }
 
 log "Deploying services into ${NS}..."

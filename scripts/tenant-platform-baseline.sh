@@ -101,25 +101,24 @@ spec:
           restartPolicy: Never
           containers:
             - name: reaper
-              image: bitnami/kubectl:1.30
-              command: ["/bin/bash","-c"]
+              image: alpine/k8s:1.30.3
+              command: ["/bin/sh","-c"]
               args:
                 - |
-                  set -euo pipefail
+                  set -eu
                   now=\$(date -u +%s)
                   echo "[reaper] scanning tenant namespaces at \$(date -u)"
                   for ns in \$(kubectl get ns -l app.kubernetes.io/managed-by=otterworks-tenant -o jsonpath='{.items[*].metadata.name}'); do
-                    exp=\$(kubectl get ns "\$ns" -o jsonpath='{.metadata.annotations.demo/expires-at}' 2>/dev/null || true)
-                    if [ -z "\$exp" ]; then
-                      echo "[reaper] \$ns has no demo/expires-at; skipping"
+                    exp_epoch=\$(kubectl get ns "\$ns" -o jsonpath='{.metadata.annotations.demo/expires-at-epoch}' 2>/dev/null || true)
+                    if [ -z "\$exp_epoch" ]; then
+                      echo "[reaper] \$ns has no demo/expires-at-epoch; skipping"
                       continue
                     fi
-                    exp_epoch=\$(date -u -d "\$exp" +%s 2>/dev/null || echo 0)
-                    if [ "\$exp_epoch" -ne 0 ] && [ "\$exp_epoch" -lt "\$now" ]; then
-                      echo "[reaper] \$ns expired at \$exp -> deleting"
+                    if [ "\$exp_epoch" -lt "\$now" ]; then
+                      echo "[reaper] \$ns expired (\$exp_epoch < \$now) -> deleting"
                       kubectl delete ns "\$ns" --wait=false || true
                     else
-                      echo "[reaper] \$ns expires at \$exp -> keeping"
+                      echo "[reaper] \$ns expires at epoch \$exp_epoch -> keeping"
                     fi
                   done
               resources:

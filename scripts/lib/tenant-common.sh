@@ -50,12 +50,10 @@ JVM_SERVICES=" auth-service report-service notification-service analytics-servic
 # Naming ----------------------------------------------------------------------
 # Namespace must be RFC-1123 (lowercase alnum + '-'); DB name uses '_'.
 sanitize_id() {
-  local id; id="$(echo "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-')"
-  id="${id##-}"; id="${id%%-}"
-  echo "$id"
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/^-*//; s/-*$//'
 }
-tenant_namespace() { echo "otterworks-$(sanitize_id "$1")"; }
-tenant_db_name()   { echo "otterworks_$(echo "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '_')"; }
+tenant_namespace() { printf 'otterworks-%s' "$(sanitize_id "$1")"; }
+tenant_db_name()   { printf 'otterworks_%s' "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g; s/^_*//; s/_*$//')"; }
 
 require_bins() {
   for bin in "$@"; do
@@ -105,6 +103,10 @@ build_helm_args() {
   # replicas=1 (cost control) and disable the per-service NetworkPolicy — the
   # tenant namespace ships ONE NetworkPolicy that allows intra-namespace traffic.
   EXTRA_ARGS+=(--set replicaCount=1 --set networkPolicy.enabled=false)
+  # Force ClusterIP for EVERY service so no tenant gets its own LoadBalancer/ELB
+  # (some charts, e.g. api-gateway, default to LoadBalancer). External access is
+  # only ever through the ONE shared ingress. See docs/MULTI-TENANT-DEMO-PLAN.md §3.
+  EXTRA_ARGS+=(--set service.type=ClusterIP)
 
   local role; role="$(irsa_arn "$service")"
   if [ -n "$role" ]; then EXTRA_ARGS+=(--set "serviceAccount.roleArn=${role}"); fi
@@ -114,8 +116,8 @@ build_helm_args() {
 
   case "$service" in
     web-app|admin-dashboard)
-      # SHARED ingress: ClusterIP + per-tenant ingress applied separately.
-      EXTRA_ARGS+=(--set service.type=ClusterIP --set ingress.enabled=false)
+      # SHARED ingress: frontends are ClusterIP (set above) + per-tenant ingress.
+      EXTRA_ARGS+=(--set ingress.enabled=false)
       EXTRA_ARGS+=(--set-string config.API_GATEWAY_URL=http://api-gateway:8080)
       return 0 ;;
   esac

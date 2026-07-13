@@ -17,7 +17,7 @@
 |---|----------------|--------|--------------|
 | 1 | Source control & branching / PR workflow | **Partial** | Good PR/CI gating, but no `CODEOWNERS` and branch protection is not codified in-repo |
 | 2 | CI (build / test) | **Present** | Per-language pipelines with path-based change detection across all 13 build units |
-| 3 | CD / deployment | **Partial** | As shipped, **every Helm install fails** (missing `ServiceMonitor` CRD) and charts create **no ConfigMap/Secret**; fixed here enough to run api-gateway + auth-service, but ingress/DNS/TLS still assume uninstalled controllers |
+| 3 | CD / deployment | **Partial** | As shipped, **every Helm install fails** (missing `ServiceMonitor` CRD) and charts create **no ConfigMap/Secret**; `deploy-dev.sh` now wires all 15 units from Terraform outputs (12/13 backends + both frontends live, website interactive), but ingress/DNS/TLS still assume uninstalled controllers, there's no GitOps, and `admin-service` is down on an app bug |
 | 4 | Infrastructure as Code | **Present** | Two-layer Terraform (platform + app) with remote S3 state; one managed-policy bug found & fixed |
 | 5 | Containerization | **Present** | 13 Dockerfiles, non-root/read-only hardening; image scanning is filesystem-only, not image-registry |
 | 6 | Testing | **Present** | Unit tests per service + black-box API flow suite + contract tests + testdata harness |
@@ -26,7 +26,7 @@
 | 9 | Observability — tracing | **Partial** | OTel SDK wired in services + Collector/Jaeger configs, but Collector/Jaeger **not deployed to EKS** |
 | 10 | Logging | **Partial** | Structured stdout logging + Fluent Bit → CloudWatch config, but Fluent Bit **not deployed to EKS** |
 | 11 | Alerting / incident mgmt | **Partial** | PrometheusRule/Grafana alerts + admin-service incident→Devin flow, but no Alertmanager deployed |
-| 12 | Secrets management | **Partial** | IRSA for AWS access is solid; app secrets (DB/JWT) have **no k8s delivery mechanism** |
+| 12 | Secrets management | **Partial** | IRSA for AWS access is solid; `deploy-dev.sh` now delivers app secrets (DB/JWT/Rails) into a Helm-rendered k8s Secret via a temp values file, but it's still deploy-time injection, not External Secrets Operator / Secrets Manager |
 | 13 | Data / ETL | **Partial** | Cron + Python ETL scripts present; README-advertised Airflow/Spark are **absent** |
 | 14 | Documentation | **Present** | README, ARCHITECTURE, runbooks, CI/security strategy docs, API route matrix |
 
@@ -135,12 +135,58 @@ login flow succeeded over the public internet** (`POST /api/v1/auth/register` an
 ELB returned `200` with JWTs; the user persisted to RDS and Flyway migrations validated at schema
 v4). Config/secret values were passed at deploy time via `helm --set` and are **not** committed.
 
-**Gap / what a demo needs.** The chart fixes above are a starting point, not a complete CD story.
-Still needed: a values-driven ConfigMap/Secret populated for **all** services from Terraform outputs
-(`rds_endpoint`, `redis_endpoint`, S3 buckets, `cognito_*`, DynamoDB tables) — ideally via External
-Secrets Operator rather than `--set`; install ingress-nginx + cert-manager + a Prometheus Operator
-(per org standards, in `platform-engineering-shared-services`); real DNS/TLS; and a GitOps controller
-(ArgoCD/Flux) with an environment-promotion model for a clean "progressive delivery" story.
+**Full-stack wiring applied in this PR.** `scripts/deploy-dev.sh` now closes the ConfigMap/Secret gap
+for the **whole** stack: it reads the app-infra Terraform outputs (`load_infra_outputs()`) and, per
+service (`build_helm_args()`), injects config via `helm --set` and secrets via a locked-down temp
+values file (`-f`, so secret values never hit the process arg list) — RDS JDBC/asyncpg
+URLs + credentials, Redis host/port, S3 buckets, DynamoDB tables, SNS topic + SQS queue, a shared
+`JWT_SECRET` across the gateway and every token-validating service, a Rails `SECRET_KEY_BASE`, plus the
+per-service IRSA role ARN. It also (a) exposes each backend Service on its real container port so the
+gateway's in-cluster routing (`http://<svc>:<port>`) resolves, (b) bumps memory for the JVM services
+(auth/report/notification/analytics) above the namespace default so they stop OOM-restarting, and
+(c) deploys `web-app` + `admin-dashboard` as `LoadBalancer`s. No secret values are committed.
+
+**Observed reality after full deploy (live, this session).** All 13 backends + 2 frontends are
+installed; **12/13 backends and both frontends reach `1/1 Running`**, and the website is interactive
+over the public internet — register, login, and listing documents / reports / files / notifications all
+return `200` end-to-end (web-app ELB → api-gateway → service → RDS/DynamoDB). Getting there surfaced
+three more **app↔IaC contract gaps**, all fixed in this PR's Terraform:
+- **Redis required TLS but every service connects with plain `redis://`.** The ElastiCache group had
+  `transit_encryption_enabled = true` hard-coded, so `file-service` / `collab-service` panicked at
+  boot (`.expect("failed to connect to Redis")`). Made it a variable defaulting to `false` to match
+  the application (`modules/cache`).
+- **`notifications` table GSI drift.** The app queries `userId-createdAt-index` (camelCase) but the
+  table defined a dead `user-index` on `user_id` (snake_case) that the app never populates — every
+  `/notifications` read 500'd. Aligned the GSI to the app contract (`modules/database`).
+- **`file-service` IRSA lacked `dynamodb:Scan`.** `list_files` does a filtered `Scan`, but the role
+  only granted `Query` → every `/files` list 500'd with AccessDenied. Added `Scan` (`main.tf` IRSA).
+
+**Search backend now wired in-cluster.** `search-service` previously 500'd on `/search` because it
+depends on Meilisearch, which the IaC only provisions on ECS (`modules/search`) — not reachable from
+the golden all-in-cluster app. `deploy-dev.sh` now deploys a single-replica in-cluster Meilisearch
+(`getmeili/meilisearch`, dev mode) and points `search-service` at `http://meilisearch:7700`;
+`/search` and `/health/ready` now return `200`.
+
+**file-service advanced tables now created.** folders / versions / shares each need a DynamoDB table
+the IaC never defined; only file-metadata was present. Added `otterworks-folders-*`,
+`otterworks-file-versions-*` (hash `file_id`, range `version`), and `otterworks-file-shares-*` in
+`modules/database`, extended the file-service IRSA policy to cover them, and wired the table names
+into the chart. Verified end-to-end: `POST /api/v1/folders` → `201` and `GET /api/v1/folders` lists
+it back; `/api/v1/files`, `/api/v1/files/shared` return `200`.
+
+**Intentional (do not "fix").**
+- **`admin-service` (Rails) crash-loops** by design: `config/environments/production.rb` calls
+  `ActiveSupport::TaggedLogging.logger(...)` (should be `.new(Logger.new(...))`), invalid on
+  Rails 7.1 → boot fails. This is a **planted bug** for bug-hunt / remediation labs and is kept on
+  the golden app (see `AGENTS.md`). Demos that need a passing admin-service fix it in their variant.
+
+**Remaining, honest gaps.**
+- Still needed for a clean CD story: ingress-nginx + cert-manager + Prometheus Operator (per org
+  standards, in `platform-engineering-shared-services`); real DNS/TLS; delivery via External Secrets
+  Operator rather than `helm --set`; and a GitOps controller (ArgoCD/Flux) with environment promotion.
+- Meilisearch runs in-cluster in dev mode (no master key) and its index isn't yet backfilled from
+  existing documents/files (the SQS indexer path stays disabled here), so `/search` returns valid but
+  empty results until content is indexed.
 
 ## 4. Infrastructure as Code — Present
 

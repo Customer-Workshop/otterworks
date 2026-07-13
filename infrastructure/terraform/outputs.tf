@@ -37,6 +37,21 @@ output "dynamodb_notifications_table" {
   value       = module.database.notifications_table_name
 }
 
+output "dynamodb_folders_table" {
+  description = "DynamoDB table name for folders"
+  value       = module.database.folders_table_name
+}
+
+output "dynamodb_file_versions_table" {
+  description = "DynamoDB table name for file versions"
+  value       = module.database.file_versions_table_name
+}
+
+output "dynamodb_file_shares_table" {
+  description = "DynamoDB table name for file shares"
+  value       = module.database.file_shares_table_name
+}
+
 # --- Messaging ---
 
 output "sqs_notification_queue_url" {

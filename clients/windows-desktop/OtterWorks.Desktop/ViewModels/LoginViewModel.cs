@@ -65,6 +65,12 @@ namespace OtterWorks.Desktop.ViewModels
             try
             {
                 AuthResponse response = await _api.LoginAsync(Email.Trim(), Password).ConfigureAwait(true);
+                if (response?.AccessToken == null)
+                {
+                    ErrorMessage = "Login succeeded but the server returned an empty response.";
+                    return;
+                }
+
                 _session.SetSession(response);
                 _main.ShowDocuments();
             }

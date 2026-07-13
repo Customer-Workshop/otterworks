@@ -84,6 +84,12 @@ namespace OtterWorks.Desktop.ViewModels
                 AuthResponse response = await _api
                     .RegisterAsync(DisplayName.Trim(), Email.Trim(), Password)
                     .ConfigureAwait(true);
+                if (response?.AccessToken == null)
+                {
+                    ErrorMessage = "Registration succeeded but the server returned an empty response.";
+                    return;
+                }
+
                 _session.SetSession(response);
                 _main.ShowDocuments();
             }

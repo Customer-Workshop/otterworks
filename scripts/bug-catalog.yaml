@@ -1,0 +1,65 @@
+# ------------------------------------------------------------------------------
+# OtterWorks Bug-Injection Catalog
+#
+# Maps a demo scenario -> a per-tenant variant. Every scenario is scoped to ONE
+# tenant namespace and NEVER mutates the golden app (main) or other tenants.
+# Applied with:  ./scripts/inject-bug.sh <ATTENDEE_ID> <scenario>
+# Cleared with:  ./scripts/inject-bug.sh <ATTENDEE_ID> reset
+#
+# Three mechanisms, lightest to heaviest (see docs/MULTI-TENANT-DEMO-PLAN.md §6):
+#   chaos  - a Redis flag in the tenant's OWN in-cluster Redis (instant, no redeploy,
+#            auto-expires). Ideal for "find & fix the incident" demos.
+#   config - helm upgrade of one release in the tenant namespace with a bad value,
+#            then a rollout restart (seconds).
+#   image  - helm upgrade --set image.tag=<variant> for one service (a code bug
+#            built on a variant branch/patch off the golden app).
+# ------------------------------------------------------------------------------
+
+scenarios:
+  file-upload-fails:
+    mechanism: chaos
+    service: file-service
+    redis_key: "chaos:file-service:upload_s3_error"
+    description: >
+      File uploads fail: file-service writes to a non-existent S3 bucket and
+      returns 5xx. Classic "uploads are broken" incident.
+
+  search-suggest-500:
+    mechanism: chaos
+    service: search-service
+    redis_key: "chaos:search-service:suggest_500"
+    description: Search autocomplete/suggest endpoint returns HTTP 500.
+
+  document-slow:
+    mechanism: chaos
+    service: document-service
+    redis_key: "chaos:document-service:slow_queries"
+    description: >
+      Document reads get a 3-5s injected latency (P95 latency-alert demo).
+
+  notification-schema:
+    mechanism: chaos
+    service: notification-service
+    redis_key: "chaos:notification-service:consumer_strict_schema"
+    description: >
+      Notification consumer switches to a strict schema and rejects messages
+      with epoch-int timestamps (dead-letter / consumer-error demo).
+
+  file-bad-bucket:
+    mechanism: config
+    service: file-service
+    set: "config.S3_BUCKET=otterworks-does-not-exist"
+    description: >
+      Misconfiguration bug: point file-service at a bucket that does not exist
+      via a config override (requires a rollout restart to take effect).
+
+  # Example of a code-level variant. Build a variant image from a bug branch/patch
+  # off the golden app, push it to ECR, then inject by tag. Immediate rollback =
+  # re-deploy the tenant with the golden tag.
+  code-variant:
+    mechanism: image
+    service: file-service
+    image_tag: "<variant-tag>"
+    description: >
+      Swap ONE service to a variant image containing a planted code bug. Scoped
+      to the tenant; other tenants keep the golden image.

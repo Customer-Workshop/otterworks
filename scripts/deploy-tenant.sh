@@ -1,0 +1,457 @@
+#!/usr/bin/env bash
+# ------------------------------------------------------------------------------
+# OtterWorks - Per-Tenant Ephemeral Demo Deploy
+#
+# Stands up an isolated copy of the golden app for one attendee/demo run in the
+# namespace  otterworks-<ATTENDEE_ID>  on the SHARED otterworks-dev EKS cluster.
+# Wraps the config/secret wiring from scripts/deploy-dev.sh (via
+# scripts/lib/tenant-common.sh) and layers on tenant isolation + cost controls.
+#
+# Per tenant this creates:
+#   - namespace otterworks-<ID> (TTL-labeled for the reaper)
+#   - ResourceQuota + LimitRange + a namespace NetworkPolicy
+#   - per-tenant in-cluster Redis + MeiliSearch (chaos/session/search isolation)
+#   - a per-tenant RDS database otterworks_<ID> (Postgres data isolation)
+#   - all 11 backends + 2 frontends via Helm (replicas=1), frontends on the
+#     SHARED ingress (ClusterIP + one Ingress), NOT one LoadBalancer per tenant
+#
+# Usage:
+#   ./scripts/deploy-tenant.sh <ATTENDEE_ID> [--tier A|B] [--image-tag TAG] \
+#       [--ttl 8h] [--host-suffix demo.example.com] [--skip-db]
+#
+# Required env: AWS creds (exported), DB_PASSWORD. Stable JWT_SECRET /
+#   SECRET_KEY_BASE recommended across redeploys (auto-generated if unset).
+# ------------------------------------------------------------------------------
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=lib/tenant-common.sh
+source "${SCRIPT_DIR}/lib/tenant-common.sh"
+
+# ---------- Args ----------
+ATTENDEE_ID=""
+TIER="A"
+IMAGE_TAG_OVERRIDE=""
+TTL="8h"
+HOST_SUFFIX="${HOST_SUFFIX:-}"
+SKIP_DB=false
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --tier)        TIER="$2"; shift 2 ;;
+    --image-tag)   IMAGE_TAG_OVERRIDE="$2"; shift 2 ;;
+    --ttl)         TTL="$2"; shift 2 ;;
+    --host-suffix) HOST_SUFFIX="$2"; shift 2 ;;
+    --skip-db)     SKIP_DB=true; shift ;;
+    -*)            err "Unknown flag: $1"; exit 1 ;;
+    *)             if [ -z "${ATTENDEE_ID}" ]; then ATTENDEE_ID="$1"; else err "Unexpected arg: $1"; exit 1; fi; shift ;;
+  esac
+done
+
+[ -n "${ATTENDEE_ID}" ] || { err "Usage: $0 <ATTENDEE_ID> [--tier A|B] [--image-tag TAG] [--ttl 8h]"; exit 1; }
+case "${TIER}" in A|B) ;; *) err "--tier must be A or B"; exit 1 ;; esac
+
+require_bins aws kubectl helm terraform jq
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null)}"
+[ -n "${AWS_ACCOUNT_ID}" ] || { err "Unable to resolve AWS account (are creds exported?)"; exit 1; }
+ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
+JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
+SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
+
+NS="$(tenant_namespace "${ATTENDEE_ID}")"
+T_DB_NAME="$(tenant_db_name "${ATTENDEE_ID}")"
+T_REDIS_HOST="redis"
+T_MEILI_URL="http://meilisearch:7700"
+# Tier A shares SNS/SQS eventing off by default to avoid cross-tenant queue
+# consumption; Tier B (data-isolated) can opt in later. Kept off for both here.
+T_WIRE_EVENTING="false"
+EXPIRES_AT="$(date -u -d "+${TTL}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v+"${TTL}" +%Y-%m-%dT%H:%M:%SZ)"
+
+log "Tenant '${ATTENDEE_ID}' -> namespace ${NS} (tier ${TIER}, ttl ${TTL} -> expires ${EXPIRES_AT})"
+
+# ---------- kubectl + shared infra outputs ----------
+aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null
+log "Loading shared application-infra Terraform outputs..."
+load_infra_outputs
+
+# ---------- Namespace + isolation guardrails ----------
+log "Creating namespace ${NS} with quota / limits / network policy..."
+kubectl apply -f - <<YAML
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NS}
+  labels:
+    app.kubernetes.io/managed-by: otterworks-tenant
+    platform/environment: dev
+    platform/team: otterworks
+    demo/tenant: "$(sanitize_id "${ATTENDEE_ID}")"
+    demo/tier: "${TIER}"
+    kubernetes.io/metadata.name: ${NS}
+  annotations:
+    demo/expires-at: "${EXPIRES_AT}"
+    demo/attendee-id: "${ATTENDEE_ID}"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  namespace: ${NS}
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "40"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-limits
+  namespace: ${NS}
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+---
+# Tenant isolation: allow traffic only from within this namespace, the shared
+# ingress controller, and monitoring. Cross-tenant pod-to-pod traffic is denied.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tenant-isolation
+  namespace: ${NS}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ${NS}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ${INGRESS_NAMESPACE}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+YAML
+
+# ---------- IRSA trust: allow this tenant namespace to assume the shared roles ----------
+ensure_irsa_trust() {
+  local d="${REPO_ROOT}/infrastructure/terraform"
+  local oidc_url; oidc_url="$(terraform -chdir="${REPO_ROOT}/platform/terraform" output -raw oidc_provider_url 2>/dev/null || echo "")"
+  oidc_url="${oidc_url#https://}"
+  [ -n "${oidc_url}" ] || { warn "OIDC provider URL unavailable; skipping IRSA trust update (IRSA may fail for ${NS})"; return 0; }
+  local svc role sub
+  for svc in $(echo "${IRSA_JSON}" | jq -r 'keys[]'); do
+    role="otterworks-${svc}-dev"
+    sub="system:serviceaccount:${NS}:${svc}"
+    local doc; doc="$(aws iam get-role --role-name "${role}" --query 'Role.AssumeRolePolicyDocument' --output json 2>/dev/null || echo "")"
+    [ -n "${doc}" ] || { warn "role ${role} not found; skipping"; continue; }
+    # Skip if the sub is already trusted (wildcard or exact).
+    if echo "${doc}" | jq -e --arg sub "${sub}" --arg url "${oidc_url}" '
+        .Statement[] | select(.Condition.StringEquals[$url+":sub"] // empty
+        | (if type=="array" then . else [.] end) | index($sub))' >/dev/null 2>&1; then
+      continue
+    fi
+    # Append an AssumeRoleWithWebIdentity statement scoped to this namespace SA.
+    local new; new="$(echo "${doc}" | jq --arg sub "${sub}" --arg url "${oidc_url}" '
+      .Statement += [{
+        Effect: "Allow",
+        Action: "sts:AssumeRoleWithWebIdentity",
+        Principal: (.Statement[0].Principal),
+        Condition: { StringEquals: { ($url+":sub"): $sub, ($url+":aud"): "sts.amazonaws.com" } }
+      }]')"
+    aws iam update-assume-role-policy --role-name "${role}" --policy-document "${new}" >/dev/null \
+      && log "  IRSA trust: ${role} now trusts ${sub}" \
+      || warn "  failed to update trust for ${role}"
+  done
+}
+log "Ensuring shared IRSA roles trust the tenant namespace service accounts..."
+ensure_irsa_trust
+
+# ---------- Per-tenant RDS database (Postgres data isolation) ----------
+create_tenant_database() {
+  [ -n "${RDS_HOST}" ] || { warn "RDS endpoint unknown; skipping per-tenant DB (services will share the default DB)"; return 0; }
+  log "Ensuring per-tenant database ${T_DB_NAME} exists on shared RDS (in-cluster job)..."
+  kubectl -n "${NS}" delete job tenant-db-init --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "${NS}" create secret generic tenant-db-admin \
+    --from-literal=PGPASSWORD="${DB_PASSWORD}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  kubectl apply -n "${NS}" -f - <<YAML
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tenant-db-init
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: psql
+          image: postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: tenant-db-admin, key: PGPASSWORD } }
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -e
+              CONN="host=${RDS_HOST} port=${RDS_PORT} dbname=otterworks user=${DB_USER} sslmode=prefer connect_timeout=10"
+              if psql "\$CONN" -tAc "SELECT 1 FROM pg_database WHERE datname='${T_DB_NAME}'" | grep -q 1; then
+                echo "database ${T_DB_NAME} already exists"
+              else
+                psql "\$CONN" -c "CREATE DATABASE \"${T_DB_NAME}\""
+                echo "created database ${T_DB_NAME}"
+              fi
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+YAML
+  if kubectl -n "${NS}" wait --for=condition=complete job/tenant-db-init --timeout=120s >/dev/null 2>&1; then
+    log "  per-tenant database ready."
+  else
+    warn "  per-tenant DB init did not complete; check: kubectl -n ${NS} logs job/tenant-db-init"
+    kubectl -n "${NS}" logs job/tenant-db-init 2>/dev/null | tail -5 || true
+  fi
+  kubectl -n "${NS}" delete secret tenant-db-admin --ignore-not-found >/dev/null 2>&1 || true
+}
+if [ "${SKIP_DB}" = true ]; then
+  warn "--skip-db set: using the shared default database (no Postgres data isolation)."
+  T_DB_NAME="otterworks"
+else
+  create_tenant_database
+fi
+
+# ---------- Per-tenant Redis + MeiliSearch ----------
+log "Deploying per-tenant Redis + MeiliSearch..."
+kubectl apply -n "${NS}" -f - <<'YAML'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels: { app: redis }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["--save","","--appendonly","no"]
+          ports: [{ containerPort: 6379 }]
+          readinessProbe:
+            tcpSocket: { port: 6379 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels: { app: redis }
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+  labels: { app: meilisearch }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: meilisearch } }
+  template:
+    metadata:
+      labels: { app: meilisearch }
+    spec:
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.8
+          env:
+            - { name: MEILI_ENV, value: "development" }
+            - { name: MEILI_NO_ANALYTICS, value: "true" }
+          ports: [{ containerPort: 7700 }]
+          readinessProbe:
+            httpGet: { path: /health, port: 7700 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meilisearch
+  labels: { app: meilisearch }
+spec:
+  selector: { app: meilisearch }
+  ports: [{ port: 7700, targetPort: 7700 }]
+YAML
+kubectl -n "${NS}" rollout status deployment/redis --timeout=120s || warn "redis not ready"
+kubectl -n "${NS}" rollout status deployment/meilisearch --timeout=180s || warn "meilisearch not ready"
+
+# ---------- Resolve image tags ----------
+log "Logging into ECR to resolve image tags..."
+aws ecr get-login-password --region "${AWS_REGION}" | \
+  docker login --username AWS --password-stdin "${ECR_REGISTRY}" >/dev/null 2>&1 || true
+latest_tag() {
+  aws ecr describe-images --repository-name "${ECR_PREFIX}$1" --region "${AWS_REGION}" \
+    --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' --output text 2>/dev/null
+}
+
+# ---------- Deploy services via Helm ----------
+deploy_service() {
+  local service=$1
+  local chart_dir="${REPO_ROOT}/infrastructure/helm/${service}"
+  [ -d "${chart_dir}" ] || { warn "No chart for ${service}, skipping"; return 0; }
+
+  local tag="${IMAGE_TAG_OVERRIDE}"
+  # Per-service image tag override: BUG_IMAGE_TAG_<service_with_underscores>
+  local var="BUG_IMAGE_TAG_${service//-/_}"
+  [ -n "${!var:-}" ] && tag="${!var}"
+  [ -z "${tag}" ] && tag="$(latest_tag "${service}")"
+  if [ -z "${tag}" ] || [ "${tag}" = "None" ]; then
+    warn "No image in ECR for ${service}; skipping."
+    return 0
+  fi
+
+  build_helm_args "${service}"
+  local secret_file="" secret_args=()
+  if [ "${#SECRET_KV[@]}" -gt 0 ]; then
+    secret_file="$(mktemp)"; chmod 600 "${secret_file}"
+    jq -n --args '{secrets: (reduce range(0; ($ARGS.positional | length); 2) as $i
+      ({}; . + {($ARGS.positional[$i]): $ARGS.positional[$i + 1]}))}' \
+      "${SECRET_KV[@]}" > "${secret_file}"
+    secret_args=(-f "${secret_file}")
+  fi
+
+  log "Deploying ${service} (tag ${tag})..."
+  helm upgrade --install "${service}" "${chart_dir}" \
+    --namespace "${NS}" \
+    --set image.repository="${ECR_REGISTRY}/${ECR_PREFIX}${service}" \
+    --set image.tag="${tag}" \
+    "${EXTRA_ARGS[@]}" \
+    "${secret_args[@]}" \
+    --timeout 4m \
+    && local rc=0 || local rc=1
+  [ -n "${secret_file}" ] && rm -f "${secret_file}"
+  [ "${rc}" -ne 0 ] && { warn "Helm deploy failed for ${service}"; return 1; }
+}
+
+log "Deploying services into ${NS}..."
+FAILED=()
+for service in "${ALL_SERVICES[@]}"; do
+  deploy_service "${service}" || FAILED+=("${service}")
+done
+
+# ---------- Shared ingress (host/path routing, ONE shared ALB/NLB) ----------
+apply_ingress() {
+  local sid; sid="$(sanitize_id "${ATTENDEE_ID}")"
+  if [ -n "${HOST_SUFFIX}" ]; then
+    # Preferred: host-based routing. One shared ingress controller / ELB fronts
+    # every tenant; the web host serves the SPA, the api host the gateway.
+    local web_host="t-${sid}.${HOST_SUFFIX}"
+    local api_host="api-t-${sid}.${HOST_SUFFIX}"
+    log "Applying shared ingress for ${NS} (hosts ${web_host}, ${api_host})..."
+    kubectl apply -n "${NS}" -f - <<YAML
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tenant-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: ${web_host}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: web-app, port: { number: 80 } }
+    - host: ${api_host}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: api-gateway, port: { number: 8080 } }
+YAML
+  else
+    # Fallback: path-based routing on the shared ingress IP when no wildcard DNS
+    # is available. The SPA is best reached with a base path; the gateway is
+    # rewritten so /<id>/api/v1/... -> /api/v1/... on the backend.
+    log "Applying shared ingress for ${NS} (path /${sid} , no host suffix)..."
+    kubectl apply -n "${NS}" -f - <<YAML
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tenant-ingress-api
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /api/\$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /${sid}/api(/|\$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service: { name: api-gateway, port: { number: 8080 } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tenant-ingress-web
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /\$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /${sid}(/|\$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service: { name: web-app, port: { number: 80 } }
+YAML
+  fi
+}
+if kubectl get ns "${INGRESS_NAMESPACE}" >/dev/null 2>&1; then
+  apply_ingress
+else
+  warn "No '${INGRESS_NAMESPACE}' namespace — shared ingress controller not installed."
+  warn "Run scripts/tenant-platform-baseline.sh once to install it. Frontends are ClusterIP-only for now."
+fi
+
+# ---------- Summary ----------
+echo ""
+log "Tenant ${ATTENDEE_ID} deployed to namespace ${NS}."
+kubectl get pods -n "${NS}" -o wide || true
+if [ ${#FAILED[@]} -gt 0 ]; then
+  warn "Services with deploy issues: ${FAILED[*]}"
+fi
+echo ""
+log "Inspect:   kubectl get all -n ${NS}"
+log "Reach API: kubectl -n ${NS} port-forward svc/api-gateway 8080:8080"
+log "Inject bug: ./scripts/inject-bug.sh ${ATTENDEE_ID} <scenario>"
+log "Teardown:  ./scripts/teardown-tenant.sh ${ATTENDEE_ID}"

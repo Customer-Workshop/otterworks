@@ -71,6 +71,16 @@ output "meilisearch_ecs_cluster_arn" {
   value       = module.search.meilisearch_ecs_cluster_arn
 }
 
+output "opensearch_collection_endpoint" {
+  description = "OpenSearch Serverless collection endpoint"
+  value       = module.opensearch.collection_endpoint
+}
+
+output "opensearch_collection_arn" {
+  description = "OpenSearch Serverless collection ARN"
+  value       = module.opensearch.collection_arn
+}
+
 # --- Auth ---
 
 output "cognito_user_pool_id" {

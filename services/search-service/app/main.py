@@ -1,4 +1,4 @@
-"""OtterWorks Search Service - Full-text search via MeiliSearch."""
+"""OtterWorks Search Service - Full-text search."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.api.index import index_bp
 from app.api.search import search_bp
 from app.config import AppConfig
 from app.middleware.auth import require_auth
-from app.services.meilisearch_client import MeiliSearchService
+from app.services.backend import build_search_service
 from app.services.sqs_consumer import SQSConsumer
 
 logger = structlog.get_logger()
@@ -58,11 +58,15 @@ def create_app(config: AppConfig | None = None) -> Flask:
     app = Flask(__name__)
     CORS(app, origins=["http://localhost:3000", "http://localhost:4200"])
 
+    @app.errorhandler(400)
+    def _handle_bad_request(_error):  # type: ignore[no-untyped-def]
+        return {"error": "Invalid request"}, 400
+
     # Store config on the app
     app.config["APP_CONFIG"] = config
 
-    # Initialize MeiliSearch service
-    search_service = MeiliSearchService(config.meilisearch)
+    # Initialize the configured search service.
+    search_service = build_search_service(config)
     app.config["SEARCH_SERVICE"] = search_service
 
     # Try to create indices on startup (non-fatal if MeiliSearch is not available)
@@ -116,7 +120,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     logger.info(
         "search_service_created",
         port=config.port,
-        meilisearch_url=config.meilisearch.url,
+        search_backend=config.search_backend,
         sqs_enabled=config.sqs.enabled,
     )
     return app

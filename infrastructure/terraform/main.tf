@@ -54,16 +54,19 @@ data "terraform_remote_state" "platform" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
-  cluster_name      = data.terraform_remote_state.platform.outputs.cluster_name
-  cluster_endpoint  = data.terraform_remote_state.platform.outputs.cluster_endpoint
-  cluster_ca        = data.terraform_remote_state.platform.outputs.cluster_certificate_authority
-  vpc_id            = data.terraform_remote_state.platform.outputs.vpc_id
-  vpc_cidr          = data.terraform_remote_state.platform.outputs.vpc_cidr_block
-  private_subnets   = data.terraform_remote_state.platform.outputs.private_subnet_ids
-  public_subnets    = data.terraform_remote_state.platform.outputs.public_subnet_ids
-  oidc_provider_arn = data.terraform_remote_state.platform.outputs.oidc_provider_arn
-  oidc_provider_url = data.terraform_remote_state.platform.outputs.oidc_provider_url
+  cluster_name            = data.terraform_remote_state.platform.outputs.cluster_name
+  cluster_endpoint        = data.terraform_remote_state.platform.outputs.cluster_endpoint
+  cluster_ca              = data.terraform_remote_state.platform.outputs.cluster_certificate_authority
+  vpc_id                  = data.terraform_remote_state.platform.outputs.vpc_id
+  vpc_cidr                = data.terraform_remote_state.platform.outputs.vpc_cidr_block
+  private_subnets         = data.terraform_remote_state.platform.outputs.private_subnet_ids
+  public_subnets          = data.terraform_remote_state.platform.outputs.public_subnet_ids
+  oidc_provider_arn       = data.terraform_remote_state.platform.outputs.oidc_provider_arn
+  oidc_provider_url       = data.terraform_remote_state.platform.outputs.oidc_provider_url
+  search_service_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/otterworks-search-service-${var.environment}"
 }
 
 data "aws_eks_cluster_auth" "platform" {
@@ -118,6 +121,14 @@ module "search" {
   vpc_cidr               = local.vpc_cidr
   subnet_ids             = local.private_subnets
   meilisearch_master_key = var.meilisearch_master_key
+}
+
+module "opensearch" {
+  source         = "./modules/opensearch"
+  project        = "otterworks"
+  environment    = var.environment
+  namespace      = var.opensearch_namespace
+  principal_arns = compact([local.search_service_role_arn, data.aws_caller_identity.current.arn])
 }
 
 module "auth" {
@@ -270,6 +281,11 @@ module "irsa" {
             module.search.meilisearch_ecs_service_arn,
             "${replace(module.search.meilisearch_ecs_cluster_arn, ":cluster/", ":task/")}/*",
           ]
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["aoss:APIAccessAll"]
+          Resource = [module.opensearch.collection_arn]
         },
       ]
     })

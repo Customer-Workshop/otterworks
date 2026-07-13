@@ -21,6 +21,12 @@ variable "namespace" {
   default     = "otterworks"
 }
 
+variable "opensearch_namespace" {
+  description = "Namespace suffix for OpenSearch resources"
+  type        = string
+  default     = "os1"
+}
+
 variable "db_password" {
   description = "Master password for the RDS PostgreSQL instance"
   type        = string

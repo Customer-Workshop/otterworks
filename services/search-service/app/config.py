@@ -19,6 +19,22 @@ class MeiliSearchConfig:
 
 
 @dataclass(frozen=True)
+class OpenSearchConfig:
+    """Amazon OpenSearch Serverless connection configuration."""
+
+    endpoint: str = field(default_factory=lambda: os.getenv("OPENSEARCH_ENDPOINT", ""))
+    region: str = field(
+        default_factory=lambda: os.getenv("OPENSEARCH_REGION", os.getenv("AWS_REGION", "us-east-1"))
+    )
+    documents_index: str = field(
+        default_factory=lambda: os.getenv("OPENSEARCH_DOCUMENTS_INDEX", "documents")
+    )
+    files_index: str = field(
+        default_factory=lambda: os.getenv("OPENSEARCH_FILES_INDEX", "files")
+    )
+
+
+@dataclass(frozen=True)
 class SQSConfig:
     """SQS consumer configuration."""
 
@@ -56,6 +72,8 @@ class AppConfig:
         default_factory=lambda: os.getenv("FLASK_DEBUG", "false").lower() == "true"
     )
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
+    search_backend: str = field(default_factory=lambda: os.getenv("SEARCH_BACKEND", "meilisearch"))
     meilisearch: MeiliSearchConfig = field(default_factory=MeiliSearchConfig)
+    opensearch: OpenSearchConfig = field(default_factory=OpenSearchConfig)
     sqs: SQSConfig = field(default_factory=SQSConfig)
     auth: AuthConfig = field(default_factory=AuthConfig)

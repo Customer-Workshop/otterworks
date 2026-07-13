@@ -86,18 +86,25 @@ load_infra_outputs() {
 
 irsa_arn() { echo "${IRSA_JSON:-{}}" | jq -r --arg s "$1" '.[$s] // empty' 2>/dev/null; }
 
-# Create/replace the tenant-db-admin secret in a namespace WITHOUT ever putting
-# the password on a process argv: the value is base64'd via a stdin pipe and the
+# Turn a per-tenant DB name (otterworks_a01) into an RFC-1123 fragment usable in
+# Kubernetes resource names (otterworks-a01) so per-tenant Jobs/Secrets are named
+# uniquely and concurrent teardowns don't collide on a shared resource name.
+k8s_name_fragment() { printf '%s' "$1" | tr '[:upper:]_' '[:lower:]-'; }
+
+# Create/replace a db-admin secret in a namespace WITHOUT ever putting the
+# password on a process argv: the value is base64'd via a stdin pipe and the
 # manifest is applied via stdin (heredoc), so it never appears in ps/cmdline.
-# Requires DB_PASSWORD in the environment.
+# Requires DB_PASSWORD in the environment. Secret name defaults to
+# tenant-db-admin but callers sharing a namespace (e.g. the reaper/teardown
+# system namespace) MUST pass a unique name to avoid clobbering each other.
 apply_db_admin_secret() {
-  local ns="$1" b64
+  local ns="$1" name="${2:-tenant-db-admin}" b64
   b64="$(printf '%s' "${DB_PASSWORD}" | base64 | tr -d '\n')"
   kubectl -n "${ns}" apply -f - >/dev/null <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: tenant-db-admin
+  name: ${name}
 type: Opaque
 data:
   PGPASSWORD: ${b64}
@@ -109,14 +116,17 @@ EOF
 # (otherwise DROP DATABASE races the pods' connection-pool reconnects). Requires
 # load_infra_outputs to have set RDS_HOST/RDS_PORT/DB_USER, and DB_PASSWORD set.
 drop_tenant_db() {
-  local db="$1" run_ns="$2"
-  apply_db_admin_secret "${run_ns}"
-  kubectl -n "${run_ns}" delete job tenant-db-drop --ignore-not-found >/dev/null 2>&1 || true
+  local db="$1" run_ns="$2" frag job secret
+  frag="$(k8s_name_fragment "${db}")"
+  job="tenant-db-drop-${frag}"
+  secret="tenant-db-admin-${frag}"
+  apply_db_admin_secret "${run_ns}" "${secret}"
+  kubectl -n "${run_ns}" delete job "${job}" --ignore-not-found >/dev/null 2>&1 || true
   kubectl apply -n "${run_ns}" -f - >/dev/null <<YAML
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tenant-db-drop
+  name: ${job}
 spec:
   backoffLimit: 1
   ttlSecondsAfterFinished: 120
@@ -128,7 +138,7 @@ spec:
           image: postgres:16-alpine
           env:
             - name: PGPASSWORD
-              valueFrom: { secretKeyRef: { name: tenant-db-admin, key: PGPASSWORD } }
+              valueFrom: { secretKeyRef: { name: ${secret}, key: PGPASSWORD } }
           command: ["/bin/sh","-c"]
           args:
             - |
@@ -139,14 +149,14 @@ spec:
             limits: { cpu: 200m, memory: 128Mi }
 YAML
   local ok=1
-  if kubectl -n "${run_ns}" wait --for=condition=complete job/tenant-db-drop --timeout=90s >/dev/null 2>&1; then
+  if kubectl -n "${run_ns}" wait --for=condition=complete "job/${job}" --timeout=90s >/dev/null 2>&1; then
     log "  database ${db} dropped."; ok=0
   else
     warn "  DB drop for ${db} did not confirm; last log lines:"
-    kubectl -n "${run_ns}" logs job/tenant-db-drop 2>/dev/null | tail -5 || true
+    kubectl -n "${run_ns}" logs "job/${job}" 2>/dev/null | tail -5 || true
   fi
-  kubectl -n "${run_ns}" delete secret tenant-db-admin --ignore-not-found >/dev/null 2>&1 || true
-  kubectl -n "${run_ns}" delete job tenant-db-drop --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "${run_ns}" delete secret "${secret}" --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "${run_ns}" delete job "${job}" --ignore-not-found >/dev/null 2>&1 || true
   return "${ok}"
 }
 
@@ -240,6 +250,10 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REQUIRE_AUTH=false" --set-string "config.SQS_ENABLED=false") ;;
     analytics-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
+      # Drop the nightly usage-rollup CronJob for ephemeral tenants: it is the
+      # batch->event-driven demo's "before" state, unrelated to multi-tenant
+      # isolation, and just burns ResourceQuota on short-lived tenants.
+      EXTRA_ARGS+=(--set cronjob.enabled=false)
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")
       EXTRA_ARGS+=(--set-string "config.DATABASE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${T_DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")

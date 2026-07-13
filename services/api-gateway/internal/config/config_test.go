@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,7 +9,16 @@ import (
 )
 
 func TestLoadUsesDefaults(t *testing.T) {
-	t.Setenv("JWT_SECRET", "")
+	for _, key := range []string{
+		"JWT_SECRET",
+		"PORT",
+		"RATE_LIMIT_RPS",
+		"SHUTDOWN_TIMEOUT_SECONDS",
+		"CORS_ALLOWED_ORIGINS",
+	} {
+		t.Setenv(key, "")
+		os.Unsetenv(key)
+	}
 	cfg := Load()
 
 	assert.Equal(t, "8080", cfg.Port)

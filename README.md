@@ -65,15 +65,14 @@ make down
 | Web App | React 18 / Next.js 14 | 3000 | Main user-facing application |
 | Admin Dashboard | Angular 17 | 4200 | Administrative interface |
 
-## Client Apps
+## Client apps
 
-Native clients that talk to the same API gateway live under `clients/`:
+Native/other clients live under [`clients/`](clients/), all talking to the same API gateway:
 
-| Client | Platform | Stack | Path |
-|--------|----------|-------|------|
-| Windows Desktop | Windows | C# / WPF (.NET Framework 4.8) | `clients/windows-desktop` |
-
-See [`clients/windows-desktop/README.md`](clients/windows-desktop/README.md) for build and run instructions for the Windows desktop client.
+| Client | Stack | Description |
+|--------|-------|-------------|
+| [Android](clients/android/) | Kotlin / Jetpack Compose (Retrofit) | Native Android app mirroring the web client's core flow (register, login, documents, create). Points at the API gateway via `http://10.0.2.2:8080/api/v1` from the emulator. |
+| [Windows Desktop](clients/windows-desktop/) | C# / WPF (.NET Framework 4.8) | Native Windows desktop app mirroring the web client's core flow (register, login, documents, create). See [`clients/windows-desktop/README.md`](clients/windows-desktop/README.md) for build and run instructions. |
 
 ## Architecture
 

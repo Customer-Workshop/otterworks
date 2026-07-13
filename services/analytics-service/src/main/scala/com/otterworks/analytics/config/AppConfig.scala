@@ -8,6 +8,7 @@ final case class AppConfig(
     sqs: SqsConfig,
     aws: AwsConfig,
     postgres: PostgresConfig,
+    repository: RepositoryConfig,
     server: ServerConfig
 )
 
@@ -20,6 +21,11 @@ final case class PostgresConfig(
     password: String,
     maxPoolSize: Int
 )
+
+/** Selects the metrics store backend: "postgres" (durable, golden default) or "in-memory". */
+final case class RepositoryConfig(backend: String):
+  def isPostgres: Boolean = backend.trim.toLowerCase == "postgres"
+
 final case class ServerConfig(host: String, port: Int)
 
 object AppConfig:
@@ -53,9 +59,15 @@ object AppConfig:
       maxPoolSize = pg.getInt("max-pool-size")
     )
 
+    val repository = RepositoryConfig(
+      backend =
+        if analytics.hasPath("repository.backend") then analytics.getString("repository.backend")
+        else "postgres"
+    )
+
     val server = ServerConfig(
       host = if analytics.hasPath("server.host") then analytics.getString("server.host") else "0.0.0.0",
       port = if analytics.hasPath("server.port") then analytics.getInt("server.port") else 8088
     )
 
-    AppConfig(s3, sqs, aws, postgres, server)
+    AppConfig(s3, sqs, aws, postgres, repository, server)

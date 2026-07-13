@@ -37,3 +37,33 @@ output "notifications_table_arn" {
   description = "DynamoDB table ARN for notifications"
   value       = aws_dynamodb_table.notifications.arn
 }
+
+output "folders_table_name" {
+  description = "DynamoDB table name for folders"
+  value       = aws_dynamodb_table.folders.name
+}
+
+output "folders_table_arn" {
+  description = "DynamoDB table ARN for folders"
+  value       = aws_dynamodb_table.folders.arn
+}
+
+output "file_versions_table_name" {
+  description = "DynamoDB table name for file versions"
+  value       = aws_dynamodb_table.file_versions.name
+}
+
+output "file_versions_table_arn" {
+  description = "DynamoDB table ARN for file versions"
+  value       = aws_dynamodb_table.file_versions.arn
+}
+
+output "file_shares_table_name" {
+  description = "DynamoDB table name for file shares"
+  value       = aws_dynamodb_table.file_shares.name
+}
+
+output "file_shares_table_arn" {
+  description = "DynamoDB table ARN for file shares"
+  value       = aws_dynamodb_table.file_shares.arn
+}

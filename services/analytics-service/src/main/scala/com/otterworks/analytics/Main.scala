@@ -7,7 +7,8 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes}
 import com.otterworks.analytics.config.AppConfig
-import com.otterworks.analytics.repository.MetricsRepository
+import com.otterworks.analytics.db.AnalyticsDb
+import com.otterworks.analytics.repository.{InMemoryMetricsRepository, MetricsRepository, PostgresMetricsRepository}
 import com.otterworks.analytics.service.{AnalyticsService, EventProcessor}
 
 import scala.concurrent.{Await, ExecutionContextExecutor}
@@ -21,8 +22,30 @@ object Main:
 
     val config = AppConfig.load()
 
-    // Wire up dependencies
-    val repository = MetricsRepository(config.postgres)
+    // Wire up the metrics store. The golden default is the durable PostgreSQL
+    // store (the "before" state for the S3/Iceberg lakehouse migration); the
+    // in-memory store remains available via config for local runs and tests.
+    // If the durable store cannot be initialised (e.g. DB unreachable), fall
+    // back to in-memory so the service still boots — mirroring the non-fatal
+    // SQS handling below.
+    val repository: MetricsRepository =
+      if config.repository.isPostgres then
+        val db = new AnalyticsDb(config.postgres)
+        try
+          db.migrate()
+          sys.addShutdownHook(db.close())
+          system.log.info("Analytics using durable PostgreSQL metrics store")
+          new PostgresMetricsRepository(db)
+        catch
+          case ex: Throwable =>
+            db.close()
+            system.log.warn(
+              s"Durable PostgreSQL store unavailable (${ex.getMessage}); falling back to in-memory store")
+            new InMemoryMetricsRepository(config.postgres)
+      else
+        system.log.info("Analytics using in-memory metrics store (per configuration)")
+        new InMemoryMetricsRepository(config.postgres)
+
     val analyticsService = AnalyticsService(repository)
     val eventProcessor = EventProcessor(config, analyticsService)
 

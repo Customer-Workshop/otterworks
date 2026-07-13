@@ -710,7 +710,6 @@ pub async fn list_activity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::test;
 
     #[actix_rt::test]
     async fn test_health_endpoint() {

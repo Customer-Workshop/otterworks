@@ -57,8 +57,9 @@ resource "aws_elasticache_replication_group" "main" {
   parameter_group_name = "default.redis7"
 
   at_rest_encryption_enabled = true
-  transit_encryption_enabled = true
+  transit_encryption_enabled = var.redis_transit_encryption_enabled
   automatic_failover_enabled = var.redis_num_cache_clusters > 1
+  apply_immediately          = var.redis_apply_immediately
 
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = [aws_security_group.redis.id]

@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed
 
 SHELL := /bin/bash
 
@@ -198,3 +198,11 @@ test-report: ## Run report-service tests only
 
 build-report: ## Build report-service
 	cd services/report-service && mvn package -DskipTests
+
+# --- Batch jobs (legacy scheduled processing) ---
+
+batch-usage-rollup: ## Run the nightly usage-rollup batch job locally (OUT=<path> optional)
+	ROLLUP_OUTPUT=$${OUT:-rollup-output.json} scripts/run-usage-rollup.sh
+
+batch-usage-rollup-seed: ## Regenerate the deterministic usage-rollup seed events
+	cd services/analytics-service && python3 scripts/generate_seed_events.py

@@ -65,6 +65,16 @@ make down
 | Web App | React 18 / Next.js 14 | 3000 | Main user-facing application |
 | Admin Dashboard | Angular 17 | 4200 | Administrative interface |
 
+## Client Apps
+
+Native clients that talk to the same API gateway live under `clients/`:
+
+| Client | Platform | Stack | Path |
+|--------|----------|-------|------|
+| Windows Desktop | Windows | C# / WPF (.NET Framework 4.8) | `clients/windows-desktop` |
+
+See [`clients/windows-desktop/README.md`](clients/windows-desktop/README.md) for build and run instructions for the Windows desktop client.
+
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design, data flow, and infrastructure details.

@@ -262,8 +262,7 @@ resource "aws_lambda_function" "report" {
       SPRING_DATASOURCE_HIKARI_IDLETIMEOUT       = "30000"
       SPRING_DATASOURCE_HIKARI_MAXLIFETIME       = "60000"
       SPRING_PROFILES_ACTIVE                     = "lambda"
-      LAMBDA_DEPLOYMENT_REVISION                 = "hikari-idle-timeout-30000"
-      OTTERWORKS_REPORT_ASYNC_GENERATION_ENABLED = "false"
+      OTTERWORKS_REPORT_ASYNCGENERATION_ENABLED  = "false"
     }
   }
 

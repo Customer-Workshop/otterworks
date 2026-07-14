@@ -43,11 +43,11 @@ module "notification_eventbridge" {
   log_retention_days = var.log_retention_days
 }
 
-# Least-privilege grant: let the migrated publishers (file-service,
-# document-service) PutEvents to THIS namespaced bus only. Additive and
-# count-gated — the base IRSA roles in main.tf are unchanged when disabled.
+# Least-privilege grant: let the migrated notification publisher (file-service)
+# PutEvents to THIS namespaced bus only. Additive and count-gated — the base
+# IRSA roles in main.tf are unchanged when disabled.
 resource "aws_iam_role_policy" "publisher_put_events" {
-  for_each = var.notification_eventbridge_ns == "" ? toset([]) : toset(["file-service", "document-service"])
+  for_each = var.notification_eventbridge_ns == "" ? toset([]) : toset(["file-service"])
 
   name = "notification-eventbridge-${var.notification_eventbridge_ns}-putevents"
   role = module.irsa.role_names[each.key]

@@ -124,12 +124,29 @@ impl EventPublisher {
             .detail(message)
             .build();
 
-        self.eventbridge_client
+        let resp = self
+            .eventbridge_client
             .put_events()
             .entries(entry)
             .send()
             .await
             .map_err(|e| ServiceError::SnsError(e.to_string()))?;
+
+        // PutEvents can return 200 while individual entries fail (e.g. throttling);
+        // treat a non-zero FailedEntryCount as an error so the caller does not
+        // silently drop the event.
+        if resp.failed_entry_count() != 0 {
+            let reason = resp
+                .entries()
+                .iter()
+                .find_map(|e| e.error_message().map(str::to_string))
+                .unwrap_or_else(|| "unknown error".to_string());
+            return Err(ServiceError::SnsError(format!(
+                "EventBridge PutEvents reported {} failed entr(ies): {}",
+                resp.failed_entry_count(),
+                reason
+            )));
+        }
 
         tracing::info!(
             event_type = %event.event_type,

@@ -68,9 +68,9 @@ variable "ses_from_email" {
 }
 
 variable "event_source_names" {
-  description = "EventBridge event `source` values the rule matches (one per domain-event publisher migrated onto EventBridge)."
+  description = "EventBridge event `source` values the rule matches (one per domain-event publisher migrated onto EventBridge). Scoped to file-service, the notification producer whose events conform to the SqsNotificationMessage model the consumer expects."
   type        = list(string)
-  default     = ["otterworks.file-service", "otterworks.document-service"]
+  default     = ["otterworks.file-service"]
 }
 
 variable "event_detail_types" {

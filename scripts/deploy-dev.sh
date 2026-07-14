@@ -274,10 +274,6 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
-      # Opt-in serverless notification pipeline (see file-service note above).
-      if [ -n "${NOTIFICATION_EVENTBRIDGE_NS:-}" ] && [ -n "${NOTIF_EB_BUS}" ]; then
-        EXTRA_ARGS+=(--set-string "config.DOC_SVC_EVENT_BACKEND=eventbridge" --set-string "config.DOC_SVC_EVENTBRIDGE_BUS_NAME=${NOTIF_EB_BUS}")
-      fi
       add_secret DOC_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
     collab-service)
       EXTRA_ARGS+=(--set-string "config.HTTP_PORT=8084" --set-string "config.NODE_ENV=production")

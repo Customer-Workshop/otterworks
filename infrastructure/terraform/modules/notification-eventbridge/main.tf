@@ -103,6 +103,54 @@ resource "aws_sqs_queue_policy" "notifications" {
   })
 }
 
+# --- Encryption key (log group + Lambda env vars) -----------------------------
+
+# Customer-managed KMS key so the Lambda log group and environment variables are
+# encrypted with a key we control (rather than the AWS-managed default).
+resource "aws_kms_key" "this" {
+  description             = "OtterWorks notification EventBridge pipeline (${var.ns})"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnableRootAccount"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${local.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowCloudWatchLogs"
+        Effect    = "Allow"
+        Principal = { Service = "logs.${local.region}.amazonaws.com" }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${local.region}:${local.account_id}:log-group:/aws/lambda/${local.name_prefix}-consumer"
+          }
+        }
+      },
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_kms_alias" "this" {
+  name          = "alias/${local.name_prefix}"
+  target_key_id = aws_kms_key.this.key_id
+}
+
 # --- Lambda consumer ----------------------------------------------------------
 
 data "archive_file" "lambda" {
@@ -115,6 +163,7 @@ data "archive_file" "lambda" {
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.name_prefix}-consumer"
   retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.this.arn
   tags              = local.common_tags
 }
 
@@ -173,6 +222,21 @@ resource "aws_iam_role_policy" "lambda" {
         Resource = ["*"]
       },
       {
+        Sid      = "DecryptEnv"
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = [aws_kms_key.this.arn]
+      },
+      {
+        Sid    = "XRayTracing"
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords",
+        ]
+        Resource = ["*"]
+      },
+      {
         Sid    = "WriteLogs"
         Effect = "Allow"
         Action = [
@@ -194,6 +258,11 @@ resource "aws_lambda_function" "consumer" {
   source_code_hash = data.archive_file.lambda.output_base64sha256
   timeout          = var.lambda_timeout_seconds
   memory_size      = var.lambda_memory_mb
+  kms_key_arn      = aws_kms_key.this.arn
+
+  tracing_config {
+    mode = "Active"
+  }
 
   environment {
     variables = {

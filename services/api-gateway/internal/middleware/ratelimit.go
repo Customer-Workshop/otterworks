@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
 // TokenBucket implements a per-IP token bucket rate limiter.
@@ -74,9 +76,11 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", "1")
 			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{
+			if err := json.NewEncoder(w).Encode(map[string]string{
 				"error": "rate limit exceeded",
-			})
+			}); err != nil {
+				return
+			}
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -84,7 +88,9 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 }
 
 func extractIP(r *http.Request) string {
-	// chimw.RealIP has already set r.RemoteAddr to the client IP
+	if clientIP := chimw.GetClientIP(r.Context()); clientIP != "" {
+		return clientIP
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

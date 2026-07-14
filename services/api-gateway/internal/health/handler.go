@@ -18,9 +18,11 @@ func Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(Response{
+		if err := json.NewEncoder(w).Encode(Response{
 			Status:  "healthy",
 			Version: version,
-		})
+		}); err != nil {
+			return
+		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCORS_AllowedOrigin(t *testing.T) {
@@ -67,7 +68,8 @@ func TestCORS_PreflightRequest(t *testing.T) {
 
 	handler := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("should not reach here"))
+		_, err := w.Write([]byte("should not reach here"))
+		require.NoError(t, err)
 	}))
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/test", nil)

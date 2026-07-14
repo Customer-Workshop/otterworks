@@ -119,7 +119,7 @@ func validateToken(tokenStr, secret string) (*JWTClaims, error) {
 	}
 
 	// Check expiration
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
 		return nil, fmt.Errorf("token has expired")
 	}
 
@@ -155,7 +155,9 @@ func isProtectedPath(path string, protectedPrefixes []string) bool {
 func writeJSONError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"error": message,
-	})
+	}); err != nil {
+		return
+	}
 }

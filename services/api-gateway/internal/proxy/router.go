@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
@@ -21,10 +22,10 @@ type Route struct {
 
 // RouterConfig holds configuration for the reverse proxy router.
 type RouterConfig struct {
-	Routes         []Route
-	CBManager      *CircuitBreakerManager
-	Logger         zerolog.Logger
-	EnableTracing  bool
+	Routes        []Route
+	CBManager     *CircuitBreakerManager
+	Logger        zerolog.Logger
+	EnableTracing bool
 }
 
 // NewRouter creates a chi router with all service routes mounted.
@@ -42,9 +43,11 @@ func NewRouter(cfg RouterConfig) chi.Router {
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"error": "route not found",
-		})
+		}); err != nil {
+			return
+		}
 	})
 
 	return r
@@ -59,23 +62,23 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 		cfg.Logger.Fatal().Err(err).Str("target", route.TargetURL).Msg("invalid proxy target URL")
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
-
-	// Wrap the default director to forward authenticated user identity.
-	// The auth-service issues JWTs with the user ID in the standard "sub" claim
-	// (claims.Subject). Fall back to the custom "user_id" claim for compatibility.
-	defaultDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		defaultDirector(req)
-		if claims := middleware.GetJWTClaims(req.Context()); claims != nil {
-			userID := claims.Subject
-			if userID == "" {
-				userID = claims.UserID
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(req *httputil.ProxyRequest) {
+			req.SetURL(target)
+			req.SetXForwarded()
+			if clientIP := chimw.GetClientIP(req.In.Context()); clientIP != "" {
+				req.Out.Header.Set("X-Forwarded-For", clientIP)
 			}
-			if userID != "" {
-				req.Header.Set("X-User-ID", userID)
+			if claims := middleware.GetJWTClaims(req.In.Context()); claims != nil {
+				userID := claims.Subject
+				if userID == "" {
+					userID = claims.UserID
+				}
+				if userID != "" {
+					req.Out.Header.Set("X-User-ID", userID)
+				}
 			}
-		}
+		},
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
@@ -88,10 +91,12 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(map[string]string{
+		if encodeErr := json.NewEncoder(w).Encode(map[string]string{
 			"error":  "service unavailable",
 			"target": route.Prefix,
-		})
+		}); encodeErr != nil {
+			cfg.Logger.Error().Err(encodeErr).Msg("failed to encode proxy error response")
+		}
 	}
 
 	var handler http.Handler = proxy
@@ -110,11 +115,13 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]string{
+			if encodeErr := json.NewEncoder(w).Encode(map[string]string{
 				"error":   "service temporarily unavailable",
 				"service": route.Prefix,
 				"reason":  "circuit breaker open",
-			})
+			}); encodeErr != nil {
+				cfg.Logger.Error().Err(encodeErr).Msg("failed to encode circuit breaker response")
+			}
 		}
 	}
 }

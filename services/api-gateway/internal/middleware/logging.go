@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5/middleware"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -14,7 +14,7 @@ func Logger(logger zerolog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			ww := chimw.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			next.ServeHTTP(ww, r)
 
@@ -40,12 +40,19 @@ func Logger(logger zerolog.Logger) func(http.Handler) http.Handler {
 				Int("status", status).
 				Int("bytes", ww.BytesWritten()).
 				Dur("latency_ms", duration).
-				Str("remote_addr", r.RemoteAddr).
+				Str("remote_addr", requestClientIP(r)).
 				Str("user_agent", r.UserAgent()).
 				Str("protocol", r.Proto).
 				Msg("request completed")
 		})
 	}
+}
+
+func requestClientIP(r *http.Request) string {
+	if clientIP := chimw.GetClientIP(r.Context()); clientIP != "" {
+		return clientIP
+	}
+	return r.RemoteAddr
 }
 
 // SetLogLevel configures the global zerolog level.

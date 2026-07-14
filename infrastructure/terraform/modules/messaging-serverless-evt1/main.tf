@@ -81,8 +81,11 @@ resource "aws_sqs_queue" "notifications_dlq" {
 }
 
 resource "aws_sqs_queue" "notifications" {
-  name                       = "${local.name_prefix}-queue"
-  visibility_timeout_seconds = max(var.lambda_timeout_seconds * 2, 60)
+  name = "${local.name_prefix}-queue"
+  # AWS guidance for a Lambda SQS event-source mapping: set the queue visibility
+  # timeout to at least 6x the function timeout so in-flight messages are not
+  # redelivered (and re-processed) while a batch is still being handled.
+  visibility_timeout_seconds = max(var.lambda_timeout_seconds * 6, 180)
   message_retention_seconds  = 86400
   receive_wait_time_seconds  = 20
 
@@ -194,10 +197,39 @@ data "aws_iam_policy_document" "lambda" {
     resources = [local.preferences_table_arn]
   }
 
+  # Scope SES to ONLY the notification sender identity (least privilege): the
+  # Lambda can send as var.ses_from_email but not impersonate any other verified
+  # identity in the account, and the FromAddress condition pins the envelope
+  # sender too.
   statement {
     sid       = "SendEmail"
     effect    = "Allow"
     actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = ["arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/${var.ses_from_email}"]
+    condition {
+      test     = "StringEquals"
+      variable = "ses:FromAddress"
+      values   = [var.ses_from_email]
+    }
+  }
+
+  # Decrypt the Lambda's own env vars at runtime (they are encrypted with the
+  # pipeline CMK). Scoped to that single key.
+  statement {
+    sid       = "DecryptEnv"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.notifications.arn]
+  }
+
+  # Emit X-Ray trace segments (X-Ray has no resource-level scoping).
+  statement {
+    sid    = "XRayTracing"
+    effect = "Allow"
+    actions = [
+      "xray:PutTraceSegments",
+      "xray:PutTelemetryRecords",
+    ]
     resources = ["*"]
   }
 }
@@ -209,6 +241,62 @@ resource "aws_iam_role_policy" "lambda" {
 }
 
 # ------------------------------------------------------------------------------
+# KMS — customer-managed key encrypting this pipeline's data at rest (the Lambda
+# environment variables and the Lambda CloudWatch log group). Namespaced so each
+# migration run owns its own key. The key policy grants the account root admin
+# rights and lets the CloudWatch Logs service in this region use the key for the
+# Lambda's log group only (least privilege).
+# ------------------------------------------------------------------------------
+
+data "aws_iam_policy_document" "kms" {
+  statement {
+    sid       = "AccountRootAdmin"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid    = "CloudWatchLogsUse"
+    effect = "Allow"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey",
+    ]
+    resources = ["*"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${data.aws_region.current.name}.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values   = ["arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${local.name_prefix}-consumer"]
+    }
+  }
+}
+
+resource "aws_kms_key" "notifications" {
+  description             = "CMK for the serverless notification pipeline (${var.namespace}): Lambda env + log group encryption."
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.kms.json
+  tags                    = local.common_tags
+}
+
+resource "aws_kms_alias" "notifications" {
+  name          = "alias/${local.name_prefix}"
+  target_key_id = aws_kms_key.notifications.key_id
+}
+
+# ------------------------------------------------------------------------------
 # Lambda — reuses the existing NotificationService logic (no rewrite of the
 # notification behavior; same DynamoDB table, same rendering/preferences).
 # ------------------------------------------------------------------------------
@@ -216,6 +304,7 @@ resource "aws_iam_role_policy" "lambda" {
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.name_prefix}-consumer"
   retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.notifications.arn
   tags              = local.common_tags
 }
 
@@ -230,6 +319,9 @@ resource "aws_lambda_function" "consumer" {
   filename         = var.lambda_jar_path
   source_code_hash = filebase64sha256(var.lambda_jar_path)
 
+  # Encrypt environment variables at rest with the pipeline's own CMK.
+  kms_key_arn = aws_kms_key.notifications.arn
+
   environment {
     variables = {
       DYNAMODB_TABLE_NOTIFICATIONS = var.notifications_table_name
@@ -240,6 +332,11 @@ resource "aws_lambda_function" "consumer" {
       # this path is active.
       NOTIFICATION_CONSUMER_MODE = "serverless"
     }
+  }
+
+  # End-to-end request tracing (EventBridge -> SQS -> Lambda -> DynamoDB/SES).
+  tracing_config {
+    mode = "Active"
   }
 
   depends_on = [

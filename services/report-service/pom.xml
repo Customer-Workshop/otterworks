@@ -201,4 +201,126 @@
             </plugin>
         </plugins>
     </build>
+
+    <!--
+      SERVERLESS MIGRATION (namespace: lam1) — OFF BY DEFAULT.
+
+      This profile is additive and opt-in: a plain `mvn package` (the EKS
+      always-on deployment used by `main` and docker-compose) is byte-for-byte
+      unchanged and never pulls in the AWS dependencies below. Activating
+      `-Plambda` adds the AWS Serverless Java Container adapter, compiles the
+      Lambda entry point under src/lambda/java, and produces a shaded
+      deployment jar (target/report-service-lambda.jar) whose handler is
+      com.otterworks.report.lambda.StreamLambdaHandler::handleRequest.
+
+      The SAME ReportApplication / controllers / contract are served; only the
+      hosting changes (EKS pod -> Lambda + API Gateway).
+    -->
+    <profiles>
+        <profile>
+            <id>lambda</id>
+            <properties>
+                <aws.serverless.container.version>1.9.4</aws.serverless.container.version>
+                <aws.lambda.core.version>1.2.3</aws.lambda.core.version>
+            </properties>
+
+            <dependencies>
+                <dependency>
+                    <groupId>com.amazonaws.serverless</groupId>
+                    <artifactId>aws-serverless-java-container-springboot2</artifactId>
+                    <version>${aws.serverless.container.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.amazonaws</groupId>
+                    <artifactId>aws-lambda-java-core</artifactId>
+                    <version>${aws.lambda.core.version}</version>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <plugins>
+                    <!-- Lambda uses a flat shaded jar, not the Spring Boot loader layout. -->
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+
+                    <!-- Compile the Lambda entry point (src/lambda/java) only for this profile. -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>add-lambda-source</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>add-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/lambda/java</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                        Copy every runtime dependency into target/lambda-lib so
+                        the handler can be exercised locally on the exact same
+                        classpath the Lambda runtime uses (see LocalApiGatewayRunner).
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-lambda-dependencies</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/lambda-lib</outputDirectory>
+                                    <includeScope>runtime</includeScope>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                        Build the Lambda deployment package (report-service-lambda.zip)
+                        with a lib/ layout. NOT a shaded uber-jar: see src/assembly/lambda.xml
+                        for why (spring.factories must stay per-jar). Leaves the EKS jar
+                        (produced by the default build without this profile) untouched.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>3.7.1</version>
+                        <executions>
+                            <execution>
+                                <id>lambda-package</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>report-service-lambda</finalName>
+                                    <appendAssemblyId>false</appendAssemblyId>
+                                    <descriptors>
+                                        <descriptor>src/assembly/lambda.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

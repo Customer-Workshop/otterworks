@@ -196,6 +196,9 @@ load_infra_outputs() {
   SNS_TOPIC="$(terraform -chdir="$d" output -raw sns_events_topic_arn 2>/dev/null || echo "")"
   SQS_NOTIF="$(terraform -chdir="$d" output -raw sqs_notification_queue_url 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
+  # Migration (namespace lam1): endpoint of the report-service Lambda + API GW.
+  # Only used when REPORT_BACKEND=lambda flips the gateway onto the serverless path.
+  REPORT_LAM1_ENDPOINT="$(terraform -chdir="$d" output -raw report_service_lam1_api_endpoint 2>/dev/null || echo "")"
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
   MEILISEARCH_URL="${MEILISEARCH_URL:-http://meilisearch:7700}"
@@ -247,7 +250,20 @@ build_helm_args() {
   fi
 
   case "$service" in
-    api-gateway) : ;; # backend service URLs default to the correct in-cluster DNS
+    api-gateway)
+      # Config flip (default OFF -> `main` unchanged): backend service URLs
+      # default to in-cluster DNS (report-service:8091, the always-on EKS pod).
+      # Set REPORT_BACKEND=lambda to route ONLY the report route through the
+      # namespaced Lambda + API Gateway endpoint (from Terraform output) while
+      # every other route stays on its EKS Service. Unset to revert instantly.
+      if [ "${REPORT_BACKEND:-eks}" = "lambda" ]; then
+        if [ -n "${REPORT_LAM1_ENDPOINT}" ]; then
+          EXTRA_ARGS+=(--set-string "config.REPORT_SERVICE_URL=${REPORT_LAM1_ENDPOINT}")
+          log "report-service backend flipped to Lambda: ${REPORT_LAM1_ENDPOINT}"
+        else
+          warn "REPORT_BACKEND=lambda but report_service_lam1_api_endpoint output is empty; keeping EKS default. Apply module.report_service_lam1 first."
+        fi
+      fi ;;
     auth-service)
       EXTRA_ARGS+=(--set-string "config.SPRING_PROFILES_ACTIVE=prod")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")

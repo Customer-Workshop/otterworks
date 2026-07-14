@@ -108,3 +108,20 @@ output "irsa_role_arns" {
   description = "Map of service account name to IAM role ARN"
   value       = module.irsa.role_arns
 }
+
+# --- Migration: report-service Lambda + API Gateway (namespace: lam1) ---
+
+output "report_service_lam1_api_endpoint" {
+  description = "API Gateway endpoint fronting the report-service Lambda (namespace lam1). Point the gateway's REPORT_SERVICE_URL here to flip report traffic onto the serverless path; unset to fall back to the always-on EKS pod."
+  value       = module.report_service_lam1.api_endpoint
+}
+
+output "report_service_lam1_lambda_function_name" {
+  description = "Report-service Lambda function name (namespace lam1)."
+  value       = module.report_service_lam1.lambda_function_name
+}
+
+output "report_service_lam1_lambda_role_arn" {
+  description = "Least-privilege execution role ARN for the report-service Lambda (namespace lam1)."
+  value       = module.report_service_lam1.lambda_role_arn
+}

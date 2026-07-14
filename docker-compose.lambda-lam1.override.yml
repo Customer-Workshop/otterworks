@@ -1,0 +1,12 @@
+# Local verification override (namespace: lam1) — NOT part of main/default.
+# Repoints the API gateway's report route at the report-service Lambda handler
+# (com.otterworks.report.lambda.StreamLambdaHandler) fronted by the local
+# API Gateway emulator (LocalApiGatewayRunner) on the host, instead of the
+# always-on EKS-pod container. Used only to prove the serverless path passes
+# the contract/flow suite unchanged through the gateway.
+services:
+  api-gateway:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      REPORT_SERVICE_URL: http://host.docker.internal:8091

@@ -1,0 +1,28 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.1.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.0 http://maven.apache.org/xsd/assembly-2.1.0.xsd">
+  <!--
+    AWS Lambda deployment package for the report-service serverless target.
+
+    Produces a zip whose lib/ directory holds the report-service jar plus every
+    runtime dependency, each keeping its OWN META-INF/spring.factories. The
+    Lambda Java runtime adds every lib/*.jar to the classpath, so Spring Boot
+    auto-configuration (JpaRepositoriesAutoConfiguration, etc.) resolves exactly
+    as it does in the EKS pod. A single shaded/uber-jar cannot be used here: the
+    shade AppendingTransformer concatenates the multiple spring.factories files
+    and java.util.Properties then keeps only the last EnableAutoConfiguration
+    entry, dropping most auto-config (ReportRepository bean would go missing).
+  -->
+  <id>lambda</id>
+  <formats>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+  <dependencySets>
+    <dependencySet>
+      <outputDirectory>lib</outputDirectory>
+      <useProjectArtifact>true</useProjectArtifact>
+      <scope>runtime</scope>
+    </dependencySet>
+  </dependencySets>
+</assembly>

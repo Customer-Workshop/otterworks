@@ -392,3 +392,30 @@ module "irsa" {
     })
   }
 }
+
+# ------------------------------------------------------------------------------
+# Migration (namespace: lam1) — report-service refactor: EKS pod -> Lambda + API GW
+#
+# ADDITIVE and namespaced. Sits ALONGSIDE the always-on EKS report-service
+# deployment (which stays the default on `main`); it does not modify or replace
+# any shared/`main` resource. The same Spring app is wrapped for Lambda so the
+# HTTP contract is unchanged. Revert with:
+#   terraform destroy -target=module.report_service_lam1
+# ------------------------------------------------------------------------------
+
+module "report_service_lam1" {
+  source           = "./modules/report-service-lam1"
+  environment      = var.environment
+  project          = "otterworks"
+  namespace_suffix = "lam1"
+
+  vpc_id     = local.vpc_id
+  subnet_ids = local.private_subnets
+
+  # Reuse the existing RDS database (compute migration only; no schema/SQL change).
+  db_host     = split(":", module.database.rds_endpoint)[0]
+  db_port     = "5432"
+  db_name     = "otterworks_reports"
+  db_user     = "otterworks"
+  db_password = var.db_password
+}

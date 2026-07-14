@@ -19,6 +19,9 @@ locals {
   ns          = var.namespace_suffix
   name_prefix = "${var.project}-report-${local.ns}-${var.environment}"
 
+  lambda_log_group_arn = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${local.name_prefix}"
+  apigw_log_group_arn  = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/${local.name_prefix}"
+
   common_tags = {
     Module    = "report-service-${local.ns}"
     Project   = var.project
@@ -28,11 +31,64 @@ locals {
   }
 }
 
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
+# --- Customer-managed KMS key -------------------------------------------------
+# One namespaced CMK encrypts the Lambda environment variables (which carry the
+# DB connection settings) and both CloudWatch log groups at rest. The key policy
+# delegates to account IAM (root) and additionally lets the CloudWatch Logs
+# service use the key for THIS module's two log groups only (encryption-context
+# scoped), so nothing outside the namespace can use it.
+
+data "aws_iam_policy_document" "kms" {
+  statement {
+    sid       = "EnableAccountIAM"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid       = "AllowCloudWatchLogs"
+    effect    = "Allow"
+    actions   = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
+    resources = ["*"]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${data.aws_region.current.name}.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnLike"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values   = ["${local.lambda_log_group_arn}", "${local.apigw_log_group_arn}"]
+    }
+  }
+}
+
+resource "aws_kms_key" "this" {
+  description             = "CMK for report-service Lambda env vars + log groups (${local.ns})"
+  enable_key_rotation     = true
+  deletion_window_in_days = 7
+  policy                  = data.aws_iam_policy_document.kms.json
+  tags                    = local.common_tags
+}
+
+resource "aws_kms_alias" "this" {
+  name          = "alias/${local.name_prefix}"
+  target_key_id = aws_kms_key.this.key_id
+}
+
 # --- CloudWatch log group (own log group only) -------------------------------
 
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${local.name_prefix}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.this.arn
   tags              = local.common_tags
 }
 
@@ -93,6 +149,27 @@ resource "aws_iam_role_policy" "vpc" {
   policy = data.aws_iam_policy_document.vpc.json
 }
 
+# Observability: X-Ray trace publishing (no resource-level scoping in AWS) and
+# decrypt of this module's own CMK so the runtime can read encrypted env vars.
+data "aws_iam_policy_document" "observability" {
+  statement {
+    sid       = "PublishXRayTraces"
+    actions   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "DecryptOwnCmk"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.this.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "observability" {
+  name   = "${local.name_prefix}-observability"
+  role   = aws_iam_role.lambda_exec.id
+  policy = data.aws_iam_policy_document.observability.json
+}
+
 # --- Security group: Lambda egress only (to RDS / dependent services) --------
 
 resource "aws_security_group" "lambda" {
@@ -123,6 +200,14 @@ resource "aws_lambda_function" "report" {
 
   filename         = var.lambda_package_path
   source_code_hash = filebase64sha256(var.lambda_package_path)
+
+  # Encrypt environment variables at rest with the module's own CMK.
+  kms_key_arn = aws_kms_key.this.arn
+
+  # Distributed tracing for cold-start / duration analysis of the migration.
+  tracing_config {
+    mode = "Active"
+  }
 
   vpc_config {
     subnet_ids         = var.subnet_ids
@@ -192,6 +277,7 @@ resource "aws_apigatewayv2_route" "root" {
 resource "aws_cloudwatch_log_group" "apigw" {
   name              = "/aws/apigateway/${local.name_prefix}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.this.arn
   tags              = local.common_tags
 }
 

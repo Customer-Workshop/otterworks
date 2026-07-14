@@ -23,14 +23,6 @@ module Api
           )
 
           status = bulk_status(result)
-          if %i[bad_request unprocessable_entity].include?(status)
-            return render_error(
-              code: status == :bad_request ? 'BAD_REQUEST' : 'VALIDATION_ERROR',
-              message: result.errors.join(', '),
-              status: status
-            )
-          end
-
           render json: {
             operation: operation,
             success_count: result.success_count,

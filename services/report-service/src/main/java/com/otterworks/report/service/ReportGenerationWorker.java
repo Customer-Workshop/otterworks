@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.util.Date;
@@ -70,6 +72,7 @@ public class ReportGenerationWorker {
     }
 
     @SuppressWarnings("unchecked")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void generateReport(Long reportId) {
         Optional<Report> optReport = reportRepository.findById(reportId);
         if (!optReport.isPresent()) { // LEGACY: !isPresent() instead of isEmpty() (Java 11+)

@@ -33,7 +33,7 @@ INGRESS_NAMESPACE="ingress-nginx"
 BACKEND_SERVICES=(
   api-gateway auth-service file-service document-service collab-service
   notification-service search-service analytics-service admin-service
-  audit-service report-service
+  audit-service report-service sample-service
 )
 FRONTEND_SERVICES=(web-app admin-dashboard)
 ALL_SERVICES=("${BACKEND_SERVICES[@]}" "${FRONTEND_SERVICES[@]}")
@@ -44,6 +44,7 @@ declare -A CONTAINER_PORT=(
   [api-gateway]=8080 [auth-service]=8081 [file-service]=8082 [document-service]=8083
   [collab-service]=8084 [notification-service]=8086 [search-service]=8087
   [analytics-service]=8088 [admin-service]=8089 [audit-service]=8090 [report-service]=8091
+  [sample-service]=8092
 )
 JVM_SERVICES=" auth-service report-service notification-service analytics-service "
 
@@ -202,7 +203,7 @@ build_helm_args() {
 
   if [ -n "${JWT_SECRET}" ]; then
     case "$service" in
-      api-gateway|auth-service|document-service|collab-service|admin-service)
+      api-gateway|auth-service|document-service|collab-service|admin-service|sample-service)
         add_secret JWT_SECRET "${JWT_SECRET}" ;;
     esac
   fi
@@ -272,5 +273,9 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.DB_HOST=${RDS_HOST}" --set-string "config.DB_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DB_NAME=${T_DB_NAME}" --set-string "config.DB_USER=${DB_USER}")
       add_secret DB_PASSWORD "${DB_PASSWORD}" ;;
+    sample-service)
+      EXTRA_ARGS+=(--set-string "config.SAMPLE_SVC_AWS_REGION=${AWS_REGION}")
+      EXTRA_ARGS+=(--set-string "config.SAMPLE_SVC_SNS_TOPIC_ARN=${sns_topic}")
+      add_secret SAMPLE_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${T_DB_NAME}" ;;
   esac
 }

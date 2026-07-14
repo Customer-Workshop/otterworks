@@ -1,0 +1,339 @@
+openapi: "3.0.3"
+info:
+  title: OtterWorks Sample Service
+  description: |
+    Minimal CRUD reference service for a simple owned `samples` resource.
+    Mirrors the document-service conventions (routing, header/JWT-based auth,
+    inline error handling). Ownership is derived from the JWT `Authorization`
+    header, or the `X-User-ID` header injected by the API gateway when no
+    JWT_SECRET is configured.
+  version: "1.0.0"
+  contact:
+    name: OtterWorks Platform Team
+
+servers:
+  - url: http://localhost:8092
+    description: Local development
+
+paths:
+  /api/v1/samples/:
+    post:
+      operationId: createItem
+      summary: Create an item
+      description: |
+        Creates a new owned item. The owner is taken from the request body
+        `owner_id`, or derived from the authenticated JWT when omitted.
+      parameters:
+        - $ref: "#/components/parameters/Authorization"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemCreate"
+            example:
+              name: "My first item"
+              description: "A short description"
+              owner_id: "3f0c1d6e-9b2a-4a3e-8f1b-2c4d6e8a0b1c"
+      responses:
+        "201":
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemResponse"
+        "401":
+          description: owner_id missing and no valid authentication provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      operationId: listItems
+      summary: List items (paginated)
+      parameters:
+        - name: owner_id
+          in: query
+          required: false
+          description: Filter by owner. Defaults to the authenticated user when omitted.
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - $ref: "#/components/parameters/Authorization"
+      responses:
+        "200":
+          description: A paginated list of items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemListResponse"
+
+  /api/v1/samples/{item_id}:
+    parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/Authorization"
+    get:
+      operationId: getItem
+      summary: Get an item by ID
+      responses:
+        "200":
+          description: The requested item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Item owned by a different user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateItem
+      summary: Full replace of an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemUpdate"
+      responses:
+        "200":
+          description: The updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemResponse"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: patchItem
+      summary: Partial update of an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemPatch"
+      responses:
+        "200":
+          description: The updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemResponse"
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteItem
+      summary: Soft-delete an item
+      responses:
+        "204":
+          description: Item deleted
+        "404":
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check with DB connectivity verification
+      responses:
+        "200":
+          description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "healthy"
+                service: "sample-service"
+                checks:
+                  database: "connected"
+
+  /metrics:
+    get:
+      operationId: metrics
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  parameters:
+    Authorization:
+      name: Authorization
+      in: header
+      required: false
+      description: |
+        Bearer JWT used to derive the acting user. When no JWT_SECRET is
+        configured, the service instead trusts the X-User-ID header set by
+        the API gateway.
+      schema:
+        type: string
+      example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+
+    ItemCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          default: ""
+        owner_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    ItemUpdate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          default: ""
+
+    ItemPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+
+    ItemResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - owner_id
+        - is_deleted
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        owner_id:
+          type: string
+          format: uuid
+        is_deleted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ItemListResponse:
+      type: object
+      required:
+        - items
+        - total
+        - page
+        - size
+        - pages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+        pages:
+          type: integer
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - checks
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        checks:
+          type: object
+          additionalProperties:
+            type: string

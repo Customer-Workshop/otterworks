@@ -65,6 +65,7 @@ BACKEND_SERVICES=(
   admin-service
   audit-service
   report-service
+  sample-service
 )
 
 FRONTEND_SERVICES=(
@@ -171,6 +172,7 @@ declare -A CONTAINER_PORT=(
   [api-gateway]=8080 [auth-service]=8081 [file-service]=8082 [document-service]=8083
   [collab-service]=8084 [notification-service]=8086 [search-service]=8087
   [analytics-service]=8088 [admin-service]=8089 [audit-service]=8090 [report-service]=8091
+  [sample-service]=8092
 )
 # JVM services need more memory than the namespace default (256Mi) to start.
 JVM_SERVICES=" auth-service report-service notification-service analytics-service "
@@ -241,7 +243,7 @@ build_helm_args() {
 
   if [ -n "${JWT_SECRET}" ]; then
     case "$service" in
-      api-gateway|auth-service|document-service|collab-service|admin-service)
+      api-gateway|auth-service|document-service|collab-service|admin-service|sample-service)
         add_secret JWT_SECRET "${JWT_SECRET}" ;;
     esac
   fi
@@ -267,6 +269,10 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
       add_secret DOC_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
+    sample-service)
+      EXTRA_ARGS+=(--set-string "config.SAMPLE_SVC_AWS_REGION=${AWS_REGION}")
+      EXTRA_ARGS+=(--set-string "config.SAMPLE_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
+      add_secret SAMPLE_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
     collab-service)
       EXTRA_ARGS+=(--set-string "config.HTTP_PORT=8084" --set-string "config.NODE_ENV=production")
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379") ;;

@@ -31,6 +31,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:8089
       AUDIT_SERVICE_URL: http://audit-service:8090
       REPORT_SERVICE_URL: http://report-service:8091
+      SAMPLE_SERVICE_URL: http://sample-service:8092
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
     depends_on:
     - auth-service
@@ -166,6 +167,46 @@ services:
       - curl
       - -f
       - http://localhost:8083/health
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
+  sample-service:
+    build:
+      context: ./services/sample-service
+      dockerfile: Dockerfile
+    container_name: otterworks-sample-service
+    ports:
+    - 8092:8092
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: otterworks
+      POSTGRES_PASSWORD: otterworks_dev
+      POSTGRES_DB: otterworks
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: sample-service
+      SAMPLE_SVC_DATABASE_URL: postgresql+asyncpg://otterworks:otterworks_dev@postgres:5432/otterworks
+      SAMPLE_SVC_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:otterworks-events
+      SAMPLE_SVC_AWS_ENDPOINT_URL: http://localstack:4566
+      JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8092/health
       interval: 10s
       timeout: 5s
       retries: 3

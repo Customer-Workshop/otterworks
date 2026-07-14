@@ -2,8 +2,10 @@ package com.otterworks.notification.consumer
 
 import aws.sdk.kotlin.services.sqs.SqsClient
 import com.otterworks.notification.config.AppConfig
+import com.otterworks.notification.model.SqsNotificationMessage
 import com.otterworks.notification.service.NotificationService
 import io.mockk.mockk
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -118,6 +120,42 @@ class SqsConsumerTest {
         assertEquals("mentioned-user", event.mentionedUserId)
         assertEquals("actor-2", event.actorId)
         assertEquals("doc-789", event.documentId)
+    }
+
+    @Test
+    fun `parseMessage parses legacy epoch-int timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-123",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("1704067200", event.timestamp)
+    }
+
+    @Test
+    fun `strict parser accepts both epoch-int and RFC3339 timestamps`() {
+        val strictJson = Json {
+            ignoreUnknownKeys = false
+            isLenient = false
+        }
+
+        val epoch = strictJson.decodeFromString<SqsNotificationMessage>(
+            """{"eventType":"file_shared","sharedWithUserId":"u","timestamp":1704067200}""",
+        )
+        assertEquals("1704067200", epoch.timestamp)
+
+        val rfc = strictJson.decodeFromString<SqsNotificationMessage>(
+            """{"eventType":"file_shared","sharedWithUserId":"u","timestamp":"2024-01-01T00:00:00Z"}""",
+        )
+        assertEquals("2024-01-01T00:00:00Z", rfc.timestamp)
     }
 
     @Test

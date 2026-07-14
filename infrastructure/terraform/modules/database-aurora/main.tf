@@ -67,8 +67,8 @@ resource "aws_security_group" "aurora" {
 
 resource "aws_rds_cluster_parameter_group" "aurora" {
   name        = "${var.project}-aurora-${var.environment}"
-  family      = "aurora-postgresql15"
-  description = "OtterWorks Aurora PostgreSQL 15 cluster parameters (TLS enforced)"
+  family      = "aurora-postgresql${split(".", var.engine_version)[0]}"
+  description = "OtterWorks Aurora PostgreSQL cluster parameters (TLS enforced)"
 
   parameter {
     name  = "rds.force_ssl"

@@ -120,6 +120,27 @@ module "search" {
   meilisearch_master_key = var.meilisearch_master_key
 }
 
+# --- Flagship replatform target: Amazon OpenSearch Serverless ---------------
+# Added ALONGSIDE module "search" (MeiliSearch); the MeiliSearch module stays as
+# the golden before-state. Namespaced by var.opensearch_namespace so parallel
+# runs never collide. Data access is granted to the search-service IRSA role,
+# whose ARN is constructed here (matching modules/irsa naming) to avoid a
+# dependency cycle with module.irsa.
+data "aws_caller_identity" "current" {}
+
+locals {
+  search_service_irsa_role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/otterworks-search-service-${var.environment}"
+}
+
+module "opensearch" {
+  source      = "./modules/opensearch"
+  environment = var.environment
+  project     = "otterworks"
+  namespace   = var.opensearch_namespace
+
+  data_access_principal_arns = [local.search_service_irsa_role_arn]
+}
+
 module "auth" {
   source      = "./modules/auth"
   environment = var.environment
@@ -270,6 +291,13 @@ module "irsa" {
             module.search.meilisearch_ecs_service_arn,
             "${replace(module.search.meilisearch_ecs_cluster_arn, ":cluster/", ":task/")}/*",
           ]
+        },
+        # Flagship replatform: least-privilege data-plane access to the
+        # namespaced OpenSearch Serverless collection (SEARCH_BACKEND=opensearch).
+        {
+          Effect   = "Allow"
+          Action   = ["aoss:APIAccessAll"]
+          Resource = [module.opensearch.collection_arn]
         },
       ]
     })

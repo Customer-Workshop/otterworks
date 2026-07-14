@@ -71,6 +71,23 @@ output "meilisearch_ecs_cluster_arn" {
   value       = module.search.meilisearch_ecs_cluster_arn
 }
 
+# --- Search (flagship replatform target: OpenSearch Serverless) ---
+
+output "opensearch_collection_endpoint" {
+  description = "OpenSearch Serverless collection endpoint (set as OPENSEARCH_ENDPOINT for search-service)"
+  value       = module.opensearch.collection_endpoint
+}
+
+output "opensearch_collection_arn" {
+  description = "OpenSearch Serverless collection ARN"
+  value       = module.opensearch.collection_arn
+}
+
+output "opensearch_dashboard_endpoint" {
+  description = "OpenSearch Dashboards endpoint for the collection"
+  value       = module.opensearch.dashboard_endpoint
+}
+
 # --- Auth ---
 
 output "cognito_user_pool_id" {

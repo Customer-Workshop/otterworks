@@ -21,6 +21,20 @@ from app.services.sqs_consumer import SQSConsumer
 logger = structlog.get_logger()
 
 
+def build_search_service(config: AppConfig):  # type: ignore[no-untyped-def]
+    """Instantiate the search backend adapter selected by ``SEARCH_BACKEND``.
+
+    Defaults to the self-managed MeiliSearch backend (the golden before-state).
+    Set ``SEARCH_BACKEND=opensearch`` to use the Amazon OpenSearch adapter.
+    Both adapters satisfy the same interface, so the API layer is unchanged.
+    """
+    if config.search_backend == "opensearch":
+        from app.services.opensearch_client import OpenSearchService
+
+        return OpenSearchService(config.opensearch)
+    return MeiliSearchService(config.meilisearch)
+
+
 def configure_logging(log_level: str) -> None:
     """Configure structured JSON logging via structlog."""
     structlog.configure(
@@ -61,16 +75,17 @@ def create_app(config: AppConfig | None = None) -> Flask:
     # Store config on the app
     app.config["APP_CONFIG"] = config
 
-    # Initialize MeiliSearch service
-    search_service = MeiliSearchService(config.meilisearch)
+    # Initialize the selected search backend adapter (MeiliSearch by default,
+    # OpenSearch when SEARCH_BACKEND=opensearch).
+    search_service = build_search_service(config)
     app.config["SEARCH_SERVICE"] = search_service
 
-    # Try to create indices on startup (non-fatal if MeiliSearch is not available)
+    # Try to create indices on startup (non-fatal if the backend is unavailable)
     try:
         search_service.ensure_indices()
-        logger.info("meilisearch_indices_ensured")
+        logger.info("search_indices_ensured", backend=config.search_backend)
     except Exception:
-        logger.warning("meilisearch_indices_creation_deferred", reason="MeiliSearch not available")
+        logger.warning("search_indices_creation_deferred", backend=config.search_backend, reason="backend not available")
 
     # Register blueprints
     app.register_blueprint(health_bp)
@@ -113,10 +128,16 @@ def create_app(config: AppConfig | None = None) -> Flask:
         sqs_consumer.start()
         app.config["SQS_CONSUMER"] = sqs_consumer
 
+    backend_endpoint = (
+        config.opensearch.endpoint
+        if config.search_backend == "opensearch"
+        else config.meilisearch.url
+    )
     logger.info(
         "search_service_created",
         port=config.port,
-        meilisearch_url=config.meilisearch.url,
+        backend=config.search_backend,
+        backend_endpoint=backend_endpoint,
         sqs_enabled=config.sqs.enabled,
     )
     return app

@@ -39,3 +39,13 @@ variable "meilisearch_master_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "opensearch_namespace" {
+  description = <<-EOT
+    Migration namespace suffix for the flagship search-service replatform to
+    Amazon OpenSearch Serverless (module.opensearch). Isolates parallel/repeated
+    runs; revert with `terraform destroy -target=module.opensearch`.
+  EOT
+  type        = string
+  default     = "os1"
+}

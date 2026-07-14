@@ -199,6 +199,11 @@ load_infra_outputs() {
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
   MEILISEARCH_URL="${MEILISEARCH_URL:-http://meilisearch:7700}"
+  # Flagship replatform: search-service backend selector. Defaults to meilisearch
+  # (the golden before-state); set SEARCH_BACKEND=opensearch to point at the
+  # namespaced Amazon OpenSearch Serverless collection (module.opensearch).
+  SEARCH_BACKEND="${SEARCH_BACKEND:-meilisearch}"
+  OPENSEARCH_ENDPOINT="${OPENSEARCH_ENDPOINT:-$(terraform -chdir="$d" output -raw opensearch_collection_endpoint 2>/dev/null || echo "")}"
   if [ -z "${RDS_HOST}" ]; then
     warn "Terraform outputs unavailable; services will deploy without wired config."
   fi
@@ -281,7 +286,14 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.HOST=0.0.0.0" --set-string "config.PORT=8087")
       EXTRA_ARGS+=(--set-string "config.MEILISEARCH_URL=${MEILISEARCH_URL}")
-      EXTRA_ARGS+=(--set-string "config.REQUIRE_AUTH=false" --set-string "config.SQS_ENABLED=false") ;;
+      EXTRA_ARGS+=(--set-string "config.REQUIRE_AUTH=false" --set-string "config.SQS_ENABLED=false")
+      # Flagship replatform config flip: only when SEARCH_BACKEND=opensearch is
+      # explicitly requested (defaults to meilisearch, so main is unchanged).
+      if [ "${SEARCH_BACKEND}" = "opensearch" ]; then
+        EXTRA_ARGS+=(--set-string "config.SEARCH_BACKEND=opensearch")
+        EXTRA_ARGS+=(--set-string "config.OPENSEARCH_ENDPOINT=${OPENSEARCH_ENDPOINT}")
+        EXTRA_ARGS+=(--set-string "config.OPENSEARCH_SERVERLESS=true")
+      fi ;;
     analytics-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")

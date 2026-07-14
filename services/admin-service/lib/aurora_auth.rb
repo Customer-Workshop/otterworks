@@ -22,11 +22,12 @@ module AuroraAuth
     ENV.fetch('DATABASE_PASSWORD', 'otterworks')
   end
 
-  # SSL mode passed to libpq. Defaults to "prefer" (the libpq default) so the
-  # current behaviour is preserved; override with DB_SSLMODE (e.g. "require",
-  # "verify-full") when talking to Aurora.
+  # SSL mode passed to libpq. On the default password path this stays "prefer"
+  # (the prior behaviour). When IAM auth is enabled the password is a short-lived
+  # token, so default to "require" to avoid a silent plaintext downgrade; still
+  # overridable via DB_SSLMODE (e.g. "verify-full").
   def sslmode
-    ENV.fetch('DB_SSLMODE', 'prefer')
+    ENV.fetch('DB_SSLMODE', iam_auth_enabled? ? 'require' : 'prefer')
   end
 
   def generate_auth_token

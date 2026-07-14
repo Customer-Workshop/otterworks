@@ -101,8 +101,9 @@ resource "aws_rds_cluster" "aurora" {
 
   storage_encrypted = true
 
-  skip_final_snapshot = var.environment == "dev"
-  deletion_protection = var.environment != "dev"
+  skip_final_snapshot       = var.environment == "dev"
+  final_snapshot_identifier = var.environment == "dev" ? null : "${local.cluster_identifier}-final"
+  deletion_protection       = var.environment != "dev"
 
   backup_retention_period = var.environment == "dev" ? 1 : 7
 

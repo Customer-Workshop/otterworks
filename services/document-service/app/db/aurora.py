@@ -43,8 +43,13 @@ def generate_auth_token() -> str:
 def _build_ssl_context() -> ssl_lib.SSLContext | bool:
     """Build an asyncpg-compatible TLS context from the configured SSL mode."""
     mode = settings.db_ssl_mode.lower()
-    if mode in ("", "disable", "allow", "prefer"):
-        # Preserve prior behaviour: let the driver decide (no forced TLS).
+    if not mode:
+        # This helper only runs on the IAM path, where the connection password
+        # is a short-lived auth token. Default to requiring TLS so the token is
+        # never negotiated in plaintext when no explicit mode is configured.
+        mode = "require"
+    if mode in ("disable", "allow", "prefer"):
+        # Operator explicitly opted out of forced client-side TLS.
         return False
     ctx = ssl_lib.create_default_context(cafile=settings.db_ssl_root_cert or None)
     if mode in ("require", "verify-ca") or not settings.db_ssl_root_cert:

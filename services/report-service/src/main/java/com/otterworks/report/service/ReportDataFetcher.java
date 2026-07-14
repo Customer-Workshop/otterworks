@@ -3,6 +3,7 @@ package com.otterworks.report.service;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.otterworks.report.config.AppConfig;
 import com.otterworks.report.util.ReportDateUtils;
 import org.apache.commons.lang.StringUtils;
@@ -92,7 +93,7 @@ public class ReportDataFetcher {
                 }
                 return Collections.emptyList();
             });
-        } catch (ExecutionException e) {
+        } catch (ExecutionException | UncheckedExecutionException e) {
             logger.error("Failed to fetch analytics data, using sample data: {}", e.getMessage());
             return generateSampleAnalyticsData(dateFrom, dateTo);
         }
@@ -120,7 +121,7 @@ public class ReportDataFetcher {
                 }
                 return Collections.emptyList();
             });
-        } catch (ExecutionException e) {
+        } catch (ExecutionException | UncheckedExecutionException e) {
             logger.error("Failed to fetch audit data, using sample data: {}", e.getMessage());
             return generateSampleAuditData(dateFrom, dateTo);
         }

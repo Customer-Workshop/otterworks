@@ -57,11 +57,6 @@ resource "aws_kms_alias" "report" {
   target_key_id = aws_kms_key.report.key_id
 }
 
-resource "random_password" "database" {
-  length  = 32
-  special = false
-}
-
 resource "aws_security_group" "lambda" {
   name                   = "report-service-lambda-${var.namespace}"
   description            = "Lambda security group for report-service ${var.namespace}"
@@ -98,12 +93,40 @@ resource "aws_security_group" "database" {
   }
 }
 
+resource "aws_security_group" "secrets_endpoint" {
+  name                   = "report-service-secrets-${var.namespace}"
+  description            = "Secrets Manager endpoint for report-service ${var.namespace}"
+  vpc_id                 = var.vpc_id
+  revoke_rules_on_delete = true
+
+  tags = {
+    Name      = "report-service-secrets-${var.namespace}"
+    Namespace = var.namespace
+  }
+}
+
 resource "aws_vpc_security_group_egress_rule" "lambda_to_proxy" {
   security_group_id            = aws_security_group.lambda.id
   referenced_security_group_id = aws_security_group.proxy.id
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
+}
+
+resource "aws_vpc_security_group_egress_rule" "lambda_to_secrets" {
+  security_group_id            = aws_security_group.lambda.id
+  referenced_security_group_id = aws_security_group.secrets_endpoint.id
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+}
+
+resource "aws_vpc_security_group_ingress_rule" "secrets_from_lambda" {
+  security_group_id            = aws_security_group.secrets_endpoint.id
+  referenced_security_group_id = aws_security_group.lambda.id
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
 }
 
 resource "aws_vpc_security_group_egress_rule" "lambda_dns_udp" {
@@ -156,20 +179,21 @@ resource "aws_db_subnet_group" "report" {
 }
 
 resource "aws_db_instance" "report" {
-  identifier          = "report-service-${var.namespace}"
-  engine              = "postgres"
-  engine_version      = "15.18"
-  instance_class      = var.database_instance_class
-  allocated_storage   = 20
-  db_name             = var.database_name
-  username            = var.database_user
-  password            = random_password.database.result
-  publicly_accessible = false
-  storage_encrypted   = true
-  kms_key_id          = aws_kms_key.report.arn
-  apply_immediately   = true
-  skip_final_snapshot = true
-  deletion_protection = false
+  identifier                    = "report-service-${var.namespace}"
+  engine                        = "postgres"
+  engine_version                = "15.18"
+  instance_class                = var.database_instance_class
+  allocated_storage             = 20
+  db_name                       = var.database_name
+  username                      = var.database_user
+  manage_master_user_password   = true
+  master_user_secret_kms_key_id = aws_kms_key.report.arn
+  publicly_accessible           = false
+  storage_encrypted             = true
+  kms_key_id                    = aws_kms_key.report.arn
+  apply_immediately             = true
+  skip_final_snapshot           = true
+  deletion_protection           = false
   enabled_cloudwatch_logs_exports = [
     "postgresql",
     "upgrade",
@@ -180,24 +204,6 @@ resource "aws_db_instance" "report" {
   tags = {
     Namespace = var.namespace
   }
-}
-
-resource "aws_secretsmanager_secret" "database" {
-  name                    = "report-service-${var.namespace}-db"
-  kms_key_id              = aws_kms_key.report.arn
-  recovery_window_in_days = 0
-
-  tags = {
-    Namespace = var.namespace
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "database" {
-  secret_id = aws_secretsmanager_secret.database.id
-  secret_string = jsonencode({
-    username = var.database_user
-    password = random_password.database.result
-  })
 }
 
 data "aws_iam_policy_document" "proxy_assume_role" {
@@ -225,7 +231,7 @@ data "aws_iam_policy_document" "proxy_secret_access" {
   statement {
     effect    = "Allow"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.database.arn]
+    resources = [aws_db_instance.report.master_user_secret[0].secret_arn]
   }
 
   statement {
@@ -253,14 +259,14 @@ resource "aws_db_proxy" "report" {
   auth {
     auth_scheme = "SECRETS"
     iam_auth    = "DISABLED"
-    secret_arn  = aws_secretsmanager_secret.database.arn
+    secret_arn  = aws_db_instance.report.master_user_secret[0].secret_arn
   }
 
   tags = {
     Namespace = var.namespace
   }
 
-  depends_on = [aws_secretsmanager_secret_version.database]
+  depends_on = [aws_iam_role_policy.proxy_secret_access]
 }
 
 resource "aws_db_proxy_default_target_group" "report" {
@@ -331,6 +337,18 @@ data "aws_iam_policy_document" "lambda_runtime" {
     ]
     resources = ["*"]
   }
+
+  statement {
+    sid       = "ReadDatabaseSecret"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_db_instance.report.master_user_secret[0].secret_arn]
+  }
+
+  statement {
+    sid       = "DecryptDatabaseSecret"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.report.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_runtime" {
@@ -388,10 +406,24 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "lambda_artifact" 
 }
 
 resource "aws_s3_object" "lambda_artifact" {
-  bucket = aws_s3_bucket.lambda_artifact.id
-  key    = "report-service-lambda.jar"
-  source = var.lambda_jar_path
-  etag   = filemd5(var.lambda_jar_path)
+  bucket      = aws_s3_bucket.lambda_artifact.id
+  key         = "report-service-lambda.jar"
+  source      = var.lambda_jar_path
+  source_hash = filebase64sha256(var.lambda_jar_path)
+}
+
+resource "aws_vpc_endpoint" "secretsmanager" {
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.secretsmanager"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = var.subnet_ids
+  security_group_ids  = [aws_security_group.secrets_endpoint.id]
+
+  tags = {
+    Name      = "report-service-secrets-${var.namespace}"
+    Namespace = var.namespace
+  }
 }
 
 resource "aws_lambda_function" "report" {
@@ -422,11 +454,8 @@ resource "aws_lambda_function" "report" {
       DB_HOST                                    = aws_db_proxy.report.endpoint
       DB_PORT                                    = "5432"
       DB_NAME                                    = var.database_name
-      DB_USER                                    = var.database_user
-      DB_PASSWORD                                = random_password.database.result
+      DB_SECRET_ARN                              = aws_db_instance.report.master_user_secret[0].secret_arn
       SPRING_DATASOURCE_URL                      = "jdbc:postgresql://${aws_db_proxy.report.endpoint}:5432/${var.database_name}"
-      SPRING_DATASOURCE_USERNAME                 = var.database_user
-      SPRING_DATASOURCE_PASSWORD                 = random_password.database.result
       SPRING_DATASOURCE_DRIVER_CLASS_NAME        = "org.postgresql.Driver"
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT    = "org.hibernate.dialect.PostgreSQL10Dialect"
       SPRING_JPA_HIBERNATE_DDL_AUTO              = "update"
@@ -453,6 +482,7 @@ resource "aws_lambda_function" "report" {
     aws_db_proxy_target.report,
     aws_iam_role_policy.lambda_runtime,
     aws_s3_object.lambda_artifact,
+    aws_vpc_endpoint.secretsmanager,
   ]
 }
 

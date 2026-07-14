@@ -46,6 +46,10 @@ dependencies {
     implementation("aws.sdk.kotlin:ses:$awsSdkVersion")
     implementation("aws.sdk.kotlin:dynamodb:$awsSdkVersion")
 
+    // AWS Lambda Java runtime (serverless notification consumer: EventBridge -> SQS -> Lambda)
+    implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
+    implementation("com.amazonaws:aws-lambda-java-events:3.11.5")
+
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
@@ -84,4 +88,17 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnit()
+}
+
+// Deployment jar for the serverless notification consumer Lambda. Produces a
+// stable-named fat jar (referenced by infrastructure/terraform/modules/
+// messaging-serverless-evt1) containing the reused NotificationService logic
+// and the AWS Lambda handler. Build with: ./gradlew :lambdaJar
+tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("lambdaJar") {
+    group = "build"
+    description = "Builds the AWS Lambda deployment jar for the serverless notification consumer."
+    archiveFileName.set("notification-service-lambda.jar")
+    from(sourceSets.main.get().output)
+    configurations = listOf(project.configurations.getByName("runtimeClasspath"))
+    mergeServiceFiles()
 }

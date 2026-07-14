@@ -275,7 +275,13 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.DYNAMODB_TABLE_NOTIFICATIONS=${DDB_NOTIF}")
       EXTRA_ARGS+=(--set-string "config.SNS_TOPIC_ARN=${SNS_TOPIC}")
-      EXTRA_ARGS+=(--set-string "config.SQS_QUEUE_URL=${SQS_NOTIF}") ;;
+      EXTRA_ARGS+=(--set-string "config.SQS_QUEUE_URL=${SQS_NOTIF}")
+      # ROW 4 config flip (adapter-behind-a-config-flag). Defaults to "in-cluster"
+      # so the golden before-state (always-on SqsConsumer) is unchanged. Set
+      # NOTIFICATION_CONSUMER_MODE=serverless for a namespaced re-architecture run
+      # to disable the in-cluster poller and let the EventBridge -> SQS -> Lambda
+      # pipeline (module.messaging_serverless_evt1) own consumption.
+      EXTRA_ARGS+=(--set-string "config.NOTIFICATION_CONSUMER_MODE=${NOTIFICATION_CONSUMER_MODE:-in-cluster}") ;;
     search-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")

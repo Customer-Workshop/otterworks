@@ -109,6 +109,20 @@ module "messaging" {
   project     = "otterworks"
 }
 
+# ROW 4 — RE-ARCHITECT (namespaced, additive): serverless notification pipeline
+# EventBridge + SQS + Lambda that mirrors the in-cluster SNS->SQS consumer.
+# Added ALONGSIDE module "messaging" (the golden before-state), never replacing
+# it. Revert = `terraform destroy -target=module.messaging_serverless_evt1`.
+module "messaging_serverless_evt1" {
+  source      = "./modules/messaging-serverless-evt1"
+  environment = var.environment
+  project     = "otterworks"
+  namespace   = "evt1"
+
+  notifications_table_arn  = module.database.notifications_table_arn
+  notifications_table_name = module.database.notifications_table_name
+}
+
 module "search" {
   source      = "./modules/search"
   environment = var.environment

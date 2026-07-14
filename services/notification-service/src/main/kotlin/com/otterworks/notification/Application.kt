@@ -52,9 +52,18 @@ fun Application.module(config: AppConfig = AppConfig.load()) {
     configureDependencyInjection(config, prometheusRegistry)
     configureRouting(prometheusRegistry)
 
-    val sqsConsumer by inject<SqsConsumer>()
-    launch {
-        sqsConsumer.startPolling()
+    if (config.inClusterConsumerEnabled) {
+        val sqsConsumer by inject<SqsConsumer>()
+        launch {
+            sqsConsumer.startPolling()
+        }
+        logger.info { "In-cluster SQS consumer enabled (NOTIFICATION_CONSUMER_MODE=${config.consumerMode})" }
+    } else {
+        logger.info {
+            "In-cluster SQS consumer DISABLED (NOTIFICATION_CONSUMER_MODE=${config.consumerMode}); " +
+                "event consumption is handled by the EventBridge -> SQS -> Lambda pipeline. " +
+                "This pod serves the HTTP/read API only."
+        }
     }
 
     logger.info { "Notification Service started on port ${config.port}" }

@@ -64,6 +64,23 @@ output "sns_events_topic_arn" {
   value       = module.messaging.events_topic_arn
 }
 
+# --- Messaging (serverless / event-driven target, namespaced: evt1) ---
+
+output "notification_serverless_event_bus_name_evt1" {
+  description = "EventBridge bus for the serverless notification path (evt1)"
+  value       = module.messaging_serverless_evt1.event_bus_name
+}
+
+output "notification_serverless_queue_url_evt1" {
+  description = "SQS queue URL feeding the notification Lambda (evt1)"
+  value       = module.messaging_serverless_evt1.notification_queue_url
+}
+
+output "notification_serverless_lambda_name_evt1" {
+  description = "Serverless notification consumer Lambda name (evt1)"
+  value       = module.messaging_serverless_evt1.lambda_function_name
+}
+
 # --- Search ---
 
 output "meilisearch_ecs_cluster_arn" {

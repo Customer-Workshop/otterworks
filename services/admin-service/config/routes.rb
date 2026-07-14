@@ -60,4 +60,6 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  match '/api/*unmatched', to: 'application#route_not_found', via: :all
 end

@@ -42,8 +42,11 @@ module Api
             )
             render json: @user, serializer: AdminUserSerializer, include_quota: true
           else
-            render json: { error: 'Validation failed', details: @user.errors.full_messages },
-                   status: :unprocessable_entity
+            render_error(
+              code: 'VALIDATION_ERROR',
+              message: "Validation failed: #{@user.errors.full_messages.to_sentence}",
+              status: :unprocessable_entity
+            )
           end
         end
 

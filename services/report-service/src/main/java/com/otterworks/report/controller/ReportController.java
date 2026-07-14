@@ -1,5 +1,6 @@
 package com.otterworks.report.controller;
 
+import com.otterworks.report.model.ApiErrorResponse;
 import com.otterworks.report.model.Report;
 import com.otterworks.report.model.ReportRequest;
 import com.otterworks.report.model.ReportResponse;
@@ -14,7 +15,6 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -86,13 +86,13 @@ public class ReportController {
             @ApiResponse(code = 200, message = "Report found"),
             @ApiResponse(code = 404, message = "Report not found")
     })
-    public ResponseEntity<ReportResponse> getReport(
+    public ResponseEntity<?> getReport(
             @ApiParam(value = "Report ID", required = true)
             @PathVariable Long id) {
 
         Optional<Report> report = reportService.getReport(id);
         if (!report.isPresent()) { // LEGACY: !isPresent() instead of isEmpty()
-            return ResponseEntity.notFound().build();
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Report not found");
         }
         return ResponseEntity.ok(ReportResponse.fromEntity(report.get()));
     }
@@ -133,29 +133,29 @@ public class ReportController {
             @ApiResponse(code = 404, message = "Report not found or not yet completed"),
             @ApiResponse(code = 409, message = "Report is still generating")
     })
-    public ResponseEntity<Resource> downloadReport(
+    public ResponseEntity<?> downloadReport(
             @ApiParam(value = "Report ID", required = true)
             @PathVariable Long id) {
 
         Optional<Report> optReport = reportService.getReport(id);
         if (!optReport.isPresent()) {
-            return ResponseEntity.notFound().build();
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Report not found");
         }
 
         Report report = optReport.get();
 
         if (report.getStatus() == ReportStatus.GENERATING || report.getStatus() == ReportStatus.PENDING) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return error(HttpStatus.CONFLICT, "CONFLICT", "Report is still generating");
         }
 
         if (report.getStatus() == ReportStatus.FAILED || report.getFilePath() == null) {
-            return ResponseEntity.notFound().build();
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Report file not available");
         }
 
         File file = new File(report.getFilePath());
         if (!file.exists()) {
             logger.warn("Report file missing: {}", report.getFilePath());
-            return ResponseEntity.notFound().build();
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Report file not found");
         }
 
         try {
@@ -175,7 +175,7 @@ public class ReportController {
 
         } catch (IOException e) {
             logger.error("Failed to read report file {}: {}", report.getFilePath(), e.getMessage());
-            return ResponseEntity.notFound().build();
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Failed to read report file");
         }
     }
 
@@ -185,13 +185,13 @@ public class ReportController {
             @ApiResponse(code = 204, message = "Report deleted"),
             @ApiResponse(code = 404, message = "Report not found")
     })
-    public ResponseEntity<Void> deleteReport(
+    public ResponseEntity<?> deleteReport(
             @ApiParam(value = "Report ID", required = true)
             @PathVariable Long id) {
 
         boolean deleted = reportService.deleteReport(id);
         if (!deleted) {
-            return ResponseEntity.notFound().build();
+            return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Report not found");
         }
         return ResponseEntity.noContent().build();
     }
@@ -210,5 +210,11 @@ public class ReportController {
             default:
                 return "application/octet-stream";
         }
+    }
+
+    private ResponseEntity<ApiErrorResponse> error(
+            HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status)
+                .body(ApiErrorResponse.of(code, message, status.value()));
     }
 }

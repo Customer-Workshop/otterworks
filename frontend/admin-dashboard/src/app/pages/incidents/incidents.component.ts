@@ -579,7 +579,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
           this.snackBar.open('Incident resolved', 'Dismiss', { duration: 3000 });
         },
         error: (err) => {
-          const detail = err.error?.details || 'Failed to resolve incident';
+          const detail = err.error?.error?.message || 'Failed to resolve incident';
           this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
         },
       });
@@ -604,7 +604,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
           this.snackBar.open('Incident closed', 'Dismiss', { duration: 3000 });
         },
         error: (err) => {
-          const detail = err.error?.details || 'Failed to close incident';
+          const detail = err.error?.error?.message || 'Failed to close incident';
           this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
         },
       });
@@ -628,7 +628,7 @@ export class IncidentsComponent implements OnInit, OnDestroy {
           this.snackBar.open('Incident deleted', 'Dismiss', { duration: 3000 });
         },
         error: (err) => {
-          const detail = err.error?.details || err.error?.error || 'Failed to delete incident';
+          const detail = err.error?.error?.message || 'Failed to delete incident';
           this.snackBar.open(detail, 'Dismiss', { duration: 4000 });
         },
       });

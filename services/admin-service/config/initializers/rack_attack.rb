@@ -7,5 +7,12 @@ Rack::Attack.throttle('api/bulk', limit: 10, period: 1.minute) do |req|
 end
 
 Rack::Attack.throttled_responder = lambda do |_env|
-  [429, { 'Content-Type' => 'application/json' }, [{ error: 'Rate limit exceeded' }.to_json]]
+  body = {
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Rate limit exceeded',
+      status: 429
+    }
+  }
+  [429, { 'Content-Type' => 'application/json' }, [body.to_json]]
 end

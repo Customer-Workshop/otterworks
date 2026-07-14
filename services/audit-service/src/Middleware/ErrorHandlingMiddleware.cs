@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using OtterWorks.AuditService.Models;
 
 namespace OtterWorks.AuditService.Middleware;
 
@@ -34,13 +35,14 @@ public class ErrorHandlingMiddleware
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             context.Response.ContentType = "application/json";
 
-            var errorResponse = new
-            {
-                error = "An internal server error occurred.",
-                traceId = context.TraceIdentifier,
-            };
+            var errorResponse = ApiErrorResponse.Create(
+                "INTERNAL_ERROR",
+                "An internal server error occurred.",
+                context.Response.StatusCode);
 
-            var json = JsonSerializer.Serialize(errorResponse);
+            var json = JsonSerializer.Serialize(
+                errorResponse,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
             await context.Response.WriteAsync(json);
         }
     }

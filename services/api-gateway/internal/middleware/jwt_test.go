@@ -107,6 +107,11 @@ func TestJWTAuth_MissingToken(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.JSONEq(
+		t,
+		`{"error":{"code":"UNAUTHORIZED","message":"missing or invalid authorization header","status":401}}`,
+		rec.Body.String(),
+	)
 }
 
 func TestJWTAuth_UnmatchedProtectedPrefixSkipsValidation(t *testing.T) {
@@ -145,6 +150,8 @@ func TestJWTAuth_MatchedProtectedPrefixRequiresAuth(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"code":"UNAUTHORIZED"`)
+	assert.Contains(t, rec.Body.String(), `"status":401`)
 }
 
 func TestJWTAuth_InvalidToken(t *testing.T) {

@@ -53,7 +53,10 @@ public static class AuditController
             string.IsNullOrWhiteSpace(request.ResourceType) ||
             string.IsNullOrWhiteSpace(request.ResourceId))
         {
-            return Results.BadRequest(new { error = "UserId, Action, ResourceType, and ResourceId are required." });
+            return Results.BadRequest(ApiErrorResponse.Create(
+                "BAD_REQUEST",
+                "UserId, Action, ResourceType, and ResourceId are required.",
+                StatusCodes.Status400BadRequest));
         }
 
         var response = await auditService.RecordEventAsync(request);
@@ -83,7 +86,12 @@ public static class AuditController
         IAuditService auditService)
     {
         var result = await auditService.GetEventAsync(id);
-        return result is not null ? Results.Ok(result) : Results.NotFound(new { error = "Event not found." });
+        return result is not null
+            ? Results.Ok(result)
+            : Results.NotFound(ApiErrorResponse.Create(
+                "NOT_FOUND",
+                "Event not found.",
+                StatusCodes.Status404NotFound));
     }
 
     private static async Task<IResult> GetUserActivityReport(
@@ -126,7 +134,10 @@ public static class AuditController
         if (!string.Equals(exportFormat, "csv", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(exportFormat, "json", StringComparison.OrdinalIgnoreCase))
         {
-            return Results.BadRequest(new { error = "Format must be 'csv' or 'json'." });
+            return Results.BadRequest(ApiErrorResponse.Create(
+                "BAD_REQUEST",
+                "Format must be 'csv' or 'json'.",
+                StatusCodes.Status400BadRequest));
         }
 
         var result = await auditService.ExportAsync(exportFrom, exportTo, exportFormat);

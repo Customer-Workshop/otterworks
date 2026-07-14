@@ -36,6 +36,9 @@ RSpec.describe Api::V1::Admin::AnnouncementsController do
     it 'returns errors for invalid params' do
       post :create, params: { announcement: { title: '' } }
       expect(response).to have_http_status(:unprocessable_entity)
+      body = JSON.parse(response.body)
+      expect(body.dig('error', 'code')).to eq('VALIDATION_ERROR')
+      expect(body.dig('error', 'status')).to eq(422)
     end
   end
 

@@ -10,6 +10,7 @@ import com.otterworks.notification.plugins.configureMonitoring
 import io.micrometer.core.instrument.MeterRegistry
 import com.otterworks.notification.repository.NotificationRepository
 import com.otterworks.notification.routes.configureRouting
+import com.otterworks.notification.routes.respondError
 import com.otterworks.notification.service.EmailSender
 import com.otterworks.notification.service.NotificationService
 import com.otterworks.notification.websocket.WebSocketManager
@@ -24,7 +25,6 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
-import io.ktor.server.response.respond
 import io.ktor.server.websocket.WebSockets
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -88,11 +88,22 @@ fun Application.configurePlugins(config: AppConfig = AppConfig.load()) {
     }
 
     install(StatusPages) {
+        status(HttpStatusCode.NotFound) { call, _ ->
+            call.respondError(HttpStatusCode.NotFound, "NOT_FOUND", "Route not found")
+        }
+        status(HttpStatusCode.MethodNotAllowed) { call, _ ->
+            call.respondError(
+                HttpStatusCode.MethodNotAllowed,
+                "METHOD_NOT_ALLOWED",
+                "Method not allowed",
+            )
+        }
         exception<Throwable> { call, cause ->
             logger.error(cause) { "Unhandled exception" }
-            call.respond(
-                status = HttpStatusCode.InternalServerError,
-                message = mapOf("error" to "Internal server error")
+            call.respondError(
+                HttpStatusCode.InternalServerError,
+                "INTERNAL_ERROR",
+                "Internal server error",
             )
         }
     }

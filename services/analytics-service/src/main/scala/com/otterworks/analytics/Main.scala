@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
-import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes}
+import com.otterworks.analytics.api.{AnalyticsRoutes, ApiErrors, EventRoutes, HealthRoutes}
 import com.otterworks.analytics.config.AppConfig
 import com.otterworks.analytics.db.AnalyticsDb
 import com.otterworks.analytics.repository.{InMemoryMetricsRepository, MetricsRepository, PostgresMetricsRepository}
@@ -54,10 +54,12 @@ object Main:
     val analyticsRoutes = AnalyticsRoutes(analyticsService)
     val eventRoutes = EventRoutes(analyticsService)
 
-    val routes: Route = concat(
-      healthRoutes.routes,
-      eventRoutes.routes,
-      analyticsRoutes.routes,
+    val routes: Route = ApiErrors.standardize(
+      concat(
+        healthRoutes.routes,
+        eventRoutes.routes,
+        analyticsRoutes.routes,
+      )
     )
 
     val host = config.server.host

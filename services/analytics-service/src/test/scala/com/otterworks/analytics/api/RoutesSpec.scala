@@ -34,6 +34,21 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
     val analyticsRoutes = AnalyticsRoutes(service)
     (eventRoutes, analyticsRoutes, service)
 
+  "API errors" should "use the standard response shape" in {
+    val (_, analyticsRoutes, _) = createRoutes()
+
+    Get("/missing") ~> ApiErrors.standardize(analyticsRoutes.routes) ~> check {
+      status shouldBe StatusCodes.NotFound
+      responseAs[String].parseJson shouldBe JsObject(
+        "error" -> JsObject(
+          "code" -> JsString("NOT_FOUND"),
+          "message" -> JsString("Not Found"),
+          "status" -> JsNumber(404),
+        )
+      )
+    }
+  }
+
   // --- Event Routes ---
 
   "POST /api/v1/analytics/events" should "accept a valid event" in {

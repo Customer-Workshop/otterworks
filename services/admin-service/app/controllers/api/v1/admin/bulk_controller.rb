@@ -8,7 +8,11 @@ module Api
           user_ids = params.require(:user_ids)
 
           unless user_ids.is_a?(Array) && user_ids.any?
-            return render json: { error: 'user_ids must be a non-empty array' }, status: :bad_request
+            return render_error(
+              code: 'BAD_REQUEST',
+              message: 'user_ids must be a non-empty array',
+              status: :bad_request
+            )
           end
 
           result = BulkOperationsService.process(
@@ -18,12 +22,21 @@ module Api
             request: request
           )
 
+          status = bulk_status(result)
+          if %i[bad_request unprocessable_entity].include?(status)
+            return render_error(
+              code: status == :bad_request ? 'BAD_REQUEST' : 'VALIDATION_ERROR',
+              message: result.errors.join(', '),
+              status: status
+            )
+          end
+
           render json: {
             operation: operation,
             success_count: result.success_count,
             failure_count: result.failure_count,
             errors: result.errors
-          }, status: bulk_status(result)
+          }, status: status
         end
 
         private

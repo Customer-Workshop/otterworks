@@ -33,8 +33,11 @@ module Api
             )
             render json: @config, serializer: SystemConfigSerializer
           else
-            render json: { error: 'Validation failed', details: @config.errors.full_messages },
-                   status: :unprocessable_entity
+            render_error(
+              code: 'VALIDATION_ERROR',
+              message: "Validation failed: #{@config.errors.full_messages.to_sentence}",
+              status: :unprocessable_entity
+            )
           end
         end
 

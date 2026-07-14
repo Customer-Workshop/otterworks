@@ -7,6 +7,7 @@ using OpenTelemetry.Trace;
 using OtterWorks.AuditService.Config;
 using OtterWorks.AuditService.Controllers;
 using OtterWorks.AuditService.Middleware;
+using OtterWorks.AuditService.Models;
 using OtterWorks.AuditService.Services;
 using Prometheus;
 using Serilog;
@@ -95,6 +96,28 @@ var app = builder.Build();
 // Middleware pipeline
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseStatusCodePages(async context =>
+{
+    var status = context.HttpContext.Response.StatusCode;
+    var (code, message) = status switch
+    {
+        StatusCodes.Status400BadRequest => ("BAD_REQUEST", "Bad request"),
+        StatusCodes.Status401Unauthorized => ("UNAUTHORIZED", "Unauthorized"),
+        StatusCodes.Status403Forbidden => ("FORBIDDEN", "Forbidden"),
+        StatusCodes.Status404NotFound => ("NOT_FOUND", "Resource not found"),
+        StatusCodes.Status405MethodNotAllowed => ("METHOD_NOT_ALLOWED", "Method not allowed"),
+        StatusCodes.Status409Conflict => ("CONFLICT", "Conflict"),
+        StatusCodes.Status413PayloadTooLarge => ("PAYLOAD_TOO_LARGE", "Payload too large"),
+        StatusCodes.Status422UnprocessableEntity => ("VALIDATION_ERROR", "Validation error"),
+        StatusCodes.Status429TooManyRequests => ("RATE_LIMIT_EXCEEDED", "Rate limit exceeded"),
+        StatusCodes.Status500InternalServerError => ("INTERNAL_ERROR", "Internal server error"),
+        StatusCodes.Status502BadGateway => ("BAD_GATEWAY", "Bad gateway"),
+        StatusCodes.Status503ServiceUnavailable => ("SERVICE_UNAVAILABLE", "Service unavailable"),
+        _ => ("HTTP_ERROR", "Request failed"),
+    };
+    await context.HttpContext.Response.WriteAsJsonAsync(
+        ApiErrorResponse.Create(code, message, status));
+});
 
 // Prometheus metrics endpoint
 app.UseHttpMetrics();

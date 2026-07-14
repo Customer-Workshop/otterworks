@@ -66,8 +66,11 @@ module Api
 
             render json: incident, serializer: IncidentSerializer, status: :created
           else
-            render json: { error: 'Validation failed', details: incident.errors.full_messages },
-                   status: :unprocessable_entity
+            render_error(
+              code: 'VALIDATION_ERROR',
+              message: "Validation failed: #{incident.errors.full_messages.to_sentence}",
+              status: :unprocessable_entity
+            )
           end
         end
 
@@ -76,10 +79,11 @@ module Api
           new_status = status_params[:status]
 
           unless @incident.can_transition_to?(new_status)
-            return render json: {
-              error: 'Invalid status transition',
-              details: "Cannot transition from '#{@incident.status}' to '#{new_status}'"
-            }, status: :unprocessable_entity
+            return render_error(
+              code: 'VALIDATION_ERROR',
+              message: "Cannot transition from '#{@incident.status}' to '#{new_status}'",
+              status: :unprocessable_entity
+            )
           end
 
           previous_status = @incident.status
@@ -103,17 +107,17 @@ module Api
 
           render json: @incident, serializer: IncidentSerializer
         rescue Incident::InvalidTransitionError => e
-          render json: { error: 'Invalid status transition', details: e.message },
-                 status: :unprocessable_entity
+          render_error(code: 'VALIDATION_ERROR', message: e.message, status: :unprocessable_entity)
         end
 
         # DELETE /api/v1/admin/incidents/:id
         def destroy
           if @incident.has_active_devin_session?
-            return render json: {
-              error: 'Cannot delete incident with an active Devin session',
-              details: "Stop Devin session '#{@incident.devin_session_id}' before deleting"
-            }, status: :conflict
+            return render_error(
+              code: 'CONFLICT',
+              message: "Stop Devin session '#{@incident.devin_session_id}' before deleting",
+              status: :conflict
+            )
           end
 
           incident_attrs = @incident.attributes
@@ -134,7 +138,11 @@ module Api
         # POST /api/v1/admin/incidents/:id/trigger_session
         def trigger_session
           if @incident.devin_session_id.present?
-            return render json: { error: 'Incident already has a Devin session' }, status: :unprocessable_entity
+            return render_error(
+              code: 'VALIDATION_ERROR',
+              message: 'Incident already has a Devin session',
+              status: :unprocessable_entity
+            )
           end
 
           session_result = DevinSessionService.create_session(incident: @incident)
@@ -147,7 +155,11 @@ module Api
             )
             render json: @incident, serializer: IncidentSerializer
           else
-            render json: { error: 'Failed to create Devin session' }, status: :service_unavailable
+            render_error(
+              code: 'SERVICE_UNAVAILABLE',
+              message: 'Failed to create Devin session',
+              status: :service_unavailable
+            )
           end
         end
 

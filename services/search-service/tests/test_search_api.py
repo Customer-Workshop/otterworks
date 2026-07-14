@@ -11,7 +11,13 @@ class TestSearchEndpoint:
         response = client.get("/api/v1/search/")
         assert response.status_code == 400
         data = response.get_json()
-        assert "error" in data
+        assert data == {
+            "error": {
+                "code": "BAD_REQUEST",
+                "message": "Query parameter 'q' is required",
+                "status": 400,
+            }
+        }
 
     def test_search_with_query(self, client, mock_meilisearch_client):
         """Search with a valid query returns results."""
@@ -70,6 +76,7 @@ class TestSearchEndpoint:
         """Search with non-numeric page returns 400."""
         response = client.get("/api/v1/search/?q=test&page=not-a-number")
         assert response.status_code == 400
+        assert response.get_json()["error"]["code"] == "BAD_REQUEST"
 
 
 class TestSuggestEndpoint:

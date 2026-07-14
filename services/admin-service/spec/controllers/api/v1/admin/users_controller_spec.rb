@@ -50,6 +50,12 @@ RSpec.describe Api::V1::Admin::UsersController do
     it 'returns 404 for missing user' do
       get :show, params: { id: SecureRandom.uuid }
       expect(response).to have_http_status(:not_found)
+      body = JSON.parse(response.body)
+      expect(body['error']).to eq(
+        'code' => 'NOT_FOUND',
+        'message' => 'Resource not found',
+        'status' => 404
+      )
     end
   end
 
@@ -66,6 +72,8 @@ RSpec.describe Api::V1::Admin::UsersController do
     it 'returns errors for invalid params' do
       put :update, params: { id: user.id, user: { role: 'invalid_role' } }
       expect(response).to have_http_status(:unprocessable_entity)
+      body = JSON.parse(response.body)
+      expect(body.dig('error', 'code')).to eq('VALIDATION_ERROR')
     end
   end
 

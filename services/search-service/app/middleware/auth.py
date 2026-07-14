@@ -19,7 +19,9 @@ via the gateway.
 from __future__ import annotations
 
 import structlog
-from flask import jsonify, request
+from flask import request
+
+from app.errors import error_response
 
 logger = structlog.get_logger()
 
@@ -58,7 +60,7 @@ def require_auth(app):
 
         endpoint = request.endpoint or ""
         logger.warning("auth_rejected", endpoint=endpoint, path=path)
-        return jsonify({"error": "unauthorized"}), 401
+        return error_response("UNAUTHORIZED", "Unauthorized", 401)
 
 
 def _extract_bearer_token() -> str:

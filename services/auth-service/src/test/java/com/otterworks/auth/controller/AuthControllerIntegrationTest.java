@@ -71,7 +71,9 @@ class AuthControllerIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
+        .andExpect(jsonPath("$.error.status").value(400));
   }
 
   @Test
@@ -84,7 +86,9 @@ class AuthControllerIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.error.status").value(400));
   }
 
   @Test
@@ -132,7 +136,23 @@ class AuthControllerIntegrationTest {
 
   @Test
   void profile_shouldRejectUnauthenticatedRequest() throws Exception {
-    mockMvc.perform(get("/api/v1/auth/profile")).andExpect(status().isForbidden());
+    mockMvc
+        .perform(get("/api/v1/auth/profile"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.error.status").value(403));
+  }
+
+  @Test
+  void unknownAuthRoute_shouldReturnStandardNotFoundError() throws Exception {
+    String accessToken =
+        registerAndGetAccessToken("missing@otterworks.dev", "password123", "Missing Route User");
+
+    mockMvc
+        .perform(get("/api/v1/auth/missing").header("Authorization", "Bearer " + accessToken))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error.code").value("NOT_FOUND"))
+        .andExpect(jsonPath("$.error.status").value(404));
   }
 
   @Test
@@ -226,7 +246,9 @@ class AuthControllerIntegrationTest {
 
     mockMvc
         .perform(get("/api/v1/auth/users").header("Authorization", "Bearer " + accessToken))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.error.status").value(403));
   }
 
   @Test

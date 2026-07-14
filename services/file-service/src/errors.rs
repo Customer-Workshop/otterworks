@@ -1,5 +1,4 @@
 use actix_web::{HttpResponse, ResponseError};
-use std::fmt;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
@@ -42,63 +41,87 @@ pub enum ServiceError {
 
 impl ResponseError for ServiceError {
     fn error_response(&self) -> HttpResponse {
-        let (status, error_type) = match self {
-            ServiceError::FileNotFound(_) => {
-                (actix_web::http::StatusCode::NOT_FOUND, "file_not_found")
-            }
-            ServiceError::FolderNotFound(_) => {
-                (actix_web::http::StatusCode::NOT_FOUND, "folder_not_found")
-            }
-            ServiceError::VersionNotFound(_) => {
-                (actix_web::http::StatusCode::NOT_FOUND, "version_not_found")
-            }
-            ServiceError::ShareNotFound(_) => {
-                (actix_web::http::StatusCode::NOT_FOUND, "share_not_found")
+        let (status, code) = match self {
+            ServiceError::FileNotFound(_)
+            | ServiceError::FolderNotFound(_)
+            | ServiceError::VersionNotFound(_)
+            | ServiceError::ShareNotFound(_) => {
+                (actix_web::http::StatusCode::NOT_FOUND, "NOT_FOUND")
             }
             ServiceError::BadRequest(_) => {
-                (actix_web::http::StatusCode::BAD_REQUEST, "bad_request")
+                (actix_web::http::StatusCode::BAD_REQUEST, "BAD_REQUEST")
             }
             ServiceError::FileTooLarge { .. } => (
                 actix_web::http::StatusCode::PAYLOAD_TOO_LARGE,
-                "file_too_large",
+                "PAYLOAD_TOO_LARGE",
             ),
             ServiceError::Unauthorized(_) => {
-                (actix_web::http::StatusCode::UNAUTHORIZED, "unauthorized")
+                (actix_web::http::StatusCode::UNAUTHORIZED, "UNAUTHORIZED")
             }
-            ServiceError::Forbidden(_) => (actix_web::http::StatusCode::FORBIDDEN, "forbidden"),
-            ServiceError::S3Error(_) => (
+            ServiceError::Forbidden(_) => (actix_web::http::StatusCode::FORBIDDEN, "FORBIDDEN"),
+            ServiceError::S3Error(_)
+            | ServiceError::DynamoError(_)
+            | ServiceError::SnsError(_)
+            | ServiceError::Internal(_) => (
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "storage_error",
-            ),
-            ServiceError::DynamoError(_) => (
-                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "metadata_error",
-            ),
-            ServiceError::SnsError(_) => (
-                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "event_error",
-            ),
-            ServiceError::Internal(_) => (
-                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_error",
+                "INTERNAL_ERROR",
             ),
         };
 
         HttpResponse::build(status).json(ErrorResponse {
-            error: error_type.to_string(),
-            message: self.to_string(),
+            error: ErrorDetail {
+                code: code.to_string(),
+                message: self.to_string(),
+                status: status.as_u16(),
+            },
         })
     }
 }
 
 #[derive(Debug, serde::Serialize)]
 pub struct ErrorResponse {
-    pub error: String,
-    pub message: String,
+    pub error: ErrorDetail,
 }
 
-impl fmt::Display for ErrorResponse {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.error, self.message)
+#[derive(Debug, serde::Serialize)]
+pub struct ErrorDetail {
+    pub code: String,
+    pub message: String,
+    pub status: u16,
+}
+
+pub async fn route_not_found() -> HttpResponse {
+    HttpResponse::NotFound().json(ErrorResponse {
+        error: ErrorDetail {
+            code: "NOT_FOUND".to_string(),
+            message: "Route not found".to_string(),
+            status: 404,
+        },
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::body::to_bytes;
+    use serde_json::json;
+
+    #[actix_rt::test]
+    async fn serializes_standard_error_response() {
+        let response = ServiceError::FileNotFound("file-123".into()).error_response();
+        let status = response.status();
+        let body = to_bytes(response.into_body()).await.unwrap();
+
+        assert_eq!(status, actix_web::http::StatusCode::NOT_FOUND);
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+            json!({
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "File not found: file-123",
+                    "status": 404
+                }
+            })
+        );
     }
 }

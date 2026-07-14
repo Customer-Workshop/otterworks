@@ -95,6 +95,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/{folder_id}", web::put().to(handlers::update_folder))
                     .route("/{folder_id}", web::delete().to(handlers::delete_folder)),
             )
+            .default_service(web::route().to(errors::route_not_found))
     })
     .bind(format!("0.0.0.0:{port}"))?
     .run()

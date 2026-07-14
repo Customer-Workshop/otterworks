@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/httperror"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -153,9 +153,5 @@ func isProtectedPath(path string, protectedPrefixes []string) bool {
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{
-		"error": message,
-	})
+	httperror.Write(w, status, "UNAUTHORIZED", message)
 }

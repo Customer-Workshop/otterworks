@@ -31,7 +31,7 @@ module Api
         def ingest
           alerts = params[:alerts]
           unless alerts.is_a?(Array)
-            return render json: { error: 'Missing alerts array' }, status: :bad_request
+            return render_error(code: 'BAD_REQUEST', message: 'Missing alerts array', status: :bad_request)
           end
 
           processed = alerts.map { |alert| process_alert(alert) }.compact
@@ -136,7 +136,7 @@ module Api
                      request.headers['Authorization'].to_s.delete_prefix('Bearer ').presence
           return if provided == expected
 
-          render json: { error: 'Unauthorized' }, status: :unauthorized
+          render_error(code: 'UNAUTHORIZED', message: 'Unauthorized', status: :unauthorized)
         end
       end
     end

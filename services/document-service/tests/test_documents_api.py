@@ -54,6 +54,19 @@ async def test_get_document_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_unknown_route_returns_standard_error(client: AsyncClient):
+    resp = await client.get("/api/v1/missing")
+    assert resp.status_code == 404
+    assert resp.json() == {
+        "error": {
+            "code": "NOT_FOUND",
+            "message": "Not Found",
+            "status": 404,
+        }
+    }
+
+
+@pytest.mark.asyncio
 async def test_list_documents(client: AsyncClient, owner_id: uuid.UUID):
     for i in range(3):
         await client.post(
@@ -207,9 +220,7 @@ async def test_export_document_html(client: AsyncClient, owner_id: uuid.UUID):
     )
     doc_id = create_resp.json()["id"]
 
-    resp = await client.get(
-        f"/api/v1/documents/{doc_id}/export", params={"format": "html"}
-    )
+    resp = await client.get(f"/api/v1/documents/{doc_id}/export", params={"format": "html"})
     assert resp.status_code == 200
     assert "<h1>Export</h1>" in resp.text
 
@@ -222,9 +233,7 @@ async def test_export_document_markdown(client: AsyncClient, owner_id: uuid.UUID
     )
     doc_id = create_resp.json()["id"]
 
-    resp = await client.get(
-        f"/api/v1/documents/{doc_id}/export", params={"format": "markdown"}
-    )
+    resp = await client.get(f"/api/v1/documents/{doc_id}/export", params={"format": "markdown"})
     assert resp.status_code == 200
     assert "# Export MD" in resp.text
 
@@ -279,3 +288,21 @@ async def test_create_document_no_auth_returns_401(client: AsyncClient):
         json={"title": "No Auth Doc"},
     )
     assert resp.status_code == 401
+    assert resp.json() == {
+        "error": {
+            "code": "UNAUTHORIZED",
+            "message": "owner_id is required: provide it in the body or authenticate via JWT",
+            "status": 401,
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_invalid_document_request_uses_validation_error_shape(
+    client: AsyncClient,
+):
+    resp = await client.post("/api/v1/documents/", json={"title": 123})
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert resp.json()["error"]["status"] == 422

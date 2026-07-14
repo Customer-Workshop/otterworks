@@ -66,6 +66,11 @@ func TestRateLimiter_Handler(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 	assert.Equal(t, "1", rec.Header().Get("Retry-After"))
+	assert.JSONEq(
+		t,
+		`{"error":{"code":"RATE_LIMIT_EXCEEDED","message":"rate limit exceeded","status":429}}`,
+		rec.Body.String(),
+	)
 }
 
 func TestExtractIP(t *testing.T) {

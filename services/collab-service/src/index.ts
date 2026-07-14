@@ -14,6 +14,7 @@ import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
+import { sendApiError } from './http-errors';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -64,7 +65,7 @@ app.get('/metrics', async (_req, res) => {
     res.type(metrics.getContentType()).send(metricsOutput);
   } catch (err) {
     logger.error({ err }, 'metrics_collection_failed');
-    res.status(500).send('Error collecting metrics');
+    sendApiError(res, 500, 'INTERNAL_ERROR', 'Error collecting metrics');
   }
 });
 
@@ -80,6 +81,22 @@ app.get('/api/v1/collab/documents', (_req, res) => {
   const activeDocuments = presenceHandler.getActiveDocuments();
   res.json({ documents: activeDocuments, count: activeDocuments.length });
 });
+
+app.use((_req, res) => {
+  sendApiError(res, 404, 'NOT_FOUND', 'Route not found');
+});
+
+app.use(
+  (
+    err: unknown,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    logger.error({ err }, 'unhandled_request_error');
+    sendApiError(res, 500, 'INTERNAL_ERROR', 'Internal server error');
+  },
+);
 
 // Socket.IO server
 const io = new SocketIOServer(httpServer, {

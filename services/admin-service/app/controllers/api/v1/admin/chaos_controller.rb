@@ -20,10 +20,11 @@ module Api
           scenario = params[:scenario].to_s
 
           unless VALID_SCENARIOS[svc] == scenario
-            return render json: {
-              error:    'Invalid service/scenario combination',
-              valid:    VALID_SCENARIOS,
-            }, status: :unprocessable_entity
+            return render_error(
+              code: 'VALIDATION_ERROR',
+              message: 'Invalid service/scenario combination',
+              status: :unprocessable_entity
+            )
           end
 
           redis_key = "chaos:#{svc}:#{scenario}"
@@ -83,7 +84,7 @@ module Api
           provided = request.headers['X-Chaos-Secret']
           return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
 
-          render json: { error: 'Unauthorized' }, status: :unauthorized
+          render_error(code: 'UNAUTHORIZED', message: 'Unauthorized', status: :unauthorized)
         end
       end
     end

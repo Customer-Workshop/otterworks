@@ -47,7 +47,13 @@ class JwtAuthenticator
   end
 
   def unauthorized_response(message)
-    body = { error: message }.to_json
+    body = {
+      error: {
+        code: 'UNAUTHORIZED',
+        message: message,
+        status: 401
+      }
+    }.to_json
     [401, { 'Content-Type' => 'application/json' }, [body]]
   end
 end

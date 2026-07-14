@@ -9,6 +9,7 @@ import structlog
 from flask import Blueprint, current_app, jsonify, request
 
 from app.api.health import SEARCH_COUNT
+from app.errors import error_response
 from app.services.meilisearch_client import MeiliSearchService, get_search_analytics
 
 logger = structlog.get_logger()
@@ -24,7 +25,9 @@ def _get_redis() -> redis_lib.Redis:
     if _redis_client is None:
         host = os.getenv("REDIS_HOST", "localhost")
         port = int(os.getenv("REDIS_PORT", "6379"))
-        _redis_client = redis_lib.Redis(host=host, port=port, decode_responses=True, socket_timeout=1)
+        _redis_client = redis_lib.Redis(
+            host=host, port=port, decode_responses=True, socket_timeout=1
+        )
     return _redis_client
 
 
@@ -54,12 +57,12 @@ def search_documents() -> tuple:
         page = max(1, int(request.args.get("page", 1)))
         page_size = max(1, min(100, int(request.args.get("size", 20))))
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid page or size parameter"}), 400
+        return error_response("BAD_REQUEST", "Invalid page or size parameter", 400)
     doc_type = request.args.get("type")
     owner_id = request.headers.get("X-User-ID", "").strip() or None
 
     if not query:
-        return jsonify({"error": "Query parameter 'q' is required"}), 400
+        return error_response("BAD_REQUEST", "Query parameter 'q' is required", 400)
 
     try:
         service = _get_service()
@@ -74,10 +77,10 @@ def search_documents() -> tuple:
         logger.info("search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return error_response("BAD_REQUEST", str(e), 400)
     except Exception:
         logger.exception("search_failed", query=query)
-        return jsonify({"error": "Search failed"}), 500
+        return error_response("INTERNAL_ERROR", "Search failed", 500)
 
 
 @search_bp.route("/suggest", methods=["GET"])
@@ -135,7 +138,7 @@ def advanced_search() -> tuple:
         page = max(int(data.get("page", 1)), 1)
         page_size = min(max(int(data.get("size", 20)), 1), 100)
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid page or size parameter"}), 400
+        return error_response("BAD_REQUEST", "Invalid page or size parameter", 400)
 
     try:
         service = _get_service()
@@ -154,7 +157,7 @@ def advanced_search() -> tuple:
         return jsonify(results.to_dict()), 200
     except Exception:
         logger.exception("advanced_search_failed")
-        return jsonify({"error": "Advanced search failed"}), 500
+        return error_response("INTERNAL_ERROR", "Advanced search failed", 500)
 
 
 @search_bp.route("/analytics", methods=["GET"])
@@ -165,4 +168,4 @@ def search_analytics() -> tuple:
         return jsonify(analytics.to_dict()), 200
     except Exception:
         logger.exception("analytics_failed")
-        return jsonify({"error": "Failed to retrieve analytics"}), 500
+        return error_response("INTERNAL_ERROR", "Failed to retrieve analytics", 500)

@@ -5,7 +5,7 @@ module Api
         class InvalidDateError < StandardError; end
 
         rescue_from InvalidDateError do |e|
-          render json: { error: e.message }, status: :bad_request
+          render_error(code: 'BAD_REQUEST', message: e.message, status: :bad_request)
         end
 
         # GET /api/v1/admin/audit-logs

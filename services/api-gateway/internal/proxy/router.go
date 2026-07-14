@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -10,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/httperror"
 	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware"
 )
 
@@ -21,10 +21,10 @@ type Route struct {
 
 // RouterConfig holds configuration for the reverse proxy router.
 type RouterConfig struct {
-	Routes         []Route
-	CBManager      *CircuitBreakerManager
-	Logger         zerolog.Logger
-	EnableTracing  bool
+	Routes        []Route
+	CBManager     *CircuitBreakerManager
+	Logger        zerolog.Logger
+	EnableTracing bool
 }
 
 // NewRouter creates a chi router with all service routes mounted.
@@ -40,11 +40,7 @@ func NewRouter(cfg RouterConfig) chi.Router {
 		})
 	}
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "route not found",
-		})
+		httperror.Write(w, http.StatusNotFound, "NOT_FOUND", "route not found")
 	})
 
 	return r
@@ -86,12 +82,7 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 			Str("method", r.Method).
 			Msg("proxy error")
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error":  "service unavailable",
-			"target": route.Prefix,
-		})
+		httperror.Write(w, http.StatusBadGateway, "BAD_GATEWAY", "service unavailable")
 	}
 
 	var handler http.Handler = proxy
@@ -108,13 +99,12 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 				Str("state", cb.State().String()).
 				Msg("circuit breaker rejected request")
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]string{
-				"error":   "service temporarily unavailable",
-				"service": route.Prefix,
-				"reason":  "circuit breaker open",
-			})
+			httperror.Write(
+				w,
+				http.StatusServiceUnavailable,
+				"SERVICE_UNAVAILABLE",
+				"service temporarily unavailable",
+			)
 		}
 	}
 }

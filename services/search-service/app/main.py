@@ -9,11 +9,13 @@ import time
 import structlog
 from flask import Flask, g, request as flask_request
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 
 from app.api.health import REQUEST_COUNT, REQUEST_LATENCY, health_bp
 from app.api.index import index_bp
 from app.api.search import search_bp
 from app.config import AppConfig
+from app.errors import error_response
 from app.middleware.auth import require_auth
 from app.services.meilisearch_client import MeiliSearchService
 from app.services.sqs_consumer import SQSConsumer
@@ -70,7 +72,9 @@ def create_app(config: AppConfig | None = None) -> Flask:
         search_service.ensure_indices()
         logger.info("meilisearch_indices_ensured")
     except Exception:
-        logger.warning("meilisearch_indices_creation_deferred", reason="MeiliSearch not available")
+        logger.warning(
+            "meilisearch_indices_creation_deferred", reason="MeiliSearch not available"
+        )
 
     # Register blueprints
     app.register_blueprint(health_bp)
@@ -79,6 +83,23 @@ def create_app(config: AppConfig | None = None) -> Flask:
 
     # Register authentication middleware
     require_auth(app)
+
+    @app.errorhandler(HTTPException)
+    def _handle_http_error(error: HTTPException):
+        code = error.code or 500
+        error_code = {
+            400: "BAD_REQUEST",
+            401: "UNAUTHORIZED",
+            403: "FORBIDDEN",
+            404: "NOT_FOUND",
+            405: "METHOD_NOT_ALLOWED",
+        }.get(code, "HTTP_ERROR")
+        return error_response(error_code, error.description, code)
+
+    @app.errorhandler(Exception)
+    def _handle_unexpected_error(error: Exception):
+        logger.exception("unhandled_request_error", error=error)
+        return error_response("INTERNAL_ERROR", "Internal server error", 500)
 
     # Prometheus request instrumentation
     @app.before_request
@@ -92,7 +113,9 @@ def create_app(config: AppConfig | None = None) -> Flask:
         elapsed = time.monotonic() - g.get("start_time", time.monotonic())
         endpoint = flask_request.url_rule.rule if flask_request.url_rule else "unknown"
         method = flask_request.method
-        REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=response.status_code).inc()
+        REQUEST_COUNT.labels(
+            method=method, endpoint=endpoint, status=response.status_code
+        ).inc()
         REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(elapsed)
         return response
 

@@ -1,8 +1,13 @@
 package com.otterworks.auth.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otterworks.auth.exception.ApiErrorResponse;
 import com.otterworks.auth.security.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,9 +23,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private final JwtAuthFilter jwtAuthFilter;
+  private final ObjectMapper objectMapper;
 
-  public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+  public SecurityConfig(JwtAuthFilter jwtAuthFilter, ObjectMapper objectMapper) {
     this.jwtAuthFilter = jwtAuthFilter;
+    this.objectMapper = objectMapper;
   }
 
   @Bean
@@ -46,6 +53,17 @@ public class SecurityConfig {
                     .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
+        .exceptionHandling(
+            exceptions ->
+                exceptions
+                    .authenticationEntryPoint(
+                        (request, response, exception) ->
+                            writeError(
+                                response, HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied"))
+                    .accessDeniedHandler(
+                        (request, response, exception) ->
+                            writeError(
+                                response, HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied")))
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
@@ -53,5 +71,14 @@ public class SecurityConfig {
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder(12);
+  }
+
+  private void writeError(
+      HttpServletResponse response, HttpStatus status, String code, String message)
+      throws IOException {
+    response.setStatus(status.value());
+    response.setContentType("application/json");
+    objectMapper.writeValue(
+        response.getOutputStream(), ApiErrorResponse.of(code, message, status.value()));
   }
 }

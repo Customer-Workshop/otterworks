@@ -29,9 +29,6 @@ import org.koin.ktor.ext.inject
 data class HealthResponse(val status: String, val service: String)
 
 @Serializable
-data class ErrorResponse(val error: String)
-
-@Serializable
 data class MarkAllReadResponse(val markedCount: Int)
 
 fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
@@ -54,7 +51,11 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             get {
                 val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respondError(
+                        HttpStatusCode.BadRequest,
+                        "BAD_REQUEST",
+                        "user_id is required (via X-User-ID header or query parameter)",
+                    )
                     return@get
                 }
 
@@ -77,7 +78,11 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             get("/unread-count") {
                 val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respondError(
+                        HttpStatusCode.BadRequest,
+                        "BAD_REQUEST",
+                        "user_id is required (via X-User-ID header or query parameter)",
+                    )
                     return@get
                 }
 
@@ -86,37 +91,43 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             get("/{id}") {
-                val id = call.parameters["id"] ?: return@get call.respond(
+                val id = call.parameters["id"] ?: return@get call.respondError(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
+                    "BAD_REQUEST",
+                    "Notification ID is required",
                 )
 
                 val notification = notificationService.getNotificationById(id)
                 if (notification != null) {
                     call.respond(notification)
                 } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                    call.respondError(HttpStatusCode.NotFound, "NOT_FOUND", "Notification not found")
                 }
             }
 
             put("/{id}/read") {
-                val id = call.parameters["id"] ?: return@put call.respond(
+                val id = call.parameters["id"] ?: return@put call.respondError(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
+                    "BAD_REQUEST",
+                    "Notification ID is required",
                 )
 
                 val success = notificationService.markAsRead(id)
                 if (success) {
                     call.respond(HttpStatusCode.NoContent)
                 } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                    call.respondError(HttpStatusCode.NotFound, "NOT_FOUND", "Notification not found")
                 }
             }
 
             put("/read-all") {
                 val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respondError(
+                        HttpStatusCode.BadRequest,
+                        "BAD_REQUEST",
+                        "user_id is required (via X-User-ID header or query parameter)",
+                    )
                     return@put
                 }
 
@@ -125,16 +136,17 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             delete("/{id}") {
-                val id = call.parameters["id"] ?: return@delete call.respond(
+                val id = call.parameters["id"] ?: return@delete call.respondError(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
+                    "BAD_REQUEST",
+                    "Notification ID is required",
                 )
 
                 val success = notificationService.deleteNotification(id)
                 if (success) {
                     call.respond(HttpStatusCode.NoContent)
                 } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                    call.respondError(HttpStatusCode.NotFound, "NOT_FOUND", "Notification not found")
                 }
             }
         }
@@ -143,7 +155,11 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             get {
                 val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
                 if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+                    call.respondError(
+                        HttpStatusCode.BadRequest,
+                        "BAD_REQUEST",
+                        "user_id is required (via X-User-ID header or query parameter)",
+                    )
                     return@get
                 }
 

@@ -97,6 +97,7 @@ class TestDeleteFromIndexEndpoint:
         """Delete with invalid type returns 400."""
         response = client.delete("/api/v1/search/index/invalid/doc-123")
         assert response.status_code == 400
+        assert response.get_json()["error"]["code"] == "BAD_REQUEST"
 
 
 class TestReindexEndpoint:

@@ -1,9 +1,6 @@
 package com.otterworks.auth.exception;
 
 import io.jsonwebtoken.JwtException;
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,42 +17,38 @@ public class GlobalExceptionHandler {
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
-    return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+  public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    return buildErrorResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+  public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
     String errors =
         ex.getBindingResult().getFieldErrors().stream()
             .map(err -> err.getField() + ": " + err.getDefaultMessage())
             .collect(Collectors.joining(", "));
-    return buildErrorResponse(HttpStatus.BAD_REQUEST, errors);
+    return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", errors);
   }
 
   @ExceptionHandler(JwtException.class)
-  public ResponseEntity<Map<String, Object>> handleJwtException(JwtException ex) {
-    return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+  public ResponseEntity<ApiErrorResponse> handleJwtException(JwtException ex) {
+    return buildErrorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid or expired token");
   }
 
   @ExceptionHandler(AccessDeniedException.class)
-  public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
-    return buildErrorResponse(HttpStatus.FORBIDDEN, "Access denied");
+  public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+    return buildErrorResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied");
   }
 
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+  public ResponseEntity<ApiErrorResponse> handleGeneral(Exception ex) {
     log.error("Unhandled exception", ex);
-    return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+    return buildErrorResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error");
   }
 
-  private ResponseEntity<Map<String, Object>> buildErrorResponse(
-      HttpStatus status, String message) {
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("timestamp", Instant.now().toString());
-    body.put("status", status.value());
-    body.put("error", status.getReasonPhrase());
-    body.put("message", message);
-    return ResponseEntity.status(status).body(body);
+  private ResponseEntity<ApiErrorResponse> buildErrorResponse(
+      HttpStatus status, String code, String message) {
+    return ResponseEntity.status(status).body(ApiErrorResponse.of(code, message, status.value()));
   }
 }

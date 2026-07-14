@@ -11,7 +11,11 @@ module Api
         def update_auto_investigate
           enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
           if enabled.nil?
-            return render json: { error: 'Missing required parameter: enabled' }, status: :bad_request
+            return render_error(
+              code: 'BAD_REQUEST',
+              message: 'Missing required parameter: enabled',
+              status: :bad_request
+            )
           end
           AdminSettingsService.set_auto_investigate(enabled)
           Rails.logger.info("Auto-investigate toggled to #{enabled}")

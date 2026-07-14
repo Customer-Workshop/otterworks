@@ -33,6 +33,9 @@ RSpec.describe Api::V1::Admin::BulkController do
     it 'returns bad_request for empty user_ids' do
       post :users, params: { operation: 'suspend', user_ids: [] }
       expect(response).to have_http_status(:bad_request)
+      body = JSON.parse(response.body)
+      expect(body.dig('error', 'code')).to eq('BAD_REQUEST')
+      expect(body.dig('error', 'status')).to eq(400)
     end
   end
 end

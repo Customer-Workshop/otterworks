@@ -3,19 +3,24 @@ class ApplicationController < ActionController::API
 
   rescue_from StandardError do |e|
     Rails.logger.error("Unhandled error: #{e.message}")
-    render json: { error: 'Internal server error' }, status: :internal_server_error
+    render_error(code: 'INTERNAL_ERROR', message: 'Internal server error', status: :internal_server_error)
   end
 
   rescue_from ActiveRecord::RecordNotFound do
-    render json: { error: 'Resource not found' }, status: :not_found
+    render_error(code: 'NOT_FOUND', message: 'Resource not found', status: :not_found)
   end
 
   rescue_from ActiveRecord::RecordInvalid do |e|
-    render json: { error: e.message, details: e.record.errors.full_messages }, status: :unprocessable_entity
+    message = [e.message, e.record.errors.full_messages.to_sentence].reject(&:blank?).join(': ')
+    render_error(code: 'VALIDATION_ERROR', message: message, status: :unprocessable_entity)
   end
 
   rescue_from ActionController::ParameterMissing do |e|
-    render json: { error: "Missing parameter: #{e.param}" }, status: :bad_request
+    render_error(code: 'BAD_REQUEST', message: "Missing parameter: #{e.param}", status: :bad_request)
+  end
+
+  def route_not_found
+    render_error(code: 'NOT_FOUND', message: 'Route not found', status: :not_found)
   end
 
   private
@@ -51,5 +56,16 @@ class ApplicationController < ActionController::API
     response.headers['X-Per-Page'] = per_page.to_s
 
     { records: records, total: total, page: page, per_page: per_page }
+  end
+
+  def render_error(code:, message:, status:)
+    status_code = Rack::Utils.status_code(status)
+    render json: {
+      error: {
+        code: code,
+        message: message,
+        status: status_code
+      }
+    }, status: status
   end
 end

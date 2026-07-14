@@ -413,9 +413,12 @@ module "report_service_lam1" {
   subnet_ids = local.private_subnets
 
   # Reuse the existing RDS database (compute migration only; no schema/SQL change).
+  # Must match the database + master user the EKS report-service pod already uses:
+  # provisioned by module.database ("otterworks" / "otterworks_admin", see
+  # modules/database/main.tf) and injected identically by scripts/deploy-dev.sh.
   db_host     = split(":", module.database.rds_endpoint)[0]
   db_port     = "5432"
-  db_name     = "otterworks_reports"
-  db_user     = "otterworks"
+  db_name     = "otterworks"
+  db_user     = "otterworks_admin"
   db_password = var.db_password
 }

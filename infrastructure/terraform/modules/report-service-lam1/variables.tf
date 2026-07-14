@@ -89,15 +89,15 @@ variable "db_port" {
 }
 
 variable "db_name" {
-  description = "Report-service database name."
+  description = "Report-service database name (must match the database the EKS pod uses)."
   type        = string
-  default     = "otterworks_reports"
+  default     = "otterworks"
 }
 
 variable "db_user" {
-  description = "Report-service database user."
+  description = "Report-service database user (must match the master user the EKS pod uses)."
   type        = string
-  default     = "otterworks"
+  default     = "otterworks_admin"
 }
 
 variable "db_password" {

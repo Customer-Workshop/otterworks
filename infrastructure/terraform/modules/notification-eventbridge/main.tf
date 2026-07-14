@@ -63,6 +63,7 @@ resource "aws_cloudwatch_event_rule" "notifications" {
 resource "aws_sqs_queue" "notifications_dlq" {
   name                      = "${local.name_prefix}-dlq"
   message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
   tags                      = local.common_tags
 }
 
@@ -71,6 +72,8 @@ resource "aws_sqs_queue" "notifications" {
   visibility_timeout_seconds = var.lambda_timeout_seconds * 6
   message_retention_seconds  = 86400
   receive_wait_time_seconds  = 20
+
+  sqs_managed_sse_enabled = true
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.notifications_dlq.arn

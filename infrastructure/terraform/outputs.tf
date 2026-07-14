@@ -35,11 +35,6 @@ output "aurora_aur1_arn" {
   value       = try(module.aurora_aur1[0].aurora_arn, "")
 }
 
-output "aurora_aur1_rds_connect_policy_arn" {
-  description = "Least-privilege rds-db:connect IAM policy ARN for the aur1 cluster; empty when not provisioned"
-  value       = try(module.aurora_aur1[0].aurora_rds_connect_policy_arn, "")
-}
-
 output "dynamodb_file_metadata_table" {
   description = "DynamoDB table name for file metadata"
   value       = module.database.file_metadata_table_name

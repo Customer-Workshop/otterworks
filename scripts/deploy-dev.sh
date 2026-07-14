@@ -230,12 +230,10 @@ irsa_arn() { echo "${IRSA_JSON:-{}}" | jq -r --arg s "$1" '.[$s] // empty' 2>/de
 aurora_resilience_args() {
   [ "${DB_BACKEND:-rds}" = "aurora" ] || return 0
   case "$1" in
-    auth-service|report-service) # Java / Spring (Hikari + Flyway)
+    auth-service) # Java / Spring (Hikari + Flyway)
       EXTRA_ARGS+=(--set-string "config.DB_CONNECT_RETRIES=10" --set-string "config.DB_CONNECT_RETRIES_INTERVAL=3")
       EXTRA_ARGS+=(--set-string "config.DB_INIT_FAIL_TIMEOUT=0" --set-string "config.DB_KEEPALIVE_TIME=30000")
       EXTRA_ARGS+=(--set-string "config.DB_MAX_LIFETIME=600000") ;;
-    document-service) # Python / SQLAlchemy
-      EXTRA_ARGS+=(--set-string "config.DOC_SVC_DB_CONNECT_RETRIES=10" --set-string "config.DOC_SVC_DB_CONNECT_RETRY_INTERVAL=3") ;;
     analytics-service) # Scala / Slick + Flyway
       EXTRA_ARGS+=(--set-string "config.DATABASE_CONNECT_RETRIES=10" --set-string "config.DATABASE_CONNECT_RETRIES_INTERVAL=3") ;;
     admin-service) # Ruby / Rails
@@ -304,7 +302,6 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
-      aurora_resilience_args "$service"
       add_secret DOC_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
     collab-service)
       EXTRA_ARGS+=(--set-string "config.HTTP_PORT=8084" --set-string "config.NODE_ENV=production")
@@ -342,7 +339,6 @@ build_helm_args() {
     report-service)
       EXTRA_ARGS+=(--set-string "config.DB_HOST=${RDS_HOST}" --set-string "config.DB_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DB_NAME=${DB_NAME}" --set-string "config.DB_USER=${DB_USER}")
-      aurora_resilience_args "$service"
       add_secret DB_PASSWORD "${DB_PASSWORD}" ;;
   esac
 }

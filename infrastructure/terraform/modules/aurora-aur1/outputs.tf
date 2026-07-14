@@ -34,11 +34,6 @@ output "aurora_arn" {
 }
 
 output "aurora_cluster_resource_id" {
-  description = "Cluster resource id (used in the rds-db:connect IAM resource ARN)"
+  description = "Cluster resource id (stable id usable to scope a future rds-db:connect IAM policy)"
   value       = aws_rds_cluster.aurora.cluster_resource_id
-}
-
-output "aurora_rds_connect_policy_arn" {
-  description = "ARN of the least-privilege rds-db:connect IAM policy for this cluster"
-  value       = aws_iam_policy.rds_connect.arn
 }

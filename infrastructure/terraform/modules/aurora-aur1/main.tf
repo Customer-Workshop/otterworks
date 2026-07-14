@@ -118,28 +118,12 @@ resource "aws_rds_cluster_instance" "aurora" {
   })
 }
 
-# --- Least-privilege IAM: rds-db:connect scoped to this cluster only ---
-# Self-contained in the module (does NOT touch the shared IRSA block in main.tf).
-# Attach to a SQL-service IRSA role to grant IAM-auth DB access to Aurora only.
-
-data "aws_caller_identity" "current" {}
-
-resource "aws_iam_policy" "rds_connect" {
-  name        = "${local.name_prefix}-rds-connect-${var.environment}"
-  description = "Least-privilege rds-db:connect to the Aurora ${local.ns} cluster (namespace ${local.ns})"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = ["rds-db:connect"]
-        Resource = [
-          "arn:aws:rds-db:*:${data.aws_caller_identity.current.account_id}:dbuser:${aws_rds_cluster.aurora.cluster_resource_id}/otterworks_admin",
-        ]
-      },
-    ]
-  })
-
-  tags = local.common_tags
-}
+# --- Least-privilege posture ---
+# This is a connection-layer-only replatform: SQL services connect to Aurora with
+# the SAME database credentials they use for the RDS before-state (via their
+# existing DB env), so NO new IAM grants are introduced (least privilege = zero
+# additional permissions). Network access is scoped to 5432 from the VPC CIDR only
+# (aws_security_group.aurora), storage is encrypted, and IAM database
+# authentication is enabled on the cluster as an optional future capability
+# (granting it to a role would be a separate, explicitly-scoped rds-db:connect
+# policy, added only if/when a service opts into IAM auth).

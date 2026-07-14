@@ -5,6 +5,7 @@ pub struct AppConfig {
     pub server: ServerConfig,
     pub aws: AwsConfig,
     pub sns: SnsConfig,
+    pub events: EventConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -29,12 +30,35 @@ pub struct SnsConfig {
     pub topic_arn: Option<String>,
 }
 
+/// Selects the event-delivery transport. `Sns` (default) keeps the golden-app
+/// path fanning out to the in-cluster consumer; `EventBridge` publishes to a
+/// custom bus whose rule routes to an SQS queue drained by a Lambda consumer.
+/// The event body is identical on both, so consumers stay behavior-identical.
+#[derive(Clone, Debug)]
+pub struct EventConfig {
+    pub backend: String,
+    pub bus_name: Option<String>,
+    pub source: String,
+}
+
 impl AppConfig {
     pub fn from_env() -> Self {
         Self {
             server: ServerConfig::from_env(),
             aws: AwsConfig::from_env(),
             sns: SnsConfig::from_env(),
+            events: EventConfig::from_env(),
+        }
+    }
+}
+
+impl EventConfig {
+    pub fn from_env() -> Self {
+        Self {
+            backend: env::var("EVENT_BACKEND").unwrap_or_else(|_| "sns".into()),
+            bus_name: env::var("EVENTBRIDGE_BUS_NAME").ok(),
+            source: env::var("EVENTBRIDGE_SOURCE")
+                .unwrap_or_else(|_| "otterworks.file-service".into()),
         }
     }
 }

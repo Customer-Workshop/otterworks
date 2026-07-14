@@ -195,6 +195,9 @@ load_infra_outputs() {
   DDB_SHARES="$(terraform -chdir="$d" output -raw dynamodb_file_shares_table 2>/dev/null || echo "")"
   SNS_TOPIC="$(terraform -chdir="$d" output -raw sns_events_topic_arn 2>/dev/null || echo "")"
   SQS_NOTIF="$(terraform -chdir="$d" output -raw sqs_notification_queue_url 2>/dev/null || echo "")"
+  # Serverless notification pipeline (EventBridge -> SQS -> Lambda). Empty unless
+  # a namespaced migration instance was provisioned (notification_eventbridge_ns).
+  NOTIF_EB_BUS="$(terraform -chdir="$d" output -raw notification_eventbridge_bus_name 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
@@ -261,11 +264,20 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.DYNAMODB_VERSIONS_TABLE=${DDB_VERSIONS}")
       EXTRA_ARGS+=(--set-string "config.DYNAMODB_SHARES_TABLE=${DDB_SHARES}")
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
-      EXTRA_ARGS+=(--set-string "config.SNS_TOPIC_ARN=${SNS_TOPIC}") ;;
+      EXTRA_ARGS+=(--set-string "config.SNS_TOPIC_ARN=${SNS_TOPIC}")
+      # Opt-in serverless notification pipeline: publish to EventBridge instead
+      # of SNS. Default (unset) keeps the golden-app SNS path.
+      if [ -n "${NOTIFICATION_EVENTBRIDGE_NS:-}" ] && [ -n "${NOTIF_EB_BUS}" ]; then
+        EXTRA_ARGS+=(--set-string "config.EVENT_BACKEND=eventbridge" --set-string "config.EVENTBRIDGE_BUS_NAME=${NOTIF_EB_BUS}")
+      fi ;;
     document-service)
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
+      # Opt-in serverless notification pipeline (see file-service note above).
+      if [ -n "${NOTIFICATION_EVENTBRIDGE_NS:-}" ] && [ -n "${NOTIF_EB_BUS}" ]; then
+        EXTRA_ARGS+=(--set-string "config.DOC_SVC_EVENT_BACKEND=eventbridge" --set-string "config.DOC_SVC_EVENTBRIDGE_BUS_NAME=${NOTIF_EB_BUS}")
+      fi
       add_secret DOC_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
     collab-service)
       EXTRA_ARGS+=(--set-string "config.HTTP_PORT=8084" --set-string "config.NODE_ENV=production")

@@ -2,14 +2,25 @@ use chrono::Utc;
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::config::SnsConfig;
+use crate::config::{EventConfig, SnsConfig};
 use crate::errors::ServiceError;
 
-/// Publisher for file-service domain events via SNS.
+/// Publisher for file-service domain events.
+///
+/// Two interchangeable transports, chosen by `EVENT_BACKEND`:
+///   * `sns` (default) — publish to the SNS topic fanned out to the SQS queue
+///     drained by the in-cluster notification consumer (golden-app path).
+///   * `eventbridge` — `PutEvents` to a custom EventBridge bus whose rule routes
+///     to an SQS queue drained by a serverless Lambda consumer.
+///
+/// The serialized event body is identical on both, so the consumer paths are
+/// behavior-identical.
 #[derive(Clone)]
 pub struct EventPublisher {
     client: aws_sdk_sns::Client,
+    eventbridge_client: aws_sdk_eventbridge::Client,
     topic_arn: Option<String>,
+    events: EventConfig,
 }
 
 #[derive(Debug, Serialize)]
@@ -31,7 +42,11 @@ pub struct FileEvent {
 }
 
 impl EventPublisher {
-    pub async fn new(sns_config: &SnsConfig, aws_config: &crate::config::AwsConfig) -> Self {
+    pub async fn new(
+        sns_config: &SnsConfig,
+        aws_config: &crate::config::AwsConfig,
+        event_config: &EventConfig,
+    ) -> Self {
         let mut aws_cfg_builder = aws_config::defaults(aws_config::BehaviorVersion::latest())
             .region(aws_config::Region::new(aws_config.region.clone()));
 
@@ -41,14 +56,24 @@ impl EventPublisher {
 
         let aws_cfg = aws_cfg_builder.load().await;
         let client = aws_sdk_sns::Client::new(&aws_cfg);
+        let eventbridge_client = aws_sdk_eventbridge::Client::new(&aws_cfg);
 
         Self {
             client,
+            eventbridge_client,
             topic_arn: sns_config.topic_arn.clone(),
+            events: event_config.clone(),
         }
     }
 
     async fn publish(&self, event: &FileEvent) -> Result<(), ServiceError> {
+        let message =
+            serde_json::to_string(event).map_err(|e| ServiceError::Internal(e.to_string()))?;
+
+        if self.events.backend == "eventbridge" {
+            return self.publish_eventbridge(event, &message).await;
+        }
+
         let topic_arn = match &self.topic_arn {
             Some(arn) => arn,
             None => {
@@ -56,9 +81,6 @@ impl EventPublisher {
                 return Ok(());
             }
         };
-
-        let message =
-            serde_json::to_string(event).map_err(|e| ServiceError::Internal(e.to_string()))?;
 
         let mut req = self.client.publish().topic_arn(topic_arn).message(&message);
 
@@ -78,6 +100,41 @@ impl EventPublisher {
             event_type = %event.event_type,
             file_id = %event.file_id,
             "Published event to SNS"
+        );
+        Ok(())
+    }
+
+    async fn publish_eventbridge(
+        &self,
+        event: &FileEvent,
+        message: &str,
+    ) -> Result<(), ServiceError> {
+        let bus_name = match &self.events.bus_name {
+            Some(name) => name,
+            None => {
+                tracing::debug!("EventBridge bus not configured, skipping event publish");
+                return Ok(());
+            }
+        };
+
+        let entry = aws_sdk_eventbridge::types::PutEventsRequestEntry::builder()
+            .event_bus_name(bus_name)
+            .source(&self.events.source)
+            .detail_type(&event.event_type)
+            .detail(message)
+            .build();
+
+        self.eventbridge_client
+            .put_events()
+            .entries(entry)
+            .send()
+            .await
+            .map_err(|e| ServiceError::SnsError(e.to_string()))?;
+
+        tracing::info!(
+            event_type = %event.event_type,
+            file_id = %event.file_id,
+            "Published event to EventBridge"
         );
         Ok(())
     }

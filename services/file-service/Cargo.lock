@@ -424,6 +424,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-eventbridge"
+version = "1.104.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dfae3beab373916ae2ab94d0549304677475534d77fb6891ae57944db353113"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-observability",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "http 1.4.0",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-s3"
 version = "1.129.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1425,6 +1449,7 @@ dependencies = [
  "anyhow",
  "aws-config",
  "aws-sdk-dynamodb",
+ "aws-sdk-eventbridge",
  "aws-sdk-s3",
  "aws-sdk-sns",
  "aws-smithy-types",

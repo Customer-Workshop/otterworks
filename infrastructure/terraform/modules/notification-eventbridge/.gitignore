@@ -1,0 +1,8 @@
+# Terraform working files and Lambda build artifacts (never committed)
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+.build/
+*.zip
+EVIDENCE.txt

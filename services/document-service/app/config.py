@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     sns_enabled: bool = False
 
+    # Event delivery backend: "sns" (default, in-cluster consumer path on main)
+    # or "eventbridge" (serverless EventBridge -> SQS -> Lambda path). Selecting
+    # eventbridge only changes the transport; the message content is identical.
+    event_backend: str = "sns"
+    eventbridge_bus_name: str = ""
+    eventbridge_source: str = "otterworks.document-service"
+
     otel_exporter_otlp_endpoint: str = "http://localhost:4317"
     otel_enabled: bool = False
 

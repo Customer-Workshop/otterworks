@@ -34,6 +34,7 @@ dotenvy = "0.15"
 prometheus = "0.13"
 lazy_static = "1.4"
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+aws-sdk-eventbridge = "1"
 
 [dev-dependencies]
 actix-rt = "2"

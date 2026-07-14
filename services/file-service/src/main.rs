@@ -27,7 +27,8 @@ async fn main() -> std::io::Result<()> {
     let app_config = config::AppConfig::from_env();
     let s3_client = storage::S3Client::new(&app_config.aws).await;
     let meta_client = metadata::MetadataClient::new(&app_config.aws).await;
-    let event_publisher = events::EventPublisher::new(&app_config.sns, &app_config.aws).await;
+    let event_publisher =
+        events::EventPublisher::new(&app_config.sns, &app_config.aws, &app_config.events).await;
 
     let redis_url = {
         let host = std::env::var("REDIS_HOST").unwrap_or_else(|_| "localhost".into());

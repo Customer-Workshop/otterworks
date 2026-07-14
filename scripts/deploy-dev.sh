@@ -103,12 +103,24 @@ fi
 if [ "${SKIP_TERRAFORM}" = false ]; then
   DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set when running Terraform}"
   log "Provisioning application infrastructure (RDS, DynamoDB, S3, SQS, etc.)..."
+
+  # Migration (namespace lam1), opt-in: the report-service Lambda module is off by
+  # default so the golden deploy provisions cleanly. When REPORT_BACKEND=lambda we
+  # build the Lambda zip first (Terraform hashes it) and enable the module.
+  ENABLE_REPORT_LAMBDA=false
+  if [ "${REPORT_BACKEND:-eks}" = "lambda" ]; then
+    ENABLE_REPORT_LAMBDA=true
+    log "REPORT_BACKEND=lambda: building report-service Lambda package (mvn -Plambda)..."
+    ( cd "${REPO_ROOT}/services/report-service" && mvn -q -Plambda -DskipTests clean package )
+  fi
+
   cd "${REPO_ROOT}/infrastructure/terraform"
   terraform init -input=false
   # Pass the DB password via TF_VAR_ env, not -var on the command line, so it is
   # not visible in the process argument list (ps / /proc/*/cmdline). Consistent
   # with the Helm secret handling below.
-  TF_VAR_db_password="${DB_PASSWORD}" terraform apply -auto-approve -input=false
+  TF_VAR_db_password="${DB_PASSWORD}" TF_VAR_enable_report_lambda="${ENABLE_REPORT_LAMBDA}" \
+    terraform apply -auto-approve -input=false
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."
 else

@@ -111,17 +111,19 @@ output "irsa_role_arns" {
 
 # --- Migration: report-service Lambda + API Gateway (namespace: lam1) ---
 
+# These resolve to null when the module is disabled (enable_report_lambda=false),
+# so the golden deploy path emits no serverless endpoint and stays on EKS.
 output "report_service_lam1_api_endpoint" {
   description = "API Gateway endpoint fronting the report-service Lambda (namespace lam1). Point the gateway's REPORT_SERVICE_URL here to flip report traffic onto the serverless path; unset to fall back to the always-on EKS pod."
-  value       = module.report_service_lam1.api_endpoint
+  value       = one(module.report_service_lam1[*].api_endpoint)
 }
 
 output "report_service_lam1_lambda_function_name" {
   description = "Report-service Lambda function name (namespace lam1)."
-  value       = module.report_service_lam1.lambda_function_name
+  value       = one(module.report_service_lam1[*].lambda_function_name)
 }
 
 output "report_service_lam1_lambda_role_arn" {
   description = "Least-privilege execution role ARN for the report-service Lambda (namespace lam1)."
-  value       = module.report_service_lam1.lambda_role_arn
+  value       = one(module.report_service_lam1[*].lambda_role_arn)
 }

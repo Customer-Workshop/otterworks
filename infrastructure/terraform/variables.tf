@@ -39,3 +39,9 @@ variable "meilisearch_master_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "enable_report_lambda" {
+  description = "Opt-in flag for the namespaced report-service Lambda + API Gateway migration module (namespace lam1). Default false so the golden `main` deploy path (RDS/DynamoDB/S3/EKS) provisions cleanly without needing the Lambda zip pre-built. Set true (with the zip built via `mvn -Plambda package`) to provision the serverless report-service target alongside the always-on EKS pod."
+  type        = bool
+  default     = false
+}

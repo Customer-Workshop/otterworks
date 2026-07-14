@@ -403,7 +403,11 @@ module "irsa" {
 #   terraform destroy -target=module.report_service_lam1
 # ------------------------------------------------------------------------------
 
+# Off by default (count = 0) so the golden `main` deploy provisions cleanly
+# without the Lambda zip pre-built. Enable with -var enable_report_lambda=true
+# (after `mvn -Plambda package`) to stand up the serverless target alongside EKS.
 module "report_service_lam1" {
+  count            = var.enable_report_lambda ? 1 : 0
   source           = "./modules/report-service-lam1"
   environment      = var.environment
   project          = "otterworks"

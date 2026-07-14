@@ -125,7 +125,7 @@ OtterWorks is a collaborative file storage and document editing platform (functi
 
 ### 11. Sample Service (`services/sample-service/`)
 - **Language**: Python 3.12
-- **Framework**: FastAPI 0.110
+- **Framework**: FastAPI 0.135
 - **Database**: PostgreSQL (owned sample items)
 - **Purpose**: Minimal CRUD reference microservice for a simple owned `samples` resource. Mirrors the Document Service conventions (routing, header/JWT-based auth, inline `HTTPException` error handling) so new Python services can be scaffolded consistently.
 - **Port**: 8092

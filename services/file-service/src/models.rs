@@ -176,6 +176,22 @@ pub struct ShareFileResponse {
     pub share: FileShare,
 }
 
+// ── Storage Summary ────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+pub struct FileTypeBreakdown {
+    pub count: usize,
+    pub total_bytes: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StorageSummaryResponse {
+    pub total_files: usize,
+    pub total_bytes: u64,
+    pub by_type: std::collections::BTreeMap<String, FileTypeBreakdown>,
+    pub trashed_count: usize,
+}
+
 // ── Activity ───────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]

@@ -17,10 +17,10 @@ use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
     ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
-    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
-    MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
-    UploadResponse,
+    FileDetailResponse, FileMetadata, FileShare, FileTypeBreakdown, FileVersion, Folder,
+    HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
+    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse,
+    StorageSummaryResponse, UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -640,6 +640,57 @@ pub async fn delete_folder(
     Ok(HttpResponse::NoContent().finish())
 }
 
+// -- Storage Summary Handler --
+
+fn compute_storage_summary(files: &[FileMetadata]) -> StorageSummaryResponse {
+    let mut total_files = 0usize;
+    let mut total_bytes = 0u64;
+    let mut by_type: std::collections::BTreeMap<String, FileTypeBreakdown> = Default::default();
+    let mut trashed_count = 0usize;
+
+    for file in files {
+        if file.is_trashed {
+            trashed_count += 1;
+            continue;
+        }
+        total_files += 1;
+        total_bytes += file.size_bytes;
+        let entry = by_type
+            .entry(file.mime_type.clone())
+            .or_insert(FileTypeBreakdown {
+                count: 0,
+                total_bytes: 0,
+            });
+        entry.count += 1;
+        entry.total_bytes += file.size_bytes;
+    }
+
+    StorageSummaryResponse {
+        total_files,
+        total_bytes,
+        by_type,
+        trashed_count,
+    }
+}
+
+pub async fn storage_summary(
+    req: HttpRequest,
+    meta: web::Data<MetadataClient>,
+) -> Result<HttpResponse, ServiceError> {
+    let owner_id = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing owner context".into()))?;
+
+    let files = meta.list_files(None, Some(owner_id), true).await?;
+    let summary = compute_storage_summary(&files);
+
+    tracing::info!(owner_id = %owner_id, total_files = %summary.total_files, "Storage summary computed");
+    Ok(HttpResponse::Ok().json(summary))
+}
+
 // -- Activity Handler --
 
 pub async fn list_activity(
@@ -721,5 +772,65 @@ mod tests {
     async fn test_metrics_endpoint() {
         let resp = metrics().await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
+
+    fn make_file(mime_type: &str, size_bytes: u64, is_trashed: bool) -> FileMetadata {
+        let now = Utc::now();
+        FileMetadata {
+            id: Uuid::new_v4(),
+            name: "test-file".into(),
+            mime_type: mime_type.into(),
+            size_bytes,
+            s3_key: "files/test".into(),
+            folder_id: None,
+            owner_id: Uuid::new_v4(),
+            version: 1,
+            is_trashed,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    #[test]
+    fn test_storage_summary_empty() {
+        let summary = compute_storage_summary(&[]);
+        assert_eq!(summary.total_files, 0);
+        assert_eq!(summary.total_bytes, 0);
+        assert!(summary.by_type.is_empty());
+        assert_eq!(summary.trashed_count, 0);
+    }
+
+    #[test]
+    fn test_storage_summary_aggregates_by_type() {
+        let files = vec![
+            make_file("image/png", 100, false),
+            make_file("image/png", 200, false),
+            make_file("application/pdf", 50, false),
+        ];
+        let summary = compute_storage_summary(&files);
+        assert_eq!(summary.total_files, 3);
+        assert_eq!(summary.total_bytes, 350);
+        assert_eq!(summary.by_type.len(), 2);
+        let png = &summary.by_type["image/png"];
+        assert_eq!(png.count, 2);
+        assert_eq!(png.total_bytes, 300);
+        let pdf = &summary.by_type["application/pdf"];
+        assert_eq!(pdf.count, 1);
+        assert_eq!(pdf.total_bytes, 50);
+    }
+
+    #[test]
+    fn test_storage_summary_excludes_trashed_from_totals() {
+        let files = vec![
+            make_file("text/plain", 10, false),
+            make_file("text/plain", 20, true),
+            make_file("image/jpeg", 30, true),
+        ];
+        let summary = compute_storage_summary(&files);
+        assert_eq!(summary.total_files, 1);
+        assert_eq!(summary.total_bytes, 10);
+        assert_eq!(summary.by_type.len(), 1);
+        assert_eq!(summary.by_type["text/plain"].count, 1);
+        assert_eq!(summary.trashed_count, 2);
     }
 }

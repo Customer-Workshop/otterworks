@@ -13,12 +13,13 @@ module AuroraAuth
     ENV.fetch('DB_IAM_AUTH_ENABLED', 'false').casecmp('true').zero?
   end
 
-  # Password used by database.yml. Static password unless IAM auth is enabled,
-  # in which case a fresh RDS IAM token is generated (valid ~15 minutes).
-  def database_password
-    return ENV.fetch('DATABASE_PASSWORD', 'otterworks') unless iam_auth_enabled?
-
-    generate_auth_token
+  # Static password used to seed database.yml at boot. When IAM auth is enabled
+  # the real per-connection credential is a short-lived RDS IAM token injected
+  # by config/initializers/aurora_iam_auth.rb (a boot-time token would expire
+  # ~15 minutes later and break every new pool connection), so the value here is
+  # only meaningful for the default, password-based revert path.
+  def static_password
+    ENV.fetch('DATABASE_PASSWORD', 'otterworks')
   end
 
   # SSL mode passed to libpq. Defaults to "prefer" (the libpq default) so the

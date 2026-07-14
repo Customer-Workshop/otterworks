@@ -56,6 +56,18 @@ variable "lambda_provisioned_concurrency" {
   default     = 0
 }
 
+variable "api_throttling_burst_limit" {
+  description = "Maximum burst of requests accepted by the report HTTP API"
+  type        = number
+  default     = 10
+}
+
+variable "api_throttling_rate_limit" {
+  description = "Steady-state requests per second accepted by the report HTTP API"
+  type        = number
+  default     = 20
+}
+
 variable "database_name" {
   description = "PostgreSQL database name"
   type        = string

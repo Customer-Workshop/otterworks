@@ -195,6 +195,13 @@ load_infra_outputs() {
   DDB_SHARES="$(terraform -chdir="$d" output -raw dynamodb_file_shares_table 2>/dev/null || echo "")"
   SNS_TOPIC="$(terraform -chdir="$d" output -raw sns_events_topic_arn 2>/dev/null || echo "")"
   SQS_NOTIF="$(terraform -chdir="$d" output -raw sqs_notification_queue_url 2>/dev/null || echo "")"
+  S3_DATA_LAKE_BUCKET="$(terraform -chdir="$d" output -raw s3_data_lake_bucket 2>/dev/null || echo "")"
+  # Analytics lakehouse (RE-ARCHITECT) outputs — only populated when
+  # enable_analytics_lakehouse=true; empty otherwise so the golden Postgres
+  # path is unaffected.
+  LAKEHOUSE_GLUE_DB="$(terraform -chdir="$d" output -raw analytics_lakehouse_glue_database 2>/dev/null || echo "")"
+  LAKEHOUSE_ATHENA_WG="$(terraform -chdir="$d" output -raw analytics_lakehouse_athena_workgroup 2>/dev/null || echo "")"
+  LAKEHOUSE_ATHENA_OUT="$(terraform -chdir="$d" output -raw analytics_lakehouse_athena_output_location 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
@@ -287,7 +294,19 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")
       EXTRA_ARGS+=(--set-string "config.DATABASE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
-      add_secret DATABASE_PASSWORD "${DB_PASSWORD}" ;;
+      add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
+      [ -n "${S3_DATA_LAKE_BUCKET}" ] && EXTRA_ARGS+=(--set-string "config.S3_DATA_LAKE_BUCKET=${S3_DATA_LAKE_BUCKET}")
+      # RE-ARCHITECT flip: only when the operator sets ANALYTICS_REPOSITORY_BACKEND=iceberg
+      # (paired with `enable_analytics_lakehouse=true` in Terraform). Default deploys keep
+      # the durable PostgreSQL "before" untouched.
+      if [ "${ANALYTICS_REPOSITORY_BACKEND:-postgres}" = "iceberg" ]; then
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_REPOSITORY_BACKEND=iceberg")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_CATALOG=glue")
+        [ -n "${LAKEHOUSE_GLUE_DB}" ] && EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_DATABASE=${LAKEHOUSE_GLUE_DB}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_ATHENA_ENABLED=true")
+        [ -n "${LAKEHOUSE_ATHENA_WG}" ] && EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_ATHENA_WORKGROUP=${LAKEHOUSE_ATHENA_WG}")
+        [ -n "${LAKEHOUSE_ATHENA_OUT}" ] && EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_ATHENA_OUTPUT_LOCATION=${LAKEHOUSE_ATHENA_OUT}")
+      fi ;;
     admin-service)
       EXTRA_ARGS+=(--set-string "config.DATABASE_HOST=${RDS_HOST}" --set-string "config.DATABASE_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")

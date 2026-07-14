@@ -108,3 +108,25 @@ output "irsa_role_arns" {
   description = "Map of service account name to IAM role ARN"
   value       = module.irsa.role_arns
 }
+
+# --- Analytics lakehouse (only populated when enable_analytics_lakehouse = true) ---
+
+output "analytics_lakehouse_glue_database" {
+  description = "Glue database backing the analytics Iceberg lakehouse."
+  value       = try(module.analytics_lakehouse[0].glue_database_name, null)
+}
+
+output "analytics_lakehouse_table_location" {
+  description = "S3 URI of the analytics Iceberg events table."
+  value       = try(module.analytics_lakehouse[0].table_location, null)
+}
+
+output "analytics_lakehouse_athena_workgroup" {
+  description = "Athena workgroup for the analytics lakehouse."
+  value       = try(module.analytics_lakehouse[0].athena_workgroup, null)
+}
+
+output "analytics_lakehouse_athena_output_location" {
+  description = "S3 URI where Athena writes analytics lakehouse query results."
+  value       = try(module.analytics_lakehouse[0].athena_output_location, null)
+}

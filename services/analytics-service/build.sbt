@@ -34,6 +34,20 @@ lazy val root = project
       // AWS SDK
       "software.amazon.awssdk" % "s3" % "2.25.6",
       "software.amazon.awssdk" % "sqs" % "2.25.6",
+      // Athena is the serving/read surface for the S3 + Iceberg lakehouse backend.
+      "software.amazon.awssdk" % "athena" % "2.25.6",
+
+      // Apache Iceberg lakehouse backend (S3 data lake, Glue catalog, Athena reads).
+      // The write + read-back path uses the Iceberg Java API; a local Hadoop
+      // (file://) catalog powers the reconciliation harness with no AWS/Docker,
+      // while GlueCatalog + S3FileIO is selected by configuration in the cloud.
+      "org.apache.iceberg" % "iceberg-core" % "1.4.3",
+      "org.apache.iceberg" % "iceberg-data" % "1.4.3",
+      "org.apache.iceberg" % "iceberg-parquet" % "1.4.3",
+      "org.apache.iceberg" % "iceberg-aws" % "1.4.3",
+      "org.apache.parquet" % "parquet-hadoop" % "1.13.1",
+      "org.apache.hadoop" % "hadoop-common" % "3.3.6" exclude ("org.slf4j", "slf4j-reload4j"),
+      "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "3.3.6" exclude ("org.slf4j", "slf4j-reload4j"),
 
       // Configuration
       "com.typesafe" % "config" % "1.4.3",

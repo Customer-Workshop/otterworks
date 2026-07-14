@@ -8,6 +8,7 @@ final case class AppConfig(
     sqs: SqsConfig,
     aws: AwsConfig,
     postgres: PostgresConfig,
+    iceberg: IcebergConfig,
     repository: RepositoryConfig,
     server: ServerConfig
 )
@@ -22,9 +23,37 @@ final case class PostgresConfig(
     maxPoolSize: Int
 )
 
-/** Selects the metrics store backend: "postgres" (durable, golden default) or "in-memory". */
+/**
+ * Configuration for the S3 + Apache Iceberg lakehouse backend (the RE-ARCHITECT
+ * "after"). `warehouse` is the Iceberg warehouse root (a `file://` path locally
+ * / for the reconciliation harness, or `s3://<data-lake-bucket>/...` in the
+ * cloud); `catalog` selects the Iceberg catalog implementation ("hadoop" for the
+ * local file warehouse, "glue" for the AWS Glue Data Catalog). Events land in
+ * the `<database>.<table>` Iceberg table; the dashboard summary reads back via
+ * Amazon Athena when `athena.enabled` is set, otherwise via a direct Iceberg
+ * table scan (both derive from the identical Iceberg data).
+ */
+final case class IcebergConfig(
+    warehouse: String,
+    catalog: String,
+    database: String,
+    table: String,
+    athena: AthenaConfig
+):
+  def isGlueCatalog: Boolean = catalog.trim.toLowerCase == "glue"
+
+final case class AthenaConfig(
+    enabled: Boolean,
+    workgroup: String,
+    outputLocation: String,
+    database: String
+)
+
+/** Selects the metrics store backend: "postgres" (durable, golden default), "iceberg" (S3 lakehouse) or "in-memory". */
 final case class RepositoryConfig(backend: String):
-  def isPostgres: Boolean = backend.trim.toLowerCase == "postgres"
+  private def normalized: String = backend.trim.toLowerCase
+  def isPostgres: Boolean = normalized == "postgres"
+  def isIceberg: Boolean = normalized == "iceberg"
 
 final case class ServerConfig(host: String, port: Int)
 
@@ -59,6 +88,24 @@ object AppConfig:
       maxPoolSize = pg.getInt("max-pool-size")
     )
 
+    def optString(path: String, default: String): String =
+      if analytics.hasPath(path) then analytics.getString(path) else default
+    def optBool(path: String, default: Boolean): Boolean =
+      if analytics.hasPath(path) then analytics.getBoolean(path) else default
+
+    val iceberg = IcebergConfig(
+      warehouse = optString("iceberg.warehouse", s"s3://${s3.dataLakeBucket}/iceberg"),
+      catalog = optString("iceberg.catalog", "glue"),
+      database = optString("iceberg.database", "otterworks_analytics"),
+      table = optString("iceberg.table", "analytics_events"),
+      athena = AthenaConfig(
+        enabled = optBool("iceberg.athena.enabled", false),
+        workgroup = optString("iceberg.athena.workgroup", "primary"),
+        outputLocation = optString("iceberg.athena.output-location", s"s3://${s3.dataLakeBucket}/athena-results/"),
+        database = optString("iceberg.athena.database", optString("iceberg.database", "otterworks_analytics"))
+      )
+    )
+
     val repository = RepositoryConfig(
       backend =
         if analytics.hasPath("repository.backend") then analytics.getString("repository.backend")
@@ -70,4 +117,4 @@ object AppConfig:
       port = if analytics.hasPath("server.port") then analytics.getInt("server.port") else 8088
     )
 
-    AppConfig(s3, sqs, aws, postgres, repository, server)
+    AppConfig(s3, sqs, aws, postgres, iceberg, repository, server)

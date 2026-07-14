@@ -392,3 +392,28 @@ module "irsa" {
     })
   }
 }
+
+# --- Analytics lakehouse (RE-ARCHITECT: S3 + Iceberg + Glue + Athena) ---
+# Additive, namespaced, and gated OFF by default: applying `main` provisions the
+# durable PostgreSQL "before" exactly as before. When enabled, this stands up the
+# lakehouse alongside it (reusing the existing data-lake bucket) and attaches a
+# least-privilege Glue/Athena/S3 policy to the existing analytics-service role —
+# without modifying any shared resource. Revert:
+#   terraform destroy -target=module.analytics_lakehouse
+
+module "analytics_lakehouse" {
+  count  = var.enable_analytics_lakehouse ? 1 : 0
+  source = "./modules/analytics_lakehouse"
+
+  environment           = var.environment
+  project               = "otterworks"
+  namespace             = var.analytics_lakehouse_namespace
+  data_lake_bucket_name = module.storage.data_lake_bucket_name
+  data_lake_bucket_arn  = module.storage.data_lake_bucket_arn
+}
+
+resource "aws_iam_role_policy_attachment" "analytics_lakehouse" {
+  count      = var.enable_analytics_lakehouse ? 1 : 0
+  role       = module.irsa.role_names["analytics-service"]
+  policy_arn = module.analytics_lakehouse[0].iam_policy_arn
+}

@@ -18,6 +18,10 @@
   <logger name="com.otterworks.analytics" level="DEBUG"/>
   <logger name="akka" level="INFO"/>
   <logger name="slick" level="INFO"/>
+  <!-- Iceberg/Hadoop/Parquet are verbose at INFO; keep the lakehouse backend quiet. -->
+  <logger name="org.apache.hadoop" level="WARN"/>
+  <logger name="org.apache.iceberg" level="WARN"/>
+  <logger name="org.apache.parquet" level="WARN"/>
 
   <root level="INFO">
     <appender-ref ref="STDOUT"/>

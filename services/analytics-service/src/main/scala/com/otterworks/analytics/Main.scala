@@ -9,6 +9,7 @@ import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes}
 import com.otterworks.analytics.config.AppConfig
 import com.otterworks.analytics.db.AnalyticsDb
 import com.otterworks.analytics.repository.{InMemoryMetricsRepository, MetricsRepository, PostgresMetricsRepository}
+import com.otterworks.analytics.repository.iceberg.{AthenaEventReader, IcebergCatalogFactory, IcebergMetricsRepository}
 import com.otterworks.analytics.service.{AnalyticsService, EventProcessor}
 
 import scala.concurrent.{Await, ExecutionContextExecutor}
@@ -29,7 +30,23 @@ object Main:
     // back to in-memory so the service still boots — mirroring the non-fatal
     // SQS handling below.
     val repository: MetricsRepository =
-      if config.repository.isPostgres then
+      if config.repository.isIceberg then
+        try
+          val catalog = IcebergCatalogFactory.create(config.iceberg)
+          val table = IcebergCatalogFactory.ensureTable(catalog, config.iceberg)
+          val athenaReader =
+            if config.iceberg.athena.enabled then Some(new AthenaEventReader(config.aws, config.iceberg))
+            else None
+          val readVia = if config.iceberg.athena.enabled then "Athena" else "Iceberg scan"
+          system.log.info(
+            s"Analytics using S3 + Iceberg lakehouse store (catalog=${config.iceberg.catalog}, reads via $readVia)")
+          new IcebergMetricsRepository(catalog, table, config.iceberg, athenaReader)
+        catch
+          case ex: Throwable =>
+            system.log.warn(
+              s"Iceberg lakehouse store unavailable (${ex.getMessage}); falling back to in-memory store")
+            new InMemoryMetricsRepository(config.postgres)
+      else if config.repository.isPostgres then
         val db = new AnalyticsDb(config.postgres)
         try
           db.migrate()

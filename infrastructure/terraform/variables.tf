@@ -39,3 +39,20 @@ variable "meilisearch_master_key" {
   default     = ""
   sensitive   = true
 }
+
+# --- Analytics lakehouse (RE-ARCHITECT target: S3 + Iceberg + Glue + Athena) ---
+# Additive and OFF by default so `main` (the golden app) provisions exactly the
+# durable PostgreSQL "before". Set to true (with a namespace) to stand up the
+# lakehouse alongside it; revert with `terraform destroy -target=module.analytics_lakehouse`.
+
+variable "enable_analytics_lakehouse" {
+  description = "Provision the namespaced analytics S3 + Iceberg lakehouse (Glue + Athena) alongside the existing store."
+  type        = bool
+  default     = false
+}
+
+variable "analytics_lakehouse_namespace" {
+  description = "Namespace suffix for the analytics lakehouse module so concurrent runs never collide."
+  type        = string
+  default     = "ns1"
+}

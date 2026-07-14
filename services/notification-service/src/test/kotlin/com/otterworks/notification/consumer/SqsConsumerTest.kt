@@ -2,8 +2,10 @@ package com.otterworks.notification.consumer
 
 import aws.sdk.kotlin.services.sqs.SqsClient
 import com.otterworks.notification.config.AppConfig
+import com.otterworks.notification.model.SqsNotificationMessage
 import com.otterworks.notification.service.NotificationService
 import io.mockk.mockk
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -118,6 +120,76 @@ class SqsConsumerTest {
         assertEquals("mentioned-user", event.mentionedUserId)
         assertEquals("actor-2", event.actorId)
         assertEquals("doc-789", event.documentId)
+    }
+
+    @Test
+    fun `parseMessage accepts legacy epoch-seconds timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-123",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage accepts legacy epoch-millis timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-123",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1704067200000
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage preserves rfc3339 string timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-123",
+                "timestamp": "2024-01-01T00:00:00Z"
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `strict parser decodes epoch-int timestamp without error`() {
+        // Mirrors the chaos-flag strict parser (isLenient = false,
+        // ignoreUnknownKeys = false). Before the tolerant serializer this threw
+        // SerializationException on a numeric timestamp.
+        val strictJson = Json {
+            ignoreUnknownKeys = false
+            isLenient = false
+        }
+        val body = """{"eventType":"file_shared","fileId":"file-1","timestamp":1704067200}"""
+
+        val event = strictJson.decodeFromString<SqsNotificationMessage>(body)
+
+        assertEquals("file_shared", event.eventType)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
     }
 
     @Test

@@ -25,6 +25,7 @@ data class NotificationEvent(
     val title: String = "",
     val message: String = "",
     val metadata: Map<String, String> = emptyMap(),
+    @Serializable(with = LenientTimestampSerializer::class)
     val timestamp: String,
 )
 
@@ -39,6 +40,7 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    @Serializable(with = LenientTimestampSerializer::class)
     val timestamp: String,
 )
 

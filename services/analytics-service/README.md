@@ -29,6 +29,7 @@ Selected by `analytics.repository.backend` (env `ANALYTICS_REPOSITORY_BACKEND`):
 | value        | use                                                        |
 |--------------|------------------------------------------------------------|
 | `postgres`   | durable store (default; golden app)                        |
+| `iceberg`    | S3 + Apache Iceberg via Glue/Athena (opt-in migration path) |
 | `in-memory`  | ephemeral, process-local — for local runs and unit tests   |
 
 The connection is assembled from `POSTGRES_*` (compose) unless `DATABASE_URL`
@@ -36,43 +37,52 @@ is provided explicitly (`scripts/deploy-dev.sh` wiring); `DATABASE_*` always
 takes precedence. If the durable store cannot be initialised at startup, the
 service logs a warning and falls back to the in-memory store so it still boots.
 
-## Lakehouse migration — "before" state
+## Lakehouse migration (`ice1`)
 
-This durable PostgreSQL store is the **"before"** state for a
-REFACTOR / RE-ARCHITECT exercise that moves the analytics store to an
-**S3 + Apache Iceberg lakehouse**. It is intentionally shaped so that migration
-is a self-contained, verifiable step; the "after" is **not** built here.
+PostgreSQL remains the default and durable **before** state. Setting
+`ANALYTICS_REPOSITORY_BACKEND=iceberg` selects the sibling
+`IcebergMetricsRepository`, which stores the canonical event log in the
+`analytics_events_ice1` Iceberg table on S3 and materializes
+`analytics_daily_metrics_ice1`. Glue supplies the catalog and Athena engine 3
+performs Iceberg inserts, reads, and rollup `MERGE` operations.
 
-### Target ("after") — outline only
+All API responses still use `MetricsAggregator`; callers and routes are
+unchanged. Athena rows use epoch-nanosecond timestamps and a monotonic ingest
+sequence, preserving PostgreSQL timestamp and insertion-order semantics.
 
-- **Storage:** raw events land in S3 (partitioned by `event_date` /
-  `event_type`) as an **Apache Iceberg** table; the daily rollup becomes an
-  Iceberg aggregate table.
-- **Catalog + query:** **AWS Glue Data Catalog** for table metadata and
-  schema evolution; **Amazon Athena** (and/or Spark) for SQL over Iceberg.
-- **Ingestion:** the existing SQS consumer writes to Iceberg (directly or via a
-  streaming/compaction job) instead of `INSERT`-ing into PostgreSQL.
-- **Serving:** the HTTP API and `DashboardSummary` semantics stay **identical**;
-  only the repository implementation behind `MetricsRepository` changes.
+The namespaced Terraform module is
+`module.analytics_iceberg_ice1`. It provisions the private/versioned S3 bucket,
+Glue database, two Iceberg tables, Athena workgroup with CloudWatch metrics,
+saved rollup/validation queries, and a least-privilege policy attached to the
+analytics-service IRSA role.
 
 ### Continuous validation (reconciliation)
 
-The migration is de-risked by a reconciliation check that asserts the
-**old (PostgreSQL) and new (Iceberg) stores agree** for the same event set:
+`IcebergReconciliationSpec` replays `usage-events.ndjson` into PostgreSQL and
+the Iceberg row/schema stand-in, then uses `AnalyticsReconciler` to compare every
+repository response field-for-field plus the persisted daily rollup. The same
+adapter runs against Athena in deployment.
 
-1. Seed / replay a fixed event set into both stores.
-2. Compare every analytics response (`DashboardSummary`, `getUserActivity`,
-   `getDocumentStats`, `getTopContent`, `getActiveUsers`, `getStorageUsage`,
-   `getExportData`, event counts) field-for-field.
-3. Cross-check the persisted daily rollup against counts derived from the raw
-   event log.
+```bash
+sbt "testOnly com.otterworks.analytics.repository.IcebergReconciliationSpec"
 
-The baseline for (2)–(3) already exists as
-`src/test/scala/com/otterworks/analytics/repository/PostgresMetricsRepositorySpec.scala`,
-which proves the durable PostgreSQL store reconciles exactly with the in-memory
-store. The lakehouse "after" is expected to pass the **same** reconciliation
-against this PostgreSQL "before", turning a one-off migration into a
-continuously-validated cutover.
+# Local gateway flow through the Iceberg adapter/schema seam
+ANALYTICS_REPOSITORY_BACKEND=iceberg \
+  docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build
+make test-api-flows
+
+# Namespaced AWS deployment
+NAMESPACE=otterworks-ice1 ANALYTICS_REPOSITORY_BACKEND=iceberg \
+  ./scripts/deploy-dev.sh --skip-platform
+```
+
+Revert:
+
+```bash
+cd infrastructure/terraform
+terraform destroy -target=module.analytics_iceberg_ice1
+# Redeploy with ANALYTICS_REPOSITORY_BACKEND unset (postgres default).
+```
 
 ## Build & test
 

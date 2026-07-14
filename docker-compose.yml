@@ -321,6 +321,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: analytics-service
       S3_DATA_LAKE_BUCKET: otterworks-data-lake
+      ANALYTICS_REPOSITORY_BACKEND: ${ANALYTICS_REPOSITORY_BACKEND:-postgres}
+      ANALYTICS_ICEBERG_MODE: ${ANALYTICS_ICEBERG_MODE:-local}
+      ANALYTICS_ICEBERG_LOCAL_WAREHOUSE: /var/lib/otterworks/analytics-iceberg-ice1
+      ANALYTICS_SQS_ENABLED: ${ANALYTICS_SQS_ENABLED:-true}
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
     depends_on:
       localstack:
@@ -339,6 +343,8 @@ services:
     security_opt:
     - no-new-privileges:true
     read_only: true
+    volumes:
+    - analytics_iceberg_data:/var/lib/otterworks/analytics-iceberg-ice1
     tmpfs:
     - /tmp
   admin-service:
@@ -525,4 +531,4 @@ networks:
 volumes:
   postgres_data: null
   localstack_data: null
-
+  analytics_iceberg_data: null

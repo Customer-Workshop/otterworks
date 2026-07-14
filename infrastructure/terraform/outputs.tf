@@ -15,6 +15,43 @@ output "s3_audit_archive_bucket" {
   value       = module.storage.audit_archive_bucket_name
 }
 
+# --- Analytics Iceberg (ice1 migration namespace) ---
+
+output "analytics_iceberg_ice1_bucket" {
+  description = "Namespaced S3 bucket for the analytics Iceberg lakehouse"
+  value       = module.analytics_iceberg_ice1.bucket_name
+}
+
+output "analytics_iceberg_ice1_database" {
+  description = "Glue database for analytics Iceberg tables"
+  value       = module.analytics_iceberg_ice1.database_name
+}
+
+output "analytics_iceberg_ice1_events_table" {
+  description = "Raw analytics Iceberg events table"
+  value       = module.analytics_iceberg_ice1.events_table_name
+}
+
+output "analytics_iceberg_ice1_aggregates_table" {
+  description = "Analytics Iceberg daily aggregate table"
+  value       = module.analytics_iceberg_ice1.aggregates_table_name
+}
+
+output "analytics_iceberg_ice1_athena_workgroup" {
+  description = "Athena workgroup for the analytics Iceberg lakehouse"
+  value       = module.analytics_iceberg_ice1.athena_workgroup_name
+}
+
+output "analytics_iceberg_ice1_athena_output" {
+  description = "S3 URI for namespaced Athena query results"
+  value       = module.analytics_iceberg_ice1.athena_output
+}
+
+output "analytics_iceberg_ice1_warehouse" {
+  description = "S3 URI for analytics Iceberg table data"
+  value       = module.analytics_iceberg_ice1.warehouse
+}
+
 # --- Database ---
 
 output "rds_endpoint" {

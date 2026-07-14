@@ -8,11 +8,12 @@ import akka.http.scaladsl.server.Route
 import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes}
 import com.otterworks.analytics.config.AppConfig
 import com.otterworks.analytics.db.AnalyticsDb
-import com.otterworks.analytics.repository.{InMemoryMetricsRepository, MetricsRepository, PostgresMetricsRepository}
+import com.otterworks.analytics.iceberg.IcebergEventStore
+import com.otterworks.analytics.repository.{IcebergMetricsRepository, InMemoryMetricsRepository, MetricsRepository, PostgresMetricsRepository}
 import com.otterworks.analytics.service.{AnalyticsService, EventProcessor}
 
 import scala.concurrent.{Await, ExecutionContextExecutor}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 object Main:
@@ -22,12 +23,6 @@ object Main:
 
     val config = AppConfig.load()
 
-    // Wire up the metrics store. The golden default is the durable PostgreSQL
-    // store (the "before" state for the S3/Iceberg lakehouse migration); the
-    // in-memory store remains available via config for local runs and tests.
-    // If the durable store cannot be initialised (e.g. DB unreachable), fall
-    // back to in-memory so the service still boots — mirroring the non-fatal
-    // SQS handling below.
     val repository: MetricsRepository =
       if config.repository.isPostgres then
         val db = new AnalyticsDb(config.postgres)
@@ -42,6 +37,13 @@ object Main:
             system.log.warn(
               s"Durable PostgreSQL store unavailable (${ex.getMessage}); falling back to in-memory store")
             new InMemoryMetricsRepository(config.postgres)
+      else if config.repository.isIceberg then
+        val store = IcebergEventStore.fromConfig(config.iceberg, config.aws)
+        val repo = new IcebergMetricsRepository(store)
+        Await.result(repo.initialize(), 2.minutes)
+        sys.addShutdownHook(repo.close())
+        system.log.info("Analytics using S3 + Apache Iceberg metrics store")
+        repo
       else
         system.log.info("Analytics using in-memory metrics store (per configuration)")
         new InMemoryMetricsRepository(config.postgres)
@@ -67,10 +69,11 @@ object Main:
     binding.onComplete {
       case Success(b) =>
         system.log.info(s"Analytics Service started at http://${b.localAddress.getHostString}:${b.localAddress.getPort}")
-        // Start SQS consumer in background (non-fatal if SQS unavailable)
-        try eventProcessor.start()
-        catch case ex: Exception =>
-          system.log.warn(s"SQS event processor could not start: ${ex.getMessage}. Running without SQS ingestion.")
+        if config.sqs.enabled then
+          try eventProcessor.start()
+          catch case ex: Exception =>
+            system.log.warn(s"SQS event processor could not start: ${ex.getMessage}. Running without SQS ingestion.")
+        else system.log.info("SQS event ingestion disabled by configuration")
       case Failure(e) =>
         system.log.error(s"Failed to start Analytics Service: ${e.getMessage}")
         system.terminate()

@@ -21,6 +21,8 @@ ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_PREFIX="otterworks/"
 IMAGE_TAG="${IMAGE_TAG:-$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)-$(date +%s)}"
 DB_PASSWORD="${DB_PASSWORD:-}"
+ANALYTICS_REPOSITORY_BACKEND="${ANALYTICS_REPOSITORY_BACKEND:-postgres}"
+ANALYTICS_ICEBERG_MODE="${ANALYTICS_ICEBERG_MODE:-athena}"
 # Shared JWT signing secret. MUST be identical across the gateway and every
 # service that validates tokens. Generated once if not supplied; pass a stable
 # value (JWT_SECRET=...) across redeploys so previously issued tokens stay valid.
@@ -51,6 +53,11 @@ NC='\033[0m'
 log()  { echo -e "${GREEN}[deploy]${NC} $*"; }
 warn() { echo -e "${YELLOW}[deploy]${NC} $*"; }
 err()  { echo -e "${RED}[deploy]${NC} $*" >&2; }
+
+if [ "${ANALYTICS_REPOSITORY_BACKEND}" = "iceberg" ] && [ "${NAMESPACE}" = "otterworks" ]; then
+  err "Iceberg migration deployments must be isolated; set NAMESPACE=otterworks-ice1."
+  exit 1
+fi
 
 # Service list
 BACKEND_SERVICES=(
@@ -108,7 +115,12 @@ if [ "${SKIP_TERRAFORM}" = false ]; then
   # Pass the DB password via TF_VAR_ env, not -var on the command line, so it is
   # not visible in the process argument list (ps / /proc/*/cmdline). Consistent
   # with the Helm secret handling below.
-  TF_VAR_db_password="${DB_PASSWORD}" terraform apply -auto-approve -input=false
+  if [ "${ANALYTICS_REPOSITORY_BACKEND}" = "iceberg" ]; then
+    TF_VAR_db_password="${DB_PASSWORD}" terraform apply \
+      -target=module.analytics_iceberg_ice1 -auto-approve -input=false
+  else
+    TF_VAR_db_password="${DB_PASSWORD}" terraform apply -auto-approve -input=false
+  fi
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."
 else
@@ -196,6 +208,12 @@ load_infra_outputs() {
   SNS_TOPIC="$(terraform -chdir="$d" output -raw sns_events_topic_arn 2>/dev/null || echo "")"
   SQS_NOTIF="$(terraform -chdir="$d" output -raw sqs_notification_queue_url 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
+  ICEBERG_DATABASE="$(terraform -chdir="$d" output -raw analytics_iceberg_ice1_database 2>/dev/null || echo "")"
+  ICEBERG_EVENTS_TABLE="$(terraform -chdir="$d" output -raw analytics_iceberg_ice1_events_table 2>/dev/null || echo "analytics_events_ice1")"
+  ICEBERG_AGGREGATES_TABLE="$(terraform -chdir="$d" output -raw analytics_iceberg_ice1_aggregates_table 2>/dev/null || echo "analytics_daily_metrics_ice1")"
+  ICEBERG_WORKGROUP="$(terraform -chdir="$d" output -raw analytics_iceberg_ice1_athena_workgroup 2>/dev/null || echo "")"
+  ICEBERG_OUTPUT="$(terraform -chdir="$d" output -raw analytics_iceberg_ice1_athena_output 2>/dev/null || echo "")"
+  ICEBERG_WAREHOUSE="$(terraform -chdir="$d" output -raw analytics_iceberg_ice1_warehouse 2>/dev/null || echo "")"
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
   MEILISEARCH_URL="${MEILISEARCH_URL:-http://meilisearch:7700}"
@@ -285,8 +303,21 @@ build_helm_args() {
     analytics-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")
+      EXTRA_ARGS+=(--set-string "config.ANALYTICS_REPOSITORY_BACKEND=${ANALYTICS_REPOSITORY_BACKEND}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
+      if [ "${ANALYTICS_REPOSITORY_BACKEND}" = "iceberg" ]; then
+        [ -n "${ICEBERG_DATABASE}" ] || { err "Iceberg Terraform outputs are unavailable."; return 1; }
+        EXTRA_ARGS+=(--set replicaCount=1)
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_SQS_ENABLED=false")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_MODE=${ANALYTICS_ICEBERG_MODE}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_DATABASE=${ICEBERG_DATABASE}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_EVENTS_TABLE=${ICEBERG_EVENTS_TABLE}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_AGGREGATES_TABLE=${ICEBERG_AGGREGATES_TABLE}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ATHENA_WORKGROUP=${ICEBERG_WORKGROUP}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ATHENA_OUTPUT=${ICEBERG_OUTPUT}")
+        EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_WAREHOUSE=${ICEBERG_WAREHOUSE}")
+      fi
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}" ;;
     admin-service)
       EXTRA_ARGS+=(--set-string "config.DATABASE_HOST=${RDS_HOST}" --set-string "config.DATABASE_PORT=${RDS_PORT}")

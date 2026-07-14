@@ -8,12 +8,13 @@ final case class AppConfig(
     sqs: SqsConfig,
     aws: AwsConfig,
     postgres: PostgresConfig,
+    iceberg: IcebergConfig,
     repository: RepositoryConfig,
     server: ServerConfig
 )
 
 final case class S3Config(dataLakeBucket: String)
-final case class SqsConfig(eventsQueueUrl: String)
+final case class SqsConfig(eventsQueueUrl: String, enabled: Boolean)
 final case class AwsConfig(region: String, endpointUrl: Option[String])
 final case class PostgresConfig(
     url: String,
@@ -21,10 +22,21 @@ final case class PostgresConfig(
     password: String,
     maxPoolSize: Int
 )
+final case class IcebergConfig(
+    mode: String,
+    database: String,
+    eventsTable: String,
+    aggregatesTable: String,
+    athenaWorkgroup: String,
+    athenaOutput: String,
+    warehouse: String,
+    localWarehouse: String
+)
 
-/** Selects the metrics store backend: "postgres" (durable, golden default) or "in-memory". */
+/** Selects postgres (golden default), iceberg, or in-memory storage. */
 final case class RepositoryConfig(backend: String):
   def isPostgres: Boolean = backend.trim.toLowerCase == "postgres"
+  def isIceberg: Boolean = backend.trim.toLowerCase == "iceberg"
 
 final case class ServerConfig(host: String, port: Int)
 
@@ -41,7 +53,8 @@ object AppConfig:
     )
 
     val sqs = SqsConfig(
-      eventsQueueUrl = analytics.getString("sqs.events-queue-url")
+      eventsQueueUrl = analytics.getString("sqs.events-queue-url"),
+      enabled = analytics.getBoolean("sqs.enabled")
     )
 
     val aws = AwsConfig(
@@ -59,6 +72,18 @@ object AppConfig:
       maxPoolSize = pg.getInt("max-pool-size")
     )
 
+    val ice = analytics.getConfig("iceberg")
+    val iceberg = IcebergConfig(
+      mode = ice.getString("mode"),
+      database = ice.getString("database"),
+      eventsTable = ice.getString("events-table"),
+      aggregatesTable = ice.getString("aggregates-table"),
+      athenaWorkgroup = ice.getString("athena-workgroup"),
+      athenaOutput = ice.getString("athena-output"),
+      warehouse = ice.getString("warehouse"),
+      localWarehouse = ice.getString("local-warehouse")
+    )
+
     val repository = RepositoryConfig(
       backend =
         if analytics.hasPath("repository.backend") then analytics.getString("repository.backend")
@@ -70,4 +95,4 @@ object AppConfig:
       port = if analytics.hasPath("server.port") then analytics.getInt("server.port") else 8088
     )
 
-    AppConfig(s3, sqs, aws, postgres, repository, server)
+    AppConfig(s3, sqs, aws, postgres, iceberg, repository, server)

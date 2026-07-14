@@ -34,6 +34,7 @@ lazy val root = project
       // AWS SDK
       "software.amazon.awssdk" % "s3" % "2.25.6",
       "software.amazon.awssdk" % "sqs" % "2.25.6",
+      "software.amazon.awssdk" % "athena" % "2.25.6",
 
       // Configuration
       "com.typesafe" % "config" % "1.4.3",

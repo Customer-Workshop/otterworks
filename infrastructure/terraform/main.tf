@@ -142,6 +142,15 @@ module "monitoring" {
   log_retention_days = var.log_retention_days
 }
 
+module "analytics_iceberg_ice1" {
+  source              = "./modules/analytics-iceberg-ice1"
+  environment         = var.environment
+  project             = "otterworks"
+  namespace           = "ice1"
+  aws_region          = var.aws_region
+  analytics_role_name = "otterworks-analytics-service-${var.environment}"
+}
+
 # --- MeiliSearch is deployed via ECS; no domain access policy needed. ---
 
 module "irsa" {

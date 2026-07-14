@@ -77,6 +77,11 @@ resource "aws_sqs_queue" "notifications_dlq" {
   name                      = "${local.name_prefix}-dlq"
   message_retention_seconds = 1209600
 
+  # Encrypt messages at rest (SSE-SQS). SSE-SQS is used rather than a CMK so
+  # EventBridge can deliver without extra kms:GenerateDataKey grants; the events
+  # carry user/file identifiers, so at-rest encryption is explicit here.
+  sqs_managed_sse_enabled = true
+
   tags = merge(local.common_tags, { Service = "notification-service" })
 }
 
@@ -93,6 +98,9 @@ resource "aws_sqs_queue" "notifications" {
     deadLetterTargetArn = aws_sqs_queue.notifications_dlq.arn
     maxReceiveCount     = 3
   })
+
+  # Encrypt messages at rest (SSE-SQS); see the DLQ note above.
+  sqs_managed_sse_enabled = true
 
   tags = merge(local.common_tags, { Service = "notification-service" })
 }

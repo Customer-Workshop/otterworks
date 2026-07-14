@@ -122,18 +122,14 @@ class OpenSearchService:
 
         if config.serverless:
             # Amazon OpenSearch Serverless: sign requests with SigV4 (service
-            # "aoss") using the pod's IRSA credentials.
+            # "aoss"). AWSV4SignerAuth wraps the live boto3 credentials object,
+            # so it refreshes the pod's IRSA credentials automatically rather
+            # than capturing a token that would expire after ~1h.
             from boto3 import Session
-            from requests_aws4auth import AWS4Auth
+            from opensearchpy import AWSV4SignerAuth
 
             creds = Session().get_credentials()
-            awsauth = AWS4Auth(
-                creds.access_key,
-                creds.secret_key,
-                config.region,
-                "aoss",
-                session_token=creds.token,
-            )
+            awsauth = AWSV4SignerAuth(creds, config.region, "aoss")
             return OpenSearch(http_auth=awsauth, **common)
 
         http_auth = (

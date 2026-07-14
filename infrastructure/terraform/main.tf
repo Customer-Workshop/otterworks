@@ -138,6 +138,10 @@ module "opensearch" {
   project     = "otterworks"
   namespace   = var.opensearch_namespace
 
+  vpc_id     = local.vpc_id
+  vpc_cidr   = local.vpc_cidr
+  subnet_ids = local.private_subnets
+
   data_access_principal_arns = [local.search_service_irsa_role_arn]
 }
 

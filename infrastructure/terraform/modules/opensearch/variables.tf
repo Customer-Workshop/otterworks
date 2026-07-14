@@ -33,6 +33,21 @@ variable "namespace" {
   }
 }
 
+variable "vpc_id" {
+  description = "VPC in which to place the OpenSearch Serverless VPC endpoint"
+  type        = string
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR allowed to reach the collection over the VPC endpoint (443)"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnets for the OpenSearch Serverless VPC endpoint (private)"
+  type        = list(string)
+}
+
 variable "data_access_principal_arns" {
   description = <<-EOT
     IAM principal ARNs granted data-access (read/write) on the collection.

@@ -37,7 +37,39 @@ resource "aws_opensearchserverless_security_policy" "encryption" {
   })
 }
 
-# --- Network policy (private VPC / SDK access; public disabled here) ----------
+# --- VPC endpoint (private access from the cluster VPC; no public exposure) ---
+
+resource "aws_security_group" "endpoint" {
+  name        = "${var.project}-aoss-${var.namespace}"
+  description = "OpenSearch Serverless VPC endpoint for the ${var.namespace} search collection"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "HTTPS from within the VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_opensearchserverless_vpc_endpoint" "search" {
+  name               = "${var.project}-aoss-${var.namespace}"
+  vpc_id             = var.vpc_id
+  subnet_ids         = var.subnet_ids
+  security_group_ids = [aws_security_group.endpoint.id]
+}
+
+# --- Network policy (private: reachable ONLY via the VPC endpoint above) -------
 
 resource "aws_opensearchserverless_security_policy" "network" {
   name = "${var.project}-net-${var.namespace}"
@@ -45,7 +77,7 @@ resource "aws_opensearchserverless_security_policy" "network" {
 
   policy = jsonencode([
     {
-      Description = "Allow API + dashboards access to the ${var.namespace} search collection"
+      Description = "Private (VPC-endpoint only) access to the ${var.namespace} search collection"
       Rules = [
         {
           ResourceType = "collection"
@@ -56,7 +88,8 @@ resource "aws_opensearchserverless_security_policy" "network" {
           Resource     = ["collection/${local.collection_name}"]
         }
       ]
-      AllowFromPublic = true
+      AllowFromPublic = false
+      SourceVPCEs     = [aws_opensearchserverless_vpc_endpoint.search.id]
     }
   ])
 }

@@ -109,6 +109,26 @@ module "messaging" {
   project     = "otterworks"
 }
 
+# --- REPLATFORM target: Aurora Serverless v2 (namespace aur1) ---
+# Added ALONGSIDE module.database (RDS before-state), never replacing it.
+# count = 0 by default so the before-state plan is unchanged; flip
+# enable_aurora_aur1 = true on the migration branch to provision it.
+module "aurora_aur1" {
+  source      = "./modules/aurora-aur1"
+  count       = var.enable_aurora_aur1 ? 1 : 0
+  environment = var.environment
+  project     = "otterworks"
+  namespace   = "aur1"
+  db_password = var.db_password
+
+  min_capacity = var.aurora_aur1_min_capacity
+  max_capacity = var.aurora_aur1_max_capacity
+
+  vpc_id     = local.vpc_id
+  vpc_cidr   = local.vpc_cidr
+  subnet_ids = local.private_subnets
+}
+
 module "search" {
   source      = "./modules/search"
   environment = var.environment

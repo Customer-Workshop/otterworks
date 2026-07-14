@@ -14,7 +14,13 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
-      connection-timeout: 30000
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+      # Aurora Serverless v2 resilience (scale-to-zero resume). Defaults match
+      # the RDS before-state; deploy-dev.sh raises them when DB_BACKEND=aurora.
+      initialization-fail-timeout: ${DB_INIT_FAIL_TIMEOUT:1}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+      keepalive-time: ${DB_KEEPALIVE_TIME:0}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT:5000}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -27,6 +33,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+    # Retry the initial Flyway connection so migrations survive an Aurora
+    # Serverless v2 resume-from-zero. 0 retries = RDS before-state behavior.
+    connect-retries: ${DB_CONNECT_RETRIES:0}
+    connect-retries-interval: ${DB_CONNECT_RETRIES_INTERVAL:2}
 
 jwt:
   secret: ${JWT_SECRET:dev-jwt-secret-otterworks-2024-change-in-production}

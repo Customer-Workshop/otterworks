@@ -19,7 +19,9 @@ final case class PostgresConfig(
     url: String,
     user: String,
     password: String,
-    maxPoolSize: Int
+    maxPoolSize: Int,
+    connectRetries: Int = 0,
+    connectRetriesInterval: Int = 2
 )
 
 /** Selects the metrics store backend: "postgres" (durable, golden default) or "in-memory". */
@@ -56,7 +58,10 @@ object AppConfig:
       url = pg.getString("url"),
       user = pg.getString("user"),
       password = pg.getString("password"),
-      maxPoolSize = pg.getInt("max-pool-size")
+      maxPoolSize = pg.getInt("max-pool-size"),
+      connectRetries = if pg.hasPath("connect-retries") then pg.getInt("connect-retries") else 0,
+      connectRetriesInterval =
+        if pg.hasPath("connect-retries-interval") then pg.getInt("connect-retries-interval") else 2
     )
 
     val repository = RepositoryConfig(

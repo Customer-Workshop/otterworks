@@ -181,7 +181,24 @@ JVM_SERVICES=" auth-service report-service notification-service analytics-servic
 load_infra_outputs() {
   local d="${REPO_ROOT}/infrastructure/terraform"
   terraform -chdir="$d" init -input=false >/dev/null 2>&1 || true
+  # --- Relational DB backend selection (REPLATFORM: RDS -> Aurora Serverless v2) ---
+  # DB_BACKEND selects which relational endpoint every SQL-backed service is
+  # wired to via its EXISTING config (SPRING_DATASOURCE_URL / DOC_SVC_DATABASE_URL /
+  # DATABASE_URL / DATABASE_HOST / DB_HOST). This is a connection-layer-only flip:
+  # no schema, SQL, or Flyway changes. Defaults to "rds" so `main` is unchanged.
+  DB_BACKEND="${DB_BACKEND:-rds}"
   local rds; rds="$(terraform -chdir="$d" output -raw rds_endpoint 2>/dev/null || echo "")"
+  if [ "${DB_BACKEND}" = "aurora" ]; then
+    local aurora; aurora="$(terraform -chdir="$d" output -raw aurora_aur1_endpoint 2>/dev/null || echo "")"
+    if [ -z "${aurora}" ]; then
+      err "DB_BACKEND=aurora but output aurora_aur1_endpoint is empty; provision module.aurora_aur1 (enable_aurora_aur1=true) first."
+      exit 1
+    fi
+    log "Relational DB backend: Aurora Serverless v2 (aur1) -> ${aurora%%:*}"
+    rds="${aurora}"
+  else
+    log "Relational DB backend: RDS PostgreSQL (before-state)"
+  fi
   RDS_HOST="${rds%%:*}"; RDS_PORT="${rds##*:}"
   [ "$RDS_PORT" = "$rds" ] && RDS_PORT=5432 || true
   REDIS_HOST="$(terraform -chdir="$d" output -raw redis_endpoint 2>/dev/null || echo "")"
@@ -205,6 +222,26 @@ load_infra_outputs() {
 }
 
 irsa_arn() { echo "${IRSA_JSON:-{}}" | jq -r --arg s "$1" '.[$s] // empty' 2>/dev/null; }
+
+# When DB_BACKEND=aurora, append the connection-layer resilience knobs a
+# scale-to-zero cluster needs (connect retries, keepalive, bounded lifetime).
+# On the RDS before-state these are left at their in-code defaults. The env
+# names are per-language but the intent is one edit repeated across the estate.
+aurora_resilience_args() {
+  [ "${DB_BACKEND:-rds}" = "aurora" ] || return 0
+  case "$1" in
+    auth-service|report-service) # Java / Spring (Hikari + Flyway)
+      EXTRA_ARGS+=(--set-string "config.DB_CONNECT_RETRIES=10" --set-string "config.DB_CONNECT_RETRIES_INTERVAL=3")
+      EXTRA_ARGS+=(--set-string "config.DB_INIT_FAIL_TIMEOUT=0" --set-string "config.DB_KEEPALIVE_TIME=30000")
+      EXTRA_ARGS+=(--set-string "config.DB_MAX_LIFETIME=600000") ;;
+    document-service) # Python / SQLAlchemy
+      EXTRA_ARGS+=(--set-string "config.DOC_SVC_DB_CONNECT_RETRIES=10" --set-string "config.DOC_SVC_DB_CONNECT_RETRY_INTERVAL=3") ;;
+    analytics-service) # Scala / Slick + Flyway
+      EXTRA_ARGS+=(--set-string "config.DATABASE_CONNECT_RETRIES=10" --set-string "config.DATABASE_CONNECT_RETRIES_INTERVAL=3") ;;
+    admin-service) # Ruby / Rails
+      EXTRA_ARGS+=(--set-string "config.DATABASE_CONNECT_TIMEOUT=30" --set-string "config.DATABASE_CHECKOUT_TIMEOUT=30") ;;
+  esac
+}
 
 # Collect secret key/value pairs for a service. These are written to a temp
 # values file and passed to helm via -f (see deploy_service) rather than
@@ -252,6 +289,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.SPRING_PROFILES_ACTIVE=prod")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_USERNAME=${DB_USER}")
+      aurora_resilience_args "$service"
       add_secret SPRING_DATASOURCE_PASSWORD "${DB_PASSWORD}" ;;
     file-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
@@ -266,6 +304,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.DOC_SVC_SNS_TOPIC_ARN=${SNS_TOPIC}")
+      aurora_resilience_args "$service"
       add_secret DOC_SVC_DATABASE_URL "postgresql+asyncpg://$(urlencode "${DB_USER}"):$(urlencode "${DB_PASSWORD}")@${RDS_HOST}:${RDS_PORT}/${DB_NAME}" ;;
     collab-service)
       EXTRA_ARGS+=(--set-string "config.HTTP_PORT=8084" --set-string "config.NODE_ENV=production")
@@ -287,11 +326,13 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")
       EXTRA_ARGS+=(--set-string "config.DATABASE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
+      aurora_resilience_args "$service"
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}" ;;
     admin-service)
       EXTRA_ARGS+=(--set-string "config.DATABASE_HOST=${RDS_HOST}" --set-string "config.DATABASE_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
       EXTRA_ARGS+=(--set-string "config.RAILS_ENV=production" --set-string "config.RAILS_LOG_TO_STDOUT=true")
+      aurora_resilience_args "$service"
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
       add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}" ;;
     audit-service)
@@ -301,6 +342,7 @@ build_helm_args() {
     report-service)
       EXTRA_ARGS+=(--set-string "config.DB_HOST=${RDS_HOST}" --set-string "config.DB_PORT=${RDS_PORT}")
       EXTRA_ARGS+=(--set-string "config.DB_NAME=${DB_NAME}" --set-string "config.DB_USER=${DB_USER}")
+      aurora_resilience_args "$service"
       add_secret DB_PASSWORD "${DB_PASSWORD}" ;;
   esac
 }

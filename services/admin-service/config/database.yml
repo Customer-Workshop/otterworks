@@ -6,6 +6,11 @@ default: &default
   port: <%= ENV.fetch("DATABASE_PORT", 5432) %>
   username: <%= ENV.fetch("DATABASE_USER", "otterworks") %>
   password: <%= ENV.fetch("DATABASE_PASSWORD", "otterworks") %>
+  # Aurora Serverless v2 resilience (scale-to-zero resume). connect_timeout
+  # bounds the wake-up wait; checkout_timeout bounds pool checkout. Defaults
+  # match the RDS before-state; deploy-dev.sh raises them when DB_BACKEND=aurora.
+  connect_timeout: <%= ENV.fetch("DATABASE_CONNECT_TIMEOUT", 5).to_i %>
+  checkout_timeout: <%= ENV.fetch("DATABASE_CHECKOUT_TIMEOUT", 5).to_i %>
 
 development:
   <<: *default

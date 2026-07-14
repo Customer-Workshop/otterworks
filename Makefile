@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed db-reconcile
 
 SHELL := /bin/bash
 
@@ -192,6 +192,20 @@ security-scan: ## Run security scans across all services
 	cd services/admin-service && bundle-audit check 2>/dev/null || true
 	@echo ""
 	@echo "=== Report Service (skipped - legacy) ==="
+
+# --- REPLATFORM: RDS -> Aurora reconciliation (continuous validation) ---
+
+db-reconcile: ## Reconcile OLD (RDS) vs NEW (Aurora) DBs (RECON_OLD_DSN / RECON_NEW_DSN; add WATCH=1)
+ifndef RECON_OLD_DSN
+	$(error RECON_OLD_DSN is required, e.g. postgresql://user:pass@host:5432/otterworks)
+endif
+ifndef RECON_NEW_DSN
+	$(error RECON_NEW_DSN is required, e.g. postgresql://user:pass@aurora:5432/otterworks)
+endif
+	uv run tests/reconciliation/reconcile_db.py \
+		--old-dsn "$(RECON_OLD_DSN)" --new-dsn "$(RECON_NEW_DSN)" \
+		$(if $(RECON_SCHEMA),--schema $(RECON_SCHEMA),) \
+		$(if $(WATCH),--watch --interval $(or $(INTERVAL),10),)
 
 test-report: ## Run report-service tests only
 	cd services/report-service && mvn test

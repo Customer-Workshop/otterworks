@@ -27,12 +27,19 @@ class AnalyticsDb(config: PostgresConfig):
     executor = AsyncExecutor("analytics-db", numThreads = config.maxPoolSize, queueSize = 1000)
   )
 
-  /** Apply pending schema migrations from classpath `db/migration`. */
+  /** Apply pending schema migrations from classpath `db/migration`.
+   *
+   * `connectRetries` lets the initial connection survive an Aurora Serverless v2
+   * resume-from-zero; with the default of 0 this is identical to the RDS
+   * before-state behavior.
+   */
   def migrate(): Unit =
     val result = Flyway
       .configure()
       .dataSource(config.url, config.user, config.password)
       .locations("classpath:db/migration")
+      .connectRetries(config.connectRetries)
+      .connectRetriesInterval(config.connectRetriesInterval)
       .load()
       .migrate()
     logger.info(

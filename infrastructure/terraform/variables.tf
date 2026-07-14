@@ -39,3 +39,25 @@ variable "meilisearch_master_key" {
   default     = ""
   sensitive   = true
 }
+
+# --- REPLATFORM: Aurora Serverless v2 (namespace aur1) ---
+# Defaults OFF so `main`/default plans provision nothing new — the RDS
+# before-state stays durable. Set true (e.g. -var enable_aurora_aur1=true) on
+# the migration branch to provision the namespaced Aurora cluster alongside RDS.
+variable "enable_aurora_aur1" {
+  description = "Provision the namespaced Aurora Serverless v2 cluster (module.aurora_aur1) alongside the RDS before-state"
+  type        = bool
+  default     = false
+}
+
+variable "aurora_aur1_min_capacity" {
+  description = "Aurora Serverless v2 minimum ACU for the aur1 cluster (0 = scale-to-zero)"
+  type        = number
+  default     = 0
+}
+
+variable "aurora_aur1_max_capacity" {
+  description = "Aurora Serverless v2 maximum ACU for the aur1 cluster"
+  type        = number
+  default     = 4
+}

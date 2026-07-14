@@ -468,9 +468,9 @@ resource "aws_lambda_function" "report" {
       SPRING_DATASOURCE_HIKARI_MAXLIFETIME       = "60000"
       SPRING_PROFILES_ACTIVE                     = "lambda"
       OTTERWORKS_REPORT_ASYNC_GENERATION_ENABLED = "false"
-      OTTERWORKS_ANALYTICS_SERVICE_URL           = var.analytics_service_url
-      OTTERWORKS_AUDIT_SERVICE_URL               = var.audit_service_url
-      OTTERWORKS_AUTH_SERVICE_URL                = var.auth_service_url
+      ANALYTICS_SERVICE_URL                      = var.analytics_service_url
+      AUDIT_SERVICE_URL                          = var.audit_service_url
+      AUTH_SERVICE_URL                           = var.auth_service_url
     }
   }
 

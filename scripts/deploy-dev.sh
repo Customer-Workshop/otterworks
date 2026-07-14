@@ -21,6 +21,7 @@ ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_PREFIX="otterworks/"
 IMAGE_TAG="${IMAGE_TAG:-$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)-$(date +%s)}"
 DB_PASSWORD="${DB_PASSWORD:-}"
+REPORT_SERVICE_URL="${REPORT_SERVICE_URL:-}"
 # Shared JWT signing secret. MUST be identical across the gateway and every
 # service that validates tokens. Generated once if not supplied; pass a stable
 # value (JWT_SECRET=...) across redeploys so previously issued tokens stay valid.
@@ -247,7 +248,10 @@ build_helm_args() {
   fi
 
   case "$service" in
-    api-gateway) : ;; # backend service URLs default to the correct in-cluster DNS
+    api-gateway)
+      if [ -n "${REPORT_SERVICE_URL}" ]; then
+        EXTRA_ARGS+=(--set-string "config.REPORT_SERVICE_URL=${REPORT_SERVICE_URL}")
+      fi ;;
     auth-service)
       EXTRA_ARGS+=(--set-string "config.SPRING_PROFILES_ACTIVE=prod")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOST}:${RDS_PORT}/${DB_NAME}")

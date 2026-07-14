@@ -13,17 +13,22 @@ output "lambda_alias_name" {
   value       = aws_lambda_alias.report.name
 }
 
-output "rds_endpoint" {
-  description = "RDS PostgreSQL endpoint"
+output "database_endpoint" {
+  description = "Isolated RDS PostgreSQL endpoint"
   value       = aws_db_instance.report.endpoint
 }
 
 output "log_group_name" {
-  description = "CloudWatch log group name"
+  description = "Lambda CloudWatch log group"
   value       = aws_cloudwatch_log_group.lambda.name
 }
 
-output "lambda_artifact_bucket" {
-  description = "Private S3 bucket containing the Lambda deployment artifact"
-  value       = aws_s3_bucket.lambda_artifact.bucket
+output "dashboard_name" {
+  description = "CloudWatch dashboard containing Lambda verification metrics"
+  value       = aws_cloudwatch_dashboard.report.dashboard_name
+}
+
+output "cold_start_metric_namespace" {
+  description = "CloudWatch namespace containing the ColdStarts metric"
+  value       = "OtterWorks/ReportLambda/${var.namespace}"
 }

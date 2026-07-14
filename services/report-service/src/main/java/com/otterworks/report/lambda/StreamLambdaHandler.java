@@ -12,17 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-/**
- * AWS Lambda entry point that wraps the existing Spring Boot application.
- *
- * The same {@link ReportApplication} context (controllers, services, JPA
- * repositories) that runs as an always-on EKS pod is booted once per Lambda
- * execution environment and API Gateway proxy events are dispatched straight
- * to Spring MVC. The HTTP contract is therefore identical to the container
- * deployment — this is a packaging change, not an API rewrite.
- *
- * Binary response handling is left to API Gateway configuration for now.
- */
+/** AWS Lambda entry point for the existing Spring Boot application. */
 public class StreamLambdaHandler implements RequestStreamHandler {
 
     private static final SpringBootLambdaContainerHandler<AwsProxyRequest, AwsProxyResponse> HANDLER;

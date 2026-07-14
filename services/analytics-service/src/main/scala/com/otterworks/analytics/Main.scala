@@ -54,11 +54,13 @@ object Main:
     val analyticsRoutes = AnalyticsRoutes(analyticsService)
     val eventRoutes = EventRoutes(analyticsService)
 
-    val routes: Route = ApiErrors.standardize(
-      concat(
-        healthRoutes.routes,
-        eventRoutes.routes,
-        analyticsRoutes.routes,
+    val routes: Route = concat(
+      healthRoutes.routes,
+      ApiErrors.standardize(
+        concat(
+          eventRoutes.routes,
+          analyticsRoutes.routes,
+        )
       )
     )
 

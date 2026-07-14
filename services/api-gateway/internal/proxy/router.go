@@ -67,7 +67,11 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 			req.SetURL(target)
 			req.SetXForwarded()
 			if clientIP := chimw.GetClientIP(req.In.Context()); clientIP != "" {
-				req.Out.Header.Set("X-Forwarded-For", clientIP)
+				if proxyIP := req.Out.Header.Get("X-Forwarded-For"); proxyIP != "" && proxyIP != clientIP {
+					req.Out.Header.Set("X-Forwarded-For", clientIP+", "+proxyIP)
+				} else {
+					req.Out.Header.Set("X-Forwarded-For", clientIP)
+				}
 			}
 			if claims := middleware.GetJWTClaims(req.In.Context()); claims != nil {
 				userID := claims.Subject

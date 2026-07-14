@@ -44,7 +44,7 @@ make down
 
 | Service | Language | Framework | Port | Description |
 |---------|----------|-----------|------|-------------|
-| API Gateway | Go 1.22 | Chi | 8080 | Request routing, rate limiting, JWT validation |
+| API Gateway | Go 1.26.5 | Chi | 8080 | Request routing, rate limiting, JWT validation |
 | Auth Service | Java 17 | Spring Boot 3 | 8081 | Authentication, authorization, user management |
 | File Service | Rust 1.77 | Actix-Web 4 | 8082 | File upload/download, S3 integration, versioning |
 | Document Service | Python 3.12 | FastAPI | 8083 | Document CRUD, version history, snapshots |

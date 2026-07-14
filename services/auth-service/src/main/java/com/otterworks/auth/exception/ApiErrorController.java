@@ -6,12 +6,24 @@ import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ApiErrorController implements ErrorController {
 
-  @RequestMapping("/error")
+  @RequestMapping(
+      value = "/error",
+      method = {
+        RequestMethod.GET,
+        RequestMethod.HEAD,
+        RequestMethod.POST,
+        RequestMethod.PUT,
+        RequestMethod.PATCH,
+        RequestMethod.DELETE,
+        RequestMethod.OPTIONS,
+        RequestMethod.TRACE
+      })
   public ResponseEntity<ApiErrorResponse> error(HttpServletRequest request) {
     int status = status(request);
     HttpStatus httpStatus = HttpStatus.resolve(status);
@@ -19,7 +31,18 @@ public class ApiErrorController implements ErrorController {
     return ResponseEntity.status(status).body(ApiErrorResponse.of(code(status), message, status));
   }
 
-  @RequestMapping("/api/v1/auth/**")
+  @RequestMapping(
+      value = "/api/v1/auth/**",
+      method = {
+        RequestMethod.GET,
+        RequestMethod.HEAD,
+        RequestMethod.POST,
+        RequestMethod.PUT,
+        RequestMethod.PATCH,
+        RequestMethod.DELETE,
+        RequestMethod.OPTIONS,
+        RequestMethod.TRACE
+      })
   public ResponseEntity<ApiErrorResponse> authRouteNotFound() {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(

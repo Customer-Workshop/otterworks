@@ -51,12 +51,22 @@ def _build_ssl_context() -> ssl_lib.SSLContext | bool:
     if mode in ("disable", "allow", "prefer"):
         # Operator explicitly opted out of forced client-side TLS.
         return False
+    if mode == "verify-full" and not settings.db_ssl_root_cert:
+        # Fail loud rather than silently dropping hostname verification: a
+        # verify-full request without a CA bundle cannot actually be honoured.
+        raise ValueError(
+            "db_ssl_mode='verify-full' requires db_ssl_root_cert to be set "
+            "(e.g. the Amazon RDS CA bundle)"
+        )
     ctx = ssl_lib.create_default_context(cafile=settings.db_ssl_root_cert or None)
-    if mode in ("require", "verify-ca") or not settings.db_ssl_root_cert:
-        # `require` encrypts without server-cert verification; also used when no
-        # CA bundle is provided for verify modes.
+    if mode == "require":
+        # Encrypt in transit without server-certificate verification.
         ctx.check_hostname = False
-        ctx.verify_mode = ssl_lib.CERT_NONE if mode == "require" else ssl_lib.CERT_REQUIRED
+        ctx.verify_mode = ssl_lib.CERT_NONE
+    elif mode == "verify-ca":
+        # Verify the server certificate chain but not the hostname.
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl_lib.CERT_REQUIRED
     else:  # verify-full
         ctx.check_hostname = True
         ctx.verify_mode = ssl_lib.CERT_REQUIRED

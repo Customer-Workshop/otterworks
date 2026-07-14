@@ -1,5 +1,62 @@
 data "aws_caller_identity" "current" {}
 
+data "aws_iam_policy_document" "kms" {
+  statement {
+    sid       = "AccountAdministration"
+    effect    = "Allow"
+    actions   = ["kms:*"]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid    = "CloudWatchLogsEncryption"
+    effect = "Allow"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey",
+    ]
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${var.aws_region}.amazonaws.com"]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values = [
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/report-service-${var.namespace}",
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/report-service-${var.namespace}",
+      ]
+    }
+  }
+}
+
+resource "aws_kms_key" "report" {
+  description             = "Report Lambda ${var.namespace} encryption key"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.kms.json
+
+  tags = {
+    Namespace = var.namespace
+  }
+}
+
+resource "aws_kms_alias" "report" {
+  name          = "alias/report-service-${var.namespace}"
+  target_key_id = aws_kms_key.report.key_id
+}
+
 resource "random_password" "database" {
   length  = 32
   special = false
@@ -99,18 +156,24 @@ resource "aws_db_subnet_group" "report" {
 }
 
 resource "aws_db_instance" "report" {
-  identifier             = "report-service-${var.namespace}"
-  engine                 = "postgres"
-  engine_version         = "15.18"
-  instance_class         = var.database_instance_class
-  allocated_storage      = 20
-  db_name                = var.database_name
-  username               = var.database_user
-  password               = random_password.database.result
-  publicly_accessible    = false
-  apply_immediately      = true
-  skip_final_snapshot    = true
-  deletion_protection    = false
+  identifier          = "report-service-${var.namespace}"
+  engine              = "postgres"
+  engine_version      = "15.18"
+  instance_class      = var.database_instance_class
+  allocated_storage   = 20
+  db_name             = var.database_name
+  username            = var.database_user
+  password            = random_password.database.result
+  publicly_accessible = false
+  storage_encrypted   = true
+  kms_key_id          = aws_kms_key.report.arn
+  apply_immediately   = true
+  skip_final_snapshot = true
+  deletion_protection = false
+  enabled_cloudwatch_logs_exports = [
+    "postgresql",
+    "upgrade",
+  ]
   db_subnet_group_name   = aws_db_subnet_group.report.name
   vpc_security_group_ids = [aws_security_group.database.id]
 
@@ -121,6 +184,7 @@ resource "aws_db_instance" "report" {
 
 resource "aws_secretsmanager_secret" "database" {
   name                    = "report-service-${var.namespace}-db"
+  kms_key_id              = aws_kms_key.report.arn
   recovery_window_in_days = 0
 
   tags = {
@@ -162,6 +226,12 @@ data "aws_iam_policy_document" "proxy_secret_access" {
     effect    = "Allow"
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [aws_secretsmanager_secret.database.arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.report.arn]
   }
 }
 
@@ -252,6 +322,15 @@ data "aws_iam_policy_document" "lambda_runtime" {
     ]
     resources = ["*"]
   }
+
+  statement {
+    sid = "WriteXRayTelemetry"
+    actions = [
+      "xray:PutTelemetryRecords",
+      "xray:PutTraceSegments",
+    ]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_runtime" {
@@ -262,6 +341,7 @@ resource "aws_iam_role_policy" "lambda_runtime" {
 
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/report-service-${var.namespace}"
+  kms_key_id        = aws_kms_key.report.arn
   retention_in_days = 7
 
   tags = {
@@ -271,6 +351,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
 
 resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/report-service-${var.namespace}"
+  kms_key_id        = aws_kms_key.report.arn
   retention_in_days = 7
 
   tags = {
@@ -321,6 +402,7 @@ resource "aws_lambda_function" "report" {
   s3_bucket                      = aws_s3_bucket.lambda_artifact.id
   s3_key                         = aws_s3_object.lambda_artifact.key
   source_code_hash               = filebase64sha256(var.lambda_jar_path)
+  kms_key_arn                    = aws_kms_key.report.arn
   memory_size                    = var.lambda_memory
   timeout                        = 30
   publish                        = true
@@ -329,6 +411,10 @@ resource "aws_lambda_function" "report" {
   vpc_config {
     subnet_ids         = var.subnet_ids
     security_group_ids = [aws_security_group.lambda.id]
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   environment {

@@ -12,8 +12,10 @@ import (
 
 func TestProxyUsesUpstreamHost(t *testing.T) {
 	var receivedHost string
+	var receivedPath string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHost = r.Host
+		receivedPath = r.URL.Path
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer upstream.Close()
@@ -34,4 +36,5 @@ func TestProxyUsesUpstreamHost(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, response.Code)
 	assert.Equal(t, upstream.Listener.Addr().String(), receivedHost)
+	assert.Equal(t, "/api/v1/reports/42", receivedPath)
 }

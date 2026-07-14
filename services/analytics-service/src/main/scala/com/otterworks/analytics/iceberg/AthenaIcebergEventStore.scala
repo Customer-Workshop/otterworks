@@ -37,19 +37,25 @@ class AthenaIcebergEventStore(config: IcebergConfig, aws: AwsConfig)(using ec: E
     aws.endpointUrl.filter(_.nonEmpty).foreach(u => b.endpointOverride(URI.create(u)))
     b.build()
 
-  private val fqTable = s"${config.database}.${config.eventsTable}"
-  private val fqAggregatesTable = s"${config.database}.${config.aggregatesTable}"
+  private def identifier(value: String): String =
+    require(value.matches("[A-Za-z_][A-Za-z0-9_]*"), s"Invalid Athena identifier: $value")
+    value
 
-  private def startAndAwait(sql: String): String =
+  private val fqTable = s"${identifier(config.database)}.${identifier(config.eventsTable)}"
+  private val fqAggregatesTable = s"${identifier(config.database)}.${identifier(config.aggregatesTable)}"
+  private val insertStatement =
+    s"INSERT INTO $fqTable (${IcebergRowCodec.columns.mkString(", ")}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+  private def startAndAwait(sql: String, parameters: Seq[String] = Seq.empty): String =
     val ctx = QueryExecutionContext.builder().database(config.database).build()
     val resultConf = ResultConfiguration.builder().outputLocation(config.athenaOutput).build()
-    val start = StartQueryExecutionRequest.builder()
+    val builder = StartQueryExecutionRequest.builder()
       .queryString(sql)
       .workGroup(config.athenaWorkgroup)
       .queryExecutionContext(ctx)
       .resultConfiguration(resultConf)
-      .build()
-    val id = client.startQueryExecution(start).queryExecutionId()
+    if parameters.nonEmpty then builder.executionParameters(parameters.asJava)
+    val id = client.startQueryExecution(builder.build()).queryExecutionId()
     awaitCompletion(id)
     id
 
@@ -67,6 +73,9 @@ class AthenaIcebergEventStore(config: IcebergConfig, aws: AwsConfig)(using ec: E
 
   /** Execute a statement that returns no useful rows (DDL / DML). */
   private def execute(sql: String): Future[Unit] = Future(blocking(startAndAwait(sql))).map(_ => ())
+
+  private def execute(sql: String, parameters: Seq[String]): Future[Unit] =
+    Future(blocking(startAndAwait(sql, parameters))).map(_ => ())
 
   /** Execute a SELECT and return result rows as ordered lists of string cells. */
   private def query(sql: String): Future[Seq[Seq[String]]] = Future(blocking {
@@ -98,18 +107,18 @@ class AthenaIcebergEventStore(config: IcebergConfig, aws: AwsConfig)(using ec: E
 
   def append(seqNo: Long, event: AnalyticsEvent): Future[Unit] =
     val r = IcebergRowCodec.toRow(seqNo, event)
-    val values = List(
+    val parameters = List(
       r.seqNo.toString,
-      IcebergRowCodec.sqlLiteral(r.eventId),
-      IcebergRowCodec.sqlLiteral(r.eventType),
-      IcebergRowCodec.sqlLiteral(r.userId),
-      IcebergRowCodec.sqlLiteral(r.resourceId),
-      IcebergRowCodec.sqlLiteral(r.resourceType),
-      IcebergRowCodec.sqlLiteral(r.metadata),
+      IcebergRowCodec.sqlParameter(r.eventId),
+      IcebergRowCodec.sqlParameter(r.eventType),
+      IcebergRowCodec.sqlParameter(r.userId),
+      IcebergRowCodec.sqlParameter(r.resourceId),
+      IcebergRowCodec.sqlParameter(r.resourceType),
+      IcebergRowCodec.sqlParameter(r.metadata),
       r.occurredAt.toString,
-      IcebergRowCodec.sqlLiteral(r.eventDate)
-    ).mkString(", ")
-    execute(s"INSERT INTO $fqTable (${IcebergRowCodec.columns.mkString(", ")}) VALUES ($values)")
+      IcebergRowCodec.sqlParameter(r.eventDate)
+    )
+    execute(insertStatement, parameters)
 
   def loadAll(): Future[Seq[AnalyticsEvent]] =
     val cols = "seq_no, event_id, event_type, user_id, resource_id, resource_type, metadata, occurred_at, event_date"

@@ -75,5 +75,4 @@ object IcebergRowCodec:
       timestamp = fromEpochNanos(r.occurredAt)
     )
 
-  /** Escape a string for safe interpolation into an Athena SQL string literal. */
-  def sqlLiteral(s: String): String = "'" + s.replace("'", "''") + "'"
+  def sqlParameter(s: String): String = "'" + s.replace("'", "''") + "'"

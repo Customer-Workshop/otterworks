@@ -214,17 +214,37 @@ data "aws_iam_policy_document" "lakehouse" {
     ]
   }
 
+  # ListBucket on the SHARED data-lake bucket is scoped to this namespace's
+  # warehouse prefix, so the analytics role cannot enumerate other services'
+  # objects in the shared bucket.
   statement {
-    sid    = "WarehouseList"
+    sid    = "WarehouseListScoped"
     effect = "Allow"
     actions = [
       "s3:GetBucketLocation",
       "s3:ListBucket",
     ]
-    resources = [
-      var.data_lake_bucket_arn,
-      aws_s3_bucket.athena_results.arn,
+    resources = [var.data_lake_bucket_arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values = [
+        "${var.warehouse_prefix}-${local.ns}",
+        "${var.warehouse_prefix}-${local.ns}/*",
+      ]
+    }
+  }
+
+  # The results bucket is dedicated to this module, so listing it unconditionally
+  # is still least-privilege.
+  statement {
+    sid    = "ResultsList"
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:ListBucket",
     ]
+    resources = [aws_s3_bucket.athena_results.arn]
   }
 }
 

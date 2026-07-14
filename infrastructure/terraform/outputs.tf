@@ -116,6 +116,11 @@ output "analytics_lakehouse_glue_database" {
   value       = try(module.analytics_lakehouse[0].glue_database_name, null)
 }
 
+output "analytics_lakehouse_warehouse_location" {
+  description = "S3 URI of the analytics Iceberg warehouse root (namespaced)."
+  value       = try(module.analytics_lakehouse[0].warehouse_location, null)
+}
+
 output "analytics_lakehouse_table_location" {
   description = "S3 URI of the analytics Iceberg events table."
   value       = try(module.analytics_lakehouse[0].table_location, null)

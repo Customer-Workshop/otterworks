@@ -200,6 +200,7 @@ load_infra_outputs() {
   # enable_analytics_lakehouse=true; empty otherwise so the golden Postgres
   # path is unaffected.
   LAKEHOUSE_GLUE_DB="$(terraform -chdir="$d" output -raw analytics_lakehouse_glue_database 2>/dev/null || echo "")"
+  LAKEHOUSE_WAREHOUSE="$(terraform -chdir="$d" output -raw analytics_lakehouse_warehouse_location 2>/dev/null || echo "")"
   LAKEHOUSE_ATHENA_WG="$(terraform -chdir="$d" output -raw analytics_lakehouse_athena_workgroup 2>/dev/null || echo "")"
   LAKEHOUSE_ATHENA_OUT="$(terraform -chdir="$d" output -raw analytics_lakehouse_athena_output_location 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
@@ -302,6 +303,9 @@ build_helm_args() {
       if [ "${ANALYTICS_REPOSITORY_BACKEND:-postgres}" = "iceberg" ]; then
         EXTRA_ARGS+=(--set-string "config.ANALYTICS_REPOSITORY_BACKEND=iceberg")
         EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_CATALOG=glue")
+        # Pass the namespaced warehouse root so the app matches the Terraform-provisioned
+        # location (s3://<bucket>/iceberg-<ns>) even if it has to create the table itself.
+        [ -n "${LAKEHOUSE_WAREHOUSE}" ] && EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_WAREHOUSE=${LAKEHOUSE_WAREHOUSE}")
         [ -n "${LAKEHOUSE_GLUE_DB}" ] && EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_DATABASE=${LAKEHOUSE_GLUE_DB}")
         EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_ATHENA_ENABLED=true")
         [ -n "${LAKEHOUSE_ATHENA_WG}" ] && EXTRA_ARGS+=(--set-string "config.ANALYTICS_ICEBERG_ATHENA_WORKGROUP=${LAKEHOUSE_ATHENA_WG}")

@@ -260,10 +260,12 @@ async def test_create_document_via_jwt_hs384(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
+async def test_create_document_x_user_id_header_ignored(
+    unauthenticated_client: AsyncClient,
+):
     """X-User-Id header alone is not trusted (prevents identity spoofing)."""
     user_id = uuid.uuid4()
-    resp = await client.post(
+    resp = await unauthenticated_client.post(
         "/api/v1/documents/",
         json={"title": "Header Doc"},
         headers={"X-User-Id": str(user_id)},
@@ -272,9 +274,11 @@ async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_no_auth_returns_401(client: AsyncClient):
+async def test_create_document_no_auth_returns_401(
+    unauthenticated_client: AsyncClient,
+):
     """Creating a document without owner_id and without auth returns 401."""
-    resp = await client.post(
+    resp = await unauthenticated_client.post(
         "/api/v1/documents/",
         json={"title": "No Auth Doc"},
     )

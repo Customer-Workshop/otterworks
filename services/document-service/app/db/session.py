@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
+from app.db.aurora import configure_aurora
 from app.db.base import Base
 
 engine = create_async_engine(
@@ -13,6 +14,9 @@ engine = create_async_engine(
     pool_size=settings.db_pool_size,
     max_overflow=settings.db_max_overflow,
 )
+
+# Opt-in Aurora IAM auth + TLS; no-op unless DOC_SVC_DB_IAM_AUTH_ENABLED is set.
+configure_aurora(engine)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

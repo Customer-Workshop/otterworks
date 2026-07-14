@@ -22,6 +22,21 @@ output "rds_endpoint" {
   value       = module.database.rds_endpoint
 }
 
+output "aurora_cluster_endpoint" {
+  description = "Aurora Serverless v2 writer endpoint (cut over DB_HOST / DATABASE_URL to this)"
+  value       = module.database_aurora.cluster_endpoint
+}
+
+output "aurora_reader_endpoint" {
+  description = "Aurora Serverless v2 reader endpoint"
+  value       = module.database_aurora.reader_endpoint
+}
+
+output "aurora_cluster_resource_id" {
+  description = "Aurora cluster resource ID (used in rds-db:connect ARNs for IAM auth)"
+  value       = module.database_aurora.cluster_resource_id
+}
+
 output "dynamodb_file_metadata_table" {
   description = "DynamoDB table name for file metadata"
   value       = module.database.file_metadata_table_name

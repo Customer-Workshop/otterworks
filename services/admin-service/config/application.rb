@@ -11,6 +11,7 @@ require 'rails/test_unit/railtie'
 Bundler.require(*Rails.groups)
 
 require_relative '../app/middleware/jwt_authenticator'
+require_relative '../lib/aurora_auth'
 
 module AdminService
   class Application < Rails::Application

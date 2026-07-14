@@ -34,6 +34,8 @@ lazy val root = project
       // AWS SDK
       "software.amazon.awssdk" % "s3" % "2.25.6",
       "software.amazon.awssdk" % "sqs" % "2.25.6",
+      // RDS utilities for Aurora IAM database authentication tokens
+      "software.amazon.awssdk" % "rds" % "2.25.6",
 
       // Configuration
       "com.typesafe" % "config" % "1.4.3",

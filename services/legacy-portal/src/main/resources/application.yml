@@ -48,3 +48,29 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+---
+# Aurora profile: same PostgreSQL wire protocol as the 'postgres' profile above,
+# but routed through the AWS Advanced JDBC Wrapper with IAM database
+# authentication + TLS. Enable with SPRING_PROFILES_ACTIVE=aurora; the
+# password-based 'postgres' profile is left intact for revert.
+spring:
+  config:
+    activate:
+      on-profile: aurora
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:aws-wrapper:postgresql://localhost:5432/legacyportal}
+    username: ${SPRING_DATASOURCE_USERNAME:legacyportal}
+    driver-class-name: software.amazon.jdbc.Driver
+    hikari:
+      data-source-properties:
+        wrapperPlugins: iam
+        ssl: true
+        sslmode: ${DB_SSLMODE:require}
+        sslrootcert: ${DB_SSL_ROOT_CERT:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

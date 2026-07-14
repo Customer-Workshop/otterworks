@@ -52,3 +52,22 @@ logging:
   level:
     com.otterworks: INFO
     org.springframework.security: WARN
+
+# Additive 'aurora' profile: enable with SPRING_PROFILES_ACTIVE=dev,aurora to
+# route the existing SPRING_DATASOURCE_URL through the AWS Advanced JDBC Wrapper
+# with IAM database authentication + TLS. Omit the profile to revert to the
+# password-based RDS PostgreSQL datasource above.
+---
+spring:
+  config:
+    activate:
+      on-profile: aurora
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:aws-wrapper:postgresql://localhost:5432/otterworks}
+    driver-class-name: software.amazon.jdbc.Driver
+    hikari:
+      data-source-properties:
+        wrapperPlugins: iam
+        ssl: true
+        sslmode: ${DB_SSLMODE:require}
+        sslrootcert: ${DB_SSL_ROOT_CERT:}

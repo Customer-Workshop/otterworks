@@ -64,7 +64,18 @@ locals {
   public_subnets    = data.terraform_remote_state.platform.outputs.public_subnet_ids
   oidc_provider_arn = data.terraform_remote_state.platform.outputs.oidc_provider_arn
   oidc_provider_url = data.terraform_remote_state.platform.outputs.oidc_provider_url
+
+  # rds-db:connect for Aurora IAM database authentication. Injected into the
+  # IRSA policies of the services that connect to PostgreSQL so they can obtain
+  # short-lived auth tokens against the Aurora cluster.
+  aurora_rds_connect_statement = {
+    Effect   = "Allow"
+    Action   = ["rds-db:connect"]
+    Resource = [for user in var.aurora_iam_db_users : "arn:aws:rds-db:${var.aws_region}:${data.aws_caller_identity.current.account_id}:dbuser:${module.database_aurora.cluster_resource_id}/${user}"]
+  }
 }
+
+data "aws_caller_identity" "current" {}
 
 data "aws_eks_cluster_auth" "platform" {
   name = local.cluster_name
@@ -97,6 +108,25 @@ module "database" {
   environment = var.environment
   project     = "otterworks"
   db_password = var.db_password
+
+  vpc_id     = local.vpc_id
+  vpc_cidr   = local.vpc_cidr
+  subnet_ids = local.private_subnets
+}
+
+# Aurora Serverless v2 — provisioned ALONGSIDE module.database (RDS PostgreSQL),
+# not replacing it. Services cut over by pointing DB_HOST / DATABASE_URL at
+# module.database_aurora.cluster_endpoint; the RDS instance remains for revert.
+module "database_aurora" {
+  source      = "./modules/database-aurora"
+  environment = var.environment
+  project     = "otterworks"
+  db_password = var.db_password
+
+  engine_version = var.aurora_engine_version
+  min_capacity   = var.aurora_min_capacity
+  max_capacity   = var.aurora_max_capacity
+  iam_db_users   = var.aurora_iam_db_users
 
   vpc_id     = local.vpc_id
   vpc_cidr   = local.vpc_cidr
@@ -212,6 +242,7 @@ module "irsa" {
           Action   = ["sns:Publish"]
           Resource = [module.messaging.events_topic_arn]
         },
+        local.aurora_rds_connect_statement,
       ]
     })
 
@@ -298,6 +329,7 @@ module "irsa" {
             "${module.storage.data_lake_bucket_arn}/*",
           ]
         },
+        local.aurora_rds_connect_statement,
       ]
     })
 
@@ -345,6 +377,7 @@ module "irsa" {
           ]
           Resource = [module.auth.user_pool_arn]
         },
+        local.aurora_rds_connect_statement,
       ]
     })
 
@@ -366,6 +399,7 @@ module "irsa" {
           Action   = ["cloudwatch:GetMetricData", "cloudwatch:ListMetrics"]
           Resource = ["*"]
         },
+        local.aurora_rds_connect_statement,
       ]
     })
 

@@ -19,7 +19,11 @@ final case class PostgresConfig(
     url: String,
     user: String,
     password: String,
-    maxPoolSize: Int
+    maxPoolSize: Int,
+    iamAuthEnabled: Boolean = false,
+    sslMode: String = "",
+    sslRootCert: String = "",
+    iamRegion: String = "us-east-1"
 )
 
 /** Selects the metrics store backend: "postgres" (durable, golden default) or "in-memory". */
@@ -56,7 +60,12 @@ object AppConfig:
       url = pg.getString("url"),
       user = pg.getString("user"),
       password = pg.getString("password"),
-      maxPoolSize = pg.getInt("max-pool-size")
+      maxPoolSize = pg.getInt("max-pool-size"),
+      iamAuthEnabled =
+        if pg.hasPath("iam-auth-enabled") then pg.getBoolean("iam-auth-enabled") else false,
+      sslMode = if pg.hasPath("ssl-mode") then pg.getString("ssl-mode") else "",
+      sslRootCert = if pg.hasPath("ssl-root-cert") then pg.getString("ssl-root-cert") else "",
+      iamRegion = if pg.hasPath("iam-region") then pg.getString("iam-region") else "us-east-1"
     )
 
     val repository = RepositoryConfig(

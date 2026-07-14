@@ -19,19 +19,32 @@ final case class DailyMetric(eventDate: String, eventType: String, eventCount: L
 class AnalyticsDb(config: PostgresConfig):
   private val logger = LoggerFactory.getLogger(getClass)
 
-  val database: Database = Database.forURL(
-    url = config.url,
-    user = config.user,
-    password = config.password,
-    driver = "org.postgresql.Driver",
-    executor = AsyncExecutor("analytics-db", numThreads = config.maxPoolSize, queueSize = 1000)
-  )
+  private val executor =
+    AsyncExecutor("analytics-db", numThreads = config.maxPoolSize, queueSize = 1000)
+
+  // Aurora IAM auth + TLS is opt-in. When disabled (default) the durable store
+  // connects exactly as before via static password over plain org.postgresql.
+  val database: Database =
+    if config.iamAuthEnabled then
+      logger.info("Analytics DB using Aurora IAM authentication + TLS")
+      Database.forDataSource(new IamAuthDataSource(config), Some(config.maxPoolSize), executor)
+    else
+      Database.forURL(
+        url = config.url,
+        user = config.user,
+        password = config.password,
+        driver = "org.postgresql.Driver",
+        executor = executor
+      )
 
   /** Apply pending schema migrations from classpath `db/migration`. */
   def migrate(): Unit =
-    val result = Flyway
-      .configure()
-      .dataSource(config.url, config.user, config.password)
+    val flyway =
+      if config.iamAuthEnabled then
+        Flyway.configure().dataSource(new IamAuthDataSource(config))
+      else
+        Flyway.configure().dataSource(config.url, config.user, config.password)
+    val result = flyway
       .locations("classpath:db/migration")
       .load()
       .migrate()

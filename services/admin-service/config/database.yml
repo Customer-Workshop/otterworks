@@ -5,7 +5,9 @@ default: &default
   host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
   port: <%= ENV.fetch("DATABASE_PORT", 5432) %>
   username: <%= ENV.fetch("DATABASE_USER", "otterworks") %>
-  password: <%= ENV.fetch("DATABASE_PASSWORD", "otterworks") %>
+  # Static password, or a short-lived Aurora IAM token when DB_IAM_AUTH_ENABLED=true.
+  password: <%= AuroraAuth.database_password %>
+  sslmode: <%= AuroraAuth.sslmode %>
 
 development:
   <<: *default

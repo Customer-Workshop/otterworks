@@ -27,6 +27,30 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "aurora_engine_version" {
+  description = "Aurora PostgreSQL engine version (match the RDS major version for a drop-in cutover)"
+  type        = string
+  default     = "15.7"
+}
+
+variable "aurora_min_capacity" {
+  description = "Aurora Serverless v2 minimum capacity in ACUs"
+  type        = number
+  default     = 0.5
+}
+
+variable "aurora_max_capacity" {
+  description = "Aurora Serverless v2 maximum capacity in ACUs"
+  type        = number
+  default     = 4
+}
+
+variable "aurora_iam_db_users" {
+  description = "Database roles allowed to authenticate to Aurora via IAM (GRANT rds_iam in-database). Used to build rds-db:connect ARNs."
+  type        = list(string)
+  default     = ["otterworks"]
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number

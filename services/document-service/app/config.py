@@ -14,6 +14,15 @@ class Settings(BaseSettings):
     db_pool_size: int = 10
     db_max_overflow: int = 20
 
+    # Aurora IAM authentication + TLS (opt-in; defaults preserve the RDS path).
+    # When db_iam_auth_enabled is true the static password in database_url is
+    # ignored in favour of a short-lived RDS IAM token; TLS is controlled by
+    # db_ssl_mode (e.g. "require", "verify-full").
+    db_iam_auth_enabled: bool = False
+    db_ssl_mode: str = ""
+    db_ssl_root_cert: str = ""
+    db_iam_region: str = ""
+
     sns_topic_arn: str = ""
     aws_endpoint_url: str = ""
     aws_region: str = "us-east-1"

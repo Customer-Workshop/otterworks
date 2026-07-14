@@ -73,12 +73,13 @@ export class AuthService {
     if (password.length < 1) {
       return throwError(() => new Error('Invalid credentials'));
     }
+    const id = 'a0000000-0000-0000-0000-000000000001';
     const user: AuthUser = {
-      id: 'a0000000-0000-0000-0000-000000000001',
+      id,
       email,
       displayName: 'Admin User',
       role: 'admin',
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.hD5dwgrPNRTzbXa6lbA83Aru7BvQVIQc0rGVySkF1fA',
+      token: `mock-jwt-token-${id}`,
     };
     return of(user).pipe(delay(800));
   }

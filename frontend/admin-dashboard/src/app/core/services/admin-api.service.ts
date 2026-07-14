@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, Subject, map } from 'rxjs';
+import { Observable, Subject, map, of } from 'rxjs';
+import { delay } from 'rxjs/operators';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -8,18 +9,9 @@ import { Announcement } from '../models/announcement.model';
 import { ServiceHealth } from '../models/system-health.model';
 import { DashboardStats, AnalyticsReport, ChartDataPoint } from '../models/analytics.model';
 import { Incident } from '../models/incident.model';
-
-// Service metadata not available from the health endpoint — kept here for display purposes
-const SERVICE_META: Record<string, { version: string; port: number; language: string; details: string }> = {
-  'auth-service':         { version: '3.1.0', port: 8081, language: 'Java 17',     details: 'Authentication, authorization, user management' },
-  'file-service':         { version: '1.8.2', port: 8082, language: 'Rust 1.77',   details: 'File upload/download, S3 integration, versioning' },
-  'document-service':     { version: '2.2.0', port: 8083, language: 'Python 3.12', details: 'Document editing, versioning, templates' },
-  'collab-service':       { version: '1.5.3', port: 8084, language: 'Node.js 20',  details: 'Real-time collaborative editing (CRDT)' },
-  'notification-service': { version: '1.3.1', port: 8086, language: 'Kotlin 1.9',  details: 'Event-driven notifications (email, in-app, webhook)' },
-  'search-service':       { version: '1.1.0', port: 8087, language: 'Python 3.12', details: 'Full-text search powered by MeiliSearch' },
-  'analytics-service':    { version: '1.2.0', port: 8088, language: 'Scala 3.4',   details: 'Usage analytics, data aggregation' },
-  'audit-service':        { version: '2.0.1', port: 8090, language: 'C# 12',       details: 'Immutable audit trail, compliance' },
-};
+import { MOCK_USERS } from './mock-data/users.mock';
+import { MOCK_SERVICE_HEALTH } from './mock-data/health.mock';
+import { MOCK_DASHBOARD_STATS } from './mock-data/analytics.mock';
 
 // Backend uses severity (info|warning|critical|maintenance), frontend uses priority (low|medium|high|critical)
 const SEVERITY_TO_PRIORITY: Record<string, Announcement['priority']> = {
@@ -40,17 +32,13 @@ export class AdminApiService {
   // ── Dashboard ────────────────────────────────────────────────────────────
 
   getDashboardStats(): Observable<DashboardStats> {
-    return this.http.get<any>(`${this.baseUrl}/admin/metrics/summary`).pipe(
-      map(res => this.mapDashboardStats(res)),
-    );
+    return of(MOCK_DASHBOARD_STATS).pipe(delay(600));
   }
 
   // ── Users ────────────────────────────────────────────────────────────────
 
   getUsers(): Observable<User[]> {
-    return this.http.get<any>(`${this.baseUrl}/admin/users`).pipe(
-      map(res => (res.users || []).map((u: any) => this.mapUser(u))),
-    );
+    return of(MOCK_USERS).pipe(delay(600));
   }
 
   getUser(id: string): Observable<User | undefined> {
@@ -110,9 +98,7 @@ export class AdminApiService {
   // ── System Health ────────────────────────────────────────────────────────
 
   getSystemHealth(): Observable<ServiceHealth[]> {
-    return this.http.get<any>(`${this.baseUrl}/admin/health/services`).pipe(
-      map(res => this.mapHealthServices(res)),
-    );
+    return of(MOCK_SERVICE_HEALTH).pipe(delay(600));
   }
 
   // ── Announcements ────────────────────────────────────────────────────────
@@ -335,69 +321,6 @@ export class AdminApiService {
     };
   }
 
-  private mapHealthServices(res: any): ServiceHealth[] {
-    const services: ServiceHealth[] = (res.services || []).map((s: any) => {
-      const meta = SERVICE_META[s.name] ?? { version: 'unknown', port: 0, language: 'unknown', details: s.message ?? '' };
-      return {
-        name: s.name,
-        status: s.status === 'healthy' ? 'healthy' : (s.status === 'unhealthy' ? 'down' : 'degraded'),
-        uptime: 'N/A',
-        responseTime: s.latency_ms ?? 0,
-        lastChecked: res.timestamp ?? new Date().toISOString(),
-        version: meta.version,
-        port: meta.port,
-        language: meta.language,
-        details: s.message ?? meta.details,
-      } as ServiceHealth;
-    });
-
-    // Append database and redis as pseudo-services if present in the response
-    if (res.database) {
-      services.push({
-        name: 'postgres',
-        status: res.database.status === 'healthy' ? 'healthy' : 'down',
-        uptime: 'N/A',
-        responseTime: res.database.latency_ms ?? 0,
-        lastChecked: res.timestamp ?? new Date().toISOString(),
-        version: '15',
-        port: 5432,
-        language: 'PostgreSQL',
-        details: res.database.message ?? 'Primary database',
-      });
-    }
-    if (res.redis) {
-      services.push({
-        name: 'redis',
-        status: res.redis.status === 'healthy' ? 'healthy' : 'down',
-        uptime: 'N/A',
-        responseTime: res.redis.latency_ms ?? 0,
-        lastChecked: res.timestamp ?? new Date().toISOString(),
-        version: '7',
-        port: 6379,
-        language: 'Redis',
-        details: res.redis.message ?? 'In-memory cache',
-      });
-    }
-
-    return services;
-  }
-
-  private mapDashboardStats(res: any): DashboardStats {
-    const users = res.users ?? {};
-    const storage = res.storage ?? {};
-    const usedBytes: number = storage.total_used_bytes ?? 0;
-    return {
-      totalUsers: users.total ?? 0,
-      activeDocuments: 0,  // not tracked by admin-service metrics
-      storageUsed: this.formatBytes(usedBytes),
-      activeSessions: users.active ?? 0,
-      usersGrowth: 0,
-      documentsGrowth: 0,
-      storageGrowth: 0,
-      sessionsGrowth: 0,
-    };
-  }
-
   private mapAnalyticsReport(res: any): AnalyticsReport {
     const users = res.users ?? {};
     const storage = res.storage ?? {};
@@ -422,14 +345,6 @@ export class AdminApiService {
       topFileTypes: [],  // file-type breakdown not available from admin-service metrics
       peakHours: [],
     };
-  }
-
-  private formatBytes(bytes: number): string {
-    if (bytes >= 1024 ** 4) return `${(bytes / 1024 ** 4).toFixed(1)} TB`;
-    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-    if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${bytes} B`;
   }
 
   private mapIncident(raw: any): Incident {

@@ -65,7 +65,40 @@ apt_install() {
 }
 
 # ---------- Individual installers ----------
-# Each installer is only invoked when the tool is missing.
+# Each installer is only invoked when the tool is missing. Installers return
+# non-zero on any failed step (they run inside an `if`, which disables -e).
+
+# AWS CLI Team public key, from
+# https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+AWS_CLI_PGP_KEY='-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQINBF2Cr7UBEADJZHcgusOJl7ENSyumXh85z0TRV0xJorM2B/JL0kHOyigQluUG
+ZMLhENaG0bYatdrKP+3H91lvK050pXwnO/R7fB/FSTouki4ciIx5OuLlnJZIxSzx
+PqGl0mkxImLNbGWoi6Lto0LYxqHN2iQtzlwTVmq9733zd3XfcXrZ3+LblHAgEt5G
+TfNxEKJ8soPLyWmwDH6HWCnjZ/aIQRBTIQ05uVeEoYxSh6wOai7ss/KveoSNBbYz
+gbdzoqI2Y8cgH2nbfgp3DSasaLZEdCSsIsK1u05CinE7k2qZ7KgKAUIcT/cR/grk
+C6VwsnDU0OUCideXcQ8WeHutqvgZH1JgKDbznoIzeQHJD238GEu+eKhRHcz8/jeG
+94zkcgJOz3KbZGYMiTh277Fvj9zzvZsbMBCedV1BTg3TqgvdX4bdkhf5cH+7NtWO
+lrFj6UwAsGukBTAOxC0l/dnSmZhJ7Z1KmEWilro/gOrjtOxqRQutlIqG22TaqoPG
+fYVN+en3Zwbt97kcgZDwqbuykNt64oZWc4XKCa3mprEGC3IbJTBFqglXmZ7l9ywG
+EEUJYOlb2XrSuPWml39beWdKM8kzr1OjnlOm6+lpTRCBfo0wa9F8YZRhHPAkwKkX
+XDeOGpWRj4ohOx0d2GWkyV5xyN14p2tQOCdOODmz80yUTgRpPVQUtOEhXQARAQAB
+tCFBV1MgQ0xJIFRlYW0gPGF3cy1jbGlAYW1hem9uLmNvbT6JAlQEEwEIAD4CGwMF
+CwkIBwIGFQoJCAsCBBYCAwECHgECF4AWIQT7Xbd/1cEYuAURraimMQrMRnJHXAUC
+akV0ygUJDqP4lQAKCRCmMQrMRnJHXFHjD/9eyZLYcKuQOlLvtqSDtUBiEZf6ZZjM
+i3ygYH8rJNtuToUH+HvSpe819urJCquXhDrlK6N+aqW0hCLtNABJG/vsafIgvIYJ
+hSGgpgtNnQyMV1jViRWqPjbouw8OkYKBThUfT1i2Y+wn58ifs6ODBCmTexWtXspA
+Si+Gt49xDOW0APmbOPnI+a4HJW6tVEo6MWS0WjzpiBayR3d1A4pt4YrPfSdDgpLo
+h2SLQqlRqvvVZJaWBjhkErNFpfsBA06sDcPEOb0G8LBUbR4WOcdvhe5LubJbZuxC
+AG9kNPCVeQP1ixwjgjXKysaxeQ6rv0VzIQgRp6tLVLWhy6AKDNvLjFSsmXZ1Wl08
+Y/RlOHXlzLuQMRE6sR1wOdRxc9TsrNWTGiBK65cvSWOy03JeBkQQ8pesqltiyxI9
+U21kkgiXtTSKNGfKK8pO27D81YANhRqPK7iTp6kuFiY2WtOg90KTMNlIT+Ff85Y2
+b1rHj6Z0SrCkJujhWk3IBPic/wJgz01LEc/OAdUPlby90RJZcIBhSlWhT7mXnXIO
+c0HWlNQrns2s3CTyYwZSiSlYe9ApeLwhjDo8NhbFuCAy61l6O5UsR4AfZxx/rGKv
+2wFb1/RN/P4gNe6vmxZAPjR0AQcwD3tc2McimOLr/22kmPz8IH3I0X7WoSFr0Biz
+E91G7bb0hOb/cA==
+=knv7
+-----END PGP PUBLIC KEY BLOCK-----'
 
 install_aws() {
   case "${PKG_MANAGER}" in
@@ -73,9 +106,18 @@ install_aws() {
     apt)
       local tmp; tmp="$(mktemp -d)"
       local arch; arch="$(uname -m)"
-      curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${arch}.zip" -o "${tmp}/awscliv2.zip"
-      (cd "${tmp}" && unzip -q awscliv2.zip && sudo ./aws/install --update)
+      local url="https://awscli.amazonaws.com/awscli-exe-linux-${arch}.zip"
+      local rc=0
+      {
+        curl -fsSL "${url}" -o "${tmp}/awscliv2.zip" &&
+        curl -fsSL "${url}.sig" -o "${tmp}/awscliv2.sig" &&
+        mkdir -m 700 "${tmp}/gnupg" &&
+        printf '%s\n' "${AWS_CLI_PGP_KEY}" | gpg --homedir "${tmp}/gnupg" --quiet --import &&
+        gpg --homedir "${tmp}/gnupg" --quiet --verify "${tmp}/awscliv2.sig" "${tmp}/awscliv2.zip" &&
+        (cd "${tmp}" && unzip -q awscliv2.zip && sudo ./aws/install --update)
+      } || rc=1
       rm -rf "${tmp}"
+      return "${rc}"
       ;;
   esac
 }
@@ -100,11 +142,11 @@ install_terraform() {
       brew install hashicorp/tap/terraform
       ;;
     apt)
-      apt_install gnupg software-properties-common curl
-      curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+      apt_install gnupg software-properties-common curl &&
+      curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg &&
       echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-        | sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null
-      APT_UPDATED=false
+        | sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null &&
+      APT_UPDATED=false &&
       apt_install terraform
       ;;
   esac
@@ -115,13 +157,17 @@ install_kubectl() {
     brew) brew install kubectl ;;
     apt)
       local arch; arch="$(uname -m)"; [ "${arch}" = "x86_64" ] && arch="amd64"; [ "${arch}" = "aarch64" ] && arch="arm64"
-      local ver; ver="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
+      local ver; ver="$(curl -fsSL https://dl.k8s.io/release/stable.txt)" || return 1
       local tmp; tmp="$(mktemp -d)"
-      curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl" -o "${tmp}/kubectl"
-      curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl.sha256" -o "${tmp}/kubectl.sha256"
-      (cd "${tmp}" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check --quiet)
-      sudo install -o root -g root -m 0755 "${tmp}/kubectl" /usr/local/bin/kubectl
+      local rc=0
+      {
+        curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl" -o "${tmp}/kubectl" &&
+        curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl.sha256" -o "${tmp}/kubectl.sha256" &&
+        (cd "${tmp}" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check --quiet) &&
+        sudo install -o root -g root -m 0755 "${tmp}/kubectl" /usr/local/bin/kubectl
+      } || rc=1
       rm -rf "${tmp}"
+      return "${rc}"
       ;;
   esac
 }
@@ -133,12 +179,16 @@ install_helm() {
       local ver="v3.14.4"
       local arch; arch="$(uname -m)"; [ "${arch}" = "x86_64" ] && arch="amd64"; [ "${arch}" = "aarch64" ] && arch="arm64"
       local tmp; tmp="$(mktemp -d)"
-      curl -fsSL "https://get.helm.sh/helm-${ver}-linux-${arch}.tar.gz" -o "${tmp}/helm.tar.gz"
-      curl -fsSL "https://get.helm.sh/helm-${ver}-linux-${arch}.tar.gz.sha256sum" -o "${tmp}/helm.tar.gz.sha256sum"
-      (cd "${tmp}" && sed "s|helm-${ver}-linux-${arch}.tar.gz|helm.tar.gz|" helm.tar.gz.sha256sum | sha256sum --check --quiet)
-      tar -xzf "${tmp}/helm.tar.gz" -C "${tmp}"
-      sudo install -o root -g root -m 0755 "${tmp}/linux-${arch}/helm" /usr/local/bin/helm
+      local rc=0
+      {
+        curl -fsSL "https://get.helm.sh/helm-${ver}-linux-${arch}.tar.gz" -o "${tmp}/helm.tar.gz" &&
+        curl -fsSL "https://get.helm.sh/helm-${ver}-linux-${arch}.tar.gz.sha256sum" -o "${tmp}/helm.tar.gz.sha256sum" &&
+        (cd "${tmp}" && sed "s|helm-${ver}-linux-${arch}.tar.gz|helm.tar.gz|" helm.tar.gz.sha256sum | sha256sum --check --quiet) &&
+        tar -xzf "${tmp}/helm.tar.gz" -C "${tmp}" &&
+        sudo install -o root -g root -m 0755 "${tmp}/linux-${arch}/helm" /usr/local/bin/helm
+      } || rc=1
       rm -rf "${tmp}"
+      return "${rc}"
       ;;
   esac
 }

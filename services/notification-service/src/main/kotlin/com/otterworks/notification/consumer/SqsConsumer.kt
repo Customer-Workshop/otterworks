@@ -5,6 +5,7 @@ import aws.sdk.kotlin.services.sqs.model.DeleteMessageRequest
 import aws.sdk.kotlin.services.sqs.model.ReceiveMessageRequest
 import com.otterworks.notification.config.AppConfig
 import com.otterworks.notification.model.SqsNotificationMessage
+import com.otterworks.notification.model.TimestampNormalizer
 import com.otterworks.notification.service.NotificationService
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
@@ -114,8 +115,9 @@ class SqsConsumer(
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
-        val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
-        return try {
+        val strict = chaosActive("chaos:notification-service:consumer_strict_schema")
+        val parser = if (strict) strictJson else json
+        val message = try {
             // Try parsing as direct message first
             parser.decodeFromString<SqsNotificationMessage>(body)
         } catch (_: Exception) {
@@ -127,6 +129,14 @@ class SqsConsumer(
                 logger.error(e) { "Failed to parse message body" }
                 null
             }
+        }
+        // Normalize legacy epoch timestamps to RFC 3339. The strict parser
+        // intentionally rejects non-string timestamps, so no normalization
+        // is applied on that path.
+        return if (message != null && !strict) {
+            message.copy(timestamp = TimestampNormalizer.normalize(message.timestamp))
+        } else {
+            message
         }
     }
 }

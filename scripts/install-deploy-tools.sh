@@ -116,9 +116,12 @@ install_kubectl() {
     apt)
       local arch; arch="$(uname -m)"; [ "${arch}" = "x86_64" ] && arch="amd64"; [ "${arch}" = "aarch64" ] && arch="arm64"
       local ver; ver="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
-      curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl" -o /tmp/kubectl
-      sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
-      rm -f /tmp/kubectl
+      local tmp; tmp="$(mktemp -d)"
+      curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl" -o "${tmp}/kubectl"
+      curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl.sha256" -o "${tmp}/kubectl.sha256"
+      (cd "${tmp}" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check --quiet)
+      sudo install -o root -g root -m 0755 "${tmp}/kubectl" /usr/local/bin/kubectl
+      rm -rf "${tmp}"
       ;;
   esac
 }
@@ -126,7 +129,17 @@ install_kubectl() {
 install_helm() {
   case "${PKG_MANAGER}" in
     brew) brew install helm ;;
-    apt) curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash ;;
+    apt)
+      local ver="v3.14.4"
+      local arch; arch="$(uname -m)"; [ "${arch}" = "x86_64" ] && arch="amd64"; [ "${arch}" = "aarch64" ] && arch="arm64"
+      local tmp; tmp="$(mktemp -d)"
+      curl -fsSL "https://get.helm.sh/helm-${ver}-linux-${arch}.tar.gz" -o "${tmp}/helm.tar.gz"
+      curl -fsSL "https://get.helm.sh/helm-${ver}-linux-${arch}.tar.gz.sha256sum" -o "${tmp}/helm.tar.gz.sha256sum"
+      (cd "${tmp}" && sed "s|helm-${ver}-linux-${arch}.tar.gz|helm.tar.gz|" helm.tar.gz.sha256sum | sha256sum --check --quiet)
+      tar -xzf "${tmp}/helm.tar.gz" -C "${tmp}"
+      sudo install -o root -g root -m 0755 "${tmp}/linux-${arch}/helm" /usr/local/bin/helm
+      rm -rf "${tmp}"
+      ;;
   esac
 }
 
@@ -176,8 +189,8 @@ for entry in "${TOOLS[@]}"; do
 done
 
 echo
-if [ "${#MISSING[@]}" -gt 0 ]; then
-  err "The following tools are still missing: ${MISSING[*]}"
+if [ -n "${MISSING[*]-}" ]; then
+  err "The following tools are still missing: ${MISSING[*]-}"
   exit 1
 fi
 

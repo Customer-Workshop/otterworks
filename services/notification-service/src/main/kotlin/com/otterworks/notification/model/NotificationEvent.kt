@@ -14,6 +14,8 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Accepts both RFC 3339 strings and legacy Unix epoch numbers (seconds or
  * milliseconds) for timestamp fields, normalizing them to ISO-8601 strings.
+ * Numeric coercion only applies under a lenient [kotlinx.serialization.json.Json]
+ * configuration; strict parsers still require string timestamps.
  */
 object FlexibleTimestampSerializer : KSerializer<String> {
     override val descriptor: SerialDescriptor =
@@ -21,6 +23,7 @@ object FlexibleTimestampSerializer : KSerializer<String> {
 
     override fun deserialize(decoder: Decoder): String {
         val jsonDecoder = decoder as? JsonDecoder ?: return decoder.decodeString()
+        if (!jsonDecoder.json.configuration.isLenient) return jsonDecoder.decodeString()
         val primitive = jsonDecoder.decodeJsonElement().jsonPrimitive
         val raw = primitive.content
         if (primitive.isString) return raw

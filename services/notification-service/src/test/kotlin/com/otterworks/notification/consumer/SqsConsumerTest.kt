@@ -158,6 +158,19 @@ class SqsConsumerTest {
     }
 
     @Test
+    fun `strict parser still rejects numeric epoch timestamps`() {
+        val strictJson = kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = false
+            isLenient = false
+        }
+        val body = """{"eventType":"file_shared","timestamp":1704067200}"""
+
+        kotlin.test.assertFailsWith<Exception> {
+            strictJson.decodeFromString<com.otterworks.notification.model.SqsNotificationMessage>(body)
+        }
+    }
+
+    @Test
     fun `parseMessage handles missing optional fields`() {
         val body = """
             {

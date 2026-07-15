@@ -1,6 +1,42 @@
 package com.otterworks.notification.model
 
+import java.time.Instant
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.jsonPrimitive
+
+/**
+ * Accepts both RFC 3339 strings and legacy Unix epoch numbers (seconds or
+ * milliseconds) for timestamp fields, normalizing them to ISO-8601 strings.
+ */
+object FlexibleTimestampSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("FlexibleTimestamp", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): String {
+        val jsonDecoder = decoder as? JsonDecoder ?: return decoder.decodeString()
+        val primitive = jsonDecoder.decodeJsonElement().jsonPrimitive
+        val raw = primitive.content
+        if (primitive.isString) return raw
+        val epoch = raw.toLongOrNull() ?: return raw
+        val instant = if (epoch >= 100_000_000_000L) {
+            Instant.ofEpochMilli(epoch)
+        } else {
+            Instant.ofEpochSecond(epoch)
+        }
+        return instant.toString()
+    }
+
+    override fun serialize(encoder: Encoder, value: String) {
+        encoder.encodeString(value)
+    }
+}
 
 @Serializable
 enum class EventType {
@@ -25,6 +61,7 @@ data class NotificationEvent(
     val title: String = "",
     val message: String = "",
     val metadata: Map<String, String> = emptyMap(),
+    @Serializable(with = FlexibleTimestampSerializer::class)
     val timestamp: String,
 )
 
@@ -39,6 +76,7 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    @Serializable(with = FlexibleTimestampSerializer::class)
     val timestamp: String,
 )
 

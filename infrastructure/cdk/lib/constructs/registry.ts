@@ -17,9 +17,13 @@ export interface RegistryProps {
 
 /**
  * Shared ECR registry — a core shared service consumed regardless of which
- * managed compute the platform uses (ECS Fargate / App Runner). Each repository
- * has scan-on-push, KMS encryption, and lifecycle rules (keep last 10 tagged,
- * expire untagged after 7 days). emptyOnDelete + DESTROY for clean teardown.
+ * managed compute the platform uses (ECS Fargate / App Runner). Repository
+ * names are account/region-global, so this construct lives in the once-deployed
+ * SharedServicesStack rather than per-environment. Each repository has
+ * scan-on-push, KMS encryption, IMMUTABLE tags (so a tag can never be
+ * overwritten — the same immutable image is promoted dev -> prod), and
+ * lifecycle rules (keep last 10 tagged, expire untagged after 7 days).
+ * emptyOnDelete + DESTROY for clean teardown.
  */
 export class Registry extends Construct {
   public readonly repositories: Map<string, ecr.Repository> = new Map();
@@ -34,7 +38,7 @@ export class Registry extends Construct {
       const repository = new ecr.Repository(this, constructId, {
         repositoryName: repoName,
         imageScanOnPush: true,
-        imageTagMutability: ecr.TagMutability.MUTABLE,
+        imageTagMutability: ecr.TagMutability.IMMUTABLE,
         encryption: ecr.RepositoryEncryption.KMS,
         encryptionKey: props.encryptionKey,
         removalPolicy: cdk.RemovalPolicy.DESTROY,

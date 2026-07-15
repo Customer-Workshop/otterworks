@@ -1,11 +1,11 @@
 import * as cdk from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import {
   Encryption,
   Networking,
   Logging,
-  Registry,
   IamBaseline,
   ParameterExports,
 } from './constructs';
@@ -15,6 +15,17 @@ export interface LandingZoneStackProps extends cdk.StackProps {
    * Environment name (dev, staging, prod).
    */
   readonly environment: 'dev' | 'staging' | 'prod';
+
+  /**
+   * Account-global GitHub OIDC provider from the shared services stack that this
+   * environment's deploy role trusts.
+   */
+  readonly oidcProvider: iam.IOpenIdConnectProvider;
+
+  /**
+   * Allowed OIDC `sub` claim patterns for the deploy role (least privilege).
+   */
+  readonly allowedGithubSubjects: string[];
 
   /**
    * CIDR block for the shared VPC.
@@ -41,11 +52,6 @@ export interface LandingZoneStackProps extends cdk.StackProps {
   readonly domainName?: string;
 
   /**
-   * ECR repository names to create in the shared registry.
-   */
-  readonly ecrRepositoryNames: string[];
-
-  /**
    * CloudWatch log retention for flow logs and CloudTrail, in days.
    * @default 30
    */
@@ -53,23 +59,24 @@ export interface LandingZoneStackProps extends cdk.StackProps {
 }
 
 /**
- * OtterWorks landing zone — the core shared AWS services every environment
- * builds on. Provisions a shared KMS key, a managed-service-ready VPC (with
- * endpoints + flow logs), a central log archive + CloudTrail, a shared ECR
- * registry, and an IAM/OIDC deploy baseline. All shared handles are published
- * to SSM + CfnOutputs so the downstream fully-managed platform stack (ECS
- * Fargate, RDS, ElastiCache, OpenSearch, DynamoDB, S3, SQS/SNS, Cognito, ALB,
- * CloudFront) can consume them.
+ * OtterWorks per-environment landing zone — the shared foundation each
+ * environment builds on. Provisions a shared KMS key, a managed-service-ready
+ * VPC (with endpoints + flow logs), a central log archive + CloudTrail, and an
+ * IAM deploy role trusting the account-global GitHub OIDC provider. Account/
+ * region-global singletons (ECR registry, OIDC provider) live in the
+ * once-deployed SharedServicesStack.
+ *
+ * All shared handles are published to SSM + CfnOutputs so the downstream
+ * fully-managed platform stack (ECS Fargate, RDS, ElastiCache, OpenSearch,
+ * DynamoDB, S3, SQS/SNS, Cognito, ALB, CloudFront) can consume them.
  *
  * Wiring order follows data flow: Encryption → Networking → Logging →
- * Registry → IamBaseline → ParameterExports. All resources use
- * RemovalPolicy.DESTROY for clean `cdk destroy`.
+ * IamBaseline → ParameterExports. All resources use RemovalPolicy.DESTROY.
  */
 export class LandingZoneStack extends cdk.Stack {
   public readonly encryption: Encryption;
   public readonly networking: Networking;
   public readonly logging: Logging;
-  public readonly registry: Registry;
   public readonly iamBaseline: IamBaseline;
   public readonly exports: ParameterExports;
 
@@ -102,15 +109,11 @@ export class LandingZoneStack extends cdk.Stack {
       logRetention,
     });
 
-    // ── Shared container registry ───────────────────────────────────────────
-    this.registry = new Registry(this, 'Registry', {
-      repositoryNames: props.ecrRepositoryNames,
-      encryptionKey: this.encryption.key,
-    });
-
-    // ── IAM / OIDC deploy baseline (+ optional DNS zone) ────────────────────
+    // ── IAM deploy role (trusts shared OIDC) + optional DNS zone ────────────
     this.iamBaseline = new IamBaseline(this, 'IamBaseline', {
       environment: props.environment,
+      oidcProvider: props.oidcProvider,
+      allowedGithubSubjects: props.allowedGithubSubjects,
       domainName: props.domainName,
     });
 
@@ -121,7 +124,6 @@ export class LandingZoneStack extends cdk.Stack {
       appSecurityGroup: this.networking.appSecurityGroup,
       encryptionKey: this.encryption.key,
       logArchiveBucket: this.logging.logArchiveBucket,
-      repositories: this.registry.repositories,
       deployRole: this.iamBaseline.deployRole,
       hostedZone: this.iamBaseline.hostedZone,
     });

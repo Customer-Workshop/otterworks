@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
+import { SharedServicesStack } from '../lib/shared-services-stack';
 import { LandingZoneStack } from '../lib/landing-zone-stack';
 
 const app = new cdk.App();
@@ -8,6 +9,9 @@ const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
 };
+
+const githubOrg = 'Cognition-Partner-Workshops';
+const githubRepo = 'otterworks';
 
 // One shared ECR repository per OtterWorks service + frontend image.
 const ecrRepositoryNames = [
@@ -27,7 +31,16 @@ const ecrRepositoryNames = [
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
-// Dev
+// Account/region-global shared services — deployed ONCE (ECR + GitHub OIDC).
+// ────────────────────────────────────────────────────────────────────────────
+const shared = new SharedServicesStack(app, 'OtterworksSharedServices', {
+  env,
+  ecrRepositoryNames,
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Per-environment landing zones. Non-prod deploy roles trust any ref; prod is
+// restricted to the protected `main` branch (least privilege).
 // ────────────────────────────────────────────────────────────────────────────
 new LandingZoneStack(app, 'OtterworksLandingZoneDev', {
   env,
@@ -36,12 +49,10 @@ new LandingZoneStack(app, 'OtterworksLandingZoneDev', {
   maxAzs: 2,
   natGateways: 1,
   logRetentionDays: 30,
-  ecrRepositoryNames,
+  oidcProvider: shared.oidcProvider,
+  allowedGithubSubjects: [`repo:${githubOrg}/${githubRepo}:*`],
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Staging
-// ────────────────────────────────────────────────────────────────────────────
 new LandingZoneStack(app, 'OtterworksLandingZoneStaging', {
   env,
   environment: 'staging',
@@ -49,12 +60,10 @@ new LandingZoneStack(app, 'OtterworksLandingZoneStaging', {
   maxAzs: 2,
   natGateways: 1,
   logRetentionDays: 30,
-  ecrRepositoryNames,
+  oidcProvider: shared.oidcProvider,
+  allowedGithubSubjects: [`repo:${githubOrg}/${githubRepo}:*`],
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Production
-// ────────────────────────────────────────────────────────────────────────────
 new LandingZoneStack(app, 'OtterworksLandingZoneProd', {
   env,
   environment: 'prod',
@@ -62,7 +71,11 @@ new LandingZoneStack(app, 'OtterworksLandingZoneProd', {
   maxAzs: 3,
   natGateways: 2,
   logRetentionDays: 90,
-  ecrRepositoryNames,
+  oidcProvider: shared.oidcProvider,
+  allowedGithubSubjects: [
+    `repo:${githubOrg}/${githubRepo}:ref:refs/heads/main`,
+    `repo:${githubOrg}/${githubRepo}:environment:prod`,
+  ],
 });
 
 app.synth();

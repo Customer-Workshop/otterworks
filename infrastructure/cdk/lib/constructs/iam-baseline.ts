@@ -10,17 +10,18 @@ export interface IamBaselineProps {
   readonly environment: string;
 
   /**
-   * GitHub org that owns the deploying repositories (for the OIDC trust).
-   * @default 'Cognition-Partner-Workshops'
+   * Account-global GitHub Actions OIDC provider (created once in the shared
+   * services stack) that this environment's deploy role trusts.
    */
-  readonly githubOrg?: string;
+  readonly oidcProvider: iam.IOpenIdConnectProvider;
 
   /**
-   * GitHub repo allowed to assume the deploy role via OIDC. Supports the
-   * `owner/repo:ref:*` subject glob.
-   * @default 'otterworks'
+   * Allowed OIDC `sub` claim patterns (least privilege). Each entry is a full
+   * subject such as `repo:org/repo:ref:refs/heads/main` or a glob like
+   * `repo:org/repo:*`. Non-prod environments typically allow any ref; prod
+   * should be restricted to a protected branch.
    */
-  readonly githubRepo?: string;
+  readonly allowedGithubSubjects: string[];
 
   /**
    * Optional public DNS zone for the platform's public endpoints
@@ -30,9 +31,10 @@ export interface IamBaselineProps {
 }
 
 /**
- * IAM foundation the downstream managed-platform deploys use: a GitHub Actions
- * OIDC provider and a deploy role assumable from the platform repo (no
- * long-lived credentials), plus an optional Route 53 public hosted zone.
+ * Per-environment IAM foundation the downstream managed-platform deploys use: a
+ * deploy role assumable from the platform repo via the shared GitHub OIDC
+ * provider (no long-lived credentials), with the OIDC subject scoped by
+ * `allowedGithubSubjects`. Optionally creates a Route 53 public hosted zone.
  */
 export class IamBaseline extends Construct {
   public readonly deployRole: iam.Role;
@@ -41,27 +43,19 @@ export class IamBaseline extends Construct {
   constructor(scope: Construct, id: string, props: IamBaselineProps) {
     super(scope, id);
 
-    const githubOrg = props.githubOrg ?? 'Cognition-Partner-Workshops';
-    const githubRepo = props.githubRepo ?? 'otterworks';
-
-    const oidcProvider = new iam.OpenIdConnectProvider(this, 'GithubOidc', {
-      url: 'https://token.actions.githubusercontent.com',
-      clientIds: ['sts.amazonaws.com'],
-    });
-
     this.deployRole = new iam.Role(this, 'PlatformDeployRole', {
       roleName: `otterworks-${props.environment}-platform-deploy`,
       description:
         'Assumed by GitHub Actions (via OIDC) to deploy the managed platform stack',
       maxSessionDuration: cdk.Duration.hours(1),
       assumedBy: new iam.WebIdentityPrincipal(
-        oidcProvider.openIdConnectProviderArn,
+        props.oidcProvider.openIdConnectProviderArn,
         {
           StringEquals: {
             'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
           },
           StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${githubOrg}/${githubRepo}:*`,
+            'token.actions.githubusercontent.com:sub': props.allowedGithubSubjects,
           },
         },
       ),
@@ -72,9 +66,7 @@ export class IamBaseline extends Construct {
       new iam.PolicyStatement({
         sid: 'AssumeCdkBootstrapRoles',
         actions: ['sts:AssumeRole'],
-        resources: [
-          `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-*`,
-        ],
+        resources: [`arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-*`],
       }),
     );
 

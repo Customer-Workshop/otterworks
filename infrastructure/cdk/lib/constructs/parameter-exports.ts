@@ -1,6 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -17,7 +16,6 @@ export interface ParameterExportsProps {
   readonly appSecurityGroup: ec2.ISecurityGroup;
   readonly encryptionKey: kms.IKey;
   readonly logArchiveBucket: s3.IBucket;
-  readonly repositories: Map<string, ecr.Repository>;
   readonly deployRole: cdk.aws_iam.IRole;
   readonly hostedZone?: route53.IPublicHostedZone;
 }
@@ -77,15 +75,6 @@ export class ParameterExports extends Construct {
       props.deployRole.roleArn,
       'Platform deploy role ARN (GitHub OIDC)',
     );
-
-    for (const [name, repo] of props.repositories) {
-      const slug = name.replace(/\//g, '-');
-      this.put(
-        `ecr/${slug}-uri`,
-        repo.repositoryUri,
-        `ECR repository URI for ${name}`,
-      );
-    }
 
     if (props.hostedZone) {
       this.put(

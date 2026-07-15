@@ -58,8 +58,7 @@ log "Using package manager: ${PKG_MANAGER}"
 APT_UPDATED=false
 apt_install() {
   if [ "${APT_UPDATED}" = false ]; then
-    sudo apt-get update -y
-    APT_UPDATED=true
+    sudo apt-get update -y && APT_UPDATED=true
   fi
   sudo apt-get install -y "$@"
 }

@@ -201,8 +201,16 @@ reap_expired() {
     [ -n "${item}" ] || continue
     local id exp
     id="$(echo "${item}"  | jq -r '.id.S // (.PK.S | sub("^TENANT#";""))')"
-    exp="$(echo "${item}" | jq -r '.expires_at.N // "0"')"
+    # Missing/blank expires_at => tenant is reserved or still deploying (its
+    # expiry is written only by ctl_set_active on a successful deploy). Never
+    # treat that as "expired at epoch 0"; skip it so an in-flight tenant is not
+    # torn down mid-setup.
+    exp="$(echo "${item}" | jq -r '.expires_at.N // empty')"
     [ -n "${id}" ] || continue
+    if ! [[ "${exp}" =~ ^[0-9]+$ ]]; then
+      log "tenant '${id}' has no valid expires_at; skipping (not reaping)"
+      continue
+    fi
     if [ "$(( exp + grace ))" -lt "${now}" ]; then
       count=$(( count + 1 ))
       gc_tenant "${id}" "expired(expires_at=${exp}+grace=${grace}<now=${now})"

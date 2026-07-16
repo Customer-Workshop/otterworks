@@ -50,13 +50,18 @@ function isApiPath(url: string): boolean {
 // Header keys that could pollute Object.prototype if copied onto a plain object.
 const UNSAFE_HEADER_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
-// Re-parse the client request line against a fixed base and forward only its
-// path + query. This guarantees the upstream host is always the configured
-// gateway (never influenced by an absolute URL in the request) and strips any
-// user-controlled scheme/authority before it reaches the outbound request.
-function forwardPath(rawUrl: string | undefined): string {
-  const parsed = new URL(rawUrl ?? "/", "http://localhost");
-  return parsed.pathname + parsed.search;
+// Build the outbound target strictly on top of the trusted gateway origin,
+// copying over only the client request's path + query. Because the destination
+// URL is derived from `gateway` (never from the request), the upstream host,
+// scheme, and port can't be influenced by a client-supplied absolute URL - the
+// path always starts with "/" so it can only ever be a relative sub-path of the
+// gateway origin.
+function forwardTarget(gateway: URL, rawUrl: string | undefined): URL {
+  const requested = new URL(rawUrl ?? "/", "http://localhost");
+  const target = new URL(gateway.toString());
+  target.pathname = requested.pathname;
+  target.search = requested.search;
+  return target;
 }
 
 // Copy upstream response headers onto a prototype-less object, dropping keys
@@ -110,10 +115,8 @@ async function serveStatic(
 function proxyRequest(gateway: URL, req: http.IncomingMessage, res: http.ServerResponse): void {
   const transport = gateway.protocol === "https:" ? https : http;
   const proxyReq = transport.request(
+    forwardTarget(gateway, req.url),
     {
-      hostname: gateway.hostname,
-      port: gateway.port || (gateway.protocol === "https:" ? 443 : 80),
-      path: forwardPath(req.url),
       method: req.method,
       headers: {
         ...req.headers,
@@ -141,10 +144,7 @@ function proxyUpgrade(
   head: Buffer
 ): void {
   const transport = gateway.protocol === "https:" ? https : http;
-  const proxyReq = transport.request({
-    hostname: gateway.hostname,
-    port: gateway.port || (gateway.protocol === "https:" ? 443 : 80),
-    path: forwardPath(req.url),
+  const proxyReq = transport.request(forwardTarget(gateway, req.url), {
     method: req.method,
     headers: { ...req.headers, host: gateway.host },
   });

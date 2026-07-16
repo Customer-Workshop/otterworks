@@ -32,6 +32,25 @@ import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { ViewMode, SortField } from "@/types";
 
+// Run a delete operation over a list of ids, tallying successes and failures
+// so a single failure doesn't abort the rest of a bulk action.
+async function runDeletions(
+  ids: string[],
+  remove: (id: string) => Promise<unknown>
+): Promise<{ succeeded: number; failed: number }> {
+  let succeeded = 0;
+  let failed = 0;
+  for (const id of ids) {
+    try {
+      await remove(id);
+      succeeded++;
+    } catch {
+      failed++;
+    }
+  }
+  return { succeeded, failed };
+}
+
 function FileBrowserContent() {
   const [searchParams] = useSearchParams();
   const folderId = searchParams.get("folder");
@@ -199,33 +218,20 @@ function FileBrowserContent() {
     if (ids.length === 0) return;
     const folderIds = folders.filter((f) => selectedIds.has(f.id)).map((f) => f.id);
     const fileIds = ids.filter((id) => !folderIds.includes(id));
-    let trashedFiles = 0;
-    let deletedFolders = 0;
-    let failed = 0;
-    for (const id of fileIds) {
-      try {
-        await filesApi.delete(id);
-        trashedFiles++;
-      } catch {
-        failed++;
-      }
-    }
-    for (const id of folderIds) {
-      try {
-        await filesApi.deleteFolder(id);
-        deletedFolders++;
-      } catch {
-        failed++;
-      }
-    }
+
+    const fileResult = await runDeletions(fileIds, (id) => filesApi.delete(id));
+    const folderResult = await runDeletions(folderIds, (id) => filesApi.deleteFolder(id));
+
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["storage", "usage"] });
+
     const msgs: string[] = [];
-    if (trashedFiles > 0) msgs.push(`${trashedFiles} file${trashedFiles > 1 ? "s" : ""} moved to trash`);
-    if (deletedFolders > 0) msgs.push(`${deletedFolders} folder${deletedFolders > 1 ? "s" : ""} deleted`);
+    if (fileResult.succeeded > 0) msgs.push(`${fileResult.succeeded} file${fileResult.succeeded > 1 ? "s" : ""} moved to trash`);
+    if (folderResult.succeeded > 0) msgs.push(`${folderResult.succeeded} folder${folderResult.succeeded > 1 ? "s" : ""} deleted`);
     if (msgs.length > 0) toast.success(msgs.join(", "));
+    const failed = fileResult.failed + folderResult.failed;
     if (failed > 0) toast.error(`${failed} item${failed > 1 ? "s" : ""} failed to delete`);
     clearSelection();
   };

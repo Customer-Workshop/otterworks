@@ -111,44 +111,75 @@ function DocumentsContent() {
       </div>
 
       {/* Document listing */}
-      {isLoading ? (
-        <PageLoader />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title={searchQuery ? "No matching documents" : "No documents yet"}
-          description={
-            searchQuery
-              ? "Try a different search term"
-              : "Create your first document to start collaborating"
-          }
-          action={
-            !searchQuery
-              ? {
-                  label: "Create document",
-                  onClick: () => createMutation.mutate("Untitled document"),
-                }
-              : undefined
-          }
-        />
-      ) : (
-        <div
-          className={cn(
-            viewMode === "grid"
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-              : "space-y-1"
-          )}
-        >
-          {filtered.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              view={viewMode}
-              onDelete={(id) => deleteMutation.mutate(id)}
-            />
-          ))}
-        </div>
+      <DocumentListing
+        isLoading={isLoading}
+        documents={filtered}
+        searchQuery={searchQuery}
+        viewMode={viewMode}
+        onCreate={() => createMutation.mutate("Untitled document")}
+        onDelete={(id) => deleteMutation.mutate(id)}
+      />
+    </div>
+  );
+}
+
+function DocumentListing({
+  isLoading,
+  documents,
+  searchQuery,
+  viewMode,
+  onCreate,
+  onDelete,
+}: Readonly<{
+  isLoading: boolean;
+  documents: Document[];
+  searchQuery: string;
+  viewMode: ViewMode;
+  onCreate: () => void;
+  onDelete: (id: string) => void;
+}>) {
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (documents.length === 0) {
+    return (
+      <EmptyState
+        icon={FileText}
+        title={searchQuery ? "No matching documents" : "No documents yet"}
+        description={
+          searchQuery
+            ? "Try a different search term"
+            : "Create your first document to start collaborating"
+        }
+        action={
+          searchQuery
+            ? undefined
+            : {
+                label: "Create document",
+                onClick: onCreate,
+              }
+        }
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        viewMode === "grid"
+          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          : "space-y-1"
       )}
+    >
+      {documents.map((doc) => (
+        <DocumentCard
+          key={doc.id}
+          document={doc}
+          view={viewMode}
+          onDelete={onDelete}
+        />
+      ))}
     </div>
   );
 }

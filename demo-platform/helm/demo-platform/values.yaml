@@ -1,0 +1,78 @@
+# ------------------------------------------------------------------------------
+# demo-platform — default values
+#
+# Everything here is a safe, non-secret default or a placeholder. Two things MUST
+# be supplied at deploy time:
+#   - awsAccountId : the 12-digit account that owns the IRSA role (NEVER commit a
+#                    real account id — it is intentionally empty here).
+#   - secret.*     : the dashboard passcode + session secret (+ optional DB
+#                    creds), supplied via -f secrets.yaml / --set-file (see
+#                    README) so they never land on an argv or in git.
+# ------------------------------------------------------------------------------
+
+# REQUIRED at deploy time. Empty on purpose — templates `fail` if unset so a real
+# account id is never hardcoded in tracked files.
+awsAccountId: ""
+
+environment: dev
+awsRegion: us-east-1
+eksCluster: otterworks-dev
+platformNamespace: otterworks-platform
+controlTable: otterworks-demo-control
+
+# Runner image used by dashboard-launched Jobs AND the reaper CronJob (OP=reap).
+# Placeholder — override at deploy: --set runnerImage=<registry>/otterworks/demo-runner:<tag>
+runnerImage: REGISTRY/otterworks/demo-runner:latest
+
+serviceAccount:
+  name: demo-ops-dashboard
+  # IRSA role name; defaults to otterworks-demo-ops-dashboard-<environment>.
+  roleName: ""
+
+dashboard:
+  # Placeholder — override: --set dashboard.image=<registry>/otterworks/demo-ops-dashboard:<tag>
+  image: REGISTRY/otterworks/demo-ops-dashboard:latest
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  host: ops.otterworks.xyz
+  containerPort: 3000
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingress:
+  className: nginx
+  # Extra annotations (e.g. cert-manager cluster issuer) can be added here.
+  annotations: {}
+
+reaper:
+  enabled: true
+  schedule: "*/15 * * * *"
+  # Host suffix used when GC-ing tenant Route53 records / building URLs.
+  hostSuffix: demo.otterworks.xyz
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Templated Secret `demo-ops-dashboard`. Values are NOT committed — pass them at
+# deploy via -f secrets.yaml or --set-file (see README). dashboardPasscode and
+# sessionSecret are required when create=true. dbPassword/jwtSecret/secretKeyBase
+# are optional; supply them so the reaper (and dashboard-launched runner Jobs)
+# can drop/create per-tenant databases.
+secret:
+  create: true
+  dashboardPasscode: ""
+  sessionSecret: ""
+  dbPassword: ""
+  jwtSecret: ""
+  secretKeyBase: ""

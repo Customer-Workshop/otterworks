@@ -1,0 +1,49 @@
+# PgBouncer (transaction pooling) in front of the shared RDS instance so total
+# DB connections stay bounded as tenants scale. Point tenant DB URLs at
+# pgbouncer.otterworks-platform:6432 instead of the RDS endpoint directly.
+# See docs/scaling.md §3.
+#
+# Credentials are supplied at apply time via the `pgbouncer-auth` Secret (NOT
+# committed): keys RDS_HOST, RDS_PORT, DB_USER, DB_PASSWORD. Create it with:
+#   kubectl -n otterworks-platform create secret generic pgbouncer-auth \
+#     --from-literal=RDS_HOST=... --from-literal=RDS_PORT=5432 \
+#     --from-literal=DB_USER=otterworks_admin --from-literal=DB_PASSWORD="$DB_PASSWORD"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: otterworks-platform
+  labels: { app: pgbouncer }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: pgbouncer } }
+  template:
+    metadata:
+      labels: { app: pgbouncer }
+    spec:
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.22.1
+          ports: [{ containerPort: 6432 }]
+          env:
+            - { name: DB_HOST,   valueFrom: { secretKeyRef: { name: pgbouncer-auth, key: RDS_HOST } } }
+            - { name: DB_PORT,   valueFrom: { secretKeyRef: { name: pgbouncer-auth, key: RDS_PORT } } }
+            - { name: DB_USER,   valueFrom: { secretKeyRef: { name: pgbouncer-auth, key: DB_USER } } }
+            - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: pgbouncer-auth, key: DB_PASSWORD } } }
+            - { name: POOL_MODE, value: transaction }
+            - { name: MAX_CLIENT_CONN, value: "1000" }
+            - { name: DEFAULT_POOL_SIZE, value: "20" }
+            - { name: AUTH_TYPE, value: scram-sha-256 }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: otterworks-platform
+  labels: { app: pgbouncer }
+spec:
+  selector: { app: pgbouncer }
+  ports: [{ port: 6432, targetPort: 6432 }]

@@ -178,22 +178,40 @@ export async function checkout(input: CheckoutInput): Promise<Tenant> {
     last_seen_at: now,
   };
 
+  // Guard against re-checking-out a LIVE tenant. The lock above only serialises
+  // concurrent checkout attempts and auto-expires (DynamoDB TTL) ~15min later,
+  // so without this a still-active tenant would become checkout-able once the
+  // reservation lock lapsed, clobbering its META and double-deploying. Only
+  // proceed when there is no existing record, or it is a spent one (free/error).
   try {
-    await doc().send(new PutCommand({ TableName: table(), Item: item }));
+    await doc().send(
+      new PutCommand({
+        TableName: table(),
+        Item: item,
+        ConditionExpression:
+          "attribute_not_exists(PK) OR #s = :free OR #s = :error",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":free": "free", ":error": "error" },
+      }),
+    );
   } catch (err) {
-    // Compensating delete: if the tenant record write fails, release the lock
-    // so the id stays recoverable instead of being wedged until TTL expiry.
-    await doc()
-      .send(
-        new DeleteCommand({
-          TableName: table(),
-          Key: { PK: pkLock(input.id), SK: SK_LOCK },
-        }),
-      )
-      .catch(() => undefined);
+    // Undo the reservation lock on any failure so the id stays recoverable
+    // instead of being wedged until the lock's TTL lapses — whether the tenant
+    // is live (conditional check failed) or the META write failed transiently.
+    await releaseLock(input.id).catch(() => undefined);
+    if (err instanceof Error && err.name === "ConditionalCheckFailedException") {
+      throw new LockConflictError(input.id);
+    }
     throw err;
   }
   return itemToTenant(item);
+}
+
+/** Delete the reservation lock so the id can be checked out again immediately. */
+export async function releaseLock(id: string): Promise<void> {
+  await doc().send(
+    new DeleteCommand({ TableName: table(), Key: { PK: pkLock(id), SK: SK_LOCK } }),
+  );
 }
 
 export async function setStatus(id: string, status: TenantStatus): Promise<void> {

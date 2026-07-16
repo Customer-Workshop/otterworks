@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-dashboard
+  namespace: {{ .Values.platformNamespace }}
+  labels:
+    {{- include "demo-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ops-dashboard
+spec:
+  replicas: {{ .Values.dashboard.replicas }}
+  selector:
+    matchLabels:
+      {{- include "demo-platform.dashboardSelectorLabels" . | nindent 6 }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "demo-platform.dashboardSelectorLabels" . | nindent 8 }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: dashboard
+          image: {{ .Values.dashboard.image | quote }}
+          imagePullPolicy: {{ .Values.dashboard.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.dashboard.containerPort }}
+          env:
+            - name: DASHBOARD_PASSCODE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.serviceAccount.name }}
+                  key: DASHBOARD_PASSCODE
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.serviceAccount.name }}
+                  key: SESSION_SECRET
+            - name: CONTROL_TABLE
+              value: {{ .Values.controlTable | quote }}
+            - name: AWS_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: EKS_CLUSTER
+              value: {{ .Values.eksCluster | quote }}
+            - name: PLATFORM_NAMESPACE
+              value: {{ .Values.platformNamespace | quote }}
+            - name: RUNNER_IMAGE
+              value: {{ .Values.runnerImage | quote }}
+            - name: HOST_SUFFIX
+              value: {{ .Values.hostSuffix | quote }}
+            {{- if .Values.repoHttpsUrl }}
+            - name: REPO_HTTPS_URL
+              value: {{ .Values.repoHttpsUrl | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.dashboard.resources | nindent 12 }}

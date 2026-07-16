@@ -27,7 +27,12 @@ export interface RunnerJobInput {
 // Secret keys the runner needs at runtime. These are referenced via
 // envFrom/valueFrom (never placed on argv) so the passcode / DB password / AWS
 // creds are not exposed in the Job spec's command line.
-const RUNNER_SECRET_ENV_KEYS = ["DB_PASSWORD", "JWT_SECRET", "SECRET_KEY_BASE"] as const;
+const RUNNER_SECRET_ENV_KEYS = [
+  "DB_PASSWORD",
+  "JWT_SECRET",
+  "SECRET_KEY_BASE",
+  "GITHUB_TOKEN",
+] as const;
 
 function jobName(action: RunnerAction, id: string, epoch: number): string {
   // Contract: deploy-<id>-<epoch> / teardown-<id>-<epoch>; inject uses inject-bug.
@@ -39,31 +44,23 @@ export function jobNamePrefixes(id: string): string[] {
   return [`deploy-${id}-`, `teardown-${id}-`, `inject-bug-${id}-`];
 }
 
-function scriptCommand(input: RunnerJobInput): string[] {
-  const id = input.tenantId;
-  switch (input.action) {
-    case "deploy": {
-      const args = ["scripts/deploy-tenant.sh", id, "--tier", input.tier ?? "A"];
-      if (input.imageTag) args.push("--image-tag", input.imageTag);
-      args.push("--ttl", input.ttl ?? "8h");
-      args.push("--host-suffix", input.hostSuffix ?? env.hostSuffix);
-      return args;
-    }
-    case "teardown":
-      return ["scripts/teardown-tenant.sh", id];
-    case "inject":
-      return ["scripts/inject-bug.sh", id, input.scenario ?? "reset"];
-  }
-}
-
 function buildEnv(input: RunnerJobInput): k8s.V1EnvVar[] {
+  // The runner image ENTRYPOINT (entrypoint.sh) dispatches on OP and does the
+  // branch checkout + control-table status/audit writes. We drive it purely
+  // through env — never by overriding the container command — so that plumbing
+  // always runs. Env names must match the entrypoint contract exactly.
   const plain: k8s.V1EnvVar[] = [
+    { name: "OP", value: input.action },
     { name: "CONTROL_TABLE", value: env.controlTable },
     { name: "AWS_REGION", value: env.awsRegion },
+    { name: "EKS_CLUSTER", value: env.eksCluster },
+    { name: "HOST_SUFFIX", value: input.hostSuffix ?? env.hostSuffix },
     { name: "TENANT_ID", value: input.tenantId },
+    { name: "ACTOR", value: "dashboard" },
   ];
   if (input.branch) plain.push({ name: "TENANT_BRANCH", value: input.branch });
-  if (input.tier) plain.push({ name: "TENANT_TIER", value: input.tier });
+  if (env.repoHttpsUrl) plain.push({ name: "REPO_HTTPS_URL", value: env.repoHttpsUrl });
+  if (input.tier) plain.push({ name: "TIER", value: input.tier });
   if (input.imageTag) plain.push({ name: "IMAGE_TAG", value: input.imageTag });
   if (input.ttl) plain.push({ name: "TTL", value: input.ttl });
   if (input.scenario) plain.push({ name: "SCENARIO", value: input.scenario });
@@ -114,7 +111,8 @@ export function buildRunnerJob(input: RunnerJobInput, epoch: number): k8s.V1Job 
             {
               name: "runner",
               image,
-              command: scriptCommand(input),
+              // No command override: the image ENTRYPOINT (entrypoint.sh) runs
+              // and dispatches on the OP env var set in buildEnv().
               env: buildEnv(input),
             },
           ],

@@ -63,6 +63,7 @@ function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/login" ||
     pathname === "/api/auth/login" ||
+    pathname === "/api/health" ||
     pathname === "/favicon.ico"
   );
 }

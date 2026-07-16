@@ -159,7 +159,7 @@ I recommend (A) now and (B) only if you specifically want the consolidation. **N
 
 ## 10. Rollout plan (phased; child agents in parallel where marked ⑂)
 
-1. **DNS/TLS foundation:** register `otterworks.xyz`, hosted zone, install external-dns + cert-manager, wildcard cert. Move smitches/preston onto real hostnames.
+1. **DNS/TLS foundation:** register `otterworks.xyz`, hosted zone, install external-dns + cert-manager, wildcard cert. Move any existing tenants onto real hostnames.
 2. **Control table** (`otterworks-demo-control`) + Terraform/CDK for it.
 3. ⑂ **Dashboard backend** (API + passcode auth + state store client).
 4. ⑂ **Dashboard frontend** (table UI + reaper panel + audit).

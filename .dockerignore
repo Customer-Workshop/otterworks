@@ -1,0 +1,13 @@
+# Build-artifact / VCS excludes for the demo-platform runner image, which uses
+# the repo root as its build context (COPY . /workspace). All entries here are
+# regenerated or irrelevant inside a container image, so excluding them keeps the
+# context small and the runner image lean. App services build from their own
+# subdirectories and are unaffected.
+.git
+**/node_modules
+**/.terraform
+**/.terraform.lock.hcl
+**/.next
+**/*.tfstate
+**/*.tfstate.*
+**/npm-debug.log*

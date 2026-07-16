@@ -1,0 +1,56 @@
+{{- if .Values.reaper.enabled }}
+# Reaper v2 CronJob — runs the runner image with OP=reap on the schedule from
+# values (which the dashboard keeps in sync with CONFIG#reaper). It reuses the
+# dashboard SA (scoped IRSA + the ClusterRole above) so it can GC tenant
+# namespaces/DBs/S3/DynamoDB/Route53 and write the control table.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-reaper
+  namespace: {{ .Values.platformNamespace }}
+  labels:
+    {{- include "demo-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reaper
+spec:
+  schedule: {{ .Values.reaper.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            {{- include "demo-platform.labels" . | nindent 12 }}
+            app.kubernetes.io/component: reaper
+        spec:
+          serviceAccountName: {{ .Values.serviceAccount.name }}
+          restartPolicy: Never
+          containers:
+            - name: reaper
+              image: {{ .Values.runnerImage | quote }}
+              env:
+                - name: OP
+                  value: reap
+                - name: CONTROL_TABLE
+                  value: {{ .Values.controlTable | quote }}
+                - name: AWS_REGION
+                  value: {{ .Values.awsRegion | quote }}
+                - name: EKS_CLUSTER
+                  value: {{ .Values.eksCluster | quote }}
+                - name: HOST_SUFFIX
+                  value: {{ .Values.reaper.hostSuffix | quote }}
+                {{- if .Values.secret.dbPassword }}
+                # DB_PASSWORD lets the reaper drop per-tenant databases + list
+                # orphan DBs (from the demo-ops-dashboard Secret; never on argv).
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.serviceAccount.name }}
+                      key: DB_PASSWORD
+                {{- end }}
+              resources:
+                {{- toYaml .Values.reaper.resources | nindent 16 }}
+{{- end }}

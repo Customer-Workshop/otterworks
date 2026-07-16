@@ -39,7 +39,11 @@ require_bins aws kubectl jq
 NS="$(tenant_namespace "${ATTENDEE_ID}")"
 T_DB_NAME="$(tenant_db_name "${ATTENDEE_ID}")"
 
-aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null 2>&1 || true
+# In-cluster (runner Job) use the pod ServiceAccount + RBAC; only build a
+# kubeconfig when running standalone (see deploy-tenant.sh for the rationale).
+if [ -z "${KUBERNETES_SERVICE_HOST:-}" ]; then
+  aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null 2>&1 || true
+fi
 
 # --- Step 1: delete the namespace (everything in it) FIRST ---
 # This stops every application pod so nothing is still holding a connection to

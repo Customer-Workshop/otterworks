@@ -59,7 +59,12 @@ REAPER_ENABLED_DEFAULT="${REAPER_ENABLED_DEFAULT:-false}"
 
 require_bins aws kubectl jq
 
-aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" >/dev/null 2>&1 || true
+# In-cluster (reaper CronJob) use the pod ServiceAccount + RBAC; only build a
+# kubeconfig when running standalone (auth'ing as the IRSA role would need an
+# aws-auth mapping the cluster doesn't have).
+if [ -z "${KUBERNETES_SERVICE_HOST:-}" ]; then
+  aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" >/dev/null 2>&1 || true
+fi
 
 # ------------------------------------------------------------------------------
 # Per-resource GC helpers (all idempotent / best-effort)

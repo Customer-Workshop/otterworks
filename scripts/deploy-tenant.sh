@@ -88,7 +88,12 @@ EXPIRES_EPOCH="$(date -u -d "${EXPIRES_AT}" +%s 2>/dev/null || date -u -jf %Y-%m
 log "Tenant '${ATTENDEE_ID}' -> namespace ${NS} (tier ${TIER}, ttl ${TTL} -> expires ${EXPIRES_AT})"
 
 # ---------- kubectl + shared infra outputs ----------
-aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null
+# In-cluster (runner Job) the pod's ServiceAccount already has cluster access via
+# RBAC; writing a kubeconfig would instead auth as the IRSA IAM role, which is
+# not mapped in aws-auth. Only build a kubeconfig when running outside the cluster.
+if [ -z "${KUBERNETES_SERVICE_HOST:-}" ]; then
+  aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null
+fi
 log "Loading shared application-infra Terraform outputs..."
 load_infra_outputs
 

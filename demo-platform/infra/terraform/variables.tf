@@ -51,3 +51,17 @@ variable "shared_s3_bucket_prefix" {
   type    = string
   default = "otterworks-"
 }
+
+# S3 bucket holding the application Terraform state; the runner reads it via
+# `terraform output` (load_infra_outputs) to resolve RDS/S3/DynamoDB coordinates.
+variable "terraform_state_bucket" {
+  type    = string
+  default = "otterworks-terraform-state"
+}
+
+# ECR repository namespace for the app service images; deploy-tenant.sh resolves
+# the newest tag per service via ecr:DescribeImages.
+variable "ecr_repo_prefix" {
+  type    = string
+  default = "otterworks"
+}

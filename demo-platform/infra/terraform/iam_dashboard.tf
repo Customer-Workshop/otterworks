@@ -86,6 +86,60 @@ data "aws_iam_policy_document" "dashboard" {
     actions   = ["iam:GetRole", "iam:UpdateAssumeRolePolicy"]
     resources = ["arn:aws:iam::${local.account_id}:role/otterworks-*"]
   }
+
+  # deploy/teardown resolve shared RDS/S3/DynamoDB coordinates by reading the
+  # application Terraform state (load_infra_outputs -> `terraform output`).
+  # Read-only: TF 1.9 S3 backend without a lock table performs no writes here.
+  statement {
+    sid       = "TerraformStateList"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::${var.terraform_state_bucket}"]
+  }
+  statement {
+    sid       = "TerraformStateRead"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::${var.terraform_state_bucket}/*"]
+  }
+
+  # deploy-tenant.sh resolves the newest image tag per service from ECR.
+  statement {
+    sid       = "EcrAuth"
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+  statement {
+    sid    = "EcrResolveTags"
+    effect = "Allow"
+    actions = [
+      "ecr:DescribeImages", "ecr:DescribeRepositories",
+      "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer",
+    ]
+    resources = ["arn:aws:ecr:${var.aws_region}:${local.account_id}:repository/${var.ecr_repo_prefix}/*"]
+  }
+
+  # Reaper orphan sweep enumerates all app tables/buckets to compare against the
+  # control table. List* are account-level (no resource ARN).
+  statement {
+    sid       = "ReaperEnumerate"
+    effect    = "Allow"
+    actions   = ["dynamodb:ListTables", "s3:ListAllMyBuckets"]
+    resources = ["*"]
+  }
+
+  # Reaper GC of per-tenant Route53 records (host-based routing). Scoped to
+  # hosted-zone record changes; list actions are account-level.
+  statement {
+    sid    = "ReaperRoute53"
+    effect = "Allow"
+    actions = [
+      "route53:ListHostedZonesByName", "route53:ListHostedZones",
+      "route53:ListResourceRecordSets", "route53:ChangeResourceRecordSets",
+    ]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "dashboard" {

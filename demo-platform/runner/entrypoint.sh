@@ -159,9 +159,12 @@ main() {
   # shellcheck source=/dev/null
   source "${REPO_DIR}/demo-platform/lib/control-common.sh"
 
-  # Build kubeconfig for in-cluster ops (deploy/teardown scripts also do this,
-  # but inject/reset/reap rely on it being present).
-  aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" >/dev/null 2>&1 || true
+  # kubectl/helm auth: in-cluster use the pod ServiceAccount + RBAC (auth'ing as
+  # the IRSA IAM role would require an aws-auth mapping this cluster lacks); only
+  # write a kubeconfig when running standalone.
+  if [ -z "${KUBERNETES_SERVICE_HOST:-}" ]; then
+    aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" >/dev/null 2>&1 || true
+  fi
 
   case "${OP}" in
     deploy)   run_deploy ;;

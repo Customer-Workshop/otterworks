@@ -172,12 +172,12 @@ function ToggleRow({
   description,
   checked,
   onChange,
-}: {
+}: Readonly<{
   label: string;
   description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
-}) {
+}>) {
   return (
     <div className="flex items-center justify-between py-2">
       <div>

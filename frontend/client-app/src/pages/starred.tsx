@@ -180,12 +180,12 @@ function ViewBtn({
   current,
   onClick,
   icon: Icon,
-}: {
+}: Readonly<{
   mode: ViewMode;
   current: ViewMode;
   onClick: () => void;
   icon: typeof LayoutGrid;
-}) {
+}>) {
   return (
     <button
       onClick={onClick}

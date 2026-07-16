@@ -231,13 +231,13 @@ function StatCard({
   value,
   subtitle,
   color,
-}: {
+}: Readonly<{
   icon: typeof FolderOpen;
   label: string;
   value: string;
   subtitle?: string;
   color: "blue" | "purple" | "green" | "orange";
-}) {
+}>) {
   const colorClasses = {
     blue: "bg-blue-50 text-blue-600",
     purple: "bg-purple-50 text-purple-600",
@@ -265,7 +265,7 @@ function StatCard({
   );
 }
 
-function ActivityRow({ item }: { item: ActivityItem }) {
+function ActivityRow({ item }: Readonly<{ item: ActivityItem }>) {
   const iconMap: Record<string, string> = {
     upload: "text-blue-600",
     edit: "text-green-600",

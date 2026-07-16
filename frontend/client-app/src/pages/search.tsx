@@ -175,7 +175,7 @@ function SearchContent() {
   );
 }
 
-function SearchResultRow({ result }: { result: SearchResult }) {
+function SearchResultRow({ result }: Readonly<{ result: SearchResult }>) {
   const href =
     result.type === "document"
       ? `/documents/${result.id}`

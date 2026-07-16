@@ -184,12 +184,12 @@ function TrashRow({
   onRestore,
   onDelete,
   isRestoring,
-}: {
+}: Readonly<{
   item: FileItem;
   onRestore: () => void;
   onDelete: () => void;
   isRestoring: boolean;
-}) {
+}>) {
   const Icon = getTrashIcon(item);
 
   return (

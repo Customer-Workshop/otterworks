@@ -119,10 +119,10 @@ const notificationColors: Record<string, string> = {
 function NotificationRow({
   notification,
   onMarkRead,
-}: {
+}: Readonly<{
   notification: Notification;
   onMarkRead: () => void;
-}) {
+}>) {
   const Icon = notificationIcons[notification.type] || Bell;
   const color = notificationColors[notification.type] || "text-gray-600 bg-gray-100";
 

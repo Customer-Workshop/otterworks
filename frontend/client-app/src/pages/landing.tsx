@@ -88,10 +88,10 @@ export default function Home() {
 function FeatureCard({
   title,
   description,
-}: {
+}: Readonly<{
   title: string;
   description: string;
-}) {
+}>) {
   return (
     <div className="p-6 bg-white rounded-xl border border-gray-200 hover:shadow-md transition">
       <h3 className="text-base font-semibold text-gray-900 mb-2">{title}</h3>

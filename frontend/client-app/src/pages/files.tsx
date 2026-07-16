@@ -533,12 +533,12 @@ function ViewModeButton({
   current,
   onClick,
   icon: Icon,
-}: {
+}: Readonly<{
   mode: ViewMode;
   current: ViewMode;
   onClick: () => void;
   icon: typeof LayoutGrid;
-}) {
+}>) {
   return (
     <button
       onClick={onClick}
@@ -560,13 +560,13 @@ function SortableHeader({
   current,
   onSort,
   className,
-}: {
+}: Readonly<{
   field: SortField;
   label: string;
   current: { field: SortField; direction: "asc" | "desc" };
   onSort: (field: SortField) => void;
   className?: string;
-}) {
+}>) {
   const isActive = current.field === field;
   return (
     <button

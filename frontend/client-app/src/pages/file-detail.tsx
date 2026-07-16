@@ -216,7 +216,9 @@ function FileDetailContent() {
                   src={presignedUrl}
                   controls
                   className="max-w-full max-h-[500px] rounded-lg"
-                />
+                >
+                  <track kind="captions" />
+                </video>
               ) : isPdf ? (
                 <PdfFilePreview presignedUrl={presignedUrl} />
               ) : isText ? (
@@ -399,11 +401,11 @@ function InfoRow({
   icon: Icon,
   label,
   value,
-}: {
+}: Readonly<{
   icon: typeof User;
   label: string;
   value: string;
-}) {
+}>) {
   return (
     <div className="flex items-start gap-3">
       <Icon size={16} className="text-gray-400 mt-0.5" />
@@ -415,7 +417,7 @@ function InfoRow({
   );
 }
 
-function FileIcon({ mimeType }: { mimeType: string }) {
+function FileIcon({ mimeType }: Readonly<{ mimeType: string }>) {
   if (mimeType.startsWith("image/"))
     return <ImageIcon size={24} className="text-otter-600" />;
   if (mimeType.startsWith("video/"))

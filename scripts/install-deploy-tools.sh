@@ -108,6 +108,7 @@ install_aws() {
       local url="https://awscli.amazonaws.com/awscli-exe-linux-${arch}.zip"
       local rc=0
       {
+        apt_install curl gnupg unzip &&
         curl -fsSL "${url}" -o "${tmp}/awscliv2.zip" &&
         curl -fsSL "${url}.sig" -o "${tmp}/awscliv2.sig" &&
         mkdir -m 700 "${tmp}/gnupg" &&

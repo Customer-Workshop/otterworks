@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -177,7 +178,21 @@ export async function checkout(input: CheckoutInput): Promise<Tenant> {
     last_seen_at: now,
   };
 
-  await doc().send(new PutCommand({ TableName: table(), Item: item }));
+  try {
+    await doc().send(new PutCommand({ TableName: table(), Item: item }));
+  } catch (err) {
+    // Compensating delete: if the tenant record write fails, release the lock
+    // so the id stays recoverable instead of being wedged until TTL expiry.
+    await doc()
+      .send(
+        new DeleteCommand({
+          TableName: table(),
+          Key: { PK: pkLock(input.id), SK: SK_LOCK },
+        }),
+      )
+      .catch(() => undefined);
+    throw err;
+  }
   return itemToTenant(item);
 }
 

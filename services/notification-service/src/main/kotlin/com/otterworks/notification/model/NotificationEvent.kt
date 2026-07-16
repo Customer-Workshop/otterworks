@@ -1,6 +1,42 @@
 package com.otterworks.notification.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.jsonPrimitive
+import java.time.Instant
+
+/**
+ * Accepts timestamps as either RFC 3339 strings or Unix epoch numbers
+ * (seconds or milliseconds), normalizing numeric values to ISO-8601 strings.
+ * Legacy service versions emit epoch integers.
+ */
+object FlexibleTimestampSerializer : KSerializer<String> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("FlexibleTimestamp", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: String) = encoder.encodeString(value)
+
+    override fun deserialize(decoder: Decoder): String {
+        val raw = if (decoder is JsonDecoder) {
+            decoder.decodeJsonElement().jsonPrimitive.content
+        } else {
+            decoder.decodeString()
+        }
+        val epoch = raw.toLongOrNull() ?: return raw
+        val instant = if (epoch >= 100_000_000_000L) {
+            Instant.ofEpochMilli(epoch)
+        } else {
+            Instant.ofEpochSecond(epoch)
+        }
+        return instant.toString()
+    }
+}
 
 @Serializable
 enum class EventType {
@@ -39,6 +75,7 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    @Serializable(with = FlexibleTimestampSerializer::class)
     val timestamp: String,
 )
 

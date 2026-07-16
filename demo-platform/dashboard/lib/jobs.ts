@@ -117,7 +117,7 @@ export function buildRunnerJob(input: RunnerJobInput, epoch: number): k8s.V1Job 
 
 /** Create the runner Job in the platform namespace. Returns the Job name. */
 export async function createRunnerJob(input: RunnerJobInput): Promise<string> {
-  const epoch = Date.now();
+  const epoch = Math.floor(Date.now() / 1000);
   const job = buildRunnerJob(input, epoch);
   await batch().createNamespacedJob(env.platformNamespace, job);
   return job.metadata?.name ?? jobName(input.action, input.tenantId, epoch);

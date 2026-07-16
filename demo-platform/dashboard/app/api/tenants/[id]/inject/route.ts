@@ -18,7 +18,13 @@ export const POST = withSession(async (req: NextRequest, { actor, params }) => {
   const tenant = await getTenant(id);
   if (!tenant) return error(404, "not found");
 
+  let jobName: string;
+  try {
+    jobName = await createRunnerJob({ action: "inject", tenantId: id, scenario });
+  } catch {
+    return json({ ok: false, warning: "inject job not enqueued (runner not configured)" }, 202);
+  }
+
   await appendAudit({ tenantId: id, action: "inject", actor, detail: `scenario=${scenario}` });
-  const jobName = await createRunnerJob({ action: "inject", tenantId: id, scenario });
   return json({ ok: true, job: jobName });
 });

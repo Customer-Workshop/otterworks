@@ -1,0 +1,14 @@
+apiVersion: v2
+name: demo-platform
+description: >-
+  OtterWorks Demo Platform control plane — the Ops Dashboard, its scoped RBAC +
+  IRSA service account, and the reaper v2 CronJob — deployed into the
+  otterworks-platform namespace on the shared otterworks-dev EKS cluster.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - otterworks
+  - demo-platform
+  - control-plane
+home: https://github.com/Cognition-Partner-Workshops/otterworks

@@ -95,12 +95,9 @@ class SqsConsumer(
                                 logger.debug { "Deleted SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message, removing from queue: ${msg.messageId}" }
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
+                                // Do not delete: SQS redrive policy moves the message to
+                                // the DLQ after maxReceiveCount failed receives.
+                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
                             }
                         } catch (e: Exception) {
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }

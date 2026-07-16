@@ -19,7 +19,10 @@ export function error(status: number, message: string): NextResponse {
 export function withSession(
   handler: (req: NextRequest, ctx: { actor: string; params?: Record<string, string> }) => Promise<NextResponse>,
 ) {
-  return async (req: NextRequest, routeCtx?: { params?: Record<string, string> }) => {
+  return async (
+    req: NextRequest,
+    routeCtx: { params: Promise<Record<string, string>> },
+  ) => {
     let actor: string;
     try {
       const session = requireSession(req);
@@ -30,7 +33,8 @@ export function withSession(
     }
 
     try {
-      return await handler(req, { actor, params: routeCtx?.params });
+      const params = routeCtx?.params ? await routeCtx.params : undefined;
+      return await handler(req, { actor, params });
     } catch (err) {
       return translateError(err);
     }

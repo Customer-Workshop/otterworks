@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
@@ -100,11 +99,11 @@ export function clearedSessionCookie(): SessionCookieOptions {
   };
 }
 
-/** Read + validate the session token, from a NextRequest or route cookies(). */
+/** Read + validate the session token from a NextRequest. */
 export function readSession(req?: NextRequest): SessionPayload | null {
   const secret = env.sessionSecret;
   if (!secret) return null;
-  const token = req ? req.cookies.get(SESSION_COOKIE)?.value : cookies().get(SESSION_COOKIE)?.value;
+  const token = req?.cookies.get(SESSION_COOKIE)?.value;
   return verifySession(token, secret);
 }
 

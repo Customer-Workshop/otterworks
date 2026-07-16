@@ -67,9 +67,18 @@ RUN chmod +x \
       /workspace/demo-platform/runner/entrypoint.sh \
       /workspace/demo-platform/reaper/reaper.sh \
       /workspace/scripts/*.sh \
-  && git config --global --add safe.directory /workspace
+  && git config --system --add safe.directory /workspace
 
-ENV REPO_DIR=/workspace \
+# Run as a non-root user. The runner only needs to read/write /workspace and its
+# own $HOME (git/aws/kube config); it never needs root. In-cluster it uses the
+# pod ServiceAccount token, which is readable by any uid.
+RUN addgroup -S runner \
+  && adduser -S -G runner -h /home/runner runner \
+  && chown -R runner:runner /workspace /home/runner
+USER runner
+
+ENV HOME=/home/runner \
+    REPO_DIR=/workspace \
     CONTROL_TABLE=otterworks-demo-control \
     AWS_REGION=us-east-1 \
     EKS_CLUSTER=otterworks-dev \

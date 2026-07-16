@@ -45,6 +45,17 @@ data "aws_iam_policy_document" "dashboard" {
     ]
   }
 
+  # Use the control table's customer-managed CMK (DynamoDB SSE). DynamoDB
+  # decrypts/encrypts items on this principal's behalf via the key.
+  statement {
+    sid    = "ControlTableKms"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey", "kms:DescribeKey",
+    ]
+    resources = [aws_kms_key.control.arn]
+  }
+
   # Reaper GC of per-tenant items in the SHARED app tables.
   statement {
     sid    = "SharedTenantDataGC"

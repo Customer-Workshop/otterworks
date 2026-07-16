@@ -18,7 +18,12 @@ export interface RunnerJobInput {
 // Secret keys the runner needs at runtime. These are referenced via
 // envFrom/valueFrom (never placed on argv) so the passcode / DB password / AWS
 // creds are not exposed in the Job spec's command line.
-const RUNNER_SECRET_ENV_KEYS = ["DB_PASSWORD", "JWT_SECRET", "SECRET_KEY_BASE"] as const;
+const RUNNER_SECRET_ENV_KEYS = [
+  "DB_PASSWORD",
+  "JWT_SECRET",
+  "SECRET_KEY_BASE",
+  "GITHUB_TOKEN",
+] as const;
 
 function jobName(action: RunnerAction, id: string, epoch: number): string {
   // Contract: deploy-<id>-<epoch> / teardown-<id>-<epoch>; inject uses inject-bug.
@@ -45,6 +50,7 @@ function buildEnv(input: RunnerJobInput): k8s.V1EnvVar[] {
     { name: "ACTOR", value: "dashboard" },
   ];
   if (input.branch) plain.push({ name: "TENANT_BRANCH", value: input.branch });
+  if (env.repoHttpsUrl) plain.push({ name: "REPO_HTTPS_URL", value: env.repoHttpsUrl });
   if (input.tier) plain.push({ name: "TIER", value: input.tier });
   if (input.imageTag) plain.push({ name: "IMAGE_TAG", value: input.imageTag });
   if (input.ttl) plain.push({ name: "TTL", value: input.ttl });

@@ -49,6 +49,10 @@ spec:
               value: {{ .Values.runnerImage | quote }}
             - name: HOST_SUFFIX
               value: {{ .Values.hostSuffix | quote }}
+            {{- if .Values.repoHttpsUrl }}
+            - name: REPO_HTTPS_URL
+              value: {{ .Values.repoHttpsUrl | quote }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /api/health

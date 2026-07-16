@@ -171,6 +171,14 @@ YAML
 ensure_irsa_trust() {
   local d="${REPO_ROOT}/infrastructure/terraform"
   local oidc_url; oidc_url="$(terraform -chdir="${REPO_ROOT}/platform/terraform" output -raw oidc_provider_url 2>/dev/null || echo "")"
+  # In-cluster the platform/terraform state isn't initialized; fall back to the
+  # cluster's OIDC issuer via the EKS API (the runner IRSA role has
+  # eks:DescribeCluster). Without this the per-namespace trust is skipped and
+  # tenant pods can't assume the shared roles (AWS ops fail).
+  if [ -z "${oidc_url}" ]; then
+    oidc_url="$(aws eks describe-cluster --name "${EKS_CLUSTER}" --region "${AWS_REGION}" \
+      --query 'cluster.identity.oidc.issuer' --output text 2>/dev/null || echo "")"
+  fi
   oidc_url="${oidc_url#https://}"
   [ -n "${oidc_url}" ] || { warn "OIDC provider URL unavailable; skipping IRSA trust update (IRSA may fail for ${NS})"; return 0; }
   local svc role sub

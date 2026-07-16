@@ -80,6 +80,11 @@ remove_irsa_trust() {
   terraform -chdir="$d" init -input=false >/dev/null 2>&1 || true
   local irsa_json; irsa_json="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
   local oidc_url; oidc_url="$(terraform -chdir="${REPO_ROOT}/platform/terraform" output -raw oidc_provider_url 2>/dev/null || echo "")"
+  # In-cluster fall back to the EKS API for the OIDC issuer (see deploy-tenant.sh).
+  if [ -z "${oidc_url}" ]; then
+    oidc_url="$(aws eks describe-cluster --name "${EKS_CLUSTER}" --region "${AWS_REGION}" \
+      --query 'cluster.identity.oidc.issuer' --output text 2>/dev/null || echo "")"
+  fi
   oidc_url="${oidc_url#https://}"
   [ -n "${oidc_url}" ] || { warn "OIDC URL unavailable; skipping IRSA trust cleanup."; return 0; }
   local svc role sub

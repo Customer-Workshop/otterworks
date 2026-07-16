@@ -53,16 +53,40 @@ err()  { echo "[runner] ERROR: $*" >&2; }
 die()  { err "$*"; exit 1; }
 
 # --- git checkout of the requested branch (deploy uses the tenant's branch) ----
+# Fetching a participant branch (workshop-<id>) needs git auth. If GITHUB_TOKEN
+# (from a Secret) and REPO_HTTPS_URL are provided, we fetch over HTTPS via a
+# credential helper that reads the token from the env — never on argv or in logs.
+# Without them we fall back to the tree baked into the image (the golden app);
+# code-level variants then rely on --image-tag rather than a branch checkout.
+configure_git_auth() {
+  git config --global --add safe.directory "${REPO_DIR}" >/dev/null 2>&1 || true
+  [ -n "${GITHUB_TOKEN:-}" ] || return 0
+  local url="${REPO_HTTPS_URL:-}"
+  [ -n "${url}" ] || return 0
+  local helper="/tmp/git-cred-helper.sh"
+  # The helper echoes the token from the env at call time; the value is never
+  # written to disk or passed on a command line.
+  cat > "${helper}" <<'HELPER'
+#!/bin/sh
+echo "username=x-access-token"
+echo "password=${GITHUB_TOKEN}"
+HELPER
+  chmod 700 "${helper}"
+  git config --global credential.helper "${helper}" >/dev/null 2>&1 || true
+  ( cd "${REPO_DIR}" && git remote set-url "${REPO_REMOTE}" "${url}" >/dev/null 2>&1 ) || true
+}
+
 checkout_branch() {
   [ -n "${TENANT_BRANCH:-}" ] || { log "no TENANT_BRANCH set; using image's bundled checkout"; return 0; }
+  configure_git_auth
   log "checking out branch ${TENANT_BRANCH} in ${REPO_DIR}"
-  git config --global --add safe.directory "${REPO_DIR}" >/dev/null 2>&1 || true
   ( cd "${REPO_DIR}" \
     && git fetch --prune "${REPO_REMOTE}" >/dev/null 2>&1 \
     && ( git checkout "${TENANT_BRANCH}" >/dev/null 2>&1 \
          || git checkout -b "${TENANT_BRANCH}" "${REPO_REMOTE}/${TENANT_BRANCH}" >/dev/null 2>&1 ) \
     && git reset --hard "${REPO_REMOTE}/${TENANT_BRANCH}" >/dev/null 2>&1 ) \
-    || err "branch checkout of ${TENANT_BRANCH} failed; continuing with current tree"
+    && { log "checked out ${TENANT_BRANCH}"; return 0; }
+  err "branch checkout of ${TENANT_BRANCH} failed; continuing with the image's bundled tree (set GITHUB_TOKEN + REPO_HTTPS_URL to enable participant-branch checkouts)"
 }
 
 # Convert a compact TTL (8h/30m/2d) to an absolute expiry epoch. Pure integer

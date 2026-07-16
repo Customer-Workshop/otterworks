@@ -137,7 +137,13 @@ build_and_push() {
   local service_dir
 
   if [[ " ${FRONTEND_SERVICES[*]} " == *" ${service} "* ]]; then
-    service_dir="${REPO_ROOT}/frontend/${service}"
+    # The web-app service's source lives in frontend/client-app; other frontend
+    # service names match their directory names.
+    if [ "${service}" = "web-app" ]; then
+      service_dir="${REPO_ROOT}/frontend/client-app"
+    else
+      service_dir="${REPO_ROOT}/frontend/${service}"
+    fi
   else
     service_dir="${REPO_ROOT}/services/${service}"
   fi

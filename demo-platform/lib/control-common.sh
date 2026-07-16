@@ -79,6 +79,16 @@ ctl_audit() {
     >/dev/null || true
 }
 
+# Release only the reservation LOCK#<id>/LOCK item (idempotent). Called after a
+# teardown frees a tenant so its id can be re-checked-out immediately instead of
+# waiting for the lock's DynamoDB TTL (~15min) to lapse. The TENANT#/META record
+# is left in place (status=free) for dashboard visibility.
+ctl_release_lock() {
+  local id="$1"
+  aws dynamodb delete-item --table-name "${CONTROL_TABLE}" --region "${AWS_REGION}" \
+    --key "$(jq -n --arg pk "LOCK#${id}" '{PK:{S:$pk},SK:{S:"LOCK"}}')" >/dev/null 2>&1 || true
+}
+
 # Delete both the TENANT#<id>/META and LOCK#<id>/LOCK items (idempotent).
 ctl_delete_tenant() {
   local id="$1"

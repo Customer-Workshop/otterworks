@@ -117,6 +117,9 @@ run_teardown() {
   "${REPO_DIR}/scripts/teardown-tenant.sh" "${TENANT_ID}" \
     || err "teardown-tenant.sh reported issues (continuing to free the id)"
   ctl_update_status "${TENANT_ID}" free
+  # Release the reservation lock so the id is immediately re-checkout-able
+  # (otherwise a new checkout waits for the lock's ~15min DynamoDB TTL).
+  ctl_release_lock "${TENANT_ID}"
   ctl_audit "${TENANT_ID}" checkin "torn down and freed"
   log "teardown complete for ${TENANT_ID}"
 }

@@ -14,6 +14,9 @@ export const env = {
   get awsRegion(): string {
     return process.env.AWS_REGION || "us-east-1";
   },
+  get eksCluster(): string {
+    return process.env.EKS_CLUSTER || "otterworks-dev";
+  },
   get platformNamespace(): string {
     return process.env.PLATFORM_NAMESPACE || "otterworks-platform";
   },

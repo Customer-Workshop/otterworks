@@ -28,6 +28,7 @@ RUN apk add --no-cache \
       jq \
       curl \
       tar \
+      unzip \
       ca-certificates \
       openssl \
       coreutils \

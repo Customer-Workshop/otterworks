@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -177,8 +178,38 @@ export async function checkout(input: CheckoutInput): Promise<Tenant> {
     last_seen_at: now,
   };
 
-  await doc().send(new PutCommand({ TableName: table(), Item: item }));
+  // Guard against re-checking-out a LIVE tenant. The lock above only serialises
+  // concurrent checkout attempts and auto-expires (DynamoDB TTL) ~15min later,
+  // so without this a still-active tenant would become checkout-able once the
+  // reservation lock lapsed, clobbering its META and double-deploying. Only
+  // proceed when there is no existing record, or it is a spent one (free/error).
+  try {
+    await doc().send(
+      new PutCommand({
+        TableName: table(),
+        Item: item,
+        ConditionExpression:
+          "attribute_not_exists(PK) OR #s = :free OR #s = :error",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":free": "free", ":error": "error" },
+      }),
+    );
+  } catch (err) {
+    if (err instanceof Error && err.name === "ConditionalCheckFailedException") {
+      // Tenant is live; undo our reservation lock so we don't leave it dangling.
+      await releaseLock(input.id).catch(() => {});
+      throw new LockConflictError(input.id);
+    }
+    throw err;
+  }
   return itemToTenant(item);
+}
+
+/** Delete the reservation lock so the id can be checked out again immediately. */
+export async function releaseLock(id: string): Promise<void> {
+  await doc().send(
+    new DeleteCommand({ TableName: table(), Key: { PK: pkLock(id), SK: SK_LOCK } }),
+  );
 }
 
 export async function setStatus(id: string, status: TenantStatus): Promise<void> {

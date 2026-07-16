@@ -20,6 +20,11 @@ eksCluster: otterworks-dev
 platformNamespace: otterworks-platform
 controlTable: otterworks-demo-control
 
+# Ingress host suffix for tenant frontends/APIs (t-<id>.<suffix> /
+# api-t-<id>.<suffix>). Defaults to the wildcard domain; override to a nip.io
+# suffix (e.g. <nlb-ip>.nip.io) to run before otterworks.xyz DNS is live.
+hostSuffix: demo.otterworks.xyz
+
 # Runner image used by dashboard-launched Jobs AND the reaper CronJob (OP=reap).
 # Placeholder — override at deploy: --set runnerImage=<registry>/otterworks/demo-runner:<tag>
 runnerImage: REGISTRY/otterworks/demo-runner:latest

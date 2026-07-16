@@ -47,6 +47,8 @@ spec:
               value: {{ .Values.platformNamespace | quote }}
             - name: RUNNER_IMAGE
               value: {{ .Values.runnerImage | quote }}
+            - name: HOST_SUFFIX
+              value: {{ .Values.hostSuffix | quote }}
           readinessProbe:
             httpGet:
               path: /api/health

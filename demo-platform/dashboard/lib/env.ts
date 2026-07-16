@@ -34,6 +34,18 @@ export const env = {
   get hostSuffix(): string {
     return process.env.HOST_SUFFIX || "demo.otterworks.xyz";
   },
+  // Services that are crash-looping BY DESIGN on the golden app (planted
+  // workshop bugs, e.g. admin-service's Rails logger bug). A tenant whose only
+  // unhealthy pods are these is still "active" — otherwise every tenant would
+  // perpetually read "error". Override with a comma-separated EXPECTED_DEGRADED_SERVICES.
+  get expectedDegradedServices(): Set<string> {
+    const raw = process.env.EXPECTED_DEGRADED_SERVICES;
+    const list = (raw ?? "admin-service")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return new Set(list);
+  },
   get sessionTtlSeconds(): number {
     const raw = process.env.SESSION_TTL_SECONDS;
     const n = raw ? Number(raw) : NaN;

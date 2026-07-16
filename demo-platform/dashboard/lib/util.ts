@@ -34,7 +34,8 @@ export function ttlToSeconds(ttl: string): number | null {
   }
 }
 
-// Short random suffix for auto-generated tenant ids.
+// Short random suffix for auto-generated tenant ids. Padded so a base-36
+// expansion with dropped trailing digits still yields a full 4 chars.
 export function randomIdSuffix(): string {
-  return Math.random().toString(36).slice(2, 6);
+  return Math.random().toString(36).slice(2, 6).padEnd(4, "0");
 }

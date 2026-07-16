@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withSession, json, error } from "@/lib/api";
 import { appendAudit, checkout } from "@/lib/control";
-import { createRunnerJob } from "@/lib/jobs";
+import { createRunnerJob, RunnerNotConfiguredError } from "@/lib/jobs";
 import { env } from "@/lib/env";
 import { isValidId, randomIdSuffix, sanitizeId, ttlToSeconds } from "@/lib/util";
 import type { CheckoutRequest, TenantTier } from "@/lib/types";
@@ -56,13 +56,12 @@ export const POST = withSession(async (req: NextRequest, { actor }) => {
       hostSuffix: env.hostSuffix,
     });
   } catch (err) {
-    await appendAudit({
-      tenantId: id,
-      action: "deploy_fail",
-      actor,
-      detail: err instanceof Error ? err.message : "job create failed",
-    });
-    return json({ tenant, warning: "deploy job not enqueued (runner not configured)" }, 202);
+    if (err instanceof RunnerNotConfiguredError) {
+      return json({ tenant, warning: "deploy job not enqueued (runner not configured)" }, 202);
+    }
+    const detail = err instanceof Error ? err.message : "job create failed";
+    await appendAudit({ tenantId: id, action: "deploy_fail", actor, detail });
+    return json({ tenant, warning: `deploy job failed to enqueue: ${detail}` }, 202);
   }
 
   return json(tenant, 201);

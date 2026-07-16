@@ -4,6 +4,15 @@ import { env } from "@/lib/env";
 
 export type RunnerAction = "deploy" | "teardown" | "inject";
 
+/** Thrown when RUNNER_IMAGE is unset, so callers can distinguish an
+ * unconfigured runner from a genuine cluster/API failure. */
+export class RunnerNotConfiguredError extends Error {
+  constructor() {
+    super("RUNNER_IMAGE is not configured");
+    this.name = "RunnerNotConfiguredError";
+  }
+}
+
 export interface RunnerJobInput {
   action: RunnerAction;
   tenantId: string;
@@ -73,7 +82,7 @@ function buildEnv(input: RunnerJobInput): k8s.V1EnvVar[] {
 /** Build the Job manifest (pure — testable without a cluster). */
 export function buildRunnerJob(input: RunnerJobInput, epoch: number): k8s.V1Job {
   const image = env.runnerImage;
-  if (!image) throw new Error("RUNNER_IMAGE is not configured");
+  if (!image) throw new RunnerNotConfiguredError();
   const name = jobName(input.action, input.tenantId, epoch);
 
   return {

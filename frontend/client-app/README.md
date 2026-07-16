@@ -1,7 +1,8 @@
 # OtterWorks Web App
 
-React 18 single-page application built with Vite, served by nginx in production, and
-wrapped by Capacitor to produce the native Android and iOS apps from the same codebase.
+React 18 single-page application built with Vite, served by nginx in production,
+wrapped by Capacitor to produce the native Android and iOS apps, and by Electron
+to produce the desktop app - all from the same codebase.
 
 ## Development
 
@@ -66,3 +67,48 @@ The API gateway's default CORS config allows the Capacitor WebView origins
 Auth tokens are kept in `localStorage` (WebView-local). If shipping to stores, consider
 moving them to `@capacitor/preferences` or a secure-storage plugin, and add real app
 icons/splash screens with `@capacitor/assets`.
+
+## Desktop (Electron)
+
+The `desktop/` directory wraps the same `dist/` bundle in an Electron shell. Unlike the
+native mobile builds, it keeps the web build's same-origin model: an embedded local
+server (mirroring `nginx/default.conf.template`) serves the SPA with the index.html
+fallback and reverse-proxies `/api/v1/*` - HTTP and WebSocket upgrades - to the API
+gateway, so no `VITE_API_BASE_URL` rebuild is needed.
+
+```bash
+npm run build          # produce dist/ first (from frontend/client-app)
+cd desktop
+npm ci
+npm start              # compile the main process and launch the app
+```
+
+| Command | Purpose |
+|---------|---------|
+| `npm start` | Build main process (`tsc`) + launch Electron |
+| `npm test` | Smoke-test the embedded static/proxy server |
+| `npm run smoke` | Boot the real app once and auto-quit (CI-friendly) |
+| `npm run dist` | Package distributables into `desktop/release/` |
+| `npm run icons` | Regenerate `assets/icon*.png` from `public/favicon.svg` |
+
+Packaging targets: dmg/zip (macOS), NSIS (Windows), AppImage/deb (Linux), each built
+for the host architecture by default. Icons are rendered from the otter favicon by
+`scripts/make-icon.js` (runs inside Electron, so it works on all three OSes):
+`icon-mac.png` sits on Apple's icon grid (transparent margins), while Windows/Linux
+use the full-bleed `icon.png`; electron-builder derives `.icns`/`.ico`/png sets from
+these at package time.
+
+Runtime env vars (main process, not baked in at build time):
+
+- `API_GATEWAY_URL` - gateway the `/api/v1` proxy targets (default `http://localhost:8080`)
+- `OTTER_DESKTOP_PORT` - preferred local port (default `34117`; kept fixed so the
+  `localStorage` auth tokens, scoped to the local origin, survive restarts)
+- `ELECTRON_START_URL` - skip the embedded server and load this URL instead, e.g.
+  `http://localhost:3000` to develop against the Vite dev server with HMR
+
+The collab editor websocket connects directly (same as the web build): default
+`ws://localhost:8085`, overridden with `VITE_COLLAB_WS_URL` when building `dist/`.
+
+Note: launching Electron from an Electron-based IDE terminal exports
+`ELECTRON_RUN_AS_NODE=1`, which breaks it; the npm scripts go through
+`scripts/launch.js`, which strips that variable.

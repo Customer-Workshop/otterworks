@@ -1,0 +1,35 @@
+# Packaging config for the OtterWorks desktop app.
+# Run `npm run dist` after building the web bundle (`npm run build:web`).
+appId: com.otterworks.app
+productName: OtterWorks
+directories:
+  output: release
+  # Holds the icon pngs (regenerate with `npm run icons`); electron-builder
+  # derives the platform formats (.icns/.ico/Linux png set) from them.
+  buildResources: assets
+files:
+  - build/**
+# Ship the client-app web build alongside the app; main.ts resolves it from
+# process.resourcesPath/dist when packaged.
+extraResources:
+  - from: ../dist
+    to: dist
+mac:
+  # Apple icon grid variant (transparent margins); full-bleed looks oversized
+  icon: assets/icon-mac.png
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - zip
+win:
+  icon: assets/icon.png
+  target:
+    - nsis
+linux:
+  icon: assets/icon.png
+  executableName: otterworks
+  category: Office
+  target:
+    - AppImage
+    - deb
+publish: null

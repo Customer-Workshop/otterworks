@@ -61,6 +61,13 @@ function forwardTarget(gateway: URL, rawUrl: string | undefined): URL {
   const target = new URL(gateway.toString());
   target.pathname = requested.pathname;
   target.search = requested.search;
+  // Allowlist guard: the outbound request may only ever reach the configured
+  // gateway origin. The scheme/host/port come from `gateway`, so this is always
+  // true, but asserting it makes the trusted destination explicit and ensures a
+  // client request can never be turned into a request to an arbitrary host.
+  if (target.origin !== gateway.origin) {
+    throw new Error(`refusing to proxy to non-gateway origin: ${target.origin}`);
+  }
   return target;
 }
 
@@ -114,8 +121,16 @@ async function serveStatic(
 
 function proxyRequest(gateway: URL, req: http.IncomingMessage, res: http.ServerResponse): void {
   const transport = gateway.protocol === "https:" ? https : http;
+  let target: URL;
+  try {
+    target = forwardTarget(gateway, req.url);
+  } catch {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "bad_request" }));
+    return;
+  }
   const proxyReq = transport.request(
-    forwardTarget(gateway, req.url),
+    target,
     {
       method: req.method,
       headers: {
@@ -144,7 +159,14 @@ function proxyUpgrade(
   head: Buffer
 ): void {
   const transport = gateway.protocol === "https:" ? https : http;
-  const proxyReq = transport.request(forwardTarget(gateway, req.url), {
+  let target: URL;
+  try {
+    target = forwardTarget(gateway, req.url);
+  } catch {
+    socket.destroy();
+    return;
+  }
+  const proxyReq = transport.request(target, {
     method: req.method,
     headers: { ...req.headers, host: gateway.host },
   });

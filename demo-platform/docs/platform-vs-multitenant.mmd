@@ -1,0 +1,55 @@
+flowchart TB
+    user([Facilitators / Attendees])
+    dns{{"Route53: *.demo.otterworks.xyz (wildcard)"}}
+
+    user --> dns
+
+    subgraph PLATFORM["PLATFORM PLANE — shared, always-on, ONE of each"]
+      direction TB
+      nlb["ingress-nginx + 1 NLB (shared L7)"]
+      certmgr["cert-manager (wildcard TLS)"]
+      extdns["external-dns (auto Route53 records)"]
+      dash["Demo Ops Dashboard\n(ns: otterworks-platform)\npasscode auth (server-side)\ncheckout / check-in"]
+      ctrl[("DynamoDB: otterworks-demo-control\n(durable state: tenants, locks,\nreaper schedule, audit)")]
+      reaper["Reaper v2 + orphan sweeper\n(schedule from control table)"]
+      rds[("1 RDS instance\n(database per tenant)")]
+      s3shared[("Shared S3 buckets\n(prefix per tenant)")]
+      ddbshared[("Shared DynamoDB tables\n(tenant key per tenant)")]
+      nodes["Autoscaled node group (SPOT)\n+ prefix delegation"]
+    end
+
+    dns --> nlb
+    dash --> ctrl
+    reaper --> ctrl
+    dash -->|deploy / teardown| MT
+    reaper -->|GC ns + DB + S3 prefix + DDB items + IAM| MT
+
+    subgraph MT["MULTI-TENANT PLANE — ephemeral, one slice per checkout"]
+      direction TB
+      subgraph T1["namespace otterworks-a01  (branch workshop-a01)"]
+        svc1["11 services + 2 frontends (replicas=1)"]
+        rm1["in-cluster Redis + MeiliSearch"]
+      end
+      subgraph T2["namespace otterworks-a02  (branch workshop-a02)"]
+        svc2["11 services + 2 frontends (replicas=1)"]
+        rm2["in-cluster Redis + MeiliSearch"]
+      end
+      subgraph TN["namespace otterworks-<id>  (branch workshop-<id>)"]
+        svcN["... up to high-tens of tenants ..."]
+      end
+    end
+
+    nlb -->|t-a01.demo.otterworks.xyz| T1
+    nlb -->|t-a02.demo.otterworks.xyz| T2
+    nlb -->|t-id.demo.otterworks.xyz| TN
+
+    T1 -->|db otterworks_a01 / prefix a01| rds
+    T1 --> s3shared
+    T1 --> ddbshared
+    T2 -->|db otterworks_a02 / prefix a02| rds
+    T2 --> s3shared
+    T2 --> ddbshared
+
+    certmgr -. issues wildcard cert .-> nlb
+    extdns -. writes records .-> dns
+    nodes -.-> MT

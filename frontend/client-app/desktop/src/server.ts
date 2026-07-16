@@ -47,6 +47,31 @@ function isApiPath(url: string): boolean {
   return url === "/api/v1" || url.startsWith("/api/v1/") || url.startsWith("/api/v1?");
 }
 
+// Header keys that could pollute Object.prototype if copied onto a plain object.
+const UNSAFE_HEADER_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+// Re-parse the client request line against a fixed base and forward only its
+// path + query. This guarantees the upstream host is always the configured
+// gateway (never influenced by an absolute URL in the request) and strips any
+// user-controlled scheme/authority before it reaches the outbound request.
+function forwardPath(rawUrl: string | undefined): string {
+  const parsed = new URL(rawUrl ?? "/", "http://localhost");
+  return parsed.pathname + parsed.search;
+}
+
+// Copy upstream response headers onto a prototype-less object, dropping keys
+// that could pollute Object.prototype, so a compromised gateway can't inject
+// prototype-polluting or unexpected control headers into our response.
+function sanitizeHeaders(headers: http.IncomingHttpHeaders): http.OutgoingHttpHeaders {
+  const clean: http.OutgoingHttpHeaders = Object.create(null);
+  for (const [key, value] of Object.entries(headers)) {
+    if (value !== undefined && !UNSAFE_HEADER_KEYS.has(key.toLowerCase())) {
+      clean[key] = value;
+    }
+  }
+  return clean;
+}
+
 async function serveStatic(
   webRoot: string,
   reqUrl: string,
@@ -88,7 +113,7 @@ function proxyRequest(gateway: URL, req: http.IncomingMessage, res: http.ServerR
     {
       hostname: gateway.hostname,
       port: gateway.port || (gateway.protocol === "https:" ? 443 : 80),
-      path: req.url,
+      path: forwardPath(req.url),
       method: req.method,
       headers: {
         ...req.headers,
@@ -98,7 +123,7 @@ function proxyRequest(gateway: URL, req: http.IncomingMessage, res: http.ServerR
       },
     },
     (proxyRes) => {
-      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+      res.writeHead(proxyRes.statusCode ?? 502, sanitizeHeaders(proxyRes.headers));
       proxyRes.pipe(res);
     }
   );
@@ -119,7 +144,7 @@ function proxyUpgrade(
   const proxyReq = transport.request({
     hostname: gateway.hostname,
     port: gateway.port || (gateway.protocol === "https:" ? 443 : 80),
-    path: req.url,
+    path: forwardPath(req.url),
     method: req.method,
     headers: { ...req.headers, host: gateway.host },
   });

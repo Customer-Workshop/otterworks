@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Clock, FolderOpen, FileText } from "lucide-react";
+import { Clock } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { FileCard } from "@/components/files/file-card";
 import { DocumentCard } from "@/components/documents/document-card";
@@ -138,7 +138,7 @@ function RecentContent() {
                             a.rel = "noopener";
                             document.body.appendChild(a);
                             a.click();
-                            document.body.removeChild(a);
+                            a.remove();
                             toast.success("File downloaded successfully");
                           } catch {
                             toast.error("Download failed. Please try again.");

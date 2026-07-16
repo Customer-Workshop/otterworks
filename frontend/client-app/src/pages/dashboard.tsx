@@ -13,7 +13,6 @@ import { Link } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { FileCard } from "@/components/files/file-card";
 import { DocumentCard } from "@/components/documents/document-card";
-import { PageLoader } from "@/components/ui/loading-spinner";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -161,7 +160,7 @@ function DashboardContent() {
                     a.rel = "noopener";
                     document.body.appendChild(a);
                     a.click();
-                    document.body.removeChild(a);
+                    a.remove();
                     toast.success("File downloaded successfully");
                   } catch {
                     toast.error("Download failed. Please try again.");

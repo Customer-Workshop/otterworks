@@ -164,7 +164,7 @@ function FileDetailContent() {
                 a.rel = "noopener";
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
+                a.remove();
                 toast.success(`Downloading ${file.name}`);
               } catch {
                 toast.error("Download failed. Please try again.");

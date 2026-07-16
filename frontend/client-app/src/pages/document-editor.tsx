@@ -153,15 +153,18 @@ function DocumentEditorContent() {
               autoFocus
             />
           ) : (
-            <h1
-              className="text-xl font-bold text-gray-900 cursor-pointer hover:text-otter-700 truncate"
-              onClick={() => {
-                setTitle(document.title);
-                setIsTitleEditing(true);
-              }}
-              title="Click to rename"
-            >
-              {displayTitle}
+            <h1 className="text-xl font-bold truncate">
+              <button
+                type="button"
+                className="text-gray-900 cursor-pointer hover:text-otter-700 truncate bg-transparent border-0 p-0 text-left"
+                onClick={() => {
+                  setTitle(document.title);
+                  setIsTitleEditing(true);
+                }}
+                title="Click to rename"
+              >
+                {displayTitle}
+              </button>
             </h1>
           )}
         </div>

@@ -240,7 +240,7 @@ function FileBrowserContent() {
         a.rel = "noopener";
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
         toast.success(`Downloading ${name}`);
       } catch {
         toast.error("Download failed");

@@ -32,9 +32,16 @@ interface CollaborativeEditorProps {
   onUpdate?: (content: string) => void;
 }
 
+// Use a secure WebSocket (wss) whenever the page itself is served over https so
+// production never downgrades to cleartext; local/emulator dev over http stays
+// on ws. Override entirely with VITE_COLLAB_WS_URL.
+const COLLAB_WS_SCHEME =
+  typeof window !== "undefined" && window.location.protocol === "https:" ? "wss" : "ws";
 const COLLAB_WS_URL =
   import.meta.env.VITE_COLLAB_WS_URL ||
-  (Capacitor.isNativePlatform() ? "ws://10.0.2.2:8085" : "ws://localhost:8085");
+  (Capacitor.isNativePlatform()
+    ? `${COLLAB_WS_SCHEME}://10.0.2.2:8085`
+    : `${COLLAB_WS_SCHEME}://localhost:8085`);
 
 export function CollaborativeEditor({ documentId, initialContent, onUpdate }: CollaborativeEditorProps) {
   const { user } = useAuthStore();

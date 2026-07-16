@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- usesCleartextTraffic permits plain-http calls to the API gateway via the
-         emulator host alias (10.0.2.2) during development, mirroring the old
-         native app. Production builds should target an https gateway. -->
+    <!-- Cleartext traffic is disabled and app data backup is turned off by
+         default so release builds only talk to an https/wss gateway and don't
+         leak local data to cloud backups. Local development against a plain-http
+         emulator gateway (10.0.2.2) should use a debug-only network security
+         config or an https dev gateway rather than re-enabling cleartext here. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme">
 
         <activity

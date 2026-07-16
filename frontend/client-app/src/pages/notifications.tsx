@@ -133,14 +133,24 @@ function NotificationRow({
       ? `/files/${notification.resourceId}`
       : undefined;
 
+  const handleActivate = () => {
+    if (!notification.read) onMarkRead();
+  };
+
   const content = (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         "flex items-start gap-4 px-5 py-4 transition cursor-pointer",
         !notification.read ? "bg-otter-50/30" : "hover:bg-gray-50"
       )}
-      onClick={() => {
-        if (!notification.read) onMarkRead();
+      onClick={handleActivate}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleActivate();
+        }
       }}
     >
       {notification.actorName ? (

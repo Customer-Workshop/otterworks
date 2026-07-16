@@ -5,7 +5,7 @@ ENV VITE_COLLAB_WS_URL=$VITE_COLLAB_WS_URL
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 

@@ -91,6 +91,36 @@ Managed via Terraform in `infrastructure/terraform/`:
 - CloudFront (CDN)
 - ECR (container image repositories)
 
+### Relational database backend (RDS default / optional Aurora Serverless v2)
+
+The SQL-backed services (auth, document, admin, report, analytics) connect to their
+relational database purely through existing environment config, so the backend is a
+connection-layer swap — no schema, SQL, or Flyway migration changes.
+
+- **Default (`main`):** self-managed **RDS PostgreSQL** (`infrastructure/terraform/modules/database`).
+- **Optional:** **Aurora Serverless v2** (scale-to-zero) via the namespaced module
+  `infrastructure/terraform/modules/aurora-aur1`, added *alongside* the RDS module (never
+  replacing it). It is gated off by default (`enable_aurora_aur1 = false`) and exports
+  `aurora_aur1_endpoint`.
+
+Select the backend at deploy time with `DB_BACKEND` (default `rds`):
+
+```bash
+# Provision Aurora alongside RDS (leaves the RDS before-state intact)
+cd infrastructure/terraform
+terraform apply -var 'enable_aurora_aur1=true' -target=module.aurora_aur1
+
+# Deploy the SQL services pointed at Aurora (repoints existing DB env vars only)
+DB_BACKEND=aurora ./scripts/deploy-dev.sh --skip-platform
+
+# Verify old-vs-new parity on a seeded dataset (row counts + content checksums)
+make db-reconcile RECON_OLD_DSN=postgresql://user:pass@<rds>:5432/otterworks \
+                  RECON_NEW_DSN=postgresql://user:pass@<aurora>:5432/otterworks
+
+# Revert to RDS (one command + drop the flip)
+terraform destroy -target=module.aurora_aur1   # then unset DB_BACKEND (defaults to rds)
+```
+
 ### Kubernetes
 - Helm charts per service in `infrastructure/helm/`
 - Base namespace resources (ResourceQuota, LimitRange) in `infrastructure/k8s/`
@@ -152,6 +182,7 @@ Run `make help` to list all available commands. Key targets:
 | `make logs` | Tail logs for all services |
 | `make test` | Run tests for all services |
 | `make lint` | Lint all services |
+| `make db-reconcile` | Reconcile old (RDS) vs new (Aurora) DBs — row counts + content checksums (`RECON_OLD_DSN` / `RECON_NEW_DSN`; add `WATCH=1`) |
 | `make tf-plan` | Plan Terraform changes (dev) |
 | `make deploy-dev` | Deploy all services to dev EKS |
 | `make teardown-dev` | Tear down the dev environment |

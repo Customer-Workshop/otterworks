@@ -1,0 +1,60 @@
+# Control-plane state store — `otterworks-demo-control` (DynamoDB)
+
+The **single source of truth** for the demo platform. It is durable and **independent of any
+ephemeral tenant** — tearing a tenant down, cycling nodes, or losing the cluster never loses
+this state. On-demand billing, Point-In-Time-Recovery enabled.
+
+Single-table design. `PK` (partition key) + `SK` (sort key), both strings.
+
+## Item types
+
+### Tenant registry — `PK=TENANT#<id>`, `SK=META`
+```
+id            string   # sanitized attendee id (RFC-1123), e.g. "a01"
+status        string   # free | reserved | deploying | active | draining | error
+owner         string   # who checked it out (free-form facilitator label)
+branch        string   # otterworks git branch mapped to this tenant (workshop-<id>)
+tier          string   # A | B
+image_tag     string?  # optional pinned image tag
+url           string?  # https://t-<id>.demo.otterworks.xyz
+api_url       string?  # https://api-t-<id>.demo.otterworks.xyz
+db_name       string   # otterworks_<id>
+namespace     string   # otterworks-<id>
+created_at    number    # epoch seconds
+checked_out_at number?
+expires_at    number    # epoch seconds (TTL) — reaper compares against now
+last_seen_at  number    # last reconcile timestamp
+note          string?
+```
+`expires_at` is also the DynamoDB **TTL attribute** (informational; the reaper is the actor).
+
+### Checkout lock — `PK=LOCK#<id>`, `SK=LOCK`
+Written with `ConditionExpression="attribute_not_exists(PK)"` for **atomic checkout**. Holds
+`owner`, `acquired_at`, and a short `lock_ttl` (DynamoDB TTL auto-expiry to avoid stuck locks).
+
+### Reaper config — `PK=CONFIG#reaper`, `SK=CONFIG`
+```
+schedule_cron  string   # e.g. "*/15 * * * *"
+grace_seconds  number    # extra grace beyond expires_at before reaping
+enabled        bool
+sweep_orphans  bool      # also GC resources with no matching TENANT# item
+updated_at     number
+updated_by     string
+```
+
+### Audit event — `PK=AUDIT#<id>`, `SK=<epoch_ms>#<action>`
+Append-only. `action` ∈ {checkout, checkin, extend, deploy_ok, deploy_fail, reap, inject,
+reset, login_ok, login_fail}. Attributes: `actor`, `detail`, `ts`.
+
+## Access patterns
+- List all tenants: `Query`/`Scan` `begins_with(PK,"TENANT#")` (small N; scan is fine at high-tens).
+- Get one tenant: `GetItem PK=TENANT#<id>, SK=META`.
+- Atomic checkout: conditional `PutItem LOCK#<id>` then upsert `TENANT#<id>`.
+- Audit trail for a tenant: `Query PK=AUDIT#<id>` (reverse chronological).
+- Reaper reads `CONFIG#reaper` + scans `TENANT#` for expired items.
+
+## Reconciliation (dashboard + reaper)
+The table is *desired state*; the cluster/AWS is *actual*. On each list/reaper pass we join the
+two: mark `active` when pods are Ready, `error` on crashloops beyond the golden-planted
+admin-service, and flag **orphans** (live namespace/DB/S3 prefix/Dynamo partition with no
+`TENANT#` item) for the sweeper.

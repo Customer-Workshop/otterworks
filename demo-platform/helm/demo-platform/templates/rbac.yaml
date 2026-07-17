@@ -1,0 +1,57 @@
+# RBAC for the dashboard SA (also used by dashboard-launched runner Jobs and the
+# reaper CronJob). RBAC cannot restrict rules to namespaces matching a name glob
+# (otterworks-*), so these verbs are cluster-wide by necessity; the intended
+# scope is the otterworks-* tenant namespaces + otterworks-platform. AWS-side
+# blast radius is bounded separately by the scoped IRSA role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-ops
+  labels:
+    {{- include "demo-platform.labels" . | nindent 4 }}
+rules:
+  # Manage tenant namespaces (create/delete otterworks-<id>) + read for the
+  # dashboard's live join and the reaper's orphan sweep.
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Core workload/config objects inside tenant + platform namespaces.
+  - apiGroups: [""]
+    resources: ["pods", "services", "secrets", "configmaps", "serviceaccounts", "persistentvolumeclaims", "resourcequotas", "limitranges", "events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Pod logs (dashboard streams runner Job logs) + exec (inject-bug drives Redis).
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "update", "patch"]
+  # Jobs in otterworks-platform (deploy/teardown/inject/reset runner Jobs) and in
+  # tenant/system namespaces (per-tenant DB init/drop Jobs).
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-ops
+  labels:
+    {{- include "demo-platform.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-ops
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Values.platformNamespace }}

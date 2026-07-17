@@ -1,0 +1,92 @@
+# ------------------------------------------------------------------------------
+# demo-platform — default values
+#
+# Everything here is a safe, non-secret default or a placeholder. Two things MUST
+# be supplied at deploy time:
+#   - awsAccountId : the 12-digit account that owns the IRSA role (NEVER commit a
+#                    real account id — it is intentionally empty here).
+#   - secret.*     : the dashboard passcode + session secret (+ optional DB
+#                    creds), supplied via -f secrets.yaml / --set-file (see
+#                    README) so they never land on an argv or in git.
+# ------------------------------------------------------------------------------
+
+# REQUIRED at deploy time. Empty on purpose — templates `fail` if unset so a real
+# account id is never hardcoded in tracked files.
+awsAccountId: ""
+
+environment: dev
+awsRegion: us-east-1
+eksCluster: otterworks-dev
+platformNamespace: otterworks-platform
+controlTable: otterworks-demo-control
+
+# Ingress host suffix for tenant frontends/APIs (t-<id>.<suffix> /
+# api-t-<id>.<suffix>). Defaults to the wildcard domain; override to a nip.io
+# suffix (e.g. <nlb-ip>.nip.io) to run before otterworks.xyz DNS is live.
+hostSuffix: demo.otterworks.xyz
+
+# Runner image used by dashboard-launched Jobs AND the reaper CronJob (OP=reap).
+# Placeholder — override at deploy: --set runnerImage=<registry>/otterworks/demo-runner:<tag>
+runnerImage: REGISTRY/otterworks/demo-runner:latest
+
+# Optional: HTTPS clone URL of this repo. When set (together with a githubToken
+# in the Secret), runner Jobs fetch the participant branch workshop-<id> for
+# code-level variants. Empty -> runner uses the image's bundled golden tree and
+# variants rely on --image-tag. Not committed with a real value on purpose.
+repoHttpsUrl: ""
+
+serviceAccount:
+  name: demo-ops-dashboard
+  # IRSA role name; defaults to otterworks-demo-ops-dashboard-<environment>.
+  roleName: ""
+
+dashboard:
+  # Placeholder — override: --set dashboard.image=<registry>/otterworks/demo-ops-dashboard:<tag>
+  image: REGISTRY/otterworks/demo-ops-dashboard:latest
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  host: ops.otterworks.xyz
+  containerPort: 3000
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingress:
+  className: nginx
+  # Extra annotations (e.g. cert-manager cluster issuer) can be added here.
+  annotations: {}
+
+reaper:
+  enabled: true
+  schedule: "*/15 * * * *"
+  # Host suffix used when GC-ing tenant Route53 records / building URLs.
+  hostSuffix: demo.otterworks.xyz
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Templated Secret `demo-ops-dashboard`. Values are NOT committed — pass them at
+# deploy via -f secrets.yaml or --set-file (see README). dashboardPasscode and
+# sessionSecret are required when create=true. dbPassword/jwtSecret/secretKeyBase
+# are optional; supply them so the reaper (and dashboard-launched runner Jobs)
+# can drop/create per-tenant databases.
+secret:
+  create: true
+  dashboardPasscode: ""
+  sessionSecret: ""
+  dbPassword: ""
+  jwtSecret: ""
+  secretKeyBase: ""
+  # Optional: token used by runner Jobs to fetch participant branches (needs
+  # repoHttpsUrl set). Scope to repo read-only. Omit to use the bundled tree.
+  githubToken: ""

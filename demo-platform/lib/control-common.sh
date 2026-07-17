@@ -70,11 +70,15 @@ ctl_set_active() {
 # reap, inject, reset, login_ok, login_fail).
 ctl_audit() {
   local id="$1" action="$2" detail="${3:-}" actor="${ACTOR:-runner}"
+  # `ts` MUST be epoch-milliseconds to match the sort key and the dashboard
+  # writer/reader (lib/control.ts, lib/format.ts); a seconds value renders as
+  # 1970 and mis-sorts. Compute once so the sort key and ts are identical.
+  local ms; ms="$(ctl_now_ms)"
   aws dynamodb put-item \
     --table-name "${CONTROL_TABLE}" --region "${AWS_REGION}" \
     --item "$(jq -n \
-        --arg pk "AUDIT#${id}" --arg sk "$(ctl_now_ms)#${action}" \
-        --arg actor "$actor" --arg detail "$detail" --argjson ts "$(ctl_now)" \
+        --arg pk "AUDIT#${id}" --arg sk "${ms}#${action}" \
+        --arg actor "$actor" --arg detail "$detail" --argjson ts "${ms}" \
         '{PK:{S:$pk},SK:{S:$sk},action:{S:($sk|split("#")[1])},actor:{S:$actor},detail:{S:$detail},ts:{N:($ts|tostring)}}')" \
     >/dev/null || true
 }

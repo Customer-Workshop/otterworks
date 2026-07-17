@@ -26,7 +26,8 @@ URL is substituted from the `API_GATEWAY_URL` env var at container start.
 | `npm run test:bdd` | Cucumber BDD suite |
 
 Build-time env vars (Vite): `VITE_COLLAB_WS_URL` (collab websocket URL, default
-`ws://localhost:8085`), `VITE_API_BASE_URL` (native builds only, see below).
+`ws://localhost:8085`, upgraded to `wss` when the page is served over https; native
+defaults below), `VITE_API_BASE_URL` (native builds only, see below).
 
 ## Docker
 
@@ -55,14 +56,24 @@ npx cap open ios      # open in Xcode to run on an iOS simulator/device
 Native builds cannot use the same-origin `/api/v1` proxy, so they call the API gateway
 directly. Defaults target local development:
 
-- Android emulator: `http://10.0.2.2:8080/api/v1` (host alias; cleartext is permitted via
-  `android:usesCleartextTraffic` and `allowMixedContent` for dev only)
+- Android emulator: `http://10.0.2.2:8080/api/v1` (host alias). Two gates make this work
+  in **debug builds only**: `allowMixedContent` (WebView-level, `capacitor.config.ts`) and
+  a debug-only network security config permitting cleartext to `10.0.2.2`
+  (`mobile/android/app/src/debug/res/xml/network_security_config.xml`). Release builds
+  keep cleartext disabled (`android:usesCleartextTraffic="false"`) and must use an https
+  gateway.
 - Override at build time for other environments, e.g.
   `VITE_API_BASE_URL=https://api.example.com/api/v1 npm run build && npx cap sync`
 - iOS simulator: use `VITE_API_BASE_URL=http://localhost:8080/api/v1`
 
 The API gateway's default CORS config allows the Capacitor WebView origins
 (`https://localhost` on Android, `capacitor://localhost` on iOS).
+
+The collab editor websocket also connects directly, with local-dev defaults of
+`ws://10.0.2.2:8085` on Android and `ws://localhost:8085` on iOS (valid on the
+simulator), so collaborative editing works on both simulators out of the box.
+Override with `VITE_COLLAB_WS_URL` for physical devices or other environments, e.g.
+`VITE_COLLAB_WS_URL=wss://collab.example.com npm run build && npx cap sync`.
 
 Auth tokens are kept in `localStorage` (WebView-local). If shipping to stores, consider
 moving them to `@capacitor/preferences` or a secure-storage plugin, and add real app

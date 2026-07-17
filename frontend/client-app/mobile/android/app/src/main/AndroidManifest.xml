@@ -4,8 +4,8 @@
     <!-- Cleartext traffic is disabled and app data backup is turned off by
          default so release builds only talk to an https/wss gateway and don't
          leak local data to cloud backups. Local development against a plain-http
-         emulator gateway (10.0.2.2) should use a debug-only network security
-         config or an https dev gateway rather than re-enabling cleartext here. -->
+         emulator gateway (10.0.2.2) is enabled by the debug-only network
+         security config in src/debug/ rather than re-enabling cleartext here. -->
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

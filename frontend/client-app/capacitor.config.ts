@@ -6,10 +6,14 @@ const config: CapacitorConfig = {
   webDir: "dist",
   android: {
     path: "mobile/android",
-    // Allow the https-scheme webview to call the plain-http API gateway on the
-    // emulator host alias (10.0.2.2) during development, mirroring the old
-    // native app's cleartext allowance. Point VITE_API_BASE_URL at an https
-    // gateway for production builds.
+    // WebView-level gate: lets the https-scheme webview issue requests to
+    // plain-http origins. On its own this is NOT sufficient — Android's
+    // platform-level cleartext policy also applies. Release builds keep
+    // cleartext disabled (AndroidManifest.xml usesCleartextTraffic=false), so
+    // http still fails there; debug builds allow cleartext to 10.0.2.2 only,
+    // via mobile/android/app/src/debug/res/xml/network_security_config.xml,
+    // which is what makes the local dev gateway reachable. Point
+    // VITE_API_BASE_URL at an https gateway for production builds.
     allowMixedContent: true,
   },
   ios: {

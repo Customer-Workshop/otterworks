@@ -32,16 +32,22 @@ interface CollaborativeEditorProps {
   onUpdate?: (content: string) => void;
 }
 
-// Use a secure WebSocket (wss) whenever the page itself is served over https so
-// production never downgrades to cleartext; local/emulator dev over http stays
-// on ws. Override entirely with VITE_COLLAB_WS_URL.
-const COLLAB_WS_SCHEME =
+// Web builds use a secure WebSocket (wss) whenever the page itself is served
+// over https so production never downgrades to cleartext. Native (Capacitor)
+// builds can't derive the scheme from the page protocol — the WebView is
+// https even in local dev — so they default to plain ws against the Android
+// emulator's host-loopback alias (10.0.2.2) or the iOS simulator's localhost,
+// matching the api-client's plain-http local-dev default.
+// Any real deployment must point VITE_COLLAB_WS_URL at a wss endpoint.
+const WEB_WS_SCHEME =
   typeof window !== "undefined" && window.location.protocol === "https:" ? "wss" : "ws";
+const NATIVE_WS_SCHEME = "ws";
+const NATIVE_WS_HOST = Capacitor.getPlatform() === "android" ? "10.0.2.2" : "localhost";
 const COLLAB_WS_URL =
   import.meta.env.VITE_COLLAB_WS_URL ||
   (Capacitor.isNativePlatform()
-    ? `${COLLAB_WS_SCHEME}://10.0.2.2:8085`
-    : `${COLLAB_WS_SCHEME}://localhost:8085`);
+    ? `${NATIVE_WS_SCHEME}://${NATIVE_WS_HOST}:8085`
+    : `${WEB_WS_SCHEME}://localhost:8085`);
 
 export function CollaborativeEditor({ documentId, initialContent, onUpdate }: CollaborativeEditorProps) {
   const { user } = useAuthStore();

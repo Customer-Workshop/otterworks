@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron
 
 SHELL := /bin/bash
 
@@ -37,6 +37,39 @@ wait-for-db: ## Wait for Postgres to accept connections
 
 logs: ## Tail logs for all services
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml logs -f
+
+# --- App Dev Targets ---
+# One-command startup for each frontend app, running from source against the
+# Dockerized backend. The compose web-app/admin-dashboard containers are stopped
+# where they would clash with the dev servers on ports 3000/4200.
+
+COMPOSE := docker compose -f docker-compose.infra.yml -f docker-compose.yml
+# Collab websocket as exposed by docker-compose (host port 8084); source builds
+# otherwise default to :8085, which only matches the k8s dev environment.
+COLLAB_WS_URL := ws://localhost:8084
+
+dev-backend: ## Start the Dockerized backend (all services except the frontend containers)
+	$(COMPOSE) up -d $$($(COMPOSE) config --services | grep -vE '^(web-app|admin-dashboard)$$')
+	@echo "Backend up - API gateway on http://localhost:8080 (fresh DB? run: make seed)"
+
+dev-web: dev-backend ## Start the client-app web dev server (HMR) on :3000
+	@$(COMPOSE) stop web-app 2>/dev/null || true
+	cd frontend/client-app && { [ -d node_modules ] || npm ci; } && \
+		VITE_COLLAB_WS_URL=$(COLLAB_WS_URL) npm run dev
+
+dev-admin: dev-backend ## Start the admin dashboard dev server (HMR) on :4200
+	@$(COMPOSE) stop admin-dashboard 2>/dev/null || true
+	cd frontend/admin-dashboard && { [ -d node_modules ] || npm ci; } && npm start
+
+dev-android: dev-backend ## Build the web bundle and run the Android app on an emulator/device
+	cd frontend/client-app && { [ -d node_modules ] || npm ci; } && \
+		VITE_COLLAB_WS_URL=ws://10.0.2.2:8084 npm run build && \
+		npx cap sync android && npx cap run android
+
+dev-electron: dev-backend ## Build the web bundle and launch the Electron desktop app
+	cd frontend/client-app && { [ -d node_modules ] || npm ci; } && \
+		VITE_COLLAB_WS_URL=$(COLLAB_WS_URL) npm run build
+	cd frontend/client-app/desktop && { [ -d node_modules ] || npm ci; } && npm start
 
 # --- Per-Service Builds ---
 

@@ -143,6 +143,10 @@ Run `make help` to list all available commands. Key targets:
 | `make down` | Stop all services and infrastructure |
 | `make build` | Build all service Docker images |
 | `make logs` | Tail logs for all services |
+| `make dev-web` | Backend in Docker + client-app web dev server (HMR) on :3000 |
+| `make dev-admin` | Backend in Docker + admin dashboard dev server (HMR) on :4200 |
+| `make dev-android` | Backend in Docker + build, sync, and run the Android app (Capacitor) |
+| `make dev-electron` | Backend in Docker + build and launch the Electron desktop app |
 | `make test` | Run tests for all services |
 | `make lint` | Lint all services |
 | `make tf-plan` | Plan Terraform changes (dev) |

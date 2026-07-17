@@ -1,0 +1,12 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Restored NuGet packages
+packages/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo

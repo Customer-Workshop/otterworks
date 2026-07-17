@@ -67,11 +67,12 @@ make down
 
 ## Client apps
 
-Native/other clients live under [`clients/`](clients/):
+Native/other clients live under [`clients/`](clients/), all talking to the same API gateway:
 
 | Client | Stack | Description |
 |--------|-------|-------------|
 | [Android](clients/android/) | Kotlin / Jetpack Compose (Retrofit) | Native Android app mirroring the web client's core flow (register, login, documents, create). Points at the API gateway via `http://10.0.2.2:8080/api/v1` from the emulator. |
+| [Windows Desktop](clients/windows-desktop/) | C# / WPF (.NET Framework 4.8) | Native Windows desktop app mirroring the web client's core flow (register, login, documents, create). See [`clients/windows-desktop/README.md`](clients/windows-desktop/README.md) for build and run instructions. |
 
 ## Architecture
 

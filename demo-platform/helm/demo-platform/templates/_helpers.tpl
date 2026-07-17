@@ -18,9 +18,20 @@ app.kubernetes.io/name: {{ include "demo-platform.name" . }}
 app.kubernetes.io/component: ops-dashboard
 {{- end -}}
 
-{{/* Required 12-digit AWS account id — never hardcoded in tracked files. */}}
+{{/*
+Required 12-digit AWS account id — never hardcoded in tracked files.
+Rendered defensively: a bare `--set awsAccountId=<12-digit-id>` makes Helm parse
+the value as a float (→ "5.99e+11" in the ARN, breaking IRSA). Force integer
+formatting so both `--set` and `--set-string` produce the literal 12 digits.
+Prefer `--set-string awsAccountId=<id>`.
+*/}}
 {{- define "demo-platform.awsAccountId" -}}
-{{- required "awsAccountId is required (supply --set awsAccountId=<12-digit id>); it must NOT be committed" .Values.awsAccountId -}}
+{{- $id := required "awsAccountId is required (supply --set-string awsAccountId=<12-digit id>); it must NOT be committed" .Values.awsAccountId -}}
+{{- if kindIs "float64" $id -}}
+{{- printf "%.0f" $id -}}
+{{- else -}}
+{{- $id -}}
+{{- end -}}
 {{- end -}}
 
 {{/* IRSA role name (defaults to otterworks-demo-ops-dashboard-<environment>). */}}

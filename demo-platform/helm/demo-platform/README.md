@@ -60,7 +60,7 @@ umask 077
 
 helm upgrade --install demo-platform demo-platform/helm/demo-platform \
   --namespace otterworks-platform --create-namespace \
-  --set awsAccountId="$AWS_ACCOUNT_ID" \
+  --set-string awsAccountId="$AWS_ACCOUNT_ID" \
   --set runnerImage="$RUNNER_IMAGE" \
   --set dashboard.image="$DASHBOARD_IMAGE" \
   -f secrets.yaml
@@ -76,7 +76,7 @@ printf '%s' "$SESSION_SECRET" > /tmp/session   && chmod 600 /tmp/session
 
 helm upgrade --install demo-platform demo-platform/helm/demo-platform \
   --namespace otterworks-platform --create-namespace \
-  --set awsAccountId="$AWS_ACCOUNT_ID" \
+  --set-string awsAccountId="$AWS_ACCOUNT_ID" \
   --set runnerImage="$RUNNER_IMAGE" \
   --set dashboard.image="$DASHBOARD_IMAGE" \
   --set-file secret.dashboardPasscode=/tmp/passcode \
@@ -95,11 +95,11 @@ by name.
 
 ```bash
 helm lint demo-platform/helm/demo-platform \
-  --set awsAccountId=000000000000 \
+  --set-string awsAccountId=000000000000 \
   --set secret.dashboardPasscode=x --set secret.sessionSecret=y
 
 helm template demo-platform demo-platform/helm/demo-platform \
-  --set awsAccountId=000000000000 \
+  --set-string awsAccountId=000000000000 \
   --set secret.dashboardPasscode=x --set secret.sessionSecret=y
 ```
 

@@ -17,9 +17,11 @@ type CORSConfig struct {
 }
 
 // DefaultCORSConfig returns a default CORS configuration.
+// https://localhost and capacitor://localhost are the WebView origins of the
+// Capacitor mobile app (Android and iOS respectively).
 func DefaultCORSConfig() CORSConfig {
 	return CORSConfig{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:4200"},
+		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:4200", "https://localhost", "capacitor://localhost"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
 		ExposedHeaders:   []string{"Link", "X-Request-ID"},

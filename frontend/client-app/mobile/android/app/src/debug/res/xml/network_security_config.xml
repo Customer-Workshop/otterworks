@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-only network security config (lives in src/debug/, so release builds
+     never include it and stay on the manifest's cleartext-disabled policy).
+     Permits plain http/ws to the emulator's host-loopback alias only, so debug
+     builds can reach the local dev API gateway (http://10.0.2.2:8080) and the
+     collab websocket (ws://10.0.2.2:8085). All other hosts remain https-only. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

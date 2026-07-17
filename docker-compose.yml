@@ -486,11 +486,10 @@ services:
     - /tmp
   web-app:
     build:
-      context: ./frontend/web-app
+      context: ./frontend/client-app
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_COLLAB_WS_URL: ws://localhost:8084
-        API_GATEWAY_URL: http://api-gateway:8080
+        VITE_COLLAB_WS_URL: ws://localhost:8084
     container_name: otterworks-web-app
     ports:
     - 3000:3000
@@ -503,6 +502,13 @@ services:
     read_only: true
     tmpfs:
     - /tmp
+    volumes:
+    # Writable tmpfs so the unprivileged nginx entrypoint (uid 101) can render
+    # the envsubst config template despite the read-only root filesystem.
+    - type: tmpfs
+      target: /etc/nginx/conf.d
+      tmpfs:
+        mode: 0777
   admin-dashboard:
     build:
       context: ./frontend/admin-dashboard

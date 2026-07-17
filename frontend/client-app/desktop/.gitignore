@@ -1,0 +1,7 @@
+# Compiled main process (tsc output)
+build/
+
+# electron-builder output
+release/
+
+node_modules/

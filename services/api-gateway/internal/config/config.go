@@ -76,7 +76,7 @@ func Load() *Config {
 
 		JWTSecret: getEnv("JWT_SECRET", ""),
 
-		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:4200"}),
+		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:4200", "https://localhost", "capacitor://localhost"}),
 		CORSAllowedMethods: getEnvSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
 		CORSAllowedHeaders: getEnvSlice("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"}),
 		CORSMaxAge:         getEnvInt("CORS_MAX_AGE", 300),

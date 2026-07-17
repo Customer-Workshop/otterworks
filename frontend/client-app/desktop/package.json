@@ -1,0 +1,23 @@
+{
+  "name": "@otterworks/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OtterWorks desktop app - Electron shell around the client-app web build",
+  "author": "OtterWorks",
+  "main": "build/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:web": "npm --prefix .. run build",
+    "start": "npm run build && node scripts/launch.js",
+    "test": "npm run build && node test/server.smoke.js",
+    "smoke": "npm run build && node scripts/launch.js --smoke-test",
+    "icons": "node scripts/launch.js scripts/make-icon.js",
+    "dist": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "electron": "43.1.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.3.3"
+  }
+}

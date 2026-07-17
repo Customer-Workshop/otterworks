@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withSession, json, error } from "@/lib/api";
 import { appendAudit, getTenant } from "@/lib/control";
-import { createRunnerJob } from "@/lib/jobs";
+import { createRunnerJob, RunnerNotConfiguredError } from "@/lib/jobs";
 import type { InjectRequest } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -18,7 +18,18 @@ export const POST = withSession(async (req: NextRequest, { actor, params }) => {
   const tenant = await getTenant(id);
   if (!tenant) return error(404, "not found");
 
+  let jobName: string;
+  try {
+    jobName = await createRunnerJob({ action: "inject", tenantId: id, scenario });
+  } catch (err) {
+    if (err instanceof RunnerNotConfiguredError) {
+      return json({ ok: false, warning: "inject job not enqueued (runner not configured)" }, 202);
+    }
+    const detail = err instanceof Error ? err.message : "job create failed";
+    await appendAudit({ tenantId: id, action: "inject", actor, detail: `failed: ${detail}` });
+    return error(502, "inject job failed to enqueue");
+  }
+
   await appendAudit({ tenantId: id, action: "inject", actor, detail: `scenario=${scenario}` });
-  const jobName = await createRunnerJob({ action: "inject", tenantId: id, scenario });
   return json({ ok: true, job: jobName });
 });

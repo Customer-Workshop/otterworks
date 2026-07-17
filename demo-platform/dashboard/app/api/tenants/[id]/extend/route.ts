@@ -19,7 +19,7 @@ export const POST = withSession(async (req: NextRequest, { actor, params }) => {
   const tenant = await getTenant(id);
   if (!tenant) return error(404, "not found");
 
-  const expiresAt = await extend(id, ttlSeconds);
+  const expiresAt = await extend(id, ttlSeconds, tenant.expiresAt);
   await appendAudit({ tenantId: id, action: "extend", actor, detail: `ttl=${ttlStr}` });
 
   return json({ ok: true, expiresAt });

@@ -1,6 +1,6 @@
 import { withSession, json, error } from "@/lib/api";
 import { appendAudit, checkin, getTenant } from "@/lib/control";
-import { createRunnerJob } from "@/lib/jobs";
+import { createRunnerJob, RunnerNotConfiguredError } from "@/lib/jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,13 +18,12 @@ export const POST = withSession(async (_req, { actor, params }) => {
   try {
     await createRunnerJob({ action: "teardown", tenantId: id });
   } catch (err) {
-    await appendAudit({
-      tenantId: id,
-      action: "checkin",
-      actor,
-      detail: err instanceof Error ? err.message : "teardown job create failed",
-    });
-    return json({ ok: true, warning: "teardown job not enqueued (runner not configured)" }, 202);
+    if (err instanceof RunnerNotConfiguredError) {
+      return json({ ok: true, warning: "teardown job not enqueued (runner not configured)" }, 202);
+    }
+    const detail = err instanceof Error ? err.message : "teardown job create failed";
+    await appendAudit({ tenantId: id, action: "checkin", actor, detail: `teardown failed: ${detail}` });
+    return json({ ok: true, warning: `teardown job failed to enqueue: ${detail}` }, 202);
   }
 
   return json({ ok: true, status: "draining" });

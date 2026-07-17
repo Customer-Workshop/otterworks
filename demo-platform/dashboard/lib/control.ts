@@ -195,9 +195,11 @@ export async function checkout(input: CheckoutInput): Promise<Tenant> {
       }),
     );
   } catch (err) {
+    // Undo the reservation lock on any failure so the id stays recoverable
+    // instead of being wedged until the lock's TTL lapses — whether the tenant
+    // is live (conditional check failed) or the META write failed transiently.
+    await releaseLock(input.id).catch(() => undefined);
     if (err instanceof Error && err.name === "ConditionalCheckFailedException") {
-      // Tenant is live; undo our reservation lock so we don't leave it dangling.
-      await releaseLock(input.id).catch(() => {});
       throw new LockConflictError(input.id);
     }
     throw err;
@@ -230,8 +232,15 @@ export async function checkin(id: string): Promise<void> {
   await setStatus(id, "draining");
 }
 
-export async function extend(id: string, ttlSeconds: number): Promise<number> {
-  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+export async function extend(
+  id: string,
+  ttlSeconds: number,
+  currentExpiresAt?: number,
+): Promise<number> {
+  const now = Math.floor(Date.now() / 1000);
+  // "extend" bumps the TTL from now, but must never shorten a tenant that
+  // already has more time remaining than the requested window.
+  const expiresAt = Math.max(currentExpiresAt ?? 0, now + ttlSeconds);
   await doc().send(
     new UpdateCommand({
       TableName: table(),
@@ -240,7 +249,7 @@ export async function extend(id: string, ttlSeconds: number): Promise<number> {
       ConditionExpression: "attribute_exists(PK)",
       ExpressionAttributeValues: {
         ":e": expiresAt,
-        ":now": Math.floor(Date.now() / 1000),
+        ":now": now,
       },
     }),
   );

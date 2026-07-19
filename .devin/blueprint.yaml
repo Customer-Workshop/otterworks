@@ -81,10 +81,10 @@ initialize: |
   EMU_PID=$!
   if timeout 120 adb wait-for-device \
      && timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done'; then
-    adb shell settings put global window_animation_scale 0
-    adb shell settings put global transition_animation_scale 0
-    adb shell settings put global animator_duration_scale 0
-    adb emu avd snapshot save clean
+    adb shell settings put global window_animation_scale 0 || true
+    adb shell settings put global transition_animation_scale 0 || true
+    adb shell settings put global animator_duration_scale 0 || true
+    adb emu avd snapshot save clean || true
     adb emu kill || true
   else
     echo "WARN: emulator did not boot at build time; skipping snapshot warm-up (runtime will cold-boot)."

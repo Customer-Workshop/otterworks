@@ -3,7 +3,17 @@
 initialize: |
   # Pre-pull infra images and pre-build all service/frontend images (layers persist; containers do not).
   docker compose -f docker-compose.infra.yml pull
-  docker compose -f docker-compose.infra.yml -f docker-compose.yml build
+  # Build one service at a time with retries. Building everything in parallel overwhelms
+  # Docker's embedded DNS (127.0.0.11), so dependency fetches (e.g. cargo's static.crates.io)
+  # intermittently fail to resolve; serializing avoids the DNS storm and the retry covers blips.
+  COMPOSE="docker compose -f docker-compose.infra.yml -f docker-compose.yml"
+  for svc in $($COMPOSE config --services); do
+    n=0
+    until $COMPOSE build "$svc"; do
+      n=$((n+1)); [ "$n" -ge 3 ] && { echo "build failed for $svc after $n attempts"; exit 1; }
+      echo "retrying build for $svc ($n)"; sleep 10
+    done
+  done
 
   # --- Mobile (Capacitor Android app at frontend/client-app/mobile/android) ---
   # JDK 21 (Capacitor 8 / AGP require it)

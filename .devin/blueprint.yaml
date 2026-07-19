@@ -40,10 +40,16 @@ initialize: |
   echo "ANDROID_SDK_ROOT=$HOME/Android/Sdk" >> $ENVRC
   echo 'PATH=$HOME/Android/Sdk/platform-tools:$HOME/Android/Sdk/emulator:$HOME/Android/Sdk/cmdline-tools/latest/bin:$PATH' >> $ENVRC
 
-  # Gradle wrapper jar is gitignored; generate it for the Capacitor android project
+  # Gradle wrapper jar is gitignored. Generate it in a scratch project and copy the jar in.
+  # (The jar is version-specific, not project-specific. Running `gradle wrapper` inside the
+  #  android project would configure Capacitor modules whose files - e.g. cordova.variables.gradle -
+  #  only exist after `npx cap sync`, which hasn't run yet, so we avoid touching that project here.)
   curl -sL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
   unzip -q -o /tmp/gradle.zip -d $HOME/gradle-dist
-  (cd frontend/client-app/mobile/android && $HOME/gradle-dist/gradle-8.14.3/bin/gradle wrapper --gradle-version 8.14.3)
+  mkdir -p /tmp/gradle-wrapper-gen && touch /tmp/gradle-wrapper-gen/settings.gradle
+  (cd /tmp/gradle-wrapper-gen && $HOME/gradle-dist/gradle-8.14.3/bin/gradle wrapper --gradle-version 8.14.3)
+  cp /tmp/gradle-wrapper-gen/gradle/wrapper/gradle-wrapper.jar \
+     frontend/client-app/mobile/android/gradle/wrapper/gradle-wrapper.jar
 maintenance: |
   export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null
   # Include the linux rolldown native binding (npm optional-deps bug omits it -> Vite build fails)

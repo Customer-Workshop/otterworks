@@ -50,6 +50,30 @@ initialize: |
   (cd /tmp/gradle-wrapper-gen && $HOME/gradle-dist/gradle-8.14.3/bin/gradle wrapper --gradle-version 8.14.3)
   cp /tmp/gradle-wrapper-gen/gradle/wrapper/gradle-wrapper.jar \
      frontend/client-app/mobile/android/gradle/wrapper/gradle-wrapper.jar
+
+  # Warm the Gradle build cache once (persists on the microVM filesystem) so runtime
+  # `make dev-android` builds are incremental. Needs the synced Capacitor Android project,
+  # which requires node deps + the web bundle first.
+  export ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk
+  export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+  nvm use default
+  (cd frontend/client-app && npm install && npm install --no-save @rolldown/binding-linux-x64-gnu@1.1.5 \
+     && VITE_COLLAB_WS_URL=ws://10.0.2.2:8084 npm run build && npx cap sync android)
+  (cd frontend/client-app/mobile/android && ./gradlew --no-daemon assembleDebug)
+
+  # Boot the emulator once headlessly, disable animations, and save a "clean" snapshot so
+  # runtime launches resume from saved state (with a window) instead of cold-booting.
+  sudo chmod 666 /dev/kvm || true
+  emulator -avd otter -no-window -no-audio -no-snapshot -gpu swiftshader_indirect &
+  EMU_PID=$!
+  adb wait-for-device
+  timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done'
+  adb shell settings put global window_animation_scale 0
+  adb shell settings put global transition_animation_scale 0
+  adb shell settings put global animator_duration_scale 0
+  adb emu avd snapshot save clean
+  adb emu kill || true
+  wait $EMU_PID 2>/dev/null || true
 maintenance: |
   export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null
   # Include the linux rolldown native binding (npm optional-deps bug omits it -> Vite build fails)
@@ -62,10 +86,19 @@ knowledge:
       make infra-up && make up   # web :3000, admin :4200, gateway :8080
   - name: run android app
     contents: |
+      # Free resources before launching the emulator (virtualized microVM).
+      pkill -f chrome 2>/dev/null || true
+      sudo systemctl stop snapd unattended-upgrades cron 2>/dev/null || true
+      sync; echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null
       sudo chmod 666 /dev/kvm    # /dev/kvm perms reset each boot
-      emulator -avd otter -no-snapshot -no-audio -no-window -gpu swiftshader_indirect &
+      # Resume the "clean" snapshot baked in at init (visible window; faster than cold boot).
+      # If the snapshot is missing it just cold-boots; -no-snapshot-save keeps it pristine.
+      DISPLAY=:0 emulator -avd otter -no-audio -gpu swiftshader_indirect -snapshot clean -no-snapshot-save &
       adb wait-for-device
+      # Use Node 22 (Vite 8 needs >=20.19; the system node is 20.18 and fails the build).
+      export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null
       make dev-android   # builds (with the correct collab port) + cap sync + cap run on the emulator
+      # If cap run prompts to pick a target: npx cap run android --target emulator-5554 (from frontend/client-app).
       # App calls the gateway at http://10.0.2.2:8080/api/v1 (debug build allows cleartext to 10.0.2.2).
   - name: run electron desktop app
     contents: |

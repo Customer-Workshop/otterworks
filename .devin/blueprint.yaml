@@ -73,17 +73,23 @@ initialize: |
 
   # Boot the emulator once headlessly, disable animations, and save a "clean" snapshot so
   # runtime launches resume from saved state (with a window) instead of cold-booting.
+  # Best-effort: this is only a speed optimization, so if the emulator can't boot at build
+  # time (e.g. no /dev/kvm) we warn and continue rather than failing the whole build; runtime
+  # then just cold-boots. The wait is still bounded so it never hangs the build.
   sudo chmod 666 /dev/kvm || true
   emulator -avd otter -no-window -no-audio -no-snapshot -gpu swiftshader_indirect &
   EMU_PID=$!
-  # Fail fast if the emulator dies at boot (e.g. no /dev/kvm) instead of hanging forever.
-  timeout 120 adb wait-for-device || { echo "emulator failed to start (no /dev/kvm?)"; kill $EMU_PID 2>/dev/null; exit 1; }
-  timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done' || { echo "emulator did not finish booting; not saving snapshot"; adb emu kill 2>/dev/null || true; kill $EMU_PID 2>/dev/null; exit 1; }
-  adb shell settings put global window_animation_scale 0
-  adb shell settings put global transition_animation_scale 0
-  adb shell settings put global animator_duration_scale 0
-  adb emu avd snapshot save clean
-  adb emu kill || true
+  if timeout 120 adb wait-for-device \
+     && timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done'; then
+    adb shell settings put global window_animation_scale 0
+    adb shell settings put global transition_animation_scale 0
+    adb shell settings put global animator_duration_scale 0
+    adb emu avd snapshot save clean
+    adb emu kill || true
+  else
+    echo "WARN: emulator did not boot at build time; skipping snapshot warm-up (runtime will cold-boot)."
+  fi
+  kill $EMU_PID 2>/dev/null || true
   wait $EMU_PID 2>/dev/null || true
 maintenance: |
   export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null

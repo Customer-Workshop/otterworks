@@ -57,8 +57,10 @@ initialize: |
   export ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk
   export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
   nvm use default
+  # Collab URL is irrelevant here (only affects the JS bundle at runtime); the runtime
+  # `make dev-android` rebuilds with the correct port. We just need a synced project.
   (cd frontend/client-app && npm install && npm install --no-save @rolldown/binding-linux-x64-gnu@1.1.5 \
-     && VITE_COLLAB_WS_URL=ws://10.0.2.2:8084 npm run build && npx cap sync android)
+     && npm run build && npx cap sync android)
   (cd frontend/client-app/mobile/android && ./gradlew --no-daemon assembleDebug)
 
   # Boot the emulator once headlessly, disable animations, and save a "clean" snapshot so
@@ -66,7 +68,8 @@ initialize: |
   sudo chmod 666 /dev/kvm || true
   emulator -avd otter -no-window -no-audio -no-snapshot -gpu swiftshader_indirect &
   EMU_PID=$!
-  adb wait-for-device
+  # Fail fast if the emulator dies at boot (e.g. no /dev/kvm) instead of hanging forever.
+  timeout 120 adb wait-for-device || { echo "emulator failed to start (no /dev/kvm?)"; kill $EMU_PID 2>/dev/null; exit 1; }
   timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done'
   adb shell settings put global window_animation_scale 0
   adb shell settings put global transition_animation_scale 0

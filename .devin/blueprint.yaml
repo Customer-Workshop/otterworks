@@ -78,7 +78,7 @@ initialize: |
   EMU_PID=$!
   # Fail fast if the emulator dies at boot (e.g. no /dev/kvm) instead of hanging forever.
   timeout 120 adb wait-for-device || { echo "emulator failed to start (no /dev/kvm?)"; kill $EMU_PID 2>/dev/null; exit 1; }
-  timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done'
+  timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = 1 ]; do sleep 3; done' || { echo "emulator did not finish booting; not saving snapshot"; adb emu kill 2>/dev/null || true; kill $EMU_PID 2>/dev/null; exit 1; }
   adb shell settings put global window_animation_scale 0
   adb shell settings put global transition_animation_scale 0
   adb shell settings put global animator_duration_scale 0

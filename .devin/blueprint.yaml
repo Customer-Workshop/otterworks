@@ -49,13 +49,11 @@ knowledge:
       sudo chmod 666 /dev/kvm    # /dev/kvm perms reset each boot
       emulator -avd otter -no-snapshot -no-audio -no-window -gpu swiftshader_indirect &
       adb wait-for-device
-      # VITE_COLLAB_WS_URL must point at the docker-exposed collab port 8084 (default is 8085, which nothing serves locally).
-      (cd frontend/client-app && VITE_COLLAB_WS_URL=ws://10.0.2.2:8084 npm run build && npx cap sync android && npx cap run android --target emulator-5554)
+      make dev-android   # builds (with the correct collab port) + cap sync + cap run on the emulator
       # App calls the gateway at http://10.0.2.2:8080/api/v1 (debug build allows cleartext to 10.0.2.2).
   - name: run electron desktop app
     contents: |
-      (cd frontend/client-app && VITE_COLLAB_WS_URL=ws://localhost:8084 npm run build)   # produce dist/ (8084 = docker-exposed collab port; default 8085 nothing serves)
-      (cd frontend/client-app/desktop && DISPLAY=:0 API_GATEWAY_URL=http://localhost:8080 npm start)
+      DISPLAY=:0 make dev-electron   # builds (with the correct collab port) + launches the Electron desktop app
       # Embedded server on :34117 proxies /api/v1 to the gateway; run with Node 22.
   - name: test
     contents: |

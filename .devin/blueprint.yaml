@@ -36,6 +36,11 @@ initialize: |
   yes | $SDKM --licenses >/dev/null
   $SDKM "platform-tools" "emulator" "platforms;android-36" "build-tools;36.0.0" "system-images;android-36;google_apis;x86_64"
   echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n otter -k "system-images;android-36;google_apis;x86_64" -d pixel_6 --force
+  # Shrink the display (720x1600 @320dpi, no device frame) to conserve GPU/RAM in the microVM.
+  AVD_CFG=$HOME/.android/avd/otter.avd/config.ini
+  sed -i -E 's|^hw.lcd.width *=.*|hw.lcd.width = 720|; s|^hw.lcd.height *=.*|hw.lcd.height = 1600|; s|^hw.lcd.density *=.*|hw.lcd.density = 320|; s|^showDeviceFrame *=.*|showDeviceFrame = no|' "$AVD_CFG"
+  grep -q '^skin.name' "$AVD_CFG" || echo 'skin.name = 720x1600' >> "$AVD_CFG"
+  grep -q '^skin.path' "$AVD_CFG" || echo 'skin.path = _no_skin' >> "$AVD_CFG"
   echo "ANDROID_HOME=$HOME/Android/Sdk" >> $ENVRC
   echo "ANDROID_SDK_ROOT=$HOME/Android/Sdk" >> $ENVRC
   echo 'PATH=$HOME/Android/Sdk/platform-tools:$HOME/Android/Sdk/emulator:$HOME/Android/Sdk/cmdline-tools/latest/bin:$PATH' >> $ENVRC
@@ -56,6 +61,9 @@ initialize: |
   # which requires node deps + the web bundle first.
   export ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk
   export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+  # JAVA_HOME is only written to $ENVRC (for later sessions), not exported in this shell,
+  # so set it here for the assembleDebug compile below (Capacitor 8 / AGP need JDK 21).
+  export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
   nvm use default
   # Collab URL is irrelevant here (only affects the JS bundle at runtime); the runtime
   # `make dev-android` rebuilds with the correct port. We just need a synced project.

@@ -503,6 +503,7 @@ fi
 # Runs scripts/seed_tenant.py as an in-cluster Job so it can reach the private
 # RDS + shared DynamoDB/S3. AWS access comes from the file-service IRSA role via
 # the file-service ServiceAccount (already trusted). Idempotent + safe to re-run.
+SEED_OK=false
 seed_tenant_data() {
   [ -n "${RDS_HOST}" ] || { warn "RDS endpoint unknown; skipping --seed-golden."; return 0; }
   local sid; sid="$(sanitize_id "${ATTENDEE_ID}")"
@@ -585,6 +586,7 @@ spec:
 YAML
   if kubectl -n "${NS}" wait --for=condition=complete job/tenant-seed --timeout=300s >/dev/null 2>&1; then
     log "  golden-style dataset seeded."
+    SEED_OK=true
     kubectl -n "${NS}" logs job/tenant-seed 2>/dev/null | tail -20 || true
   else
     warn "  seed job did not complete; check: kubectl -n ${NS} logs job/tenant-seed"
@@ -604,7 +606,11 @@ if [ ${#FAILED[@]} -gt 0 ]; then
   warn "Services with deploy issues: ${FAILED[*]}"
 fi
 if [ "${SEED_GOLDEN}" = true ]; then
-  log "Seeded ${SEED_USERS} demo users. Login: admin@otterworks.dev / Admin123!"
+  if [ "${SEED_OK}" = true ]; then
+    log "Seeded ${SEED_USERS} demo users. Login: admin@otterworks.dev / Admin123!"
+  else
+    warn "--seed-golden requested but seeding did NOT complete; tenant may be empty. See: kubectl -n ${NS} logs job/tenant-seed"
+  fi
 fi
 echo ""
 log "Inspect:   kubectl get all -n ${NS}"

@@ -565,7 +565,7 @@ def gen_users(rng, ref_now, pw_hash):
         updated_at = min(created_at + timedelta(days=rng.uniform(0, 45)), ref_now)
         last_login_at = None
         if rng.random() < 0.78:
-            last_login_at = ref_now - timedelta(days=rng.uniform(0, 45))
+            last_login_at = max(created_at, ref_now - timedelta(days=rng.uniform(0, 45)))
 
         mfa_enabled = rng.random() < 0.18
         mfa_secret = (
@@ -701,7 +701,7 @@ def gen_admin_users(rng, ref_now):
             last_login_at = ref_now - timedelta(hours=rng.uniform(1, 336))
             suspended_at, suspended_reason = None, None
         elif status == "suspended":
-            last_login_at = ref_now - timedelta(days=rng.uniform(30, 180))
+            last_login_at = max(created_at, ref_now - timedelta(days=rng.uniform(30, 180)))
             suspended_at = ref_now - timedelta(days=rng.uniform(1, 29))
             suspended_reason = rng.choice(SUSPENDED_REASONS)
             updated_at = suspended_at

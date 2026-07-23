@@ -28,13 +28,17 @@ Route53 (registered otterworks.app)
 ```
 
 - **DNS: Route53.** One public hosted zone for `otterworks.app`; `external-dns`
-  reconciles a record per tenant Ingress automatically and deletes it when the
-  namespace is removed. No per-tenant DNS work, no IPs in any URL.
+  reconciles a record per Ingress automatically and deletes it when the namespace
+  is removed. Its `--domain-filter` covers both the tenant subdomain
+  (`demo.otterworks.app`) and the dashboard host (`ops.otterworks.app`, a sibling
+  of `demo.`), so both resolve with zero per-tenant DNS work and no IPs in any URL.
 - **TLS: one wildcard cert.** `cert-manager` solves an ACME **DNS-01** challenge
   through Route53 (DNS-01 is required for a wildcard) and stores the cert as a
   Secret in `ingress-nginx`, wired as the controller's
   `--default-ssl-certificate`. Every current and future tenant serves HTTPS with
-  no extra certs.
+  no extra certs, and ingress-nginx performs the HTTP→HTTPS redirect globally —
+  so no per-ingress `ssl-redirect` annotation is needed, and pre-TLS / nip.io
+  deployments (before the default cert is wired) keep serving over plain HTTP.
 - **CA note.** The wildcard cert is issued by **Let's Encrypt** (free, standard,
   automated). DNS and validation are 100% inside AWS/Route53; only the CA is
   external — this is the normal pattern for cert-manager on EKS. If the CA itself

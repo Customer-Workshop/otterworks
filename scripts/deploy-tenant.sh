@@ -423,10 +423,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: tenant-ingress
-  annotations:
-    # TLS is served by the shared wildcard cert wired as the ingress-nginx
-    # --default-ssl-certificate (demo-platform/k8s/dns-tls). Force HTTPS.
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
   rules:

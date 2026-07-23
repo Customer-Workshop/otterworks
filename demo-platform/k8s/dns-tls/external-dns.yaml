@@ -5,7 +5,9 @@
 #
 # Placeholders (filled by scripts/enable-dns-tls.sh via envsubst):
 #   __DNS_ROLE_ARN__   IRSA role ARN (terraform output dns_role_arn)
-#   __DOMAIN_FILTER__  demo subdomain, e.g. demo.otterworks.app
+#   __DOMAIN_FILTER__  tenant subdomain, e.g. demo.otterworks.app
+#   __OPS_HOST__       ops dashboard host, e.g. ops.otterworks.app (a sibling of
+#                      the tenant subdomain, so it needs its own filter entry)
 #   __TXT_OWNER__      registry owner id, e.g. otterworks-demo
 #
 # The SA name/namespace MUST match the IRSA trust in infra/terraform/dns.tf
@@ -89,6 +91,7 @@ spec:
             - --registry=txt
             - --txt-owner-id=__TXT_OWNER__
             - --domain-filter=__DOMAIN_FILTER__
+            - --domain-filter=__OPS_HOST__
             - --policy=sync
             - --interval=1m
             - --log-level=info

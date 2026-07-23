@@ -59,11 +59,12 @@ dashboard:
 
 ingress:
   className: nginx
-  # HTTPS is served by the shared wildcard cert wired as the ingress-nginx
-  # --default-ssl-certificate (see demo-platform/k8s/dns-tls). Force the
-  # redirect so the dashboard is HTTPS-only once TLS is live.
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  # HTTPS + HTTP->HTTPS redirect are handled globally once the shared wildcard
+  # cert is wired as the ingress-nginx --default-ssl-certificate (see
+  # demo-platform/k8s/dns-tls). Left empty on purpose so pre-TLS / nip.io
+  # deployments keep serving over HTTP; add a per-ingress ssl-redirect only if
+  # you need to override the global behavior.
+  annotations: {}
 
 reaper:
   enabled: true

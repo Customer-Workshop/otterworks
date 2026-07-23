@@ -25,14 +25,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <springdoc.version>2.3.0</springdoc.version>
-        <!-- LEGACY: Apache POI 4.1.2 (2020). Upgrade target: 5.2+ -->
-        <poi.version>4.1.2</poi.version>
+        <poi.version>5.2.5</poi.version>
         <openpdf.version>1.3.35</openpdf.version>
         <commons-lang3.version>3.14.0</commons-lang3.version>
-        <!-- LEGACY: Commons IO 2.6 (2018). Upgrade target: 2.15+ -->
-        <commons-io.version>2.6</commons-io.version>
-        <!-- LEGACY: Guava 28.0 (2019, many CVEs). Upgrade target: 33+ -->
-        <guava.version>28.0-jre</guava.version>
+        <commons-io.version>2.15.1</commons-io.version>
+        <guava.version>33.1.0-jre</guava.version>
     </properties>
 
     <dependencies>
@@ -72,7 +69,7 @@
             <version>${springdoc.version}</version>
         </dependency>
 
-        <!-- LEGACY: Apache POI 4.x for Excel generation -->
+        <!-- Apache POI for Excel generation -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
@@ -97,14 +94,12 @@
             <version>${commons-lang3.version}</version>
         </dependency>
 
-        <!-- LEGACY: Commons IO 2.6 (outdated) -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commons-io.version}</version>
         </dependency>
 
-        <!-- LEGACY: Guava 28 (2019, multiple CVEs including DoS) -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

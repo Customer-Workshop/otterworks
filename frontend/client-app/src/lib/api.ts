@@ -472,17 +472,28 @@ export const storageApi = {
   },
 
   getUsage: async (): Promise<StorageUsage> => {
-    // Quota (used/total) comes from the real storage_quotas record; file and
-    // document counts come from the respective list endpoints.
-    const [quota, fileRes, docRes] = await Promise.all([
-      storageApi.getQuota(),
+    // File and document counts come from their own list endpoints; quota
+    // (used/total) comes from the real storage_quotas record. The quota lookup
+    // is decoupled so an admin-service outage degrades to 0/0 for used/total
+    // without wiping the (independent) file and document counts.
+    const [fileRes, docRes] = await Promise.all([
       apiClient.get<RawFileListResponse>("/files", { params: { page: 1, page_size: 1 } }),
       apiClient.get<{ total?: number }>("/documents", { params: { page: 1, size: 1 } }),
     ]);
 
+    let used = 0;
+    let total = 0;
+    try {
+      const quota = await storageApi.getQuota();
+      used = quota.usedBytes;
+      total = quota.quotaBytes;
+    } catch {
+      // Quota service unavailable — keep the real counts, leave used/total at 0.
+    }
+
     return {
-      used: quota.usedBytes,
-      total: quota.quotaBytes,
+      used,
+      total,
       fileCount: fileRes.data.total ?? 0,
       documentCount: docRes.data.total ?? 0,
     };

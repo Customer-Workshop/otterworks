@@ -444,7 +444,10 @@ def seed_postgres(conn, users: list[dict]) -> dict:
         for u in users:
             for j in range(RNG.randint(2, 6)):
                 did = duid("doc", u["id"], j)
-                title = DOC_TITLES[(j + hash(u["id"]) % len(DOC_TITLES)) % len(DOC_TITLES)]
+                # Deterministic title index: built-in hash() is salted per
+                # process (PYTHONHASHSEED), so use a stable digest of the id.
+                owner_h = int(hashlib.sha256(str(u["id"]).encode()).hexdigest(), 16)
+                title = DOC_TITLES[(j + owner_h) % len(DOC_TITLES)]
                 title = title.format(q=RNG.randint(1, 4))
                 body = (f"# {title}\n\nOwned by {u['display_name']} "
                         f"({u['department']}).\n\n" + "Lorem ipsum dolor sit amet. " * RNG.randint(20, 120))

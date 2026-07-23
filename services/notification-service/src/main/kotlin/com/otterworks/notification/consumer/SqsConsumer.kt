@@ -115,6 +115,16 @@ class SqsConsumer(
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
         val parser = if (chaosActive("chaos:notification-service:consumer_strict_schema")) strictJson else json
+        val result = parseWith(parser, body)
+        if (result != null || parser === json) return result
+        // Legacy messages (e.g. epoch timestamps, extra fields) may not satisfy
+        // the strict schema; fall back to the lenient parser so they are still
+        // processed and deleted from the queue instead of redelivering forever.
+        logger.warn { "Strict schema parse failed; retrying with lenient parser" }
+        return parseWith(json, body)
+    }
+
+    private fun parseWith(parser: Json, body: String): SqsNotificationMessage? {
         return try {
             // Try parsing as direct message first
             parser.decodeFromString<SqsNotificationMessage>(body)

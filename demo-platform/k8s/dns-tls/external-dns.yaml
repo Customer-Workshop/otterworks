@@ -92,6 +92,12 @@ spec:
             - --txt-owner-id=__TXT_OWNER__
             - --domain-filter=__DOMAIN_FILTER__
             - --domain-filter=__OPS_HOST__
+            # The tenant/ops filters are subdomains of the Route53 zone apex
+            # (otterworks.app). Without this, external-dns filters out the parent
+            # hosted zone and skips every record ("no hosted zone matching record
+            # DNS Name was detected"). This keeps the tight record filters while
+            # still discovering the parent zone.
+            - --aws-zone-match-parent
             - --policy=sync
             - --interval=1m
             - --log-level=info

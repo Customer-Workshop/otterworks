@@ -1,0 +1,72 @@
+{
+  "users": {
+    "min_rows": 500,
+    "max_rows": 520,
+    "required_columns": ["email", "display_name", "password_hash", "created_at"],
+    "unique_columns": ["email"]
+  },
+  "user_settings": {
+    "min_rows": 500,
+    "required_columns": ["user_id", "theme", "language"]
+  },
+  "user_roles": {
+    "min_rows": 500,
+    "required_columns": ["user_id", "role"],
+    "enum_constraints": {
+      "role": ["USER", "EDITOR", "ADMIN", "OWNER"]
+    }
+  },
+  "refresh_tokens": {
+    "min_rows": 200,
+    "required_columns": ["user_id", "token_id", "expires_at", "created_at"],
+    "unique_columns": ["token_id"]
+  },
+  "admin_users": {
+    "min_rows": 25,
+    "max_rows": 30,
+    "required_columns": ["email", "display_name", "role", "status"],
+    "unique_columns": ["email"],
+    "enum_constraints": {
+      "role": ["viewer", "editor", "admin", "super_admin"],
+      "status": ["active", "suspended", "deactivated"]
+    }
+  },
+  "storage_quotas": {
+    "min_rows": 25,
+    "required_columns": ["user_id", "quota_bytes", "used_bytes", "tier"],
+    "unique_columns": ["user_id"],
+    "enum_constraints": {
+      "tier": ["free", "basic", "pro", "enterprise"]
+    }
+  },
+  "audit_logs": {
+    "min_rows": 5000,
+    "required_columns": ["action", "resource_type", "created_at"]
+  },
+  "feature_flags": {
+    "min_rows": 30,
+    "required_columns": ["name", "description"],
+    "unique_columns": ["name"]
+  },
+  "announcements": {
+    "min_rows": 20,
+    "required_columns": ["title", "body", "severity", "status"],
+    "enum_constraints": {
+      "severity": ["info", "warning", "critical"],
+      "status": ["draft", "active", "expired"]
+    }
+  },
+  "incidents": {
+    "min_rows": 50,
+    "required_columns": ["title", "description", "severity", "status"],
+    "enum_constraints": {
+      "severity": ["low", "medium", "high", "critical"],
+      "status": ["open", "investigating", "resolved", "closed"]
+    }
+  },
+  "system_configs": {
+    "min_rows": 40,
+    "required_columns": ["key", "value", "value_type"],
+    "unique_columns": ["key"]
+  }
+}

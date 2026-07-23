@@ -51,6 +51,9 @@ coverage/
 services/notification-service/build/
 services/notification-service/.gradle/
 
+# --- Java (Maven) ---
+services/report-service/target/
+
 # --- Scala ---
 services/analytics-service/target/
 services/analytics-service/project/target/

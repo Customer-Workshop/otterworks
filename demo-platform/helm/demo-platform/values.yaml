@@ -59,8 +59,11 @@ dashboard:
 
 ingress:
   className: nginx
-  # Extra annotations (e.g. cert-manager cluster issuer) can be added here.
-  annotations: {}
+  # HTTPS is served by the shared wildcard cert wired as the ingress-nginx
+  # --default-ssl-certificate (see demo-platform/k8s/dns-tls). Force the
+  # redirect so the dashboard is HTTPS-only once TLS is live.
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 
 reaper:
   enabled: true

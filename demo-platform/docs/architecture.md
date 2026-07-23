@@ -118,6 +118,7 @@ Replaces the current TTL reaper (which deletes namespaces but **leaves orphan DB
 - **external-dns** watches Ingress objects and writes `t-<id>.demo.otterworks.xyz` records automatically — **zero per-tenant DNS work**.
 - **cert-manager** issues a single wildcard cert `*.demo.otterworks.xyz` (Let's Encrypt **DNS-01** via Route53) → HTTPS for every tenant + the dashboard.
 - `deploy-tenant.sh` defaults to `--host-suffix demo.otterworks.xyz` + TLS annotations.
+- Manifests + one-shot enablement: [`dns-tls.md`](./dns-tls.md) (`demo-platform/k8s/dns-tls/` + `scripts/enable-dns-tls.sh`). This is the AWS-native replacement for the temporary nip.io hostnames.
 
 ---
 

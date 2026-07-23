@@ -293,9 +293,11 @@ def seed_postgres(conn, users: list[dict]) -> dict:
                     %(created_at)s, %(created_at)s, %(last_login_at)s)
             ON CONFLICT (id) DO UPDATE SET
                 password_hash = EXCLUDED.password_hash,
-                display_name  = EXCLUDED.display_name,
-                last_login_at = EXCLUDED.last_login_at
+                display_name  = EXCLUDED.display_name
         """, [{**u, "pw": pw_hash} for u in users])
+        # NB: do NOT refresh created_at/last_login_at on conflict. These are
+        # wall-clock (not RNG) derived, so a re-run computes a different pair;
+        # keeping the original row's values preserves last_login_at >= created_at.
         counts["users"] = len(users)
 
         roles = [{"uid": u["id"], "role": u["app_role"]} for u in users]

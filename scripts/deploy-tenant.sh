@@ -17,7 +17,12 @@
 #
 # Usage:
 #   ./scripts/deploy-tenant.sh <ATTENDEE_ID> [--tier A|B] [--image-tag TAG] \
-#       [--ttl 8h] [--host-suffix demo.example.com] [--skip-db]
+#       [--ttl 8h] [--host-suffix demo.example.com] [--skip-db] \
+#       [--seed-golden] [--seed-users N]
+#
+# --seed-golden loads a deterministic, golden-style dataset into this tenant's
+#   own per-service stores (auth/admin/document Postgres tables + file-service
+#   DynamoDB/S3) so the client web app looks like a busy product. Idempotent.
 #
 # Required env: AWS creds (exported), DB_PASSWORD. Stable JWT_SECRET /
 #   SECRET_KEY_BASE recommended across redeploys (auto-generated if unset).
@@ -36,6 +41,8 @@ IMAGE_TAG_OVERRIDE=""
 TTL="8h"
 HOST_SUFFIX="${HOST_SUFFIX:-}"
 SKIP_DB=false
+SEED_GOLDEN=false
+SEED_USERS="${SEED_USERS:-12}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --tier)        TIER="$2"; shift 2 ;;
@@ -43,6 +50,8 @@ while [ $# -gt 0 ]; do
     --ttl)         TTL="$2"; shift 2 ;;
     --host-suffix) HOST_SUFFIX="$2"; shift 2 ;;
     --skip-db)     SKIP_DB=true; shift ;;
+    --seed-golden) SEED_GOLDEN=true; shift ;;
+    --seed-users)  SEED_USERS="$2"; shift 2 ;;
     -*)            err "Unknown flag: $1"; exit 1 ;;
     *)             if [ -z "${ATTENDEE_ID}" ]; then ATTENDEE_ID="$1"; else err "Unexpected arg: $1"; exit 1; fi; shift ;;
   esac
@@ -490,12 +499,112 @@ else
   warn "Run scripts/tenant-platform-baseline.sh once to install it. Frontends are ClusterIP-only for now."
 fi
 
+# ---------- Optional: seed a golden-style dataset into this tenant ----------
+# Runs scripts/seed_tenant.py as an in-cluster Job so it can reach the private
+# RDS + shared DynamoDB/S3. AWS access comes from the file-service IRSA role via
+# the file-service ServiceAccount (already trusted). Idempotent + safe to re-run.
+seed_tenant_data() {
+  [ -n "${RDS_HOST}" ] || { warn "RDS endpoint unknown; skipping --seed-golden."; return 0; }
+  local sid; sid="$(sanitize_id "${ATTENDEE_ID}")"
+  local skip_files="0"
+  log "Seeding golden-style dataset into ${T_DB_NAME} (${SEED_USERS} users, in-cluster job)..."
+
+  # Deliver the seeder script + DB password to the namespace.
+  kubectl -n "${NS}" create configmap tenant-seeder-script \
+    --from-file=seed_tenant.py="${REPO_ROOT}/scripts/seed_tenant.py" \
+    --dry-run=client -o yaml | kubectl apply -n "${NS}" -f - >/dev/null
+  apply_db_admin_secret "${NS}"
+
+  # Run the Job under the file-service ServiceAccount: it already carries the
+  # file-service IRSA role AND is in that role's trust policy, so it can write
+  # file metadata (DynamoDB) + objects (S3). Fall back to Postgres-only seeding
+  # if the file-service SA isn't present.
+  local seed_sa="file-service"
+  if ! kubectl -n "${NS}" get sa "${seed_sa}" >/dev/null 2>&1; then
+    warn "  file-service ServiceAccount not found; seeding Postgres only (no DynamoDB/S3 files)."
+    seed_sa="default"
+    skip_files="1"
+  fi
+
+  kubectl -n "${NS}" delete job tenant-seed --ignore-not-found >/dev/null 2>&1 || true
+  kubectl apply -n "${NS}" -f - <<YAML
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tenant-seed
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: ${seed_sa}
+      containers:
+        - name: seed
+          image: python:3.12-slim
+          env:
+            - name: PGHOST
+              value: "${RDS_HOST}"
+            - name: PGPORT
+              value: "${RDS_PORT}"
+            - name: PGDATABASE
+              value: "${T_DB_NAME}"
+            - name: PGUSER
+              value: "${DB_USER}"
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: tenant-db-admin, key: PGPASSWORD } }
+            - name: AWS_REGION
+              value: "${AWS_REGION}"
+            - name: S3_BUCKET
+              value: "${S3_FILE_BUCKET}"
+            - name: DYNAMODB_TABLE
+              value: "${DDB_FILE_META}"
+            - name: SEED_NS
+              value: "${sid}"
+            - name: SEED_USERS
+              value: "${SEED_USERS}"
+            - name: SEED_SKIP_FILES
+              value: "${skip_files}"
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -e
+              pip install --no-cache-dir --quiet psycopg2-binary bcrypt boto3
+              python /seed/seed_tenant.py
+          volumeMounts:
+            - name: script
+              mountPath: /seed
+          resources:
+            # Sized to fit within the per-tenant ResourceQuota headroom that
+            # remains after all services are running (limits.cpu is the tight one).
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 200m, memory: 512Mi }
+      volumes:
+        - name: script
+          configMap: { name: tenant-seeder-script }
+YAML
+  if kubectl -n "${NS}" wait --for=condition=complete job/tenant-seed --timeout=300s >/dev/null 2>&1; then
+    log "  golden-style dataset seeded."
+    kubectl -n "${NS}" logs job/tenant-seed 2>/dev/null | tail -20 || true
+  else
+    warn "  seed job did not complete; check: kubectl -n ${NS} logs job/tenant-seed"
+    kubectl -n "${NS}" logs job/tenant-seed 2>/dev/null | tail -20 || true
+  fi
+  kubectl -n "${NS}" delete secret tenant-db-admin --ignore-not-found >/dev/null 2>&1 || true
+}
+if [ "${SEED_GOLDEN}" = true ]; then
+  seed_tenant_data
+fi
+
 # ---------- Summary ----------
 echo ""
 log "Tenant ${ATTENDEE_ID} deployed to namespace ${NS}."
 kubectl get pods -n "${NS}" -o wide || true
 if [ ${#FAILED[@]} -gt 0 ]; then
   warn "Services with deploy issues: ${FAILED[*]}"
+fi
+if [ "${SEED_GOLDEN}" = true ]; then
+  log "Seeded ${SEED_USERS} demo users. Login: admin@otterworks.dev / Admin123!"
 fi
 echo ""
 log "Inspect:   kubectl get all -n ${NS}"

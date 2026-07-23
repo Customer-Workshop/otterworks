@@ -122,20 +122,42 @@ class Client:
         return r.json().get("id")
 
     def list_file_names(self, folder_id):
-        params = {"owner_id": self.owner_id}
-        if folder_id:
-            params["folder_id"] = folder_id
-        r = self.s.get(f"{self.gw}/api/v1/files", headers=self.h, params=params, timeout=30)
-        r.raise_for_status()
-        return {f["name"] for f in r.json().get("files", [])}
+        # file-service caps page_size at 100 (default 50); paginate to get every
+        # name so the idempotency check sees folders with >100 files in full.
+        names: set = set()
+        page = 1
+        while True:
+            params = {"owner_id": self.owner_id, "page": page, "page_size": 100}
+            if folder_id:
+                params["folder_id"] = folder_id
+            r = self.s.get(f"{self.gw}/api/v1/files", headers=self.h, params=params, timeout=30)
+            r.raise_for_status()
+            data = r.json()
+            batch = data.get("files", [])
+            names.update(f["name"] for f in batch)
+            total = data.get("total", len(names))
+            if not batch or len(names) >= total:
+                break
+            page += 1
+        return names
 
     def list_document_titles(self):
-        r = self.s.get(f"{self.gw}/api/v1/documents", headers=self.h,
-                       params={"owner_id": self.owner_id, "limit": 1000}, timeout=30)
-        r.raise_for_status()
-        data = r.json()
-        items = data.get("documents", data if isinstance(data, list) else data.get("items", []))
-        return {d.get("title") for d in items}
+        # document-service caps size at 100 (default 20); paginate all pages.
+        titles: set = set()
+        page = 1
+        while True:
+            params = {"owner_id": self.owner_id, "page": page, "size": 100}
+            r = self.s.get(f"{self.gw}/api/v1/documents", headers=self.h,
+                           params=params, timeout=30)
+            r.raise_for_status()
+            data = r.json()
+            items = data.get("items", data.get("documents", data if isinstance(data, list) else []))
+            titles.update(d.get("title") for d in items)
+            total = data.get("total", len(titles))
+            if not items or len(titles) >= total:
+                break
+            page += 1
+        return titles
 
     def create_document(self, title, content, content_type="text/markdown"):
         body = {"title": title, "content": content, "content_type": content_type,

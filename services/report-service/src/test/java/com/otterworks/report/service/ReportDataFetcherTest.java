@@ -2,8 +2,8 @@ package com.otterworks.report.service;
 
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.otterworks.report.config.AppConfig;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -15,10 +15,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -41,7 +41,7 @@ public class ReportDataFetcherTest {
     private final Date dateFrom = new Date(System.currentTimeMillis() - 86400000L * 7);
     private final Date dateTo = new Date();
 
-    @Before
+    @BeforeEach
     public void setUp() {
         restTemplate = mock(RestTemplate.class);
         appConfig = mock(AppConfig.class);

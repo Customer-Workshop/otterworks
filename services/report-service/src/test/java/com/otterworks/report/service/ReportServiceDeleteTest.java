@@ -5,20 +5,18 @@ import com.otterworks.report.model.ReportCategory;
 import com.otterworks.report.model.ReportStatus;
 import com.otterworks.report.model.ReportType;
 import com.otterworks.report.repository.ReportRepository;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link ReportService#deleteReport(Long)}.
@@ -26,7 +24,6 @@ import static org.junit.Assert.assertTrue;
  * Verifies the record is removed and that the generated file is deleted
  * after the transaction commits (deferred deletion).
  */
-@RunWith(SpringRunner.class)
 @SpringBootTest
 @ActiveProfiles("test")
 public class ReportServiceDeleteTest {
@@ -64,10 +61,9 @@ public class ReportServiceDeleteTest {
 
         boolean deleted = reportService.deleteReport(saved.getId());
 
-        assertTrue("deleteReport should return true", deleted);
-        assertFalse("Report record should be removed",
-                reportRepository.findById(saved.getId()).isPresent());
-        assertFalse("Generated file should be deleted after commit", file.exists());
+        assertTrue(deleted, "deleteReport should return true");
+        assertFalse(reportRepository.findById(saved.getId()).isPresent(), "Report record should be removed");
+        assertFalse(file.exists(), "Generated file should be deleted after commit");
     }
 
     @Test
@@ -76,9 +72,8 @@ public class ReportServiceDeleteTest {
 
         boolean deleted = reportService.deleteReport(saved.getId());
 
-        assertTrue("deleteReport should return true", deleted);
-        assertFalse("Report record should be removed",
-                reportRepository.findById(saved.getId()).isPresent());
+        assertTrue(deleted, "deleteReport should return true");
+        assertFalse(reportRepository.findById(saved.getId()).isPresent(), "Report record should be removed");
     }
 
     @Test
@@ -87,7 +82,7 @@ public class ReportServiceDeleteTest {
 
         boolean deleted = reportService.deleteReport(saved.getId());
 
-        assertTrue("deleteReport should return true even if file is missing", deleted);
+        assertTrue(deleted, "deleteReport should return true even if file is missing");
         assertFalse(reportRepository.findById(saved.getId()).isPresent());
     }
 

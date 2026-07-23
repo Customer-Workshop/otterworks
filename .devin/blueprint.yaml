@@ -50,6 +50,36 @@ initialize: |
   (cd /tmp/gradle-wrapper-gen && $HOME/gradle-dist/gradle-8.14.3/bin/gradle wrapper --gradle-version 8.14.3)
   cp /tmp/gradle-wrapper-gen/gradle/wrapper/gradle-wrapper.jar \
      frontend/client-app/mobile/android/gradle/wrapper/gradle-wrapper.jar
+
+  # --- Seed the golden "RetailCo enterprise drive" dataset --------------------
+  # Bring the whole stack up transiently and populate a deep, browsable enterprise
+  # drive (~2,445 files across 15 department folders + 60 rich-text docs) via the
+  # public API gateway, all owned by one synthetic account
+  # (drive@retailco.example / 'DriveDemo!2024'). The data lands in the Postgres,
+  # LocalStack (S3 + DynamoDB) and MeiliSearch docker volumes; those volumes are
+  # filesystem state that persists into the snapshot (containers do not), so a
+  # session only has to run `make up` to come up data-rich. Idempotent + re-runnable.
+  COMPOSE="docker compose -f docker-compose.infra.yml -f docker-compose.yml"
+  # Start from clean volumes so Flyway migrations apply consistently at this revision.
+  $COMPOSE down -v || true
+  docker compose -f docker-compose.infra.yml up -d
+  for i in $(seq 1 60); do docker exec otterworks-postgres pg_isready -q 2>/dev/null && break; sleep 2; done
+  $COMPOSE up -d --build
+  # Wait for the auth path through the gateway to be live (auth-service boots slowest).
+  for i in $(seq 1 120); do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 -X POST http://localhost:8080/api/v1/auth/login \
+      -H 'Content-Type: application/json' -d '{"email":"probe@otterworks.local","password":"x"}' || true)
+    [ "$code" != "000" ] && [ "$code" != "502" ] && [ "$code" != "503" ] && break
+    sleep 2
+  done
+  python3 -m venv /tmp/retail-seed-venv
+  /tmp/retail-seed-venv/bin/pip install -q -r testdata/generated/retail-drive/requirements.txt
+  /tmp/retail-seed-venv/bin/python testdata/generated/retail-drive/generate_drive.py \
+    --gateway http://localhost:8080 \
+    --email drive@retailco.example --password 'DriveDemo!2024' \
+    --departments all --scale 1.0 --workers 6 --register
+  # Remove containers but KEEP the seeded volumes so they are captured in the snapshot.
+  $COMPOSE down
 maintenance: |
   export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null
   # Include the linux rolldown native binding (npm optional-deps bug omits it -> Vite build fails)
@@ -60,6 +90,16 @@ knowledge:
   - name: run backend + web
     contents: |
       make infra-up && make up   # web :3000, admin :4200, gateway :8080
+  - name: seeded demo data (web app)
+    contents: |
+      The web app (:3000) comes pre-seeded with the "RetailCo enterprise drive":
+      ~2,445 files across 15 department folders (nested 3-4 levels) + 60 rich-text
+      documents, owned by one synthetic account. Log in at http://localhost:3000 as
+      drive@retailco.example / 'DriveDemo!2024'. To (re)seed a fresh stack:
+        python3 -m venv /tmp/seed && /tmp/seed/bin/pip install -r testdata/generated/retail-drive/requirements.txt
+        /tmp/seed/bin/python testdata/generated/retail-drive/generate_drive.py \
+          --gateway http://localhost:8080 --email drive@retailco.example \
+          --password 'DriveDemo!2024' --departments all --scale 1.0 --register
   - name: run android app
     contents: |
       sudo chmod 666 /dev/kvm    # /dev/kvm perms reset each boot

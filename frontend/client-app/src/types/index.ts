@@ -144,6 +144,17 @@ export interface StorageUsage {
   documentCount: number;
 }
 
+export type StorageTier = "free" | "basic" | "pro" | "enterprise";
+
+export interface StorageQuota {
+  quotaBytes: number;
+  usedBytes: number;
+  tier: StorageTier;
+  usagePercentage: number;
+  overQuota: boolean;
+  remainingBytes: number;
+}
+
 export interface UserSettings {
   notificationEmail: boolean;
   notificationInApp: boolean;

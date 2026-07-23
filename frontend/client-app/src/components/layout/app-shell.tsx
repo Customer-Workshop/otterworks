@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { Sidebar } from "./sidebar";
 import { SearchBar } from "@/components/ui/search-bar";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { StorageQuotaBanner } from "@/components/ui/storage-quota-banner";
 import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
@@ -45,7 +46,10 @@ export function AppShell({ children }: AppShellProps) {
         </header>
 
         {/* Main content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="p-4 lg:p-6">
+          <StorageQuotaBanner />
+          {children}
+        </main>
       </div>
     </div>
   );

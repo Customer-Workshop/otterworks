@@ -6,6 +6,9 @@ Rails.application.routes.draw do
   # Admin API
   namespace :api do
     namespace :v1 do
+      # User-facing storage (current user's quota, resolved from the JWT)
+      get 'storage/quota', to: 'storage#quota'
+
       namespace :admin do
         # User Management
         resources :users, only: %i[index show update destroy] do

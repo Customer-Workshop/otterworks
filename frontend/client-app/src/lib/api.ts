@@ -11,6 +11,7 @@ import type {
   SearchFilters,
   ActivityItem,
   StorageUsage,
+  StorageQuota,
   UserSettings,
   PaginatedResponse,
   SharedUser,
@@ -456,47 +457,34 @@ export const activityApi = {
 
 // ── Storage ───────────────────────────────────────────────────
 export const storageApi = {
+  // The current user's storage quota, served from admin-service (owner of the
+  // storage_quotas table) via the gateway. Resolved from the JWT — no user id needed.
+  getQuota: async (): Promise<StorageQuota> => {
+    const { data } = await apiClient.get<StorageQuota>("/storage/quota");
+    return {
+      quotaBytes: Number(data.quotaBytes ?? 0),
+      usedBytes: Number(data.usedBytes ?? 0),
+      tier: data.tier,
+      usagePercentage: Number(data.usagePercentage ?? 0),
+      overQuota: Boolean(data.overQuota),
+      remainingBytes: Number(data.remainingBytes ?? 0),
+    };
+  },
+
   getUsage: async (): Promise<StorageUsage> => {
-    // The /storage/usage endpoint is not routed. Compute stats from
-    // existing file and document list endpoints instead.
-    const [fileRes, docRes] = await Promise.all([
+    // Quota (used/total) comes from the real storage_quotas record; file and
+    // document counts come from the respective list endpoints.
+    const [quota, fileRes, docRes] = await Promise.all([
+      storageApi.getQuota(),
       apiClient.get<RawFileListResponse>("/files", { params: { page: 1, page_size: 1 } }),
       apiClient.get<{ total?: number }>("/documents", { params: { page: 1, size: 1 } }),
     ]);
 
-    const fileCount = fileRes.data.total ?? 0;
-    const documentCount = docRes.data.total ?? 0;
-
-    // Fetch all files to sum storage. The file-service caps page_size at 100,
-    // so paginate through all pages to get an accurate total.
-    let used = 0;
-    if (fileCount > 0) {
-      const PAGE_LIMIT = 100;
-      let page = 1;
-      let fetched = 0;
-      while (fetched < fileCount) {
-        const batch = await apiClient.get<RawFileListResponse>("/files", {
-          params: { page, page_size: PAGE_LIMIT },
-        });
-        const files = batch.data.files ?? [];
-        if (files.length === 0) break;
-        used += files.reduce(
-          (sum, f) => {
-            const raw = f as unknown as Record<string, number>;
-            return sum + (raw.sizeBytes ?? raw.size_bytes ?? 0);
-          },
-          0,
-        );
-        fetched += files.length;
-        page += 1;
-      }
-    }
-
     return {
-      used,
-      total: 10 * 1024 * 1024 * 1024, // 10 GB default quota
-      fileCount,
-      documentCount,
+      used: quota.usedBytes,
+      total: quota.quotaBytes,
+      fileCount: fileRes.data.total ?? 0,
+      documentCount: docRes.data.total ?? 0,
     };
   },
 };

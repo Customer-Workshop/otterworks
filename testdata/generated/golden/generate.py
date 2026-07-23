@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import os
 import random
+import re
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -931,6 +932,10 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed (deterministic)")
     args = parser.parse_args()
 
+    if not re.fullmatch(r"[A-Za-z0-9_]+", args.ns):
+        print("ERROR: --ns must contain only letters, digits, and underscores.", file=sys.stderr)
+        return 1
+
     schema = f"otterworks_{args.ns}"
     rng = random.Random(args.seed)
     ref_now = now()
@@ -940,8 +945,10 @@ def main() -> int:
     print(f"  Namespace: {args.ns}  |  Schema: {schema}  |  Seed: {args.seed}")
     print(f"{'=' * 62}\n")
 
+    # search_path is set via a libpq connection option so the schema identifier
+    # never reaches a raw SQL string. The namespace is validated above.
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = psycopg2.connect(options=f"-c search_path={schema}", **DB_CONFIG)
     except psycopg2.OperationalError as e:
         print(f"ERROR: Cannot connect to database: {e}", file=sys.stderr)
         print("Bring up Postgres first (make infra-up).", file=sys.stderr)
@@ -950,8 +957,6 @@ def main() -> int:
     conn.autocommit = False
     cur = conn.cursor()
     try:
-        cur.execute(f'SET search_path TO "{schema}"')
-
         pw_hash = bcrypt.hashpw(b"golden-seed-password", bcrypt.gensalt(rounds=4)).decode()
 
         def run(label, columns, rows, on_conflict="DO NOTHING", template=None, table=None):

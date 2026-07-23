@@ -29,8 +29,7 @@
         <poi.version>4.1.2</poi.version>
         <!-- LEGACY: iText 5.5.13.3 (AGPL, pre-license-change). Upgrade target: OpenPDF or iText 7+ -->
         <itext.version>5.5.13.3</itext.version>
-        <!-- LEGACY: Commons Lang 2.6 (EOL). Upgrade target: commons-lang3 -->
-        <commons-lang.version>2.6</commons-lang.version>
+        <commons-lang3.version>3.14.0</commons-lang3.version>
         <!-- LEGACY: Commons IO 2.6 (2018). Upgrade target: 2.15+ -->
         <commons-io.version>2.6</commons-io.version>
         <!-- LEGACY: Guava 28.0 (2019, many CVEs). Upgrade target: 33+ -->
@@ -93,11 +92,10 @@
             <version>${itext.version}</version>
         </dependency>
 
-        <!-- LEGACY: Commons Lang 2 (EOL since 2012) -->
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>${commons-lang.version}</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
         </dependency>
 
         <!-- LEGACY: Commons IO 2.6 (outdated) -->

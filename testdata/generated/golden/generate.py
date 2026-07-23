@@ -733,8 +733,8 @@ def gen_storage_quotas(rng, ref_now, admin_meta):
             pct = rng.uniform(0.80, 0.95)
         used_bytes = int(pct * quota_bytes)
         created_at = a["created_at"]
-        span = max(int((ref_now - created_at).total_seconds()), 1)
-        updated_at = created_at + timedelta(seconds=rng.randint(0, span))
+        span = max((ref_now - created_at).total_seconds(), 1.0)
+        updated_at = created_at + timedelta(seconds=rng.uniform(0, span))
         rows.append((
             stable_id("storage-quota", i), a["id"], quota_bytes, used_bytes,
             tier, created_at, updated_at,

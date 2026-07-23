@@ -149,7 +149,7 @@ public class PdfReportGenerator {
         if (StringUtils.isBlank(columnName)) {
             return "";
         }
-        // LEGACY: Commons Lang 2 StringUtils.capitalize
+        // LEGACY: Commons Lang 3 StringUtils.capitalize
         return StringUtils.capitalize(columnName.replace("_", " "));
     }
 

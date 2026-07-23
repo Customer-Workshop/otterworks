@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * - Guava LoadingCache (old version 28, CVEs) instead of Caffeine or Spring Cache
  * - Manual JSON response handling with Map<String, Object>
  * - java.util.Date parameters
- * - Commons Lang 2 StringUtils
+ * - Commons Lang 3 StringUtils
  * - Checked exceptions wrapped in RuntimeException
  */
 @Service
@@ -41,7 +41,7 @@ public class ReportDataFetcher {
     private final RestTemplate restTemplate;
     private final AppConfig appConfig;
 
-    // LEGACY: Guava 28 LoadingCache. Upgrade target: Caffeine (Spring Boot default) or Spring @Cacheable
+    // LEGACY: Guava LoadingCache. Upgrade target: Caffeine (Spring Boot default) or Spring @Cacheable
     private final LoadingCache<String, List<Map<String, Object>>> dataCache;
 
     public ReportDataFetcher(RestTemplate restTemplate, AppConfig appConfig) {

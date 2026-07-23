@@ -271,7 +271,10 @@ def build_users() -> list[dict]:
             "quota_bytes": quota,
             "used_bytes": min(used, quota),  # business rule: used <= quota
             "created_at": created,
-            "last_login_at": now() - timedelta(hours=RNG.randint(1, 720)),
+            # Anchor last login after account creation (business rule:
+            # last_login_at >= created_at), same approach as audit timestamps.
+            "last_login_at": created + timedelta(
+                seconds=RNG.randint(0, max(1, int((now() - created).total_seconds())))),
         })
     return users
 

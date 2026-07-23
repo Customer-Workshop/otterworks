@@ -71,17 +71,39 @@ render "${MANIFEST_DIR}/wildcard-certificate.yaml" | kubectl apply -f -
 
 echo "==> Wiring the wildcard cert as ingress-nginx default TLS certificate"
 if helm status "${INGRESS_RELEASE}" -n "${INGRESS_NS}" >/dev/null 2>&1; then
+  # Pin to the version already deployed so a routine "turn on TLS" run only adds
+  # the default-ssl-certificate flag and never silently upgrades the shared
+  # controller that fronts every tenant + the dashboard.
+  cur_ver="$(helm list -n "${INGRESS_NS}" -o json \
+    | jq -r --arg n "${INGRESS_RELEASE}" '.[] | select(.name==$n) | .chart' \
+    | sed 's/.*-//')"
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx >/dev/null 2>&1 || true
   helm repo update >/dev/null 2>&1 || true
-  helm upgrade "${INGRESS_RELEASE}" ingress-nginx/ingress-nginx \
-    -n "${INGRESS_NS}" --reuse-values \
-    --set-string "controller.extraArgs.default-ssl-certificate=${WILDCARD_SECRET}"
+  up_args=(-n "${INGRESS_NS}" --reuse-values
+           --set-string "controller.extraArgs.default-ssl-certificate=${WILDCARD_SECRET}")
+  if [ -n "${cur_ver}" ]; then
+    up_args+=(--version "${cur_ver}")
+  else
+    echo "    WARNING: could not detect the installed ingress-nginx chart version;" >&2
+    echo "    refusing to helm-upgrade an unpinned shared controller. Set it via" >&2
+    echo "    controller.extraArgs.default-ssl-certificate=${WILDCARD_SECRET} manually." >&2
+    exit 1
+  fi
+  helm upgrade "${INGRESS_RELEASE}" ingress-nginx/ingress-nginx "${up_args[@]}"
 else
   echo "    ingress-nginx helm release not found; patching the controller Deployment directly."
-  kubectl -n "${INGRESS_NS}" patch deploy ingress-nginx-controller --type=json -p "$(cat <<JSON
+  # Idempotent: only append the flag if it isn't already present, so re-runs
+  # don't stack duplicate --default-ssl-certificate args on the controller.
+  if kubectl -n "${INGRESS_NS}" get deploy ingress-nginx-controller \
+      -o jsonpath='{.spec.template.spec.containers[0].args}' 2>/dev/null \
+      | grep -q -- '--default-ssl-certificate='; then
+    echo "    --default-ssl-certificate already set on the controller; nothing to do."
+  else
+    kubectl -n "${INGRESS_NS}" patch deploy ingress-nginx-controller --type=json -p "$(cat <<JSON
 [{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--default-ssl-certificate=${WILDCARD_SECRET}"}]
 JSON
 )"
+  fi
 fi
 
 cat <<DONE

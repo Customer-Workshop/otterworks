@@ -58,7 +58,8 @@ the domain exists.
 ## Rollout steps
 
 1. **Register the domain** (the one manual, out-of-band step — needs a real
-   registrant contact + ICANN verification; ~$19/yr for `.xyz`):
+   registrant contact + ICANN verification; ~$20/yr for `.app`, which is
+   HSTS-preloaded so it is HTTPS-only in browsers):
 
    ```bash
    aws route53domains register-domain --region us-east-1 \

@@ -13,6 +13,9 @@
 #   kubectl -n otterworks apply -f testdata/generated/retail-drive/seed-loader.job.yaml
 #   kubectl -n otterworks logs -f job/retail-drive-seed-loader
 #
+# An init container clones the repo into a shared volume; the loader container
+# builds a venv in that volume and runs the generator. Both run as a non-root
+# user with privilege escalation disabled and all capabilities dropped.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -30,16 +33,44 @@ spec:
         app.kubernetes.io/name: retail-drive-seed-loader
     spec:
       restartPolicy: Never
-      containers:
-        - name: loader
-          image: python:3.11-slim
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      volumes:
+        - name: work
+          emptyDir: {}
+      initContainers:
+        - name: clone
+          image: alpine/git:2.45.2
           env:
-            - name: GATEWAY_URL
-              value: "http://api-gateway.otterworks.svc.cluster.local:8080"
             - name: REPO_URL
               value: "https://github.com/Cognition-Partner-Workshops/otterworks.git"
             - name: REPO_REF
               value: "main"
+          command: ["/bin/sh", "-c"]
+          args:
+            - git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" /work/src
+          volumeMounts:
+            - name: work
+              mountPath: /work
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: loader
+          image: python:3.11-slim
+          workingDir: /work/src/testdata/generated/retail-drive
+          env:
+            - name: HOME
+              value: "/work"
+            - name: GATEWAY_URL
+              value: "http://api-gateway.otterworks.svc.cluster.local:8080"
             - name: SCALE
               value: "1.0"
             - name: DEPARTMENTS
@@ -58,15 +89,21 @@ spec:
           args:
             - |
               set -eu
-              apt-get update -qq && apt-get install -y -qq git >/dev/null
-              git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" /src
-              cd /src/testdata/generated/retail-drive
-              pip install --no-cache-dir -q -r requirements.txt
-              python generate_drive.py \
+              python -m venv /work/venv
+              /work/venv/bin/pip install --no-cache-dir -q -r requirements.txt
+              /work/venv/bin/python generate_drive.py \
                 --gateway "$GATEWAY_URL" \
                 --email "$DRIVE_EMAIL" --password "$DRIVE_PASSWORD" \
                 --departments "$DEPARTMENTS" --scale "$SCALE" \
                 --workers 6 --register
+          volumeMounts:
+            - name: work
+              mountPath: /work
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests:
               cpu: "250m"

@@ -21,7 +21,7 @@
 #   TIER          A | B                                            (default A)
 #   TTL           e.g. 8h, 30m, 2d                                 (default 8h)
 #   IMAGE_TAG     optional pinned image tag
-#   HOST_SUFFIX   ingress host suffix              (default demo.otterworks.xyz)
+#   HOST_SUFFIX   ingress host suffix              (default demo.otterworks.app)
 #   SCENARIO      bug-catalog scenario (for OP=inject)
 #   TENANT_BRANCH git branch to check out (e.g. workshop-<id>)
 #   CONTROL_TABLE DynamoDB control table         (default otterworks-demo-control)
@@ -43,7 +43,7 @@ REPO_REMOTE="${REPO_REMOTE:-origin}"
 CONTROL_TABLE="${CONTROL_TABLE:-otterworks-demo-control}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 EKS_CLUSTER="${EKS_CLUSTER:-otterworks-dev}"
-HOST_SUFFIX="${HOST_SUFFIX:-demo.otterworks.xyz}"
+HOST_SUFFIX="${HOST_SUFFIX:-demo.otterworks.app}"
 TIER="${TIER:-A}"
 TTL="${TTL:-8h}"
 OP="${OP:-}"

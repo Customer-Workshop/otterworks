@@ -32,7 +32,7 @@ export const env = {
     return process.env.RUNNER_SECRET_NAME || "demo-ops-dashboard";
   },
   get hostSuffix(): string {
-    return process.env.HOST_SUFFIX || "demo.otterworks.xyz";
+    return process.env.HOST_SUFFIX || "demo.otterworks.app";
   },
   // HTTPS clone URL passed to runner Jobs so they can fetch participant branches
   // (workshop-<id>) with GITHUB_TOKEN. Empty -> runner uses the image's bundled

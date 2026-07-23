@@ -20,14 +20,14 @@ zero DNS setup, but it is unacceptable for rollout:
 ## Target (everything inside AWS)
 
 ```
-Route53 (registered otterworks.xyz)
-  └─ hosted zone otterworks.xyz
-       ├─ external-dns  ──> writes t-<id>.demo.otterworks.xyz / api-t-<id>.demo…  ->  shared NLB
-       └─ cert-manager (ACME DNS-01 over Route53) ──> ONE wildcard cert *.demo.otterworks.xyz (+ ops.otterworks.xyz)
+Route53 (registered otterworks.app)
+  └─ hosted zone otterworks.app
+       ├─ external-dns  ──> writes t-<id>.demo.otterworks.app / api-t-<id>.demo…  ->  shared NLB
+       └─ cert-manager (ACME DNS-01 over Route53) ──> ONE wildcard cert *.demo.otterworks.app (+ ops.otterworks.app)
                                                           └─ ingress-nginx --default-ssl-certificate  ->  HTTPS for every tenant
 ```
 
-- **DNS: Route53.** One public hosted zone for `otterworks.xyz`; `external-dns`
+- **DNS: Route53.** One public hosted zone for `otterworks.app`; `external-dns`
   reconciles a record per tenant Ingress automatically and deletes it when the
   namespace is removed. No per-tenant DNS work, no IPs in any URL.
 - **TLS: one wildcard cert.** `cert-manager` solves an ACME **DNS-01** challenge
@@ -58,7 +58,7 @@ the domain exists.
 
    ```bash
    aws route53domains register-domain --region us-east-1 \
-     --domain-name otterworks.xyz --duration-in-years 1 \
+     --domain-name otterworks.app --duration-in-years 1 \
      --admin-contact file://contact.json --registrant-contact file://contact.json \
      --tech-contact file://contact.json --privacy-protect-admin-contact \
      --privacy-protect-registrant-contact --privacy-protect-tech-contact
@@ -76,17 +76,17 @@ the domain exists.
 3. **Turn on external-dns + cert-manager + wildcard TLS** (idempotent):
 
    ```bash
-   DOMAIN_ROOT=otterworks.xyz ACME_EMAIL=<platform-contact-email> \
+   DOMAIN_ROOT=otterworks.app ACME_EMAIL=<platform-contact-email> \
      ISSUER=letsencrypt-staging scripts/enable-dns-tls.sh
    # once the staging cert is Ready:
-   DOMAIN_ROOT=otterworks.xyz ACME_EMAIL=<platform-contact-email> \
+   DOMAIN_ROOT=otterworks.app ACME_EMAIL=<platform-contact-email> \
      ISSUER=letsencrypt-prod scripts/enable-dns-tls.sh
    ```
 
 4. **Done.** Deploy/checkout tenants normally — the scripts, runner, reaper and
-   dashboard already default to `--host-suffix demo.otterworks.xyz`, so tenants
-   come up at `https://t-<id>.demo.otterworks.xyz` and the dashboard at
-   `https://ops.otterworks.xyz`. The reaper's `gc_route53` cleans any stray
+   dashboard already default to `--host-suffix demo.otterworks.app`, so tenants
+   come up at `https://t-<id>.demo.otterworks.app` and the dashboard at
+   `https://ops.otterworks.app`. The reaper's `gc_route53` cleans any stray
    records belonging to expired tenants.
 
 ## Verify
@@ -94,6 +94,6 @@ the domain exists.
 ```bash
 kubectl -n external-dns logs deploy/external-dns --tail=20        # record syncs
 kubectl -n ingress-nginx get certificate otterworks-wildcard      # READY=True
-dig +short t-<id>.demo.otterworks.xyz                             # -> NLB
-curl -sI https://t-<id>.demo.otterworks.xyz | head -1            # HTTP/2 200
+dig +short t-<id>.demo.otterworks.app                             # -> NLB
+curl -sI https://t-<id>.demo.otterworks.app | head -1            # HTTP/2 200
 ```

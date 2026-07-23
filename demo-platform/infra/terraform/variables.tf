@@ -29,7 +29,7 @@ variable "control_table_name" {
 }
 
 # DNS/TLS is gated until the domain is registered. Flip to true and set
-# dns_zone_name once otterworks.xyz exists in Route53.
+# dns_zone_name once otterworks.app exists in Route53.
 variable "enable_dns" {
   type    = bool
   default = false
@@ -37,7 +37,7 @@ variable "enable_dns" {
 
 variable "dns_zone_name" {
   type    = string
-  default = "otterworks.xyz"
+  default = "otterworks.app"
 }
 
 # Shared data-plane resources the reaper must be able to GC per-tenant slices of.

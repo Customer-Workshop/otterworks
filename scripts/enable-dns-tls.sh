@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # enable-dns-tls.sh — turn on the AWS-native DNS + wildcard-TLS stack for the
-# demo platform. Run ONCE, after otterworks.xyz is registered in Route53 and
+# demo platform. Run ONCE, after otterworks.app is registered in Route53 and
 # `terraform apply -var enable_dns=true` has created the hosted zone + IRSA role.
 #
 # It replaces the temporary nip.io IP-based hostnames with real, self-contained
@@ -12,11 +12,11 @@
 # Idempotent: safe to re-run. No secrets are passed on argv.
 #
 # Usage:
-#   DOMAIN_ROOT=otterworks.xyz ACME_EMAIL=platform@example.com \
+#   DOMAIN_ROOT=otterworks.app ACME_EMAIL=platform@example.com \
 #     [ISSUER=letsencrypt-staging] scripts/enable-dns-tls.sh
 set -euo pipefail
 
-DOMAIN_ROOT="${DOMAIN_ROOT:-otterworks.xyz}"
+DOMAIN_ROOT="${DOMAIN_ROOT:-otterworks.app}"
 DEMO_SUFFIX="${DEMO_SUFFIX:-demo.${DOMAIN_ROOT}}"
 ISSUER="${ISSUER:-letsencrypt-staging}"   # start on staging, then re-run ISSUER=letsencrypt-prod
 TXT_OWNER="${TXT_OWNER:-otterworks-demo}"

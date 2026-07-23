@@ -5,7 +5,7 @@
 #
 # Placeholders (filled by scripts/enable-dns-tls.sh via envsubst):
 #   __DNS_ROLE_ARN__   IRSA role ARN (terraform output dns_role_arn)
-#   __DOMAIN_FILTER__  demo subdomain, e.g. demo.otterworks.xyz
+#   __DOMAIN_FILTER__  demo subdomain, e.g. demo.otterworks.app
 #   __TXT_OWNER__      registry owner id, e.g. otterworks-demo
 #
 # The SA name/namespace MUST match the IRSA trust in infra/terraform/dns.tf

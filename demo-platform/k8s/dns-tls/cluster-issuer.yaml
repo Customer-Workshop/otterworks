@@ -10,7 +10,7 @@
 # Placeholders (filled by scripts/enable-dns-tls.sh via envsubst):
 #   __ACME_EMAIL__   contact email for the ACME account (Let's Encrypt)
 #   __ZONE_ID__      Route53 hosted zone id (terraform output dns_zone_id)
-#   __DOMAIN_ROOT__  registrable domain, e.g. otterworks.xyz
+#   __DOMAIN_ROOT__  registrable domain, e.g. otterworks.app
 #
 # Two issuers are created: use `-staging` first to avoid Let's Encrypt rate
 # limits while validating, then switch to `-prod` for a browser-trusted cert.

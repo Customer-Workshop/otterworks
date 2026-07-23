@@ -889,12 +889,12 @@ def gen_incidents(rng, ref_now, admin_meta):
         severity = rng.choice(severities)
         status = rng.choice(statuses)
         created_at = ref_now - timedelta(days=rng.uniform(1, HISTORY_DAYS))
-        updated_at = created_at + timedelta(hours=rng.randint(1, 72))
+        updated_at = min(created_at + timedelta(hours=rng.randint(1, 72)), ref_now)
         resolved_at = closed_at = None
         if status in ("resolved", "closed"):
-            resolved_at = created_at + timedelta(hours=rng.randint(1, 48))
+            resolved_at = min(created_at + timedelta(hours=rng.randint(1, 48)), ref_now)
         if status == "closed":
-            closed_at = (resolved_at or created_at) + timedelta(hours=rng.randint(1, 24))
+            closed_at = min((resolved_at or created_at) + timedelta(hours=rng.randint(1, 24)), ref_now)
         devin_session_id = devin_session_url = devin_session_status = None
         if rng.random() < 0.30:
             hex_part = stable_id("devin-session", i).replace("-", "")[:12]

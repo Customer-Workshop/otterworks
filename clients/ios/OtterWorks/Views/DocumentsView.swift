@@ -91,7 +91,10 @@ struct DocumentsView: View {
     private func create() {
         guard canCreate else { return }
         let title = newTitle
-        newTitle = ""
-        Task { await viewModel.create(title: title) }
+        Task {
+            if await viewModel.create(title: title) {
+                newTitle = ""
+            }
+        }
     }
 }

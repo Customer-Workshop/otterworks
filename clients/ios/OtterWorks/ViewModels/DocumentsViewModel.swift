@@ -31,9 +31,12 @@ final class DocumentsViewModel: ObservableObject {
         }
     }
 
-    func create(title: String) async {
+    /// Creates a document. Returns `true` on success so the caller can clear
+    /// its input only when the title was actually accepted.
+    @discardableResult
+    func create(title: String) async -> Bool {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return false }
 
         errorMessage = nil
         isCreating = true
@@ -41,10 +44,12 @@ final class DocumentsViewModel: ObservableObject {
         do {
             let created = try await api.createDocument(title: trimmed)
             documents.insert(created, at: 0)
+            return true
         } catch let error as APIError {
             errorMessage = error.message
         } catch {
             errorMessage = error.localizedDescription
         }
+        return false
     }
 }

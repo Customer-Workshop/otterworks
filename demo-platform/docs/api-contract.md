@@ -1,7 +1,7 @@
 # Demo Ops Dashboard — API contract
 
 The dashboard is a **Next.js** app (server + UI in one deployable) in namespace
-`otterworks-platform`, served at `https://ops.otterworks.xyz`. All routes below are Next.js
+`otterworks-platform`, served at `https://ops.otterworks.app`. All routes below are Next.js
 **server** route handlers (`app/api/...`) — enforcement is server-side, never trust the client.
 
 ## Auth (passcode, server-side)

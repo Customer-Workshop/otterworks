@@ -38,7 +38,7 @@ pool × 40 tenants blows past that.
 
 ## 4. Ingress / DNS — see architecture.md §6
 One ingress-nginx + one NLB handles many Ingress objects fine. Move tenants to **host-based**
-wildcard routing (`*.demo.otterworks.xyz`) so each tenant is its own origin (no cookie/asset
+wildcard routing (`*.demo.otterworks.app`) so each tenant is its own origin (no cookie/asset
 collisions, no nip.io fragility). external-dns + a single wildcard TLS cert cover all tenants.
 
 ## 5. Cost + concurrency guardrails

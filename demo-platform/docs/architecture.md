@@ -31,7 +31,7 @@ and **DNS/TLS** to the *existing* `otterworks-dev` cluster. We are not adopting 
 - EKS `otterworks-dev` + **autoscaled** node group(s)
 - `ingress-nginx` + 1 NLB (shared L7 entry)
 - **cert-manager** (wildcard TLS) + **external-dns** (auto Route53 records)  ← *to install*
-- Route53 hosted zone for **`otterworks.xyz`** + wildcard `*.demo.otterworks.xyz`  ← *to create*
+- Route53 hosted zone for **`otterworks.app`** + wildcard `*.demo.otterworks.app`  ← *to create*
 - **1 RDS instance** (database-per-tenant) — already so
 - Shared S3 buckets + DynamoDB tables (namespaced *inside* by tenant key/prefix) — see §8
 - **Demo Ops Dashboard** (new) — platform namespace `otterworks-platform`
@@ -43,7 +43,7 @@ and **DNS/TLS** to the *existing* `otterworks-dev` cluster. We are not adopting 
 - Per-tenant in-cluster **Redis** + **MeiliSearch**
 - Its **database** `otterworks_<id>` on the shared RDS
 - Its **prefix/owner partition** in the shared S3 buckets + DynamoDB tables
-- Ingress host `t-<id>.demo.otterworks.xyz` / `api-t-<id>.demo.otterworks.xyz` (wildcard TLS)
+- Ingress host `t-<id>.demo.otterworks.app` / `api-t-<id>.demo.otterworks.app` (wildcard TLS)
 - Mapped to git branch `workshop-<id>` (recorded in the control-plane state store)
 
 See the rendered diagram: `platform-vs-multitenant.png`.
@@ -53,7 +53,7 @@ See the rendered diagram: `platform-vs-multitenant.png`.
 ## 3. Demo Ops Dashboard
 
 A small **platform service** (not per-tenant) in namespace `otterworks-platform`, exposed at
-`https://ops.otterworks.xyz` (its own host, wildcard TLS).
+`https://ops.otterworks.app` (its own host, wildcard TLS).
 
 **Backend API** (stateless; all state in the control table):
 - `GET  /api/tenants` — list all tenants + live resources (ns status, pod ready counts, DB present, URL, owner, branch, tier, created/expires, node/cost estimate). Live data = control table joined with a live `kubectl`/AWS read.
@@ -114,10 +114,11 @@ Replaces the current TTL reaper (which deletes namespaces but **leaves orphan DB
 
 ## 6. DNS + TLS (the scale answer)
 
-- Register **`otterworks.xyz`** (Route53) → hosted zone.
-- **external-dns** watches Ingress objects and writes `t-<id>.demo.otterworks.xyz` records automatically — **zero per-tenant DNS work**.
-- **cert-manager** issues a single wildcard cert `*.demo.otterworks.xyz` (Let's Encrypt **DNS-01** via Route53) → HTTPS for every tenant + the dashboard.
-- `deploy-tenant.sh` defaults to `--host-suffix demo.otterworks.xyz` + TLS annotations.
+- Register **`otterworks.app`** (Route53) → hosted zone.
+- **external-dns** watches Ingress objects and writes `t-<id>.demo.otterworks.app` records automatically — **zero per-tenant DNS work**.
+- **cert-manager** issues a single wildcard cert `*.demo.otterworks.app` (Let's Encrypt **DNS-01** via Route53) → HTTPS for every tenant + the dashboard.
+- `deploy-tenant.sh` defaults to `--host-suffix demo.otterworks.app` + TLS annotations.
+- Manifests + one-shot enablement: [`dns-tls.md`](./dns-tls.md) (`demo-platform/k8s/dns-tls/` + `scripts/enable-dns-tls.sh`). This is the AWS-native replacement for the temporary nip.io hostnames.
 
 ---
 
@@ -159,14 +160,14 @@ I recommend (A) now and (B) only if you specifically want the consolidation. **N
 
 ## 10. Rollout plan (phased; child agents in parallel where marked ⑂)
 
-1. **DNS/TLS foundation:** register `otterworks.xyz`, hosted zone, install external-dns + cert-manager, wildcard cert. Move any existing tenants onto real hostnames.
+1. **DNS/TLS foundation:** register `otterworks.app`, hosted zone, install external-dns + cert-manager, wildcard cert. Move any existing tenants onto real hostnames.
 2. **Control table** (`otterworks-demo-control`) + Terraform/CDK for it.
 3. ⑂ **Dashboard backend** (API + passcode auth + state store client).
 4. ⑂ **Dashboard frontend** (table UI + reaper panel + audit).
 5. **deploy/teardown refactor** to read/write the control table + emit audit + host-based ingress by default.
 6. **Reaper v2** + orphan sweeper (schedule from control table).
 7. **Autoscaling + prefix delegation + PgBouncer** (scale hardening).
-8. Deploy dashboard to `otterworks-platform`, wire `ops.otterworks.xyz`, end-to-end test, PR(s).
+8. Deploy dashboard to `otterworks-platform`, wire `ops.otterworks.app`, end-to-end test, PR(s).
 
 ---
 
@@ -178,7 +179,7 @@ I recommend (A) now and (B) only if you specifically want the consolidation. **N
    - (c) a **new generalized repo** (e.g. `demo-tenant-operations`) if you want this reusable across demo apps.
    My lean: (a) now for speed, or (c) if reuse matters. 
 2. **Single-instance scope:** §8 option **(A)** (enforce shared + namespacing) or **(B)** (true collapse)?
-3. **Domain:** confirm **`otterworks.xyz` ($19/yr)**, approve the spend, and give the **registrant contact** (name, org, email, phone, postal) for Route53/ICANN.
+3. **Domain:** confirm **`otterworks.app` ($19/yr)**, approve the spend, and give the **registrant contact** (name, org, email, phone, postal) for Route53/ICANN.
 4. **Passcode:** shall I generate one (stored as a Secret) or do you have a specific value?
 5. **Child agents:** OK to spin up child sessions for the dashboard backend/frontend in parallel (steps 3⑂/4⑂)?
 

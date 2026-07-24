@@ -16,7 +16,7 @@ See `docs/architecture.md` and the diagram `docs/platform-vs-multitenant.png`.
   the **Demo Ops Dashboard**, a durable **DynamoDB control table**, and the **reaper**.
 - **Multi-tenant plane (ephemeral, per checkout):** namespace `otterworks-<id>` (all services +
   in-cluster Redis/Meili), its DB `otterworks_<id>`, its prefix in the shared S3/Dynamo, an
-  ingress host `t-<id>.demo.otterworks.xyz`, mapped to git branch `workshop-<id>`.
+  ingress host `t-<id>.demo.otterworks.app`, mapped to git branch `workshop-<id>`.
 
 ## Layout
 ```

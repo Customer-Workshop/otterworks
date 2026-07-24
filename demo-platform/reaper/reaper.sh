@@ -46,7 +46,7 @@ source "${REPO_ROOT}/demo-platform/lib/control-common.sh"
 CONTROL_TABLE="${CONTROL_TABLE:-otterworks-demo-control}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 EKS_CLUSTER="${EKS_CLUSTER:-otterworks-dev}"
-HOST_SUFFIX="${HOST_SUFFIX:-demo.otterworks.xyz}"
+HOST_SUFFIX="${HOST_SUFFIX:-demo.otterworks.app}"
 SHARED_S3_PREFIX="${SHARED_S3_PREFIX:-otterworks-}"
 SHARED_DDB_PREFIX="${SHARED_DDB_PREFIX:-otterworks-}"
 # Convention for a tenant's object prefix inside the shared S3 buckets. Only this

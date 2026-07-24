@@ -1,7 +1,7 @@
-# DNS/TLS is gated behind enable_dns until otterworks.xyz is registered in
+# DNS/TLS is gated behind enable_dns until otterworks.app is registered in
 # Route53. Once the domain exists, `terraform apply -var enable_dns=true` creates
 # the hosted zone (if managing it here) and an IRSA role that external-dns +
-# cert-manager (DNS-01) use to manage records for *.demo.otterworks.xyz.
+# cert-manager (DNS-01) use to manage records for *.demo.otterworks.app.
 #
 # NOTE: domain *registration* (route53domains register-domain) is a manual,
 # contact-info + ICANN-verification step done out of band; this only manages the

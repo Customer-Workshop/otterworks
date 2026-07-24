@@ -80,14 +80,35 @@ impl S3Client {
         key: &str,
         expires_in_secs: u64,
     ) -> Result<String, ServiceError> {
+        self.presigned_url(key, expires_in_secs, None, None).await
+    }
+
+    /// Generate a presigned URL, optionally overriding the response `Content-Type`
+    /// and `Content-Disposition` returned by S3.
+    ///
+    /// Objects seeded via LocalStack lose their stored `Content-Type` (it becomes
+    /// `binary/octet-stream`), so inline previews pass the real mime type from
+    /// metadata here together with `Content-Disposition: inline` to make browsers
+    /// render the file instead of downloading it.
+    pub async fn presigned_url(
+        &self,
+        key: &str,
+        expires_in_secs: u64,
+        response_content_type: Option<&str>,
+        response_content_disposition: Option<&str>,
+    ) -> Result<String, ServiceError> {
         let presigning = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
             .map_err(|e| ServiceError::S3Error(format!("presign config error: {e}")))?;
 
-        let presigned = self
-            .client
-            .get_object()
-            .bucket(&self.bucket)
-            .key(key)
+        let mut request = self.client.get_object().bucket(&self.bucket).key(key);
+        if let Some(content_type) = response_content_type {
+            request = request.response_content_type(content_type);
+        }
+        if let Some(disposition) = response_content_disposition {
+            request = request.response_content_disposition(disposition);
+        }
+
+        let presigned = request
             .presigned(presigning)
             .await
             .map_err(|e| ServiceError::S3Error(format!("presign failed: {e}")))?;

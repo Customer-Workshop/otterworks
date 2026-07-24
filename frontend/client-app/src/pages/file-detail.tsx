@@ -22,7 +22,16 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ShareDialog } from "@/components/files/share-dialog";
-import { TextFilePreview, PdfFilePreview, ImageFilePreview } from "@/components/files/file-preview";
+import {
+  TextFilePreview,
+  PdfFilePreview,
+  ImageFilePreview,
+  SpreadsheetFilePreview,
+  WordFilePreview,
+  AudioFilePreview,
+  UnsupportedFilePreview,
+} from "@/components/files/file-preview";
+import { getPreviewKind, type PreviewKind } from "@/lib/file-preview";
 import { filesApi, authApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
@@ -48,8 +57,8 @@ function FileDetailContent() {
   });
 
   const { data: presignedUrl, isLoading: isUrlLoading } = useQuery({
-    queryKey: ["files", fileId, "download-url"],
-    queryFn: () => filesApi.getDownloadUrl(fileId),
+    queryKey: ["files", fileId, "preview-url"],
+    queryFn: () => filesApi.getPreviewUrl(fileId),
     enabled: !!file,
     staleTime: 30 * 60 * 1000,
   });
@@ -111,17 +120,22 @@ function FileDetailContent() {
     );
   }
 
-  const isImage = file.mimeType.startsWith("image/");
-  const isVideo = file.mimeType.startsWith("video/");
-  const isPdf = file.mimeType === "application/pdf";
-  const isText =
-    file.mimeType.startsWith("text/") ||
-    file.mimeType === "application/json" ||
-    file.mimeType === "application/xml" ||
-    file.mimeType === "application/javascript" ||
-    file.mimeType === "application/typescript" ||
-    file.mimeType === "application/x-yaml" ||
-    file.mimeType === "application/x-sh";
+  const previewKind = getPreviewKind(file.mimeType, file.name);
+
+  const handlePreviewDownload = async () => {
+    try {
+      const url = await filesApi.getDownloadUrl(file.id);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      toast.error("Could not download file");
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -206,13 +220,12 @@ function FileDetailContent() {
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
               <FilePreviewContent
-                isImage={isImage}
-                isVideo={isVideo}
-                isPdf={isPdf}
-                isText={isText}
+                kind={previewKind}
                 isUrlLoading={isUrlLoading}
                 presignedUrl={presignedUrl}
                 fileName={file.name}
+                fileSize={file.size}
+                onDownload={handlePreviewDownload}
               />
             </div>
           </div>
@@ -401,23 +414,29 @@ function InfoRow({
 }
 
 function FilePreviewContent({
-  isImage,
-  isVideo,
-  isPdf,
-  isText,
+  kind,
   isUrlLoading,
   presignedUrl,
   fileName,
+  fileSize,
+  onDownload,
 }: Readonly<{
-  isImage: boolean;
-  isVideo: boolean;
-  isPdf: boolean;
-  isText: boolean;
+  kind: PreviewKind;
   isUrlLoading: boolean;
   presignedUrl: string | undefined;
   fileName: string;
+  fileSize: number;
+  onDownload: () => void;
 }>) {
-  if ((isImage || isVideo || isText || isPdf) && isUrlLoading) {
+  const needsUrl =
+    kind === "image" ||
+    kind === "video" ||
+    kind === "audio" ||
+    kind === "text" ||
+    kind === "pdf" ||
+    kind === "spreadsheet" ||
+    kind === "word";
+  if (needsUrl && isUrlLoading) {
     return (
       <div className="w-full text-center py-8">
         <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -425,32 +444,39 @@ function FilePreviewContent({
     );
   }
 
-  if (isImage) {
-    return <ImageFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+  switch (kind) {
+    case "image":
+      return <ImageFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+    case "video":
+      return presignedUrl ? (
+        <video src={presignedUrl} controls className="max-w-full max-h-[500px] rounded-lg">
+          <track kind="captions" />
+        </video>
+      ) : (
+        <UnsupportedFilePreview fileName={fileName} size={fileSize} onDownload={onDownload} />
+      );
+    case "audio":
+      return <AudioFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+    case "pdf":
+      return <PdfFilePreview presignedUrl={presignedUrl} />;
+    case "text":
+      return <TextFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+    case "spreadsheet":
+      return <SpreadsheetFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+    case "word":
+      return <WordFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+    case "presentation":
+      return (
+        <UnsupportedFilePreview
+          fileName={fileName}
+          size={fileSize}
+          message="Inline preview isn't available for PowerPoint files yet. Download to view."
+          onDownload={onDownload}
+        />
+      );
+    default:
+      return <UnsupportedFilePreview fileName={fileName} size={fileSize} onDownload={onDownload} />;
   }
-
-  if (isVideo && presignedUrl) {
-    return (
-      <video src={presignedUrl} controls className="max-w-full max-h-[500px] rounded-lg">
-        <track kind="captions" />
-      </video>
-    );
-  }
-
-  if (isPdf) {
-    return <PdfFilePreview presignedUrl={presignedUrl} />;
-  }
-
-  if (isText) {
-    return <TextFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
-  }
-
-  return (
-    <div className="text-center">
-      <File size={64} className="text-gray-300 mx-auto mb-3" />
-      <p className="text-sm text-gray-500">Preview not available for this file type</p>
-    </div>
-  );
 }
 
 function FileIcon({ mimeType }: Readonly<{ mimeType: string }>) {

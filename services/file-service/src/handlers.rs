@@ -16,11 +16,11 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
-    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
-    ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
-    MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
-    UploadResponse,
+    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadQuery,
+    DownloadResponse, FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder,
+    HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
+    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse,
+    UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -356,6 +356,7 @@ pub async fn download_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
+    query: web::Query<DownloadQuery>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
         .into_inner()
@@ -363,7 +364,16 @@ pub async fn download_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
-    let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
+
+    // For inline previews, override the response content-type with the mime type
+    // recorded in metadata (S3 objects seeded via LocalStack report
+    // `binary/octet-stream`) and ask S3 to serve the object inline.
+    let url = if query.disposition.as_deref() == Some("inline") {
+        s3.presigned_url(&file.s3_key, 3600, Some(&file.mime_type), Some("inline"))
+            .await?
+    } else {
+        s3.presigned_download_url(&file.s3_key, 3600).await?
+    };
 
     Ok(HttpResponse::Ok().json(DownloadResponse {
         url,

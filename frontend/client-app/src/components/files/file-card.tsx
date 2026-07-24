@@ -16,12 +16,14 @@ import {
   Check,
   X,
   Star,
+  Eye,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { FileItem } from "@/types";
 import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import { starredApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { FilePreviewModal } from "@/components/files/file-preview-modal";
 
 const iconMap: Record<string, typeof File> = {
   file: File,
@@ -70,6 +72,7 @@ export function FileCard({
   onStarToggle,
 }: FileCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const { user } = useAuthStore();
   const userId = user?.id ?? "";
   const [starred, setStarred] = useState(() => userId ? starredApi.isStarred(userId, file.id) : false);
@@ -195,9 +198,13 @@ export function FileCard({
               onShare={onShare}
               onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
               onDownload={onDownload}
+              onPreview={() => setShowPreview(true)}
             />
           )}
         </div>
+        {showPreview && !file.isFolder && (
+          <FilePreviewModal file={file} onClose={() => setShowPreview(false)} />
+        )}
       </div>
     );
   }
@@ -252,6 +259,7 @@ export function FileCard({
                   onShare={onShare}
                   onDownload={onDownload}
                   onRename={() => { renameDoneRef.current = false; setIsRenaming(true); setRenameValue(file.name); }}
+                  onPreview={() => setShowPreview(true)}
                 />
               )}
             </div>
@@ -282,6 +290,9 @@ export function FileCard({
           {formatRelativeTime(file.updatedAt)}
         </p>
       </Link>
+      {showPreview && !file.isFolder && (
+        <FilePreviewModal file={file} onClose={() => setShowPreview(false)} />
+      )}
     </div>
   );
 }
@@ -293,6 +304,7 @@ function FileMenu({
   onShare,
   onRename,
   onDownload,
+  onPreview,
 }: {
   file: FileItem;
   onClose: () => void;
@@ -300,11 +312,26 @@ function FileMenu({
   onShare?: (id: string) => void;
   onRename?: () => void;
   onDownload?: (id: string, name: string) => void;
+  onPreview?: () => void;
 }) {
   return (
     <>
       <div className="fixed inset-0 z-10" onClick={onClose} />
       <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+        {!file.isFolder && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onPreview?.();
+              onClose();
+            }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <Eye size={14} />
+            Preview
+          </button>
+        )}
         <button
           onClick={(e) => {
             e.preventDefault();

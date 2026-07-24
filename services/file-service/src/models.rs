@@ -108,6 +108,14 @@ pub struct DownloadResponse {
     pub expires_in_secs: u64,
 }
 
+#[derive(Debug, Deserialize, Default)]
+pub struct DownloadQuery {
+    /// `inline` presigns the URL so browsers render the file in place (used by
+    /// previews); anything else (or omitted) keeps the default attachment
+    /// download behavior.
+    pub disposition: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ListFilesQuery {
     pub folder_id: Option<Uuid>,
@@ -199,4 +207,35 @@ pub struct ActivityQuery {
 #[derive(Debug, Serialize)]
 pub struct ActivityResponse {
     pub items: Vec<ActivityItem>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_query(qs: &str) -> DownloadQuery {
+        actix_web::web::Query::<DownloadQuery>::from_query(qs)
+            .expect("query should parse")
+            .into_inner()
+    }
+
+    #[test]
+    fn download_query_detects_inline_disposition() {
+        let q = parse_query("disposition=inline");
+        assert_eq!(q.disposition.as_deref(), Some("inline"));
+    }
+
+    #[test]
+    fn download_query_defaults_to_none() {
+        let q = parse_query("");
+        assert!(q.disposition.is_none());
+    }
+
+    #[test]
+    fn download_query_non_inline_disposition_is_preserved() {
+        let q = parse_query("disposition=attachment");
+        assert_eq!(q.disposition.as_deref(), Some("attachment"));
+        // Only the exact value "inline" should switch on inline presigning.
+        assert_ne!(q.disposition.as_deref(), Some("inline"));
+    }
 }

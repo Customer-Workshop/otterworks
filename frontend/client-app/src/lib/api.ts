@@ -240,6 +240,16 @@ export const filesApi = {
     // Rewrite to localhost so the browser can reach the endpoint.
     return data.url.replace("://localstack:", "://localhost:");
   },
+  // Presigned URL for inline preview: the file-service overrides the response
+  // content-type (from the stored mime type) and serves the object inline so
+  // the browser renders it instead of downloading.
+  getPreviewUrl: async (id: string): Promise<string> => {
+    const { data } = await apiClient.get<{ url: string; expiresInSecs: number }>(
+      `/files/${id}/download`,
+      { params: { disposition: "inline" } }
+    );
+    return data.url.replace("://localstack:", "://localhost:");
+  },
   delete: async (id: string): Promise<void> => {
     await apiClient.post(`/files/${id}/trash`);
   },

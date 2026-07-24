@@ -7,7 +7,6 @@ import asyncio
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import (
-    CONTENT_TYPE_LATEST,
     Counter,
     Histogram,
     generate_latest,
@@ -69,5 +68,5 @@ async def metrics() -> Response:
     """Prometheus metrics endpoint."""
     return Response(
         content=generate_latest(),
-        media_type=CONTENT_TYPE_LATEST,
+        media_type="text/plain; charset=utf-8",
     )

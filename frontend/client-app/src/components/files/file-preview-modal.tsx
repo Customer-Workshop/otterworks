@@ -33,14 +33,20 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
   // Back firing popstate) so that closing via X/backdrop/Escape pops it exactly
   // once — otherwise an orphaned entry would swallow the user's next Back press.
   const popped = useRef(false);
+  // `onClose` is passed inline by the parent, so its identity changes on every
+  // parent re-render. Hold it in a ref so the open effect can depend only on
+  // `file.id` and thus push exactly one history entry per open (not one per
+  // re-render), while listeners always call the latest handler.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const close = useCallback(() => {
     if (!popped.current) {
       popped.current = true;
       window.history.back();
     }
-    onClose();
-  }, [onClose]);
+    onCloseRef.current();
+  }, []);
 
   useEffect(() => {
     window.history.pushState({ preview: file.id }, "");
@@ -49,7 +55,7 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
     };
     const onPop = () => {
       popped.current = true;
-      onClose();
+      onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("popstate", onPop);
@@ -57,7 +63,7 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("popstate", onPop);
     };
-  }, [file.id, close, onClose]);
+  }, [file.id, close]);
 
   const handleDownload = async () => {
     try {

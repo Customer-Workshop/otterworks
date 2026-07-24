@@ -388,6 +388,7 @@ pub async fn download_file(
 /// `?disposition=inline` marks the response for inline rendering; otherwise it
 /// is served as an attachment.
 pub async fn file_content(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
@@ -399,7 +400,6 @@ pub async fn file_content(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
-    let bytes = s3.download_object(&file.s3_key).await?;
 
     let kind = if query.disposition.as_deref() == Some("inline") {
         "inline"
@@ -411,10 +411,38 @@ pub async fn file_content(
         sanitize_content_disposition_filename(&file.name)
     );
 
-    Ok(HttpResponse::Ok()
-        .content_type(file.mime_type.as_str())
-        .insert_header((actix_web::http::header::CONTENT_DISPOSITION, disposition))
-        .body(bytes))
+    // Honor a client Range request (previews only fetch the first slice of large
+    // text/CSV files) so we don't stream the whole object over the network.
+    // `nosniff` stops browsers from MIME-sniffing user-uploaded bytes into an
+    // executable type regardless of the stored metadata mime.
+    let range = req
+        .headers()
+        .get(actix_web::http::header::RANGE)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+
+    if let Some(range) = range {
+        let (bytes, content_range) = s3.download_object_range(&file.s3_key, &range).await?;
+        let mut b = HttpResponse::PartialContent();
+        if let Some(cr) = content_range {
+            b.insert_header((actix_web::http::header::CONTENT_RANGE, cr));
+        }
+        Ok(
+            b.insert_header((actix_web::http::header::ACCEPT_RANGES, "bytes"))
+                .content_type(file.mime_type.as_str())
+                .insert_header((actix_web::http::header::CONTENT_DISPOSITION, disposition))
+                .insert_header((actix_web::http::header::X_CONTENT_TYPE_OPTIONS, "nosniff"))
+                .body(bytes),
+        )
+    } else {
+        let bytes = s3.download_object(&file.s3_key).await?;
+        Ok(HttpResponse::Ok()
+            .insert_header((actix_web::http::header::ACCEPT_RANGES, "bytes"))
+            .content_type(file.mime_type.as_str())
+            .insert_header((actix_web::http::header::CONTENT_DISPOSITION, disposition))
+            .insert_header((actix_web::http::header::X_CONTENT_TYPE_OPTIONS, "nosniff"))
+            .body(bytes))
+    }
 }
 
 pub async fn move_file(

@@ -25,7 +25,9 @@ export function TextFilePreview({ fileId, fileName }: TextFilePreviewProps) {
   const [truncated, setTruncated] = useState(false);
 
   // Fetch text through the same-origin content endpoint (presigned S3 URLs are
-  // cross-origin and cannot be fetch()-ed), then cap at MAX_PREVIEW_SIZE bytes.
+  // cross-origin and cannot be fetch()-ed). Only the first MAX_PREVIEW_SIZE+1
+  // bytes are requested (Range header) so large files don't transfer in full;
+  // getting the extra byte back means the file is larger than the cap.
   useEffect(() => {
     if (!fileId) {
       setLoading(false);
@@ -39,7 +41,7 @@ export function TextFilePreview({ fileId, fileName }: TextFilePreviewProps) {
     setContent(null);
 
     filesApi
-      .getPreviewContent(fileId)
+      .getPreviewContent(fileId, MAX_PREVIEW_SIZE + 1)
       .then((buf) => {
         if (cancelled) return;
         const full = new Uint8Array(buf);

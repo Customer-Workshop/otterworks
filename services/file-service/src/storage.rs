@@ -74,6 +74,37 @@ impl S3Client {
         Ok(body.into_bytes())
     }
 
+    /// Download a byte range of an object from S3.
+    ///
+    /// `range` is a raw HTTP Range header value (e.g. `bytes=0-499999`). Returns
+    /// the requested bytes and S3's `Content-Range` response header (e.g.
+    /// `bytes 0-499999/1048576`) when available, so callers can serve a `206
+    /// Partial Content` response without reading the whole object into memory.
+    pub async fn download_object_range(
+        &self,
+        key: &str,
+        range: &str,
+    ) -> Result<(Bytes, Option<String>), ServiceError> {
+        let resp = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .range(range)
+            .send()
+            .await
+            .map_err(|e| ServiceError::S3Error(format!("range download failed: {e}")))?;
+
+        let content_range = resp.content_range().map(str::to_string);
+        let body = resp
+            .body
+            .collect()
+            .await
+            .map_err(|e| ServiceError::S3Error(format!("body read failed: {e}")))?;
+
+        Ok((body.into_bytes(), content_range))
+    }
+
     /// Generate a presigned download URL.
     pub async fn presigned_download_url(
         &self,

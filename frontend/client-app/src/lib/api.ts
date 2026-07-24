@@ -253,10 +253,14 @@ export const filesApi = {
   // Stream the raw bytes back through the same-origin API for client-side
   // parsing (office docs). Presigned S3/LocalStack URLs are cross-origin and
   // cannot be fetch()-ed from the browser (CORS); this endpoint can.
-  getPreviewContent: async (id: string): Promise<ArrayBuffer> => {
+  // `maxBytes` sends a Range header so large files (e.g. text previews capped at
+  // 500 KB) only transfer the portion that will be shown, not the whole object.
+  getPreviewContent: async (id: string, maxBytes?: number): Promise<ArrayBuffer> => {
     const { data } = await apiClient.get<ArrayBuffer>(`/files/${id}/content`, {
       params: { disposition: "inline" },
       responseType: "arraybuffer",
+      headers:
+        maxBytes && maxBytes > 0 ? { Range: `bytes=0-${maxBytes - 1}` } : undefined,
     });
     return data;
   },

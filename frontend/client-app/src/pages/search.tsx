@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import {
   Search,
   FileText,
@@ -10,10 +9,11 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { searchApi } from "@/lib/api";
+import { useSearch } from "@/hooks/useSearch";
 import { formatRelativeTime, cn } from "@/lib/utils";
 
 /**
@@ -49,41 +49,33 @@ function escapeHtml(text: string): string {
 import type { SearchResult } from "@/types";
 
 function SearchContent() {
-  const [searchParams] = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
-  const [query, setQuery] = useState(initialQuery);
-  const [submittedQuery, setSubmittedQuery] = useState(initialQuery);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The submitted query lives in the URL so searches are shareable and
+  // bookmarkable; the input value is local so typing doesn't spam history.
+  const submittedQuery = searchParams.get("q") || "";
+  const [query, setQuery] = useState(submittedQuery);
   const [typeFilter, setTypeFilter] = useState<string>("all");
-
-  useEffect(() => {
-    const urlQuery = searchParams.get("q") || "";
-    setQuery(urlQuery);
-    setSubmittedQuery(urlQuery);
-  }, [searchParams]);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["search", submittedQuery, typeFilter],
-    queryFn: () =>
-      searchApi.search({
-        query: submittedQuery,
-        type: typeFilter === "all" ? undefined : (typeFilter as "file" | "document" | "folder"),
-      }),
-    enabled: submittedQuery.length > 0,
-  });
+  useEffect(() => {
+    setQuery(searchParams.get("q") || "");
+  }, [searchParams]);
+
+  const { data, isLoading, results } = useSearch(submittedQuery, typeFilter);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      setSubmittedQuery(query.trim());
+      const trimmed = query.trim();
+      setSearchParams(trimmed ? { q: trimmed } : {});
     },
-    [query]
+    [query, setSearchParams]
   );
-
-  const results = data?.data || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <Breadcrumb items={[{ label: "Search" }]} />
+
       <h1 className="text-2xl font-bold text-gray-900">Search</h1>
 
       {/* Search form */}
@@ -116,7 +108,7 @@ function SearchContent() {
               type="button"
               onClick={() => {
                 setQuery("");
-                setSubmittedQuery("");
+                setSearchParams({});
               }}
               className="p-2 text-gray-400 hover:text-gray-600"
             >

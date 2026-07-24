@@ -12,8 +12,13 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 10_000 },
 
+  // Authenticate once and reuse the JWT across specs; the app redirects
+  // unauthenticated users to /login, which would break page-level assertions.
+  globalSetup: "./e2e/global-setup.ts",
+
   use: {
     baseURL: BASE_URL,
+    storageState: "e2e/.auth/state.json",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "on-first-retry",

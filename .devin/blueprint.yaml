@@ -55,15 +55,23 @@ initialize: |
   # Bring the whole stack up transiently and populate a deep, browsable enterprise
   # drive (~2,445 files across 15 department folders + 60 rich-text docs) via the
   # public API gateway, all owned by one synthetic account
-  # (drive@retailco.example / 'DriveDemo!2024'). The data lands in the Postgres,
-  # LocalStack (S3 + DynamoDB) and MeiliSearch docker volumes; those volumes are
-  # filesystem state that persists into the snapshot (containers do not), so a
-  # session only has to run `make up` to come up data-rich. Idempotent + re-runnable.
+  # (drive@retailco.example / 'DriveDemo!2024'). Postgres (documents), DynamoDB
+  # (folders + file metadata, persisted via PERSISTENCE=1) and MeiliSearch land in
+  # docker volumes that persist into the snapshot. LocalStack does NOT persist S3
+  # objects, so we additionally bake the S3 objects into the localstack volume and
+  # localstack-restore.sh re-hydrates them on boot. Net result: a session only runs
+  # `make up` to come up data-rich. Idempotent + re-runnable.
   COMPOSE="docker compose -f docker-compose.infra.yml -f docker-compose.yml"
   # Start from clean volumes so Flyway migrations apply consistently at this revision.
   $COMPOSE down -v || true
   docker compose -f docker-compose.infra.yml up -d
   for i in $(seq 1 60); do docker exec otterworks-postgres pg_isready -q 2>/dev/null && break; sleep 2; done
+  # Bring auth-service up FIRST so it wins the shared Flyway history race (several JVM
+  # services migrate version 1 into otterworks/public.flyway_schema_history; whichever
+  # runs first wins). Login is required to seed, so auth must win. Its history is then
+  # baked into the postgres volume, making every future `make up` deterministic.
+  $COMPOSE up -d --build auth-service
+  for i in $(seq 1 90); do [ "$(docker inspect -f '{{.State.Health.Status}}' otterworks-auth-service 2>/dev/null)" = healthy ] && break; sleep 2; done
   $COMPOSE up -d --build
   # Wait for the auth path through the gateway to be live (auth-service boots slowest).
   for i in $(seq 1 120); do
@@ -78,6 +86,12 @@ initialize: |
     --gateway http://localhost:8080 \
     --email drive@retailco.example --password 'DriveDemo!2024' \
     --departments all --scale 1.0 --workers 6 --register
+  # Bake seeded S3 objects into the localstack volume (LocalStack community does not
+  # persist S3); localstack-restore.sh re-hydrates these buckets on the next boot.
+  docker exec otterworks-localstack sh -lc \
+    'for b in otterworks-files otterworks-data-lake otterworks-audit-archive; do \
+       d=/var/lib/localstack/seed-s3/$b; mkdir -p "$d"; awslocal s3 sync "s3://$b" "$d"; \
+     done'
   # Remove containers but KEEP the seeded volumes so they are captured in the snapshot.
   $COMPOSE down
 maintenance: |

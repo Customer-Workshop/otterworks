@@ -51,7 +51,14 @@ struct DocumentsView: View {
                 if !viewModel.files.isEmpty {
                     Section("Files") {
                         ForEach(viewModel.files) { file in
-                            Text(file.name)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(file.name).font(.body)
+                                if let detail = file.detailLine {
+                                    Text(detail)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                 }

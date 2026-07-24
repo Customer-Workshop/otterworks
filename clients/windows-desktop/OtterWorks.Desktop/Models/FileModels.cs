@@ -13,11 +13,11 @@ namespace OtterWorks.Desktop.Models
         [JsonProperty("name")]
         public string Name { get; set; }
 
-        [JsonProperty("size")]
-        public long? Size { get; set; }
+        [JsonProperty("size_bytes")]
+        public long? SizeBytes { get; set; }
 
-        [JsonProperty("content_type")]
-        public string ContentType { get; set; }
+        [JsonProperty("mime_type")]
+        public string MimeType { get; set; }
 
         [JsonProperty("created_at")]
         public DateTimeOffset? CreatedAt { get; set; }

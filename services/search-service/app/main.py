@@ -60,7 +60,10 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         start = time.monotonic()
         response = await call_next(request)
         elapsed = time.monotonic() - start
-        endpoint = request.url.path
+        # Use the matched route template (e.g. /api/v1/search/index/{doc_type}/{doc_id})
+        # rather than the concrete path so metric label cardinality stays bounded.
+        route = request.scope.get("route")
+        endpoint = route.path if route is not None else "unknown"
         method = request.method
         REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=response.status_code).inc()
         REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(elapsed)

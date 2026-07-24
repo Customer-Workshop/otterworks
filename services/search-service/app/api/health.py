@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import structlog
-from flask import Blueprint, current_app, jsonify
+import asyncio
+
+from fastapi import APIRouter, Request, Response
+from fastapi.responses import JSONResponse
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
     Counter,
     Histogram,
     generate_latest,
 )
 
-logger = structlog.get_logger()
-
-health_bp = Blueprint("health", __name__)
+health_router = APIRouter()
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
@@ -36,34 +37,37 @@ INDEX_COUNT = Counter(
 )
 
 
-@health_bp.route("/health")
-def health() -> tuple:
+@health_router.get("/health")
+async def health() -> dict:
     """Liveness check — returns 200 if the process is running."""
-    return jsonify({
+    return {
         "status": "alive",
         "service": "search-service",
-    }), 200
+    }
 
 
-@health_bp.route("/health/ready")
-def readiness() -> tuple:
+@health_router.get("/health/ready")
+async def readiness(request: Request) -> Response:
     """Readiness check — returns 503 if MeiliSearch is unreachable."""
-    search_service = current_app.config.get("SEARCH_SERVICE")
+    search_service = request.app.state.search_service
 
     healthy = False
     if search_service:
-        healthy = search_service.ping()
+        # The MeiliSearch SDK is synchronous; keep the event loop unblocked.
+        healthy = await asyncio.to_thread(search_service.ping)
 
     if healthy:
-        return jsonify({"ready": True}), 200
-    return jsonify({"ready": False, "reason": "meilisearch_unavailable"}), 503
+        return JSONResponse({"ready": True}, status_code=200)
+    return JSONResponse(
+        {"ready": False, "reason": "meilisearch_unavailable"},
+        status_code=503,
+    )
 
 
-@health_bp.route("/metrics")
-def metrics() -> tuple:
+@health_router.get("/metrics")
+async def metrics() -> Response:
     """Prometheus metrics endpoint."""
-    return (
-        generate_latest(),
-        200,
-        {"Content-Type": "text/plain; charset=utf-8"},
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
     )

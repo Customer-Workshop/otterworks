@@ -149,14 +149,48 @@ actor OtterWorksAPIClient {
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let raw = try container.decode(String.self)
-            if let date = OtterWorksAPIClient.iso8601WithFractional.date(from: raw)
-                ?? OtterWorksAPIClient.iso8601Plain.date(from: raw) {
+            if let date = OtterWorksAPIClient.parseISO8601(raw) {
                 return date
             }
             throw DecodingError.dataCorruptedError(
                 in: container, debugDescription: "Unrecognized date: \(raw)")
         }
         return decoder
+    }
+
+    /// Parses an RFC3339/ISO8601 timestamp with or without fractional seconds.
+    ///
+    /// `ISO8601DateFormatter.withFractionalSeconds` only accepts exactly three
+    /// fractional digits, but the backends emit more (document-service microseconds,
+    /// file-service up to nanoseconds), so the fractional component is normalized to
+    /// milliseconds before parsing.
+    static func parseISO8601(_ raw: String) -> Date? {
+        if let date = iso8601WithFractional.date(from: raw) ?? iso8601Plain.date(from: raw) {
+            return date
+        }
+        let normalized = normalizeFractionalSeconds(raw)
+        if normalized != raw,
+           let date = iso8601WithFractional.date(from: normalized) ?? iso8601Plain.date(from: normalized) {
+            return date
+        }
+        return nil
+    }
+
+    /// Rewrites the fractional-seconds group (any number of digits) to exactly three,
+    /// leaving the date, time, and timezone (`Z` or `±HH:MM`) untouched.
+    private static func normalizeFractionalSeconds(_ raw: String) -> String {
+        guard let dot = raw.firstIndex(of: ".") else { return raw }
+        let afterDot = raw.index(after: dot)
+        var end = afterDot
+        while end < raw.endIndex, raw[end].isNumber {
+            end = raw.index(after: end)
+        }
+        let digits = raw[afterDot..<end]
+        guard !digits.isEmpty else { return raw }
+        let millis = digits.count >= 3
+            ? String(digits.prefix(3))
+            : String(digits) + String(repeating: "0", count: 3 - digits.count)
+        return String(raw[raw.startIndex..<afterDot]) + millis + String(raw[end...])
     }
 
     private static let iso8601WithFractional: ISO8601DateFormatter = {

@@ -250,6 +250,16 @@ export const filesApi = {
     );
     return data.url.replace("://localstack:", "://localhost:");
   },
+  // Stream the raw bytes back through the same-origin API for client-side
+  // parsing (office docs). Presigned S3/LocalStack URLs are cross-origin and
+  // cannot be fetch()-ed from the browser (CORS); this endpoint can.
+  getPreviewContent: async (id: string): Promise<ArrayBuffer> => {
+    const { data } = await apiClient.get<ArrayBuffer>(`/files/${id}/content`, {
+      params: { disposition: "inline" },
+      responseType: "arraybuffer",
+    });
+    return data;
+  },
   delete: async (id: string): Promise<void> => {
     await apiClient.post(`/files/${id}/trash`);
   },

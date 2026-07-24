@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { File, AlertCircle, Download, FileWarning } from "lucide-react";
 import { formatFileSize } from "@/lib/utils";
+import { filesApi } from "@/lib/api";
 import type { WorkBook as XLSXWorkBook } from "xlsx";
 
 // xlsx and mammoth are heavy; load them on demand so they are code-split out of
@@ -12,41 +14,43 @@ const MAX_PREVIEW_SIZE = 500_000; // 500 KB — truncate beyond this
 const MAX_SHEET_ROWS = 500; // cap rendered spreadsheet rows to stay responsive
 
 interface TextFilePreviewProps {
-  presignedUrl?: string;
+  fileId?: string;
   fileName: string;
 }
 
-export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps) {
+export function TextFilePreview({ fileId, fileName }: TextFilePreviewProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [truncated, setTruncated] = useState(false);
-  // Falls back to iframe when fetch() is blocked (e.g. CORS on cross-origin S3 URLs)
-  const [useIframeFallback, setUseIframeFallback] = useState(false);
 
+  // Fetch text through the same-origin content endpoint (presigned S3 URLs are
+  // cross-origin and cannot be fetch()-ed), then cap at MAX_PREVIEW_SIZE bytes.
   useEffect(() => {
-    if (!presignedUrl) {
+    if (!fileId) {
       setLoading(false);
+      setError(true);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
+    setError(false);
     setContent(null);
-    setUseIframeFallback(false);
 
-    fetch(presignedUrl, {
-      headers: { Range: `bytes=0-${MAX_PREVIEW_SIZE - 1}` },
-    })
-      .then(async (res) => {
-        // 206 = partial content (Range honored), 200 = full file (Range ignored)
-        if (!res.ok && res.status !== 206) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
+    filesApi
+      .getPreviewContent(fileId)
+      .then((buf) => {
         if (cancelled) return;
+        const full = new Uint8Array(buf);
+        const isTruncated = full.byteLength > MAX_PREVIEW_SIZE;
+        const slice = isTruncated ? full.subarray(0, MAX_PREVIEW_SIZE) : full;
+        const text = new TextDecoder("utf-8", { fatal: false }).decode(slice);
         setContent(text);
-        setTruncated(res.status === 206);
+        setTruncated(isTruncated);
       })
       .catch(() => {
-        if (!cancelled) setUseIframeFallback(true);
+        if (!cancelled) setError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -55,7 +59,7 @@ export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps
     return () => {
       cancelled = true;
     };
-  }, [presignedUrl]);
+  }, [fileId]);
 
   if (loading) {
     return (
@@ -66,29 +70,7 @@ export function TextFilePreview({ presignedUrl, fileName }: TextFilePreviewProps
     );
   }
 
-  if (!presignedUrl) {
-    return (
-      <div className="text-center py-8">
-        <AlertCircle size={48} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">No download URL available</p>
-      </div>
-    );
-  }
-
-  if (useIframeFallback) {
-    return (
-      <div className="w-full">
-        <iframe
-          src={presignedUrl}
-          className="w-full min-h-[500px] bg-white rounded-lg border border-gray-200"
-          sandbox="allow-same-origin"
-          title={`Preview of ${fileName}`}
-        />
-      </div>
-    );
-  }
-
-  if (content === null) {
+  if (error || content === null) {
     return (
       <div className="text-center py-8">
         <AlertCircle size={48} className="text-gray-300 mx-auto mb-3" />
@@ -228,14 +210,16 @@ function PreviewError({ message }: { message: string }) {
   );
 }
 
-// Fetch the presigned URL as an ArrayBuffer for client-side parsing (office docs).
-function useFileBuffer(presignedUrl?: string) {
+// Fetch a file's bytes as an ArrayBuffer for client-side parsing (office docs).
+// Streams through the same-origin API (`/files/{id}/content`) because presigned
+// S3/LocalStack URLs are cross-origin and cannot be fetch()-ed from the browser.
+function useFileBuffer(fileId?: string) {
   const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!presignedUrl) {
+    if (!fileId) {
       setLoading(false);
       setError(true);
       return;
@@ -244,10 +228,9 @@ function useFileBuffer(presignedUrl?: string) {
     setLoading(true);
     setError(false);
     setBuffer(null);
-    fetch(presignedUrl)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buf = await res.arrayBuffer();
+    filesApi
+      .getPreviewContent(fileId)
+      .then((buf) => {
         if (!cancelled) setBuffer(buf);
       })
       .catch(() => {
@@ -259,7 +242,7 @@ function useFileBuffer(presignedUrl?: string) {
     return () => {
       cancelled = true;
     };
-  }, [presignedUrl]);
+  }, [fileId]);
 
   return { buffer, loading, error };
 }
@@ -267,12 +250,12 @@ function useFileBuffer(presignedUrl?: string) {
 // Spreadsheet (xlsx/xls) ─────────────────────────────────────────
 
 interface OfficeFilePreviewProps {
-  presignedUrl?: string;
+  fileId?: string;
   fileName: string;
 }
 
-export function SpreadsheetFilePreview({ presignedUrl, fileName }: OfficeFilePreviewProps) {
-  const { buffer, loading, error } = useFileBuffer(presignedUrl);
+export function SpreadsheetFilePreview({ fileId, fileName }: OfficeFilePreviewProps) {
+  const { buffer, loading, error } = useFileBuffer(fileId);
   const [workbook, setWorkbook] = useState<XLSXWorkBook | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState(0);
@@ -379,8 +362,8 @@ export function SpreadsheetFilePreview({ presignedUrl, fileName }: OfficeFilePre
 
 // Word document (docx) ───────────────────────────────────────────
 
-export function WordFilePreview({ presignedUrl, fileName }: OfficeFilePreviewProps) {
-  const { buffer, loading, error } = useFileBuffer(presignedUrl);
+export function WordFilePreview({ fileId, fileName }: OfficeFilePreviewProps) {
+  const { buffer, loading, error } = useFileBuffer(fileId);
   const [html, setHtml] = useState<string | null>(null);
   const [parseError, setParseError] = useState(false);
 
@@ -390,7 +373,10 @@ export function WordFilePreview({ presignedUrl, fileName }: OfficeFilePreviewPro
     loadMammoth()
       .then((mod) => (mod.default ?? mod).convertToHtml({ arrayBuffer: buffer }))
       .then((result) => {
-        if (!cancelled) setHtml(result.value || "<p><em>(empty document)</em></p>");
+        // mammoth output is derived from attacker-influenced file content, so
+        // sanitize it before injecting it via dangerouslySetInnerHTML.
+        const clean = DOMPurify.sanitize(result.value || "<p><em>(empty document)</em></p>");
+        if (!cancelled) setHtml(clean);
       })
       .catch(() => {
         if (!cancelled) setParseError(true);
@@ -410,7 +396,7 @@ export function WordFilePreview({ presignedUrl, fileName }: OfficeFilePreviewPro
       <div className="rounded-lg border border-gray-200 bg-white overflow-auto max-h-[600px] p-6">
         <div
           className="prose prose-sm max-w-none text-gray-800 [&_h1]:font-bold [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_table]:border-collapse [&_td]:border [&_td]:border-gray-200 [&_td]:px-2"
-          // mammoth output is derived from the document's own content
+          // html was sanitized with DOMPurify above
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </div>
@@ -421,7 +407,12 @@ export function WordFilePreview({ presignedUrl, fileName }: OfficeFilePreviewPro
 
 // Audio ──────────────────────────────────────────────────────────
 
-export function AudioFilePreview({ presignedUrl, fileName }: OfficeFilePreviewProps) {
+interface AudioFilePreviewProps {
+  presignedUrl?: string;
+  fileName: string;
+}
+
+export function AudioFilePreview({ presignedUrl, fileName }: AudioFilePreviewProps) {
   if (!presignedUrl) return <PreviewError message="Audio preview not available" />;
   return (
     <div className="w-full text-center py-6">

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Download } from "lucide-react";
 import type { FileItem } from "@/types";
@@ -28,22 +28,36 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
     staleTime: 30 * 60 * 1000,
   });
 
-  // Close on Escape and via the browser Back button (push a history entry so
-  // Back pops the modal instead of leaving the page).
+  // A history entry is pushed on open so the browser Back button closes the
+  // modal. `popped` tracks whether that entry has already been consumed (by
+  // Back firing popstate) so that closing via X/backdrop/Escape pops it exactly
+  // once — otherwise an orphaned entry would swallow the user's next Back press.
+  const popped = useRef(false);
+
+  const close = useCallback(() => {
+    if (!popped.current) {
+      popped.current = true;
+      window.history.back();
+    }
+    onClose();
+  }, [onClose]);
+
   useEffect(() => {
+    window.history.pushState({ preview: file.id }, "");
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
+    };
+    const onPop = () => {
+      popped.current = true;
+      onClose();
     };
     window.addEventListener("keydown", onKey);
-    window.history.pushState({ preview: file.id }, "");
-    const onPop = () => onClose();
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("popstate", onPop);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file.id]);
+  }, [file.id, close, onClose]);
 
   const handleDownload = async () => {
     try {
@@ -87,11 +101,11 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
       case "pdf":
         return <PdfFilePreview presignedUrl={previewUrl} />;
       case "text":
-        return <TextFilePreview presignedUrl={previewUrl} fileName={file.name} />;
+        return <TextFilePreview fileId={file.id} fileName={file.name} />;
       case "spreadsheet":
-        return <SpreadsheetFilePreview presignedUrl={previewUrl} fileName={file.name} />;
+        return <SpreadsheetFilePreview fileId={file.id} fileName={file.name} />;
       case "word":
-        return <WordFilePreview presignedUrl={previewUrl} fileName={file.name} />;
+        return <WordFilePreview fileId={file.id} fileName={file.name} />;
       case "presentation":
         return (
           <UnsupportedFilePreview
@@ -111,7 +125,7 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      onClick={close}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview of ${file.name}`}
@@ -130,7 +144,7 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
               <Download size={14} /> Download
             </button>
             <button
-              onClick={onClose}
+              onClick={close}
               aria-label="Close preview"
               className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
             >

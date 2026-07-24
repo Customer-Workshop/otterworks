@@ -116,6 +116,16 @@ pub struct DownloadQuery {
     pub disposition: Option<String>,
 }
 
+/// Sanitize a filename for safe inclusion in a `Content-Disposition` header
+/// value. Strips control characters (which could inject header terminators) and
+/// replaces quote/backslash so the name cannot break out of the quoted string.
+pub fn sanitize_content_disposition_filename(name: &str) -> String {
+    name.chars()
+        .filter(|c| !c.is_control())
+        .map(|c| if c == '"' || c == '\\' { '_' } else { c })
+        .collect()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ListFilesQuery {
     pub folder_id: Option<Uuid>,
@@ -237,5 +247,25 @@ mod tests {
         assert_eq!(q.disposition.as_deref(), Some("attachment"));
         // Only the exact value "inline" should switch on inline presigning.
         assert_ne!(q.disposition.as_deref(), Some("inline"));
+    }
+
+    #[test]
+    fn sanitize_filename_preserves_normal_names() {
+        assert_eq!(
+            sanitize_content_disposition_filename("Q4 2025 Sales.xlsx"),
+            "Q4 2025 Sales.xlsx"
+        );
+    }
+
+    #[test]
+    fn sanitize_filename_strips_header_injection() {
+        // CR/LF must be removed so they cannot terminate the header, and quotes
+        // must not break out of the quoted-string filename value.
+        let dirty = "evil\r\nSet-Cookie: x=1\"name.pdf";
+        let clean = sanitize_content_disposition_filename(dirty);
+        assert!(!clean.contains('\r'));
+        assert!(!clean.contains('\n'));
+        assert!(!clean.contains('"'));
+        assert_eq!(clean, "evilSet-Cookie: x=1_name.pdf");
     }
 }

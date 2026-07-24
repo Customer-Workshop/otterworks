@@ -222,6 +222,7 @@ function FileDetailContent() {
               <FilePreviewContent
                 kind={previewKind}
                 isUrlLoading={isUrlLoading}
+                fileId={fileId}
                 presignedUrl={presignedUrl}
                 fileName={file.name}
                 fileSize={file.size}
@@ -416,6 +417,7 @@ function InfoRow({
 function FilePreviewContent({
   kind,
   isUrlLoading,
+  fileId,
   presignedUrl,
   fileName,
   fileSize,
@@ -423,19 +425,17 @@ function FilePreviewContent({
 }: Readonly<{
   kind: PreviewKind;
   isUrlLoading: boolean;
+  fileId: string;
   presignedUrl: string | undefined;
   fileName: string;
   fileSize: number;
   onDownload: () => void;
 }>) {
+  // Only element-based previews consume the presigned URL directly. Text and
+  // office previews stream their bytes through the same-origin content endpoint
+  // (via fileId), so they don't need to wait on the presigned-URL query.
   const needsUrl =
-    kind === "image" ||
-    kind === "video" ||
-    kind === "audio" ||
-    kind === "text" ||
-    kind === "pdf" ||
-    kind === "spreadsheet" ||
-    kind === "word";
+    kind === "image" || kind === "video" || kind === "audio" || kind === "pdf";
   if (needsUrl && isUrlLoading) {
     return (
       <div className="w-full text-center py-8">
@@ -460,11 +460,11 @@ function FilePreviewContent({
     case "pdf":
       return <PdfFilePreview presignedUrl={presignedUrl} />;
     case "text":
-      return <TextFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+      return <TextFilePreview fileId={fileId} fileName={fileName} />;
     case "spreadsheet":
-      return <SpreadsheetFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+      return <SpreadsheetFilePreview fileId={fileId} fileName={fileName} />;
     case "word":
-      return <WordFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+      return <WordFilePreview fileId={fileId} fileName={fileName} />;
     case "presentation":
       return (
         <UnsupportedFilePreview

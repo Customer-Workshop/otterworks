@@ -16,11 +16,11 @@ use crate::events::EventPublisher;
 use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
-    ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadQuery,
-    DownloadResponse, FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder,
-    HealthResponse, ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse,
-    ListVersionsResponse, MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse,
-    UpdateFolderRequest, UploadResponse,
+    sanitize_content_disposition_filename, ActivityItem, ActivityQuery, ActivityResponse,
+    CreateFolderRequest, DownloadQuery, DownloadResponse, FileDetailResponse, FileMetadata,
+    FileShare, FileVersion, Folder, HealthResponse, ListFilesQuery, ListFilesResponse,
+    ListFoldersQuery, ListFoldersResponse, ListVersionsResponse, MoveFileRequest,
+    RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest, UploadResponse,
 };
 use crate::storage::S3Client;
 
@@ -379,6 +379,42 @@ pub async fn download_file(
         url,
         expires_in_secs: 3600,
     }))
+}
+
+/// Stream a file's bytes back through the API (same-origin), setting the real
+/// `Content-Type` from metadata. Presigned S3/LocalStack URLs are cross-origin
+/// and cannot be `fetch()`-ed from the browser (CORS), which is required to
+/// parse office documents client-side; serving the bytes here avoids that.
+/// `?disposition=inline` marks the response for inline rendering; otherwise it
+/// is served as an attachment.
+pub async fn file_content(
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
+    path: web::Path<String>,
+    query: web::Query<DownloadQuery>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.get_file(&file_id).await?;
+    let bytes = s3.download_object(&file.s3_key).await?;
+
+    let kind = if query.disposition.as_deref() == Some("inline") {
+        "inline"
+    } else {
+        "attachment"
+    };
+    let disposition = format!(
+        "{kind}; filename=\"{}\"",
+        sanitize_content_disposition_filename(&file.name)
+    );
+
+    Ok(HttpResponse::Ok()
+        .content_type(file.mime_type.as_str())
+        .insert_header((actix_web::http::header::CONTENT_DISPOSITION, disposition))
+        .body(bytes))
 }
 
 pub async fn move_file(

@@ -54,7 +54,10 @@ let isVerifyingToken = false;
 
 apiClient.interceptors.response.use(
   (response) => {
-    if (response.data) {
+    // Binary responses (arraybuffer/blob) must be passed through untouched — the
+    // key transform would otherwise turn the buffer into an empty object.
+    const responseType = response.config?.responseType;
+    if (response.data && responseType !== "arraybuffer" && responseType !== "blob") {
       response.data = transformKeys(response.data);
     }
     return response;

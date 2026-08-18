@@ -12,7 +12,8 @@
   },
   "parameters": [
     {"name": "ns", "default": "cnvorch"},
-    {"name": "chaos", "default": ""}
+    {"name": "chaos", "default": ""},
+    {"name": "report_date", "default": "2026-01-15"}
   ],
   "tasks": [
     {

@@ -41,6 +41,8 @@ VENDORED = [
     (REPO_ROOT / "etl/databricks/cnvingest/sftp_ingest_poll_notebook.py", f"{VENDOR_DIR}/cnvingest/sftp_ingest_poll_notebook", "SOURCE", "PYTHON"),
     (REPO_ROOT / "etl/databricks/cnvingest/ingest_core.py", f"{VENDOR_DIR}/cnvingest/ingest_core.py", "AUTO", "PYTHON"),
     (REPO_ROOT / "etl/databricks/cnvparse/pipeline_parse_custbill.sql", f"{VENDOR_DIR}/cnvparse/pipeline_parse_custbill.sql", "AUTO", None),
+    (REPO_ROOT / "etl/databricks/cnvfinance/finance_excel_report_notebook.py", f"{VENDOR_DIR}/cnvfinance/finance_excel_report_notebook", "SOURCE", "PYTHON"),
+    (REPO_ROOT / "etl/databricks/cnvfinance/finance_core.py", f"{VENDOR_DIR}/cnvfinance/finance_core.py", "AUTO", "PYTHON"),
 ]
 
 
@@ -59,7 +61,7 @@ def import_source(dbx: Databricks, local: Path, workspace_path: str, fmt: str, l
 
 def main() -> int:
     dbx = Databricks()
-    for d in (WORKSPACE_DIR, f"{VENDOR_DIR}/cnvingest", f"{VENDOR_DIR}/cnvparse"):
+    for d in (WORKSPACE_DIR, f"{VENDOR_DIR}/cnvingest", f"{VENDOR_DIR}/cnvparse", f"{VENDOR_DIR}/cnvfinance"):
         dbx.ok("POST", "/api/2.0/workspace/mkdirs", {"path": d})
     for fname, path, fmt in NOTEBOOKS:
         import_source(dbx, HERE / fname, path, fmt)

@@ -13,7 +13,9 @@ sibling units' code verbatim:
              recon proved 1:1 against its committed SQL)
   * publish: this unit's handoff rendering (render_psv imported from the
              cnvparse module; file order = line order, replace-not-append)
-  * finance: the cnvfinance unit's logic once merged (skipped until then)
+  * finance: etl/databricks/cnvfinance/finance_core.py (imported, unmodified
+             — merged via PR #1196; the same parse/aggregate/render functions
+             that unit's own recon proved against the golden report CSV)
 
 Every check value is recomputed from the fixture target after the run; live
 SQL/Delta/UC/Jobs behaviour is disclosed as unverified (parent-owned live
@@ -47,6 +49,7 @@ from ingest_core import StagedFile, ingest_batch  # noqa: E402
 def _load_module(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod  # dataclass resolution needs the module registered
     spec.loader.exec_module(mod)
     return mod
 
@@ -128,13 +131,11 @@ def publish_psv(silver: list[dict], parsed_dir: Path) -> dict[str, bytes]:
 
 
 def load_finance():
-    """The cnvfinance unit's composed logic; None until its PR is merged."""
-    candidates = sorted((REPO_ROOT / "etl/databricks").glob("cnvfinance/*.py"))
-    for path in candidates:
-        mod = _load_module(f"cnvfinance_{path.stem}", path)
-        if hasattr(mod, "aggregate") or hasattr(mod, "finance_report"):
-            return mod
-    return None
+    """The cnvfinance unit's composed logic (finance_core, verbatim)."""
+    path = REPO_ROOT / "etl/databricks/cnvfinance/finance_core.py"
+    if not path.exists():
+        return None
+    return _load_module("cnvfinance_finance_core", path)
 
 
 def run_workflow(root: Path, chaos: str = "") -> dict:
@@ -175,10 +176,35 @@ def run_workflow(root: Path, chaos: str = "") -> dict:
     return {"statuses": statuses, "state": state, "result": "SUCCESS"}
 
 
-def compose_finance(finance, parsed_dir: Path, reports_dir: Path):
-    raise NotImplementedError(
-        "wired after the cnvfinance unit merges; composition must run its code verbatim"
-    )
+REPORT_DATE = "2026-01-15"
+
+
+def compose_finance(finance, parsed_dir: Path, reports_dir: Path) -> dict:
+    """The finance task, composed from the cnvfinance unit's finance_core
+    verbatim (mirrors its committed notebook's file-level flow: filter inputs
+    with is_report_input, parse_psv_bytes into a ParsedBatch, aggregate,
+    render_report_csv, write the truthful .csv artifact, read-back verify)."""
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    batch = finance.ParsedBatch()
+    input_digests: dict[str, str] = {}
+    for name in sorted(n for n in os.listdir(parsed_dir) if finance.is_report_input(n)):
+        data = (parsed_dir / name).read_bytes()
+        input_digests[name] = finance.sha256_hex(data)
+        finance.parse_psv_bytes(data, name, batch)
+    artifact_bytes = finance.render_report_csv(finance.aggregate(batch.rows))
+    artifact = reports_dir / f"finance_billing_{REPORT_DATE.replace('-', '')}.csv"
+    artifact.write_bytes(artifact_bytes)
+    if artifact.read_bytes() != artifact_bytes:
+        raise IOError(f"artifact read-back verification failed for {artifact}")
+    return {
+        "run_id": finance.deterministic_run_id(NS, REPORT_DATE, input_digests),
+        "artifact": artifact.name,
+        "artifact_sha256": finance.sha256_hex(artifact_bytes),
+        "rows_input": batch.rows_input,
+        "rows_aggregated": len(batch.rows),
+        "rows_skipped_empty_cust": batch.rows_skipped_empty_cust,
+        "rows_attributed_malformed": batch.rows_attributed_malformed,
+    }
 
 
 def full_state(root: Path) -> dict:
@@ -321,20 +347,19 @@ def main() -> int:
         },
         "finance input directory listing after publish_psv: planted stale CUSTBILL*.psv must be gone, artifact set replaced",
     )
-    if finance_available:
-        report_csv = None  # wired after cnvfinance merges
-        check(
-            checks, "orch-04-finance-report-parity",
-            baseline["report_csv_sha256"], report_csv,
-            "emitted finance CSV artifact sha256 vs golden baseline",
-        )
-    else:
-        check(
-            checks, "orch-04-finance-report-parity",
-            baseline["report_csv_sha256"], None,
-            "PENDING: the cnvfinance sibling unit has not merged; its code must be composed verbatim before this check can run",
-            result="skipped",
-        )
+    reports_dir = FIXTURE_ROOT / "finance_report" / "reports"
+    finance_state = run1["state"].get("finance") or {}
+    report_artifact = reports_dir / f"finance_billing_{REPORT_DATE.replace('-', '')}.csv"
+    check(
+        checks, "orch-04-finance-report-parity",
+        {"sha256": baseline["report_csv_sha256"], "malformed": 0, "skipped_empty_cust": 0},
+        {
+            "sha256": sha256_file(report_artifact) if report_artifact.exists() else None,
+            "malformed": finance_state.get("rows_attributed_malformed"),
+            "skipped_empty_cust": finance_state.get("rows_skipped_empty_cust"),
+        },
+        "emitted finance CSV artifact re-read from finance_report/reports/ (sha256) vs golden baseline report_csv_sha256; composed cnvfinance finance_core ran verbatim",
+    )
 
     # ---- chaos-injected parse failure (orch-02, must-detect) ---------------
     before_chaos = full_state(FIXTURE_ROOT)
@@ -404,15 +429,13 @@ def main() -> int:
         },
         "fresh empty root run end-to-end; state recomputed from the fixture target",
     )
-    if finance_available:
-        pass  # header-only CSV byte check wired after cnvfinance merges
-    else:
-        check(
-            checks, "empty-input-header-only-csv",
-            baseline["empty_report_csv_sha256"], None,
-            "PENDING: composed finance step required for the header-only CSV artifact check",
-            result="skipped",
-        )
+    empty_report = empty_root / "finance_report" / "reports" / f"finance_billing_{REPORT_DATE.replace('-', '')}.csv"
+    check(
+        checks, "empty-input-header-only-csv",
+        baseline["empty_report_csv_sha256"],
+        sha256_file(empty_report) if empty_report.exists() else None,
+        "header-only CSV artifact re-read from the empty-input run's reports/ dir vs golden baseline empty_report_csv_sha256",
+    )
 
     detected = ["chaos-parse-failure"] if (
         chaos_run["result"] == "FAILED" and chaos_run["statuses"].get("publish_psv") == "UPSTREAM_FAILED"
@@ -452,7 +475,7 @@ def main() -> int:
             "dbutils.notebook.run composition of the vendored cnvingest notebook",
             "live end-to-end run of job ow_tp_orchestrate_cnvorch (parent-owned live validation window)",
         ],
-        "notes": "generated_at is pinned to the run-branch cut time for artifact determinism; finance-task composition and its parity checks are wired once the cnvfinance sibling merges.",
+        "notes": "generated_at is pinned to the run-branch cut time for artifact determinism; the finance task composes the merged cnvfinance unit's finance_core verbatim (PR #1196).",
     }
     failed = [c["id"] for c in checks if c["result"] == "fail"]
     skipped = [c["id"] for c in checks if c["result"] == "skipped"]

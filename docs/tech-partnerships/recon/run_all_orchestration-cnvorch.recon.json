@@ -163,10 +163,18 @@
     },
     {
       "id": "orch-04-finance-report-parity",
-      "expected": "3f96e78adedf14f3fd4e7aa6c7cac6ccf94d77828a8123a382f6fa5f0efd7ac2",
-      "actual": null,
-      "source_of_truth": "PENDING: the cnvfinance sibling unit has not merged; its code must be composed verbatim before this check can run",
-      "result": "skipped"
+      "expected": {
+        "sha256": "3f96e78adedf14f3fd4e7aa6c7cac6ccf94d77828a8123a382f6fa5f0efd7ac2",
+        "malformed": 0,
+        "skipped_empty_cust": 0
+      },
+      "actual": {
+        "sha256": "3f96e78adedf14f3fd4e7aa6c7cac6ccf94d77828a8123a382f6fa5f0efd7ac2",
+        "malformed": 0,
+        "skipped_empty_cust": 0
+      },
+      "source_of_truth": "emitted finance CSV artifact re-read from finance_report/reports/ (sha256) vs golden baseline report_csv_sha256; composed cnvfinance finance_core ran verbatim",
+      "result": "pass"
     },
     {
       "id": "orch-02-failure-blocks-downstream",
@@ -224,9 +232,9 @@
     {
       "id": "empty-input-header-only-csv",
       "expected": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
-      "actual": null,
-      "source_of_truth": "PENDING: composed finance step required for the header-only CSV artifact check",
-      "result": "skipped"
+      "actual": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+      "source_of_truth": "header-only CSV artifact re-read from the empty-input run's reports/ dir vs golden baseline empty_report_csv_sha256",
+      "result": "pass"
     }
   ],
   "values_recomputed_from_target": true,
@@ -259,5 +267,5 @@
     "dbutils.notebook.run composition of the vendored cnvingest notebook",
     "live end-to-end run of job ow_tp_orchestrate_cnvorch (parent-owned live validation window)"
   ],
-  "notes": "generated_at is pinned to the run-branch cut time for artifact determinism; finance-task composition and its parity checks are wired once the cnvfinance sibling merges."
+  "notes": "generated_at is pinned to the run-branch cut time for artifact determinism; the finance task composes the merged cnvfinance unit's finance_core verbatim (PR #1196)."
 }

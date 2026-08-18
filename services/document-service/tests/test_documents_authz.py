@@ -1,4 +1,4 @@
-"""Identity handling on the per-document endpoints with auth enforcement on."""
+"""Identity handling on the per-document endpoints, resolved from the request."""
 
 import os
 import uuid
@@ -7,18 +7,8 @@ import jwt
 import pytest
 from httpx import AsyncClient
 
-from app.config import settings
-
 TEST_JWT_SECRET = "test-jwt-secret-for-unit-tests-pad32"  # noqa: S105
 os.environ.setdefault("JWT_SECRET", TEST_JWT_SECRET)
-
-
-@pytest.fixture(autouse=True)
-def require_auth_enabled():
-    original = settings.require_auth
-    settings.require_auth = True
-    yield
-    settings.require_auth = original
 
 
 def _auth(user_id: uuid.UUID) -> dict[str, str]:
@@ -37,47 +27,59 @@ async def _create_document(client: AsyncClient, owner_id: uuid.UUID) -> str:
 
 
 @pytest.mark.asyncio
-async def test_owner_can_read_document(client: AsyncClient, owner_id: uuid.UUID):
-    doc_id = await _create_document(client, owner_id)
+async def test_owner_can_read_document(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
 
-    resp = await client.get(f"/api/v1/documents/{doc_id}", headers=_auth(owner_id))
+    resp = await unauthenticated_client.get(
+        f"/api/v1/documents/{doc_id}", headers=_auth(owner_id)
+    )
     assert resp.status_code == 200
     assert resp.json()["id"] == doc_id
 
 
 @pytest.mark.asyncio
-async def test_unauthenticated_read_is_rejected(client: AsyncClient, owner_id: uuid.UUID):
-    doc_id = await _create_document(client, owner_id)
+async def test_unauthenticated_read_is_rejected(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
 
-    resp = await client.get(f"/api/v1/documents/{doc_id}")
+    resp = await unauthenticated_client.get(f"/api/v1/documents/{doc_id}")
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_other_user_cannot_read_document(client: AsyncClient, owner_id: uuid.UUID):
-    doc_id = await _create_document(client, owner_id)
+async def test_other_user_cannot_read_document(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
 
-    resp = await client.get(
+    resp = await unauthenticated_client.get(
         f"/api/v1/documents/{doc_id}", headers=_auth(uuid.uuid4())
     )
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_other_user_cannot_delete_document(client: AsyncClient, owner_id: uuid.UUID):
-    doc_id = await _create_document(client, owner_id)
+async def test_other_user_cannot_delete_document(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
 
-    resp = await client.delete(
+    resp = await unauthenticated_client.delete(
         f"/api/v1/documents/{doc_id}", headers=_auth(uuid.uuid4())
     )
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_other_user_cannot_export_document(client: AsyncClient, owner_id: uuid.UUID):
-    doc_id = await _create_document(client, owner_id)
+async def test_other_user_cannot_export_document(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
 
-    resp = await client.get(
+    resp = await unauthenticated_client.get(
         f"/api/v1/documents/{doc_id}/export",
         params={"format": "html"},
         headers=_auth(uuid.uuid4()),
@@ -86,14 +88,12 @@ async def test_other_user_cannot_export_document(client: AsyncClient, owner_id: 
 
 
 @pytest.mark.asyncio
-async def test_ownership_is_enforced_with_auth_enforcement_off(
-    client: AsyncClient, owner_id: uuid.UUID
+async def test_other_user_cannot_mint_share_link(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
 ):
-    """A caller that presents an identity is owner-checked either way."""
-    doc_id = await _create_document(client, owner_id)
-    settings.require_auth = False
+    doc_id = await _create_document(unauthenticated_client, owner_id)
 
-    resp = await client.get(
-        f"/api/v1/documents/{doc_id}", headers=_auth(uuid.uuid4())
+    resp = await unauthenticated_client.post(
+        f"/api/v1/documents/{doc_id}/share", headers=_auth(uuid.uuid4())
     )
     assert resp.status_code == 403

@@ -92,15 +92,18 @@ def land_legacy_report(dbx: Databricks, table: str, csv_path: Path) -> str:
         raise SystemExit(f"legacy report {csv_path} carried no rows")
     values = []
     for row in entries:
-        currency = row["Currency"]
-        record_type = row["RecordType"]
-        if not (currency.isalnum() and record_type.isalnum()):
-            raise SystemExit(f"legacy report carried a non-alphanumeric code: {row!r}")
-        count = int(row["RecordCount"])
-        raw_amount = row["TotalAmount"].strip()
-        sign = -1 if raw_amount.startswith("-") else 1
-        dollars, _, cents = raw_amount.lstrip("-").partition(".")
-        amount_cents = sign * (int(dollars) * 100 + int((cents + "00")[:2]))
+        try:
+            currency = row["Currency"]
+            record_type = row["RecordType"]
+            if not (currency.isalnum() and record_type.isalnum()):
+                raise SystemExit(f"legacy report carried a non-alphanumeric code: {row!r}")
+            count = int(row["RecordCount"])
+            raw_amount = row["TotalAmount"].strip()
+            sign = -1 if raw_amount.startswith("-") else 1
+            dollars, _, cents = raw_amount.lstrip("-").partition(".")
+            amount_cents = sign * (int(dollars) * 100 + int((cents + "00")[:2]))
+        except (KeyError, ValueError) as exc:
+            raise SystemExit(f"legacy report row is malformed ({exc!r}): {row!r}") from exc
         values.append(f"('{currency}', '{record_type}', {count}, {amount_cents})")
     dbx.sql_ok(
         f"CREATE TABLE IF NOT EXISTS {table} ("
@@ -156,10 +159,12 @@ def main() -> int:
     ingest_files, ingest_raw, parsed, quarantine, summary, delivery = (
         chosen[label] for label, _, _, _ in slots)
 
-    # candidates: the converted unit's own mirror, then the ns-suffixed mirror
-    # a previous run of this tool may have landed itself; take the first with rows
+    # candidates: the mirror landed by the same conversion namespace the gold
+    # summary came from, then the ns-suffixed mirror a previous run of this
+    # tool may have landed itself; take the first with rows
+    finance_ns = conv_ns_of(summary)
     legacy = None
-    candidates = discover(dbx, catalog, "ops", "legacy_finance_report_cnv*")
+    candidates = discover(dbx, catalog, "ops", f"legacy_finance_report_{finance_ns}")
     candidates += discover(dbx, catalog, "ops", f"legacy_finance_report_{ns}")
     for candidate in candidates:
         if rows_of(dbx, f"SELECT 1 FROM {candidate} LIMIT 1"):

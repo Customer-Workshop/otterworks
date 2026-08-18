@@ -154,7 +154,7 @@
         "CUSTBILL_CNVORCH_001.psv": "c625b07315f18349214530f58701c71c6de18a9573ce685c6483651fe1e678b7",
         "CUSTBILL_CNVORCH_002.psv": "49557322000a22da1c7212d82ae4723cdcf846d5adbb66e9ac2a098b00887eb0"
       },
-      "source_of_truth": "published artifact bytes vs the deterministic legacy chain's parsed/*.psv (full-file sha256, order-sensitive)",
+      "source_of_truth": "published artifact bytes vs the deterministic legacy chain's parsed/*.psv (full-file sha256, order-sensitive); skipped when the legacy chain's parsed/ output is not present under OTTERWORKS_LEGACY_ROOT",
       "result": "pass"
     },
     {

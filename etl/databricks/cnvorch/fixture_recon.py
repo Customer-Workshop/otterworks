@@ -356,13 +356,14 @@ def main() -> int:
         "published handoff artifacts re-read from finance_report/parsed/ and compared to the golden baseline per-PSV sorted-set sha256 and row counts",
     )
     legacy_parsed = Path(legacy_root) / "parsed"
-    if legacy_parsed.is_dir() and list(legacy_parsed.glob("CUSTBILL*.psv")):
-        check(
-            checks, "orch-04-publish-bytes-identical-to-legacy",
-            {p.name: sha256_file(p) for p in sorted(legacy_parsed.glob("CUSTBILL*.psv"))},
-            dict(sorted(snapshot_dir(parsed_dir).items())),
-            "published artifact bytes vs the deterministic legacy chain's parsed/*.psv (full-file sha256, order-sensitive)",
-        )
+    legacy_psv = sorted(legacy_parsed.glob("CUSTBILL*.psv")) if legacy_parsed.is_dir() else []
+    check(
+        checks, "orch-04-publish-bytes-identical-to-legacy",
+        {p.name: sha256_file(p) for p in legacy_psv},
+        dict(sorted(snapshot_dir(parsed_dir).items())),
+        "published artifact bytes vs the deterministic legacy chain's parsed/*.psv (full-file sha256, order-sensitive); skipped when the legacy chain's parsed/ output is not present under OTTERWORKS_LEGACY_ROOT",
+        None if legacy_psv else "skipped",
+    )
     check(
         checks, "orch-05-explicit-handoff-replaces-artifact-set",
         {"stale_artifact_removed": True, "published": sorted(baseline["psv_files"])},

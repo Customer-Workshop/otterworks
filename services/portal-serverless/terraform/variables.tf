@@ -29,7 +29,7 @@ variable "devin_webhook_url" {
 }
 
 variable "devin_webhook_auth_header" {
-  description = "Value for the Authorization header of the Devin webhook API destination (required when devin_webhook_url is set)."
+  description = "Value for the X-Webhook-Secret header of the Devin webhook API destination (required when devin_webhook_url is set)."
   type        = string
   default     = "unused"
   sensitive   = true

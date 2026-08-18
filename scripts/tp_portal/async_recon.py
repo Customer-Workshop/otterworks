@@ -425,6 +425,19 @@ def read_pump_stats(path, retries=10, interval=0.2):
             time.sleep(interval)
 
 
+def settled_queue_depth(sqs, queue_url, attempts=5, interval=2.0):
+    """ApproximateNumberOfMessages is eventually consistent and can briefly
+    count already-deleted messages; resample until a zero is observed or
+    attempts run out, returning the last observation."""
+    depth = queue_depth(sqs, queue_url)
+    for _ in range(attempts - 1):
+        if depth == 0:
+            return 0
+        time.sleep(interval)
+        depth = queue_depth(sqs, queue_url)
+    return depth
+
+
 def observe_duplicate_delivery(sqs, queue_url, processed_counter, before_processed,
                                deleted_since=None, send_minute=None, timeout=90):
     """Positive proof the re-sent duplicate was actually delivered to the consumer.
@@ -482,9 +495,9 @@ def run_green_and_idempotency(checks, api_base_url, sqs, dynamo, queue_url, dlq_
         lambda: queue_depth(sqs, queue_url) == 0
         and read_stats(dynamo, stats_table)["cnt"] >= baseline_cnt + len(submitted),
     )
-    check(checks, "green-queue-drained", 0, queue_depth(sqs, queue_url),
+    check(checks, "green-queue-drained", 0, settled_queue_depth(sqs, queue_url),
           "sqs GetQueueAttributes on the main queue after submissions")
-    check(checks, "green-dlq-empty", 0, queue_depth(sqs, dlq_url),
+    check(checks, "green-dlq-empty", 0, settled_queue_depth(sqs, dlq_url),
           "sqs GetQueueAttributes on the DLQ after the green path")
     check(checks, "events-published-equals-submissions", len(submitted),
           count_event_markers(dynamo, stats_table) - baseline_markers,
@@ -753,12 +766,17 @@ def main():
         queue_name = queue_url.rstrip("/").rsplit("/", 1)[-1]
 
         def deleted_since(since):
+            # CloudWatch requires StartTime strictly before EndTime at
+            # whole-second granularity, so wait out the first second.
+            end = datetime.now(timezone.utc)
+            if end < since + timedelta(seconds=1):
+                return 0
             datapoints = cloudwatch.get_metric_statistics(
                 Namespace="AWS/SQS",
                 MetricName="NumberOfMessagesDeleted",
                 Dimensions=[{"Name": "QueueName", "Value": queue_name}],
                 StartTime=since,
-                EndTime=datetime.now(timezone.utc),
+                EndTime=end,
                 Period=60,
                 Statistics=["Sum"],
             )["Datapoints"]

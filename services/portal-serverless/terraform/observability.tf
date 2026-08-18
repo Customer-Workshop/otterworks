@@ -124,7 +124,7 @@ resource "aws_cloudwatch_event_connection" "devin" {
 
   auth_parameters {
     api_key {
-      key   = "Authorization"
+      key   = "X-Webhook-Secret"
       value = var.devin_webhook_auth_header
     }
   }

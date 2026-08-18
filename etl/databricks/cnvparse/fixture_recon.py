@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import uuid
 from datetime import date
 from pathlib import Path
@@ -50,7 +51,7 @@ def sorted_set_sha256(lines: list[str]) -> str:
 
 
 def valid_calendar_date(raw: str) -> date | None:
-    if len(raw) != 8 or not raw.isdigit():
+    if not re.fullmatch(r"[0-9]{8}", raw):
         return None
     try:
         return date(int(raw[0:4]), int(raw[4:6]), int(raw[6:8]))
@@ -72,7 +73,7 @@ def classify_body(raw_line: str) -> tuple[dict | None, str | None]:
         defect = "invalid_cust_id"
     elif bill_date is None:
         defect = "invalid_calendar_date"
-    elif not (len(amount_raw) == 12 and amount_raw.isdigit()):
+    elif not re.fullmatch(r"[0-9]{12}", amount_raw):
         defect = "nonnumeric_amount"
     elif currency not in ("USD", "EUR", "GBP"):
         defect = "unknown_currency"
@@ -131,17 +132,22 @@ def run_pipeline(landing: Path) -> dict:
                 else:
                     silver.append({"source_file": f.name, "line_no": i, **row})
         for line_no, raw in trailers:
-            digits = raw[3:13]
-            if not digits.isdigit():
+            # Mirror try_cast(... AS BIGINT): ASCII digits with optional
+            # surrounding whitespace and sign; anything else is NULL.
+            digits = raw[3:13].strip(" ")
+            parsed = None
+            if re.fullmatch(r"[+-]?[0-9]+", digits):
+                parsed = int(digits)
+            if parsed is None:
                 quarantine.append({
                     "source_file": f.name, "line_no": line_no, "raw_line": raw,
                     "reason": "unparseable_trailer", "detail": "TRL count digits do not parse",
                 })
-            elif int(digits) != body_count:
+            elif parsed != body_count:
                 quarantine.append({
                     "source_file": f.name, "line_no": None, "raw_line": None,
                     "reason": "trailer_count_mismatch",
-                    "detail": f"trailer={int(digits)} body={body_count}",
+                    "detail": f"trailer={parsed} body={body_count}",
                 })
     return {"bronze": bronze, "silver": silver, "quarantine": quarantine}
 

@@ -110,11 +110,13 @@ SFN=$(terraform output -raw feedback_triage_state_machine_arn)
 
    ```bash
    curl -s -X POST "$API/api/feedback" -H 'content-type: application/json' \
+     -H "Authorization: Bearer $PORTAL_API_TOKEN" \
      -d '{"userId":"demo-user","rating":5,"message":"async demo"}'
    # → 201 and the same body as before this unit (golden transcript unchanged)
    aws dynamodb get-item --table-name "$STATS" \
      --key '{"pk":{"S":"stats"}}'          # cnt / ratingSum grow within seconds
-   curl -s "$API/api/feedback/average-rating"   # equals ratingSum/cnt above
+   curl -s -H "Authorization: Bearer $PORTAL_API_TOKEN" \
+     "$API/api/feedback/average-rating"   # equals ratingSum/cnt above
    ```
 
 2. **Red path — poison → DLQ → alarm.** Send a malformed event straight onto
@@ -166,6 +168,7 @@ SFN=$(terraform output -raw feedback_triage_state_machine_arn)
 5. **Async recon (live).** Recompute everything from the estate and gate it:
 
    ```bash
+   # live mode reads PORTAL_API_TOKEN (or --token) for the closed front door
    python3 scripts/tp_portal/async_recon.py --run-mode live \
      --api-base-url "$API" --queue-url "$QUEUE" --dlq-url "$DLQ" \
      --stats-table "$STATS" --namespace demo \

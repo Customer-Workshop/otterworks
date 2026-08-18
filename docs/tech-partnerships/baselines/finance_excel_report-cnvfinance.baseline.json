@@ -1,0 +1,30 @@
+{
+  "unit": "finance_excel_report",
+  "namespace": "cnvfinance",
+  "report_date": "2026-01-15",
+  "source": "deterministic legacy run per contract golden_baseline_location: unmodified legacy chain (ksh ingest without TP_FAKETIME; bash/perl stages under TP_FAKETIME='2026-01-15 00:00:00'); report bytes verified against the parent-captured immutable sha256s before any derived value below was extracted",
+  "golden_report_sha256": "ef1ad83223ebf1e902d57b15126f63fed91510b3228e8883d3c1bb6f03cadde0",
+  "empty_report_sha256": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+  "checks": {
+    "input_sha256/CUSTBILL_CNVFINANCE_001.psv": "181a088fa1df4b4e46ca80519e3f0ff1bbc4b2be64de4ffffac6f29aaaba3f34",
+    "input_sha256/CUSTBILL_CNVFINANCE_002.psv": "5497cb24e9ade19c46176b7704b9a9501bbd53201f8b00a041379ab752edf282",
+    "artifact_sha256": "ef1ad83223ebf1e902d57b15126f63fed91510b3228e8883d3c1bb6f03cadde0",
+    "grid_rows": "6",
+    "grid/EUR/INVOICE": "23|14658831",
+    "grid/EUR/CREDIT": "8|4326962",
+    "grid/GBP/INVOICE": "31|16232268",
+    "grid/GBP/CREDIT": "10|3793019",
+    "grid/USD/INVOICE": "20|9494518",
+    "grid/USD/CREDIT": "8|5473757",
+    "crossfoot_record_count_total": "100",
+    "rows_input": "100",
+    "rows_aggregated": "100",
+    "rows_skipped_empty_cust": "0",
+    "rows_attributed_malformed": "0",
+    "delivery_record": "1|verified_volume_delivery|absent",
+    "legacy_mirror_rows": "6",
+    "empty_summary_rows": "0",
+    "empty_artifact_sha256": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+    "empty_delivery_record": "1|verified_volume_delivery|absent"
+  }
+}

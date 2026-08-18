@@ -1,0 +1,286 @@
+{
+  "kind": "recon-report",
+  "unit": "run_all_orchestration",
+  "namespace": "cnvorch",
+  "generated_at": "2026-08-18T21:05:50Z",
+  "run_mode": "fixture",
+  "golden_baseline": "docs/tech-partnerships/baselines/run_all_orchestration-cnvorch.baseline.json",
+  "fixture": "local landing layout under .tp-preflight/databricks-fixture mirroring /Volumes/ow_tp/bronze/landing/cnvorch/; JSON registry standing in for the ingest Delta MERGE; the parse step runs the cnvparse unit's fixture mirror (proved 1:1 against its committed SQL by that unit's recon); the task chain is driven by a local orchestrator honoring the same depends_on edges as the committed job spec",
+  "checks": [
+    {
+      "id": "orch-01-explicit-dependencies",
+      "expected": {
+        "ingest": [],
+        "parse": [
+          "ingest"
+        ],
+        "publish_psv": [
+          "parse"
+        ],
+        "finance": [
+          "publish_psv"
+        ]
+      },
+      "actual": {
+        "ingest": [],
+        "parse": [
+          "ingest"
+        ],
+        "publish_psv": [
+          "parse"
+        ],
+        "finance": [
+          "publish_psv"
+        ]
+      },
+      "source_of_truth": "depends_on edges read from etl/databricks/cnvorch/job_ow_tp_orchestrate_cnvorch.json",
+      "result": "pass"
+    },
+    {
+      "id": "orch-03-no-silent-retries",
+      "expected": {
+        "max_retries": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "max_concurrent_runs": 1,
+        "queue_enabled": true
+      },
+      "actual": {
+        "max_retries": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "max_concurrent_runs": 1,
+        "queue_enabled": true
+      },
+      "source_of_truth": "task and job settings read from the committed job spec",
+      "result": "pass"
+    },
+    {
+      "id": "orch-07-paused-schedule",
+      "expected": {
+        "quartz": "0 0 6 ? * SUN",
+        "timezone": "UTC",
+        "pause_status": "PAUSED",
+        "per_stage_schedules": 0
+      },
+      "actual": {
+        "quartz": "0 0 6 ? * SUN",
+        "timezone": "UTC",
+        "pause_status": "PAUSED",
+        "per_stage_schedules": 0
+      },
+      "source_of_truth": "schedule block read from the committed job spec; the retired per-stage cron offsets have no schedule anywhere",
+      "result": "pass"
+    },
+    {
+      "id": "parse-sql-statement-splitting",
+      "expected": {
+        "all_start_with_sql_keyword": true,
+        "ddl_statements": 5,
+        "fragments": []
+      },
+      "actual": {
+        "all_start_with_sql_keyword": true,
+        "ddl_statements": 5,
+        "fragments": []
+      },
+      "source_of_truth": "the notebook's committed split_sql_statements run over the ns-parameterized sibling SQL: comment-/literal-embedded semicolons must not fragment statements, and all 5 namespace-suffixed CREATE TABLE IF NOT EXISTS statements must survive for the empty-input branch",
+      "result": "pass"
+    },
+    {
+      "id": "orch-08-namespace-isolation",
+      "expected": {
+        "foreign_table_refs": [],
+        "foreign_volume_refs": []
+      },
+      "actual": {
+        "foreign_table_refs": [],
+        "foreign_volume_refs": []
+      },
+      "source_of_truth": "regex scan of the committed cnvorch sources: every table/volume reference is ns-parameterized; sibling names appear only as verbatim workspace source paths under /Shared/ow_tp/cnvorch/",
+      "result": "pass"
+    },
+    {
+      "id": "orch-04-staged-bytes-identical",
+      "expected": {
+        "CUSTBILL_CNVORCH_001.dat": "a34da23670422a441fdf5e3e6886141b689d0044db2ed8044096500874c26d16",
+        "CUSTBILL_CNVORCH_002.dat": "15962953084acd937f4e9115f2e103f9e169611774a6e02f4f72c10625f52e3c"
+      },
+      "actual": {
+        "CUSTBILL_CNVORCH_001.dat": "a34da23670422a441fdf5e3e6886141b689d0044db2ed8044096500874c26d16",
+        "CUSTBILL_CNVORCH_002.dat": "15962953084acd937f4e9115f2e103f9e169611774a6e02f4f72c10625f52e3c"
+      },
+      "source_of_truth": "sha256 recomputed from fixture incoming/ vs golden baseline drop_files",
+      "result": "pass"
+    },
+    {
+      "id": "orch-04-silver-psv-parity",
+      "expected": {
+        "CUSTBILL_CNVORCH_001.psv": {
+          "rows": 50,
+          "sha256_sorted": "5c82de104946deeb6b23a3dc91d73e5e97f044c4fc0c6988dc5add33d1b441ce"
+        },
+        "CUSTBILL_CNVORCH_002.psv": {
+          "rows": 50,
+          "sha256_sorted": "5293ff3974ca3a23fbc8a6bbdab0cea22e3cbcbfb7d6be3334c8ad5db2e7e507"
+        }
+      },
+      "actual": {
+        "CUSTBILL_CNVORCH_001.psv": {
+          "rows": 50,
+          "sha256_sorted": "5c82de104946deeb6b23a3dc91d73e5e97f044c4fc0c6988dc5add33d1b441ce"
+        },
+        "CUSTBILL_CNVORCH_002.psv": {
+          "rows": 50,
+          "sha256_sorted": "5293ff3974ca3a23fbc8a6bbdab0cea22e3cbcbfb7d6be3334c8ad5db2e7e507"
+        }
+      },
+      "source_of_truth": "published handoff artifacts re-read from finance_report/parsed/ and compared to the golden baseline per-PSV sorted-set sha256 and row counts",
+      "result": "pass"
+    },
+    {
+      "id": "orch-04-publish-bytes-identical-to-legacy",
+      "expected": {
+        "CUSTBILL_CNVORCH_001.psv": "c625b07315f18349214530f58701c71c6de18a9573ce685c6483651fe1e678b7",
+        "CUSTBILL_CNVORCH_002.psv": "49557322000a22da1c7212d82ae4723cdcf846d5adbb66e9ac2a098b00887eb0"
+      },
+      "actual": {
+        "CUSTBILL_CNVORCH_001.psv": "c625b07315f18349214530f58701c71c6de18a9573ce685c6483651fe1e678b7",
+        "CUSTBILL_CNVORCH_002.psv": "49557322000a22da1c7212d82ae4723cdcf846d5adbb66e9ac2a098b00887eb0"
+      },
+      "source_of_truth": "published artifact bytes vs the deterministic legacy chain's parsed/*.psv (full-file sha256, order-sensitive); skipped when the legacy chain's parsed/ output is not present under OTTERWORKS_LEGACY_ROOT",
+      "result": "pass"
+    },
+    {
+      "id": "orch-05-explicit-handoff-replaces-artifact-set",
+      "expected": {
+        "stale_artifact_removed": true,
+        "published": [
+          "CUSTBILL_CNVORCH_001.psv",
+          "CUSTBILL_CNVORCH_002.psv"
+        ]
+      },
+      "actual": {
+        "stale_artifact_removed": true,
+        "published": [
+          "CUSTBILL_CNVORCH_001.psv",
+          "CUSTBILL_CNVORCH_002.psv"
+        ]
+      },
+      "source_of_truth": "finance input directory listing after publish_psv: planted stale CUSTBILL*.psv must be gone, artifact set replaced",
+      "result": "pass"
+    },
+    {
+      "id": "orch-04-finance-report-parity",
+      "expected": {
+        "sha256": "3f96e78adedf14f3fd4e7aa6c7cac6ccf94d77828a8123a382f6fa5f0efd7ac2",
+        "malformed": 0,
+        "skipped_empty_cust": 0
+      },
+      "actual": {
+        "sha256": "3f96e78adedf14f3fd4e7aa6c7cac6ccf94d77828a8123a382f6fa5f0efd7ac2",
+        "malformed": 0,
+        "skipped_empty_cust": 0
+      },
+      "source_of_truth": "emitted finance CSV artifact re-read from finance_report/reports/ (sha256) vs golden baseline report_csv_sha256; composed cnvfinance finance_core ran verbatim",
+      "result": "pass"
+    },
+    {
+      "id": "orch-02-failure-blocks-downstream",
+      "expected": {
+        "run_result": "FAILED",
+        "parse": "FAILED",
+        "publish_psv": "UPSTREAM_FAILED",
+        "finance": "UPSTREAM_FAILED",
+        "state_unchanged": true
+      },
+      "actual": {
+        "run_result": "FAILED",
+        "parse": "FAILED",
+        "publish_psv": "UPSTREAM_FAILED",
+        "finance": "UPSTREAM_FAILED",
+        "state_unchanged": true
+      },
+      "source_of_truth": "chaos-injected parse failure: task statuses from the orchestrated run, state sha256 snapshots recomputed before and after",
+      "result": "pass"
+    },
+    {
+      "id": "orch-06-idempotent-rerun",
+      "expected": {
+        "result": "SUCCESS",
+        "repoll_staged": [],
+        "state_unchanged": true
+      },
+      "actual": {
+        "result": "SUCCESS",
+        "repoll_staged": [],
+        "state_unchanged": true
+      },
+      "source_of_truth": "actual full-workflow rerun over the already-processed state (empty drop); every dir/registry snapshot recomputed before and after",
+      "result": "pass"
+    },
+    {
+      "id": "empty-input-write-empty-result",
+      "expected": {
+        "result": "SUCCESS",
+        "staged": [],
+        "silver_rows": 0,
+        "parsed_dir_present": true,
+        "parsed_artifacts": []
+      },
+      "actual": {
+        "result": "SUCCESS",
+        "staged": [],
+        "silver_rows": 0,
+        "parsed_dir_present": true,
+        "parsed_artifacts": []
+      },
+      "source_of_truth": "fresh empty root run end-to-end; state recomputed from the fixture target",
+      "result": "pass"
+    },
+    {
+      "id": "empty-input-header-only-csv",
+      "expected": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+      "actual": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+      "source_of_truth": "header-only CSV artifact re-read from the empty-input run's reports/ dir vs golden baseline empty_report_csv_sha256",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "an actual full-workflow rerun over the already-processed state (empty drop) succeeded, re-poll staged nothing, and every incoming/archive/parsed/reports/bronze snapshot was byte-identical before and after"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "chaos-parse-failure"
+    ],
+    "actual_set": [
+      "chaos-parse-failure"
+    ],
+    "missing": [],
+    "unexpected": [],
+    "coverage_gap": {
+      "content_level_anomalies": "owned by the parse unit's contract (parse_custbill_fixedwidth-cnvparse), whose logic this workflow runs verbatim; this unit's deterministic input is clean and quarantine stayed empty",
+      "transport_level_anomalies": "owned by the ingest unit's contract (sftp_ingest_poll-cnvingest), whose code this workflow runs verbatim; this unit plants none"
+    }
+  },
+  "unverified_paths": [
+    "live Jobs service semantics: depends_on blocking, UPSTREAM_FAILED propagation, max_retries=0, max_concurrent_runs=1 queueing, paused quartz schedule (verified only against the committed job spec + local orchestrator)",
+    "live Spark SQL execution of the composed cnvparse pipeline (read_files, temp views, INSERT OVERWRITE) on Databricks",
+    "Delta table semantics (DDL, INSERT OVERWRITE isolation) in ow_tp.bronze/silver/gold/ops",
+    "Unity Catalog behavior and permissions for the ow_tp catalog objects",
+    "serverless notebook-task execution and job-parameter passing (ns, chaos)",
+    "Files API / Volumes FUSE I-O behaviour for the publish_psv artifact replacement on /Volumes paths",
+    "dbutils.notebook.run composition of the vendored cnvingest notebook",
+    "live end-to-end run of job ow_tp_orchestrate_cnvorch (parent-owned live validation window)"
+  ],
+  "notes": "generated_at is pinned to the run-branch cut time for artifact determinism; the finance task composes the merged cnvfinance unit's finance_core verbatim (PR #1196)."
+}

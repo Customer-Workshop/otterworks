@@ -1,0 +1,60 @@
+{
+  "name": "ow_tp_orchestrate_cnvorch",
+  "description": "Dependency-driven conversion of etl/legacy-extra/crontab + etl/legacy-extra/run_all.sh (sleep-based 2014 'orchestration') for namespace slice cnvorch. Explicit depends_on chain ingest -> parse -> publish_psv -> finance replaces the cron time offsets and per-stage `2>/dev/null || true` suppression: downstream starts if and only if its upstream succeeded. Serverless notebook tasks, no retries, queued single-run concurrency. Contract: docs/tech-partnerships/contracts/run_all_orchestration-cnvorch.contract.json.",
+  "max_concurrent_runs": 1,
+  "queue": {
+    "enabled": true
+  },
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 ? * SUN",
+    "timezone_id": "UTC",
+    "pause_status": "PAUSED"
+  },
+  "parameters": [
+    {"name": "ns", "default": "cnvorch"},
+    {"name": "chaos", "default": ""},
+    {"name": "report_date", "default": "2026-01-15"}
+  ],
+  "tasks": [
+    {
+      "task_key": "ingest",
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/orchestrate_ingest_cnvorch"
+      },
+      "max_retries": 0,
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "parse",
+      "depends_on": [{"task_key": "ingest"}],
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/orchestrate_parse_cnvorch"
+      },
+      "max_retries": 0,
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "publish_psv",
+      "depends_on": [{"task_key": "parse"}],
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/orchestrate_publish_psv_cnvorch"
+      },
+      "max_retries": 0,
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "finance",
+      "depends_on": [{"task_key": "publish_psv"}],
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/orchestrate_finance_cnvorch"
+      },
+      "max_retries": 0,
+      "timeout_seconds": 1800
+    }
+  ],
+  "tags": {
+    "project": "ow_tp",
+    "unit": "run_all_orchestration",
+    "namespace": "cnvorch"
+  }
+}

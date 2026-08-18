@@ -10,7 +10,10 @@ services:
     environment:
       ORACLE_PWD: ${ORACLE_BILLING_PWD:-Workshop123}
     ports:
-      - "127.0.0.1:${ORACLE_BILLING_DB_PORT:-52521}:1521"
+      # Bound to all interfaces by default so the procs stack containers can
+      # reach the estate via host.docker.internal; set ORACLE_BILLING_BIND to
+      # 127.0.0.1 to keep it host-local.
+      - "${ORACLE_BILLING_BIND:-0.0.0.0}:${ORACLE_BILLING_DB_PORT:-52521}:1521"
     volumes:
       - ./services/legacy-billing/db/oracle/startup:/opt/oracle/scripts/startup:ro
       - ./services/legacy-billing/db/oracle:/opt/oracle/scripts/oracle-billing:ro

@@ -6,7 +6,10 @@ from decimal import Decimal
 import psycopg
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
+from reports import reports
+
 app = Flask(__name__)
+app.register_blueprint(reports)
 
 
 def db_connect():

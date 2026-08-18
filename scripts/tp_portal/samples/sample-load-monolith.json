@@ -1,0 +1,24 @@
+{
+  "kind": "load-test-report",
+  "profile": "portal-load-v1",
+  "base_url": "http://localhost:8095",
+  "workers": 32,
+  "duration_seconds": 60,
+  "request_mix": ["GET /health", "GET /api/announcements", "GET /api/preferences/alice", "GET /api/feedback/average-rating", "GET /api/feedback?userId=alice"],
+  "requests": 21400,
+  "served_requests": 20870,
+  "throughput_rps": 347.8,
+  "attempted_rps": 356.7,
+  "latency_ms": {"p50": 61.0, "p95": 940.0, "p99": 2210.0, "max": 5100.0},
+  "errors": 530,
+  "error_rate": 0.0248,
+  "throttled_429": 0,
+  "throttled_rate": 0.0,
+  "error_sample": ["GET /api/feedback?userId=alice: HTTP 500"],
+  "timeseries": [
+    {"t": 0, "p95_ms": 90}, {"t": 10, "p95_ms": 240}, {"t": 20, "p95_ms": 520},
+    {"t": 30, "p95_ms": 820}, {"t": 40, "p95_ms": 1150}, {"t": 50, "p95_ms": 1600},
+    {"t": 60, "p95_ms": 2100}
+  ],
+  "note": "Hand-written SAMPLE for rehearsing scripts/tp_portal/render_load_charts.py offline. Never evidence."
+}

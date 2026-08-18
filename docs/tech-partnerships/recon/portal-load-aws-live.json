@@ -1,0 +1,29 @@
+{
+  "kind": "load-test-report",
+  "profile": "portal-load-v1",
+  "base_url": "https://g2rqbb7uw6.execute-api.us-east-1.amazonaws.com",
+  "workers": 32,
+  "duration_seconds": 60,
+  "request_mix": [
+    "GET /health",
+    "GET /api/announcements",
+    "GET /api/preferences/alice",
+    "GET /api/feedback/average-rating",
+    "GET /api/feedback?userId=alice"
+  ],
+  "requests": 9666,
+  "served_requests": 5956,
+  "throughput_rps": 98.93,
+  "attempted_rps": 160.55,
+  "latency_ms": {
+    "p50": 198.6,
+    "p95": 219.9,
+    "p99": 235.1,
+    "max": 2952.5
+  },
+  "errors": 0,
+  "error_rate": 0.0,
+  "throttled_429": 3710,
+  "throttled_rate": 0.3838,
+  "error_sample": []
+}

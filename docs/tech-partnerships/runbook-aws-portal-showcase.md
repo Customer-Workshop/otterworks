@@ -363,3 +363,47 @@ and declare the gap in the live recon's `unverified_paths`.
   credentials**, `terraform plan` clean;
 - no CHAOS_FAULT left on any function's `$LATEST`;
 - rehearsal namespaces destroyed and proven absent by tag + prefix scan.
+
+## Observed run — 2026-08-17/18, namespace `demo` (run branch `tp-run/aws-20260817T233316Z`)
+
+Estate URLs:
+
+- API: `https://g2rqbb7uw6.execute-api.us-east-1.amazonaws.com` (HTTP API `g2rqbb7uw6`, stage `$default`)
+- Demo site (CloudFront + WAF): `https://d4ra6o9glmgto.cloudfront.net` (distribution `E3JDJQN98LYVB0`)
+- S3 website origin: `http://ow-tp-portal-demo-demo-site.s3-website-us-east-1.amazonaws.com`
+- Terraform state: `s3://otterworks-terraform-state/tp-portal/demo/terraform.tfstate` (native S3 locking)
+
+Rollup — unit × monolith behaviour replaced × live verification × session × PR:
+
+| Unit | Monolith behaviour replaced | Live verification (this window) | Child session | PR |
+| --- | --- | --- | --- | --- |
+| Decompose (`!tp_aws_2_decompose`) | One process / one blast radius → API Gateway + 3 Lambdas + 3 DynamoDB tables | Golden replay 20/20 (rerun 20/20) — `recon/portal-decomposition-http-parity.recon.json`, final hand-off `recon/portal-final-handoff-live.recon.json` | [42fab140](https://partner-workshops.devinenterprise.com/sessions/42fab1401b6f4f57b717a643218f05e3) | [#1161](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1161) (merged) |
+| Events (`!tp_aws_3_events`) | In-request downstream processing (failure = lost submission) → EventBridge → SQS → projection, DLQ + replay, Step Functions triage | Async recon 7/7 live (queue/DLQ drained, projection converged, duplicate no-op) — `recon/portal-events-async-live.recon.json`; poison → DLQ → `replay_dlq.py` rehearsed | [02b947b8](https://partner-workshops.devinenterprise.com/sessions/02b947b827c941a3a7c6676983f011d7) | [#1170](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1170) (merged) |
+| Showcase (`!tp_aws_4_showcase`) | Open VM endpoint, manual deploys, human paging → closed front door, self-rolling-back canaries, alarm→Devin | 401/403/403-prefix/200 live; auth replay 20/20 — `recon/portal-showcase-frontdoor-live.recon.json`; canary promote (v11) + auto-rollback (v12); load `recon/portal-load-aws-live.json` | [a16c3830](https://partner-workshops.devinenterprise.com/sessions/a16c3830e5454cbbb1e01eba3e3356da) | [#1178](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1178) (merged) |
+
+Observed beat numbers:
+
+- Preflight: 26 probes, 0 denied (`make tp-preflight PLATFORM=aws`).
+- Blast radius (Beat E): feedback alias moved to a CHAOS_FAULT version → only the
+  feedback panel red, `ow-tp-portal-demo-feedback-errors` OK→ALARM→OK, error traces
+  visible in X-Ray for `ow-tp-portal-demo-feedback`; announcements/preferences stayed 200.
+- Canary (G2): good deploy promoted v8→v11 after a clean 120s bake; bad deploy
+  (CHAOS_FAULT) rolled itself back — `ROLLED BACK: ['ow-tp-portal-demo-api-5xx',
+  'ow-tp-portal-demo-feedback-errors'] in ALARM -> alias 'live' restored to 100% v11`.
+- Incident loop (G3): feedback alarm → rule `ow-tp-portal-demo-alarm-to-devin` →
+  webhook → automation invoked (05:03:46 UTC) → incident session
+  [945e56a4](https://partner-workshops.devinenterprise.com/sessions/945e56a4c5b04c03ab397ac8b9bfe0e0)
+  repointed the alias to the healthy version, verified recovery, and opened audit PR
+  [#1183](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1183) (merged:
+  `docs/tech-partnerships/incidents/2026-08-18-ow-tp-portal-demo-api-5xx.md`).
+  Automation: `https://app.devin.ai/automations/7ab85d3bff0b49cfaa22cbf67f0b372c`.
+- Load (G4, `portal-load-v1`, 32 workers, 60s, authenticated): 9,666 attempted /
+  5,956 served, 98.9 rps served, p50 198.6 ms / p95 219.9 ms / p99 235.1 ms,
+  0 errors, 3,710 stage-throttle 429s (38.4%) — report
+  `recon/portal-load-aws-live.json`.
+- Hand-off: final replay 20/20 (rerun 20/20) `recon/portal-final-handoff-live.recon.json`;
+  all 7 alarms OK; DLQ + quarantine empty; aliases 100% healthy (feedback v11,
+  SnapStart On); no CHAOS_FAULT on `$LATEST`; tables PAY_PER_REQUEST + PITR;
+  no provisioned concurrency; budget guardrail on `Project=otterworks-tp`;
+  `terraform plan` clean; rehearsal namespace `demo2` destroyed and proven absent
+  by tag + prefix scan.

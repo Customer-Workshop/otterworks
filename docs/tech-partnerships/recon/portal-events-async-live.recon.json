@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "legacy-portal-events/async-pipeline",
   "namespace": "demo",
-  "generated_at": "2026-08-18T02:53:15.190645+00:00",
+  "generated_at": "2026-08-18T04:39:04.621456+00:00",
   "run_mode": "live",
   "replay_base_url": "https://g2rqbb7uw6.execute-api.us-east-1.amazonaws.com",
   "steps_total": 7,
@@ -11,7 +11,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "event 0fb961b8-b24e-5bc7-a228-1358772fd8ca re-delivered to the main queue after being applied; delivery positively observed, cnt/ratingSum unchanged, DLQ depth 0 after re-delivery",
+    "evidence": "event 685a09d0-ac0b-539b-8611-31fe6edb4528 re-delivered to the main queue after being applied; delivery positively observed, cnt/ratingSum unchanged, DLQ depth 0 after re-delivery",
     "rerun_failures": []
   },
   "pre_pr_self_check": {
@@ -79,12 +79,12 @@
     {
       "id": "idempotency-duplicate-is-noop",
       "expected": {
-        "cnt": 9,
-        "ratingSum": 36
+        "cnt": 6,
+        "ratingSum": 24
       },
       "actual": {
-        "cnt": 9,
-        "ratingSum": 36
+        "cnt": 6,
+        "ratingSum": 24
       },
       "source_of_truth": "stats row compared before/after re-delivering an applied event to the queue",
       "result": "pass",

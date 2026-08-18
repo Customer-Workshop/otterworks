@@ -1,0 +1,95 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # ow_tp_orchestrate_cnvorch / parse — second task of the run_all conversion
+# MAGIC
+# MAGIC Executes the merged cnvparse unit's pipeline SQL verbatim on this
+# MAGIC workflow's namespace slice. The sibling SQL (deployed byte-identical
+# MAGIC under `/Shared/ow_tp/cnvorch/cnvparse/` from
+# MAGIC `etl/databricks/cnvparse/pipeline_parse_custbill.sql`, merged via
+# MAGIC PR #1194) is parameterized here by two deterministic substitutions only:
+# MAGIC the namespace token, and the landing directory (this workflow's parse
+# MAGIC input is the ingest task's staged `incoming/` directory — the explicit
+# MAGIC replacement for the legacy `$ROOT/incoming` filesystem handoff). No
+# MAGIC parsing predicate, table shape, or quarantine decision is reimplemented.
+# MAGIC
+# MAGIC Chaos: `chaos=parse_failure` raises before any statement executes,
+# MAGIC proving orch-02 (a failed upstream blocks publish_psv and finance and
+# MAGIC leaves state untouched).
+# MAGIC
+# MAGIC Empty input: `read_files` cannot plan over zero files, so a batch with
+# MAGIC no staged CUSTBILL*.dat branches explicitly: it runs the sibling DDL and
+# MAGIC rewrites the bronze/silver/quarantine slice empty (write-empty-result),
+# MAGIC mirroring the legacy chain where the glob matched nothing.
+
+# COMMAND ----------
+
+import re
+
+dbutils.widgets.text("ns", "cnvorch")
+dbutils.widgets.text("chaos", "")
+NS = dbutils.widgets.get("ns")
+CHAOS = dbutils.widgets.get("chaos")
+if not re.fullmatch(r"[a-z0-9_]{1,24}", NS):
+    raise ValueError(f"ns must match [a-z0-9_]{{1,24}}: {NS!r}")
+
+if CHAOS == "parse_failure":
+    raise RuntimeError(
+        "chaos-parse-failure injected: failing the parse task before any write "
+        "(must-detect anomaly per the run_all_orchestration-cnvorch contract)"
+    )
+
+SIBLING_SQL = "/Workspace/Shared/ow_tp/cnvorch/cnvparse/pipeline_parse_custbill.sql"
+SIBLING_NS = "cnvparse"
+SIBLING_LANDING = f"/Volumes/ow_tp/bronze/landing/{NS}/parse/"
+INCOMING = f"/Volumes/ow_tp/bronze/landing/{NS}/sftp_ingest_poll/incoming/"
+
+# COMMAND ----------
+
+with open(SIBLING_SQL, "r", encoding="utf-8") as fh:
+    sql_text = fh.read()
+
+# Deterministic parameterization of the verbatim sibling SQL: namespace token
+# first (table names, view names, landing path), then the landing directory
+# redirect to the ingest task's staged incoming/ dir.
+sql_text = sql_text.replace(SIBLING_NS, NS)
+sql_text = sql_text.replace(SIBLING_LANDING, INCOMING)
+
+statements = [s.strip() for s in sql_text.split(";") if s.strip()]
+
+# COMMAND ----------
+
+files = []
+try:
+    files = [
+        f.name for f in dbutils.fs.ls(INCOMING)
+        if f.name.startswith("CUSTBILL") and f.name.endswith(".dat")
+    ]
+except Exception as exc:  # directory absent on a fresh namespace
+    print(f"incoming dir not listable ({exc}); treating as empty input")
+
+if files:
+    for stmt in statements:
+        spark.sql(stmt)
+    print(f"parse pipeline executed over {len(files)} staged file(s) for ns={NS}")
+else:
+    # Explicit empty-input branch: sibling DDL, then rewrite the slice empty.
+    for stmt in statements:
+        if stmt.startswith("CREATE TABLE IF NOT EXISTS"):
+            spark.sql(stmt)
+    for table in (
+        f"ow_tp.bronze.custbill_parse_raw_{NS}",
+        f"ow_tp.silver.custbill_parsed_{NS}",
+        f"ow_tp.silver.custbill_parse_quarantine_{NS}",
+    ):
+        spark.sql(f"INSERT OVERWRITE {table} SELECT * FROM {table} WHERE 1=0")
+        print(f"rewrote {table} empty (write-empty-result)")
+
+# COMMAND ----------
+
+for table in (
+    f"ow_tp.bronze.custbill_parse_raw_{NS}",
+    f"ow_tp.silver.custbill_parsed_{NS}",
+    f"ow_tp.silver.custbill_parse_quarantine_{NS}",
+):
+    count = spark.sql(f"SELECT COUNT(*) FROM {table}").collect()[0][0]
+    print(f"{table} rows: {count}")

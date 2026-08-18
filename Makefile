@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-smoke tp-run-branch tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-smoke tp-run-branch demo-incident tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help
 
 SHELL := /bin/bash
 
@@ -271,6 +271,9 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	docker compose -f docker-compose.oracle-billing.yml config > /dev/null
 	@echo "=== Golden 'make -n test' still parses ==="
 	@$(MAKE) -n test > /dev/null
+	@echo "=== TP portal visual renderers (stdlib-only, sample inputs) ==="
+	python3 scripts/tp_portal/render_scorecard.py scripts/tp_portal/samples/sample-parity.recon.json --out /tmp/tp-smoke-scorecard.html > /dev/null
+	python3 scripts/tp_portal/render_load_charts.py --before scripts/tp_portal/samples/sample-load-monolith.json --after scripts/tp_portal/samples/sample-load-aws.json --out /tmp/tp-smoke-loadcharts.html > /dev/null
 	@echo "=== API Gateway (Go) ==="
 	cd services/api-gateway && go vet ./... && go test ./... && go build -o /dev/null ./cmd/server
 	@echo "=== Collab Service (Node.js) ==="
@@ -281,6 +284,11 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 
 tp-run-branch: ## Cut and push the per-run working branch for a rehearsal (TRACK=mongodb|databricks|aws|modernize)
 	@scripts/tp-run-branch.sh $(TRACK)
+
+demo-incident: ## Stage the one live demo beat: a bad deploy that trips the alarm->Devin loop (NS=<ns>; script is authored per run)
+	@test -n "$(NS)" || { echo "demo-incident: set NS=<namespace> (e.g. NS=demo)"; exit 1; }
+	@test -x scripts/tp_portal/demo_incident.sh || { echo "demo-incident: scripts/tp_portal/demo_incident.sh not found or not executable."; echo "It is authored by each tp-run/aws-* run (it needs that run's function names and API URL)."; echo "See docs/tech-partnerships/runbook-aws-portal-demo-day.md."; exit 1; }
+	scripts/tp_portal/demo_incident.sh $(NS)
 
 test-api-flows: ## Run black-box API flow tests against the local API gateway
 	UV_PROJECT_ENVIRONMENT=.venv uv run python -m pytest tests/api

@@ -1,0 +1,81 @@
+{
+  "kind": "recon-report",
+  "unit": "samples/parity-scorecard-demo",
+  "namespace": "sample",
+  "generated_at": "2026-01-01T00:00:00+00:00",
+  "golden_source": "http://localhost:8095",
+  "replay_base_url": "https://example.invalid",
+  "run_mode": "fixture",
+  "steps_total": 5,
+  "steps_passed": 4,
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "Hand-written sample; both fixture replays produce this same report byte-for-byte."
+  },
+  "planted_anomaly_detections": {
+    "expected_set": ["fb-average integer-division conversion mistake"],
+    "actual_set": ["fb-average integer-division conversion mistake"],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "Everything: this is a hand-written rehearsal sample for the scorecard renderer, not live evidence."
+  ],
+  "note": "Hand-written SAMPLE for rehearsing scripts/tp_portal/render_scorecard.py offline. Never evidence: the planted 'fb-average' failure shows what a caught conversion mistake renders like.",
+  "checks": [
+    {
+      "id": "health",
+      "method": "GET",
+      "path": "/health",
+      "expected": {"status": 200, "body": {"status": "UP", "service": "legacy-portal"}},
+      "actual": {"status": 200, "body": {"status": "UP", "service": "legacy-portal"}},
+      "source_of_truth": "hand-written sample (golden transcript step)",
+      "result": "pass",
+      "mismatches": []
+    },
+    {
+      "id": "ann-create-published",
+      "method": "POST",
+      "path": "/api/announcements",
+      "expected": {"status": 201, "body": {"id": 1, "title": "Welcome to OtterWorks", "published": true, "createdAt": "<instant>"}},
+      "actual": {"status": 201, "body": {"id": 1, "title": "Welcome to OtterWorks", "published": true, "createdAt": "<instant>"}},
+      "source_of_truth": "hand-written sample (golden transcript step)",
+      "result": "pass",
+      "mismatches": []
+    },
+    {
+      "id": "prefs-default-unknown-user",
+      "method": "GET",
+      "path": "/api/preferences/nobody",
+      "expected": {"status": 200, "body": {"userId": "nobody", "theme": "light", "locale": "en-US", "emailNotifications": true}},
+      "actual": {"status": 200, "body": {"userId": "nobody", "theme": "light", "locale": "en-US", "emailNotifications": true}},
+      "source_of_truth": "hand-written sample (golden transcript step)",
+      "result": "pass",
+      "mismatches": []
+    },
+    {
+      "id": "fb-submit-invalid-rating",
+      "method": "POST",
+      "path": "/api/feedback",
+      "expected": {"status": 400, "body": {"error": "rating must be between 1 and 5"}},
+      "actual": {"status": 400, "body": {"error": "rating must be between 1 and 5"}},
+      "source_of_truth": "hand-written sample (golden transcript step)",
+      "result": "pass",
+      "mismatches": []
+    },
+    {
+      "id": "fb-average",
+      "method": "GET",
+      "path": "/api/feedback/average-rating",
+      "expected": {"status": 200, "body": {"averageRating": 4.5}},
+      "actual": {"status": 200, "body": {"averageRating": 4.0}},
+      "source_of_truth": "hand-written sample (planted conversion mistake)",
+      "result": "fail",
+      "mismatches": [
+        "body.averageRating: expected 4.5, got 4.0 (integer division introduced during conversion)"
+      ]
+    }
+  ]
+}

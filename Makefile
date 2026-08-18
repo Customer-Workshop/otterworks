@@ -42,7 +42,7 @@ tp-fixture-clean: ## Remove local Databricks transport fixture (NS=<ns>)
 
 # Live Databricks billing-history showcase (needs DATABRICKS_DEMO_HOST/TOKEN).
 # Serverless SQL only; every schedule it creates stays PAUSED.
-dbx-showcase: ## Run a showcase step (CMD=<provision|land|expectations|backfill|recon|timetravel|lineage|dashboard|alert|pipeline|run-pipeline|recon-job|run-job|drift|status|teardown> NS=<ns>)
+dbx-showcase: ## Run a showcase step (CMD=<provision|land|expectations|backfill|recon|timetravel|lineage|dashboard|alert|pipeline|run-pipeline|recon-job|run-job|drift|status|demo-preflight|teardown> NS=<ns>)
 	@test -n "$(CMD)" || { echo "usage: make dbx-showcase CMD=<step> [NS=<ns>] [ARGS=...]"; exit 2; }
 	python3 scripts/tp_dbx/showcase.py --ns $${NS:-demo} $(CMD) $(ARGS)
 

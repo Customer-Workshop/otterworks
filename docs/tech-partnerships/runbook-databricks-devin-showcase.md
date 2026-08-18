@@ -1,6 +1,9 @@
 # Demo Runbook — Databricks + Devin: billing history, and what happens when recon fails
 
-**Duration:** ~12 minutes staged, ~4 minutes for the failure beat alone.
+**Duration:** ~10 minutes on stage. Everything is staged the night before; the
+only thing that runs live is the failure loop (drift → Databricks catches it →
+Devin fixes it), and even that is *triggered* at the start and *revealed* at the
+end so its latency is hidden behind the other beats.
 **Story:** OtterWorks' 1998-vintage CUSTBILL chain didn't just run nightly — it
 piled up years of monthly billing drops nobody can query. This demo moves that
 history onto the lakehouse, proves it matches the legacy estate to the cent,
@@ -12,8 +15,8 @@ fan-out (one Devin child session per legacy script) is
 [`runbook-databricks.md`](runbook-databricks.md); this one assumes those jobs
 exist and focuses on history, platform capabilities, and the failure loop.
 
-Everything is namespace-scoped (`NS=demo` below). All numbers are deterministic
-for a given namespace, so on-screen output matches this document exactly.
+Everything is namespace-scoped. All numbers are deterministic for a given
+namespace, so on-screen output matches this document exactly.
 
 ## Playbooks
 
@@ -23,6 +26,17 @@ for a given namespace, so on-screen output matches this document exactly.
 | `!tp_dbx_2_convert` | `playbook-292f26f986d743d2832c427bd9992e84` | Child: legacy-script conversion fan-out (behaviour unchanged) |
 | `!tp_dbx_3_backfill` | `playbook-377124a498024799a93ed571e5612cc0` | Child: multi-year history load + per-year recon + Delta time travel |
 | `!tp_dbx_4_platform` | `playbook-eea8d3bfe3f14691a7895c45d2743d99` | Child: declarative pipeline, lineage, dashboard, alert, recon job + failure-to-Devin loop |
+
+## Namespaces
+
+Two namespaces, deliberately:
+
+| Namespace | Role |
+|---|---|
+| `demo` | The story. Dashboard, lineage, Delta history, Workflow graph. Green, never drifted, never broken on stage. |
+| `live<MMDD>` (e.g. `live0819`) | The live beat only. Staged identically, then broken in front of the room. If the loop misbehaves, `demo` is untouched. |
+
+Rehearsal namespaces are a third, throwaway kind — torn down the same night.
 
 ## Staged state (`NS=demo`)
 
@@ -35,119 +49,178 @@ for a given namespace, so on-screen output matches this document exactly.
 | Gold | `ow_tp.gold.custbill_annual_demo` | 36 annual finance rows, 1,439,098,122 cents total |
 | Ops | `ow_tp.ops.history_expectations_demo` | 36 legacy-derived expectation rows (the recon source of truth) |
 | Ops | `ow_tp.ops.recon_runs_demo` | recon history, one row per run |
+| Dashboard | `ow_tp_billing_migration_demo` | published AI/BI dashboard — the backfill beat's screen (page 1 from the harness; the conversion page is added live by the platform child) |
 | Pipeline | `ow_tp_custbill_history_dlt_demo` | same shape, quarantine rules as declared expectations |
 | Job | `ow_tp_billing_history_recon_demo` | recon SQL + `AT_LEAST_ONE_FAILED` Devin notifier, **schedule PAUSED** |
 
 Row counts are namespace-independent; the cent totals are not — the generator
-seeds amounts per namespace, so a rehearsal namespace legitimately reports a
-different total (e.g. `rehearse1` = 1,440,462,121) with all recon checks green.
+seeds amounts per namespace, so `live<MMDD>` legitimately reports a different
+total with all recon checks green.
 
-## Pre-demo setup
+## The dashboard is the demo screen
+
+`make dbx-showcase CMD=dashboard NS=<ns>` builds and **publishes**
+`ow_tp_billing_migration_<ns>`. Published dashboards render stored results, so
+demo-day page loads do not depend on a warm warehouse; refresh only during the
+live beat, where recomputation is the point.
+
+Page 1, "Six years of billing history" (from the harness, identical every run):
+
+- counters — years of history, monthly drops loaded, billing records, total
+  billed, **recon checks failing now** (the tile that goes red in the live beat)
+- billed amount by year — the history nobody could query
+- **Legacy vs lakehouse, to the cent** — per-year legacy expectation, lakehouse
+  actual, and a Difference column that must be all zeros
+- records the legacy parser silently billed wrong (quarantine, by reason), and
+  "years off by a cent or more" (must read 0)
+
+Page 2, the conversion page, is built **live by the platform child** during the
+run (see `!tp_dbx_4_platform`): the finance report's six currency×type rows
+from the converted gold table next to the legacy CSV landed as
+`ow_tp.ops.legacy_finance_report_<ns>`, the delivery record that replaced the
+silent sendmail pipe, ingest/parse counters, and the legacy-script→PR receipt.
+The base branch stays silent about converted outputs, so the child derives the
+table names from what its run actually merged and must verify every widget
+returns rows before publishing.
+
+## Night before — staging checklist
+
+Stage under a persistent path, not `/tmp` (a fresh VM wipes it):
 
 ```bash
+export OTTERWORKS_LEGACY_ROOT=$HOME/otterworks-legacy
 export DATABRICKS_DEMO_HOST=... DATABRICKS_DEMO_TOKEN=...   # PAT: sql, uc, jobs, secrets, workspace, files
-make legacy-etl-gen-history NS=demo                # 72 dated drops, 2,880 records, 30 anomalies
-make dbx-showcase CMD=status NS=demo               # should print the table above
 ```
 
-If the namespace is empty, stage it from scratch:
+1. Full staging for both namespaces (for each of `demo` and `live<MMDD>`):
+
+   ```bash
+   make legacy-etl-gen-history NS=<ns>
+   make dbx-showcase CMD=provision NS=<ns>
+   make dbx-showcase CMD=land NS=<ns>
+   make dbx-showcase CMD=expectations NS=<ns>
+   make dbx-showcase CMD=backfill NS=<ns>
+   make dbx-showcase CMD=recon NS=<ns>          # 49 checks / 0 failed / anomalies 30/30
+   make dbx-showcase CMD=recon-job NS=<ns> ARGS="--webhook-url <devin-webhook>"
+   make dbx-showcase CMD=dashboard NS=<ns>      # builds + publishes page 1
+   ```
+
+   (`demo` usually already exists — the staging commands are idempotent.)
+
+2. Rehearse the live loop end to end on a **throwaway** namespace: drift →
+   `run-job` red → webhook spawns the remediation session → audit PR → green
+   rerun. Record the red run URL, the session URL and the PR URL — they are the
+   fallback if the live loop stalls on stage. Then tear the namespace down and
+   check the negative verification output.
+
+3. Confirm nothing is armed to run unattended, then walk away:
+
+   ```bash
+   make dbx-showcase CMD=demo-preflight NS=demo
+   make dbx-showcase CMD=demo-preflight NS=live<MMDD>
+   ```
+
+## Demo morning — one command per namespace
 
 ```bash
-make dbx-showcase CMD=provision NS=demo
-make dbx-showcase CMD=land NS=demo
-make dbx-showcase CMD=expectations NS=demo
-make dbx-showcase CMD=backfill NS=demo
-make dbx-showcase CMD=recon NS=demo
+export OTTERWORKS_LEGACY_ROOT=$HOME/otterworks-legacy
+make legacy-etl-gen-history NS=demo              # regenerate the local drops (deterministic)
+make legacy-etl-gen-history NS=live<MMDD>
+make dbx-showcase CMD=demo-preflight NS=demo
+make dbx-showcase CMD=demo-preflight NS=live<MMDD>
 ```
 
-## Beat 1 — The history nobody could query (0:00–0:03)
+`demo-preflight` is read-only: it checks the staged tables against the
+generator manifest (the shared workspace means another session *can* rewrite a
+namespace overnight), re-runs the recon checks without rebuilding or recording
+anything, and confirms the job schedule and alert are PAUSED and the dashboard
+exists. Any FAIL line means re-stage that namespace before presenting.
 
-Show the legacy side first: `ls /tmp/otterworks-legacy/sftp-drop/history/2019/`
-— fixed-width files, one per month, six years of them, readable only by the
-Perl script that produced the finance report.
+Then open the published dashboards once (warms the warehouse for the live
+beat) and lay out the tabs: `demo` dashboard, `live` dashboard, the recon job,
+Catalog Explorer on `ow_tp.gold.custbill_annual_demo`, and the crontab file.
 
-Then the same data on the lakehouse:
+## Run of show (~10 min)
+
+### T+0:00 — Break it, quietly
+
+On `live<MMDD>`, before saying anything else:
 
 ```bash
-make dbx-showcase CMD=recon NS=demo
+make dbx-showcase CMD=drift NS=live<MMDD> ARGS="--kind stale"
+make dbx-showcase CMD=run-job NS=live<MMDD> ARGS="--no-wait"
 ```
 
-Expected: `checks: 49, failed: 0, anomalies expected/actual: 30/30, missing: 0,
-unexpected: 0`. Per-year counts and integer-cent totals, per-year quarantine
-counts, per-year file counts, and a grand total — all recomputed from the target
-tables, not from a fixture, then reruns the transforms to prove idempotency.
+Say out loud: "a new billing year just arrived and the target hasn't absorbed
+it — and nobody has been paged." Leave the job run open in a tab. The webhook
+will spawn the remediation session while you tell the rest of the story.
 
-The point to make out loud: the legacy parser logged trailer mismatches and
-moved on. The 30 quarantined rows are records the old estate silently billed
-wrong.
+### T+0:30 — Beat 1: the history nobody could query
 
-## Beat 2 — Time travel and lineage (0:03–0:06)
+The legacy side first: `ls $OTTERWORKS_LEGACY_ROOT/sftp-drop/history/2019/` —
+fixed-width files, one per month, six years of them, readable only by the Perl
+script that produced the finance report. `head -3` one of them.
+
+Then the `demo` dashboard, page 1: six years, 72 drops, 2,856 records, the
+by-year bar chart — and the "Legacy vs lakehouse, to the cent" table. The
+Difference column is all zeros: the mainframe's own numbers and the lakehouse
+agree to the cent, every year. The quarantine table is the second point: the
+legacy parser logged trailer mismatches and moved on; those 30 rows are records
+the old estate silently billed wrong.
+
+### T+3 — Beat 2: time travel and lineage
+
+Catalog Explorer on `ow_tp.gold.custbill_annual_demo`: the **History** tab is
+the answer to "who changed the finance numbers, and what did they look like
+before?" (the legacy estate's answer was a `.done` folder), and the **Lineage**
+tab resolves landing volume → bronze → silver (+ quarantine) → gold with no
+manual annotation. Contrast with
+`etl/legacy-extra/ops/RESTART_PROCEDURE.doc.txt`. Terminal equivalents, if the
+room is technical:
 
 ```bash
 make dbx-showcase CMD=timetravel NS=demo ARGS="--table gold"
 make dbx-showcase CMD=lineage NS=demo
 ```
 
-Time travel prints the Delta version list and the same table as of the previous
-version — the answer to "who changed the finance numbers, and what did they look
-like before?" The legacy estate's answer was a `.done` folder.
+### T+5 — Beat 3: the converted estate
 
-Lineage resolves landing volume → bronze → silver (+ quarantine) → gold with no
-manual annotation. Open the Catalog Explorer lineage tab on
-`ow_tp.gold.custbill_annual_demo` for the graph; contrast with
-`etl/legacy-extra/ops/RESTART_PROCEDURE.doc.txt`, which is what lineage looked
-like before.
+The crontab on one side of the screen (`etl/legacy-extra/crontab` — read the
+comments verbatim: "if ingest is still copying when parse starts, parse reads a
+half-written file. known issue"; `sleep 600` as dependency management), the
+converted Workflow's task graph on the other: explicit `depends_on` edges,
+`max_active_runs=1`, retries, a green run.
 
-## Beat 3 — Declared quality and the finance report (0:06–0:08)
+Then the dashboard's conversion page: the same six currency×type rows the Perl
+script mailed to jake@ for twenty years, now produced by a governed job —
+legacy CSV and lakehouse side by side, difference zero — plus the delivery
+record that replaced the sendmail pipe that silently no-op'd, and the
+legacy-script→PR receipt showing who did the conversion work.
 
-The dashboard `ow_tp_billing_history_demo` replaces
-`finance_excel_report.pl` (a CSV renamed `.xls`, mailed through a sendmail pipe
-that silently no-ops). Annual billed amount by year, quarantine reasons, latest
-recon state.
+### T+7 — Beat 4: Databricks caught it, Devin fixed it
 
-The pipeline `ow_tp_custbill_history_dlt_demo` expresses the quarantine policy
-as declared expectations rather than harness code, and agrees with the
-harness-built gold table exactly:
-
-```bash
-make dbx-showcase CMD=run-pipeline NS=demo    # optional live run; ~5 min, own serverless compute
-```
-
-Expected tail: `custbill_dlt_demo: 2856 rows`, `custbill_dlt_annual_demo: 36
-rows`, `parity with harness gold: matches`.
-
-## Beat 4 — Databricks catches it, Devin fixes it (0:08–0:12)
-
-Green first, so the failure means something:
-
-```bash
-make dbx-showcase CMD=run-job NS=demo
-```
-
-Expected: `recon_check: SUCCESS`, `notify_devin: EXCLUDED`.
-
-Now break it the way reality breaks it — a new billing year arrives, is landed
-and expected, and the target hasn't absorbed it (use `--kind malformed --period
-YYYYMM` for a bad batch instead):
-
-```bash
-make dbx-showcase CMD=drift NS=demo ARGS="--kind stale"
-make dbx-showcase CMD=run-job NS=demo
-```
-
-Expected: `recon_check: FAILED` with a `raise_error` message naming the failing
-check ids, and `notify_devin: SUCCESS`; the run's overall state is
-`SUCCESS_WITH_FAILURES`, because the notifier task itself succeeded. The notifier is a dependent task with
-`run_if: AT_LEAST_ONE_FAILED`; it POSTs job id, run id, run URL, namespace and
+Back to the tabs from T+0. The run is red: `recon_check: FAILED` with a
+`raise_error` message naming the failing check ids, and `notify_devin: SUCCESS`
+(the run's overall state is `SUCCESS_WITH_FAILURES`, because the notifier task
+itself succeeded). The notifier POSTed job id, run id, run URL, namespace and
 base branch to the Devin automation webhook, with the shared secret read from
 the `ow_tp` Databricks secret scope.
 
-That webhook starts *OtterWorks billing-history recon failure —
-auto-remediate (Databricks)*, which re-runs recon, diagnoses from the failing
-check ids, remediates the smallest correct thing, re-runs the anomaly and
-idempotency checks, re-triggers the Databricks job to green, and opens one audit
-PR. Show the session transcript and the PR side by side: Databricks caught it,
-Devin fixed it, the PR proves it.
+That webhook started *OtterWorks billing-history recon failure —
+auto-remediate (Databricks)*, which re-ran recon, diagnosed from the failing
+check ids, remediated the smallest correct thing, re-ran the anomaly and
+idempotency checks, re-triggered the job to green, and opened one audit PR.
+Show the session transcript and the PR side by side — then refresh the `live`
+dashboard and watch "Recon checks failing now" go back to 0.
+
+### Fallbacks
+
+| Failure on stage | Answer |
+|---|---|
+| Webhook didn't spawn a session | Show last night's rehearsal: real red run, real session, merged PR — "here's what it did at 11pm" |
+| Remediation still running at T+7 | Narrate the diagnosis live from the transcript; show the rehearsal PR as the finished state |
+| `demo-preflight` failed in the morning | Re-stage that namespace (provision → land → expectations → backfill → recon, ~10 min) |
+| A widget is slow or errors | The published dashboard renders stored results — don't refresh outside the live beat |
 
 ## Cost controls
 
@@ -167,19 +240,17 @@ Leaving the demo staged is cheap; leaving it *scheduled* is what costs money.
   capped at one concurrent run with an ACU limit. Don't arm a schedule against
   it.
 
-Confirm before walking away:
-
-```bash
-make dbx-showcase CMD=status NS=demo    # prints schedule state for job and alert
-```
+`demo-preflight` checks the schedule/alert pause state, so the night-before and
+morning gates double as the cost check.
 
 ## Teardown
 
 The `demo` namespace is intended to stay staged so history, lineage and the
-dashboard stay browsable. Rehearsal namespaces should not:
+dashboard stay browsable. `live<MMDD>` and rehearsal namespaces should not
+outlive their day:
 
 ```bash
-make dbx-showcase CMD=teardown NS=<rehearsal-ns>
+make dbx-showcase CMD=teardown NS=live<MMDD>
 ```
 
 Teardown drops only `ow_tp` objects suffixed with that namespace, then verifies

@@ -90,11 +90,15 @@ def message_identity(body):
     return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
 
+TOKEN = None  # set in main(); live mode attaches it to every request
+
+
 def http_json(method, url, payload=None):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    request = urllib.request.Request(
-        url, data=data, method=method, headers={"Content-Type": "application/json"}
-    )
+    headers = {"Content-Type": "application/json"}
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+    request = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(request) as response:
             return response.status, json.loads(response.read().decode("utf-8"))
@@ -365,6 +369,9 @@ def build_and_start_processes(queue_url, pump_stats_file, outage_file):
         ["java", "-cp", classpath, "PortalFixtureShim"],
         env={
             **os.environ,
+            # The shim's front door activates on PORTAL_API_TOKEN; this recon
+            # issues unauthenticated requests, so neutralize any exported token.
+            "PORTAL_API_TOKEN": "",
             "FIXTURE_PORT": str(FIXTURE_PORT),
             "DYNAMO_ENDPOINT": FIXTURE_ENDPOINT,
             "TABLE_PREFIX": FIXTURE_PREFIX,
@@ -680,7 +687,16 @@ def main():
     parser.add_argument("--queue-url", default=None)
     parser.add_argument("--dlq-url", default=None)
     parser.add_argument("--stats-table", default=None)
+    parser.add_argument("--token", default=os.environ.get("PORTAL_API_TOKEN"),
+                        help="Bearer token for the closed front door (live mode; "
+                             "default: env PORTAL_API_TOKEN). Fixture mode stays "
+                             "unauthenticated and ignores this.")
     args = parser.parse_args()
+
+    # The fixture shim's front door is deliberately disabled (see the shim env
+    # below); only the live gateway requires the credential.
+    global TOKEN
+    TOKEN = args.token if args.run_mode == "live" else None
 
     unverified = []
     pump_stats_file = None

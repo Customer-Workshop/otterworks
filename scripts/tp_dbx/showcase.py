@@ -12,8 +12,9 @@ never creates clusters (serverless SQL warehouse only).
   recon         recompute from the target, emit a schema-valid recon report
   timetravel    Delta history + as-of totals evidence
   lineage       Unity Catalog lineage evidence for the migrated tables
-  dashboard     create/refresh the AI-BI dashboard for the finance totals
+  dashboard     create/refresh + publish the migration AI-BI dashboard (backfill page)
   alert         create the (paused) recon SQL alert
+  demo-preflight  read-only morning gate: staged state vs manifest, recon green, schedules paused
   pipeline      create/refresh the Lakeflow declarative pipeline (declared expectations)
   run-pipeline  trigger the pipeline, report expectation metrics and harness parity
   recon-job     create/refresh the recon job with the failure -> Devin task
@@ -389,107 +390,122 @@ def cmd_run_pipeline(dbx: Databricks, args) -> int:
     return 0 if not drift.rows else 1
 
 
+def dashboard_name(n: S.Names) -> str:
+    return f"ow_tp_billing_migration_{n.ns}"
+
+
+def _widget(name: str, dataset: str, fields: list[str], spec: dict, pos: dict, *, aggregated: dict | None = None) -> dict:
+    field_specs = [{"name": f, "expression": f"`{f}`"} for f in fields]
+    if aggregated:
+        field_specs += [{"name": alias, "expression": expr} for alias, expr in aggregated.items()]
+    return {
+        "widget": {
+            "name": name,
+            "queries": [{
+                "name": f"{name}_q",
+                "query": {"datasetName": dataset, "fields": field_specs, "disaggregated": not aggregated},
+            }],
+            "spec": spec,
+        },
+        "position": pos,
+    }
+
+
+def _counter(name: str, dataset: str, field: str, title: str, pos: dict) -> dict:
+    spec = {
+        "version": 2,
+        "widgetType": "counter",
+        "encodings": {"value": {"fieldName": field, "displayName": title}},
+        "frame": {"title": title, "showTitle": True},
+    }
+    return _widget(name, dataset, [field], spec, pos)
+
+
+def _table(name: str, dataset: str, columns: list[tuple[str, str]], title: str, pos: dict) -> dict:
+    spec = {
+        "version": 3,
+        "widgetType": "table",
+        "encodings": {"columns": [{"fieldName": f, "displayName": d} for f, d in columns]},
+        "frame": {"title": title, "showTitle": True},
+    }
+    return _widget(name, dataset, [f for f, _ in columns], spec, pos)
+
+
 def cmd_dashboard(dbx: Databricks, args) -> int:
+    """Page 1 of the demo story: the backfilled history, told for an audience
+    that has never seen a lakehouse. Counters for scale, one bar for the
+    history, a legacy-vs-lakehouse table whose delta column must be all zeros,
+    and the quarantine as the 'better than before' line. The conversion page
+    is intentionally NOT built here: it reads tables the conversion children
+    create during a run, so the platform child builds it live from the names
+    that run actually produced."""
     n = names(args)
-    name = f"ow_tp_billing_history_{n.ns}"
+    name = dashboard_name(n)
+    parity_query = (
+        f"SELECT e.source_year AS year, "
+        f"sum(e.total_amount_cents) / 100.0 AS legacy_expected, "
+        f"coalesce(g.actual_cents, 0) / 100.0 AS lakehouse, "
+        f"(coalesce(g.actual_cents, 0) - sum(e.total_amount_cents)) / 100.0 AS delta "
+        f"FROM {n.expectations} e "
+        f"LEFT JOIN (SELECT source_year, sum(total_amount_cents) AS actual_cents "
+        f"FROM {n.gold} GROUP BY source_year) g ON g.source_year = e.source_year "
+        f"GROUP BY e.source_year, g.actual_cents ORDER BY e.source_year"
+    )
     datasets = [
+        ("summary", (
+            f"SELECT (SELECT count(DISTINCT source_year) FROM {n.bronze}) AS years, "
+            f"(SELECT count(DISTINCT source_file) FROM {n.bronze}) AS monthly_drops, "
+            f"(SELECT count(*) FROM {n.silver}) AS records, "
+            f"(SELECT sum(total_amount_cents) / 100.0 FROM {n.gold}) AS total_billed, "
+            f"(SELECT count(*) FROM {n.quarantine}) AS quarantined")),
+        ("recon_latest", (
+            f"SELECT count_if(result = 'fail') AS failed_checks FROM {n.recon_runs} "
+            f"WHERE run_id = (SELECT run_id FROM {n.recon_runs} ORDER BY checked_at DESC LIMIT 1)")),
         ("annual", (f"SELECT source_year, currency, record_type, record_count, "
                     f"total_amount_cents / 100.0 AS total_amount FROM {n.gold} ORDER BY source_year")),
+        ("parity", parity_query),
+        ("parity_state", (f"SELECT count_if(delta != 0) AS years_off FROM ({parity_query})")),
         ("quality", f"SELECT reason, count(*) AS records FROM {n.quarantine} GROUP BY reason ORDER BY records DESC"),
-        ("recon", (f"SELECT result, count(*) AS checks FROM {n.recon_runs} "
-                   f"WHERE run_id = (SELECT run_id FROM {n.recon_runs} ORDER BY checked_at DESC LIMIT 1) "
-                   f"GROUP BY result")),
+    ]
+    layout = [
+        _counter("years", "summary", "years", "Years of history",
+                 {"x": 0, "y": 0, "width": 2, "height": 3}),
+        _counter("drops", "summary", "monthly_drops", "Monthly drops loaded",
+                 {"x": 2, "y": 0, "width": 2, "height": 3}),
+        _counter("records", "summary", "records", "Billing records",
+                 {"x": 4, "y": 0, "width": 2, "height": 3}),
+        _counter("total_billed", "summary", "total_billed", "Total billed (all years)",
+                 {"x": 6, "y": 0, "width": 3, "height": 3}),
+        _counter("failed_checks", "recon_latest", "failed_checks", "Recon checks failing now",
+                 {"x": 9, "y": 0, "width": 3, "height": 3}),
+        _widget("annual_amount", "annual", ["source_year"], {
+            "version": 3,
+            "widgetType": "bar",
+            "encodings": {
+                "x": {"fieldName": "source_year", "scale": {"type": "categorical"}, "displayName": "Year"},
+                "y": {"fieldName": "sum(total_amount)", "scale": {"type": "quantitative"}, "displayName": "Billed amount"},
+            },
+            "frame": {"title": "Billed amount by year — the history nobody could query", "showTitle": True},
+        }, {"x": 0, "y": 3, "width": 6, "height": 6},
+            aggregated={"sum(total_amount)": "SUM(`total_amount`)"}),
+        _table("parity_table", "parity", [
+            ("year", "Year"),
+            ("legacy_expected", "Legacy estate says"),
+            ("lakehouse", "Lakehouse says"),
+            ("delta", "Difference"),
+        ], "Legacy vs lakehouse, to the cent", {"x": 6, "y": 3, "width": 6, "height": 6}),
+        _table("quality_table", "quality", [
+            ("reason", "Quarantine reason"),
+            ("records", "Records"),
+        ], "Records the legacy parser silently billed wrong", {"x": 0, "y": 9, "width": 6, "height": 5}),
+        _counter("years_off", "parity_state", "years_off", "Years off by a cent or more",
+                 {"x": 6, "y": 9, "width": 6, "height": 5}),
     ]
     spec = {
         "datasets": [
             {"name": key, "displayName": key, "queryLines": [query]} for key, query in datasets
         ],
-        "pages": [
-            {
-                "name": "overview",
-                "displayName": "Billing history",
-                "layout": [
-                    {
-                        "widget": {
-                            "name": "annual_amount",
-                            "queries": [{
-                                "name": "annual_amount_q",
-                                "query": {
-                                    "datasetName": "annual",
-                                    "fields": [
-                                        {"name": "source_year", "expression": "`source_year`"},
-                                        {"name": "sum(total_amount)", "expression": "SUM(`total_amount`)"},
-                                    ],
-                                    "disaggregated": False,
-                                },
-                            }],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "bar",
-                                "encodings": {
-                                    "x": {"fieldName": "source_year", "scale": {"type": "categorical"}, "displayName": "Year"},
-                                    "y": {"fieldName": "sum(total_amount)", "scale": {"type": "quantitative"}, "displayName": "Billed amount"},
-                                },
-                                "frame": {"title": "Billed amount by year (migrated history)", "showTitle": True},
-                            },
-                        },
-                        "position": {"x": 0, "y": 0, "width": 6, "height": 6},
-                    },
-                    {
-                        "widget": {
-                            "name": "quality_table",
-                            "queries": [{
-                                "name": "quality_q",
-                                "query": {
-                                    "datasetName": "quality",
-                                    "fields": [
-                                        {"name": "reason", "expression": "`reason`"},
-                                        {"name": "records", "expression": "`records`"},
-                                    ],
-                                    "disaggregated": True,
-                                },
-                            }],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "table",
-                                "encodings": {"columns": [
-                                    {"fieldName": "reason", "displayName": "Quarantine reason"},
-                                    {"fieldName": "records", "displayName": "Records"},
-                                ]},
-                                "frame": {"title": "Records the legacy parser passed through", "showTitle": True},
-                            },
-                        },
-                        "position": {"x": 6, "y": 0, "width": 6, "height": 6},
-                    },
-                    {
-                        "widget": {
-                            "name": "recon_table",
-                            "queries": [{
-                                "name": "recon_q",
-                                "query": {
-                                    "datasetName": "recon",
-                                    "fields": [
-                                        {"name": "result", "expression": "`result`"},
-                                        {"name": "checks", "expression": "`checks`"},
-                                    ],
-                                    "disaggregated": True,
-                                },
-                            }],
-                            "spec": {
-                                "version": 3,
-                                "widgetType": "table",
-                                "encodings": {"columns": [
-                                    {"fieldName": "result", "displayName": "Recon result"},
-                                    {"fieldName": "checks", "displayName": "Checks"},
-                                ]},
-                                "frame": {"title": "Latest reconciliation against the legacy baseline", "showTitle": True},
-                            },
-                        },
-                        "position": {"x": 0, "y": 6, "width": 12, "height": 5},
-                    },
-                ],
-            }
-        ],
+        "pages": [{"name": "backfill", "displayName": "Six years of billing history", "layout": layout}],
     }
     existing = find_dashboard(dbx, name)
     body = {
@@ -498,13 +514,18 @@ def cmd_dashboard(dbx: Databricks, args) -> int:
         "serialized_dashboard": json.dumps(spec),
     }
     if existing:
-        body["etag"] = existing.get("etag", "")
+        # list responses trim the etag, and a PATCH without the current one is
+        # rejected as a concurrent edit
+        current = dbx.ok("GET", f"/api/2.0/lakeview/dashboards/{existing['dashboard_id']}", None)
+        body["etag"] = current.get("etag", "")
         result = dbx.ok("PATCH", f"/api/2.0/lakeview/dashboards/{existing['dashboard_id']}", body)
     else:
         result = dbx.ok("POST", "/api/2.0/lakeview/dashboards", body)
     dashboard_id = result["dashboard_id"]
-    dbx.call("POST", f"/api/2.0/lakeview/dashboards/{dashboard_id}/published",
-             {"embed_credentials": True, "warehouse_id": dbx.warehouse_id})
+    # published dashboards render stored results, so demo-day page loads do not
+    # depend on a warm warehouse
+    dbx.ok("POST", f"/api/2.0/lakeview/dashboards/{dashboard_id}/published",
+           {"embed_credentials": True, "warehouse_id": dbx.warehouse_id})
     print(f"dashboard: {dbx.host}/dashboardsv3/{dashboard_id}/published")
     return 0
 
@@ -753,6 +774,77 @@ def cmd_status(dbx: Databricks, args) -> int:
     return 0
 
 
+def cmd_demo_preflight(dbx: Databricks, args) -> int:
+    """Demo-morning gate. Read-only: verifies the overnight-staged namespace
+    against the generator manifest, re-runs the recon checks without rebuilding
+    or recording anything, and confirms nothing is armed to run unattended.
+    Exits non-zero on the first lie so a contended overnight window is caught
+    before the room fills up."""
+    n = names(args)
+    data = load_manifest(args)
+    expected_files = len(data["files"])
+    expected_rows = sum(len(y["totals"]) for y in data["per_year"])
+    expected_records = sum(t["record_count"] for y in data["per_year"] for t in y["totals"])
+    expected_cents = sum(t["total_amount_cents"] for y in data["per_year"] for t in y["totals"])
+    expected_quarantine = len(data["planted_anomalies"])
+
+    results: list[tuple[str, bool, str]] = []
+
+    def gate(label: str, ok: bool, detail: str) -> None:
+        results.append((label, ok, detail))
+
+    state = dbx.sql_ok(
+        f"SELECT (SELECT count(DISTINCT source_file) FROM {n.bronze}) AS files, "
+        f"(SELECT count(*) FROM {n.silver}) AS silver_rows, "
+        f"(SELECT count(*) FROM {n.quarantine}) AS quarantined, "
+        f"(SELECT sum(total_amount_cents) FROM {n.gold}) AS gold_cents, "
+        f"(SELECT count(*) FROM {n.expectations}) AS expectation_rows"
+    ).dicts()[0]
+    for label, expected, actual in (
+        ("bronze files", expected_files, state["files"]),
+        ("silver records", expected_records, state["silver_rows"]),
+        ("quarantined records", expected_quarantine, state["quarantined"]),
+        ("gold cents", expected_cents, state["gold_cents"]),
+        ("expectation rows", expected_rows, state["expectation_rows"]),
+    ):
+        gate(label, int(actual or 0) == expected, f"expected {expected}, found {actual}")
+
+    failed = [c for c in _checks(dbx, n) if c["result"] == "fail"]
+    gate("recon checks", not failed,
+         "all green" if not failed else "failing: " + ", ".join(c["check_id"] for c in failed[:5]))
+
+    job = dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}")
+    if job:
+        detail = dbx.ok("GET", f"/api/2.1/jobs/get?job_id={int(job['job_id'])}")
+        schedule = detail.get("settings", {}).get("schedule")
+        paused = (schedule or {}).get("pause_status") == "PAUSED"
+        gate("recon job schedule", paused, "PAUSED" if paused else f"{(schedule or {}).get('pause_status', 'NO SCHEDULE')}")
+    else:
+        gate("recon job", False, "absent; run recon-job first")
+
+    alert = find_alert(dbx, f"ow_tp_recon_failed_{n.ns}")
+    if alert:
+        paused = (alert.get("schedule") or {}).get("pause_status") == "PAUSED"
+        gate("recon alert schedule", paused, "PAUSED" if paused else "ARMED")
+    else:
+        gate("recon alert", True, "absent (optional)")
+
+    dashboard = find_dashboard(dbx, dashboard_name(n))
+    gate("dashboard", dashboard is not None,
+         f"{dbx.host}/dashboardsv3/{dashboard['dashboard_id']}/published" if dashboard
+         else "absent; run dashboard first")
+
+    bad = False
+    for label, ok, detail in results:
+        print(f"  {'PASS' if ok else 'FAIL'}  {label}: {detail}")
+        bad = bad or not ok
+    if bad:
+        print(f"demo-preflight FAILED for ns={n.ns} — re-stage before presenting")
+        return 1
+    print(f"demo-preflight passed for ns={n.ns}; open the published dashboard once to warm the warehouse")
+    return 0
+
+
 def cmd_teardown(dbx: Databricks, args) -> int:
     n = names(args)
     for table in (n.gold, n.quarantine, n.silver, n.bronze, n.expectations, n.recon_runs):
@@ -781,8 +873,10 @@ def cmd_teardown(dbx: Databricks, args) -> int:
         dbx.sql(f"DROP MATERIALIZED VIEW IF EXISTS {view}")
         dbx.sql(f"DROP TABLE IF EXISTS {view}")
         print(f"dropped {view}")
+    # ow_tp_billing_history_<ns> is the dashboard's pre-rename display name;
+    # rehearsal namespaces staged before the rename still carry it
     for dashboard in dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards"):
-        if dashboard.get("display_name") == f"ow_tp_billing_history_{n.ns}":
+        if dashboard.get("display_name") in (dashboard_name(n), f"ow_tp_billing_history_{n.ns}"):
             dbx.call("DELETE", f"/api/2.0/lakeview/dashboards/{dashboard['dashboard_id']}")
             print(f"trashed dashboard {dashboard['dashboard_id']}")
     alert = find_alert(dbx, f"ow_tp_recon_failed_{n.ns}")
@@ -804,7 +898,8 @@ def cmd_teardown(dbx: Databricks, args) -> int:
         "recon_job": dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}") is not None,
         "pipeline": find_pipeline(dbx, pipeline_name(n)) is not None,
         "alert": find_alert(dbx, f"ow_tp_recon_failed_{n.ns}") is not None,
-        "dashboard": find_dashboard(dbx, f"ow_tp_billing_history_{n.ns}") is not None,
+        "dashboard": (find_dashboard(dbx, dashboard_name(n)) is not None
+                      or find_dashboard(dbx, f"ow_tp_billing_history_{n.ns}") is not None),
         "landed_paths": [e.get("path") for e in dbx.list_dir(n.history_dir)],
     }
     print("negative verification: " + json.dumps(leftovers))
@@ -852,6 +947,7 @@ def main() -> int:
     drift.add_argument("--kind", default="stale", choices=["stale", "malformed"])
     drift.add_argument("--period", default="")
     sub.add_parser("status")
+    sub.add_parser("demo-preflight")
     sub.add_parser("teardown")
 
     args = parser.parse_args()
@@ -865,7 +961,7 @@ def main() -> int:
         "lineage": cmd_lineage, "dashboard": cmd_dashboard, "alert": cmd_alert,
         "pipeline": cmd_pipeline, "run-pipeline": cmd_run_pipeline,
         "recon-job": cmd_recon_job, "run-job": cmd_run_job, "drift": cmd_drift,
-        "status": cmd_status, "teardown": cmd_teardown,
+        "status": cmd_status, "demo-preflight": cmd_demo_preflight, "teardown": cmd_teardown,
     }
     try:
         return commands[args.command](Databricks(), args)

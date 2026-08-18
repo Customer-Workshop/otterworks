@@ -893,13 +893,22 @@ def cmd_teardown(dbx: Databricks, args) -> int:
     # sql_ok, not sql: an errored scan returns no rows, which would read as proof
     # of absence and let teardown report a namespace it never cleaned
     remaining = dbx.sql_ok(f"SHOW TABLES IN {n.catalog}.silver LIKE '*_{n.ns}'")
+
+    def dashboard_survives() -> bool:
+        # the trash operation propagates to the list endpoint asynchronously
+        for _ in range(5):
+            if not (find_dashboard(dbx, dashboard_name(n))
+                    or find_dashboard(dbx, f"ow_tp_billing_history_{n.ns}")):
+                return False
+            time.sleep(3)
+        return True
+
     leftovers = {
         "silver_tables": remaining.rows,
         "recon_job": dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}") is not None,
         "pipeline": find_pipeline(dbx, pipeline_name(n)) is not None,
         "alert": find_alert(dbx, f"ow_tp_recon_failed_{n.ns}") is not None,
-        "dashboard": (find_dashboard(dbx, dashboard_name(n)) is not None
-                      or find_dashboard(dbx, f"ow_tp_billing_history_{n.ns}") is not None),
+        "dashboard": dashboard_survives(),
         "landed_paths": [e.get("path") for e in dbx.list_dir(n.history_dir)],
     }
     print("negative verification: " + json.dumps(leftovers))
@@ -914,7 +923,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--ns", default="demo")
     parser.add_argument("--catalog", default="ow_tp")
-    parser.add_argument("--legacy-root", default="/tmp/otterworks-legacy")
+    parser.add_argument("--legacy-root",
+                        default=os.environ.get("OTTERWORKS_LEGACY_ROOT", "/tmp/otterworks-legacy"))
     parser.add_argument("--expectations-file", default="")
     sub = parser.add_subparsers(dest="command", required=True)
 

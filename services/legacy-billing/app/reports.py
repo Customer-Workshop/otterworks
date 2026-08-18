@@ -9,12 +9,19 @@ conversion batch number.
 """
 
 import hashlib
+import logging
 import os
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
 reports = Blueprint("reports", __name__)
+logger = logging.getLogger(__name__)
+
+ESTATE_UNAVAILABLE = {
+    "error": "legacy estate unavailable",
+    "detail": "the Oracle billing estate is not reachable; try again later",
+}
 
 SOURCE = {
     "engine": "oracle",
@@ -146,8 +153,9 @@ def month_end():
     try:
         status_rows = oracle_query(STATUS_SQL, {"batch_no": batch_no})
         line_rows = oracle_query(LINE_SQL, {"batch_no": batch_no})
-    except Exception as exc:  # estate offline: surface it, never fabricate numbers
-        return jsonify(error="legacy estate unavailable", detail=str(exc)), 503
+    except Exception:  # estate offline: fail closed, never fabricate numbers
+        logger.exception("month-end report failed for ns=%s", ns)
+        return jsonify(ESTATE_UNAVAILABLE), 503
     body = report_meta(ns)
     body["report"] = "month-end-finance"
     body["by_status"] = shape_status_rows(status_rows)
@@ -161,8 +169,9 @@ def reconciliation():
     batch_no = ns_batch_no(ns)
     try:
         balance_rows = oracle_query(BALANCES_SQL, {"batch_no": batch_no})
-    except Exception as exc:
-        return jsonify(error="legacy estate unavailable", detail=str(exc)), 503
+    except Exception:
+        logger.exception("reconciliation report failed for ns=%s", ns)
+        return jsonify(ESTATE_UNAVAILABLE), 503
     body = report_meta(ns)
     body["balances"] = shape_balances(balance_rows[0])
     # The legacy estate IS the source of truth: there is nothing to reconcile

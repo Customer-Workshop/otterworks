@@ -45,6 +45,48 @@ INCOMING = f"/Volumes/ow_tp/bronze/landing/{NS}/sftp_ingest_poll/incoming/"
 
 # COMMAND ----------
 
+def split_sql_statements(text: str) -> list[str]:
+    """Split multi-statement SQL on `;`, aware of `--` line comments and
+    single/double-quoted literals (both occur in the sibling SQL, including
+    semicolons inside them). Comments are dropped; statement bodies are kept
+    verbatim."""
+    statements: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if quote:
+            current.append(ch)
+            if ch == quote:
+                quote = None
+            i += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            current.append(ch)
+            i += 1
+            continue
+        if ch == "-" and text[i:i + 2] == "--":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if ch == ";":
+            stmt = "".join(current).strip()
+            if stmt:
+                statements.append(stmt)
+            current = []
+            i += 1
+            continue
+        current.append(ch)
+        i += 1
+    tail = "".join(current).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
 with open(SIBLING_SQL, "r", encoding="utf-8") as fh:
     sql_text = fh.read()
 
@@ -54,7 +96,7 @@ with open(SIBLING_SQL, "r", encoding="utf-8") as fh:
 sql_text = sql_text.replace(SIBLING_NS, NS)
 sql_text = sql_text.replace(SIBLING_LANDING, INCOMING)
 
-statements = [s.strip() for s in sql_text.split(";") if s.strip()]
+statements = split_sql_statements(sql_text)
 
 # COMMAND ----------
 
@@ -74,7 +116,7 @@ if files:
 else:
     # Explicit empty-input branch: sibling DDL, then rewrite the slice empty.
     for stmt in statements:
-        if stmt.startswith("CREATE TABLE IF NOT EXISTS"):
+        if stmt.upper().startswith("CREATE TABLE IF NOT EXISTS"):
             spark.sql(stmt)
     for table in (
         f"ow_tp.bronze.custbill_parse_raw_{NS}",

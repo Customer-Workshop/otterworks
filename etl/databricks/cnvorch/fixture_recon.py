@@ -270,6 +270,31 @@ def static_job_checks(checks: list) -> None:
     import re as _re
     foreign_tables = _re.findall(r"ow_tp\.(?:bronze|silver|gold|ops)\.\w*?(?:cnvingest|cnvparse|cnvfinance|demo)\b", sources)
     foreign_volumes = _re.findall(r"/Volumes/ow_tp/bronze/landing/(?:cnvingest|cnvparse|cnvfinance|demo)\b", sources)
+    # The parse notebook's SQL statement splitter, exercised as committed:
+    # extract the function source from the notebook and run it over the
+    # ns-parameterized sibling SQL (which contains `;` inside comments and a
+    # quoted literal).
+    nb_text = (HERE / "orchestrate_parse_cnvorch_notebook.py").read_text()
+    m = _re.search(r"(?ms)^def split_sql_statements.*?^\n\n", nb_text)
+    splitter_ns: dict = {}
+    exec(m.group(0), splitter_ns)  # noqa: S102 — committed source, not external input
+    sibling_sql = (REPO_ROOT / "etl/databricks/cnvparse/pipeline_parse_custbill.sql").read_text()
+    param_sql = sibling_sql.replace("cnvparse", NS).replace(
+        f"/Volumes/ow_tp/bronze/landing/{NS}/parse/",
+        f"/Volumes/ow_tp/bronze/landing/{NS}/sftp_ingest_poll/incoming/",
+    )
+    stmts = splitter_ns["split_sql_statements"](param_sql)
+    keywords = ("CREATE", "INSERT", "DELETE", "MERGE", "WITH", "SELECT", "USE", "SET")
+    check(
+        checks, "parse-sql-statement-splitting",
+        {"all_start_with_sql_keyword": True, "ddl_statements": 5, "fragments": []},
+        {
+            "all_start_with_sql_keyword": all(s.upper().startswith(keywords) for s in stmts),
+            "ddl_statements": sum(1 for s in stmts if s.upper().startswith("CREATE TABLE IF NOT EXISTS")),
+            "fragments": [s[:40] for s in stmts if not s.upper().startswith(keywords)],
+        },
+        "the notebook's committed split_sql_statements run over the ns-parameterized sibling SQL: comment-/literal-embedded semicolons must not fragment statements, and all 5 namespace-suffixed CREATE TABLE IF NOT EXISTS statements must survive for the empty-input branch",
+    )
     check(
         checks, "orch-08-namespace-isolation",
         {"foreign_table_refs": [], "foreign_volume_refs": []},

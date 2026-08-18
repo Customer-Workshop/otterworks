@@ -79,6 +79,21 @@
       "result": "pass"
     },
     {
+      "id": "parse-sql-statement-splitting",
+      "expected": {
+        "all_start_with_sql_keyword": true,
+        "ddl_statements": 5,
+        "fragments": []
+      },
+      "actual": {
+        "all_start_with_sql_keyword": true,
+        "ddl_statements": 5,
+        "fragments": []
+      },
+      "source_of_truth": "the notebook's committed split_sql_statements run over the ns-parameterized sibling SQL: comment-/literal-embedded semicolons must not fragment statements, and all 5 namespace-suffixed CREATE TABLE IF NOT EXISTS statements must survive for the empty-input branch",
+      "result": "pass"
+    },
+    {
       "id": "orch-08-namespace-isolation",
       "expected": {
         "foreign_table_refs": [],

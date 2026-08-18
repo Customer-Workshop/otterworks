@@ -1,0 +1,775 @@
+{
+  "kind": "recon-report",
+  "unit": "custbill_history_backfill",
+  "namespace": "reh0818",
+  "generated_at": "2026-08-18T21:19:27Z",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "annual_total/2019/EUR/01",
+      "expected": "145|63888945",
+      "actual": "145|63888945",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2019/EUR/02",
+      "expected": "21|10062230",
+      "actual": "21|10062230",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2019/GBP/01",
+      "expected": "130|66105433",
+      "actual": "130|66105433",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2019/GBP/02",
+      "expected": "27|11010694",
+      "actual": "27|11010694",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2019/USD/01",
+      "expected": "124|60996770",
+      "actual": "124|60996770",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2019/USD/02",
+      "expected": "29|13588734",
+      "actual": "29|13588734",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2020/EUR/01",
+      "expected": "103|50809765",
+      "actual": "103|50809765",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2020/EUR/02",
+      "expected": "39|15301297",
+      "actual": "39|15301297",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2020/GBP/01",
+      "expected": "131|64933610",
+      "actual": "131|64933610",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2020/GBP/02",
+      "expected": "41|18214597",
+      "actual": "41|18214597",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2020/USD/01",
+      "expected": "135|70083478",
+      "actual": "135|70083478",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2020/USD/02",
+      "expected": "27|15380070",
+      "actual": "27|15380070",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2021/EUR/01",
+      "expected": "136|67654616",
+      "actual": "136|67654616",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2021/EUR/02",
+      "expected": "32|17927950",
+      "actual": "32|17927950",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2021/GBP/01",
+      "expected": "119|57466612",
+      "actual": "119|57466612",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2021/GBP/02",
+      "expected": "27|16038433",
+      "actual": "27|16038433",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2021/USD/01",
+      "expected": "128|66243423",
+      "actual": "128|66243423",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2021/USD/02",
+      "expected": "34|16213790",
+      "actual": "34|16213790",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2022/EUR/01",
+      "expected": "117|56696082",
+      "actual": "117|56696082",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2022/EUR/02",
+      "expected": "34|15641423",
+      "actual": "34|15641423",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2022/GBP/01",
+      "expected": "124|62816080",
+      "actual": "124|62816080",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2022/GBP/02",
+      "expected": "36|16710937",
+      "actual": "36|16710937",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2022/USD/01",
+      "expected": "127|60900420",
+      "actual": "127|60900420",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2022/USD/02",
+      "expected": "38|19603500",
+      "actual": "38|19603500",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2023/EUR/01",
+      "expected": "123|59683028",
+      "actual": "123|59683028",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2023/EUR/02",
+      "expected": "24|11595124",
+      "actual": "24|11595124",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2023/GBP/01",
+      "expected": "147|71830468",
+      "actual": "147|71830468",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2023/GBP/02",
+      "expected": "25|13998150",
+      "actual": "25|13998150",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2023/USD/01",
+      "expected": "134|65514584",
+      "actual": "134|65514584",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2023/USD/02",
+      "expected": "23|11569606",
+      "actual": "23|11569606",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2024/EUR/01",
+      "expected": "127|68160214",
+      "actual": "127|68160214",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2024/EUR/02",
+      "expected": "26|14688412",
+      "actual": "26|14688412",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2024/GBP/01",
+      "expected": "131|62249701",
+      "actual": "131|62249701",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2024/GBP/02",
+      "expected": "29|13356703",
+      "actual": "29|13356703",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2024/USD/01",
+      "expected": "125|62087910",
+      "actual": "125|62087910",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2024/USD/02",
+      "expected": "38|15470537",
+      "actual": "38|15470537",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2025/EUR/01",
+      "expected": "121|64249295",
+      "actual": "121|64249295",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2025/EUR/02",
+      "expected": "38|18281146",
+      "actual": "38|18281146",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2025/GBP/01",
+      "expected": "135|69458200",
+      "actual": "135|69458200",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2025/GBP/02",
+      "expected": "23|10223904",
+      "actual": "23|10223904",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2025/USD/01",
+      "expected": "128|63630406",
+      "actual": "128|63630406",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "annual_total/2025/USD/02",
+      "expected": "31|15992644",
+      "actual": "31|15992644",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2019",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2020",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2021",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2022",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2023",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2024",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "file_count/2025",
+      "expected": "12",
+      "actual": "12",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "grand_total/all_years",
+      "expected": "3332|1646328921",
+      "actual": "3332|1646328921",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2019",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2020",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2021",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2022",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2023",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2024",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    },
+    {
+      "id": "quarantine_count/2025",
+      "expected": "4",
+      "actual": "4",
+      "source_of_truth": "gen_history_data.pl expectations manifest (legacy fixed-width drops)",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "silver/quarantine/gold rebuilt from bronze; all 57 checks byte-identical"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      [
+        "CUSTBILL_REH0818_201903.dat",
+        "invalid_calendar_date",
+        "C000865145"
+      ],
+      [
+        "CUSTBILL_REH0818_201905.dat",
+        "nonnumeric_amount",
+        "C000304856"
+      ],
+      [
+        "CUSTBILL_REH0818_201909.dat",
+        "invalid_calendar_date",
+        "C000320202"
+      ],
+      [
+        "CUSTBILL_REH0818_201911.dat",
+        "nonnumeric_amount",
+        "C000431252"
+      ],
+      [
+        "CUSTBILL_REH0818_201912.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202003.dat",
+        "invalid_calendar_date",
+        "C000886939"
+      ],
+      [
+        "CUSTBILL_REH0818_202005.dat",
+        "nonnumeric_amount",
+        "C000676086"
+      ],
+      [
+        "CUSTBILL_REH0818_202009.dat",
+        "invalid_calendar_date",
+        "C000341996"
+      ],
+      [
+        "CUSTBILL_REH0818_202011.dat",
+        "nonnumeric_amount",
+        "C000802482"
+      ],
+      [
+        "CUSTBILL_REH0818_202012.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202103.dat",
+        "invalid_calendar_date",
+        "C000510088"
+      ],
+      [
+        "CUSTBILL_REH0818_202105.dat",
+        "nonnumeric_amount",
+        "C000731328"
+      ],
+      [
+        "CUSTBILL_REH0818_202109.dat",
+        "invalid_calendar_date",
+        "C000865145"
+      ],
+      [
+        "CUSTBILL_REH0818_202111.dat",
+        "nonnumeric_amount",
+        "C000857723"
+      ],
+      [
+        "CUSTBILL_REH0818_202112.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202203.dat",
+        "invalid_calendar_date",
+        "C000133237"
+      ],
+      [
+        "CUSTBILL_REH0818_202205.dat",
+        "nonnumeric_amount",
+        "C000786569"
+      ],
+      [
+        "CUSTBILL_REH0818_202209.dat",
+        "invalid_calendar_date",
+        "C000488294"
+      ],
+      [
+        "CUSTBILL_REH0818_202211.dat",
+        "nonnumeric_amount",
+        "C000912965"
+      ],
+      [
+        "CUSTBILL_REH0818_202212.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202303.dat",
+        "invalid_calendar_date",
+        "C000656386"
+      ],
+      [
+        "CUSTBILL_REH0818_202305.dat",
+        "nonnumeric_amount",
+        "C000841810"
+      ],
+      [
+        "CUSTBILL_REH0818_202309.dat",
+        "invalid_calendar_date",
+        "C000111443"
+      ],
+      [
+        "CUSTBILL_REH0818_202311.dat",
+        "nonnumeric_amount",
+        "C000968206"
+      ],
+      [
+        "CUSTBILL_REH0818_202312.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202403.dat",
+        "invalid_calendar_date",
+        "C000279535"
+      ],
+      [
+        "CUSTBILL_REH0818_202405.dat",
+        "nonnumeric_amount",
+        "C000897051"
+      ],
+      [
+        "CUSTBILL_REH0818_202409.dat",
+        "invalid_calendar_date",
+        "C000634592"
+      ],
+      [
+        "CUSTBILL_REH0818_202411.dat",
+        "nonnumeric_amount",
+        "C000123447"
+      ],
+      [
+        "CUSTBILL_REH0818_202412.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202503.dat",
+        "invalid_calendar_date",
+        "C000802684"
+      ],
+      [
+        "CUSTBILL_REH0818_202505.dat",
+        "nonnumeric_amount",
+        "C000952292"
+      ],
+      [
+        "CUSTBILL_REH0818_202509.dat",
+        "invalid_calendar_date",
+        "C000257742"
+      ],
+      [
+        "CUSTBILL_REH0818_202511.dat",
+        "nonnumeric_amount",
+        "C000178688"
+      ],
+      [
+        "CUSTBILL_REH0818_202512.dat",
+        "trailer_count_mismatch",
+        ""
+      ]
+    ],
+    "actual_set": [
+      [
+        "CUSTBILL_REH0818_201903.dat",
+        "invalid_calendar_date",
+        "C000865145"
+      ],
+      [
+        "CUSTBILL_REH0818_201905.dat",
+        "nonnumeric_amount",
+        "C000304856"
+      ],
+      [
+        "CUSTBILL_REH0818_201909.dat",
+        "invalid_calendar_date",
+        "C000320202"
+      ],
+      [
+        "CUSTBILL_REH0818_201911.dat",
+        "nonnumeric_amount",
+        "C000431252"
+      ],
+      [
+        "CUSTBILL_REH0818_201912.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202003.dat",
+        "invalid_calendar_date",
+        "C000886939"
+      ],
+      [
+        "CUSTBILL_REH0818_202005.dat",
+        "nonnumeric_amount",
+        "C000676086"
+      ],
+      [
+        "CUSTBILL_REH0818_202009.dat",
+        "invalid_calendar_date",
+        "C000341996"
+      ],
+      [
+        "CUSTBILL_REH0818_202011.dat",
+        "nonnumeric_amount",
+        "C000802482"
+      ],
+      [
+        "CUSTBILL_REH0818_202012.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202103.dat",
+        "invalid_calendar_date",
+        "C000510088"
+      ],
+      [
+        "CUSTBILL_REH0818_202105.dat",
+        "nonnumeric_amount",
+        "C000731328"
+      ],
+      [
+        "CUSTBILL_REH0818_202109.dat",
+        "invalid_calendar_date",
+        "C000865145"
+      ],
+      [
+        "CUSTBILL_REH0818_202111.dat",
+        "nonnumeric_amount",
+        "C000857723"
+      ],
+      [
+        "CUSTBILL_REH0818_202112.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202203.dat",
+        "invalid_calendar_date",
+        "C000133237"
+      ],
+      [
+        "CUSTBILL_REH0818_202205.dat",
+        "nonnumeric_amount",
+        "C000786569"
+      ],
+      [
+        "CUSTBILL_REH0818_202209.dat",
+        "invalid_calendar_date",
+        "C000488294"
+      ],
+      [
+        "CUSTBILL_REH0818_202211.dat",
+        "nonnumeric_amount",
+        "C000912965"
+      ],
+      [
+        "CUSTBILL_REH0818_202212.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202303.dat",
+        "invalid_calendar_date",
+        "C000656386"
+      ],
+      [
+        "CUSTBILL_REH0818_202305.dat",
+        "nonnumeric_amount",
+        "C000841810"
+      ],
+      [
+        "CUSTBILL_REH0818_202309.dat",
+        "invalid_calendar_date",
+        "C000111443"
+      ],
+      [
+        "CUSTBILL_REH0818_202311.dat",
+        "nonnumeric_amount",
+        "C000968206"
+      ],
+      [
+        "CUSTBILL_REH0818_202312.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202403.dat",
+        "invalid_calendar_date",
+        "C000279535"
+      ],
+      [
+        "CUSTBILL_REH0818_202405.dat",
+        "nonnumeric_amount",
+        "C000897051"
+      ],
+      [
+        "CUSTBILL_REH0818_202409.dat",
+        "invalid_calendar_date",
+        "C000634592"
+      ],
+      [
+        "CUSTBILL_REH0818_202411.dat",
+        "nonnumeric_amount",
+        "C000123447"
+      ],
+      [
+        "CUSTBILL_REH0818_202412.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REH0818_202503.dat",
+        "invalid_calendar_date",
+        "C000802684"
+      ],
+      [
+        "CUSTBILL_REH0818_202505.dat",
+        "nonnumeric_amount",
+        "C000952292"
+      ],
+      [
+        "CUSTBILL_REH0818_202509.dat",
+        "invalid_calendar_date",
+        "C000257742"
+      ],
+      [
+        "CUSTBILL_REH0818_202511.dat",
+        "nonnumeric_amount",
+        "C000178688"
+      ],
+      [
+        "CUSTBILL_REH0818_202512.dat",
+        "trailer_count_mismatch",
+        ""
+      ]
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "legacy sendmail delivery of the finance report (no SMTP in the demo estate)"
+  ]
+}

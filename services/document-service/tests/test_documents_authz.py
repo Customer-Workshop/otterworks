@@ -74,6 +74,87 @@ async def test_other_user_cannot_delete_document(
 
 
 @pytest.mark.asyncio
+async def test_other_user_cannot_update_document(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
+
+    resp = await unauthenticated_client.put(
+        f"/api/v1/documents/{doc_id}",
+        json={"title": "Taken", "content": "Taken"},
+        headers=_auth(uuid.uuid4()),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_other_user_cannot_patch_document(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
+
+    resp = await unauthenticated_client.patch(
+        f"/api/v1/documents/{doc_id}",
+        json={"title": "Taken"},
+        headers=_auth(uuid.uuid4()),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_other_user_cannot_list_versions(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
+
+    resp = await unauthenticated_client.get(
+        f"/api/v1/documents/{doc_id}/versions", headers=_auth(uuid.uuid4())
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_other_user_cannot_restore_version(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
+    await unauthenticated_client.put(
+        f"/api/v1/documents/{doc_id}",
+        json={"title": "Owned", "content": "Second body"},
+        headers=_auth(owner_id),
+    )
+    versions = await unauthenticated_client.get(
+        f"/api/v1/documents/{doc_id}/versions", headers=_auth(owner_id)
+    )
+    version_id = versions.json()[-1]["id"]
+
+    resp = await unauthenticated_client.post(
+        f"/api/v1/documents/{doc_id}/versions/{version_id}/restore",
+        headers=_auth(uuid.uuid4()),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_write_is_rejected(
+    unauthenticated_client: AsyncClient, owner_id: uuid.UUID
+):
+    doc_id = await _create_document(unauthenticated_client, owner_id)
+
+    for coro in (
+        unauthenticated_client.put(
+            f"/api/v1/documents/{doc_id}", json={"title": "T", "content": "C"}
+        ),
+        unauthenticated_client.patch(
+            f"/api/v1/documents/{doc_id}", json={"title": "T"}
+        ),
+        unauthenticated_client.delete(f"/api/v1/documents/{doc_id}"),
+        unauthenticated_client.post(f"/api/v1/documents/{doc_id}/share"),
+    ):
+        assert (await coro).status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_other_user_cannot_export_document(
     unauthenticated_client: AsyncClient, owner_id: uuid.UUID
 ):

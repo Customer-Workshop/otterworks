@@ -122,7 +122,7 @@ def publish_psv(silver: list[dict], parsed_dir: Path) -> dict[str, bytes]:
             os.remove(parsed_dir / name)
     out: dict[str, bytes] = {}
     for name, lines in sorted(artifacts.items()):
-        data = ("\n".join(lines) + "\n").encode("ascii")
+        data = ("\n".join(lines) + "\n").encode("latin-1")
         (parsed_dir / name).write_bytes(data)
         if (parsed_dir / name).read_bytes() != data:
             raise IOError(f"post-write verification failed for {parsed_dir / name}")

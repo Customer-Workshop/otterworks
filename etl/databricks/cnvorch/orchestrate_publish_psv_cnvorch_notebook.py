@@ -69,7 +69,7 @@ for name in stale:
     print(f"removed stale handoff artifact {name}")
 
 for name, lines in sorted(artifacts.items()):
-    data = ("\n".join(lines) + "\n").encode("ascii")
+    data = ("\n".join(lines) + "\n").encode("latin-1")
     path = os.path.join(PARSED_DIR, name)
     with open(path, "wb") as fh:
         fh.write(data)

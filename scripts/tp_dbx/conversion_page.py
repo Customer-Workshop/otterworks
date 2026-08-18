@@ -41,7 +41,10 @@ PAGE_NAME = "conversion"
 
 def discover(dbx: Databricks, catalog: str, schema: str, pattern: str) -> list[str]:
     result = dbx.sql_ok(f"SHOW TABLES IN {catalog}.{schema} LIKE '{pattern}'")
-    return sorted(f"{catalog}.{schema}.{row[1]}" for row in result.rows)
+    return sorted(
+        f"{catalog}.{schema}.{require_ident(row[1], 'discovered table')}"
+        for row in result.rows
+    )
 
 
 def pick(tables: list[str], preferred_ns: str) -> str | None:
@@ -57,7 +60,8 @@ def rows_of(dbx: Databricks, query: str) -> int:
 
 
 def columns_of(dbx: Databricks, table: str) -> list[str]:
-    return [c.lower() for c in dbx.sql_ok(f"SELECT * FROM {table} LIMIT 1").columns]
+    return [require_ident(c.lower(), f"{table} column")
+            for c in dbx.sql_ok(f"SELECT * FROM {table} LIMIT 1").columns]
 
 
 def record_type_column(columns: list[str], table: str) -> str:
@@ -216,6 +220,11 @@ def main() -> int:
         print(f"dataset {name}: {count} rows")
         if count == 0:
             raise SystemExit(f"dataset {name} returned no rows; refusing to publish an empty widget")
+    counters = dbx.sql_ok(datasets[0][1])
+    for label, value in zip(counters.columns, counters.rows[0]):
+        if label.lower() != "quarantined" and not int(value or 0):
+            raise SystemExit(
+                f"converted estate counter {label} is zero; refusing to publish an empty page")
     off = int(dbx.sql_ok(datasets[2][1]).scalar() or 0)
     if off:
         raise SystemExit(f"finance parity has {off} non-zero delta rows; not publishing a red page")

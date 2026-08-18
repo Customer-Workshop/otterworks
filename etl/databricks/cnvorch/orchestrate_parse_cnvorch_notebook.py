@@ -100,14 +100,24 @@ statements = split_sql_statements(sql_text)
 
 # COMMAND ----------
 
+# Only a genuinely missing directory is an empty batch (fresh namespace).
+# Any other listing failure (permissions, transient Files API/volume errors)
+# must fail this task and block publish_psv/finance — the empty-input branch
+# below is destructive (it rewrites the slice empty), and silently taking it
+# on an error would be the exact fail-open behaviour this conversion retires.
 files = []
 try:
     files = [
         f.name for f in dbutils.fs.ls(INCOMING)
         if f.name.startswith("CUSTBILL") and f.name.endswith(".dat")
     ]
-except Exception as exc:  # directory absent on a fresh namespace
-    print(f"incoming dir not listable ({exc}); treating as empty input")
+except Exception as exc:
+    msg = str(exc)
+    if "FileNotFoundException" in type(exc).__name__ or "FileNotFoundException" in msg \
+            or "does not exist" in msg or "No such file" in msg:
+        print(f"incoming dir absent ({exc}); treating as empty input")
+    else:
+        raise
 
 if files:
     for stmt in statements:

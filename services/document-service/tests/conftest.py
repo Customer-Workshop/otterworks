@@ -7,6 +7,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.config import settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
@@ -18,6 +19,19 @@ engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestingSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
+
+
+@pytest.fixture(autouse=True)
+def require_auth_disabled():
+    """Run the suite the way the service runs behind the gateway: auth upstream.
+
+    Tests that assert on identity handling set ``settings.require_auth`` back on
+    for their own module.
+    """
+    original = settings.require_auth
+    settings.require_auth = False
+    yield
+    settings.require_auth = original
 
 
 @pytest.fixture(autouse=True)

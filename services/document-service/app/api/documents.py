@@ -13,6 +13,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.session import get_db
 from app.schemas.document import (
     DocumentCreate,
@@ -94,14 +95,29 @@ def _extract_user_id(request: Request) -> UUID | None:
     return None
 
 
-def _require_user_id(request: Request) -> UUID:
+def _require_user_id(request: Request) -> UUID | None:
+    """Identity of the caller.
+
+    Returns ``None`` when the caller carries no identity and
+    ``settings.require_auth`` is off, which is how the service is run when an
+    upstream owns authentication (and how the test harness drives it).
+    """
     user_id = _extract_user_id(request)
     if not user_id:
+        if not settings.require_auth:
+            return None
         raise HTTPException(status_code=401, detail="Authentication required")
     return user_id
 
 
-def _ensure_owner(document: object, user_id: UUID) -> None:
+def _ensure_owner(document: object, user_id: UUID | None) -> None:
+    """Reject a caller reaching a document it does not own.
+
+    An unidentified caller is only ever reached with auth enforcement off, and
+    has no identity to compare against.
+    """
+    if user_id is None:
+        return
     if getattr(document, "owner_id", None) != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
 

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:4200"]
 
+    # When enabled, per-document endpoints reject callers that carry no identity.
+    # Ownership is always enforced for callers that do carry one.
+    require_auth: bool = True
+
     model_config = {"env_prefix": "DOC_SVC_", "env_file": ".env", "extra": "ignore"}
 
 

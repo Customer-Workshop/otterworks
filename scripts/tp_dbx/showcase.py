@@ -458,9 +458,11 @@ def cmd_dashboard(dbx: Databricks, args) -> int:
             f"(SELECT count(*) FROM {n.silver}) AS records, "
             f"(SELECT sum(total_amount_cents) / 100.0 FROM {n.gold}) AS total_billed, "
             f"(SELECT count(*) FROM {n.quarantine}) AS quarantined")),
+        # computed live, not read from recorded recon runs: drift must turn this
+        # tile red on refresh before any recon run is recorded
         ("recon_latest", (
-            f"SELECT count_if(result = 'fail') AS failed_checks FROM {n.recon_runs} "
-            f"WHERE run_id = (SELECT run_id FROM {n.recon_runs} ORDER BY checked_at DESC LIMIT 1)")),
+            f"WITH checks AS ({S.recon_checks(n)}) "
+            f"SELECT count_if(result = 'fail') AS failed_checks FROM checks")),
         ("annual", (f"SELECT source_year, currency, record_type, record_count, "
                     f"total_amount_cents / 100.0 AS total_amount FROM {n.gold} ORDER BY source_year")),
         ("parity", parity_query),

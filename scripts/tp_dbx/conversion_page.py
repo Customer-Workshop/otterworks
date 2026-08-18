@@ -87,8 +87,10 @@ def land_legacy_report(dbx: Databricks, table: str, csv_path: Path) -> str:
         if not (currency.isalnum() and record_type.isalnum()):
             raise SystemExit(f"legacy report carried a non-alphanumeric code: {row!r}")
         count = int(row["RecordCount"])
-        dollars, _, cents = row["TotalAmount"].partition(".")
-        amount_cents = int(dollars) * 100 + int((cents + "00")[:2])
+        raw_amount = row["TotalAmount"].strip()
+        sign = -1 if raw_amount.startswith("-") else 1
+        dollars, _, cents = raw_amount.lstrip("-").partition(".")
+        amount_cents = sign * (int(dollars) * 100 + int((cents + "00")[:2]))
         values.append(f"('{currency}', '{record_type}', {count}, {amount_cents})")
     dbx.sql_ok(
         f"CREATE TABLE IF NOT EXISTS {table} ("
@@ -128,10 +130,16 @@ def main() -> int:
     if missing:
         raise SystemExit("conversion outputs incomplete; build the page only from tables that exist")
 
-    legacy = pick(discover(dbx, catalog, "ops", "legacy_finance_report_cnv*"), "cnvfinance")
-    if legacy and not rows_of(dbx, f"SELECT 1 FROM {legacy} LIMIT 1"):
-        print(f"  legacy mirror {legacy} is empty; landing from CSV instead")
-        legacy = None
+    # candidates: the converted unit's own mirror, then the ns-suffixed mirror
+    # a previous run of this tool may have landed itself; take the first with rows
+    legacy = None
+    candidates = discover(dbx, catalog, "ops", "legacy_finance_report_cnv*")
+    candidates += discover(dbx, catalog, "ops", f"legacy_finance_report_{ns}")
+    for candidate in candidates:
+        if rows_of(dbx, f"SELECT 1 FROM {candidate} LIMIT 1"):
+            legacy = candidate
+            break
+        print(f"  legacy mirror {candidate} is empty; skipping")
     if legacy:
         print(f"  legacy mirror: {legacy}")
     elif args.legacy_report:
@@ -161,14 +169,25 @@ def main() -> int:
     summary_rt = record_type_column(summary_columns, summary)
     legacy_amount = amount_expr(legacy_columns, "l", legacy)
     lakehouse_amount = f"coalesce({amount_expr(summary_columns, 'g', summary)}, 0)"
+
+    def latest_slice(table: str, columns: list[str]) -> str:
+        """Both sides are slice-keyed by report_date (one slice per run); pin
+        the newest slice so the join cannot fan out across dates."""
+        if "report_date" in columns:
+            return (f"(SELECT * FROM {table} WHERE report_date = "
+                    f"(SELECT max(report_date) FROM {table}))")
+        return table
+
+    legacy_src = latest_slice(legacy, legacy_columns)
+    summary_src = latest_slice(summary, summary_columns)
     parity_query = (
         f"SELECT l.currency, l.{legacy_rt} AS record_type, "
         f"l.record_count AS legacy_records, "
         f"{legacy_amount} AS legacy_amount, "
         f"{lakehouse_amount} AS lakehouse_amount, "
         f"{lakehouse_amount} - {legacy_amount} AS delta "
-        f"FROM {legacy} l "
-        f"LEFT JOIN {summary} g ON g.currency = l.currency AND g.{summary_rt} = l.{legacy_rt} "
+        f"FROM {legacy_src} l "
+        f"LEFT JOIN {summary_src} g ON g.currency = l.currency AND g.{summary_rt} = l.{legacy_rt} "
         f"ORDER BY l.currency, l.{legacy_rt}"
     )
     datasets = [

@@ -170,6 +170,7 @@ export class SidebarComponent {
     { label: 'Storage Quotas', icon: 'storage', route: '/quotas' },
     { label: 'Incidents', icon: 'report_problem', route: '/incidents' },
     { label: 'Analytics', icon: 'bar_chart', route: '/analytics' },
+    { label: 'Billing Report', icon: 'receipt_long', route: '/billing-report' },
   ];
 
   toggleCollapsed(): void {

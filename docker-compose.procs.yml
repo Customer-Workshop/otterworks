@@ -36,6 +36,12 @@ services:
       DB_NAME: billing_${NS:-dev}
       DB_USER: billing
       DB_PASSWORD: ${DB_PASSWORD:-billing}
+      # Month-end reports read the Oracle billing estate (make oracle-billing-up),
+      # which listens on the host, not in this compose network.
+      ORACLE_HOST: ${ORACLE_HOST:-host.docker.internal}
+      ORACLE_PORT: ${ORACLE_BILLING_DB_PORT:-52521}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:${PROCS_APP_PORT:-8096}:8096"
     healthcheck:

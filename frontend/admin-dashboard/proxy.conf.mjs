@@ -6,4 +6,11 @@ export default {
     target: process.env.API_GATEWAY_URL || "http://localhost:8080",
     changeOrigin: true,
   },
+  // Billing report backend: whichever estate serves the billing report
+  // contract. Defaults to the legacy billing app (make procs-up).
+  "/billing-api": {
+    target: process.env.BILLING_REPORT_API_URL || "http://localhost:8096",
+    changeOrigin: true,
+    pathRewrite: { "^/billing-api": "" },
+  },
 };

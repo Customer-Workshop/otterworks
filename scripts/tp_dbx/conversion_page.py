@@ -102,7 +102,7 @@ def land_legacy_report(dbx: Databricks, table: str, csv_path: Path) -> str:
             sign = -1 if raw_amount.startswith("-") else 1
             dollars, _, cents = raw_amount.lstrip("-").partition(".")
             amount_cents = sign * (int(dollars) * 100 + int((cents + "00")[:2]))
-        except (KeyError, ValueError) as exc:
+        except (KeyError, ValueError, AttributeError) as exc:
             raise SystemExit(f"legacy report row is malformed ({exc!r}): {row!r}") from exc
         values.append(f"('{currency}', '{record_type}', {count}, {amount_cents})")
     dbx.sql_ok(
@@ -186,6 +186,8 @@ def main() -> int:
     for entry in receipt_rows:
         for key in ("script", "job", "pr"):
             value = entry.get(key, "")
+            if not isinstance(value, str):
+                value = "" if value is None else str(value)
             if not value or not value.isprintable() or "'" in value or "\\" in value:
                 raise SystemExit(f"receipt row has a missing or unsafe {key}: {entry!r}")
     receipt_values = ",\n".join(

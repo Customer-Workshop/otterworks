@@ -1,0 +1,21 @@
+{
+  "name": "ow_tp_ingest_cnvingest",
+  "description": "Transport-only CUSTBILL drop ingest (converted from etl/legacy-extra/jobs/sftp_ingest_poll.ksh). Per-batch manual trigger; mutual exclusion via max_concurrent_runs=1 (replaces the legacy /tmp lock file). Serverless notebook task: no cluster specification, so the task runs on serverless job compute.",
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "ingest",
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/cnvingest/sftp_ingest_poll_notebook",
+        "base_parameters": {
+          "ns": "cnvingest"
+        }
+      }
+    }
+  ],
+  "tags": {
+    "project": "ow_tp",
+    "unit": "sftp_ingest_poll",
+    "namespace": "cnvingest"
+  }
+}

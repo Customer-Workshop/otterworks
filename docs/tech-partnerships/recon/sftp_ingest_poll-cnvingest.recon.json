@@ -1,0 +1,170 @@
+{
+  "kind": "recon-report",
+  "unit": "sftp_ingest_poll",
+  "namespace": "cnvingest",
+  "generated_at": "2026-08-18T21:37:08+00:00",
+  "run_mode": "fixture",
+  "golden_baseline": "docs/tech-partnerships/recon/sftp_ingest_poll-cnvingest.golden.json",
+  "fixture": "local landing layout under .tp-preflight/databricks-fixture mirroring /Volumes/ow_tp/bronze/landing/cnvingest/sftp_ingest_poll; JSON registry standing in for Delta MERGE with identical keys",
+  "checks": [
+    {
+      "id": "staged_bytes_identical",
+      "expected": {
+        "CUSTBILL_CNVINGEST_001.dat": "933f8e130c3f85554172d5cefb6162efa22e9238e1910f11d542ed26541e5052",
+        "CUSTBILL_CNVINGEST_002.dat": "7fce1f6fc95c851296443b1aa50605745b8a93ee81133cd202012bdcaaa64e7e"
+      },
+      "actual": {
+        "CUSTBILL_CNVINGEST_001.dat": "933f8e130c3f85554172d5cefb6162efa22e9238e1910f11d542ed26541e5052",
+        "CUSTBILL_CNVINGEST_002.dat": "7fce1f6fc95c851296443b1aa50605745b8a93ee81133cd202012bdcaaa64e7e"
+      },
+      "source_of_truth": "sha256 recomputed from fixture incoming/ vs golden baseline drop_files",
+      "result": "pass"
+    },
+    {
+      "id": "atomic_visibility",
+      "expected": [],
+      "actual": [],
+      "source_of_truth": "directory listings of drop/incoming/archive after the run; files written via hidden staging + os.replace",
+      "result": "pass"
+    },
+    {
+      "id": "drop_deleted_after_stage",
+      "expected": [],
+      "actual": [],
+      "source_of_truth": "drop/ listing recomputed after the run",
+      "result": "pass"
+    },
+    {
+      "id": "archive_copy",
+      "expected": {
+        "CUSTBILL_CNVINGEST_001.dat.933f8e130c3f8555": "933f8e130c3f85554172d5cefb6162efa22e9238e1910f11d542ed26541e5052",
+        "CUSTBILL_CNVINGEST_002.dat.7fce1f6fc95c8512": "7fce1f6fc95c851296443b1aa50605745b8a93ee81133cd202012bdcaaa64e7e"
+      },
+      "actual": {
+        "CUSTBILL_CNVINGEST_001.dat.933f8e130c3f8555": "933f8e130c3f85554172d5cefb6162efa22e9238e1910f11d542ed26541e5052",
+        "CUSTBILL_CNVINGEST_002.dat.7fce1f6fc95c8512": "7fce1f6fc95c851296443b1aa50605745b8a93ee81133cd202012bdcaaa64e7e"
+      },
+      "source_of_truth": "sha256 recomputed from fixture archive/",
+      "result": "pass"
+    },
+    {
+      "id": "bronze_registration",
+      "expected": {
+        "file_rows": [
+          {
+            "file_name": "CUSTBILL_CNVINGEST_001.dat",
+            "sha256": "933f8e130c3f85554172d5cefb6162efa22e9238e1910f11d542ed26541e5052",
+            "bytes": 3430,
+            "lines": 52,
+            "ingest_id": "b1281c64-b5a7-5b98-9c1c-b1df344b74ea"
+          },
+          {
+            "file_name": "CUSTBILL_CNVINGEST_002.dat",
+            "sha256": "7fce1f6fc95c851296443b1aa50605745b8a93ee81133cd202012bdcaaa64e7e",
+            "bytes": 3430,
+            "lines": 52,
+            "ingest_id": "7707642a-fb3c-5649-99a6-198901de9d20"
+          }
+        ],
+        "raw_line_rows": 104
+      },
+      "actual": {
+        "file_rows": [
+          {
+            "file_name": "CUSTBILL_CNVINGEST_001.dat",
+            "sha256": "933f8e130c3f85554172d5cefb6162efa22e9238e1910f11d542ed26541e5052",
+            "bytes": 3430,
+            "lines": 52,
+            "ingest_id": "b1281c64-b5a7-5b98-9c1c-b1df344b74ea"
+          },
+          {
+            "file_name": "CUSTBILL_CNVINGEST_002.dat",
+            "sha256": "7fce1f6fc95c851296443b1aa50605745b8a93ee81133cd202012bdcaaa64e7e",
+            "bytes": 3430,
+            "lines": 52,
+            "ingest_id": "7707642a-fb3c-5649-99a6-198901de9d20"
+          }
+        ],
+        "raw_line_rows": 104
+      },
+      "source_of_truth": "bronze registry JSON recomputed from the fixture target after the run",
+      "result": "pass"
+    },
+    {
+      "id": "non_matching_ignored",
+      "expected": [
+        "CUSTBILL_CNVINGEST_003.dat.filepart",
+        "NOTCUSTBILL_x.txt"
+      ],
+      "actual": [
+        "CUSTBILL_CNVINGEST_003.dat.filepart",
+        "NOTCUSTBILL_x.txt"
+      ],
+      "source_of_truth": "drop/ listing after the run: planted non-matching files must remain, untouched",
+      "result": "pass"
+    },
+    {
+      "id": "idempotent_repoll",
+      "expected": {
+        "empty_drop_staged": 0,
+        "reland_staged": [
+          "CUSTBILL_CNVINGEST_001.dat"
+        ],
+        "state_unchanged": true
+      },
+      "actual": {
+        "empty_drop_staged": 0,
+        "reland_staged": [
+          "CUSTBILL_CNVINGEST_001.dat"
+        ],
+        "state_unchanged": true
+      },
+      "source_of_truth": "incoming/archive sha256 snapshots and bronze registry row counts recomputed before and after both reruns",
+      "result": "pass"
+    },
+    {
+      "id": "no_hostname_branching",
+      "expected": {
+        "hostname_references": 0,
+        "lock_files": 0,
+        "suppression": 0
+      },
+      "actual": {
+        "hostname_references": 0,
+        "lock_files": 0,
+        "suppression": 0
+      },
+      "source_of_truth": "grep of the committed conversion source; mutual exclusion is max_concurrent_runs=1 in job_ow_tp_ingest_cnvingest.json",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "empty-drop rerun staged 0 files and left incoming/archive/bronze byte-identical; re-landing a byte-identical CUSTBILL file re-staged it with zero new bronze rows"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "non_custbill_file_in_drop",
+      "partial_transfer_suffix"
+    ],
+    "actual_set": [
+      "non_custbill_file_in_drop",
+      "partial_transfer_suffix"
+    ],
+    "missing": [],
+    "unexpected": [],
+    "coverage_gap": {
+      "content_level_anomalies": "owned by the parse_custbill_fixedwidth unit per contract; this unit only guarantees byte-identical transport of content anomalies into bronze raw"
+    }
+  },
+  "unverified_paths": [
+    "live SQL execution and Delta MERGE semantics on ow_tp.bronze.custbill_ingest_files_cnvingest / custbill_raw_cnvingest (fixture uses a JSON registry with identical merge keys)",
+    "Unity Catalog behaviour, table grants, and permissions in the shared workspace",
+    "serverless notebook-task execution, job parameter passing, and max_concurrent_runs enforcement by the Jobs service",
+    "Files API / Volumes FUSE I-O behaviour, including atomicity of os.replace on /Volumes paths",
+    "workspace sys.path import of ingest_core.py next to the deployed notebook",
+    "serverless SQL warehouse behaviour (id 565cd2fd713738c4) under the parent's live validation window"
+  ]
+}

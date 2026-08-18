@@ -40,6 +40,8 @@ PAGE_NAME = "conversion"
 
 
 def discover(dbx: Databricks, catalog: str, schema: str, pattern: str) -> list[str]:
+    if not all(c.isalnum() or c in "_*" for c in pattern):
+        raise SystemExit(f"table pattern must be [A-Za-z0-9_*]+: {pattern!r}")
     result = dbx.sql_ok(f"SHOW TABLES IN {catalog}.{schema} LIKE '{pattern}'")
     return sorted(
         f"{catalog}.{schema}.{require_ident(row[1], 'discovered table')}"
@@ -47,12 +49,9 @@ def discover(dbx: Databricks, catalog: str, schema: str, pattern: str) -> list[s
     )
 
 
-def pick(tables: list[str], preferred_ns: str) -> str | None:
-    """Prefer the dedicated unit namespace; fall back to any converted table."""
-    for table in tables:
-        if table.endswith(f"_{preferred_ns}"):
-            return table
-    return tables[0] if tables else None
+def conv_ns_of(table: str) -> str:
+    """Namespace suffix of a converted table (`..._cnvorch` -> `cnvorch`)."""
+    return "cnv" + table.rsplit("_cnv", 1)[1]
 
 
 def rows_of(dbx: Databricks, query: str) -> int:
@@ -69,6 +68,13 @@ def record_type_column(columns: list[str], table: str) -> str:
         if candidate in columns:
             return candidate
     raise SystemExit(f"{table} carries no record type column: {columns}")
+
+
+def count_expr(columns: list[str], alias: str, table: str) -> str:
+    for candidate in ("record_count", "legacy_record_count", "records"):
+        if candidate in columns:
+            return f"{alias}.{candidate}"
+    raise SystemExit(f"{table} carries no record count column: {columns}")
 
 
 def amount_expr(columns: list[str], alias: str, table: str) -> str:
@@ -119,20 +125,36 @@ def main() -> int:
     catalog = require_ident(args.catalog, "catalog")
     dbx = Databricks()
 
-    ingest_files = pick(discover(dbx, catalog, "bronze", "custbill_ingest_files_cnv*"), "cnvingest")
-    ingest_raw = pick(discover(dbx, catalog, "bronze", "custbill_raw_cnv*"), "cnvingest")
-    parsed = pick(discover(dbx, catalog, "silver", "custbill_parsed_cnv*"), "cnvparse")
-    quarantine = pick(discover(dbx, catalog, "silver", "custbill_parse_quarantine_cnv*"), "cnvparse")
-    summary = pick(discover(dbx, catalog, "gold", "finance_billing_summary_cnv*"), "cnvfinance")
-    delivery = pick(discover(dbx, catalog, "gold", "finance_report_delivery_cnv*"), "cnvfinance")
+    # a run's outputs are coherent only within one conversion namespace: either
+    # each unit's own (cnvingest/cnvparse/cnvfinance) or a single shared one
+    # (e.g. the orchestrator's cnvorch); never mix namespaces across slots
+    slots = [
+        ("ingest files", "bronze", "custbill_ingest_files_cnv*", "cnvingest"),
+        ("ingest raw", "bronze", "custbill_raw_cnv*", "cnvingest"),
+        ("parsed", "silver", "custbill_parsed_cnv*", "cnvparse"),
+        ("parse quarantine", "silver", "custbill_parse_quarantine_cnv*", "cnvparse"),
+        ("finance summary", "gold", "finance_billing_summary_cnv*", "cnvfinance"),
+        ("delivery", "gold", "finance_report_delivery_cnv*", "cnvfinance"),
+    ]
+    found = {label: discover(dbx, catalog, schema, pattern)
+             for label, schema, pattern, _ in slots}
+    if all(any(conv_ns_of(t) == unit for t in found[label]) for label, _, _, unit in slots):
+        chosen = {label: next(t for t in found[label] if conv_ns_of(t) == unit)
+                  for label, _, _, unit in slots}
+    else:
+        common = set.intersection(*(({conv_ns_of(t) for t in tables})
+                                    for tables in found.values()))
+        if not common:
+            raise SystemExit(
+                "no conversion namespace carries all six outputs; refusing to mix runs")
+        conv_ns = "cnvorch" if "cnvorch" in common else sorted(common)[-1]
+        chosen = {label: next(t for t in found[label] if conv_ns_of(t) == conv_ns)
+                  for label, _, _, _ in slots}
     print("discovered converted tables:")
-    for label, table in (("ingest files", ingest_files), ("ingest raw", ingest_raw),
-                         ("parsed", parsed), ("parse quarantine", quarantine),
-                         ("finance summary", summary), ("delivery", delivery)):
-        print(f"  {label}: {table or 'ABSENT'}")
-    missing = [t for t in (ingest_files, ingest_raw, parsed, quarantine, summary, delivery) if not t]
-    if missing:
-        raise SystemExit("conversion outputs incomplete; build the page only from tables that exist")
+    for label, _, _, _ in slots:
+        print(f"  {label}: {chosen[label]}")
+    ingest_files, ingest_raw, parsed, quarantine, summary, delivery = (
+        chosen[label] for label, _, _, _ in slots)
 
     # candidates: the converted unit's own mirror, then the ns-suffixed mirror
     # a previous run of this tool may have landed itself; take the first with rows
@@ -171,6 +193,7 @@ def main() -> int:
     summary_columns = columns_of(dbx, summary)
     legacy_rt = record_type_column(legacy_columns, legacy)
     summary_rt = record_type_column(summary_columns, summary)
+    legacy_count = count_expr(legacy_columns, "l", legacy)
     legacy_amount = amount_expr(legacy_columns, "l", legacy)
     lakehouse_amount = f"coalesce({amount_expr(summary_columns, 'g', summary)}, 0)"
 
@@ -186,7 +209,7 @@ def main() -> int:
     summary_src = latest_slice(summary, summary_columns)
     parity_query = (
         f"SELECT l.currency, l.{legacy_rt} AS record_type, "
-        f"l.record_count AS legacy_records, "
+        f"{legacy_count} AS legacy_records, "
         f"{legacy_amount} AS legacy_amount, "
         f"{lakehouse_amount} AS lakehouse_amount, "
         f"{lakehouse_amount} - {legacy_amount} AS delta "

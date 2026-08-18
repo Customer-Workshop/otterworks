@@ -44,6 +44,22 @@ def deterministic_ingest_id(ns: str, file_name: str, sha256: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"ow_tp/{ns}/sftp_ingest_poll/{file_name}/{sha256}"))
 
 
+def split_raw_lines(data: bytes) -> list[str]:
+    """Byte-level newline-only line split, decoded latin-1 verbatim.
+
+    str.splitlines() would also break on VT/FF/FS/GS/RS/NEL, which are
+    ordinary data bytes in an opaque mainframe extract; splitting the raw
+    bytes on \n alone keeps line boundaries byte-transparent (any \r stays
+    in the line verbatim). A trailing newline yields no empty final line.
+    """
+    if not data:
+        return []
+    chunks = data.split(b"\n")
+    if chunks[-1] == b"":
+        chunks.pop()
+    return [chunk.decode("latin-1") for chunk in chunks]
+
+
 def discover(drop_dir: str) -> list[str]:
     """Names in the drop dir matching the legacy glob CUSTBILL*.dat.
 
@@ -100,7 +116,7 @@ def ingest_batch(root: str, ns: str, bronze) -> list[StagedFile]:
         with open(src, "rb") as fh:
             data = fh.read()
         digest = hashlib.sha256(data).hexdigest()
-        raw_lines = data.decode("latin-1").splitlines()
+        raw_lines = split_raw_lines(data)
         record = StagedFile(
             file_name=name,
             sha256=digest,

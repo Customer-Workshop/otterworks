@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "sftp_ingest_poll",
   "namespace": "cnvingest",
-  "generated_at": "2026-08-18T21:32:14+00:00",
+  "generated_at": "2026-08-18T21:37:08+00:00",
   "run_mode": "fixture",
   "golden_baseline": "docs/tech-partnerships/recon/sftp_ingest_poll-cnvingest.golden.json",
   "fixture": "local landing layout under .tp-preflight/databricks-fixture mirroring /Volumes/ow_tp/bronze/landing/cnvingest/sftp_ingest_poll; JSON registry standing in for Delta MERGE with identical keys",

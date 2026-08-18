@@ -1,0 +1,205 @@
+{
+  "kind": "recon-report",
+  "unit": "finance_excel_report",
+  "namespace": "cnvfinance",
+  "run_id": "748cbb33-17c5-5724-8581-8240487b14a2",
+  "generated_at": "2026-08-18T21:05:50Z",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "artifact_sha256",
+      "expected": "ef1ad83223ebf1e902d57b15126f63fed91510b3228e8883d3c1bb6f03cadde0",
+      "actual": "ef1ad83223ebf1e902d57b15126f63fed91510b3228e8883d3c1bb6f03cadde0",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "codepath/empty-customer-id",
+      "expected": "skipped=1|aggregated=0",
+      "actual": "skipped=1|aggregated=0",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "codepath/unknown-record-type",
+      "expected": "UNKNOWN(99)",
+      "actual": "UNKNOWN(99)",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "crossfoot_record_count_total",
+      "expected": "100",
+      "actual": "100",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "delivery_record",
+      "expected": "1|verified_volume_delivery|absent",
+      "actual": "1|verified_volume_delivery|absent",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "empty_artifact_sha256",
+      "expected": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+      "actual": "4cbc4f1506b7f1cc335237cc23573b18944f38c349f11a94d47157ee464671ea",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "empty_delivery_record",
+      "expected": "1|verified_volume_delivery|absent",
+      "actual": "1|verified_volume_delivery|absent",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "empty_summary_rows",
+      "expected": "0",
+      "actual": "0",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid/EUR/CREDIT",
+      "expected": "8|4326962",
+      "actual": "8|4326962",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid/EUR/INVOICE",
+      "expected": "23|14658831",
+      "actual": "23|14658831",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid/GBP/CREDIT",
+      "expected": "10|3793019",
+      "actual": "10|3793019",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid/GBP/INVOICE",
+      "expected": "31|16232268",
+      "actual": "31|16232268",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid/USD/CREDIT",
+      "expected": "8|5473757",
+      "actual": "8|5473757",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid/USD/INVOICE",
+      "expected": "20|9494518",
+      "actual": "20|9494518",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grid_rows",
+      "expected": "6",
+      "actual": "6",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "input_sha256/CUSTBILL_CNVFINANCE_001.psv",
+      "expected": "181a088fa1df4b4e46ca80519e3f0ff1bbc4b2be64de4ffffac6f29aaaba3f34",
+      "actual": "181a088fa1df4b4e46ca80519e3f0ff1bbc4b2be64de4ffffac6f29aaaba3f34",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "input_sha256/CUSTBILL_CNVFINANCE_002.psv",
+      "expected": "5497cb24e9ade19c46176b7704b9a9501bbd53201f8b00a041379ab752edf282",
+      "actual": "5497cb24e9ade19c46176b7704b9a9501bbd53201f8b00a041379ab752edf282",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "legacy_mirror_rows",
+      "expected": "6",
+      "actual": "6",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "rows_aggregated",
+      "expected": "100",
+      "actual": "100",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "rows_attributed_malformed",
+      "expected": "0",
+      "actual": "0",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "rows_input",
+      "expected": "100",
+      "actual": "100",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "rows_skipped_empty_cust",
+      "expected": "0",
+      "actual": "0",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/finance_excel_report-cnvfinance.baseline.json (report bytes verified against the parent-captured immutable sha256s); actual recomputed from fixture-run materialized targets"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "full second batch over the same landing bytes produced byte-identical silver/gold/delivery/artifact materializations (per-(ns, report_date) slice replacement semantics; row counts did not grow)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": [],
+    "coverage_gaps": [
+      {
+        "id": "unknown-record-type",
+        "status": "coverage_gap",
+        "reason": "gen_sample_data.pl emits only record types 01 and 02 for this namespace; UNKNOWN(rt) mapping proven by the codepath/unknown-record-type check, never by planted data"
+      },
+      {
+        "id": "empty-customer-id",
+        "status": "coverage_gap",
+        "reason": "the deterministic generator never emits an empty customer id; skip-and-count proven by the codepath/empty-customer-id check, never by planted data"
+      }
+    ]
+  },
+  "unverified_paths": [
+    "live Spark SQL execution of etl/databricks/cnvfinance/finance_excel_report_notebook.py (DDL, DELETE, INSERT) on Databricks",
+    "Delta table semantics (per-slice DELETE+INSERT isolation) in ow_tp.silver/gold/ops",
+    "Unity Catalog behavior and permissions for the ow_tp catalog objects",
+    "serverless SQL warehouse 565cd2fd713738c4 execution behavior",
+    "Jobs API creation/run of job ow_tp_finance_cnvfinance from etl/databricks/cnvfinance/job_ow_tp_finance_cnvfinance.json",
+    "Files API landing of the .psv/.csv bytes to /Volumes/ow_tp/bronze/landing/cnvfinance/finance_report (fixture transport used instead)",
+    "volume write + read-back verification of the .csv artifact via /Volumes (verified only against the local filesystem)",
+    "empty-input write-empty-result semantics on live Delta tables (verified only in the fixture materialization)"
+  ],
+  "pre_pr_self_check": {
+    "checklist": ".agents/skills/tp-pre-pr-self-check/SKILL.md",
+    "capability_preflight": "11/11 probes verified, denied 0 (make tp-preflight PLATFORM=databricks; manifest .tp-preflight/databricks-capabilities.json, not committed)",
+    "tp_smoke": "pass (make tp-smoke)",
+    "skipped_or_unverified": "live-platform items are the unverified_paths listed above; no other checklist item was skipped"
+  },
+  "notes": "Fixture-mode self-verification: transport fixture preserved bytes (make tp-fixture-verify); the recon runs the same finance_core.py the committed notebook imports. generated_at is pinned to the run-branch cut time for artifact determinism. Parent owns the uncontended live validation window."
+}

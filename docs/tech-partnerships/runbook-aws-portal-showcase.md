@@ -280,12 +280,13 @@ at the intended stable version (`canary.py status`).
 
 ### G3 — Incident loop: alarm → Devin → audit PR
 
-Apply with the automation webhook (values supplied by the parent; the auth
-header is sensitive and lives only in the EventBridge connection):
+Apply with the automation webhook (values supplied by the parent; the secret
+is sensitive and lives only in the EventBridge connection, sent as the
+`X-Webhook-Secret` header — pass the bare secret, no `Bearer ` prefix):
 
 ```bash
 terraform apply -var devin_webhook_url=https://api.devin.ai/... \
-  -var devin_webhook_auth_header='Bearer <automation-secret>'
+  -var devin_webhook_auth_header='<automation-webhook-secret>'
 ```
 
 Every estate alarm (per-context errors, api-5xx, DLQ depth, projection

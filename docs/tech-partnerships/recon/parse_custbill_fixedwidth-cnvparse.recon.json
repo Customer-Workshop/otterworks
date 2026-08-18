@@ -1,0 +1,166 @@
+{
+  "kind": "recon-report",
+  "unit": "parse_custbill_fixedwidth",
+  "namespace": "cnvparse",
+  "run_id": "bd84e6bc-d107-533e-8848-24b182c90154",
+  "generated_at": "2026-08-18T21:05:50Z",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "file_valid_rows/CUSTBILL_CNVPARSE_001.dat",
+      "expected": "49",
+      "actual": "49",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "file_valid_rows/CUSTBILL_CNVPARSE_002.dat",
+      "expected": "49",
+      "actual": "49",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "file_valid_rows/CUSTBILL_CNVPARSE_003.dat",
+      "expected": "50",
+      "actual": "50",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "file_valid_sha256/CUSTBILL_CNVPARSE_001.dat",
+      "expected": "50309a7683e7cbf4f3afd3ef9fd245078349ec540caceb890c1d3235be0cd992",
+      "actual": "50309a7683e7cbf4f3afd3ef9fd245078349ec540caceb890c1d3235be0cd992",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "file_valid_sha256/CUSTBILL_CNVPARSE_002.dat",
+      "expected": "14fbc729f3421856f4c09049ed434d5ba66edd0675524d37e190fddacc6ccdb3",
+      "actual": "14fbc729f3421856f4c09049ed434d5ba66edd0675524d37e190fddacc6ccdb3",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "file_valid_sha256/CUSTBILL_CNVPARSE_003.dat",
+      "expected": "33c6091594ac30cb5b7fadba29cda4e0b6d09592ee566a05361808f01dde6e27",
+      "actual": "33c6091594ac30cb5b7fadba29cda4e0b6d09592ee566a05361808f01dde6e27",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "files_ingested",
+      "expected": "3",
+      "actual": "3",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "grand_total",
+      "expected": "148|72388672",
+      "actual": "148|72388672",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "input_sha256/CUSTBILL_CNVPARSE_001.dat",
+      "expected": "c587c3c37d2e632a38e3c2e9237ad42e776330bdc3074aec10fec558b2e24d61",
+      "actual": "c587c3c37d2e632a38e3c2e9237ad42e776330bdc3074aec10fec558b2e24d61",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "input_sha256/CUSTBILL_CNVPARSE_002.dat",
+      "expected": "e09de04a9d87b88c61c626d1c7c712abb3d8f5e5cb7d00c107f5861c660f2b4c",
+      "actual": "e09de04a9d87b88c61c626d1c7c712abb3d8f5e5cb7d00c107f5861c660f2b4c",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "input_sha256/CUSTBILL_CNVPARSE_003.dat",
+      "expected": "2ac9f36f2d3ad038658a112828488c17d68d0bb76051e15106742e2663a7e142",
+      "actual": "2ac9f36f2d3ad038658a112828488c17d68d0bb76051e15106742e2663a7e142",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "quarantine_rows",
+      "expected": "3",
+      "actual": "3",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "totals/EUR/01",
+      "expected": "39|17022759",
+      "actual": "39|17022759",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "totals/EUR/02",
+      "expected": "8|4178239",
+      "actual": "8|4178239",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "totals/GBP/01",
+      "expected": "39|18161816",
+      "actual": "39|18161816",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "totals/GBP/02",
+      "expected": "12|7305353",
+      "actual": "12|7305353",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "totals/USD/01",
+      "expected": "42|23312711",
+      "actual": "42|23312711",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    },
+    {
+      "id": "totals/USD/02",
+      "expected": "8|2407794",
+      "actual": "8|2407794",
+      "result": "pass",
+      "source_of_truth": "golden baseline docs/tech-partnerships/baselines/parse_custbill_fixedwidth-cnvparse.baseline.json (parent-captured unmodified legacy run); actual recomputed from fixture-run materialized targets"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "full second batch over the same landing bytes produced byte-identical bronze/silver/quarantine materializations and identical check values (INSERT OVERWRITE per-batch semantics)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "invalid_calendar_date",
+      "nonnumeric_amount",
+      "trailer_count_mismatch"
+    ],
+    "actual_set": [
+      "invalid_calendar_date",
+      "nonnumeric_amount",
+      "trailer_count_mismatch"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "live Spark SQL execution of etl/databricks/cnvparse/pipeline_parse_custbill.sql (read_files, temp views, INSERT OVERWRITE) on Databricks",
+    "Delta table semantics (DDL, INSERT OVERWRITE isolation) in ow_tp.bronze/silver/ops",
+    "Unity Catalog behavior and permissions for the ow_tp catalog objects",
+    "serverless SQL warehouse 565cd2fd713738c4 execution behavior",
+    "Jobs API creation/run of job ow_tp_parse_cnvparse from etl/databricks/cnvparse/job_ow_tp_parse_cnvparse.json",
+    "Files API landing of the .dat bytes to /Volumes/ow_tp/bronze/landing/cnvparse/parse (fixture transport used instead)",
+    "empty-input write-empty-result semantics on live Delta tables (verified only in the fixture materialization)"
+  ],
+  "notes": "Fixture-mode self-verification: transport fixture preserved bytes (make tp-fixture-verify), predicates mirrored 1:1 from the committed pipeline SQL. generated_at is pinned to the run-branch cut time for artifact determinism. Parent owns the uncontended live validation window."
+}

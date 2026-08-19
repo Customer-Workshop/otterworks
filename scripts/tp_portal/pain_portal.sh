@@ -94,7 +94,7 @@ start() {
   fi
   if [[ "${SKIP_BUILD:-0}" != "1" || ! -f "${JAR}" ]]; then
     echo "pain-portal: building legacy-portal fat JAR (unmodified golden source)..."
-    (cd "${APP_DIR}" && { [[ -x ./mvnw ]] && ./mvnw -B -q -DskipTests package || mvn -B -q -DskipTests package; })
+    (cd "${APP_DIR}" && if [[ -x ./mvnw ]]; then ./mvnw -B -q -DskipTests package; else mvn -B -q -DskipTests package; fi)
   fi
   echo "pain-portal: starting the portal under its VM memory ceiling (-Xmx${PAIN_HEAP}, exit on OOM)..."
   nohup java "-Xmx${PAIN_HEAP}" -XX:+ExitOnOutOfMemoryError -jar "${JAR}" \

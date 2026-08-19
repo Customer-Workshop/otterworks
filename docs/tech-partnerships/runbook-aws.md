@@ -101,6 +101,8 @@ and makes no AWS calls). The run's **showcase child** MUST:
    | `OW_TP_CANARY_WEIGHT` | canary slice 0..1 | `0.5` (default) |
    | `OW_TP_CONSUMER_FUNCTION` | downstream consumer Lambda | `ow-tp-portal-<ns>-consumer` |
    | `OW_TP_DLQ_ARN` | consumer's DLQ ARN | `arn:aws:sqs:...` |
+   | `OW_TP_WRITE_PATH` | write path the DLQ beat POSTs to | `/api/feedback` (default) |
+   | `OW_TP_WRITE_BODY` | JSON body for those POSTs | valid feedback payload (default) |
 
 2. Rehearse all four one-command beats before demo day:
 

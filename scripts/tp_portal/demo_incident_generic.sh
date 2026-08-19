@@ -36,7 +36,9 @@
 #   OW_TP_CONSUMER_FUNCTION downstream consumer Lambda (DLQ beat)
 #   OW_TP_DLQ_ARN          the consumer's dead-letter queue ARN
 #   OW_TP_TRAFFIC_N        requests to drive per beat (default: 60)
-#   OW_TP_TRAFFIC_PATH     API path traffic hits (default: /api/feedback/average-rating)
+#   OW_TP_TRAFFIC_PATH     read path the canary beat hits (default: /api/feedback/average-rating)
+#   OW_TP_WRITE_PATH       write path the DLQ beat POSTs to (default: /api/feedback)
+#   OW_TP_WRITE_BODY       JSON body for those POSTs (default: a valid feedback payload)
 #   DRY_RUN                1 = print commands only (default), 0 = execute
 #                          (DRY_RUN=0 additionally needs jq on PATH: fault
 #                          set/clear merges the function's existing env vars)
@@ -48,8 +50,10 @@ OW_TP_CANARY_ALIAS="${OW_TP_CANARY_ALIAS:-live}"
 OW_TP_CANARY_WEIGHT="${OW_TP_CANARY_WEIGHT:-0.5}"
 OW_TP_TRAFFIC_N="${OW_TP_TRAFFIC_N:-60}"
 OW_TP_TRAFFIC_PATH="${OW_TP_TRAFFIC_PATH:-/api/feedback/average-rating}"
+OW_TP_WRITE_PATH="${OW_TP_WRITE_PATH:-/api/feedback}"
+OW_TP_WRITE_BODY="${OW_TP_WRITE_BODY:-{\"userId\":\"demo-day\",\"rating\":5,\"message\":\"beat 4 dlq event\"}}"
 
-usage() { sed -n '2,48p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 need() {
   local var
@@ -66,11 +70,17 @@ run() {
   fi
 }
 
-drive_traffic() {
-  echo "# drive ${OW_TP_TRAFFIC_N} requests so the alarm window evaluates"
-  local url
-  url="$(printf '%q' "${OW_TP_API_URL}${OW_TP_TRAFFIC_PATH}")"
-  run bash -c "for i in \$(seq 1 ${OW_TP_TRAFFIC_N}); do curl -s -o /dev/null -H \"Authorization: Bearer \${OW_TP_TOKEN}\" ${url}; sleep 1; done"
+drive_traffic() { # drive_traffic <reads|writes>
+  local url extra=""
+  if [[ "$1" == "writes" ]]; then
+    echo "# drive ${OW_TP_TRAFFIC_N} write requests (events) through the front door"
+    url="$(printf '%q' "${OW_TP_API_URL}${OW_TP_WRITE_PATH}")"
+    extra="-X POST -H 'Content-Type: application/json' --data $(printf '%q' "${OW_TP_WRITE_BODY}") "
+  else
+    echo "# drive ${OW_TP_TRAFFIC_N} read requests so the alarm window evaluates"
+    url="$(printf '%q' "${OW_TP_API_URL}${OW_TP_TRAFFIC_PATH}")"
+  fi
+  run bash -c "for i in \$(seq 1 ${OW_TP_TRAFFIC_N}); do curl -s -o /dev/null -H \"Authorization: Bearer \${OW_TP_TOKEN}\" ${extra}${url}; sleep 1; done"
 }
 
 set_fault() { # set_fault <function> <oom|fail|off> — add/remove ONLY CHAOS_FAULT, preserving the function's real env vars
@@ -103,7 +113,7 @@ canary_break() {
     --name "${OW_TP_CANARY_ALIAS}" \
     --function-version "${OW_TP_GOOD_VERSION}" \
     --routing-config "AdditionalVersionWeights={${faulty_version}=${OW_TP_CANARY_WEIGHT}}"
-  drive_traffic
+  drive_traffic reads
   echo "# now do nothing: the alarm fires and the rollback automation repoints the alias itself."
 }
 
@@ -123,7 +133,7 @@ dlq_break() {
   echo "# 1. force the downstream consumer to fail every event"
   set_fault "${OW_TP_CONSUMER_FUNCTION}" fail
   echo "# 2. push events through the front door; they retry and dead-letter"
-  drive_traffic
+  drive_traffic writes
 }
 
 dlq_undo() {

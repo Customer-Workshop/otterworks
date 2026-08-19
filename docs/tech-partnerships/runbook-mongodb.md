@@ -36,7 +36,35 @@ Manifest: `testdata/legacy/manifests/demo.json` (seed `714559852`).
 
 ## Beat 1 — Before-state tour (0:00–0:10)
 
-### 1a. The Oracle horror (5 min)
+### 1a. The scripted opener: "just add a field" (~90 s)
+
+One command, one punchline — a routine business ask ("add one customer
+field") rendered as its real blast radius, plus live proof the 156th field
+already shipped through the EAV escape hatch:
+
+```bash
+make tp-pain-mongodb NS=demo
+```
+
+It is deterministic for a namespace and finishes in a few seconds (needs the
+pre-demo setup above: `oracle-billing-up` + `oracle-billing-seed NS=demo`).
+What scrolls past, in order:
+
+1. **The table** (live from Oracle): `CUSTOMER_MASTER` 155 columns /
+   25,000 rows, the 158-column `_HIST` full-row copy, and the trigger that
+   names every column — twice.
+2. **The blast radius** (deterministic repo scan): every schema object,
+   stored PL/SQL unit, report query, parity harness, seeder, and ops
+   artifact that a 156th column would touch, with reference counts.
+3. **The escape hatch** (live from Oracle): `TAX_REGION_OVERRIDE` already in
+   `ENTITY_ATTR_VALUE` — the ad-hoc 156th field in prod data, `attr_type`
+   always `'STR'`, eight different spellings of a boolean.
+
+Punchline to say out loud: *no schema means no guarantee — the field nobody
+dared add already exists, untyped and unvalidated.* Then segue into the
+manual tour below (or skip straight to 1c if short on time).
+
+### 1b. The Oracle horror, by hand (5 min)
 
 ```bash
 sqlplus ow_billing/ow_billing@localhost:52521/FREEPDB1
@@ -77,7 +105,7 @@ Optional garnish: open
 `services/legacy-billing/db/oracle/ops/OPERATIONS_HANDBOOK.doc.txt` — this is
 how the estate is actually operated today.
 
-### 1b. Postgres documents + DynamoDB metadata (3 min)
+### 1c. Postgres documents + DynamoDB metadata (3 min)
 
 ```bash
 docker exec -it otterworks-postgres psql -U otterworks -d otterworks \
@@ -99,7 +127,7 @@ Punchline: a *document* domain spread across a relational horror table, an
 EAV escape hatch, a versioned Postgres store, and a key-value metadata table —
 this is the textbook "should have been a document database" estate.
 
-### 1c. The contract (2 min)
+### 1d. The contract (2 min)
 
 Open `testdata/legacy/manifests/demo.json`: row counts, order-independent
 md5 checksums, and **exactly enumerated planted anomalies** — 37 orphaned
@@ -157,6 +185,35 @@ What "done" looks like — show, don't tell:
    37 + 50 + 31 Oracle anomalies, 10 + 6 Postgres anomalies, 40 DynamoDB
    anomalies. A recon report that surfaces exactly those counts (no more, no
    fewer) is the proof the pipeline reads every row.
+
+### Break the oracle: the validator says "no" (live switch)
+
+Prove the `$jsonSchema` contract is enforced, not decorative. One command
+throws two legacy-shaped poison documents at the namespace's `customers`
+collection — a `DD-MON-YY` string date and a rogue 156th field
+(`tax_region_override`, straight out of the EAV table):
+
+```bash
+# preview exactly what will be attempted (no connection made)
+make tp-break-oracle-mongodb NS=demo DRY_RUN=1
+
+# demo-day switch: both inserts must bounce with server error 121
+TP_MONGODB_URI='mongodb+srv://…' make tp-break-oracle-mongodb NS=demo
+
+# one-command undo (tag-scoped delete; always safe, no-op after a rejection)
+TP_MONGODB_URI='mongodb+srv://…' make tp-break-oracle-mongodb NS=demo UNDO=1
+```
+
+The rejection *is* the beat: the server prints `errInfo` naming the exact
+rule each document broke. If a collection has no validator, the script says
+so loudly and exits non-zero — that is the legacy behavior the migration
+removes. Every poison document is tagged `tp_break_oracle: true` with a
+deterministic `_id`, so `UNDO=1` deletes exactly those documents and nothing
+else; the switch never creates, drops, or reconfigures collections.
+
+Rehearsal without any cluster: `make tp-break-oracle-mongodb SELF_TEST=1`
+boots a throwaway local `mongo:7` container, proves the reject/accept/undo
+paths, and removes it.
 
 ## Beat 5 — Wrap (0:28–0:30)
 

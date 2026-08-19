@@ -16,14 +16,14 @@ checklist for its converted replacement.
 | `finance_excel_report.pl` | Perl, no modules (2004) | daily 02:10 | Totals parsed billing by currency/record-type, writes CSV renamed to `.xls`, "emails" via a sendmail pipe that silently no-ops |
 | `run_all.sh` | bash (2014) | Sunday 06:00 | Chains the three jobs with `sleep 600` between stages as dependency management |
 
-Support tooling (demo harness, not part of the legacy estate): `tools/gen_sample_data.pl`
-(deterministic seeded generator, `NS` parameter → byte-identical fixed-width drops) and
-`docker-compose.sftp.yml` (optional localhost-only atmoz/sftp fixture standing in for
-the mainframe transfer).
+Support tooling (not part of the batch chain itself): `tools/gen_sample_data.pl`
+(deterministic seeded generator for local development, `NS` parameter → byte-identical
+fixed-width drops) and `docker-compose.sftp.yml` (optional localhost-only atmoz/sftp
+fixture standing in for the mainframe transfer when working off the ETL box).
 
 ## Running locally
 
-Prerequisite: `ksh` (the ingest job is a KornShell script — authentically). On
+Prerequisite: `ksh` (the ingest job is a KornShell script). On
 Ubuntu/Debian: `sudo apt-get install -y ksh`.
 
 ```bash
@@ -36,7 +36,7 @@ make legacy-etl-run JOB=run_all            # full chain (RUN_ALL_SLEEP=0 preset)
 ```
 
 All jobs fall back to `OTTERWORKS_LEGACY_ROOT` (default `/tmp/otterworks-legacy`) when
-not on the (fictional) prod/UAT hostnames. Outputs land in `$OTTERWORKS_LEGACY_ROOT/`:
+not on the prod/UAT hostnames. Outputs land in `$OTTERWORKS_LEGACY_ROOT/`:
 `incoming/`, `parsed/*.psv`, `reports/finance_billing_*.{csv,xls}`.
 
 ## Deficiency inventory (migration acceptance checklist)

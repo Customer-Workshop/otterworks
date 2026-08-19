@@ -10,8 +10,8 @@
 # Usage: perl gen_sample_data.pl [NS] [NFILES] [ROWS_PER_FILE]
 #   NS defaults to "dev", NFILES to 2, ROWS_PER_FILE to 50.
 #
-# (This is a demo harness tool, not part of the legacy estate
-# itself — it stands in for the mainframe job CB77340.)
+# (Local fixture tool, not part of the batch chain itself —
+# it stands in for the mainframe job CB77340.)
 #############################################################
 use strict;
 use warnings;

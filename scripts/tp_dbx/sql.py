@@ -141,6 +141,10 @@ def delete_bronze_period(n: Names, period: str) -> str:
     return f"DELETE FROM {n.bronze} WHERE source_period = '{period}'"
 
 
+def delete_bronze_year(n: Names, year: int) -> str:
+    return f"DELETE FROM {n.bronze} WHERE source_year = {int(year)}"
+
+
 def build_silver(n: Names) -> str:
     return f"""
     INSERT OVERWRITE {n.silver}

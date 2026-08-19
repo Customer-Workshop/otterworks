@@ -129,7 +129,9 @@ act_poison() {
     echo "GRAND TOTAL before: $before"
     echo "GRAND TOTAL after:  $after"
     echo "The malformed records flowed straight into the finance totals:"
-    echo "  a Feb-31 'date' and a non-numeric amount were parsed, summed and shipped."
+    echo "  a Feb-31 'date' was parsed and shipped, the non-numeric amount was"
+    echo "  silently coerced to 0.00 instead of rejected, and the bogus credit"
+    echo "  was summed into the grand total as if it were a charge."
     echo "Nothing failed. Nothing was quarantined. Finance would never know."
     rule
 }

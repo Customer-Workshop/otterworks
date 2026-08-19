@@ -772,8 +772,16 @@ def _drift_undo(dbx: Databricks, args, n, data) -> int:
             env=dict(os.environ, OTTERWORKS_LEGACY_ROOT=args.legacy_root),
         )
         cmd_expectations(dbx, args)
-        print(f"drift undone: {end_year} drops removed from the landing volume, "
-              f"expectations restored to {data['start_year']}\u2013{old_end}")
+        # if the drifted year was already backfilled into the target, its rows
+        # must leave bronze/gold too or recon stays red against the restored
+        # expectations
+        dbx.sql_ok(S.delete_bronze_year(n, end_year))
+        dbx.sql_ok(S.build_silver(n))
+        dbx.sql_ok(S.build_quarantine(n))
+        dbx.sql_ok(S.build_gold(n))
+        print(f"drift undone: {end_year} drops removed from the landing volume "
+              f"and the target, expectations restored to "
+              f"{data['start_year']}\u2013{old_end}")
     elif args.kind == "malformed":
         target = f"{n.history_dir}/{args.period[:4]}/CUSTBILL_DRIFT_{args.period}.dat"
         dbx.delete_file(target)

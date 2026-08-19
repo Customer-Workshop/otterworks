@@ -30,12 +30,16 @@
 #   OW_TP_CANARY_FUNCTION  Lambda to break (ow-tp-portal-<ns>-<context>)
 #   OW_TP_CANARY_ALIAS     serving alias (default: live)
 #   OW_TP_GOOD_VERSION     known-good published version number
+#   OW_TP_FAULTY_VERSION   (dry-run only) version the faulty publish will get;
+#                          under DRY_RUN=0 it is captured from publish-version
 #   OW_TP_CANARY_WEIGHT    canary slice, 0..1 (default: 0.5)
 #   OW_TP_CONSUMER_FUNCTION downstream consumer Lambda (DLQ beat)
 #   OW_TP_DLQ_ARN          the consumer's dead-letter queue ARN
 #   OW_TP_TRAFFIC_N        requests to drive per beat (default: 60)
 #   OW_TP_TRAFFIC_PATH     API path traffic hits (default: /api/feedback/average-rating)
 #   DRY_RUN                1 = print commands only (default), 0 = execute
+#                          (DRY_RUN=0 additionally needs jq on PATH: fault
+#                          set/clear merges the function's existing env vars)
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
@@ -45,7 +49,7 @@ OW_TP_CANARY_WEIGHT="${OW_TP_CANARY_WEIGHT:-0.5}"
 OW_TP_TRAFFIC_N="${OW_TP_TRAFFIC_N:-60}"
 OW_TP_TRAFFIC_PATH="${OW_TP_TRAFFIC_PATH:-/api/feedback/average-rating}"
 
-usage() { sed -n '2,42p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,48p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 need() {
   local var
@@ -64,24 +68,41 @@ run() {
 
 drive_traffic() {
   echo "# drive ${OW_TP_TRAFFIC_N} requests so the alarm window evaluates"
-  run bash -c "for i in \$(seq 1 ${OW_TP_TRAFFIC_N}); do curl -s -o /dev/null -H \"Authorization: Bearer \${OW_TP_TOKEN}\" \"${OW_TP_API_URL}${OW_TP_TRAFFIC_PATH}\"; sleep 1; done"
+  local url
+  url="$(printf '%q' "${OW_TP_API_URL}${OW_TP_TRAFFIC_PATH}")"
+  run bash -c "for i in \$(seq 1 ${OW_TP_TRAFFIC_N}); do curl -s -o /dev/null -H \"Authorization: Bearer \${OW_TP_TOKEN}\" ${url}; sleep 1; done"
+}
+
+set_fault() { # set_fault <function> <oom|fail|off> — add/remove ONLY CHAOS_FAULT, preserving the function's real env vars
+  local fn="$1" fault="$2" jq_expr
+  if [[ "${fault}" == "off" ]]; then
+    jq_expr='del(.CHAOS_FAULT)'
+  else
+    jq_expr=".CHAOS_FAULT = \"${fault}\""
+  fi
+  run bash -c "aws lambda update-function-configuration --function-name '${fn}' --environment \"\$(aws lambda get-function-configuration --function-name '${fn}' --query 'Environment.Variables' --output json | jq -c '{Variables: ((. // {}) | ${jq_expr})}')\""
+  run aws lambda wait function-updated --function-name "${fn}"
 }
 
 canary_break() {
   need OW_TP_API_URL OW_TP_TOKEN OW_TP_CANARY_FUNCTION OW_TP_GOOD_VERSION
   echo "# 1. publish a faulty version (CHAOS_FAULT on) of ${OW_TP_CANARY_FUNCTION}"
-  run aws lambda update-function-configuration \
-    --function-name "${OW_TP_CANARY_FUNCTION}" \
-    --environment "Variables={CHAOS_FAULT=oom}"
-  run aws lambda wait function-updated --function-name "${OW_TP_CANARY_FUNCTION}"
-  run aws lambda publish-version --function-name "${OW_TP_CANARY_FUNCTION}" \
-    --description "chaos canary (demo beat 4)"
-  echo "# 2. shift a ${OW_TP_CANARY_WEIGHT} canary slice of alias '${OW_TP_CANARY_ALIAS}' to the new version (<FAULTY_VERSION> = output of publish-version)"
+  set_fault "${OW_TP_CANARY_FUNCTION}" oom
+  local faulty_version
+  if [[ "${DRY_RUN}" == "0" ]]; then
+    faulty_version="$(aws lambda publish-version --function-name "${OW_TP_CANARY_FUNCTION}" \
+      --description "chaos canary (demo beat 4)" --query Version --output text)"
+  else
+    run aws lambda publish-version --function-name "${OW_TP_CANARY_FUNCTION}" \
+      --description "chaos canary (demo beat 4)"
+    faulty_version="${OW_TP_FAULTY_VERSION:-FAULTY_VERSION}"
+  fi
+  echo "# 2. shift a ${OW_TP_CANARY_WEIGHT} canary slice of alias '${OW_TP_CANARY_ALIAS}' to version ${faulty_version}"
   run aws lambda update-alias \
     --function-name "${OW_TP_CANARY_FUNCTION}" \
     --name "${OW_TP_CANARY_ALIAS}" \
     --function-version "${OW_TP_GOOD_VERSION}" \
-    --routing-config "AdditionalVersionWeights={<FAULTY_VERSION>=${OW_TP_CANARY_WEIGHT}}"
+    --routing-config "AdditionalVersionWeights={${faulty_version}=${OW_TP_CANARY_WEIGHT}}"
   drive_traffic
   echo "# now do nothing: the alarm fires and the rollback automation repoints the alias itself."
 }
@@ -94,18 +115,13 @@ canary_undo() {
     --name "${OW_TP_CANARY_ALIAS}" \
     --function-version "${OW_TP_GOOD_VERSION}" \
     --routing-config "AdditionalVersionWeights={}"
-  run aws lambda update-function-configuration \
-    --function-name "${OW_TP_CANARY_FUNCTION}" \
-    --environment "Variables={}"
+  set_fault "${OW_TP_CANARY_FUNCTION}" off
 }
 
 dlq_break() {
   need OW_TP_API_URL OW_TP_TOKEN OW_TP_CONSUMER_FUNCTION
   echo "# 1. force the downstream consumer to fail every event"
-  run aws lambda update-function-configuration \
-    --function-name "${OW_TP_CONSUMER_FUNCTION}" \
-    --environment "Variables={CHAOS_FAULT=fail}"
-  run aws lambda wait function-updated --function-name "${OW_TP_CONSUMER_FUNCTION}"
+  set_fault "${OW_TP_CONSUMER_FUNCTION}" fail
   echo "# 2. push events through the front door; they retry and dead-letter"
   drive_traffic
 }
@@ -113,10 +129,7 @@ dlq_break() {
 dlq_undo() {
   need OW_TP_CONSUMER_FUNCTION OW_TP_DLQ_ARN
   echo "# 1. heal the consumer"
-  run aws lambda update-function-configuration \
-    --function-name "${OW_TP_CONSUMER_FUNCTION}" \
-    --environment "Variables={}"
-  run aws lambda wait function-updated --function-name "${OW_TP_CONSUMER_FUNCTION}"
+  set_fault "${OW_TP_CONSUMER_FUNCTION}" off
   echo "# 2. redrive every dead-lettered message back to its source queue"
   run aws sqs start-message-move-task --source-arn "${OW_TP_DLQ_ARN}"
 }

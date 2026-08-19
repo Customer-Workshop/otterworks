@@ -115,6 +115,11 @@ and makes no AWS calls). The run's **showcase child** MUST:
    with `DRY_RUN=0`. On this branch, only the dry-run/self-test path is ever
    executed.
 
+Notes: fault set/clear merges only `CHAOS_FAULT` into the function's existing
+environment (real variables are preserved; `DRY_RUN=0` needs `jq` on PATH),
+and the faulty version number is captured from `publish-version` at execution
+time (`OW_TP_FAULTY_VERSION` can pre-fill it in dry-run renderings).
+
 ## Beat 1 — The estate on AWS today (0:00–0:06)
 
 Show the platform that already works:

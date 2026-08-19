@@ -106,6 +106,8 @@ start() {
   done
   if ! probe "${BASE}/health"; then
     echo "pain-portal: portal failed to become healthy; see ${LOG_FILE}" >&2
+    terminate
+    rm -f "${PID_FILE}"
     exit 1
   fi
   seed
@@ -167,10 +169,17 @@ break_portal() {
   echo "  Restore with: make tp-pain-aws-restore"
 }
 
+terminate() { # SIGTERM, escalate to SIGKILL if the JVM lingers
+  kill "$(cat "${PID_FILE}")" 2>/dev/null || true
+  local _i
+  for _i in $(seq 1 10); do pid_alive || return 0; sleep 1; done
+  kill -9 "$(cat "${PID_FILE}")" 2>/dev/null || true
+  for _i in $(seq 1 5); do pid_alive || return 0; sleep 1; done
+}
+
 restore() {
   if pid_alive; then
-    kill "$(cat "${PID_FILE}")" 2>/dev/null || true
-    for _ in $(seq 1 10); do pid_alive || break; sleep 1; done
+    terminate
   fi
   rm -f "${PID_FILE}"
   SKIP_BUILD=1 start
@@ -178,8 +187,7 @@ restore() {
 
 stop() {
   if pid_alive; then
-    kill "$(cat "${PID_FILE}")" 2>/dev/null || true
-    for _ in $(seq 1 10); do pid_alive || break; sleep 1; done
+    terminate
     echo "pain-portal: stopped."
   else
     echo "pain-portal: not running."

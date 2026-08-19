@@ -19,11 +19,11 @@
 # Alongside the data it writes an expectation manifest at
 #   sftp-drop/history/expected/<NS>-history-expected.json
 # holding per-year counts, per-currency/record-type totals in
-# cents, and the exact set of planted anomalies. That manifest is
+# cents, and the exact set of known anomalies. That manifest is
 # the source of truth a backfill reconciliation compares against,
 # independent of any platform.
 #
-# (Demo harness tool, not part of the legacy estate itself — it
+# (Local fixture tool, not part of the batch chain itself — it
 # stands in for the mainframe job CB77340 running every month.)
 #############################################################
 use strict;

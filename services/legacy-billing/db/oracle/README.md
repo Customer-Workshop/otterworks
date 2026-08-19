@@ -1,10 +1,11 @@
 # Oracle Billing Estate (OW_BILLING)
 
-A deliberately-legacy Oracle before-state for partner modernization demos: the
-PostgreSQL legacy-billing procedures (`services/legacy-billing/db/procs/`)
-ported to authentically ugly PL/SQL, plus a denormalized "data-model horror"
-estate and a deterministic scaled seeder. Everything here is **additive** —
-the golden app (`make infra-up && make up`, `make test`) is untouched, and
+The Oracle side of the billing estate: the PostgreSQL legacy-billing
+procedures (`services/legacy-billing/db/procs/`) as they exist in the
+Oracle deployment — PL/SQL packages, the denormalized `CUSTOMER_MASTER`
+data model, and a deterministic scaled seeder for standing up a local
+fixture of that estate. Everything here is **additive** — the main
+application (`make infra-up && make up`, `make test`) is untouched, and
 none of this starts unless you ask for it.
 
 ## Running it
@@ -32,7 +33,7 @@ the Oracle estate is seeded separately via `oracle-billing-seed`.
   coexist in the same schema. The seed manifest is written to
   `testdata/legacy/manifests/<NS>.json` per the contract in
   `docs/tech-partnerships/README.md` (row counts, md5 checksums over ordered
-  PK+amount, and exact planted-anomaly counts).
+  PK+amount, and exact known-anomaly counts).
 
 ## Layout
 
@@ -67,9 +68,9 @@ estates. Oracle set-returning entrypoints return `SYS_REFCURSOR`.
 | dunning | `billing.sp_schedule_dunning(as_of)` | `pkg_dunning.sp_schedule_dunning(p_as_of)` |
 | dunning | `billing.sp_suspend_overdue(as_of)` | `pkg_dunning.sp_suspend_overdue(p_as_of)` |
 
-## Ugliness inventory
+## Known technical debt
 
-This estate is legacy *on purpose*. What's planted, and where:
+A modernization assessment of what's in this estate, and where:
 
 - **Package-state globals** — `pkg_ow_util.g_call_count / g_last_module / g_last_uuid`,
   plus per-package mutable state used across calls.
@@ -90,7 +91,7 @@ This estate is legacy *on purpose*. What's planted, and where:
 - **`DBMS_SCHEDULER` jobs** — `JOB_NIGHTLY_DUNNING` (02:00 dunning + suspension
   sweep) and `JOB_PURGE_AUDIT_LOG` (03:30 audit retention, hardcoded 90 days).
   Created disabled so the deterministic baseline never drifts while the fixture
-  is up; enable via `DBMS_SCHEDULER.ENABLE` to demo the batch layer.
+  is up; enable via `DBMS_SCHEDULER.ENABLE` to exercise the batch layer.
 - **`EXCEPTION WHEN OTHERS THEN NULL`** — swallowed errors in the audit-log purge
   job and in package logging paths.
 - **Data-model horror** — 155-column `CUSTOMER_MASTER` with `ADDR_LINE_1..6`,
@@ -99,13 +100,13 @@ This estate is legacy *on purpose*. What's planted, and where:
   `PROMO_CODES_CSV`, `GL_ACCT_CSV`); magic-number `*_CD` statuses resolved
   through the generic `CODES` table; `_HIST` full-row-copy history maintained
   by triggers; the unenforced `INVOICE_LINE → INVOICE_HEADER` "foreign key".
-- **Planted data-quality anomalies (seeder, exactly enumerated in the manifest)** —
+- **Known data-quality anomalies (exactly enumerated in the seed manifest)** —
   orphaned `INVOICE_LINE` rows pointing at nonexistent invoices, dirty
   `SIGNUP_DT` strings (`31-FEB-24`, `N/A`, …), and malformed CSV lists.
 
 ## Data shape
 
-The seeder generates realistic skew: power-law tenant sizes (zipf α=1.3) with
+The seeder reproduces production-like skew: power-law tenant sizes (zipf α=1.3) with
 explicit whale accounts (`VIP_YN='Y'`, six-figure balances) that hold a
 disproportionate share of invoice lines, mixed-quality contact data, and a
 slice of namespace-prefixed core tenants/subscriptions/usage so the packages

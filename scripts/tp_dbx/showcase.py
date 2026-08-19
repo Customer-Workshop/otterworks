@@ -709,6 +709,11 @@ def cmd_drift(dbx: Databricks, args) -> int:
     if args.undo:
         return _drift_undo(dbx, args, n, data)
     if args.kind == "stale":
+        if data.get("staged_drift") == "stale":
+            raise SystemExit(
+                "a stale drift is already staged (through "
+                f"{data['end_year']}); undo it first: drift --kind stale --undo"
+            )
         new_year = int(data["end_year"]) + 1
         subprocess.run(
             ["perl", str(REPO / "etl/legacy-extra/tools/gen_history_data.pl"),

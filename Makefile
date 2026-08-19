@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help
 
 SHELL := /bin/bash
 
@@ -274,6 +274,9 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	@echo "=== TP portal visual renderers (stdlib-only, sample inputs) ==="
 	python3 scripts/tp_portal/render_scorecard.py scripts/tp_portal/samples/sample-parity.recon.json --out /tmp/tp-smoke-scorecard.html > /dev/null
 	python3 scripts/tp_portal/render_load_charts.py --before scripts/tp_portal/samples/sample-load-monolith.json --after scripts/tp_portal/samples/sample-load-aws.json --out /tmp/tp-smoke-loadcharts.html > /dev/null
+	@echo "=== TP portal demo harness self-tests (offline, nothing started) ==="
+	scripts/tp_portal/pain_portal.sh selftest > /dev/null
+	scripts/tp_portal/demo_incident_generic.sh self-test > /dev/null
 	@echo "=== API Gateway (Go) ==="
 	cd services/api-gateway && go vet ./... && go test ./... && go build -o /dev/null ./cmd/server
 	@echo "=== Collab Service (Node.js) ==="
@@ -306,6 +309,18 @@ demo-incident: ## Stage the one live demo beat: a bad deploy that trips the alar
 	@test -n "$(NS)" || { echo "demo-incident: set NS=<namespace> (e.g. NS=demo)"; exit 1; }
 	@test -x scripts/tp_portal/demo_incident.sh || { echo "demo-incident: scripts/tp_portal/demo_incident.sh not found or not executable."; echo "It is authored by each tp-run/aws-* run (it needs that run's function names and API URL)."; echo "See docs/tech-partnerships/runbook-aws-portal-demo-day.md."; exit 1; }
 	scripts/tp_portal/demo_incident.sh $(NS)
+
+tp-pain-aws: ## Beat 1 opener: start the legacy portal locally, seeded, with a green capability strip
+	scripts/tp_portal/pain_portal.sh start
+
+tp-pain-aws-break: ## Beat 1 break: fail ONE capability (feedback) and watch every capability die with the process
+	scripts/tp_portal/pain_portal.sh break
+
+tp-pain-aws-restore: ## Beat 1 undo: clean restart of the legacy portal, green strip again
+	scripts/tp_portal/pain_portal.sh restore
+
+tp-pain-aws-stop: ## Beat 1 cleanup: stop the legacy portal started by tp-pain-aws
+	scripts/tp_portal/pain_portal.sh stop
 
 test-api-flows: ## Run black-box API flow tests against the local API gateway
 	UV_PROJECT_ENVIRONMENT=.venv uv run python -m pytest tests/api

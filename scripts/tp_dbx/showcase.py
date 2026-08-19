@@ -702,9 +702,12 @@ def cmd_run_job(dbx: Databricks, args) -> int:
 
 def cmd_drift(dbx: Databricks, args) -> int:
     """Stage the failure beat: newly arrived history is landed and expected, but
-    the migrated target has not been backfilled, so recon goes red."""
+    the migrated target has not been backfilled, so recon goes red. With --undo,
+    reverse the same staging so recon returns green."""
     n = names(args)
     data = load_manifest(args)
+    if args.undo:
+        return _drift_undo(dbx, args, n, data)
     if args.kind == "stale":
         new_year = int(data["end_year"]) + 1
         subprocess.run(
@@ -739,6 +742,39 @@ def cmd_drift(dbx: Databricks, args) -> int:
         dbx.sql_ok(S.build_gold(n))
         print(f"drift staged: malformed batch landed at {target} and ingested for "
               f"period {args.period}")
+    return 0
+
+
+def _drift_undo(dbx: Databricks, args, n, data) -> int:
+    """Reverse a staged drift. stale: remove the extra year's drops and restore
+    the previous expectations. malformed: remove the poisoned batch and rebuild
+    the period from the remaining genuine drops."""
+    if args.kind == "stale":
+        end_year = int(data["end_year"])
+        old_end = end_year - 1
+        if old_end < int(data["start_year"]):
+            raise SystemExit("nothing to undo: manifest covers a single year")
+        removed = dbx.delete_dir(f"{n.history_dir}/{end_year}")
+        subprocess.run(
+            ["perl", str(REPO / "etl/legacy-extra/tools/gen_history_data.pl"),
+             n.ns, str(data["start_year"]), str(old_end), str(data["rows_per_month"])],
+            cwd=REPO, check=True,
+            env=dict(os.environ, OTTERWORKS_LEGACY_ROOT=args.legacy_root),
+        )
+        cmd_expectations(dbx, args)
+        print(f"drift undone: removed {removed} landed {end_year} file(s), "
+              f"expectations restored to {data['start_year']}\u2013{old_end}")
+    elif args.kind == "malformed":
+        target = f"{n.history_dir}/{args.period[:4]}/CUSTBILL_DRIFT_{args.period}.dat"
+        removed = dbx.delete_file(target)
+        dbx.sql_ok(S.delete_bronze_period(n, args.period))
+        dbx.sql_ok(S.load_bronze(
+            n, f"{n.history_dir}/{args.period[:4]}/CUSTBILL_*_{args.period}.dat", overwrite=False))
+        dbx.sql_ok(S.build_silver(n))
+        dbx.sql_ok(S.build_quarantine(n))
+        dbx.sql_ok(S.build_gold(n))
+        print(f"drift undone: removed {removed} poisoned file(s) at {target}, "
+              f"period {args.period} rebuilt from the genuine drops")
     return 0
 
 
@@ -958,6 +994,8 @@ def main() -> int:
     drift = sub.add_parser("drift")
     drift.add_argument("--kind", default="stale", choices=["stale", "malformed"])
     drift.add_argument("--period", default="")
+    drift.add_argument("--undo", action="store_true",
+                       help="reverse a previously staged drift of the same --kind")
     sub.add_parser("status")
     sub.add_parser("demo-preflight")
     sub.add_parser("teardown")

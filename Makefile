@@ -507,6 +507,10 @@ legacy-etl-run: ## Run one legacy batch job (JOB=<name>, see legacy-etl-list)
 	  *) echo "unknown JOB '$(JOB)' (see: make legacy-etl-list)"; exit 1 ;; \
 	esac
 
+tp-legacy-pain: ## Legacy-pain opener: blast radius + baseline + silent corruption (ACT=blast|baseline|poison|all|clean)
+	@command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }
+	$(TP_DET) scripts/tp_dbx/legacy_pain.sh $${ACT:-all}
+
 legacy-sftp-up: ## Start the optional localhost-only SFTP drop fixture
 	mkdir -p $${OTTERWORKS_LEGACY_ROOT:-/tmp/otterworks-legacy}/sftp-drop/upload
 	LEGACY_SFTP_UID=$$(id -u) docker compose -f etl/legacy-extra/docker-compose.sftp.yml up -d

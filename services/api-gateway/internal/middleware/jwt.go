@@ -175,12 +175,15 @@ func hasRequiredRole(claims *JWTClaims, required []string) bool {
 }
 
 func requiredRolesForPath(path string, requiredRoles map[string][]string) []string {
+	var matchedPrefix string
+	var matchedRoles []string
 	for prefix, roles := range requiredRoles {
-		if path == prefix || strings.HasPrefix(path, prefix+"/") {
-			return roles
+		if (path == prefix || strings.HasPrefix(path, prefix+"/")) && len(prefix) > len(matchedPrefix) {
+			matchedPrefix = prefix
+			matchedRoles = roles
 		}
 	}
-	return nil
+	return matchedRoles
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) {

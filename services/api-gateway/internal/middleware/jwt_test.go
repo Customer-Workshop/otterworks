@@ -363,6 +363,35 @@ func TestJWTAuth_RequiredRolePrefixIsProtectedIndependently(t *testing.T) {
 	})
 }
 
+func TestJWTAuth_OverlappingRequiredRolePrefixesUseLongestMatch(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:        testSecret,
+		PublicPath:    DefaultPublicPaths(),
+		PrefixPath:    DefaultPrefixPaths(),
+		RequiredRoles: map[string][]string{"/api/v1/admin": {"ADMIN"}, "/api/v1/admin/config": {"OWNER"}},
+	}
+
+	claims := JWTClaims{
+		UserID: "admin-123",
+		Roles:  []string{"ADMIN"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		},
+	}
+	tokenStr := generateTestToken(t, testSecret, claims)
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/config/x", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
 func TestJWTAuth_ExpiredToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,

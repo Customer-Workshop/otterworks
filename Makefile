@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain
 
 SHELL := /bin/bash
 
@@ -538,6 +538,10 @@ legacy-etl-run: ## Run one legacy batch job (JOB=<name>, see legacy-etl-list)
 	  run_all)                    command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }; RUN_ALL_SLEEP=$${RUN_ALL_SLEEP:-0} $(TP_DET) etl/legacy-extra/run_all.sh ;; \
 	  *) echo "unknown JOB '$(JOB)' (see: make legacy-etl-list)"; exit 1 ;; \
 	esac
+
+tp-legacy-pain: ## Legacy-pain opener: blast radius + baseline + silent corruption (ACT=blast|baseline|poison|all|clean)
+	@command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }
+	$(TP_DET) scripts/tp_dbx/legacy_pain.sh $${ACT:-all}
 
 legacy-sftp-up: ## Start the optional localhost-only SFTP drop fixture
 	mkdir -p $${OTTERWORKS_LEGACY_ROOT:-/tmp/otterworks-legacy}/sftp-drop/upload

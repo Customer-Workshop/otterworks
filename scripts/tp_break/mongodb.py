@@ -265,10 +265,19 @@ def main() -> int:
         return run_dry_run(args.ns, db_name, args.collection, args.undo)
 
     from pymongo import MongoClient
+    from pymongo.errors import PyMongoError
 
-    client = MongoClient(resolve_uri(), serverSelectionTimeoutMS=10000)
-    db = client[db_name]
-    if args.collection not in db.list_collection_names():
+    try:
+        client = MongoClient(resolve_uri(), serverSelectionTimeoutMS=10000)
+        db = client[db_name]
+        collection_exists = args.collection in db.list_collection_names()
+    except PyMongoError as exc:
+        print(f"ERROR: cannot reach the target cluster: {exc}",
+              file=sys.stderr)
+        print("Check TP_MONGODB_URI (or MONGODB_URI) and that the cluster "
+              "is running.", file=sys.stderr)
+        return 2
+    if not collection_exists:
         print(f"ERROR: collection {db_name}.{args.collection} does not exist "
               "on the target cluster.", file=sys.stderr)
         print("Nothing was written (a wrong --ns would otherwise create a "

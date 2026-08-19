@@ -38,6 +38,7 @@ import sys
 import time
 
 DOCUMENT_VALIDATION_FAILURE = 121
+DUPLICATE_KEY = 11000
 BREAK_TAG = "tp_break_oracle"
 
 SELF_TEST_PORT = int(os.environ.get("TP_BREAK_SELFTEST_PORT", "57017"))
@@ -121,6 +122,11 @@ def run_break(collection, ns: str) -> int:
         try:
             collection.insert_one(doc)
         except WriteError as exc:
+            if exc.code == DUPLICATE_KEY:
+                accepted += 1
+                print(f"[ACCEPTED] {case}: already present from an earlier run "
+                      "— poison persisted (run UNDO=1 first)!")
+                continue
             if exc.code != DOCUMENT_VALIDATION_FAILURE:
                 raise
             rejected += 1

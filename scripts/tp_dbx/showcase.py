@@ -704,6 +704,11 @@ def cmd_drift(dbx: Databricks, args) -> int:
     """Stage the failure beat: newly arrived history is landed and expected, but
     the migrated target has not been backfilled, so recon goes red. With --undo,
     reverse the same staging so recon returns green."""
+    if args.expectations_file:
+        # drift stages/undoes state through the generator's own manifest; a
+        # custom read-only manifest would leave the staged_drift marker and the
+        # regenerated history in different files
+        raise SystemExit("drift does not support --expectations-file")
     n = names(args)
     data = load_manifest(args)
     if args.undo:

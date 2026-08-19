@@ -257,3 +257,43 @@ Teardown drops only `ow_tp` objects suffixed with that namespace, then verifies
 absence across tables, job, pipeline, alert, dashboard and landed files, exiting
 non-zero if anything survived. It never touches unprefixed objects or another
 namespace.
+
+## Staged run — 2026-08-18 (run branch `tp-run/databricks-20260818T210550Z`)
+
+Night-before staging for the 2026-08-19 demo. Live-beat namespace: `live0819`.
+Rehearsal namespace `reh0818` torn down, negative verification clean.
+
+### Artifacts
+
+| Artifact | URL / value |
+|---|---|
+| `demo` dashboard (2 pages, published) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/dashboardsv3/01f19b4c3bba14e0ae05b8c9e2c21e70/published> |
+| `live0819` dashboard (published) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/dashboardsv3/01f19b49a1801494a53b81a6545d4685/published> |
+| `demo` recon job (PAUSED) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/402112166843203> — green run 197477330021785 (`recon_check` SUCCESS, `notify_devin` EXCLUDED) |
+| `demo` recon alert (PAUSED) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/sql/alerts/3887578863199005> |
+| `live0819` recon job (PAUSED) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/307570744434581> |
+| Converted-chain live run (green) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/21546277254446> — `ow_tp_orchestrate_cnvorch` (job 15628905556532), ingest → parse → publish_psv → finance all SUCCESS |
+| Lineage (demo) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/explore/data/ow_tp/silver/custbill_history_demo?activeTab=lineage> |
+
+### Failure-loop rehearsal fallback (real, from `reh0818`)
+
+| Beat | URL |
+|---|---|
+| Red run (`recon_check` FAILED, `notify_devin` SUCCESS) | <https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/86637818958925> |
+| Spawned Devin remediation session | <https://partner-workshops.devinenterprise.com/sessions/c7356ab84ae4413aae300383f56fd748> |
+| Audit PR (merged into run branch) | <https://github.com/Cognition-Partner-Workshops/otterworks/pull/1193> |
+| Green rerun after remediation | <https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/949261426411542> |
+
+### Observed numbers
+
+- Both namespaces: 72 files, 3,024 bronze rows, 2,856 silver, 30 quarantined,
+  36 gold rows, recon 49 checks / 0 failed, anomalies 30/30 (0 missing, 0
+  unexpected), idempotency rerun pass.
+- Gold cents: `demo` 1,439,098,122; `live0819` 1,426,466,253 (namespace-seeded).
+- `demo-preflight` passed for both namespaces; every schedule and alert PAUSED.
+
+### Merged PRs (all into the run branch)
+
+- #1192 history backfill (`demo`), #1194 cnvparse, #1195 cnvingest,
+  #1196 cnvfinance, #1197 cnvorch, #1198 platform showcase,
+  #1193 rehearsal audit PR (Devin remediation).

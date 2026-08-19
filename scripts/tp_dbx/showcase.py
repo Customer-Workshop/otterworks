@@ -716,6 +716,12 @@ def cmd_drift(dbx: Databricks, args) -> int:
             cwd=REPO, check=True,
             env=dict(os.environ, OTTERWORKS_LEGACY_ROOT=args.legacy_root),
         )
+        # mark the regenerated manifest so undo can tell a staged drift year
+        # from genuine history
+        path = manifest_path(args)
+        marked = json.loads(path.read_text())
+        marked["staged_drift"] = "stale"
+        path.write_text(json.dumps(marked, indent=2) + "\n")
         cmd_land(dbx, args)
         cmd_expectations(dbx, args)
         print(f"drift staged: {new_year} CUSTBILL history landed and expected; "
@@ -750,6 +756,12 @@ def _drift_undo(dbx: Databricks, args, n, data) -> int:
     the previous expectations. malformed: remove the poisoned batch and rebuild
     the period from the remaining genuine drops."""
     if args.kind == "stale":
+        if data.get("staged_drift") != "stale":
+            raise SystemExit(
+                "refusing to undo: the manifest carries no staged stale drift, "
+                f"so {data['end_year']} is genuine history "
+                "(stage one first: drift --kind stale)"
+            )
         end_year = int(data["end_year"])
         old_end = end_year - 1
         if old_end < int(data["start_year"]):

@@ -267,7 +267,14 @@ def main() -> int:
     from pymongo import MongoClient
 
     client = MongoClient(resolve_uri(), serverSelectionTimeoutMS=10000)
-    collection = client[db_name][args.collection]
+    db = client[db_name]
+    if args.collection not in db.list_collection_names():
+        print(f"ERROR: collection {db_name}.{args.collection} does not exist "
+              "on the target cluster.", file=sys.stderr)
+        print("Nothing was written (a wrong --ns would otherwise create a "
+              "brand-new empty database).", file=sys.stderr)
+        return 2
+    collection = db[args.collection]
     if args.undo:
         return run_undo(collection)
     return run_break(collection, args.ns)

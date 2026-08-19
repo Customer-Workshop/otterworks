@@ -31,6 +31,90 @@ If no cluster is available, run the chaos beats as a narrated walkthrough of
 `scripts/bug-catalog.yaml` + `scripts/inject-bug.sh` (they read well on
 screen).
 
+## Portal migration demo beats (software-factory story)
+
+These two beats belong to the portal-migration demo (see
+`runbook-aws-portal-demo-day.md` for the full run-of-show); they are
+documented here because their tooling lives on this branch.
+
+### Beat 1 — Legacy pain opener: `make tp-pain-aws` (~90 s, fully local)
+
+The visceral opener: the single-process legacy portal has total blast radius.
+Kill one capability and every capability dies with it. No AWS, no cluster, no
+`demo` namespace — one JVM on localhost.
+
+```bash
+make tp-pain-aws            # build (first run) + start, seeded, green status strip
+make tp-pain-aws-break      # ONE capability (feedback) fails → ALL go down (~20 s)
+make tp-pain-aws-restore    # clean restart, green strip again (~5 s)
+make tp-pain-aws-stop       # cleanup when done
+```
+
+What the break does, and why it is deterministic: the portal is started under
+its documented VM memory ceiling (`-Xmx64m`, `-XX:+ExitOnOutOfMemoryError` —
+the JVM exits rather than limping). The break floods only the **feedback**
+module with valid `POST /api/feedback` rows, then issues a handful of
+ordinary feedback reads; the module's `findAll()` loads every row into the
+*shared* heap and the JVM OOM-kills. The status strip then shows
+announcements, preferences, **and** feedback all `DOWN` — three capabilities,
+one process, one blast radius. Portal source is untouched; the failure is
+entirely opt-in via these targets.
+
+Narration: "Three teams own three capabilities. One of them had a busy day.
+All three are down. That is why we are decomposing this portal."
+
+Presenter notes:
+
+- Rehearsed timing: start ~25 s (JAR cached; first-ever run adds a Maven
+  build), break ~20 s, restore ~5 s — comfortably under 90 s live.
+- Defaults are env-tunable: `PAIN_PORT=8095`, `PAIN_HEAP=64m`,
+  `PAIN_ROWS=20000`. Don't change them on stage.
+- Logs land in `${TMPDIR:-/tmp}/ow-tp-pain-portal.log`; the break prints the
+  JVM's own `Terminating due to java.lang.OutOfMemoryError` line as proof.
+- `scripts/tp_portal/pain_portal.sh selftest` is wired into `make tp-smoke`
+  (offline checks only).
+
+### Beat 4 — Break-the-oracle switch: trigger/undo template (per-run)
+
+The deliberate-failure beats — the bad canary that rolls itself back, and the
+DLQ replay after a forced downstream failure — run against **per-run** AWS
+infrastructure, so the exact commands can only be authored per run (they need
+that run's function names, alias/version numbers, and API URL). The presenter
+must never improvise them.
+
+`scripts/tp_portal/demo_incident_generic.sh` is the generic, parameterized
+skeleton (dry-run by default; `self-test` mode is wired into `make tp-smoke`
+and makes no AWS calls). The run's **showcase child** MUST:
+
+1. Fill in the per-run values and install the result as
+   `scripts/tp_portal/demo_incident.sh` on the run branch (the Makefile's
+   `demo-incident` target already expects it there):
+
+   | Variable | Meaning | Example |
+   |---|---|---|
+   | `OW_TP_NS` | run namespace | `r20260819` |
+   | `OW_TP_API_URL` | run's API Gateway base URL | `https://<id>.execute-api.<region>.amazonaws.com/live` |
+   | `OW_TP_TOKEN` | demo bearer token (sensitive TF output — never commit) | — |
+   | `OW_TP_CANARY_FUNCTION` | Lambda to break | `ow-tp-portal-<ns>-feedback` |
+   | `OW_TP_CANARY_ALIAS` | serving alias | `live` (default) |
+   | `OW_TP_GOOD_VERSION` | known-good published version | `3` |
+   | `OW_TP_CANARY_WEIGHT` | canary slice 0..1 | `0.5` (default) |
+   | `OW_TP_CONSUMER_FUNCTION` | downstream consumer Lambda | `ow-tp-portal-<ns>-consumer` |
+   | `OW_TP_DLQ_ARN` | consumer's DLQ ARN | `arn:aws:sqs:...` |
+
+2. Rehearse all four one-command beats before demo day:
+
+   ```bash
+   scripts/tp_portal/demo_incident.sh canary-break   # faulty version + canary slice + traffic; rollback automation is the star
+   scripts/tp_portal/demo_incident.sh canary-undo    # alias 100% back to good version, fault cleared
+   scripts/tp_portal/demo_incident.sh dlq-break      # consumer CHAOS_FAULT + traffic → events dead-letter
+   scripts/tp_portal/demo_incident.sh dlq-undo       # heal consumer + SQS redrive DLQ → source queue
+   ```
+
+3. Keep `DRY_RUN=1` until rehearsal; only the prepared per-run script runs
+   with `DRY_RUN=0`. On this branch, only the dry-run/self-test path is ever
+   executed.
+
 ## Beat 1 — The estate on AWS today (0:00–0:06)
 
 Show the platform that already works:

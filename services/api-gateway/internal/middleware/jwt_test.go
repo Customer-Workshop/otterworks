@@ -323,6 +323,46 @@ func TestJWTAuth_AdminPathMissingOrInvalidTokenReturnsUnauthorized(t *testing.T)
 	}
 }
 
+func TestJWTAuth_RequiredRolePrefixIsProtectedIndependently(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:              testSecret,
+		PublicPath:          DefaultPublicPaths(),
+		PrefixPath:          DefaultPrefixPaths(),
+		ProtectedPrefixPath: []string{"/api/v1/files"},
+		RequiredRoles:       map[string][]string{"/api/v1/admin": {"ADMIN"}},
+	}
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	t.Run("missing token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	claims := JWTClaims{
+		UserID: "user-123",
+		Roles:  []string{"USER"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		},
+	}
+	tokenStr := generateTestToken(t, testSecret, claims)
+
+	t.Run("non-admin token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+}
+
 func TestJWTAuth_ExpiredToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,

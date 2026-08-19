@@ -61,7 +61,8 @@ func JWTAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if !isProtectedPath(r.URL.Path, cfg.ProtectedPrefixPath) {
+			requiredRoles := requiredRolesForPath(r.URL.Path, cfg.RequiredRoles)
+			if !isProtectedPath(r.URL.Path, cfg.ProtectedPrefixPath) && requiredRoles == nil {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -79,7 +80,7 @@ func JWTAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 			}
 
 			// Defense-in-depth: backend services must still enforce roles themselves.
-			if required := requiredRolesForPath(r.URL.Path, cfg.RequiredRoles); len(required) > 0 && !hasRequiredRole(claims, required) {
+			if len(requiredRoles) > 0 && !hasRequiredRole(claims, requiredRoles) {
 				writeJSONError(w, http.StatusForbidden, "insufficient role")
 				return
 			}

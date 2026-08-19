@@ -203,6 +203,126 @@ func TestJWTAuth_ValidToken(t *testing.T) {
 	assert.Equal(t, "test@otterworks.dev", capturedClaims.Email)
 }
 
+func TestJWTAuth_AdminPathRequiresAdminRole(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:        testSecret,
+		PublicPath:    DefaultPublicPaths(),
+		PrefixPath:    DefaultPrefixPaths(),
+		RequiredRoles: map[string][]string{"/api/v1/admin": {"ADMIN"}},
+	}
+
+	claims := JWTClaims{
+		UserID: "user-123",
+		Roles:  []string{"USER"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		},
+	}
+	tokenStr := generateTestToken(t, testSecret, claims)
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestJWTAuth_AdminPathAllowsAdminRole(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:        testSecret,
+		PublicPath:    DefaultPublicPaths(),
+		PrefixPath:    DefaultPrefixPaths(),
+		RequiredRoles: map[string][]string{"/api/v1/admin": {"ADMIN"}},
+	}
+
+	claims := JWTClaims{
+		UserID: "admin-123",
+		Roles:  []string{"USER", "ADMIN"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		},
+	}
+	tokenStr := generateTestToken(t, testSecret, claims)
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestJWTAuth_NonRoleRestrictedPathAllowsAnyRole(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:        testSecret,
+		PublicPath:    DefaultPublicPaths(),
+		PrefixPath:    DefaultPrefixPaths(),
+		RequiredRoles: map[string][]string{"/api/v1/admin": {"ADMIN"}},
+	}
+
+	claims := JWTClaims{
+		UserID: "user-123",
+		Roles:  []string{"USER"},
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		},
+	}
+	tokenStr := generateTestToken(t, testSecret, claims)
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/files/list", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestJWTAuth_AdminPathMissingOrInvalidTokenReturnsUnauthorized(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:        testSecret,
+		PublicPath:    DefaultPublicPaths(),
+		PrefixPath:    DefaultPrefixPaths(),
+		RequiredRoles: map[string][]string{"/api/v1/admin": {"ADMIN"}},
+	}
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	tests := []struct {
+		name   string
+		header string
+	}{
+		{name: "missing token"},
+		{name: "invalid token", header: "Bearer invalid-token-string"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+			if tt.header != "" {
+				req.Header.Set("Authorization", tt.header)
+			}
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		})
+	}
+}
+
 func TestJWTAuth_ExpiredToken(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,

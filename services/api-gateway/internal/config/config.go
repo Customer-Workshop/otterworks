@@ -41,10 +41,10 @@ type Config struct {
 	ShutdownTimeout time.Duration
 
 	// Circuit breaker
-	CBMaxRequests   uint32
-	CBInterval      time.Duration
-	CBTimeout       time.Duration
-	CBFailureRatio  float64
+	CBMaxRequests  uint32
+	CBInterval     time.Duration
+	CBTimeout      time.Duration
+	CBFailureRatio float64
 }
 
 // Validate checks that required security-sensitive configuration is present.
@@ -108,6 +108,13 @@ func (c *Config) ServiceRoutes() map[string]string {
 		"/api/v1/audit":         c.AuditServiceURL,
 		"/api/v1/reports":       c.ReportServiceURL,
 		"/api/v1/settings":      c.AuthServiceURL,
+	}
+}
+
+// RequiredRoles returns a map of route prefixes to roles allowed to access them.
+func (c *Config) RequiredRoles() map[string][]string {
+	return map[string][]string{
+		"/api/v1/admin": {"ADMIN"},
 	}
 }
 

@@ -27,6 +27,7 @@ type JWTConfig struct {
 	PublicPath          []string // exact paths that skip JWT validation
 	PrefixPath          []string // prefix paths that skip JWT validation (e.g. /health, /metrics)
 	ProtectedPrefixPath []string // route prefixes that require JWT validation; empty means all non-public paths
+	RequiredRoles       map[string][]string
 }
 
 // DefaultPublicPaths returns the default set of exact-match paths that skip JWT validation.
@@ -74,6 +75,12 @@ func JWTAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 			claims, err := validateToken(tokenStr, cfg.Secret)
 			if err != nil {
 				writeJSONError(w, http.StatusUnauthorized, fmt.Sprintf("invalid token: %v", err))
+				return
+			}
+
+			// Defense-in-depth: backend services must still enforce roles themselves.
+			if required := requiredRolesForPath(r.URL.Path, cfg.RequiredRoles); len(required) > 0 && !hasRequiredRole(claims, required) {
+				writeJSONError(w, http.StatusForbidden, "insufficient role")
 				return
 			}
 
@@ -150,6 +157,29 @@ func isProtectedPath(path string, protectedPrefixes []string) bool {
 		}
 	}
 	return false
+}
+
+func hasRequiredRole(claims *JWTClaims, required []string) bool {
+	if claims == nil {
+		return false
+	}
+	for _, requiredRole := range required {
+		for _, role := range claims.Roles {
+			if role == requiredRole {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func requiredRolesForPath(path string, requiredRoles map[string][]string) []string {
+	for prefix, roles := range requiredRoles {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return roles
+		}
+	}
+	return nil
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) {

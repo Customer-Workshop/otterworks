@@ -758,6 +758,13 @@ def _drift_undo(dbx: Databricks, args, n, data) -> int:
         for entry in dbx.list_dir(year_dir):
             dbx.delete_file(entry.get("path", ""))
         dbx.delete_dir(year_dir)
+        # prune the namespace's local drops for the removed year too, or the
+        # next land/backfill re-uploads them and re-stages the drift
+        local_year = Path(args.legacy_root) / "sftp-drop/history" / str(end_year)
+        for path in sorted(local_year.glob(f"CUSTBILL_{n.ns.upper()}_*.dat")):
+            path.unlink()
+        if local_year.is_dir() and not any(local_year.iterdir()):
+            local_year.rmdir()
         subprocess.run(
             ["perl", str(REPO / "etl/legacy-extra/tools/gen_history_data.pl"),
              n.ns, str(data["start_year"]), str(old_end), str(data["rows_per_month"])],

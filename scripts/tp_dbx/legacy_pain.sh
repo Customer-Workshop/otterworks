@@ -19,14 +19,17 @@
 #   clean     Remove the sandbox.
 #
 # Never touches etl/legacy-extra/jobs/ (immutable estate) and
-# never touches another harness's legacy root: it works in
-# OTTERWORKS_LEGACY_ROOT (default /tmp/otterworks-legacy-pain).
+# never touches another harness's legacy root: it works in its
+# own sandbox, OTTERWORKS_PAIN_ROOT (default
+# /tmp/otterworks-legacy-pain). An inherited OTTERWORKS_LEGACY_ROOT
+# is deliberately ignored so a prepared demo root can never be the
+# rm -rf target.
 #############################################################
 set -u
 
 HERE="$(cd "$(dirname "$0")/../.." && pwd)"
 ESTATE="$HERE/etl/legacy-extra"
-ROOT="${OTTERWORKS_LEGACY_ROOT:-/tmp/otterworks-legacy-pain}"
+ROOT="${OTTERWORKS_PAIN_ROOT:-/tmp/otterworks-legacy-pain}"
 NS="${NS:-pain}"
 ACT="${1:-all}"
 

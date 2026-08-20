@@ -145,7 +145,10 @@ describe('AwarenessService', () => {
       const users = awareness.getDocumentUsers('doc-1');
 
       expect(users).toHaveLength(2);
-      expect(users.map((u) => u.userId).sort((a, b) => a.localeCompare(b))).toEqual(['u1', 'u2']);
+      expect(users.map((u) => u.userId).sort((a, b) => a.localeCompare(b))).toEqual([
+        'u1',
+        'u2',
+      ]);
     });
 
     it('should return empty array for unknown document', () => {

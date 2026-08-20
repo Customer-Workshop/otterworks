@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "parse_custbill_fixedwidth",
   "namespace": "w2parse",
-  "generated_at": "2026-08-20T03:52:23Z",
+  "generated_at": "2026-08-20T04:00:37Z",
   "run_mode": "live",
   "checks": [
     {
@@ -145,7 +145,7 @@
         "counts_unchanged": true,
         "new_delta_version_written": true
       },
-      "source_of_truth": "counts/totals before vs after re-parse; DESCRIBE HISTORY ow_tp.silver.custbill_records_w2parse (v9 -> v10)",
+      "source_of_truth": "counts/totals before vs after re-parse; DESCRIBE HISTORY ow_tp.silver.custbill_records_w2parse (v10 -> v11)",
       "result": "pass"
     },
     {
@@ -168,7 +168,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "silver/quarantine/parse_runs rebuilt from bronze; counts and cent totals identical ({'silver_rows': '2956', 'silver_cents': '1490137236', 'quarantined': '30', 'files': '74', 'failed_files': '6'}); silver Delta history advanced v9 -> v10 (INSERT OVERWRITE, replace not append)"
+    "evidence": "silver/quarantine/parse_runs rebuilt from bronze; counts and cent totals identical ({'silver_rows': '2956', 'silver_cents': '1490137236', 'quarantined': '30', 'files': '74', 'failed_files': '6'}); silver Delta history advanced v10 -> v11 (INSERT OVERWRITE, replace not append)"
   },
   "planted_anomaly_detections": {
     "expected_set": [

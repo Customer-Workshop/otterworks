@@ -187,7 +187,7 @@ def _psv_rows_from_silver(dbx: Databricks, n: P.ParseNames) -> dict[str, list[st
 def grade_seed(dbx: Databricks, args, n: P.ParseNames) -> dict:
     golden_dir = Path(args.legacy_root) / "parsed"
     golden = {p.name.replace(".psv", ".dat"): p.read_text().splitlines()
-              for p in sorted(golden_dir.glob("CUSTBILL_*.psv"))}
+              for p in sorted(golden_dir.glob(f"CUSTBILL_{args.source_ns.upper()}_*.psv"))}
     if not golden:
         raise SystemExit(f"no golden .psv files under {golden_dir}; run the legacy chain first")
     actual = _psv_rows_from_silver(dbx, n)

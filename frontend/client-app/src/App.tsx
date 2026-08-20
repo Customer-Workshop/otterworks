@@ -20,6 +20,7 @@ import StarredPage from "@/pages/starred";
 import TrashPage from "@/pages/trash";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import AnnouncementsPage from "@/features/announcements/announcements-page";
 import BillingPlansPage from "@/features/billing/plans-page";
 import BillingEntitlementPage from "@/features/billing/entitlement-page";
 import BillingChangePlanPage from "@/features/billing/change-plan-page";
@@ -45,6 +46,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/documents/:id" element={<DocumentEditorPage />} />

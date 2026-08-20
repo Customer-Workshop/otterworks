@@ -12,6 +12,16 @@ const apiProxy = {
     changeOrigin: true,
   },
 };
+// The announcements slice talks same-origin to /announcements-api; ANNOUNCEMENTS_API_URL
+// selects which portal backend serves it — the legacy monolith (8095) today, the extracted
+// announcements-service (8101) after the cut. Both expose the same /api/announcements paths.
+const announcementsProxy = {
+  "/announcements-api": {
+    target: process.env.ANNOUNCEMENTS_API_URL || "http://localhost:8095",
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/announcements-api/, ""),
+  },
+};
 const billingProxy = {
   "/billing-api": {
     target: process.env.BILLING_SERVICE_URL || "http://localhost:12109",
@@ -30,11 +40,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: { ...apiProxy, ...billingProxy },
+    proxy: { ...apiProxy, ...announcementsProxy, ...billingProxy },
   },
   preview: {
     port: 3000,
-    proxy: { ...apiProxy, ...billingProxy },
+    proxy: { ...apiProxy, ...announcementsProxy, ...billingProxy },
   },
   test: {
     include: ["src/**/*.{test,spec}.{ts,tsx}"],

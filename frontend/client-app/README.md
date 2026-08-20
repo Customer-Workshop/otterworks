@@ -25,9 +25,18 @@ URL is substituted from the `API_GATEWAY_URL` env var at container start.
 | `npm run test:e2e` | Playwright e2e (expects the backend stack running) |
 | `npm run test:bdd` | Cucumber BDD suite |
 
+Announcements (`/announcements`) call `/announcements-api/api/announcements`, proxied to the
+portal backend that owns the announcements context. `ANNOUNCEMENTS_API_URL` selects it — the
+legacy portal monolith (`http://localhost:8095`) by default in dev, the extracted
+`announcements-service` (`http://localhost:8101`) once traffic is cut over — and the same var
+drives the nginx proxy in the container image. Run the backend with
+`make portal-up NS=dev` from the repo root.
+
 Build-time env vars (Vite): `VITE_COLLAB_WS_URL` (collab websocket URL, default
 `ws://localhost:8085`, upgraded to `wss` when the page is served over https; native
-defaults below), `VITE_API_BASE_URL` (native builds only, see below).
+defaults below), `VITE_API_BASE_URL` (native builds only, see below),
+`VITE_ANNOUNCEMENTS_API_URL` (overrides the whole announcements base URL for builds with no
+same-origin proxy; defaults to `<origin>/announcements-api`).
 
 ## Docker
 

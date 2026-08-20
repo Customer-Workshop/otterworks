@@ -19,3 +19,7 @@ HEALTHCHECK --interval=10s --timeout=3s CMD wget -q -O /dev/null http://127.0.0.
 # API_GATEWAY_URL default for runtime (can be overridden by Helm/docker-compose env);
 # substituted into the nginx config template at container start.
 ENV API_GATEWAY_URL=http://api-gateway:8080
+
+# Portal backend serving /api/announcements; flipped to the extracted
+# announcements-service (http://announcements-service:8101) at the cut.
+ENV ANNOUNCEMENTS_API_URL=http://legacy-portal:8095

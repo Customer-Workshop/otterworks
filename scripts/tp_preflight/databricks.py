@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -248,6 +249,115 @@ finally:
     if not file_put_attempted:
         manifest.add("files-delete", "Delete the temporary landing file", "Files API DELETE", "skipped", "PUT did not create a file")
     cleanup_all()
+
+workspace_path = f"/Shared/ow_tp/__tp_preflight_{uuid.uuid4().hex}"
+workspace_source = "# Databricks notebook source\nprint('otterworks tp preflight')\n"
+workspace_imported = False
+
+
+def reconcile_workspace():
+    if not workspace_imported:
+        return
+    call("POST", "/api/2.0/workspace/delete", {"path": workspace_path})
+
+
+try:
+    mkdir_status, mkdir_body = call(
+        "POST", "/api/2.0/workspace/mkdirs", {"path": "/Shared/ow_tp"}
+    )
+    if not 200 <= mkdir_status < 300:
+        manifest.add(
+            "workspace-import",
+            "Import, verify, and delete a temporary notebook",
+            "Workspace API",
+            "denied",
+            response_detail(mkdir_status, mkdir_body),
+        )
+    else:
+        import_status, import_body = call(
+            "POST",
+            "/api/2.0/workspace/import",
+            {
+                "path": workspace_path,
+                "format": "SOURCE",
+                "language": "PYTHON",
+                "overwrite": True,
+                "content": base64.b64encode(workspace_source.encode()).decode(),
+            },
+        )
+        if not 200 <= import_status < 300:
+            manifest.add(
+                "workspace-import",
+                "Import, verify, and delete a temporary notebook",
+                "Workspace API",
+                "denied",
+                response_detail(import_status, import_body),
+            )
+        else:
+            workspace_imported = True
+            status_status, status_body = call(
+                "GET",
+                "/api/2.0/workspace/get-status?path="
+                + urllib.parse.quote(workspace_path, safe=""),
+            )
+            if not 200 <= status_status < 300:
+                manifest.add(
+                    "workspace-import",
+                    "Import, verify, and delete a temporary notebook",
+                    "Workspace API",
+                    "denied",
+                    response_detail(status_status, status_body),
+                )
+            else:
+                delete_status, delete_body = call(
+                    "POST", "/api/2.0/workspace/delete", {"path": workspace_path}
+                )
+                if 200 <= delete_status < 300:
+                    workspace_imported = False
+                manifest.add(
+                    "workspace-import",
+                    "Import, verify, and delete a temporary notebook",
+                    "Workspace API",
+                    "verified" if 200 <= delete_status < 300 else "denied",
+                    f"import HTTP {import_status}, verify HTTP {status_status}, "
+                    f"delete {response_detail(delete_status, delete_body)}",
+                )
+except Exception as exc:
+    manifest.add(
+        "workspace-import",
+        "Import, verify, and delete a temporary notebook",
+        "Workspace API",
+        "denied",
+        exception_detail(exc),
+    )
+finally:
+    reconcile_workspace()
+
+lineage_table = f"{catalog}.silver.custbill_history_demo"
+lineage_status, lineage_body = call(
+    "GET",
+    "/api/2.0/lineage-tracking/table-lineage?table_name="
+    + lineage_table
+    + "&include_entity_lineage=true",
+)
+if 200 <= lineage_status < 300:
+    upstreams = lineage_body.get("upstreams", []) if isinstance(lineage_body, dict) else []
+    downstreams = lineage_body.get("downstreams", []) if isinstance(lineage_body, dict) else []
+    manifest.add(
+        "lineage-read",
+        "Read table lineage for an ow_tp table",
+        "Lineage Tracking API",
+        "verified",
+        f"HTTP {lineage_status}, upstreams={len(upstreams)}, downstreams={len(downstreams)}",
+    )
+else:
+    manifest.add(
+        "lineage-read",
+        "Read table lineage for an ow_tp table",
+        "Lineage Tracking API",
+        "denied",
+        response_detail(lineage_status, lineage_body),
+    )
 
 warehouse_probe = call("GET", "/api/2.0/sql/warehouses")
 warehouse_id = configured_warehouse_id

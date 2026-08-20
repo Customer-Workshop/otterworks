@@ -1,0 +1,242 @@
+{
+  "kind": "recon-report",
+  "unit": "finance_excel_report",
+  "namespace": "w2report",
+  "generated_at": "2026-08-20T03:34:33Z",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "RPT-01",
+      "expected": {
+        "EUR/CREDIT": [
+          6,
+          3337597
+        ],
+        "EUR/INVOICE": [
+          22,
+          10155441
+        ],
+        "GBP/CREDIT": [
+          5,
+          2845459
+        ],
+        "GBP/INVOICE": [
+          32,
+          18311358
+        ],
+        "USD/CREDIT": [
+          7,
+          3339044
+        ],
+        "USD/INVOICE": [
+          28,
+          13050215
+        ]
+      },
+      "actual": {
+        "EUR/CREDIT": [
+          6,
+          3337597
+        ],
+        "EUR/INVOICE": [
+          22,
+          10155441
+        ],
+        "GBP/CREDIT": [
+          5,
+          2845459
+        ],
+        "GBP/INVOICE": [
+          32,
+          18311358
+        ],
+        "USD/CREDIT": [
+          7,
+          3339044
+        ],
+        "USD/INVOICE": [
+          28,
+          13050215
+        ]
+      },
+      "source_of_truth": "captured legacy run finance_billing_20260820.csv (make legacy-etl-run JOB=run_all), compared in integer cents",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-02",
+      "expected": {
+        "silver.amount_cents": "bigint",
+        "gold.total_amount_cents": "bigint"
+      },
+      "actual": {
+        "silver.amount_cents": "bigint",
+        "gold.total_amount_cents": "bigint"
+      },
+      "source_of_truth": "table schemas: integer-cents end to end, no float accumulation",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-03",
+      "expected": {
+        "delta_column_populated_in_gold": 6,
+        "delta_table_groups_matching": 6
+      },
+      "actual": {
+        "delta_column_populated_in_gold": 6,
+        "delta_table_groups_matching": 6
+      },
+      "source_of_truth": "gold.billing_summary delta_cents column and gold.billing_summary_delta status, recomputed from target",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-04",
+      "expected": {
+        "declared_next_to_totals": 0,
+        "silver_plus_quarantine": 100
+      },
+      "actual": {
+        "declared_next_to_totals": 0,
+        "silver_plus_quarantine": 100
+      },
+      "source_of_truth": "gold.excluded_quarantine_count vs quarantine table; every bronze body row is in silver or quarantine",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-05",
+      "expected": {
+        "dashboard_finance_page_published": true
+      },
+      "actual": {
+        "dashboard_finance_page_published": true
+      },
+      "source_of_truth": "lakeview dashboards API: finance_report page on ow_tp_billing_migration_w2report",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-06",
+      "expected": {
+        "delivery_attempt_recorded": true,
+        "delivery_status": "failed",
+        "jake_active_on_distribution": 0
+      },
+      "actual": {
+        "delivery_attempt_recorded": true,
+        "delivery_status": "failed",
+        "jake_active_on_distribution": 0
+      },
+      "source_of_truth": "ops.report_runs delivery columns and ops.report_recipients (no SMTP here, so a recorded failure is the honest outcome)",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-07",
+      "expected": {
+        "rerun_identical_groups": true,
+        "period_from_data": [
+          [
+            "2024-01-02",
+            "2025-12-06"
+          ]
+        ]
+      },
+      "actual": {
+        "rerun_identical_groups": true,
+        "period_from_data": [
+          [
+            "2024-01-02",
+            "2025-12-06"
+          ]
+        ]
+      },
+      "source_of_truth": "full silver->gold rebuild rerun compared row-for-row; period columns from min/max bill_date, not wall clock",
+      "result": "pass"
+    },
+    {
+      "id": "RPT-08",
+      "expected": {
+        "clean_labels": [
+          [
+            "01",
+            "INVOICE"
+          ],
+          [
+            "02",
+            "CREDIT"
+          ]
+        ],
+        "probe_unknown_explicit_group": [
+          [
+            "UNKNOWN(09)",
+            1
+          ]
+        ]
+      },
+      "actual": {
+        "clean_labels": [
+          [
+            "01",
+            "INVOICE"
+          ],
+          [
+            "02",
+            "CREDIT"
+          ]
+        ],
+        "probe_unknown_explicit_group": [
+          [
+            "UNKNOWN(09)",
+            1
+          ]
+        ]
+      },
+      "source_of_truth": "gold label column plus probe batch: rt 09 surfaces as its own UNKNOWN(09) group, never folded into a currency total",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "silver/quarantine/gold/delta rebuilt from bronze (silver was v5); all gold groups byte-identical"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      [
+        "RPT-A1",
+        "unknown_record_type",
+        "explicit UNKNOWN(09) group"
+      ],
+      [
+        "RPT-A2",
+        "nonnumeric_amount",
+        "quarantined, not coerced to 0.00"
+      ],
+      [
+        "RPT-A3",
+        "short_load",
+        "run recorded failed, report not shipped"
+      ]
+    ],
+    "actual_set": [
+      [
+        "RPT-A1",
+        "unknown_record_type",
+        "explicit UNKNOWN(09) group"
+      ],
+      [
+        "RPT-A2",
+        "nonnumeric_amount",
+        "quarantined, not coerced to 0.00"
+      ],
+      [
+        "RPT-A3",
+        "short_load",
+        "run recorded failed, report not shipped"
+      ]
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "RPT-A4: successful email delivery \u2014 no SMTP transport exists in this environment; the attempt and its failure are recorded in ow_tp.ops.report_runs_w2report, but delivery itself is unverified"
+  ]
+}

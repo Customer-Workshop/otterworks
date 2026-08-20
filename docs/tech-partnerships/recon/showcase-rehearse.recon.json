@@ -447,5 +447,7 @@
     "missing": [],
     "unexpected": []
   },
-  "unverified_paths": []
+  "unverified_paths": [
+    "showcase.py --ns rehearse teardown (namespace absence verification): not exercised — namespace `rehearse` intentionally left standing for the parent run's teardown + negative verification"
+  ]
 }

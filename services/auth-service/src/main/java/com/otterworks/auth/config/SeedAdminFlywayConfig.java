@@ -3,8 +3,10 @@ package com.otterworks.auth.config;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
+import org.flywaydb.core.api.output.ValidateResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.flyway.FlywayConfigurationCustomizer;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,6 +35,21 @@ public class SeedAdminFlywayConfig {
             : seedAdminPassword;
     String hash = new BCryptPasswordEncoder(10).encode(password);
     return configuration -> configuration.placeholders(Map.of(PLACEHOLDER, hash));
+  }
+
+  /**
+   * Repairs the schema history before migrating when validation fails, so databases that applied
+   * the previous checksum of the initial users migration still start.
+   */
+  @Bean
+  public FlywayMigrationStrategy repairThenMigrateStrategy() {
+    return flyway -> {
+      ValidateResult validation = flyway.validateWithResult();
+      if (!validation.validationSuccessful) {
+        flyway.repair();
+      }
+      flyway.migrate();
+    };
   }
 
   private static String randomPassword() {

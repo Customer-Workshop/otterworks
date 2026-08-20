@@ -1,0 +1,18 @@
+[
+  {"method": "GET", "path": "/api/preferences/unknown-user"},
+  {"method": "GET", "path": "/api/preferences/unknown-user"},
+  {"method": "PUT", "path": "/api/preferences/u1", "body": {"theme": "dark", "locale": "fr-FR", "emailNotifications": false}},
+  {"method": "GET", "path": "/api/preferences/u1"},
+  {"method": "PUT", "path": "/api/preferences/u1", "body": {"theme": "solarized", "locale": "zz-ZZ", "emailNotifications": true}},
+  {"method": "GET", "path": "/api/preferences/u1"},
+  {"method": "PUT", "path": "/api/preferences/u2", "body": {"theme": "dark", "locale": "en-US"}},
+  {"method": "GET", "path": "/api/preferences/u2"},
+  {"method": "PUT", "path": "/api/preferences/u3", "body": {"theme": "", "locale": "fr-FR", "emailNotifications": false}},
+  {"method": "PUT", "path": "/api/preferences/u3", "body": {"locale": "fr-FR"}},
+  {"method": "PUT", "path": "/api/preferences/u3", "body": {"theme": "twenty-one-characters", "locale": "en-US", "emailNotifications": true}},
+  {"method": "GET", "path": "/api/preferences/u3"},
+  {"method": "PUT", "path": "/api/preferences/u4", "body": "not json"},
+  {"method": "GET", "path": "/api/preferences"},
+  {"method": "PATCH", "path": "/api/preferences/u1", "body": {"theme": "dark"}},
+  {"method": "DELETE", "path": "/api/preferences/u1"}
+]

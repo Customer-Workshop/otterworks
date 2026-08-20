@@ -1,0 +1,19 @@
+[
+  {"method": "GET", "path": "/api/feedback/average-rating"},
+  {"method": "GET", "path": "/api/feedback?userId=nobody"},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u1", "rating": 5, "message": "great"}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u1", "rating": 1, "message": "bad"}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u2", "rating": 3, "message": "ok"}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u1", "rating": 0, "message": "below range"}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u1", "rating": 6, "message": "above range"}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u1", "rating": 3, "message": ""}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "", "rating": 3, "message": "blank user"}},
+  {"method": "POST", "path": "/api/feedback", "body": {"userId": "u1", "message": "no rating"}},
+  {"method": "POST", "path": "/api/feedback", "body": "not json"},
+  {"method": "GET", "path": "/api/feedback?userId=u1"},
+  {"method": "GET", "path": "/api/feedback?userId=u2"},
+  {"method": "GET", "path": "/api/feedback?userId=nobody"},
+  {"method": "GET", "path": "/api/feedback"},
+  {"method": "GET", "path": "/api/feedback/average-rating"},
+  {"method": "DELETE", "path": "/api/feedback/1"}
+]

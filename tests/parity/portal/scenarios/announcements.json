@@ -1,0 +1,21 @@
+[
+  {"method": "GET", "path": "/api/announcements"},
+  {"method": "GET", "path": "/api/announcements?publishedOnly=false"},
+  {"method": "GET", "path": "/api/announcements/999999"},
+  {"method": "GET", "path": "/api/announcements/abc"},
+  {"method": "GET", "path": "/api/announcements?publishedOnly=maybe"},
+  {"method": "POST", "path": "/api/announcements", "body": {"title": "Parity A", "body": "unpublished body", "published": false}},
+  {"method": "POST", "path": "/api/announcements", "body": {"title": "Parity B", "body": "published body", "published": true}},
+  {"method": "POST", "path": "/api/announcements", "body": {"title": "Parity C", "body": "no published flag"}},
+  {"method": "POST", "path": "/api/announcements", "body": {"title": "Parity D", "body": "unknown field", "extra": "ignored"}},
+  {"method": "POST", "path": "/api/announcements", "body": {"title": "", "body": "blank title", "published": false}},
+  {"method": "POST", "path": "/api/announcements", "body": {"body": "missing title"}},
+  {"method": "POST", "path": "/api/announcements", "body": "not json"},
+  {"method": "POST", "path": "/api/announcements/1/publish"},
+  {"method": "POST", "path": "/api/announcements/1/publish"},
+  {"method": "POST", "path": "/api/announcements/999999/publish"},
+  {"method": "GET", "path": "/api/announcements"},
+  {"method": "GET", "path": "/api/announcements/1"},
+  {"method": "DELETE", "path": "/api/announcements/1"}
+]
+

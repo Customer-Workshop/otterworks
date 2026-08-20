@@ -1,0 +1,419 @@
+[
+  {
+    "method": "GET",
+    "path": "/health",
+    "status": 200,
+    "body": {
+      "status": "UP",
+      "service": "legacy-portal",
+      "banner": "OtterWorks Portal (on-prem) - contact portal-support@otterworks.example"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/actuator/health",
+    "status": 200,
+    "body": {
+      "status": "UP",
+      "groups": [
+        "liveness",
+        "readiness"
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/announcements",
+    "status": 200,
+    "body": []
+  },
+  {
+    "method": "GET",
+    "path": "/api/announcements?publishedOnly=false",
+    "status": 200,
+    "body": []
+  },
+  {
+    "method": "GET",
+    "path": "/api/announcements/999999",
+    "status": 404,
+    "body": {
+      "error": "Not Found",
+      "message": "announcement 999999 not found"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements",
+    "status": 201,
+    "body": {
+      "id": 1,
+      "title": "Parity A",
+      "body": "unpublished body",
+      "published": false,
+      "createdAt": "2026-08-20T20:49:00.082194360Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements",
+    "status": 201,
+    "body": {
+      "id": 2,
+      "title": "Parity B",
+      "body": "published body",
+      "published": true,
+      "createdAt": "2026-08-20T20:49:00.165534706Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.276+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/announcements"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.320+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/announcements"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements/1/publish",
+    "status": 200,
+    "body": {
+      "id": 1,
+      "title": "Parity A",
+      "body": "unpublished body",
+      "published": true,
+      "createdAt": "2026-08-20T20:49:00.082194Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements/1/publish",
+    "status": 200,
+    "body": {
+      "id": 1,
+      "title": "Parity A",
+      "body": "unpublished body",
+      "published": true,
+      "createdAt": "2026-08-20T20:49:00.082194Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements/999999/publish",
+    "status": 404,
+    "body": {
+      "error": "Not Found",
+      "message": "announcement 999999 not found"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/announcements",
+    "status": 200,
+    "body": [
+      {
+        "id": 2,
+        "title": "Parity B",
+        "body": "published body",
+        "published": true,
+        "createdAt": "2026-08-20T20:49:00.165535Z"
+      },
+      {
+        "id": 1,
+        "title": "Parity A",
+        "body": "unpublished body",
+        "published": true,
+        "createdAt": "2026-08-20T20:49:00.082194Z"
+      }
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/announcements/1",
+    "status": 405,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.561+00:00",
+      "status": 405,
+      "error": "Method Not Allowed",
+      "path": "/api/announcements/1"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/announcements/abc",
+    "status": 400,
+    "body": {
+      "error": "Bad Request",
+      "message": "For input string: \"abc\""
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/announcements?publishedOnly=maybe",
+    "status": 400,
+    "body": {
+      "error": "Bad Request",
+      "message": "Invalid boolean value [maybe]"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements",
+    "status": 201,
+    "body": {
+      "id": 3,
+      "title": "Unknown field",
+      "body": "B",
+      "published": false,
+      "createdAt": "2026-08-20T20:49:00.673295232Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/announcements",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.711+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/announcements"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/preferences/unknown-user",
+    "status": 200,
+    "body": {
+      "userId": "unknown-user",
+      "theme": "light",
+      "locale": "en-US",
+      "emailNotifications": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/preferences/unknown-user",
+    "status": 200,
+    "body": {
+      "userId": "unknown-user",
+      "theme": "light",
+      "locale": "en-US",
+      "emailNotifications": true
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/preferences/u1",
+    "status": 200,
+    "body": {
+      "userId": "u1",
+      "theme": "dark",
+      "locale": "fr-FR",
+      "emailNotifications": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/preferences/u1",
+    "status": 200,
+    "body": {
+      "userId": "u1",
+      "theme": "dark",
+      "locale": "fr-FR",
+      "emailNotifications": false
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/preferences/u1",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.921+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/preferences/u1"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/preferences/u1",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.957+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/preferences/u1"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/preferences",
+    "status": 404,
+    "body": {
+      "timestamp": "2026-08-20T20:49:00.994+00:00",
+      "status": 404,
+      "error": "Not Found",
+      "path": "/api/preferences"
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/preferences/u1",
+    "status": 405,
+    "body": {
+      "timestamp": "2026-08-20T20:49:01.030+00:00",
+      "status": 405,
+      "error": "Method Not Allowed",
+      "path": "/api/preferences/u1"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/feedback/average-rating",
+    "status": 200,
+    "body": {
+      "averageRating": 0.0
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 201,
+    "body": {
+      "id": 1,
+      "userId": "u1",
+      "rating": 5,
+      "message": "great",
+      "createdAt": "2026-08-20T20:49:01.122861991Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 201,
+    "body": {
+      "id": 2,
+      "userId": "u1",
+      "rating": 1,
+      "message": "bad",
+      "createdAt": "2026-08-20T20:49:01.167665997Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 201,
+    "body": {
+      "id": 3,
+      "userId": "u2",
+      "rating": 3,
+      "message": "ok",
+      "createdAt": "2026-08-20T20:49:01.208053053Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:01.252+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/feedback"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:01.290+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/feedback"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:01.328+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/feedback"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/feedback?userId=u1",
+    "status": 200,
+    "body": [
+      {
+        "id": 2,
+        "userId": "u1",
+        "rating": 1,
+        "message": "bad",
+        "createdAt": "2026-08-20T20:49:01.167666Z"
+      },
+      {
+        "id": 1,
+        "userId": "u1",
+        "rating": 5,
+        "message": "great",
+        "createdAt": "2026-08-20T20:49:01.122862Z"
+      }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/feedback?userId=nobody",
+    "status": 200,
+    "body": []
+  },
+  {
+    "method": "GET",
+    "path": "/api/feedback/average-rating",
+    "status": 200,
+    "body": {
+      "averageRating": 3.0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:01.497+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/feedback"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/feedback",
+    "status": 400,
+    "body": {
+      "timestamp": "2026-08-20T20:49:01.543+00:00",
+      "status": 400,
+      "error": "Bad Request",
+      "path": "/api/feedback"
+    }
+  }
+]

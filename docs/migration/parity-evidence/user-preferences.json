@@ -1,0 +1,1277 @@
+[
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/unknown-user"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "unknown-user",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "unknown-user",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/unknown-user"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "unknown-user",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "unknown-user",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/%20"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": " ",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": " ",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/%C3%BCn%C3%AFc%C3%B8d%C3%A9-user"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "\u00fcn\u00efc\u00f8d\u00e9-user",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "\u00fcn\u00efc\u00f8d\u00e9-user",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/ghost"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "ghost",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "ghost",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u1",
+      "body": {
+        "theme": "dark",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "dark",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "dark",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u1"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "dark",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "dark",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u1",
+      "body": {
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u1"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u2",
+      "body": {
+        "theme": "dark",
+        "locale": "en-US"
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u2",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u2",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u2"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u2",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u2",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u5",
+      "body": {
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": null
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u5",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u5",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u5"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u5",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u5",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": false
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/ghost",
+      "body": {
+        "theme": "dark",
+        "locale": "de-DE",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "ghost",
+        "theme": "dark",
+        "locale": "de-DE",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "ghost",
+        "theme": "dark",
+        "locale": "de-DE",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/ghost"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "ghost",
+        "theme": "dark",
+        "locale": "de-DE",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "ghost",
+        "theme": "dark",
+        "locale": "de-DE",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u6",
+      "body": {
+        "userId": "someone-else",
+        "theme": "dark",
+        "locale": "en-GB",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u6",
+        "theme": "dark",
+        "locale": "en-GB",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u6",
+        "theme": "dark",
+        "locale": "en-GB",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u6"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u6",
+        "theme": "dark",
+        "locale": "en-GB",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u6",
+        "theme": "dark",
+        "locale": "en-GB",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/someone-else"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "someone-else",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "someone-else",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u7",
+      "body": {
+        "theme": "chartreuse",
+        "locale": "not a locale",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u7",
+        "theme": "chartreuse",
+        "locale": "not a locale",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u7",
+        "theme": "chartreuse",
+        "locale": "not a locale",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u7"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u7",
+        "theme": "chartreuse",
+        "locale": "not a locale",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u7",
+        "theme": "chartreuse",
+        "locale": "not a locale",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u8",
+      "body": {
+        "theme": "tttttttttttttttttttt",
+        "locale": "llllllllllllllllllll",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u8",
+        "theme": "tttttttttttttttttttt",
+        "locale": "llllllllllllllllllll",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u8",
+        "theme": "tttttttttttttttttttt",
+        "locale": "llllllllllllllllllll",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u8"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u8",
+        "theme": "tttttttttttttttttttt",
+        "locale": "llllllllllllllllllll",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u8",
+        "theme": "tttttttttttttttttttt",
+        "locale": "llllllllllllllllllll",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "body": {
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "   ",
+        "locale": "fr-FR",
+        "emailNotifications": false
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "dark",
+        "locale": "",
+        "emailNotifications": false
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "dark",
+        "locale": null,
+        "emailNotifications": false
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "locale": "fr-FR"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "dark"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {}
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "twenty-one-characters",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u3",
+      "body": {
+        "theme": "dark",
+        "locale": "twenty-one-characters",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u3"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u3"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u3",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u3",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u4",
+      "body": "not json"
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u4"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u4"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/u4",
+      "body": "{\"theme\": \"dark\","
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u4"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/preferences/u4"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u4"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u4",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u4",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "body": {
+        "theme": "dark",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "legacy": {
+      "status": 500,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 500,
+        "error": "Internal Server Error",
+        "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    "candidate": {
+      "status": 500,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 500,
+        "error": "Internal Server Error",
+        "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "theme": "light",
+        "locale": "en-US",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/preferences"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/preferences"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/preferences",
+      "body": {
+        "theme": "dark",
+        "locale": "en-US"
+      }
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/preferences"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/preferences"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u1/theme"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/preferences/u1/theme"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/preferences/u1/theme"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/preferences/u1",
+      "body": {
+        "theme": "dark",
+        "locale": "en-US"
+      }
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/preferences/u1"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/preferences/u1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PATCH",
+      "path": "/api/preferences/u1",
+      "body": {
+        "theme": "dark"
+      }
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/preferences/u1"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/preferences/u1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "DELETE",
+      "path": "/api/preferences/u1"
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/preferences/u1"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/preferences/u1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/preferences/u1"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "userId": "u1",
+        "theme": "solarized",
+        "locale": "zz-ZZ",
+        "emailNotifications": true
+      }
+    },
+    "match": true
+  }
+]

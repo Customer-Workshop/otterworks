@@ -1,63 +1,57 @@
-# Legacy Portal — modular monolith (rehost / decomposition "before" state)
+# Legacy Portal — the shell left after decomposition
 
-`legacy-portal` is a **legacy modular monolith**: a single deployable Spring Boot application
-(Java 11, Spring Boot 2.7.x, built with Maven) that bundles **three bounded contexts** into one
-process. It exists as a realistic **"before" state** for two migration demos:
+`legacy-portal` used to be a modular monolith bundling **three bounded contexts** into one Spring
+Boot deployable (Java 11, Spring Boot 2.7.x, Maven). Those contexts have been extracted, their
+traffic switched over, and their code removed from here. What is left is a **shell**: it boots,
+answers `/health` and the actuator endpoints, and owns no data.
 
-- **Rehost (lift-and-shift → EC2)** — it **runs on a VM / on-prem host today** (plain Docker
-  Compose, a fat JAR under systemd), deliberately *not* on the repo's Helm/EKS path. That makes it
-  the natural starting point for a lift-and-shift-to-EC2 demo.
-- **Monolith decomposition (→ microservices / Lambda)** — its three contexts are cleanly separated
-  by package **and by database schema**, so the seams for splitting it into services are obvious.
+| Context | Served by | Contract |
+|---|---|---|
+| Announcements | `services/portal/announcements-service` (8101) | [`docs/migration/contracts/announcements.md`](../../docs/migration/contracts/announcements.md) |
+| User preferences | `services/portal/user-preferences-service` (8102) | [`docs/migration/contracts/user-preferences.md`](../../docs/migration/contracts/user-preferences.md) |
+| Feedback | `services/portal/feedback-service` (8103) | [`docs/migration/contracts/feedback.md`](../../docs/migration/contracts/feedback.md) |
 
-> This component is part of the OtterWorks **golden app** as a durable before-state. The
-> after-state (EC2/ASG IaC, decomposed services) is intentionally **not** included here.
+`/api/announcements`, `/api/preferences` and `/api/feedback` are **no longer served here** — they
+return 404. No consumer points at them: the client app reaches each context through its own proxy
+prefix and env var ([`docs/migration/traffic-routing.md`](../../docs/migration/traffic-routing.md)).
 
-## Bounded contexts
+Switching the shell off — pre-conditions, ordered steps, the rollback point at each step and what
+survives — is [`docs/migration/decommission.md`](../../docs/migration/decommission.md).
 
-Each context lives in its own package with its own routes and its own database schema. There are
-**no cross-context foreign keys or shared tables** — the only thing they share is the JVM process
-and the datasource. That is exactly what makes this a good decomposition candidate.
+## What remains
 
-| Context | Package | Schema | Routes |
-|---|---|---|---|
-| Announcements | `com.otterworks.legacyportal.announcements` | `announcements` | `GET/POST /api/announcements`, `GET /api/announcements/{id}`, `POST /api/announcements/{id}/publish` |
-| User Preferences | `com.otterworks.legacyportal.userpreferences` | `user_preferences` | `GET /api/preferences/{userId}`, `PUT /api/preferences/{userId}` |
-| Feedback | `com.otterworks.legacyportal.feedback` | `feedback` | `POST /api/feedback`, `GET /api/feedback?userId=`, `GET /api/feedback/average-rating` |
+```
+src/main/java/com/otterworks/legacyportal
+├── LegacyPortalApplication.java        # boot class
+└── common
+    ├── HealthController.java           # GET /health  → {"status","service","banner"}
+    ├── GlobalExceptionHandler.java     # {"error","message"} envelope
+    └── PortalBrandingSettings.java     # portal-settings.properties, read at startup
+```
 
-Shared, non-domain plumbing lives in `com.otterworks.legacyportal.common` (health endpoint,
-exception handling).
-
-### Why it's an obvious decomposition candidate
-
-- **Independent data ownership** — one schema per context; no shared tables or joins across
-  contexts, so each context's tables can be lifted into a per-service database.
-- **Independent routes** — each context owns a distinct `/api/*` prefix that maps 1:1 to a future
-  service (e.g. an `announcements-service`, a `preferences-service`, a `feedback-service`, or a
-  Lambda per context).
-- **No cross-context object references** — contexts do not call each other's services directly, so
-  extracting one does not drag the others along.
+No datasource, no JPA, no database, no schemas: the `announcements`, `user_preferences` and
+`feedback` schemas belong to the extracted services' own databases now.
 
 ## Build & test
 
 ```bash
 cd services/legacy-portal
-./mvnw verify        # compile + run unit tests (uses embedded H2)
+./mvnw verify
 ```
 
 ## Run
 
-### Local / on a VM (embedded H2, self-contained)
+### Local / on a VM
 
 ```bash
 ./scripts/run-onprem.sh
-curl http://localhost:8095/health          # {"status":"UP","service":"legacy-portal"}
+curl http://localhost:8095/health          # {"status":"UP","service":"legacy-portal","banner":"…"}
 curl http://localhost:8095/actuator/health
 ```
 
 Or under systemd on the VM — see [`deploy/legacy-portal.service`](deploy/legacy-portal.service).
 
-### On-prem with a real PostgreSQL (Docker Compose)
+### Docker Compose (on-prem host model)
 
 ```bash
 docker compose -f docker-compose.onprem.yml up --build
@@ -65,9 +59,8 @@ curl http://localhost:8095/health
 docker compose -f docker-compose.onprem.yml down -v
 ```
 
-This brings up PostgreSQL alongside the app; the three schemas are created by
-[`scripts/initdb.sql`](scripts/initdb.sql). This stack is intentionally separate from the
-Helm/EKS deploy path — it models the on-prem host the rehost demo lifts *from*.
+This stack is intentionally separate from the Helm/EKS deploy path — it models the on-prem host
+the portal ran on.
 
 ## Legacy markers (upgrade targets)
 

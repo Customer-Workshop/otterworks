@@ -74,5 +74,7 @@ These are the real couplings. None is a data seam; all are removed by the split.
   `feedback (user_id, created_at DESC)`), both invisible on the wire and both covering a scan
   the assessment flagged. User preferences adds none — its only access is by primary key.
 - **No dual-write and no sync.** Because nothing joins across contexts, the strangler cutover
-  per context is: backfill, switch the route, keep the monolith endpoint deprecated for
-  rollback. There is no window where two services must agree about the same row.
+  per context was: backfill, switch the route, keep the monolith endpoint deprecated for
+  rollback. There is no window where two services must agree about the same row. All three
+  cutovers are done and the deprecated endpoints have since been removed
+  (`docs/migration/decommission.md`).

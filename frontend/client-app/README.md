@@ -27,10 +27,10 @@ URL is substituted from the `API_GATEWAY_URL` env var at container start.
 
 Each portal bounded context is reached same-origin through its own proxy prefix, whose target
 is selected by one env var — the same var in dev (Vite) and in the container image (nginx).
-Traffic goes to the extracted services by default; pointing a var at the legacy monolith
-(`http://localhost:8095` in dev, `http://legacy-portal:8095` in a container) rolls that one
-context back with no code change and no rebuild. Run the backends with `make portal-up NS=dev`
-from the repo root; the full switch and rollback story is in `docs/migration/traffic-routing.md`.
+Every var points at an extracted service; the legacy portal is a shell that no longer serves
+these routes, so pointing a var at `:8095` gets `404`, not a rollback. Run the backends with
+`make portal-up NS=dev` from the repo root; the switch is described in
+`docs/migration/traffic-routing.md` and the rollback path in `docs/migration/decommission.md`.
 
 | Context | Prefix | Env var | Dev default | Container default |
 |---|---|---|---|---|

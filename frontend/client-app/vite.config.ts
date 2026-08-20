@@ -13,9 +13,9 @@ const apiProxy = {
   },
 };
 // Each portal bounded context is reached same-origin through its own /<context>-api prefix,
-// and one env var per context selects which backend serves it: the extracted service by
-// default, the legacy monolith (8095) on rollback. Both expose the same /api/* paths, so the
-// prefix is stripped and nothing else changes. See docs/migration/traffic-routing.md.
+// and one env var per context selects which backend serves it — the extracted service in
+// every environment now that the monolith no longer serves these routes. The prefix is
+// stripped and nothing else changes. See docs/migration/traffic-routing.md.
 const portalProxy = (prefix: string, target: string) => ({
   [`/${prefix}`]: {
     target,

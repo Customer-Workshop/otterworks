@@ -1,7 +1,6 @@
 package com.otterworks.legacyportal;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,10 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Full-context test: the whole modular monolith boots and every module's routes are wired. */
+/** The shell boots and serves only its own plumbing: no bounded context is wired any more. */
 @SpringBootTest
 @AutoConfigureMockMvc
 class LegacyPortalApplicationTest {
@@ -33,34 +31,17 @@ class LegacyPortalApplicationTest {
     }
 
     @Test
-    void announcementsModuleRoundTrips() throws Exception {
-        mockMvc.perform(
-                        post("/api/announcements")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"title\":\"Release\",\"body\":\"v1 is out\",\"published\":true}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber());
-
-        mockMvc.perform(get("/api/announcements"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("Release"));
+    void announcementRoutesAreGone() throws Exception {
+        mockMvc.perform(get("/api/announcements")).andExpect(status().isNotFound());
     }
 
     @Test
-    void preferencesModuleReturnsDefaults() throws Exception {
-        mockMvc.perform(get("/api/preferences/newuser"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.theme").value("light"));
+    void preferenceRoutesAreGone() throws Exception {
+        mockMvc.perform(get("/api/preferences/someone")).andExpect(status().isNotFound());
     }
 
     @Test
-    void feedbackModuleValidatesRating() throws Exception {
-        mockMvc.perform(
-                        post("/api/feedback")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"userId\":\"u1\",\"rating\":9,\"message\":\"bad rating\"}"))
-                .andExpect(status().isBadRequest());
+    void feedbackRoutesAreGone() throws Exception {
+        mockMvc.perform(get("/api/feedback/average-rating")).andExpect(status().isNotFound());
     }
 }

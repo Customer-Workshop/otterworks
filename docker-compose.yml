@@ -496,8 +496,8 @@ services:
     environment:
       API_GATEWAY_URL: http://api-gateway:8080
       # Portal backend per bounded context (docs/migration/traffic-routing.md). The portal
-      # stack lives in docker-compose.portal.yml; roll a context back to the monolith by
-      # pointing its variable at http://legacy-portal:8095 and restarting this container.
+      # stack lives in docker-compose.portal.yml. The monolith is a shell and no longer serves
+      # these routes; rollback is docs/migration/decommission.md, not a value change here.
       ANNOUNCEMENTS_API_URL: ${ANNOUNCEMENTS_API_URL:-http://announcements-service:8101}
       USER_PREFERENCES_API_URL: ${USER_PREFERENCES_API_URL:-http://user-preferences-service:8102}
       FEEDBACK_API_URL: ${FEEDBACK_API_URL:-http://feedback-service:8103}

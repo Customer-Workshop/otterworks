@@ -42,7 +42,9 @@ ever needs to be re-run from scratch, drop the namespace's data with `make porta
 PORTAL_CANDIDATE_URL=http://localhost:8102 make portal-parity CONTEXT=user-preferences
 ```
 
-with the monolith up on 8095 (the `legacy` profile). Expected: `47/47 identical`.
+with the pinned pre-retirement monolith image as the reference on 8096 (`PORTAL_LEGACY_URL`) —
+the running shell no longer serves these routes; see `docs/migration/decommission.md`.
+Expected: `47/47 identical`.
 
 ## Isolation
 

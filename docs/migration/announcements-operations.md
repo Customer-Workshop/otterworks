@@ -6,7 +6,7 @@ shared skeleton, or the compose profile.
 ## Running the container
 
 ```bash
-make portal-up NS=dev                           # legacy portal + every extracted context
+make portal-up NS=dev                           # portal shell + every extracted context
 make portal-up NS=dev PROFILE=announcements     # announcements-service + announcements-db only
 docker compose -f docker-compose.portal.yml -p otterworks-portal-dev ps
 curl -s http://localhost:8101/health            # {"status":"UP","service":"announcements-service"}

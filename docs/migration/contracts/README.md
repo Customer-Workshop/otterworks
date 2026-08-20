@@ -40,7 +40,9 @@ portal and emits a JSON transcript. It was run against the monolith
 [`baseline-transcript.json`](baseline-transcript.json). It is **evidence**, not a test: the
 graded comparison is `tests/parity/portal/replay.py`, which replays
 `tests/parity/portal/scenarios/<context>.json` against the monolith and the extracted service
-in the same run and diffs both sides under the normalisations below.
+in the same run and diffs both sides under the normalisations below. The monolith side is now
+the pinned pre-retirement image rather than the deployed shell, which no longer serves these
+routes; see `docs/migration/decommission.md`. The harness itself is unchanged.
 
 Two things the transcript settled that the source reading alone did not, and that the
 assessment page states **incorrectly**:

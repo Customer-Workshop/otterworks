@@ -7,7 +7,7 @@ shared pattern is [`skeleton.md`](skeleton.md); the wire contract is
 ## Run it
 
 ```bash
-make portal-up NS=dev                      # legacy + every context that exists
+make portal-up NS=dev                      # portal shell + every context that exists
 make portal-up NS=dev PROFILE=feedback     # feedback-service + feedback-db only
 docker compose -f docker-compose.portal.yml -p otterworks-portal-dev ps
 make portal-down NS=dev                    # stops the stack and drops the volumes

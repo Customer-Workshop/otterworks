@@ -13,7 +13,11 @@
 # authentication (see docs/migration/contracts/README.md), exactly like the monolith, and must
 # never be exposed beyond the gateway.
 services:
-  # --- the monolith, kept running for parity replay and one-config-change rollback ---
+  # --- what is left of the monolith: a shell that serves /health and the actuator endpoints
+  # only. It serves no bounded context, so it is neither the parity reference nor a rollback
+  # target any more; parity replays against the pinned pre-retirement image and rollback is a
+  # redeploy of that image (docs/migration/decommission.md). Retiring this entry is the last
+  # decommission step. ---
   legacy-portal:
     profiles: ["legacy"]
     build:

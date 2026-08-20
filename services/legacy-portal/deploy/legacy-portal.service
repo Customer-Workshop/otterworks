@@ -1,20 +1,16 @@
 # systemd unit for running legacy-portal on a VM / on-prem host.
 #
-# This is the "runs on a VM today" deployment used as the rehost / decomposition before-state.
+# This is the "runs on a VM today" deployment of the post-decomposition shell: it serves
+# /health and the actuator endpoints and needs no database. See docs/migration/decommission.md
+# for how the unit is drained and removed.
+#
 # Install:
 #   sudo useradd -r -s /usr/sbin/nologin legacyportal || true
 #   sudo mkdir -p /opt/legacy-portal && sudo cp target/legacy-portal.jar /opt/legacy-portal/
 #   sudo cp deploy/legacy-portal.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now legacy-portal
-#
-# Optional PostgreSQL backend (defaults to embedded H2):
-#   /etc/legacy-portal.env with:
-#     SPRING_PROFILES_ACTIVE=postgres
-#     SPRING_DATASOURCE_URL=jdbc:postgresql://db-host:5432/legacyportal
-#     SPRING_DATASOURCE_USERNAME=legacyportal
-#     SPRING_DATASOURCE_PASSWORD=... (do not commit real secrets)
 [Unit]
-Description=OtterWorks Legacy Portal (modular monolith)
+Description=OtterWorks Legacy Portal (decomposition shell)
 After=network.target
 
 [Service]

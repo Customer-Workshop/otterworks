@@ -460,7 +460,10 @@ def cmd_report(dbx: Databricks, args) -> int:
     n = names(args)
     dbx.sql_ok(rollup_sql(n))
     dbx.sql_ok(delta_sql(n))
-    version = int(dbx.sql_ok(f"SELECT max(silver_version) FROM {n.gold}").scalar())
+    raw_version = dbx.sql_ok(f"SELECT max(silver_version) FROM {n.gold}").scalar()
+    if raw_version is None:
+        raise SystemExit("gold rollup is empty; run load first (no clean silver records to aggregate)")
+    version = int(raw_version)
     stats = dbx.sql_ok(
         f"SELECT count(*) AS groups, coalesce(sum(record_count), 0) AS records, "
         f"coalesce(sum(total_amount_cents), 0) AS cents, "

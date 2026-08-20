@@ -103,6 +103,18 @@ module "database" {
   subnet_ids = local.private_subnets
 }
 
+# The three services extracted from legacy-portal, one PostgreSQL 16 database each.
+module "portal" {
+  source      = "./modules/portal"
+  environment = var.environment
+  project     = "otterworks"
+
+  vpc_id       = local.vpc_id
+  vpc_cidr     = local.vpc_cidr
+  subnet_ids   = local.private_subnets
+  db_passwords = var.portal_db_passwords
+}
+
 module "messaging" {
   source      = "./modules/messaging"
   environment = var.environment

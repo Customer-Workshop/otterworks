@@ -1,0 +1,75 @@
+replicaCount: 1
+
+image:
+  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/otterworks/announcements-service
+  tag: ""  # Set at deploy time (ECR uses IMMUTABLE tags)
+  pullPolicy: IfNotPresent
+
+# ClusterIP, and there is no ingress template in this chart at all. The extracted
+# services carry no authentication (docs/migration/contracts/README.md), exactly like the
+# monolith did, so they must never be reachable from outside the cluster; the browser
+# reaches them through the client app's own origin and proxy prefix
+# (docs/migration/traffic-routing.md). A LoadBalancer Service here would also mint an ELB
+# the AWS cloud-controller owns and Terraform does not (AGENTS.md).
+#
+# The Service name is the Helm release name, and the routing value
+# `ANNOUNCEMENTS_API_URL` points at it by name and port, so the release MUST be
+# installed as `announcements-service`. Renaming the release silently breaks the routing seam.
+service:
+  type: ClusterIP
+  port: 8101
+  targetPort: 8101
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+
+# /health is portal-common's identity endpoint: it echoes spring.application.name, which is
+# what the pipeline's post-deploy health gate asserts on ("which backend is live" in
+# docs/migration/traffic-routing.md). The probes use the actuator groups the frozen skeleton
+# configures — readiness includes the database, liveness does not.
+healthCheck:
+  path: /health
+  livenessPath: /actuator/health/liveness
+  readinessPath: /actuator/health/readiness
+  port: 8101
+
+# Disabled: the frozen service skeleton exposes only `health,info` on the actuator
+# (services/portal/announcements-service/src/main/resources/application.yml), so there is no
+# metrics endpoint to scrape. Exposing one is a change to the skeleton, which this migration
+# is not allowed to make; enable this only together with that change.
+monitoring:
+  enabled: false
+  path: /actuator/prometheus
+  port: 8101
+
+networkPolicy:
+  enabled: true
+  # Who may call this service: the client app (its nginx proxy) and nothing else in the
+  # namespace. The monitoring namespace is kept for parity with the other charts even though
+  # scraping is off; ingress-nginx is deliberately NOT allowed — external traffic reaches a
+  # bounded context only through the client app.
+  clientPodLabel: web-app
+  monitoringNamespace: monitoring
+
+serviceAccount:
+  # No AWS access: these services talk to their own PostgreSQL database and nothing else,
+  # so they get no IRSA role (infrastructure/terraform/main.tf grants none).
+  roleArn: ""
+
+# Non-sensitive service configuration rendered into {{ .Release.Name }}-config and injected
+# via envFrom. SPRING_DATASOURCE_URL comes from the portal Terraform module's
+# `portal_db_endpoints` output at deploy time; the value below is the Compose default and is
+# there to name the key, not to be deployed.
+config: {}
+  # SPRING_DATASOURCE_URL: jdbc:postgresql://<endpoint>:5432/announcements
+  # SPRING_DATASOURCE_USERNAME: announcements
+
+# Sensitive configuration rendered into {{ .Release.Name }}-secrets (Opaque, stringData) and
+# injected via envFrom. Populate at deploy time; never commit values.
+#   SPRING_DATASOURCE_PASSWORD: <from the deploy environment / secret store>
+secrets: {}

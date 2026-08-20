@@ -108,3 +108,15 @@ output "irsa_role_arns" {
   description = "Map of service account name to IAM role ARN"
   value       = module.irsa.role_arns
 }
+
+# --- Portal (extracted services) ---
+
+output "portal_db_endpoints" {
+  description = "Map of extracted portal context to its database endpoint"
+  value       = module.portal.db_endpoints
+}
+
+output "portal_jdbc_urls" {
+  description = "Map of extracted portal context to the JDBC URL its Helm release is configured with"
+  value       = module.portal.jdbc_urls
+}

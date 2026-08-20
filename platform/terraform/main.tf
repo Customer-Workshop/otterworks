@@ -96,5 +96,18 @@ module "ecr" {
     "report-service",
     "web-app",
     "admin-dashboard",
+
+    # Portal decomposition. Every image .github/workflows/portal-cicd.yml pushes must appear
+    # here: ECR does not create a repository on push, so a missing entry fails the push step
+    # rather than degrading quietly. The workflow's `ecr-repo-check` job re-asserts this
+    # list against its own build matrix on every run.
+    "announcements-service",
+    "user-preferences-service",
+    "feedback-service",
+    # The legacy shell, still deployed alongside the extracted services until decommission
+    # step 6, and the source of the pinned pre-retirement reference image parity replays
+    # against (docs/migration/decommission.md). The client app the portal fronts already has
+    # a repository above, as "web-app".
+    "legacy-portal",
   ]
 }

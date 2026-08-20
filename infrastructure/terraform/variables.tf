@@ -27,6 +27,12 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "portal_db_passwords" {
+  description = "Master password per extracted portal context (announcements, user-preferences, feedback)"
+  type        = map(string)
+  sensitive   = true
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number

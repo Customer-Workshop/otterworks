@@ -462,7 +462,20 @@ def cmd_report(dbx: Databricks, args) -> int:
     dbx.sql_ok(delta_sql(n))
     raw_version = dbx.sql_ok(f"SELECT max(silver_version) FROM {n.gold}").scalar()
     if raw_version is None:
-        raise SystemExit("gold rollup is empty; run load first (no clean silver records to aggregate)")
+        # Contract empty_input_semantics: a period with no silver records writes
+        # a recorded run with zero groups and a declared zero total, so an empty
+        # period is distinguishable from a failed run.
+        version = silver_version(dbx, n)
+        record_run(dbx, n, {
+            "run_id": uuid.uuid4().hex[:12], "batch": "clean", "status": "ok",
+            "detail": f"empty period: no clean silver records to aggregate (silver v{version})",
+            "groups": 0, "record_count": 0, "total_amount_cents": 0,
+            "quarantine_excluded": 0,
+            "delivery_status": "skipped", "delivery_detail": "nothing to report for an empty period",
+        })
+        print(json.dumps({"groups": 0, "records": 0, "cents": 0}, indent=2))
+        print("empty period recorded: zero groups, zero total")
+        return 0
     version = int(raw_version)
     stats = dbx.sql_ok(
         f"SELECT count(*) AS groups, coalesce(sum(record_count), 0) AS records, "

@@ -1,5 +1,6 @@
 package com.otterworks.legacyportal.feedback;
 
+import com.otterworks.legacyportal.common.CallerIdentity;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -29,13 +31,20 @@ public class FeedbackController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public FeedbackResponse submit(@Valid @RequestBody SubmitFeedbackRequest request) {
+    public FeedbackResponse submit(
+            @RequestHeader(CallerIdentity.HEADER) String callerId,
+            @Valid @RequestBody SubmitFeedbackRequest request) {
+        if (request.getUserId() != null) {
+            CallerIdentity.requireSelf(callerId, request.getUserId());
+        }
         return FeedbackResponse.from(
-                service.submit(request.getUserId(), request.getRating(), request.getMessage()));
+                service.submit(callerId.trim(), request.getRating(), request.getMessage()));
     }
 
     @GetMapping
-    public List<FeedbackResponse> listForUser(@RequestParam String userId) {
+    public List<FeedbackResponse> listForUser(
+            @RequestHeader(CallerIdentity.HEADER) String callerId, @RequestParam String userId) {
+        CallerIdentity.requireSelf(callerId, userId);
         return service.listForUser(userId).stream()
                 .map(FeedbackResponse::from)
                 .collect(Collectors.toList());
@@ -48,7 +57,7 @@ public class FeedbackController {
 
     public static class SubmitFeedbackRequest {
 
-        @NotBlank
+        /** Optional and advisory: the stored feedback is always attributed to the caller. */
         @Size(max = 100)
         private String userId;
 

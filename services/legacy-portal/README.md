@@ -26,7 +26,7 @@ and the datasource. That is exactly what makes this a good decomposition candida
 | Feedback | `com.otterworks.legacyportal.feedback` | `feedback` | `POST /api/feedback`, `GET /api/feedback?userId=`, `GET /api/feedback/average-rating` |
 
 Shared, non-domain plumbing lives in `com.otterworks.legacyportal.common` (health endpoint,
-exception handling).
+exception handling, caller identity).
 
 ### Why it's an obvious decomposition candidate
 
@@ -37,6 +37,23 @@ exception handling).
   Lambda per context).
 - **No cross-context object references** — contexts do not call each other's services directly, so
   extracting one does not drag the others along.
+
+## Authentication & authorization
+
+Every `/api/**` route requires the authenticated caller forwarded by the API gateway in the
+`X-User-ID` header — the same identity convention the rest of the estate uses (the gateway sets
+the header after validating the caller's JWT). Requests without it get `401`.
+
+User-scoped resources are scoped to the caller, not to the path variable or query parameter:
+reading or writing another user's preferences or feedback returns `403`, and submitted feedback is
+always attributed to the caller. `/health` and `/actuator/health` stay anonymous liveness
+endpoints.
+
+```bash
+curl -H 'X-User-ID: alice' http://localhost:8095/api/preferences/alice   # 200
+curl -H 'X-User-ID: alice' http://localhost:8095/api/preferences/bob     # 403
+curl http://localhost:8095/api/preferences/alice                         # 401
+```
 
 ## Build & test
 

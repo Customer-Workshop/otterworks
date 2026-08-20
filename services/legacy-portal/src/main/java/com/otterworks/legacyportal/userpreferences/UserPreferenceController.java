@@ -1,5 +1,6 @@
 package com.otterworks.legacyportal.userpreferences;
 
+import com.otterworks.legacyportal.common.CallerIdentity;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,13 +23,18 @@ public class UserPreferenceController {
     }
 
     @GetMapping("/{userId}")
-    public PreferenceResponse get(@PathVariable String userId) {
+    public PreferenceResponse get(
+            @RequestHeader(CallerIdentity.HEADER) String callerId, @PathVariable String userId) {
+        CallerIdentity.requireSelf(callerId, userId);
         return PreferenceResponse.from(service.getOrDefault(userId));
     }
 
     @PutMapping("/{userId}")
     public PreferenceResponse update(
-            @PathVariable String userId, @Valid @RequestBody UpdatePreferenceRequest request) {
+            @RequestHeader(CallerIdentity.HEADER) String callerId,
+            @PathVariable String userId,
+            @Valid @RequestBody UpdatePreferenceRequest request) {
+        CallerIdentity.requireSelf(callerId, userId);
         return PreferenceResponse.from(
                 service.save(
                         userId,

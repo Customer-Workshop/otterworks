@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.otterworks.legacyportal.common.CallerIdentity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -36,20 +37,21 @@ class LegacyPortalApplicationTest {
     void announcementsModuleRoundTrips() throws Exception {
         mockMvc.perform(
                         post("/api/announcements")
+                                .header(CallerIdentity.HEADER, "portal-user")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"title\":\"Release\",\"body\":\"v1 is out\",\"published\":true}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber());
 
-        mockMvc.perform(get("/api/announcements"))
+        mockMvc.perform(get("/api/announcements").header(CallerIdentity.HEADER, "portal-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Release"));
     }
 
     @Test
     void preferencesModuleReturnsDefaults() throws Exception {
-        mockMvc.perform(get("/api/preferences/newuser"))
+        mockMvc.perform(get("/api/preferences/newuser").header(CallerIdentity.HEADER, "newuser"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.theme").value("light"));
     }
@@ -58,6 +60,7 @@ class LegacyPortalApplicationTest {
     void feedbackModuleValidatesRating() throws Exception {
         mockMvc.perform(
                         post("/api/feedback")
+                                .header(CallerIdentity.HEADER, "u1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"userId\":\"u1\",\"rating\":9,\"message\":\"bad rating\"}"))

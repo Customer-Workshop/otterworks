@@ -1,4 +1,7 @@
 require 'simplecov'
+
+ENV['RAILS_ENV'] ||= 'test'
+
 SimpleCov.start 'rails' do
   add_filter '/spec/'
   add_filter '/config/'

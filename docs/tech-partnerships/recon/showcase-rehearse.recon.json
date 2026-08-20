@@ -1,0 +1,451 @@
+{
+  "kind": "recon-report",
+  "unit": "showcase",
+  "namespace": "rehearse",
+  "generated_at": "2026-08-20T04:32:57Z",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "expectations/pipeline_run",
+      "expected": "Lakeflow pipeline with declared expectations completes; expectation drop metrics match parse-harness quarantine accounting",
+      "actual": "pipeline 7f738e67-4370-48c9-bad1-2642111b7f42 update 98521a2c-8a9c-4b3b-ac19-b63c731dbec0 COMPLETED; 24 rows dropped (12 valid_calendar_date + 12 numeric_amount) = harness row-level quarantine for 2019-2024; 6 trailer anomalies are file-level (not row drops)",
+      "source_of_truth": "Databricks pipeline events API vs ow_tp.silver.custbill_quarantine_rehearse accounting",
+      "result": "pass"
+    },
+    {
+      "id": "lineage/bronze_silver_gold",
+      "expected": "Unity Catalog lineage links bronze -> silver -> gold for the migrated tables",
+      "actual": "lineage API HTTP 200: ow_tp.bronze.custbill_history_raw_rehearse -> ow_tp.silver.custbill_history_rehearse -> ow_tp.gold.custbill_annual_rehearse (plus silver.custbill_quarantine_rehearse); UI: https://dbc-8bc9474f-40ae.cloud.databricks.com/explore/data/ow_tp/silver/custbill_history_rehearse?activeTab=lineage",
+      "source_of_truth": "Unity Catalog table-lineage API",
+      "result": "pass"
+    },
+    {
+      "id": "dashboard/published_with_finance_page",
+      "expected": "AI/BI dashboard published, including the Wave-2 finance rollup page",
+      "actual": "dashboard 01f19c4d9ede1b94b6aa141471017052 published with backfill pages + finance_report page: https://dbc-8bc9474f-40ae.cloud.databricks.com/dashboardsv3/01f19c4d9ede1b94b6aa141471017052/published",
+      "source_of_truth": "Databricks Lakeview API (publish + page list)",
+      "result": "pass"
+    },
+    {
+      "id": "recon_job/created_paused",
+      "expected": "recon job created with Devin webhook notifier, schedule PAUSED; recon SQL alert created PAUSED",
+      "actual": "job 878053742684156 schedule 0 0 6 * * ? UTC pause_status=PAUSED; alert 3082366011433474 schedule pause_status=PAUSED",
+      "source_of_truth": "Databricks Jobs API / Alerts API",
+      "result": "pass"
+    },
+    {
+      "id": "recon_run/green_baseline",
+      "expected": "on-demand recon job run SUCCEEDS before failure staging",
+      "actual": "run 623458002024923 SUCCESS (recon_check SUCCESS, notify_devin skipped): https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/623458002024923",
+      "source_of_truth": "Databricks Jobs runs API",
+      "result": "pass"
+    },
+    {
+      "id": "recon_run/red_after_drift",
+      "expected": "after drift (2025 history landed + expectations updated, target stale) recon job run goes red with explicit failing check ids",
+      "actual": "run 683674105940596 SUCCESS_WITH_FAILURES, recon_check FAILED: 9 checks \u2014 annual_total/2025/{EUR,GBP,USD}/{01,02}, quarantine_count/2025, grand_total/all_years: https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/683674105940596",
+      "source_of_truth": "Databricks Jobs runs API + recon_check task output",
+      "result": "pass"
+    },
+    {
+      "id": "webhook/post_on_failure",
+      "expected": "notifier task POSTs the Devin automation webhook on recon failure",
+      "actual": "notify_devin task SUCCESS; notebook output: Devin webhook response: 200 {\"status\":\"accepted\"}",
+      "source_of_truth": "notify_devin task notebook output (workspace export)",
+      "result": "pass"
+    },
+    {
+      "id": "remediation/session_started",
+      "expected": "webhook triggers a remediation Devin session that diagnoses the failing check ids",
+      "actual": "session https://partner-workshops.devinenterprise.com/sessions/a285be60e5554e3db4bdfa5f63e40e27 started 04:17 UTC, diagnosed the 9 failing checks, remediated via standard backfill (no hand-edits), re-ran recon + idempotency",
+      "source_of_truth": "Devin session events",
+      "result": "pass"
+    },
+    {
+      "id": "remediation/audit_pr",
+      "expected": "remediation session opens ONE audit PR based on tp-run/databricks-20260820T024238Z",
+      "actual": "PR https://github.com/Cognition-Partner-Workshops/otterworks/pull/1210 (devin/1787199721-rehearse-recon-remediation -> tp-run/databricks-20260820T024238Z), CI 5/5 passed",
+      "source_of_truth": "GitHub PR metadata",
+      "result": "pass"
+    },
+    {
+      "id": "recon_run/post_remediation_green",
+      "expected": "recon job re-triggered after remediation and SUCCEEDS; recon recomputed from target is green",
+      "actual": "run 341953539891524 SUCCESS (recon_check SUCCESS): https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/341953539891524; live recon re-run in this session: 57 checks / 0 failed, anomalies 35/35",
+      "source_of_truth": "Databricks Jobs runs API + showcase.py recon",
+      "result": "pass"
+    },
+    {
+      "id": "schedules/still_paused",
+      "expected": "job schedule and alert schedule remain PAUSED after the whole loop",
+      "actual": "demo-preflight: recon job schedule PAUSED, recon alert schedule PAUSED (04:5x UTC, after post-remediation green)",
+      "source_of_truth": "showcase.py demo-preflight gate",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "post-remediation: silver/quarantine/gold rebuilt from bronze and all 57 recon checks byte-identical (showcase.py --ns rehearse recon, this session)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      [
+        "CUSTBILL_REHEARSE_201903.dat",
+        "invalid_calendar_date",
+        "C000286728"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201905.dat",
+        "nonnumeric_amount",
+        "C000736322"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201909.dat",
+        "invalid_calendar_date",
+        "C000599866"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201911.dat",
+        "nonnumeric_amount",
+        "C000602197"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201912.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202003.dat",
+        "invalid_calendar_date",
+        "C000664413"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202005.dat",
+        "nonnumeric_amount",
+        "C000412832"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202009.dat",
+        "invalid_calendar_date",
+        "C000977551"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202011.dat",
+        "nonnumeric_amount",
+        "C000278707"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202012.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202103.dat",
+        "invalid_calendar_date",
+        "C000580576"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202105.dat",
+        "nonnumeric_amount",
+        "C000554913"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202109.dat",
+        "invalid_calendar_date",
+        "C000893714"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202111.dat",
+        "nonnumeric_amount",
+        "C000420788"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202112.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202203.dat",
+        "invalid_calendar_date",
+        "C000496738"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202205.dat",
+        "nonnumeric_amount",
+        "C000696994"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202209.dat",
+        "invalid_calendar_date",
+        "C000809877"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202211.dat",
+        "nonnumeric_amount",
+        "C000562870"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202212.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202303.dat",
+        "invalid_calendar_date",
+        "C000412901"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202305.dat",
+        "nonnumeric_amount",
+        "C000839076"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202309.dat",
+        "invalid_calendar_date",
+        "C000726039"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202311.dat",
+        "nonnumeric_amount",
+        "C000704951"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202312.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202403.dat",
+        "invalid_calendar_date",
+        "C000329063"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202405.dat",
+        "nonnumeric_amount",
+        "C000981157"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202409.dat",
+        "invalid_calendar_date",
+        "C000642202"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202411.dat",
+        "nonnumeric_amount",
+        "C000847032"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202412.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202503.dat",
+        "invalid_calendar_date",
+        "C000245226"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202505.dat",
+        "nonnumeric_amount",
+        "C000223238"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202509.dat",
+        "invalid_calendar_date",
+        "C000558365"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202511.dat",
+        "nonnumeric_amount",
+        "C000989113"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202512.dat",
+        "trailer_count_mismatch",
+        ""
+      ]
+    ],
+    "actual_set": [
+      [
+        "CUSTBILL_REHEARSE_201903.dat",
+        "invalid_calendar_date",
+        "C000286728"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201905.dat",
+        "nonnumeric_amount",
+        "C000736322"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201909.dat",
+        "invalid_calendar_date",
+        "C000599866"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201911.dat",
+        "nonnumeric_amount",
+        "C000602197"
+      ],
+      [
+        "CUSTBILL_REHEARSE_201912.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202003.dat",
+        "invalid_calendar_date",
+        "C000664413"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202005.dat",
+        "nonnumeric_amount",
+        "C000412832"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202009.dat",
+        "invalid_calendar_date",
+        "C000977551"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202011.dat",
+        "nonnumeric_amount",
+        "C000278707"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202012.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202103.dat",
+        "invalid_calendar_date",
+        "C000580576"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202105.dat",
+        "nonnumeric_amount",
+        "C000554913"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202109.dat",
+        "invalid_calendar_date",
+        "C000893714"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202111.dat",
+        "nonnumeric_amount",
+        "C000420788"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202112.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202203.dat",
+        "invalid_calendar_date",
+        "C000496738"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202205.dat",
+        "nonnumeric_amount",
+        "C000696994"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202209.dat",
+        "invalid_calendar_date",
+        "C000809877"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202211.dat",
+        "nonnumeric_amount",
+        "C000562870"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202212.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202303.dat",
+        "invalid_calendar_date",
+        "C000412901"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202305.dat",
+        "nonnumeric_amount",
+        "C000839076"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202309.dat",
+        "invalid_calendar_date",
+        "C000726039"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202311.dat",
+        "nonnumeric_amount",
+        "C000704951"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202312.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202403.dat",
+        "invalid_calendar_date",
+        "C000329063"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202405.dat",
+        "nonnumeric_amount",
+        "C000981157"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202409.dat",
+        "invalid_calendar_date",
+        "C000642202"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202411.dat",
+        "nonnumeric_amount",
+        "C000847032"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202412.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_REHEARSE_202503.dat",
+        "invalid_calendar_date",
+        "C000245226"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202505.dat",
+        "nonnumeric_amount",
+        "C000223238"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202509.dat",
+        "invalid_calendar_date",
+        "C000558365"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202511.dat",
+        "nonnumeric_amount",
+        "C000989113"
+      ],
+      [
+        "CUSTBILL_REHEARSE_202512.dat",
+        "trailer_count_mismatch",
+        ""
+      ]
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": []
+}

@@ -412,23 +412,65 @@ def _widget(name: str, dataset: str, fields: list[str], spec: dict, pos: dict, *
 
 
 def _counter(name: str, dataset: str, field: str, title: str, pos: dict) -> dict:
+    # counters must be aggregated queries; every counter dataset here is a
+    # single row, so SUM is the identity
+    alias = f"sum({field})"
     spec = {
         "version": 2,
         "widgetType": "counter",
-        "encodings": {"value": {"fieldName": field, "displayName": title}},
+        "encodings": {"value": {"fieldName": alias, "displayName": title}},
         "frame": {"title": title, "showTitle": True},
     }
-    return _widget(name, dataset, [field], spec, pos)
+    return _widget(name, dataset, [], spec, pos, aggregated={alias: f"SUM(`{field}`)"})
 
 
-def _table(name: str, dataset: str, columns: list[tuple[str, str]], title: str, pos: dict) -> dict:
+def _table_column(field: str, display: str, col_type: str, order: int) -> dict:
+    numeric = col_type in ("integer", "decimal")
+    col = {
+        "fieldName": field,
+        "displayName": display,
+        "title": display,
+        "type": col_type,
+        "displayAs": "number" if numeric else "string",
+        "alignContent": "right" if numeric else "left",
+        "visible": True,
+        "order": order,
+        "allowHTML": False,
+        "allowSearch": False,
+        "booleanValues": ["false", "true"],
+        "highlightLinks": False,
+        "imageHeight": "",
+        "imageWidth": "",
+        "imageTitleTemplate": "{{ @ }}",
+        "imageUrlTemplate": "{{ @ }}",
+        "linkOpenInNewTab": True,
+        "linkTextTemplate": "{{ @ }}",
+        "linkTitleTemplate": "{{ @ }}",
+        "linkUrlTemplate": "{{ @ }}",
+        "preserveWhitespace": False,
+        "useMonospaceFont": False,
+    }
+    if numeric:
+        col["numberFormat"] = "0.00" if col_type == "decimal" else "0"
+    return col
+
+
+def _table(name: str, dataset: str, columns: list[tuple[str, str, str]], title: str, pos: dict) -> dict:
     spec = {
-        "version": 3,
+        "version": 1,
         "widgetType": "table",
-        "encodings": {"columns": [{"fieldName": f, "displayName": d} for f, d in columns]},
+        "encodings": {"columns": [
+            _table_column(f, d, t, 100000 + i) for i, (f, d, t) in enumerate(columns)
+        ]},
+        "itemsPerPage": 25,
+        "paginationSize": "default",
+        "condensed": True,
+        "withRowNumber": False,
+        "invisibleColumns": [],
+        "allowHTMLByDefault": False,
         "frame": {"title": title, "showTitle": True},
     }
-    return _widget(name, dataset, [f for f, _ in columns], spec, pos)
+    return _widget(name, dataset, [f for f, _, _ in columns], spec, pos)
 
 
 def cmd_dashboard(dbx: Databricks, args) -> int:
@@ -484,21 +526,23 @@ def cmd_dashboard(dbx: Databricks, args) -> int:
             "version": 3,
             "widgetType": "bar",
             "encodings": {
-                "x": {"fieldName": "source_year", "scale": {"type": "categorical"}, "displayName": "Year"},
-                "y": {"fieldName": "sum(total_amount)", "scale": {"type": "quantitative"}, "displayName": "Billed amount"},
+                "x": {"fieldName": "source_year", "scale": {"type": "categorical"},
+                      "displayName": "Year", "axis": {"title": "Year"}},
+                "y": {"fieldName": "sum(total_amount)", "scale": {"type": "quantitative"},
+                      "displayName": "Billed amount", "axis": {"title": "Billed amount"}},
             },
             "frame": {"title": "Billed amount by year — the history nobody could query", "showTitle": True},
         }, {"x": 0, "y": 3, "width": 6, "height": 6},
             aggregated={"sum(total_amount)": "SUM(`total_amount`)"}),
         _table("parity_table", "parity", [
-            ("year", "Year"),
-            ("legacy_expected", "Legacy estate says"),
-            ("lakehouse", "Lakehouse says"),
-            ("delta", "Difference"),
+            ("year", "Year", "integer"),
+            ("legacy_expected", "Legacy estate says", "decimal"),
+            ("lakehouse", "Lakehouse says", "decimal"),
+            ("delta", "Difference", "decimal"),
         ], "Legacy vs lakehouse, to the cent", {"x": 6, "y": 3, "width": 6, "height": 6}),
         _table("quality_table", "quality", [
-            ("reason", "Quarantine reason"),
-            ("records", "Records"),
+            ("reason", "Quarantine reason", "string"),
+            ("records", "Records", "integer"),
         ], "Records the legacy parser silently billed wrong", {"x": 0, "y": 9, "width": 6, "height": 5}),
         _counter("years_off", "parity_state", "years_off", "Years off by a cent or more",
                  {"x": 6, "y": 9, "width": 6, "height": 5}),

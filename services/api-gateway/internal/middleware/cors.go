@@ -45,20 +45,14 @@ func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
+			allowed := origin != "" && isOriginAllowed(origin, allowedOrigins, cfg.AllowedOrigins)
 
-			if origin != "" && isOriginAllowed(origin, allowedOrigins, cfg.AllowedOrigins) {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				if cfg.AllowCredentials {
-					w.Header().Set("Access-Control-Allow-Credentials", "true")
-				}
-				if exposedStr != "" {
-					w.Header().Set("Access-Control-Expose-Headers", exposedStr)
-				}
-				w.Header().Set("Vary", "Origin")
+			if allowed {
+				setOriginHeaders(w, origin, cfg.AllowCredentials, exposedStr)
 			}
 
 			// Handle preflight (only for allowed origins)
-			if r.Method == http.MethodOptions && origin != "" && isOriginAllowed(origin, allowedOrigins, cfg.AllowedOrigins) {
+			if allowed && r.Method == http.MethodOptions {
 				w.Header().Set("Access-Control-Allow-Methods", methodsStr)
 				w.Header().Set("Access-Control-Allow-Headers", headersStr)
 				w.Header().Set("Access-Control-Max-Age", maxAgeStr)
@@ -69,6 +63,17 @@ func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func setOriginHeaders(w http.ResponseWriter, origin string, allowCredentials bool, exposedStr string) {
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	if allowCredentials {
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+	if exposedStr != "" {
+		w.Header().Set("Access-Control-Expose-Headers", exposedStr)
+	}
+	w.Header().Set("Vary", "Origin")
 }
 
 func isOriginAllowed(origin string, lookup map[string]bool, origins []string) bool {

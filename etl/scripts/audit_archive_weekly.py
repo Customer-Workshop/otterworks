@@ -149,7 +149,7 @@ def main():
                     for k in batch:
                         batch_writer.delete_item(Key=k)
                 deleted_count += len(batch)
-            except:
+            except Exception:
                 # TODO ETL-167: Handle throttling / partial failures
                 pass
             batch = []
@@ -161,7 +161,7 @@ def main():
                 for k in batch:
                     batch_writer.delete_item(Key=k)
             deleted_count += len(batch)
-        except:
+        except Exception:
             pass
 
     print("[%s] Deleted %d events from DynamoDB" % (

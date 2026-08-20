@@ -170,7 +170,7 @@ def main():
                     prev = user_totals[uid]["actions_by_type"].get(action_type, 0)
                     user_totals[uid]["actions_by_type"][action_type] = prev + count
 
-        except:
+        except Exception:
             # S3 key might not exist for every day -- silently skip
             # TODO ETL-098: Log missing days for debugging
             pass

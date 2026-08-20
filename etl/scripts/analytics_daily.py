@@ -75,7 +75,7 @@ def main():
                 MessageAttributeNames=["All"],
             )
             consecutive_errors = 0
-        except:
+        except Exception:
             # TODO ETL-103: Add dead-letter queue for failed SQS calls (2020-01-08)
             consecutive_errors += 1
             print("[%s] WARNING: SQS receive failed (%d consecutive)" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), consecutive_errors))
@@ -97,7 +97,7 @@ def main():
                 entries_to_delete.append(
                     {"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]}
                 )
-            except:
+            except Exception:
                 # TODO ETL-103: Add dead-letter queue for malformed messages (2020-01-08)
                 pass
 
@@ -174,7 +174,7 @@ def main():
                 if isinstance(ts, str):
                     dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                     return "%02d" % dt.hour
-            except:
+            except Exception:
                 pass
             return "00"
         df["hour"] = df["timestamp"].apply(parse_hour)

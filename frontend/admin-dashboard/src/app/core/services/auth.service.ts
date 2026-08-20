@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { tap, delay, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import devMockAuth from '../fixtures/dev-mock-auth.json';
 
 export interface AuthUser {
   id: string;
@@ -74,11 +75,11 @@ export class AuthService {
       return throwError(() => new Error('Invalid credentials'));
     }
     const user: AuthUser = {
-      id: 'a0000000-0000-0000-0000-000000000001',
+      id: devMockAuth.userId,
       email,
-      displayName: 'Admin User',
-      role: 'admin',
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiZW1haWwiOiJhZG1pbkBvdHRlcndvcmtzLmRldiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxOTI0OTA1NjAwfQ.hD5dwgrPNRTzbXa6lbA83Aru7BvQVIQc0rGVySkF1fA',
+      displayName: devMockAuth.displayName,
+      role: devMockAuth.role,
+      token: devMockAuth.token,
     };
     return of(user).pipe(delay(800));
   }

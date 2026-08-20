@@ -4,6 +4,11 @@
   "private": true,
   "scripts": {
     "ng": "ng",
+    "gen:dev-mock-auth": "node scripts/gen-dev-mock-auth.mjs",
+    "postinstall": "npm run gen:dev-mock-auth",
+    "prestart": "npm run gen:dev-mock-auth",
+    "prebuild": "npm run gen:dev-mock-auth",
+    "pretest": "npm run gen:dev-mock-auth",
     "start": "ng serve --port 4200",
     "build": "ng build --configuration production",
     "test": "ng test --watch=false --browsers=ChromeHeadless",

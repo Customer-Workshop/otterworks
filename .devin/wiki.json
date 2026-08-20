@@ -1,16 +1,19 @@
 {
   "repo_notes": [
     {
-      "content": ""
+      "content": "",
+      "author": null
     }
   ],
   "pages": [
     {
       "title": "OtterWorks Overview",
       "purpose": "High-level introduction to OtterWorks: what it is, its purpose as a polyglot microservices demo platform, the overall architecture diagram, key design principles (Golden App, planted bugs, multi-tenant demos), and links to all major sections.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "multipart go into more detail, you missed a key component of the file service workflow",
+          "author": null
         }
       ]
     },
@@ -20,7 +23,8 @@
       "parent": "OtterWorks Overview",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -30,16 +34,19 @@
       "parent": "OtterWorks Overview",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Backend Services",
       "purpose": "Overview of all 11 backend microservices, their languages, ports, and responsibilities. Links to child pages for each service group. Summarizes the polyglot nature and inter-service communication patterns.",
+      "parent": null,
       "page_notes": [
         {
-          "content": "show table of each microservice"
+          "content": "show table of each microservice",
+          "author": null
         }
       ]
     },
@@ -49,7 +56,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -59,7 +67,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -69,7 +78,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -79,7 +89,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -89,7 +100,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -99,7 +111,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -109,7 +122,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -119,7 +133,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -129,7 +144,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -139,7 +155,8 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -149,16 +166,19 @@
       "parent": "Backend Services",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Frontend Applications",
       "purpose": "Overview of all frontend applications in OtterWorks: the React/Next.js web app, Angular admin dashboard, Electron desktop app, Capacitor mobile apps, and Windows WPF desktop client. Links to child pages for each.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -168,7 +188,8 @@
       "parent": "Frontend Applications",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -178,7 +199,8 @@
       "parent": "Frontend Applications",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -188,16 +210,19 @@
       "parent": "Frontend Applications",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Infrastructure & Deployment",
       "purpose": "Overview of the infrastructure layers: Terraform (platform and application), Helm charts, Kubernetes, Docker Compose for local development, and CI/CD pipelines. Links to child pages for each area.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -207,7 +232,8 @@
       "parent": "Infrastructure & Deployment",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -217,7 +243,8 @@
       "parent": "Infrastructure & Deployment",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -227,7 +254,8 @@
       "parent": "Infrastructure & Deployment",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -237,16 +265,19 @@
       "parent": "Infrastructure & Deployment",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Multi-Tenant Demo Platform",
       "purpose": "Overview of the multi-tenant workshop infrastructure: the concept of ephemeral tenant namespaces on a shared EKS cluster, the demo-platform ops dashboard, and the runner job system. Links to child pages for the deployment scripts and the ops dashboard.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -256,7 +287,8 @@
       "parent": "Multi-Tenant Demo Platform",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -266,16 +298,19 @@
       "parent": "Multi-Tenant Demo Platform",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Observability",
       "purpose": "Overview of the full observability stack: metrics (Prometheus/Grafana), distributed tracing (OpenTelemetry/Jaeger), structured logging (Fluent Bit/CloudWatch), and alerting (Grafana alert rules → admin-service incident workflow). Links to child pages.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -285,7 +320,8 @@
       "parent": "Observability",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -295,7 +331,8 @@
       "parent": "Observability",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -305,16 +342,19 @@
       "parent": "Observability",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Security",
       "purpose": "Overview of the security posture: shift-left SAST pipeline, event-driven auto-remediation, network policies, and cross-service authentication. Links to child pages.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -324,7 +364,8 @@
       "parent": "Security",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -334,16 +375,19 @@
       "parent": "Security",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Chaos Engineering",
       "purpose": "Overview of the chaos engineering subsystem: Redis-based chaos flags, the chaos injection mechanisms across services, the admin-service chaos controller, and the ChaosProbeService synthetic traffic generator. Links to child pages.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -353,7 +397,8 @@
       "parent": "Chaos Engineering",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -363,16 +408,19 @@
       "parent": "Chaos Engineering",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Testing & Data",
       "purpose": "Overview of the testing strategy across the monorepo: unit tests per service, API integration tests, contract tests, BDD tests, and the synthetic test data framework. Links to child pages.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -382,7 +430,8 @@
       "parent": "Testing & Data",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -392,16 +441,19 @@
       "parent": "Testing & Data",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "ETL & Data Pipelines",
       "purpose": "Documentation of the ETL pipeline layer: the five legacy cron-based Python scripts (analytics_daily.py, audit_archive_weekly.py, search_reindex_weekly.py, storage_cleanup_daily.py, user_activity_daily.py), their known problems (hardcoded credentials, no retry, silent failures), and the migration guide to Apache Airflow (DAG mapping, Airflow hooks, PySpark aggregation).",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -411,7 +463,8 @@
       "parent": "ETL & Data Pipelines",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
@@ -421,27 +474,33 @@
       "parent": "ETL & Data Pipelines",
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Shared Contracts & Event Schemas",
       "purpose": "Documentation of the shared interface definitions used across services: the OpenAPI specs (search-service.yaml, document-service.yaml, notification-service.yaml), the JSON event schemas (file-events.json, document-events.json, collaboration-events.json, audit-events.json, notification-events.json), and the proto definitions.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     },
     {
       "title": "Glossary",
       "purpose": "Definitions of all codebase-specific terms, abbreviations, and domain concepts that an onboarding engineer needs to know. Each entry includes code pointers to relevant files, classes, or functions.",
+      "parent": null,
       "page_notes": [
         {
-          "content": ""
+          "content": "",
+          "author": null
         }
       ]
     }
-  ]
+  ],
+  "include_patterns": []
 }

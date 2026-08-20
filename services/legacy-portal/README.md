@@ -26,7 +26,7 @@ and the datasource. That is exactly what makes this a good decomposition candida
 | Feedback | `com.otterworks.legacyportal.feedback` | `feedback` | `POST /api/feedback`, `GET /api/feedback?userId=`, `GET /api/feedback/average-rating` |
 
 Shared, non-domain plumbing lives in `com.otterworks.legacyportal.common` (health endpoint,
-exception handling).
+exception handling, branding settings).
 
 ### Why it's an obvious decomposition candidate
 
@@ -37,6 +37,25 @@ exception handling).
   Lambda per context).
 - **No cross-context object references** — contexts do not call each other's services directly, so
   extracting one does not drag the others along.
+
+## Branding settings
+
+The banner served on the unauthenticated `/health` endpoint comes from
+`portal-settings.properties`, read through Commons Configuration by
+`common/PortalBrandingSettings`. Two rules apply to that file:
+
+- Only key-to-key interpolation resolves (`${portal.environment}`). Prefixed lookups
+  (`${env:...}`, `${file:...}`, `${sys:...}`, ...) are not registered on the interpolator the
+  banner is read through, so they are served verbatim — the file cannot be used to read the
+  process environment or the filesystem through `/health`.
+- The packaged classpath copy is the default source. The process working directory (the JAR's
+  install directory under systemd) is never searched. To edit settings without a redeploy,
+  start the service with an explicit absolute path:
+
+  ```bash
+  java -Dportal.settings.path=/etc/legacy-portal/portal-settings.properties \
+       -jar /opt/legacy-portal/legacy-portal.jar
+  ```
 
 ## Build & test
 

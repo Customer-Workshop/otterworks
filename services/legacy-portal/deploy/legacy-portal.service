@@ -13,6 +13,11 @@
 #     SPRING_DATASOURCE_URL=jdbc:postgresql://db-host:5432/legacyportal
 #     SPRING_DATASOURCE_USERNAME=legacyportal
 #     SPRING_DATASOURCE_PASSWORD=... (do not commit real secrets)
+#
+# Optional operator-managed branding settings (defaults to the packaged copy; the working
+# directory is never searched). The file must be root-owned and not writable by the service
+# user, since its values are served on the unauthenticated /health endpoint:
+#   ExecStart=... -Dportal.settings.path=/etc/legacy-portal/portal-settings.properties ...
 [Unit]
 Description=OtterWorks Legacy Portal (modular monolith)
 After=network.target

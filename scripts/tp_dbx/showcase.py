@@ -426,11 +426,15 @@ def _counter(name: str, dataset: str, field: str, title: str, pos: dict) -> dict
 
 def _table_column(field: str, display: str, col_type: str, order: int) -> dict:
     numeric = col_type in ("integer", "decimal")
+    # Lakeview/Redash table columns accept a fixed "type" set (string, integer,
+    # float, boolean, datetime, ...); "decimal" is not one of them, so map it to
+    # "float" and rely on numberFormat below for the 2-decimal display.
+    emitted_type = "float" if col_type == "decimal" else col_type
     col = {
         "fieldName": field,
         "displayName": display,
         "title": display,
-        "type": col_type,
+        "type": emitted_type,
         "displayAs": "number" if numeric else "string",
         "alignContent": "right" if numeric else "left",
         "visible": True,

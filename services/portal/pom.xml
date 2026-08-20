@@ -27,8 +27,8 @@
 
   <modules>
     <module>portal-common</module>
+    <module>announcements-service</module>
     <!-- Wave 1 children append exactly one module each:
-         <module>announcements-service</module>
          <module>user-preferences-service</module>
          <module>feedback-service</module> -->
   </modules>

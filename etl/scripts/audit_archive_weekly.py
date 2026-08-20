@@ -19,6 +19,11 @@ from decimal import Decimal
 
 import boto3
 
+RETENTION_DAYS = 90
+DYNAMODB_TABLE_NAME = "otterworks-audit-events"
+DYNAMODB_BATCH_SIZE = 25  # DynamoDB batch write limit
+S3_PREFIX = "audit-archive"
+
 
 class DecimalEncoder(json.JSONEncoder):
     """Handle DynamoDB Decimal types -- copied from StackOverflow"""
@@ -30,42 +35,25 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-def main():
-    print("[%s] audit_archive_weekly.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+def now_str():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # ---- Load config ----
+
+def load_config():
     config = configparser.ConfigParser()
     config.read("/opt/etl/config.ini")
+    return config
 
-    aws_access_key = config.get("aws", "access_key")
-    aws_secret_key = config.get("aws", "secret_key")
-    aws_region = config.get("aws", "region")
 
-    archive_bucket = config.get("s3", "archive_bucket")
+def aws_credentials(config):
+    return {
+        "aws_access_key_id": config.get("aws", "access_key"),
+        "aws_secret_access_key": config.get("aws", "secret_key"),
+        "region_name": config.get("aws", "region"),
+    }
 
-    ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-    retention_days = 90
-    dynamodb_table_name = "otterworks-audit-events"
-    dynamodb_batch_size = 25  # DynamoDB batch write limit
-    s3_prefix = "audit-archive"
 
-    cutoff_date = (
-        datetime.strptime(ds, "%Y-%m-%d") - timedelta(days=retention_days)
-    ).isoformat() + "Z"
-
-    print("[%s] Archiving events older than %d days (cutoff: %s)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), retention_days, cutoff_date
-    ))
-
-    # ---- Scan DynamoDB for old audit events ----
-    dynamodb = boto3.resource(
-        "dynamodb",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region,
-    )
-    table = dynamodb.Table(dynamodb_table_name)
-
+def scan_events_before(table, cutoff_date):
     events_to_archive = []
     scan_kwargs = {
         "FilterExpression": "#ts < :cutoff",
@@ -75,106 +63,67 @@ def main():
 
     while True:
         response = table.scan(**scan_kwargs)
-        items = response.get("Items", [])
-        events_to_archive.extend(items)
+        events_to_archive.extend(response.get("Items", []))
 
         last_key = response.get("LastEvaluatedKey")
         if not last_key:
             break
         scan_kwargs["ExclusiveStartKey"] = last_key
 
-    archive_count = len(events_to_archive)
-    print("[%s] Found %d audit events older than %d days" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), archive_count, retention_days
-    ))
+    return events_to_archive
 
-    if archive_count == 0:
-        print("[%s] No events to archive, exiting" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        sys.exit(0)
 
-    # ---- Compress to JSONL.gz ----
-    archive_key = "%s/year=%s/week=%s/audit_events.jsonl.gz" % (s3_prefix, ds[:4], ds)
-
+def compress_events(events_to_archive):
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
         for event in events_to_archive:
             line = json.dumps(event, cls=DecimalEncoder)
             gz.write(line.encode("utf-8"))
             gz.write(b"\n")
+    return buf
 
-    compressed_size = buf.tell()
-    print("[%s] Compressed %d events to %.2f MB" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        archive_count,
-        compressed_size / (1024 * 1024),
-    ))
 
-    # ---- Upload to S3 with Glacier storage class ----
-    s3_client = boto3.client(
-        "s3",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region,
-    )
+def delete_batch(table, batch):
+    """Delete one batch of keys, returning how many were deleted."""
+    try:
+        with table.batch_writer() as batch_writer:
+            for k in batch:
+                batch_writer.delete_item(Key=k)
+        return len(batch)
+    except:
+        # TODO ETL-167: Handle throttling / partial failures
+        return 0
 
-    s3_client.put_object(
-        Bucket=archive_bucket,
-        Key=archive_key,
-        Body=buf.getvalue(),
-        StorageClass="GLACIER",
-    )
 
-    print("[%s] Archived to s3://%s/%s (GLACIER)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), archive_bucket, archive_key
-    ))
-
-    # ---- Batch-delete archived records from DynamoDB ----
-    print("[%s] Deleting %d archived events from DynamoDB..." % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), archive_count
-    ))
-
+def delete_archived_events(table, events_to_archive):
     deleted_count = 0
     batch = []
 
     for event in events_to_archive:
-        key = {
+        batch.append({
             "event_id": event["event_id"],
             "timestamp": event["timestamp"],
-        }
-        batch.append(key)
+        })
 
-        if len(batch) >= dynamodb_batch_size:
-            try:
-                with table.batch_writer() as batch_writer:
-                    for k in batch:
-                        batch_writer.delete_item(Key=k)
-                deleted_count += len(batch)
-            except:
-                # TODO ETL-167: Handle throttling / partial failures
-                pass
+        if len(batch) >= DYNAMODB_BATCH_SIZE:
+            deleted_count += delete_batch(table, batch)
             batch = []
 
     # flush remaining batch
     if batch:
-        try:
-            with table.batch_writer() as batch_writer:
-                for k in batch:
-                    batch_writer.delete_item(Key=k)
-            deleted_count += len(batch)
-        except:
-            pass
+        deleted_count += delete_batch(table, batch)
 
-    print("[%s] Deleted %d events from DynamoDB" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), deleted_count
-    ))
+    return deleted_count
 
-    # ---- Generate compliance report ----
-    report = {
+
+def build_report(ds, cutoff_date, archive_bucket, archive_key, archive_count,
+                 deleted_count, compressed_size):
+    return {
         "report_type": "audit_archive_compliance",
         "execution_date": ds,
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "retention_policy": {
-            "retention_days": retention_days,
+            "retention_days": RETENTION_DAYS,
             "cutoff_date": cutoff_date,
         },
         "results": {
@@ -193,13 +142,85 @@ def main():
         },
     }
 
-    report_key = "reports/compliance/audit-archive/%s/report.json" % ds
-    s3_client_report = boto3.client(
-        "s3",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region,
+
+def main():
+    print("[%s] audit_archive_weekly.py starting..." % now_str())
+
+    # ---- Load config ----
+    config = load_config()
+    aws_creds = aws_credentials(config)
+    archive_bucket = config.get("s3", "archive_bucket")
+
+    ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+
+    cutoff_date = (
+        datetime.strptime(ds, "%Y-%m-%d") - timedelta(days=RETENTION_DAYS)
+    ).isoformat() + "Z"
+
+    print("[%s] Archiving events older than %d days (cutoff: %s)" % (
+        now_str(), RETENTION_DAYS, cutoff_date
+    ))
+
+    # ---- Scan DynamoDB for old audit events ----
+    dynamodb = boto3.resource("dynamodb", **aws_creds)
+    table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+
+    events_to_archive = scan_events_before(table, cutoff_date)
+
+    archive_count = len(events_to_archive)
+    print("[%s] Found %d audit events older than %d days" % (
+        now_str(), archive_count, RETENTION_DAYS
+    ))
+
+    if archive_count == 0:
+        print("[%s] No events to archive, exiting" % now_str())
+        sys.exit(0)
+
+    # ---- Compress to JSONL.gz ----
+    archive_key = "%s/year=%s/week=%s/audit_events.jsonl.gz" % (S3_PREFIX, ds[:4], ds)
+
+    buf = compress_events(events_to_archive)
+
+    compressed_size = buf.tell()
+    print("[%s] Compressed %d events to %.2f MB" % (
+        now_str(),
+        archive_count,
+        compressed_size / (1024 * 1024),
+    ))
+
+    # ---- Upload to S3 with Glacier storage class ----
+    s3_client = boto3.client("s3", **aws_creds)
+
+    s3_client.put_object(
+        Bucket=archive_bucket,
+        Key=archive_key,
+        Body=buf.getvalue(),
+        StorageClass="GLACIER",
     )
+
+    print("[%s] Archived to s3://%s/%s (GLACIER)" % (
+        now_str(), archive_bucket, archive_key
+    ))
+
+    # ---- Batch-delete archived records from DynamoDB ----
+    print("[%s] Deleting %d archived events from DynamoDB..." % (
+        now_str(), archive_count
+    ))
+
+    deleted_count = delete_archived_events(table, events_to_archive)
+
+    print("[%s] Deleted %d events from DynamoDB" % (
+        now_str(), deleted_count
+    ))
+
+    # ---- Generate compliance report ----
+    report = build_report(
+        ds, cutoff_date, archive_bucket, archive_key,
+        archive_count, deleted_count, compressed_size,
+    )
+
+    report_key = "reports/compliance/audit-archive/%s/report.json" % ds
+    s3_client_report = boto3.client("s3", **aws_creds)
     s3_client_report.put_object(
         Bucket=archive_bucket,
         Key=report_key,
@@ -207,18 +228,18 @@ def main():
     )
 
     print("[%s] Compliance report: %d archived, %d deleted, stored at s3://%s/%s" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        now_str(),
         archive_count,
         deleted_count,
         archive_bucket,
         report_key,
     ))
-    print("[%s] audit_archive_weekly.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] audit_archive_weekly.py completed successfully" % now_str())
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (now_str(), str(e)))
         sys.exit(1)

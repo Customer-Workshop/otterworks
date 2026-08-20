@@ -16,44 +16,34 @@ from datetime import datetime, timezone
 
 import boto3
 
+FILES_PREFIX = "files/"
+QUARANTINE_PREFIX = "quarantined"
+DYNAMODB_TABLE_NAME = "otterworks-file-metadata"
 
-def main():
-    print("[%s] storage_cleanup_daily.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-    # ---- Load config ----
+def now_str():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def load_config():
     config = configparser.ConfigParser()
     config.read("/opt/etl/config.ini")
+    return config
 
-    aws_access_key = config.get("aws", "access_key")
-    aws_secret_key = config.get("aws", "secret_key")
-    aws_region = config.get("aws", "region")
 
-    file_storage_bucket = config.get("s3", "file_storage_bucket")
-    quarantine_bucket = config.get("s3", "quarantine_bucket")
-    data_lake_bucket = config.get("s3", "data_lake_bucket")
+def aws_credentials(config):
+    return {
+        "aws_access_key_id": config.get("aws", "access_key"),
+        "aws_secret_access_key": config.get("aws", "secret_key"),
+        "region_name": config.get("aws", "region"),
+    }
 
-    files_prefix = "files/"
-    quarantine_prefix = "quarantined"
-    dynamodb_table_name = "otterworks-file-metadata"
 
-    ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
-
-    # ---- List all S3 objects ----
-    print("[%s] Listing objects in s3://%s/%s" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), file_storage_bucket, files_prefix
-    ))
-
-    s3_client = boto3.client(
-        "s3",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region,
-    )
-
+def list_all_objects(s3_client, bucket, prefix):
     all_objects = []
     paginator = s3_client.get_paginator("list_objects_v2")
 
-    for page in paginator.paginate(Bucket=file_storage_bucket, Prefix=files_prefix):
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             all_objects.append({
                 "key": obj["Key"],
@@ -61,26 +51,10 @@ def main():
                 "last_modified": obj["LastModified"].isoformat(),
             })
 
-    total_objects = len(all_objects)
-    total_size_bytes = sum(o["size"] for o in all_objects)
+    return all_objects
 
-    print("[%s] Found %d objects in S3 (%d bytes total)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), total_objects, total_size_bytes
-    ))
 
-    # ---- List metadata references from DynamoDB ----
-    print("[%s] Scanning DynamoDB table %s for metadata references..." % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dynamodb_table_name
-    ))
-
-    dynamodb = boto3.resource(
-        "dynamodb",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region,
-    )
-    table = dynamodb.Table(dynamodb_table_name)
-
+def scan_referenced_keys(table):
     referenced_keys = set()
     scan_kwargs = {
         "ProjectionExpression": "s3_key",
@@ -98,66 +72,46 @@ def main():
             break
         scan_kwargs["ExclusiveStartKey"] = last_key
 
-    print("[%s] Found %d S3 keys referenced in metadata" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(referenced_keys)
-    ))
+    return referenced_keys
 
-    # ---- Find orphaned objects ----
-    orphaned = []
-    orphaned_bytes = 0
 
-    for obj in all_objects:
-        if obj["key"] not in referenced_keys:
-            orphaned.append(obj)
-            orphaned_bytes += obj["size"]
+def find_orphans(all_objects, referenced_keys):
+    orphaned = [obj for obj in all_objects if obj["key"] not in referenced_keys]
+    orphaned_bytes = sum(obj["size"] for obj in orphaned)
+    return orphaned, orphaned_bytes
 
-    orphaned_count = len(orphaned)
 
-    print("[%s] Found %d orphaned objects (%.2f MB)" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        orphaned_count,
-        orphaned_bytes / (1024 * 1024),
-    ))
-
-    if orphaned_count == 0:
-        print("[%s] No orphaned objects to quarantine" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        # Still generate report even with 0 orphans
-    else:
-        # ---- Move orphaned objects to quarantine ----
-        print("[%s] Moving %d orphaned objects to quarantine..." % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), orphaned_count
-        ))
-
+def quarantine_orphans(s3_client, orphaned, source_bucket, quarantine_bucket, ds):
     moved_count = 0
     failed_count = 0
 
     for obj in orphaned:
         source_key = obj["key"]
-        dest_key = "%s/%s/%s" % (quarantine_prefix, ds, source_key)
+        dest_key = "%s/%s/%s" % (QUARANTINE_PREFIX, ds, source_key)
 
         try:
             s3_client.copy_object(
                 Bucket=quarantine_bucket,
                 Key=dest_key,
-                CopySource={"Bucket": file_storage_bucket, "Key": source_key},
+                CopySource={"Bucket": source_bucket, "Key": source_key},
                 MetadataDirective="COPY",
             )
-            s3_client.delete_object(Bucket=file_storage_bucket, Key=source_key)
+            s3_client.delete_object(Bucket=source_bucket, Key=source_key)
             moved_count += 1
         except Exception as e:
             print("[%s] WARNING: Failed to quarantine %s: %s" % (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"), source_key, str(e)
+                now_str(), source_key, str(e)
             ))
             failed_count += 1
 
-    if orphaned_count > 0:
-        print("[%s] Quarantined %d objects (%d failed) to s3://%s/%s/%s/" % (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            moved_count, failed_count,
-            quarantine_bucket, quarantine_prefix, ds,
-        ))
+    return moved_count, failed_count
 
-    # ---- Generate storage cleanup report ----
+
+def build_report(ds, inventory, orphan_stats, cleanup_stats, quarantine_bucket):
+    total_objects, total_size_bytes = inventory
+    orphaned_count, orphaned_bytes = orphan_stats
+    moved_count, failed_count = cleanup_stats
+
     savings_gb = orphaned_bytes / (1024 ** 3)
     estimated_monthly_savings = round(savings_gb * 0.023, 4)
 
@@ -189,13 +143,90 @@ def main():
         },
     }
 
-    report_key = "reports/storage-cleanup/%s/report.json" % ds
-    s3_client_report = boto3.client(
-        "s3",
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region,
+    return report, savings_gb, estimated_monthly_savings
+
+
+def main():
+    print("[%s] storage_cleanup_daily.py starting..." % now_str())
+
+    # ---- Load config ----
+    config = load_config()
+    aws_creds = aws_credentials(config)
+
+    file_storage_bucket = config.get("s3", "file_storage_bucket")
+    quarantine_bucket = config.get("s3", "quarantine_bucket")
+    data_lake_bucket = config.get("s3", "data_lake_bucket")
+
+    ds = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+
+    # ---- List all S3 objects ----
+    print("[%s] Listing objects in s3://%s/%s" % (
+        now_str(), file_storage_bucket, FILES_PREFIX
+    ))
+
+    s3_client = boto3.client("s3", **aws_creds)
+
+    all_objects = list_all_objects(s3_client, file_storage_bucket, FILES_PREFIX)
+    total_objects = len(all_objects)
+    total_size_bytes = sum(o["size"] for o in all_objects)
+
+    print("[%s] Found %d objects in S3 (%d bytes total)" % (
+        now_str(), total_objects, total_size_bytes
+    ))
+
+    # ---- List metadata references from DynamoDB ----
+    print("[%s] Scanning DynamoDB table %s for metadata references..." % (
+        now_str(), DYNAMODB_TABLE_NAME
+    ))
+
+    dynamodb = boto3.resource("dynamodb", **aws_creds)
+    referenced_keys = scan_referenced_keys(dynamodb.Table(DYNAMODB_TABLE_NAME))
+
+    print("[%s] Found %d S3 keys referenced in metadata" % (
+        now_str(), len(referenced_keys)
+    ))
+
+    # ---- Find orphaned objects ----
+    orphaned, orphaned_bytes = find_orphans(all_objects, referenced_keys)
+    orphaned_count = len(orphaned)
+
+    print("[%s] Found %d orphaned objects (%.2f MB)" % (
+        now_str(),
+        orphaned_count,
+        orphaned_bytes / (1024 * 1024),
+    ))
+
+    if orphaned_count == 0:
+        print("[%s] No orphaned objects to quarantine" % now_str())
+        # Still generate report even with 0 orphans
+    else:
+        # ---- Move orphaned objects to quarantine ----
+        print("[%s] Moving %d orphaned objects to quarantine..." % (
+            now_str(), orphaned_count
+        ))
+
+    moved_count, failed_count = quarantine_orphans(
+        s3_client, orphaned, file_storage_bucket, quarantine_bucket, ds
     )
+
+    if orphaned_count > 0:
+        print("[%s] Quarantined %d objects (%d failed) to s3://%s/%s/%s/" % (
+            now_str(),
+            moved_count, failed_count,
+            quarantine_bucket, QUARANTINE_PREFIX, ds,
+        ))
+
+    # ---- Generate storage cleanup report ----
+    report, savings_gb, estimated_monthly_savings = build_report(
+        ds,
+        (total_objects, total_size_bytes),
+        (orphaned_count, orphaned_bytes),
+        (moved_count, failed_count),
+        quarantine_bucket,
+    )
+
+    report_key = "reports/storage-cleanup/%s/report.json" % ds
+    s3_client_report = boto3.client("s3", **aws_creds)
     s3_client_report.put_object(
         Bucket=data_lake_bucket,
         Key=report_key,
@@ -203,15 +234,15 @@ def main():
     )
 
     print("[%s] Storage cleanup report: %d orphans quarantined, %.4f GB freed, ~$%.4f/month saved" % (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        now_str(),
         moved_count, savings_gb, estimated_monthly_savings,
     ))
-    print("[%s] storage_cleanup_daily.py completed successfully" % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("[%s] storage_cleanup_daily.py completed successfully" % now_str())
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print("[%s] FATAL: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(e)))
+        print("[%s] FATAL: %s" % (now_str(), str(e)))
         sys.exit(1)

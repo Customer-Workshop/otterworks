@@ -1,11 +1,17 @@
 import os
 import time
+import uuid
 
 import pytest
 import socketio
 
 
 pytestmark = [pytest.mark.api_flow, pytest.mark.websocket]
+
+
+def _rejected_token() -> str:
+    """Random value that is never a valid access token, used to assert auth rejection."""
+    return f"rejected-{uuid.uuid4().hex}"
 
 
 def _collab_url(base_url: str) -> str:
@@ -21,7 +27,7 @@ def test_socketio_rejects_missing_or_invalid_token(base_url):
     with pytest.raises(socketio.exceptions.ConnectionError):
         invalid.connect(
             _collab_url(base_url),
-            auth={"token": "not-a-valid-token"},
+            auth={"token": _rejected_token()},
             transports=["websocket"],
         )
 

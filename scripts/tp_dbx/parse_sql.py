@@ -171,6 +171,7 @@ def register_files(n: ParseNames, feed: str, entries: list[tuple[str, str | None
     Every value is validated before it reaches a SQL literal (the staging
     directory is shared, so file names are untrusted input), like
     showcase.py's as_code/as_int."""
+    check_feed(feed)
     for name, period, year, size in entries:
         if not re.fullmatch(r"[A-Za-z0-9._-]+", name):
             raise ValueError(f"refusing to register file with unsafe name: {name!r}")
@@ -178,8 +179,6 @@ def register_files(n: ParseNames, feed: str, entries: list[tuple[str, str | None
             raise ValueError(f"refusing to register non-YYYYMM period: {period!r}")
         if (year is not None and not isinstance(year, int)) or not isinstance(size, int):
             raise ValueError(f"refusing to register non-integer year/size for {name!r}")
-    if not re.fullmatch(r"[a-z0-9_]+", feed):
-        raise ValueError(f"refusing to register unsafe feed name: {feed!r}")
     rows = ",\n".join(
         f"('{name}', '{feed}', {f_sql(period)}, {f_sql(year)}, {size}, current_timestamp())"
         for name, period, year, size in entries
@@ -192,6 +191,13 @@ def register_files(n: ParseNames, feed: str, entries: list[tuple[str, str | None
     ]
 
 
+def check_feed(feed: str) -> str:
+    """Feed names reach SQL literals and volume paths; only allow identifiers."""
+    if not re.fullmatch(r"[a-z0-9_]+", feed):
+        raise ValueError(f"refusing unsafe feed name: {feed!r}")
+    return feed
+
+
 def f_sql(value) -> str:
     if value is None:
         return "NULL"
@@ -199,6 +205,7 @@ def f_sql(value) -> str:
 
 
 def load_bronze(n: ParseNames, feed: str, path: str, replace_feed: bool) -> list[str]:
+    check_feed(feed)
     statements = []
     if replace_feed:
         statements.append(f"DELETE FROM {n.bronze} WHERE source_feed = '{feed}'")

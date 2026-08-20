@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -530,7 +531,8 @@ def main() -> int:
     parser.add_argument("--ns", default="w2parse")
     parser.add_argument("--catalog", default="ow_tp")
     parser.add_argument("--warehouse-id", default="")
-    parser.add_argument("--legacy-root", default=str(Path.home() / "otterworks-legacy"))
+    parser.add_argument("--legacy-root",
+                        default=os.environ.get("OTTERWORKS_LEGACY_ROOT", "/tmp/otterworks-legacy"))
     parser.add_argument("--source-ns", default="demo",
                         help="namespace the legacy generator produced the drops under")
     parser.add_argument("--feed", choices=["seed", "history"], default="seed")

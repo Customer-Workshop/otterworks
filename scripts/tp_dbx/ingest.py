@@ -188,6 +188,7 @@ def cmd_run(dbx: Databricks, args) -> int:
     audit: list[tuple] = []
     landed = skipped = 0
     staging = n.staging_dir(run_id)
+    failure: DbxError | None = None
     try:
         for path in candidates:
             name = path.name
@@ -222,13 +223,20 @@ def cmd_run(dbx: Databricks, args) -> int:
                               "an overlapping run committed this file first"))
             if not args.keep_source:
                 path.unlink()
+    except DbxError as exc:
+        failure = exc
     finally:
         for entry in dbx.list_dir(staging):
             dbx.delete_file(entry.get("path", ""))
         dbx.delete_dir(staging)
-    audit.append((run_id, "NULL", "NULL", "NULL", "run_summary", "NULL",
-                  f"files={landed} skipped={skipped} scanned={len(candidates)} status=success"))
+    status = "failed" if failure else "success"
+    detail = f"files={landed} skipped={skipped} scanned={len(candidates)} status={status}"
+    if failure:
+        detail += f" error={failure}"
+    audit.append((run_id, "NULL", "NULL", "NULL", "run_summary", "NULL", detail))
     record_runs(dbx, n, audit)
+    if failure:
+        raise failure
     print(f"run {run_id}: scanned={len(candidates)} landed={landed} skipped={skipped}")
     return 0
 
@@ -263,7 +271,10 @@ def cmd_retention(dbx: Databricks, args) -> int:
         f"AND first_landed_at < current_timestamp() - INTERVAL {RETENTION_DAYS} DAYS"
     ).dicts()
     for row in expired:
-        dbx.delete_file(row["landed_path"])
+        status = dbx.delete_file(row["landed_path"])
+        if not (200 <= status < 300 or status == 404):
+            raise DbxError(f"{row['file_name']}: retention delete of {row['landed_path']} "
+                           f"-> HTTP {status}; manifest row kept")
         dbx.sql_ok(f"DELETE FROM {n.manifest} WHERE file_name = '{esc(row['file_name'])}'")
     print(f"retention {RETENTION_CLASS}: {len(expired)} expired object(s) removed")
     return 0
@@ -382,7 +393,11 @@ def main() -> int:
         "retention": cmd_retention, "job": cmd_job, "run-job": cmd_run_job,
         "status": cmd_status,
     }[args.command]
-    return handler(dbx, args)
+    try:
+        return handler(dbx, args)
+    except DbxError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

@@ -25,9 +25,28 @@ URL is substituted from the `API_GATEWAY_URL` env var at container start.
 | `npm run test:e2e` | Playwright e2e (expects the backend stack running) |
 | `npm run test:bdd` | Cucumber BDD suite |
 
+Each portal bounded context is reached same-origin through its own proxy prefix, whose target
+is selected by one env var — the same var in dev (Vite) and in the container image (nginx).
+Every var points at an extracted service; the legacy portal is a shell that no longer serves
+these routes, so pointing a var at `:8095` gets `404`, not a rollback. Run the backends with
+`make portal-up NS=dev` from the repo root; the switch is described in
+`docs/migration/traffic-routing.md` and the rollback path in `docs/migration/decommission.md`.
+
+| Context | Prefix | Env var | Dev default | Container default |
+|---|---|---|---|---|
+| Announcements | `/announcements-api` | `ANNOUNCEMENTS_API_URL` | `http://localhost:8101` | `http://announcements-service:8101` |
+| User preferences | `/user-preferences-api` | `USER_PREFERENCES_API_URL` | `http://localhost:8102` | `http://user-preferences-service:8102` |
+| Feedback | `/feedback-api` | `FEEDBACK_API_URL` | `http://localhost:8103` | `http://feedback-service:8103` |
+
+Announcements (`/announcements`) is the slice that uses this today: it calls
+`/announcements-api/api/announcements`. The other two prefixes are wired ahead of their UI
+slices so every context is switched the same way.
+
 Build-time env vars (Vite): `VITE_COLLAB_WS_URL` (collab websocket URL, default
 `ws://localhost:8085`, upgraded to `wss` when the page is served over https; native
-defaults below), `VITE_API_BASE_URL` (native builds only, see below).
+defaults below), `VITE_API_BASE_URL` (native builds only, see below),
+`VITE_ANNOUNCEMENTS_API_URL` (overrides the whole announcements base URL for builds with no
+same-origin proxy; defaults to `<origin>/announcements-api`).
 
 ## Docker
 

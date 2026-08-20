@@ -73,7 +73,33 @@ modules:
     # hit here would still be reported, which is the point of measuring it.
     cases: null
 
+  # The extracted portal services (legacy-portal decomposition). Registered as the
+  # aggregator: `dependency:tree` and `test` run across the whole reactor, so every
+  # module under it — portal-common today, one service per bounded context as Wave 1
+  # lands — is measured by this one entry.
+  - id: portal
+    path: services/portal
+    build: maven
+    java_home:
+      - $JAVA_HOME_21_X64
+      - /usr/lib/jvm/java-21-openjdk-amd64
+    # Boot 3.x on JDK 21, wrapper-pinned to the same Maven 3.9.9 as legacy-portal.
+    tool:
+      - ./mvnw
+      - mvn
+    test: -B test
+    # No interpolation call path: these services never depend on commons-text.
+    # Measured for the dependency tree, which is the point.
+    cases: null
+
 exempt:
+  - path: services/portal
+    reason: >
+      Reactor of the `portal` module registered above, which measures every child in
+      one build; the child poms have no independent build. Also covers
+      services/portal/skeleton, a copy-me template rather than a module — it is not in
+      <modules> and never resolves on its own.
+
   - path: frontend/client-app/mobile/android
     reason: >
       Capacitor Android shell. Ships no server-side JVM dependencies and needs the

@@ -1,0 +1,52 @@
+# Announcements service configuration, copied from services/portal/skeleton/application.yml.
+#
+# Everything here is the shared pattern and must not diverge between the three services: the
+# error envelopes and the health surface depend on it.
+spring:
+  application:
+    # portal-common's /health echoes this value verbatim; the contracts pin the string.
+    name: announcements-service
+  datasource:
+    # Supplied by the environment in compose/Helm. No credentials in source, ever.
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      # The monolith runs ddl-auto: update. Extracted services never do — Flyway owns the
+      # schema. Changing this is a contract violation.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8101
+  error:
+    # These four are Boot defaults and are restated because parity depends on them: the
+    # "default envelope" is {"timestamp","status","error","path"} with no message and no
+    # per-field detail. Turning any of these on breaks parity for validation failures.
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db

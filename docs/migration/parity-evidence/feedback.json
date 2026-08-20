@@ -1,0 +1,1796 @@
+[
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/average-rating"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "averageRating": 0.0
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "averageRating": 0.0
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=nobody"
+    },
+    "legacy": {
+      "status": 200,
+      "body": []
+    },
+    "candidate": {
+      "status": 200,
+      "body": []
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback"
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 5,
+        "message": "great"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:1>",
+        "userId": "u1",
+        "rating": 5,
+        "message": "great",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:1>",
+        "userId": "u1",
+        "rating": 5,
+        "message": "great",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/average-rating"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "averageRating": 5.0
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "averageRating": 5.0
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 1,
+        "message": "bad"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:2>",
+        "userId": "u1",
+        "rating": 1,
+        "message": "bad",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:2>",
+        "userId": "u1",
+        "rating": 1,
+        "message": "bad",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u2",
+        "rating": 3,
+        "message": "ok"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:3>",
+        "userId": "u2",
+        "rating": 3,
+        "message": "ok",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:3>",
+        "userId": "u2",
+        "rating": 3,
+        "message": "ok",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 4,
+        "message": "third for u1"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:4>",
+        "userId": "u1",
+        "rating": 4,
+        "message": "third for u1",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:4>",
+        "userId": "u1",
+        "rating": 4,
+        "message": "third for u1",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 0,
+        "message": "below range"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 6,
+        "message": "above range"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": -1,
+        "message": "negative"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 100,
+        "message": "far above"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "message": "absent rating binds to 0"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": null,
+        "message": "null rating binds to 0"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 3,
+        "message": ""
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 3,
+        "message": "   "
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 3,
+        "message": null
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 3
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 3,
+        "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "",
+        "rating": 3,
+        "message": "blank user"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "   ",
+        "rating": 3,
+        "message": "whitespace user"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": null,
+        "rating": 3,
+        "message": "null user"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "rating": 3,
+        "message": "absent user"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+        "rating": 3,
+        "message": "oversized user"
+      }
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": "not json"
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": "{\"userId\":\"u1\",\"rating\":"
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": ""
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": "[]"
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+        "rating": 2,
+        "message": "max length user id"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:5>",
+        "userId": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+        "rating": 2,
+        "message": "max length user id",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:5>",
+        "userId": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+        "rating": 2,
+        "message": "max length user id",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u3",
+        "rating": 5,
+        "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:6>",
+        "userId": "u3",
+        "rating": 5,
+        "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:6>",
+        "userId": "u3",
+        "rating": 5,
+        "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u4",
+        "rating": 3,
+        "message": "h\u00e9llo \"quoted\" \\ slash\ttab \u00fc \ud83e\udda6"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:7>",
+        "userId": "u4",
+        "rating": 3,
+        "message": "h\u00e9llo \"quoted\" \\ slash\ttab \u00fc \ud83e\udda6",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:7>",
+        "userId": "u4",
+        "rating": 3,
+        "message": "h\u00e9llo \"quoted\" \\ slash\ttab \u00fc \ud83e\udda6",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 2,
+        "message": "unknown fields ignored",
+        "id": 99,
+        "moderated": true,
+        "createdAt": "1999-01-01T00:00:00Z",
+        "deleted": true
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:8>",
+        "userId": "u1",
+        "rating": 2,
+        "message": "unknown fields ignored",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:8>",
+        "userId": "u1",
+        "rating": 2,
+        "message": "unknown fields ignored",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=u1"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:8>",
+          "userId": "u1",
+          "rating": 2,
+          "message": "unknown fields ignored",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:4>",
+          "userId": "u1",
+          "rating": 4,
+          "message": "third for u1",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:2>",
+          "userId": "u1",
+          "rating": 1,
+          "message": "bad",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:1>",
+          "userId": "u1",
+          "rating": 5,
+          "message": "great",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:8>",
+          "userId": "u1",
+          "rating": 2,
+          "message": "unknown fields ignored",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:4>",
+          "userId": "u1",
+          "rating": 4,
+          "message": "third for u1",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:2>",
+          "userId": "u1",
+          "rating": 1,
+          "message": "bad",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:1>",
+          "userId": "u1",
+          "rating": 5,
+          "message": "great",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=u2"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:3>",
+          "userId": "u2",
+          "rating": 3,
+          "message": "ok",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:3>",
+          "userId": "u2",
+          "rating": 3,
+          "message": "ok",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=u3"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:6>",
+          "userId": "u3",
+          "rating": 5,
+          "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:6>",
+          "userId": "u3",
+          "rating": 5,
+          "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=u4"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:7>",
+          "userId": "u4",
+          "rating": 3,
+          "message": "h\u00e9llo \"quoted\" \\ slash\ttab \u00fc \ud83e\udda6",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:7>",
+          "userId": "u4",
+          "rating": 3,
+          "message": "h\u00e9llo \"quoted\" \\ slash\ttab \u00fc \ud83e\udda6",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:5>",
+          "userId": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+          "rating": 2,
+          "message": "max length user id",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:5>",
+          "userId": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu",
+          "rating": 2,
+          "message": "max length user id",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=nobody"
+    },
+    "legacy": {
+      "status": 200,
+      "body": []
+    },
+    "candidate": {
+      "status": 200,
+      "body": []
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId="
+    },
+    "legacy": {
+      "status": 200,
+      "body": []
+    },
+    "candidate": {
+      "status": 200,
+      "body": []
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=u1&userId=u2"
+    },
+    "legacy": {
+      "status": 200,
+      "body": []
+    },
+    "candidate": {
+      "status": 200,
+      "body": []
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userid=u1"
+    },
+    "legacy": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 400,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 400,
+        "error": "Bad Request",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?limit=1&userId=u1"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:8>",
+          "userId": "u1",
+          "rating": 2,
+          "message": "unknown fields ignored",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:4>",
+          "userId": "u1",
+          "rating": 4,
+          "message": "third for u1",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:2>",
+          "userId": "u1",
+          "rating": 1,
+          "message": "bad",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:1>",
+          "userId": "u1",
+          "rating": 5,
+          "message": "great",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:8>",
+          "userId": "u1",
+          "rating": 2,
+          "message": "unknown fields ignored",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:4>",
+          "userId": "u1",
+          "rating": 4,
+          "message": "third for u1",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:2>",
+          "userId": "u1",
+          "rating": 1,
+          "message": "bad",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:1>",
+          "userId": "u1",
+          "rating": 5,
+          "message": "great",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/average-rating"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "averageRating": 3.125
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "averageRating": 3.125
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u5",
+        "rating": 5,
+        "message": "ninth row"
+      }
+    },
+    "legacy": {
+      "status": 201,
+      "body": {
+        "id": "<id:9>",
+        "userId": "u5",
+        "rating": 5,
+        "message": "ninth row",
+        "createdAt": "<instant>"
+      }
+    },
+    "candidate": {
+      "status": 201,
+      "body": {
+        "id": "<id:9>",
+        "userId": "u5",
+        "rating": 5,
+        "message": "ninth row",
+        "createdAt": "<instant>"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/average-rating"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "averageRating": 3.3333333333333335
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "averageRating": 3.3333333333333335
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/1"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/abc"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/abc"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/abc"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/feedback",
+      "body": {
+        "userId": "u1",
+        "rating": 1,
+        "message": "update"
+      }
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PATCH",
+      "path": "/api/feedback",
+      "body": {
+        "rating": 1
+      }
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "DELETE",
+      "path": "/api/feedback"
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback/1",
+      "body": {
+        "rating": 1
+      }
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/feedback/1",
+      "body": {
+        "rating": 1
+      }
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PATCH",
+      "path": "/api/feedback/1",
+      "body": {
+        "rating": 1
+      }
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "DELETE",
+      "path": "/api/feedback/1"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "DELETE",
+      "path": "/api/feedback/1/moderate"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1/moderate"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/1/moderate"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "POST",
+      "path": "/api/feedback/average-rating",
+      "body": {
+        "averageRating": 1.0
+      }
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback/average-rating"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback/average-rating"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "PUT",
+      "path": "/api/feedback/average-rating",
+      "body": {
+        "averageRating": 1.0
+      }
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback/average-rating"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback/average-rating"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "DELETE",
+      "path": "/api/feedback/average-rating"
+    },
+    "legacy": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback/average-rating"
+      }
+    },
+    "candidate": {
+      "status": 405,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 405,
+        "error": "Method Not Allowed",
+        "path": "/api/feedback/average-rating"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/average-rating/u1"
+    },
+    "legacy": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/average-rating/u1"
+      }
+    },
+    "candidate": {
+      "status": 404,
+      "body": {
+        "timestamp": "<instant>",
+        "status": 404,
+        "error": "Not Found",
+        "path": "/api/feedback/average-rating/u1"
+      }
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback?userId=u1"
+    },
+    "legacy": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:8>",
+          "userId": "u1",
+          "rating": 2,
+          "message": "unknown fields ignored",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:4>",
+          "userId": "u1",
+          "rating": 4,
+          "message": "third for u1",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:2>",
+          "userId": "u1",
+          "rating": 1,
+          "message": "bad",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:1>",
+          "userId": "u1",
+          "rating": 5,
+          "message": "great",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "candidate": {
+      "status": 200,
+      "body": [
+        {
+          "id": "<id:8>",
+          "userId": "u1",
+          "rating": 2,
+          "message": "unknown fields ignored",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:4>",
+          "userId": "u1",
+          "rating": 4,
+          "message": "third for u1",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:2>",
+          "userId": "u1",
+          "rating": 1,
+          "message": "bad",
+          "createdAt": "<instant>"
+        },
+        {
+          "id": "<id:1>",
+          "userId": "u1",
+          "rating": 5,
+          "message": "great",
+          "createdAt": "<instant>"
+        }
+      ]
+    },
+    "match": true
+  },
+  {
+    "case": {
+      "method": "GET",
+      "path": "/api/feedback/average-rating"
+    },
+    "legacy": {
+      "status": 200,
+      "body": {
+        "averageRating": 3.3333333333333335
+      }
+    },
+    "candidate": {
+      "status": 200,
+      "body": {
+        "averageRating": 3.3333333333333335
+      }
+    },
+    "match": true
+  }
+]

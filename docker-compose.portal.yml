@@ -1,0 +1,151 @@
+# Shared compose profile for the legacy-portal decomposition (strangler fig).
+#
+# FROZEN in Wave 0. Each extracted service already has its service + database entry below; a
+# Wave 1 child fills in its own build context and Flyway migrations and must not restructure
+# this file, rename services, change ports, or add a second compose file. If a child believes
+# this file is wrong it stops and reports to the parent session.
+#
+# Compose profiles gate each context so the stack is usable before all three land:
+#   docker compose -f docker-compose.portal.yml --profile legacy --profile announcements up -d
+#   make portal-up NS=dev            # legacy + every context that exists
+#
+# Everything is bound to 127.0.0.1. The extracted services are internal-only: they carry no
+# authentication (see docs/migration/contracts/README.md), exactly like the monolith, and must
+# never be exposed beyond the gateway.
+services:
+  # --- what is left of the monolith: a shell that serves /health and the actuator endpoints
+  # only. It serves no bounded context, so it is neither the parity reference nor a rollback
+  # target any more; parity replays against the pinned pre-retirement image and rollback is a
+  # redeploy of that image (docs/migration/decommission.md). Retiring this entry is the last
+  # decommission step. ---
+  legacy-portal:
+    profiles: ["legacy"]
+    build:
+      context: ./services/legacy-portal
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${PORTAL_LEGACY_PORT:-8095}:8095"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8095/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- announcements ---
+  announcements-db:
+    profiles: ["announcements"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: announcements_${NS:-dev}
+      POSTGRES_USER: announcements
+      POSTGRES_PASSWORD: ${ANNOUNCEMENTS_DB_PASSWORD:-announcements}
+    ports:
+      - "127.0.0.1:${ANNOUNCEMENTS_DB_PORT:-55501}:5432"
+    volumes:
+      - announcements-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U announcements -d announcements_${NS:-dev}"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  announcements-service:
+    profiles: ["announcements"]
+    build:
+      context: ./services/portal
+      dockerfile: announcements-service/Dockerfile
+    depends_on:
+      announcements-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://announcements-db:5432/announcements_${NS:-dev}
+      SPRING_DATASOURCE_USERNAME: announcements
+      SPRING_DATASOURCE_PASSWORD: ${ANNOUNCEMENTS_DB_PASSWORD:-announcements}
+    ports:
+      - "127.0.0.1:${ANNOUNCEMENTS_PORT:-8101}:8101"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8101/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- user preferences ---
+  user-preferences-db:
+    profiles: ["user-preferences"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: user_preferences_${NS:-dev}
+      POSTGRES_USER: user_preferences
+      POSTGRES_PASSWORD: ${USER_PREFERENCES_DB_PASSWORD:-user_preferences}
+    ports:
+      - "127.0.0.1:${USER_PREFERENCES_DB_PORT:-55502}:5432"
+    volumes:
+      - user-preferences-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_preferences -d user_preferences_${NS:-dev}"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  user-preferences-service:
+    profiles: ["user-preferences"]
+    build:
+      context: ./services/portal
+      dockerfile: user-preferences-service/Dockerfile
+    depends_on:
+      user-preferences-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-preferences-db:5432/user_preferences_${NS:-dev}
+      SPRING_DATASOURCE_USERNAME: user_preferences
+      SPRING_DATASOURCE_PASSWORD: ${USER_PREFERENCES_DB_PASSWORD:-user_preferences}
+    ports:
+      - "127.0.0.1:${USER_PREFERENCES_PORT:-8102}:8102"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8102/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- feedback ---
+  feedback-db:
+    profiles: ["feedback"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: feedback_${NS:-dev}
+      POSTGRES_USER: feedback
+      POSTGRES_PASSWORD: ${FEEDBACK_DB_PASSWORD:-feedback}
+    ports:
+      - "127.0.0.1:${FEEDBACK_DB_PORT:-55503}:5432"
+    volumes:
+      - feedback-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedback -d feedback_${NS:-dev}"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  feedback-service:
+    profiles: ["feedback"]
+    build:
+      context: ./services/portal
+      dockerfile: feedback-service/Dockerfile
+    depends_on:
+      feedback-db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://feedback-db:5432/feedback_${NS:-dev}
+      SPRING_DATASOURCE_USERNAME: feedback
+      SPRING_DATASOURCE_PASSWORD: ${FEEDBACK_DB_PASSWORD:-feedback}
+    ports:
+      - "127.0.0.1:${FEEDBACK_PORT:-8103}:8103"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8103/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  announcements-db-data:
+  user-preferences-db-data:
+  feedback-db-data:

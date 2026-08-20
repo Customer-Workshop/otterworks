@@ -11,6 +11,7 @@ import {
   Trash2,
   Star,
   TrendingUp,
+  Megaphone,
   Menu,
   X,
   Plus,
@@ -52,6 +53,7 @@ const navGroups: NavGroup[] = [
       { href: "/shared", label: "Shared with me", icon: Share2 },
       { href: "/starred", label: "Starred", icon: Star },
       { href: "/notifications", label: "Notifications", icon: Bell },
+      { href: "/announcements", label: "Announcements", icon: Megaphone },
     ],
   },
   {

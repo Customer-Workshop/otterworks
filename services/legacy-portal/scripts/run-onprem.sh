@@ -3,12 +3,11 @@
 # Run legacy-portal directly on a VM / on-prem host (no containers, no Kubernetes).
 #
 # This mirrors how the component is deployed today: a plain Spring Boot fat JAR run
-# on a host, typically under systemd (see ../deploy/legacy-portal.service). By default
-# it uses the embedded H2 database so it runs self-contained on a single VM; point it at
-# a real PostgreSQL by exporting SPRING_PROFILES_ACTIVE=postgres and SPRING_DATASOURCE_*.
+# on a host, typically under systemd (see ../deploy/legacy-portal.service). The app is the
+# post-decomposition shell — it needs no database at all.
 #
 # Usage:
-#   ./scripts/run-onprem.sh            # build (if needed) + run with embedded H2
+#   ./scripts/run-onprem.sh            # build (if needed) + run
 #   SKIP_BUILD=1 ./scripts/run-onprem.sh
 # ------------------------------------------------------------------------------
 set -euo pipefail

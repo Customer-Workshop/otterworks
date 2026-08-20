@@ -43,6 +43,12 @@ healthCheck:
 
 env:
   API_GATEWAY_URL: "http://api-gateway:8080"
+  # Portal backend per bounded context; see docs/migration/traffic-routing.md. The monolith is
+  # a shell and no longer serves these routes, so there is no config-change rollback to it;
+  # the break-glass path is in docs/migration/decommission.md.
+  ANNOUNCEMENTS_API_URL: "http://announcements-service:8101"
+  USER_PREFERENCES_API_URL: "http://user-preferences-service:8102"
+  FEEDBACK_API_URL: "http://feedback-service:8103"
 
 monitoring:
   enabled: true

@@ -17,9 +17,9 @@
     <version>0.1.0</version>
     <packaging>jar</packaging>
     <name>OtterWorks Legacy Portal</name>
-    <description>Legacy modular monolith bundling three bounded contexts (announcements,
-        user-preferences, feedback) in one deployable. Runs on a VM today — a rehost and
-        monolith-decomposition "before" state.</description>
+    <description>Retired modular monolith, reduced to its shell. Its three bounded contexts
+        (announcements, user-preferences, feedback) are served by the extracted portal services;
+        what remains boots, answers /health and the actuator endpoints, and owns no data.</description>
 
     <properties>
         <!-- LEGACY: Java 11 source/target. Upgrade target: Java 17+ -->
@@ -38,14 +38,6 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
@@ -60,19 +52,6 @@
             <groupId>commons-beanutils</groupId>
             <artifactId>commons-beanutils</artifactId>
             <version>1.11.0</version>
-        </dependency>
-
-        <!-- Embedded DB used by the default profile, run-onprem.sh, and tests. -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- PostgreSQL driver for the on-prem "postgres" profile (docker-compose.onprem.yml). -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <dependency>

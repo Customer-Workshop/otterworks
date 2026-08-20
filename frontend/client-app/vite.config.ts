@@ -12,6 +12,28 @@ const apiProxy = {
     changeOrigin: true,
   },
 };
+// Each portal bounded context is reached same-origin through its own /<context>-api prefix,
+// and one env var per context selects which backend serves it — the extracted service in
+// every environment now that the monolith no longer serves these routes. The prefix is
+// stripped and nothing else changes. See docs/migration/traffic-routing.md.
+const portalProxy = (prefix: string, target: string) => ({
+  [`/${prefix}`]: {
+    target,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(new RegExp(`^/${prefix}`), ""),
+  },
+});
+const portalProxies = {
+  ...portalProxy(
+    "announcements-api",
+    process.env.ANNOUNCEMENTS_API_URL || "http://localhost:8101",
+  ),
+  ...portalProxy(
+    "user-preferences-api",
+    process.env.USER_PREFERENCES_API_URL || "http://localhost:8102",
+  ),
+  ...portalProxy("feedback-api", process.env.FEEDBACK_API_URL || "http://localhost:8103"),
+};
 const billingProxy = {
   "/billing-api": {
     target: process.env.BILLING_SERVICE_URL || "http://localhost:12109",
@@ -30,11 +52,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: { ...apiProxy, ...billingProxy },
+    proxy: { ...apiProxy, ...portalProxies, ...billingProxy },
   },
   preview: {
     port: 3000,
-    proxy: { ...apiProxy, ...billingProxy },
+    proxy: { ...apiProxy, ...portalProxies, ...billingProxy },
   },
   test: {
     include: ["src/**/*.{test,spec}.{ts,tsx}"],

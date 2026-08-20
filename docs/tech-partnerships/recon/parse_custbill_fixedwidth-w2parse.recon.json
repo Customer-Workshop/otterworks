@@ -1,0 +1,488 @@
+{
+  "kind": "recon-report",
+  "unit": "parse_custbill_fixedwidth",
+  "namespace": "w2parse",
+  "generated_at": "2026-08-20T04:00:37Z",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "PRS-01",
+      "expected": {
+        "body_lines": 2980,
+        "silver_plus_quarantined": 2980,
+        "hdr_trl_in_silver": 0
+      },
+      "actual": {
+        "body_lines": 2980,
+        "silver_plus_quarantined": 2980,
+        "hdr_trl_in_silver": 0
+      },
+      "source_of_truth": "ow_tp.bronze.custbill_parse_raw_w2parse line inventory vs ow_tp.silver.custbill_records_w2parse/ow_tp.silver.custbill_quarantine_w2parse",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-02",
+      "expected": {
+        "amount": "decimal(12,2)",
+        "bill_date": "date",
+        "amount_cents": "bigint",
+        "record_classes": [
+          "CREDIT",
+          "INVOICE"
+        ]
+      },
+      "actual": {
+        "amount": "decimal(12,2)",
+        "bill_date": "date",
+        "amount_cents": "bigint",
+        "record_classes": [
+          "CREDIT",
+          "INVOICE"
+        ]
+      },
+      "source_of_truth": "DESCRIBE TABLE ow_tp.silver.custbill_records_w2parse and distinct record_class values",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-03",
+      "expected": {
+        "golden_rows": 100,
+        "matched_rows": 100,
+        "extra_silver_rows": 0,
+        "seed_quarantined": 0
+      },
+      "actual": {
+        "golden_rows": 100,
+        "matched_rows": 100,
+        "extra_silver_rows": 0,
+        "seed_quarantined": 0
+      },
+      "source_of_truth": "golden .psv from a real legacy run (sha256-pinned in the unit contract)",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-04",
+      "expected": {
+        "failed_files": [
+          "CUSTBILL_DEMO_201912.dat",
+          "CUSTBILL_DEMO_202012.dat",
+          "CUSTBILL_DEMO_202112.dat",
+          "CUSTBILL_DEMO_202212.dat",
+          "CUSTBILL_DEMO_202312.dat",
+          "CUSTBILL_DEMO_202412.dat"
+        ],
+        "gate_fails_run": true
+      },
+      "actual": {
+        "failed_files": [
+          "CUSTBILL_DEMO_201912.dat",
+          "CUSTBILL_DEMO_202012.dat",
+          "CUSTBILL_DEMO_202112.dat",
+          "CUSTBILL_DEMO_202212.dat",
+          "CUSTBILL_DEMO_202312.dat",
+          "CUSTBILL_DEMO_202412.dat"
+        ],
+        "gate_fails_run": true
+      },
+      "source_of_truth": "history manifest trailer_matches flags; parse_gate raise_error on the warehouse",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-05",
+      "expected": {
+        "declared_expectations": [
+          "EXP-LEN",
+          "EXP-ENC",
+          "EXP-DATE",
+          "EXP-AMT",
+          "EXP-CCY",
+          "EXP-RT",
+          "EXP-TRL"
+        ],
+        "unattributed_quarantine_rows": 0
+      },
+      "actual": {
+        "declared_expectations": [
+          "EXP-LEN",
+          "EXP-ENC",
+          "EXP-DATE",
+          "EXP-AMT",
+          "EXP-CCY",
+          "EXP-RT",
+          "EXP-TRL"
+        ],
+        "unattributed_quarantine_rows": 0
+      },
+      "source_of_truth": "ow_tp.ops.parse_expectations_w2parse contents; quarantine attribution join",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-06",
+      "expected": {
+        "expected_anomalies": 30,
+        "missing": [],
+        "unexpected": [],
+        "offset_mismatches": [],
+        "per_year_total_mismatches": []
+      },
+      "actual": {
+        "expected_anomalies": 30,
+        "missing": [],
+        "unexpected": [],
+        "offset_mismatches": [],
+        "per_year_total_mismatches": []
+      },
+      "source_of_truth": "history manifest planted_anomalies and per_year totals (sha256-pinned)",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-07",
+      "expected": {
+        "counts_unchanged": true,
+        "new_delta_version_written": true
+      },
+      "actual": {
+        "counts_unchanged": true,
+        "new_delta_version_written": true
+      },
+      "source_of_truth": "counts/totals before vs after re-parse; DESCRIBE HISTORY ow_tp.silver.custbill_records_w2parse (v10 -> v11)",
+      "result": "pass"
+    },
+    {
+      "id": "PRS-08",
+      "expected": {
+        "stray_landing_paths": [],
+        "line_invariant_violations": 0,
+        "failure_names_file": true
+      },
+      "actual": {
+        "stray_landing_paths": [],
+        "line_invariant_violations": 0,
+        "failure_names_file": true
+      },
+      "source_of_truth": "Files API listing of the feed dir; line-number invariant query; gate error text",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "silver/quarantine/parse_runs rebuilt from bronze; counts and cent totals identical ({'silver_rows': '2956', 'silver_cents': '1490137236', 'quarantined': '30', 'files': '74', 'failed_files': '6'}); silver Delta history advanced v10 -> v11 (INSERT OVERWRITE, replace not append)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      [
+        "CUSTBILL_DEMO_201903.dat",
+        "invalid_calendar_date",
+        "C000191426"
+      ],
+      [
+        "CUSTBILL_DEMO_201905.dat",
+        "nonnumeric_amount",
+        "C000813629"
+      ],
+      [
+        "CUSTBILL_DEMO_201909.dat",
+        "invalid_calendar_date",
+        "C000672239"
+      ],
+      [
+        "CUSTBILL_DEMO_201911.dat",
+        "nonnumeric_amount",
+        "C000821586"
+      ],
+      [
+        "CUSTBILL_DEMO_201912.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202003.dat",
+        "invalid_calendar_date",
+        "C000945545"
+      ],
+      [
+        "CUSTBILL_DEMO_202005.dat",
+        "nonnumeric_amount",
+        "C000569022"
+      ],
+      [
+        "CUSTBILL_DEMO_202009.dat",
+        "invalid_calendar_date",
+        "C000526358"
+      ],
+      [
+        "CUSTBILL_DEMO_202011.dat",
+        "nonnumeric_amount",
+        "C000576979"
+      ],
+      [
+        "CUSTBILL_DEMO_202012.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202103.dat",
+        "invalid_calendar_date",
+        "C000589653"
+      ],
+      [
+        "CUSTBILL_DEMO_202105.dat",
+        "nonnumeric_amount",
+        "C000363743"
+      ],
+      [
+        "CUSTBILL_DEMO_202109.dat",
+        "invalid_calendar_date",
+        "C000170466"
+      ],
+      [
+        "CUSTBILL_DEMO_202111.dat",
+        "nonnumeric_amount",
+        "C000371700"
+      ],
+      [
+        "CUSTBILL_DEMO_202112.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202203.dat",
+        "invalid_calendar_date",
+        "C000233762"
+      ],
+      [
+        "CUSTBILL_DEMO_202205.dat",
+        "nonnumeric_amount",
+        "C000158464"
+      ],
+      [
+        "CUSTBILL_DEMO_202209.dat",
+        "invalid_calendar_date",
+        "C000714575"
+      ],
+      [
+        "CUSTBILL_DEMO_202211.dat",
+        "nonnumeric_amount",
+        "C000166421"
+      ],
+      [
+        "CUSTBILL_DEMO_202212.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202303.dat",
+        "invalid_calendar_date",
+        "C000777870"
+      ],
+      [
+        "CUSTBILL_DEMO_202305.dat",
+        "nonnumeric_amount",
+        "C000853185"
+      ],
+      [
+        "CUSTBILL_DEMO_202309.dat",
+        "invalid_calendar_date",
+        "C000358683"
+      ],
+      [
+        "CUSTBILL_DEMO_202311.dat",
+        "nonnumeric_amount",
+        "C000861141"
+      ],
+      [
+        "CUSTBILL_DEMO_202312.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202403.dat",
+        "invalid_calendar_date",
+        "C000421979"
+      ],
+      [
+        "CUSTBILL_DEMO_202405.dat",
+        "nonnumeric_amount",
+        "C000647906"
+      ],
+      [
+        "CUSTBILL_DEMO_202409.dat",
+        "invalid_calendar_date",
+        "C000902792"
+      ],
+      [
+        "CUSTBILL_DEMO_202411.dat",
+        "nonnumeric_amount",
+        "C000655862"
+      ],
+      [
+        "CUSTBILL_DEMO_202412.dat",
+        "trailer_count_mismatch",
+        ""
+      ]
+    ],
+    "actual_set": [
+      [
+        "CUSTBILL_DEMO_201903.dat",
+        "invalid_calendar_date",
+        "C000191426"
+      ],
+      [
+        "CUSTBILL_DEMO_201905.dat",
+        "nonnumeric_amount",
+        "C000813629"
+      ],
+      [
+        "CUSTBILL_DEMO_201909.dat",
+        "invalid_calendar_date",
+        "C000672239"
+      ],
+      [
+        "CUSTBILL_DEMO_201911.dat",
+        "nonnumeric_amount",
+        "C000821586"
+      ],
+      [
+        "CUSTBILL_DEMO_201912.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202003.dat",
+        "invalid_calendar_date",
+        "C000945545"
+      ],
+      [
+        "CUSTBILL_DEMO_202005.dat",
+        "nonnumeric_amount",
+        "C000569022"
+      ],
+      [
+        "CUSTBILL_DEMO_202009.dat",
+        "invalid_calendar_date",
+        "C000526358"
+      ],
+      [
+        "CUSTBILL_DEMO_202011.dat",
+        "nonnumeric_amount",
+        "C000576979"
+      ],
+      [
+        "CUSTBILL_DEMO_202012.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202103.dat",
+        "invalid_calendar_date",
+        "C000589653"
+      ],
+      [
+        "CUSTBILL_DEMO_202105.dat",
+        "nonnumeric_amount",
+        "C000363743"
+      ],
+      [
+        "CUSTBILL_DEMO_202109.dat",
+        "invalid_calendar_date",
+        "C000170466"
+      ],
+      [
+        "CUSTBILL_DEMO_202111.dat",
+        "nonnumeric_amount",
+        "C000371700"
+      ],
+      [
+        "CUSTBILL_DEMO_202112.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202203.dat",
+        "invalid_calendar_date",
+        "C000233762"
+      ],
+      [
+        "CUSTBILL_DEMO_202205.dat",
+        "nonnumeric_amount",
+        "C000158464"
+      ],
+      [
+        "CUSTBILL_DEMO_202209.dat",
+        "invalid_calendar_date",
+        "C000714575"
+      ],
+      [
+        "CUSTBILL_DEMO_202211.dat",
+        "nonnumeric_amount",
+        "C000166421"
+      ],
+      [
+        "CUSTBILL_DEMO_202212.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202303.dat",
+        "invalid_calendar_date",
+        "C000777870"
+      ],
+      [
+        "CUSTBILL_DEMO_202305.dat",
+        "nonnumeric_amount",
+        "C000853185"
+      ],
+      [
+        "CUSTBILL_DEMO_202309.dat",
+        "invalid_calendar_date",
+        "C000358683"
+      ],
+      [
+        "CUSTBILL_DEMO_202311.dat",
+        "nonnumeric_amount",
+        "C000861141"
+      ],
+      [
+        "CUSTBILL_DEMO_202312.dat",
+        "trailer_count_mismatch",
+        ""
+      ],
+      [
+        "CUSTBILL_DEMO_202403.dat",
+        "invalid_calendar_date",
+        "C000421979"
+      ],
+      [
+        "CUSTBILL_DEMO_202405.dat",
+        "nonnumeric_amount",
+        "C000647906"
+      ],
+      [
+        "CUSTBILL_DEMO_202409.dat",
+        "invalid_calendar_date",
+        "C000902792"
+      ],
+      [
+        "CUSTBILL_DEMO_202411.dat",
+        "nonnumeric_amount",
+        "C000655862"
+      ],
+      [
+        "CUSTBILL_DEMO_202412.dat",
+        "trailer_count_mismatch",
+        ""
+      ]
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "undecodable_bytes (EXP-ENC) and unknown_currency/unknown_record_type (EXP-CCY/EXP-RT) quarantine paths: declared and generated into the parse SQL, but neither graded input plants such records, so they were not exercised against real defects",
+    "hex retention of undecodable raw bytes: bronze stores the line as decoded by read_files(text); a genuinely undecodable byte sequence was not exercised"
+  ],
+  "contract_decisions": [
+    "PRS-04 'quarantines its records' vs the manifest declaring the trailer-mismatched files' body records valid (they are counted in per_year totals and absent from planted_anomalies): resolved in favour of the manifest and PRS-06 exact set equality - the file fails (parse_runs status=failed, gate raises), a file-scope quarantine row with reason trailer_count_mismatch and the raw TRL line is written, and structurally-valid body records of that file remain in silver"
+  ]
+}

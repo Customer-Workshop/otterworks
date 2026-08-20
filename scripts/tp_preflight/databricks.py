@@ -333,14 +333,17 @@ except Exception as exc:
 finally:
     reconcile_workspace()
 
-lineage_table = f"{catalog}.silver.custbill_history_demo"
+namespace = os.environ.get("NS", "demo")
+if not re.fullmatch(r"[a-z0-9_]{1,24}", namespace):
+    raise SystemExit(f"NS must match [a-z0-9_]{{1,24}}: {namespace!r}")
+lineage_table = f"{catalog}.silver.custbill_history_{namespace}"
 lineage_status, lineage_body = call(
     "GET",
     "/api/2.0/lineage-tracking/table-lineage?table_name="
-    + lineage_table
+    + urllib.parse.quote(lineage_table, safe="")
     + "&include_entity_lineage=true",
 )
-if 200 <= lineage_status < 300:
+if 200 <= lineage_status < 300 or lineage_status == 404:
     upstreams = lineage_body.get("upstreams", []) if isinstance(lineage_body, dict) else []
     downstreams = lineage_body.get("downstreams", []) if isinstance(lineage_body, dict) else []
     manifest.add(

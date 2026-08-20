@@ -188,12 +188,18 @@ def cmd_run(dbx: Databricks, args) -> int:
     audit: list[tuple] = []
     landed = skipped = 0
     staging = n.staging_dir(run_id)
-    failure: DbxError | None = None
+    failure: Exception | None = None
     try:
         for path in candidates:
             name = path.name
             try:
                 payload, digest = snapshot(path)
+            except FileNotFoundError:
+                skipped += 1
+                audit.append((run_id, lit(name), "NULL", "NULL",
+                              "skipped_concurrent", lit(RETENTION_CLASS),
+                              "drop file removed by an overlapping run before it could be read"))
+                continue
             except OSError as exc:
                 raise DbxError(f"{name}: unreadable drop file: {exc}")
             prior = existing_manifest_row(dbx, n, name)
@@ -204,7 +210,7 @@ def cmd_run(dbx: Databricks, args) -> int:
                                   "skipped_duplicate", lit(RETENTION_CLASS),
                                   "already landed with identical sha256"))
                     if not args.keep_source:
-                        path.unlink()
+                        path.unlink(missing_ok=True)
                     continue
                 raise DbxError(
                     f"{name}: drop bytes (sha256 {digest}) do not match the already-landed "
@@ -222,8 +228,8 @@ def cmd_run(dbx: Databricks, args) -> int:
                               "skipped_concurrent", lit(RETENTION_CLASS),
                               "an overlapping run committed this file first"))
             if not args.keep_source:
-                path.unlink()
-    except DbxError as exc:
+                path.unlink(missing_ok=True)
+    except Exception as exc:
         failure = exc
     finally:
         for entry in dbx.list_dir(staging):

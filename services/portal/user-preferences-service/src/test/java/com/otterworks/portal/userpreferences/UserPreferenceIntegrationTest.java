@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -202,6 +203,35 @@ class UserPreferenceIntegrationTest {
         assertThat(notAllowed.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
         assertDefaultEnvelope(
                 notAllowed.getBody(), 405, "Method Not Allowed", "/api/preferences/u1");
+    }
+
+    /**
+     * §5: the legacy {"error","message"} envelope is never produced by this context. The replay
+     * harness compares the two sides, so it cannot catch a message field that both sides grew.
+     */
+    @Test
+    void noResponseCarriesAMessageField() throws Exception {
+        String overLongId = "x".repeat(101);
+        List<String> bodies =
+                List.of(
+                        rest.getForEntity("/api/preferences/nobody", String.class).getBody(),
+                        put("u1", "{\"theme\":\"dark\",\"locale\":\"fr-FR\"}").getBody(),
+                        put("u1", "{\"theme\":\"\",\"locale\":\"fr-FR\"}").getBody(),
+                        put("u1", "{\"theme\":\"dark\",\"locale\":\"" + "l".repeat(21) + "\"}")
+                                .getBody(),
+                        put("u1", "not json").getBody(),
+                        put(overLongId, "{\"theme\":\"dark\",\"locale\":\"fr-FR\"}").getBody(),
+                        rest.getForEntity("/api/preferences", String.class).getBody(),
+                        rest.exchange(
+                                        "/api/preferences/u1",
+                                        HttpMethod.DELETE,
+                                        HttpEntity.EMPTY,
+                                        String.class)
+                                .getBody());
+
+        for (String body : bodies) {
+            assertThat(MAPPER.readTree(body).has("message")).isFalse();
+        }
     }
 
     /** §6: health drops the monolith's banner field. */

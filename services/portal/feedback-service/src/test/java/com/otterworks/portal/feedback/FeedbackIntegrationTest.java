@@ -161,6 +161,51 @@ class FeedbackIntegrationTest {
                 .isEqualTo("{\"averageRating\":3.25}");
     }
 
+    /**
+     * The SQL aggregate returns a numeric the driver widens to a double; the monolith divides in
+     * the JVM. A non-terminating mean is where the two could round differently, and the parity
+     * replay can only compare the two implementations against each other, not pin the value.
+     */
+    @Test
+    void averageOfANonTerminatingMeanMatchesTheJvmDivision() {
+        int[] ratings = {5, 1, 3, 4, 2, 5, 3, 2, 5};
+        for (int i = 0; i < ratings.length; i++) {
+            seed("u" + i, ratings[i], "r", Instant.parse("2026-01-01T00:00:00Z"));
+        }
+
+        assertThat(get("/api/feedback/average-rating").getBody())
+                .isEqualTo("{\"averageRating\":" + (30 / 9.0) + "}");
+    }
+
+    /** Contract §1: the accepted boundary payloads survive the round trip byte for byte. */
+    @Test
+    void boundaryLengthAndNonAsciiPayloadsRoundTrip() {
+        String userId = "u".repeat(100);
+        String message = "m".repeat(2000);
+        assertThat(
+                        post(
+                                        "{\"userId\":\""
+                                                + userId
+                                                + "\",\"rating\":1,\"message\":\""
+                                                + message
+                                                + "\"}")
+                                .getStatusCode()
+                                .value())
+                .isEqualTo(201);
+
+        String unicode = "h\u00e9llo \\\"quoted\\\" \\\\ slash \ud83e\udda6";
+        ResponseEntity<String> created =
+                post("{\"userId\":\"u4\",\"rating\":3,\"message\":\"" + unicode + "\"}");
+        assertThat(created.getStatusCode().value()).isEqualTo(201);
+
+        assertThat(JsonPath.parse(get("/api/feedback?userId=" + userId).getBody())
+                        .<String>read("$[0].message"))
+                .isEqualTo(message);
+        assertThat(JsonPath.parse(get("/api/feedback?userId=u4").getBody())
+                        .<String>read("$[0].message"))
+                .isEqualTo("h\u00e9llo \"quoted\" \\ slash \ud83e\udda6");
+    }
+
     @Test
     void outOfRangeRatingIs400WithTheDefaultEnvelopeAndNoMessageField() {
         for (String rating : List.of("0", "6")) {

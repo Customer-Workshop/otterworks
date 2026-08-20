@@ -6,6 +6,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+private const val TIMESTAMP = "2024-01-01T00:00:00Z"
+
 class NotificationTemplatesTest {
 
     @Test
@@ -15,7 +17,7 @@ class NotificationTemplatesTest {
             fileId = "file-abc",
             ownerId = "alice",
             sharedWithUserId = "bob",
-            timestamp = "2024-01-01T00:00:00Z",
+            timestamp = TIMESTAMP,
         )
 
         val rendered = NotificationTemplates.render(event)
@@ -35,7 +37,7 @@ class NotificationTemplatesTest {
             documentId = "doc-123",
             commentId = "c-1",
             userId = "owner-1",
-            timestamp = "2024-01-01T00:00:00Z",
+            timestamp = TIMESTAMP,
         )
 
         val rendered = NotificationTemplates.render(event)
@@ -52,7 +54,7 @@ class NotificationTemplatesTest {
             actorId = "editor-1",
             documentId = "doc-456",
             userId = "owner-1",
-            timestamp = "2024-01-01T00:00:00Z",
+            timestamp = TIMESTAMP,
         )
 
         val rendered = NotificationTemplates.render(event)
@@ -69,7 +71,7 @@ class NotificationTemplatesTest {
             actorId = "mentioner-1",
             documentId = "doc-789",
             mentionedUserId = "mentioned-user",
-            timestamp = "2024-01-01T00:00:00Z",
+            timestamp = TIMESTAMP,
         )
 
         val rendered = NotificationTemplates.render(event)
@@ -83,7 +85,7 @@ class NotificationTemplatesTest {
     fun `render unknown event type returns default`() {
         val event = SqsNotificationMessage(
             eventType = "unknown_event",
-            timestamp = "2024-01-01T00:00:00Z",
+            timestamp = TIMESTAMP,
         )
 
         val rendered = NotificationTemplates.render(event)
@@ -100,7 +102,7 @@ class NotificationTemplatesTest {
             ownerId = "fallback-owner",
             sharedWithUserId = "bob",
             actorId = "",
-            timestamp = "2024-01-01T00:00:00Z",
+            timestamp = TIMESTAMP,
         )
 
         val rendered = NotificationTemplates.render(event)

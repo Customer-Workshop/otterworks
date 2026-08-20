@@ -1,0 +1,90 @@
+{
+  "kind": "recon-report",
+  "unit": "sftp_ingest_poll",
+  "namespace": "w2ing",
+  "generated_at": "2026-08-20T03:22:00Z",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "ING-01",
+      "expected": "2 files landed exactly once, byte-identical to source: CUSTBILL_DEMO_001.dat 3430B sha256 c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c; CUSTBILL_DEMO_002.dat 3430B sha256 652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48",
+      "actual": "ow_tp.bronze.custbill_landed_w2ing holds exactly those 2 rows (name/size/sha256 equal); per-file sha256 recorded in ow_tp.ops.ingest_runs_w2ing action=landed (run abf42ada72c9); verify re-downloaded both objects: 0 failures",
+      "source_of_truth": "sha256 of the drop files produced by make legacy-etl-gen-data NS=demo, cross-checked byte-identical to the legacy run's incoming/*.done and archive/* copies",
+      "result": "pass"
+    },
+    {
+      "id": "ING-02",
+      "expected": "a partially transferred file is never visible downstream; settle-by-size heuristic replaced by an explicit completion protocol",
+      "actual": "protocol is stage upload -> download-and-compare sha256 -> final upload -> download-and-compare sha256 -> manifest MERGE commit; downstream visibility is the manifest row. A file still being appended (CUSTBILL_GROW_001.dat) failed the run by name and left the manifest at 2 rows with no GROW object in the audit as landed",
+      "source_of_truth": "live run outputs and ow_tp.bronze.custbill_landed_w2ing row count before/after the failed run",
+      "result": "pass"
+    },
+    {
+      "id": "ING-03",
+      "expected": "no hostname branching, no absolute environment paths; target and namespace from job parameters",
+      "actual": "scripts/tp_dbx/ingest.py takes --ns/--catalog/--drop; landing path is derived as /Volumes/<catalog>/bronze/landing/<ns>/ingest; no hostname reads anywhere in the tool",
+      "source_of_truth": "scripts/tp_dbx/ingest.py source",
+      "result": "pass"
+    },
+    {
+      "id": "ING-04",
+      "expected": "two overlapping runs over the same drop directory produce the same landed set and no duplicate rows",
+      "actual": "runs abf42ada72c9 and befa10d223ad executed concurrently over the same 2-file drop: landed=2/skipped=0 and landed=0/skipped=2 (one skipped_concurrent via Delta MERGE conflict retry, one skipped_duplicate); manifest holds exactly 2 rows, one per file",
+      "source_of_truth": "concurrent live runs; ow_tp.ops.ingest_runs_w2ing audit rows; SELECT count(*) GROUP BY file_name shows no duplicates",
+      "result": "pass"
+    },
+    {
+      "id": "ING-05",
+      "expected": "re-running after a completed run lands nothing new; row counts and checksums unchanged",
+      "actual": "rerun 453b7a41433b: scanned=2 landed=0 skipped=2; manifest still 2 rows with identical sha256s; verify re-download after rerun: 0 failures",
+      "source_of_truth": "live rerun output and re-queried manifest",
+      "result": "pass"
+    },
+    {
+      "id": "ING-06",
+      "expected": "an unreadable or checksum-mismatched file fails the run with the file named",
+      "actual": "chmod 000 drop file: run exited 1 with 'CUSTBILL_LOCKED_001.dat: unreadable drop file: [Errno 13] Permission denied'; re-drop with different bytes: run exited 1 naming CUSTBILL_DEMO_001.dat with both sha256s; no 2>/dev/null and no `|| true` anywhere in the tool",
+      "source_of_truth": "live failure runs (exit codes and stderr)",
+      "result": "pass"
+    },
+    {
+      "id": "ING-07",
+      "expected": "retention declared and enforced by rule; no forever-growing archive",
+      "actual": "every manifest row and audit row carries retention_class landing-90d; `ingest.py retention` deletes expired objects and their manifest rows by rule (ran live: 0 expired at age <1 day); no archive directory and no .done renames exist in the target design",
+      "source_of_truth": "table DDL comments, manifest rows, live retention run output",
+      "result": "pass"
+    },
+    {
+      "id": "ING-08",
+      "expected": "landed {name, bytes, sha256} set equals the legacy ingest's incoming/ and archive/ set for the same seed: {CUSTBILL_DEMO_001.dat, 3430, c70f30ca...aa336c}, {CUSTBILL_DEMO_002.dat, 3430, 652974b8...344f48}",
+      "actual": "legacy baseline reproduced locally via make legacy-etl-run JOB=run_all (parsed/report sha256s matched the parent's captured values exactly); landed set re-downloaded from the volume matches the legacy incoming/*.done and archive/* copies name-for-name, byte-for-byte",
+      "source_of_truth": "sha256sum of a real legacy run's incoming/ and archive/ outputs vs re-downloaded landed objects",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "post-completion rerun 453b7a41433b and re-drop rerun 7642ed305e50 both landed 0 files; manifest row count and sha256s unchanged; verify re-download green after each"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      ["ING-A1", "file still being written when the poll begins"],
+      ["ING-A2", "stale lock file left behind by a crashed run"],
+      ["ING-A3", "already-landed file re-appearing in the drop directory"]
+    ],
+    "actual_set": [
+      ["ING-A1", "detected: double-read digest comparison failed the run naming CUSTBILL_GROW_001.dat; nothing landed"],
+      ["ING-A2", "retired by design: the target has no lock file to go stale; concurrency safety is the manifest MERGE, proven by the ING-04 overlapping-run evidence"],
+      ["ING-A3", "detected: re-dropped CUSTBILL_DEMO_00{1,2}.dat (regenerated, identical bytes) skipped as skipped_duplicate in run 7642ed305e50; manifest unchanged"]
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "real SFTP transport: the drop directory in these runs was a local filesystem directory (the same interface the legacy job polls); the dockerized SFTP fixture was not exercised for this unit",
+    "scheduled execution: the ow_tp_ingest_w2ing verification job's schedule is PAUSED per workspace policy; it was executed once on demand (run 917628081991969, SUCCESS) but never from its schedule",
+    "ING-A4 is a declared coverage gap in the contract: ingest is byte-transparent, so encoding validity is detected at the parse unit, not here"
+  ]
+}

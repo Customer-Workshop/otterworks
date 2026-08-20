@@ -172,6 +172,18 @@ class Databricks:
         if not 200 <= status < 300:
             raise DbxError(f"PUT {volume_path} -> HTTP {status}: {json.dumps(body)[:300]}")
 
+    def get_file(self, volume_path: str) -> bytes:
+        quoted = urllib.parse.quote(volume_path, safe="/")
+        req = urllib.request.Request(
+            f"{self.host}/api/2.0/fs/files{quoted}",
+            headers={"Authorization": f"Bearer {self.token}"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as response:
+                return response.read()
+        except urllib.error.HTTPError as exc:
+            raise DbxError(f"GET {volume_path} -> HTTP {exc.code}: {exc.read().decode(errors='replace')[:300]}")
+
     def delete_file(self, volume_path: str) -> int:
         quoted = urllib.parse.quote(volume_path, safe="/")
         status, _ = self.call("DELETE", f"/api/2.0/fs/files{quoted}")

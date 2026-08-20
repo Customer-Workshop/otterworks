@@ -15,6 +15,7 @@ Copybook CBCUST01 layout (65 bytes):
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 RECORD_LENGTH = 65
@@ -165,7 +166,20 @@ def load_expectations(n: ParseNames) -> str:
 def register_files(n: ParseNames, feed: str, entries: list[tuple[str, str | None, int | None, int]]) -> list[str]:
     """entries: (source_file, source_period, source_year, byte_size). The registry
     is what makes an empty file visible: read_files yields no rows for it, so
-    parse_runs is derived from this table, not from bronze alone."""
+    parse_runs is derived from this table, not from bronze alone.
+
+    Every value is validated before it reaches a SQL literal (the staging
+    directory is shared, so file names are untrusted input), like
+    showcase.py's as_code/as_int."""
+    for name, period, year, size in entries:
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", name):
+            raise ValueError(f"refusing to register file with unsafe name: {name!r}")
+        if period is not None and not re.fullmatch(r"[0-9]{6}", period):
+            raise ValueError(f"refusing to register non-YYYYMM period: {period!r}")
+        if (year is not None and not isinstance(year, int)) or not isinstance(size, int):
+            raise ValueError(f"refusing to register non-integer year/size for {name!r}")
+    if not re.fullmatch(r"[a-z0-9_]+", feed):
+        raise ValueError(f"refusing to register unsafe feed name: {feed!r}")
     rows = ",\n".join(
         f"('{name}', '{feed}', {f_sql(period)}, {f_sql(year)}, {size}, current_timestamp())"
         for name, period, year, size in entries

@@ -349,7 +349,10 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.SPRING_FLYWAY_URL=jdbc:postgresql://${DB_ENDPOINT_HOST}:${DB_SESSION_PORT}/${DB_NAME}")
       EXTRA_ARGS+=(--set-string "config.SPRING_FLYWAY_USER=${DB_USER}")
       add_secret SPRING_FLYWAY_PASSWORD "${DB_PASSWORD}"
-      add_secret SPRING_DATASOURCE_PASSWORD "${DB_PASSWORD}" ;;
+      add_secret SPRING_DATASOURCE_PASSWORD "${DB_PASSWORD}"
+      # Password the seeded admin account is migrated with; keeps the documented
+      # demo login working. Override per deployment.
+      add_secret AUTH_SEED_ADMIN_PASSWORD "${AUTH_SEED_ADMIN_PASSWORD:-Admin123!}" ;;
     file-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.S3_BUCKET=${S3_FILE_BUCKET}")

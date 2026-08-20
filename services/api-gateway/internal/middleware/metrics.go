@@ -3,11 +3,24 @@ package middleware
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+const (
+	pathAuth          = "/api/v1/auth"
+	pathFiles         = "/api/v1/files"
+	pathDocuments     = "/api/v1/documents"
+	pathCollab        = "/api/v1/collab"
+	pathNotifications = "/api/v1/notifications"
+	pathSearch        = "/api/v1/search"
+	pathAnalytics     = "/api/v1/analytics"
+	pathAdmin         = "/api/v1/admin"
+	pathAudit         = "/api/v1/audit"
 )
 
 var (
@@ -63,24 +76,24 @@ func Metrics(next http.Handler) http.Handler {
 func normalizePath(path string) string {
 	// Keep top-level route prefix for grouping
 	switch {
-	case len(path) >= len("/api/v1/auth") && path[:len("/api/v1/auth")] == "/api/v1/auth":
-		return "/api/v1/auth"
-	case len(path) >= len("/api/v1/files") && path[:len("/api/v1/files")] == "/api/v1/files":
-		return "/api/v1/files"
-	case len(path) >= len("/api/v1/documents") && path[:len("/api/v1/documents")] == "/api/v1/documents":
-		return "/api/v1/documents"
-	case len(path) >= len("/api/v1/collab") && path[:len("/api/v1/collab")] == "/api/v1/collab":
-		return "/api/v1/collab"
-	case len(path) >= len("/api/v1/notifications") && path[:len("/api/v1/notifications")] == "/api/v1/notifications":
-		return "/api/v1/notifications"
-	case len(path) >= len("/api/v1/search") && path[:len("/api/v1/search")] == "/api/v1/search":
-		return "/api/v1/search"
-	case len(path) >= len("/api/v1/analytics") && path[:len("/api/v1/analytics")] == "/api/v1/analytics":
-		return "/api/v1/analytics"
-	case len(path) >= len("/api/v1/admin") && path[:len("/api/v1/admin")] == "/api/v1/admin":
-		return "/api/v1/admin"
-	case len(path) >= len("/api/v1/audit") && path[:len("/api/v1/audit")] == "/api/v1/audit":
-		return "/api/v1/audit"
+	case strings.HasPrefix(path, pathAuth):
+		return pathAuth
+	case strings.HasPrefix(path, pathFiles):
+		return pathFiles
+	case strings.HasPrefix(path, pathDocuments):
+		return pathDocuments
+	case strings.HasPrefix(path, pathCollab):
+		return pathCollab
+	case strings.HasPrefix(path, pathNotifications):
+		return pathNotifications
+	case strings.HasPrefix(path, pathSearch):
+		return pathSearch
+	case strings.HasPrefix(path, pathAnalytics):
+		return pathAnalytics
+	case strings.HasPrefix(path, pathAdmin):
+		return pathAdmin
+	case strings.HasPrefix(path, pathAudit):
+		return pathAudit
 	default:
 		return "other"
 	}

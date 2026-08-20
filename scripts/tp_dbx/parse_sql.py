@@ -53,6 +53,10 @@ class ParseNames:
     def parse_runs(self) -> str:
         return f"{self.catalog}.ops.parse_runs_{self.ns}"
 
+    @property
+    def files(self) -> str:
+        return f"{self.catalog}.ops.parse_files_{self.ns}"
+
 
 # Declared expectations, loaded into ow_tp.ops.parse_expectations_<ns> and read
 # back from the table to generate the parse SQL: the table is the source of
@@ -137,6 +141,11 @@ def provision(n: ParseNames) -> list[str]:
               parsed_at TIMESTAMP)
             USING DELTA
             COMMENT 'Per-file parse outcome; an empty file is a records=0 row, an absent file is absent'""",
+        f"""CREATE TABLE IF NOT EXISTS {n.files} (
+              source_file STRING, source_feed STRING, source_period STRING, source_year INT,
+              byte_size BIGINT, landed_at TIMESTAMP)
+            USING DELTA
+            COMMENT 'Registry of landed files; keeps a zero-byte file distinguishable from an absent one'""",
     ]
 
 
@@ -151,6 +160,28 @@ def load_expectations(n: ParseNames) -> str:
     return (f"INSERT OVERWRITE {n.expectations} "
             f"(expectation_id, scope, field, reason_class, rule, violation_predicate, priority) "
             f"VALUES\n{rows}")
+
+
+def register_files(n: ParseNames, feed: str, entries: list[tuple[str, str | None, int | None, int]]) -> list[str]:
+    """entries: (source_file, source_period, source_year, byte_size). The registry
+    is what makes an empty file visible: read_files yields no rows for it, so
+    parse_runs is derived from this table, not from bronze alone."""
+    rows = ",\n".join(
+        f"('{name}', '{feed}', {f_sql(period)}, {f_sql(year)}, {size}, current_timestamp())"
+        for name, period, year, size in entries
+    )
+    return [
+        f"DELETE FROM {n.files} WHERE source_feed = '{feed}'",
+        f"INSERT INTO {n.files} "
+        f"(source_file, source_feed, source_period, source_year, byte_size, landed_at) "
+        f"VALUES\n{rows}",
+    ]
+
+
+def f_sql(value) -> str:
+    if value is None:
+        return "NULL"
+    return f"'{value}'" if isinstance(value, str) else str(value)
 
 
 def load_bronze(n: ParseNames, feed: str, path: str, replace_feed: bool) -> list[str]:
@@ -189,6 +220,19 @@ def line_number_invariant(n: ParseNames) -> str:
     HAVING hdr_line IS DISTINCT FROM 1
         OR trl_line IS DISTINCT FROM last_line
         OR lines <> last_line"""
+
+
+def line_number_gate(n: ParseNames) -> str:
+    """Raising form of the invariant for the SQL-only job path, so both execution
+    paths refuse to parse on unverified line offsets."""
+    return f"""
+    WITH broken AS ({line_number_invariant(n)})
+    SELECT CASE WHEN (SELECT count(*) FROM broken) > 0
+                THEN raise_error(concat('PARSE FAILED: bronze line numbering invariant violated for ',
+                     (SELECT concat_ws('; ', slice(collect_list(source_file), 1, 12)) FROM broken),
+                     '; refusing to parse on unverified offsets'))
+                ELSE 'LINE NUMBERS VERIFIED'
+           END AS line_number_check"""
 
 
 def body_projection(n: ParseNames) -> str:
@@ -239,13 +283,25 @@ def build_silver(n: ParseNames, record_expectations: list[dict]) -> str:
 
 
 def file_counts(n: ParseNames) -> str:
+    # FULL OUTER JOIN of the landed-file registry with the bronze lines: a
+    # zero-byte file has a registry row but no bronze rows, so it still yields
+    # a body_count=0 outcome instead of vanishing.
     return f"""
-      SELECT source_file, source_feed, source_period, source_year,
-             count_if(record_kind = 'BODY') AS body_count,
-             max(CASE WHEN record_kind = 'TRL' THEN try_cast(substr(raw_line, 4, 10) AS BIGINT) END) AS trailer_count,
-             max(CASE WHEN record_kind = 'TRL' THEN raw_line END) AS trailer_line
-      FROM {n.bronze}
-      GROUP BY source_file, source_feed, source_period, source_year"""
+      SELECT coalesce(r.source_file, b.source_file) AS source_file,
+             coalesce(r.source_feed, b.source_feed) AS source_feed,
+             coalesce(r.source_period, b.source_period) AS source_period,
+             coalesce(r.source_year, b.source_year) AS source_year,
+             coalesce(b.body_count, 0) AS body_count,
+             b.trailer_count, b.trailer_line
+      FROM {n.files} r
+      FULL OUTER JOIN (
+        SELECT source_file, source_feed, source_period, source_year,
+               count_if(record_kind = 'BODY') AS body_count,
+               max(CASE WHEN record_kind = 'TRL' THEN try_cast(substr(raw_line, 4, 10) AS BIGINT) END) AS trailer_count,
+               max(CASE WHEN record_kind = 'TRL' THEN raw_line END) AS trailer_line
+        FROM {n.bronze}
+        GROUP BY source_file, source_feed, source_period, source_year
+      ) b ON r.source_file = b.source_file AND r.source_feed = b.source_feed"""
 
 
 def build_quarantine(n: ParseNames, record_expectations: list[dict], file_expectation: dict) -> str:

@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -109,9 +110,17 @@ def cmd_land(dbx: Databricks, args) -> int:
         targets = [f"{n.feed_dir}/history/{p.parent.name}/{p.name}" for p in files]
     if not files:
         raise SystemExit(f"no CUSTBILL files found for feed={args.feed} under {root}")
+    entries = []
     for path, target in zip(files, targets):
-        dbx.put_file(target, path.read_bytes())
-    print(f"landed {len(files)} file(s) under {n.feed_dir}/{args.feed}")
+        payload = path.read_bytes()
+        dbx.put_file(target, payload)
+        name = target.rsplit("/", 1)[-1]
+        period_match = re.search(r"CUSTBILL_[A-Z0-9_-]+_([0-9]{6})\.dat$", name)
+        period = period_match.group(1) if period_match else None
+        entries.append((name, period, int(period[:4]) if period else None, len(payload)))
+    for statement in P.register_files(n, args.feed, entries):
+        dbx.sql_ok(statement)
+    print(f"landed and registered {len(files)} file(s) under {n.feed_dir}/{args.feed}")
     return 0
 
 
@@ -179,29 +188,36 @@ def grade_seed(dbx: Databricks, args, n: P.ParseNames) -> dict:
     if not golden:
         raise SystemExit(f"no golden .psv files under {golden_dir}; run the legacy chain first")
     actual = _psv_rows_from_silver(dbx, n)
-    total = matched = 0
+    total = matched = extra_rows = 0
     mismatches: list[str] = []
     for fname, lines in golden.items():
-        got = actual.get(fname, [])
+        got = actual.pop(fname, [])
         total += len(lines)
         if lines == got:
             matched += len(lines)
-        else:
-            for i, (g, a) in enumerate(zip(lines, got + [""] * len(lines))):
-                if g == a:
-                    matched += 1
-                elif len(mismatches) < 5:
-                    mismatches.append(f"{fname}:{i + 1} golden={g!r} silver={a!r}")
+            continue
+        for i, (g, a) in enumerate(zip(lines, got + [""] * len(lines))):
+            if g == a:
+                matched += 1
+            elif len(mismatches) < 5:
+                mismatches.append(f"{fname}:{i + 1} golden={g!r} silver={a!r}")
+        if len(got) > len(lines):
+            extra_rows += len(got) - len(lines)
+            mismatches.append(f"{fname}: {len(got) - len(lines)} silver row(s) beyond the golden output")
+    for fname, got in actual.items():  # silver-only files: no golden counterpart at all
+        extra_rows += len(got)
+        mismatches.append(f"{fname}: {len(got)} silver row(s) with no golden .psv counterpart")
     quarantined = dbx.sql_ok(
         f"SELECT count(*) FROM {n.quarantine} WHERE source_feed = 'seed'").scalar()
-    return {"golden_rows": total, "matched_rows": matched,
+    return {"golden_rows": total, "matched_rows": matched, "extra_silver_rows": extra_rows,
             "seed_quarantined": int(quarantined), "mismatches": mismatches}
 
 
 def cmd_grade_seed(dbx: Databricks, args) -> int:
     result = grade_seed(dbx, args, names(args))
     print(json.dumps(result, indent=2))
-    ok = result["matched_rows"] == result["golden_rows"] and result["seed_quarantined"] == 0
+    ok = (result["matched_rows"] == result["golden_rows"]
+          and result["extra_silver_rows"] == 0 and result["seed_quarantined"] == 0)
     return 0 if ok else 1
 
 
@@ -308,9 +324,10 @@ def cmd_recon(dbx: Databricks, args) -> int:
     # PRS-03: row parity against the golden .psv for the clean seed.
     seed = grade_seed(dbx, args, n)
     check("PRS-03",
-          {"golden_rows": seed["golden_rows"], "matched_rows": seed["golden_rows"], "seed_quarantined": 0},
+          {"golden_rows": seed["golden_rows"], "matched_rows": seed["golden_rows"],
+           "extra_silver_rows": 0, "seed_quarantined": 0},
           {"golden_rows": seed["golden_rows"], "matched_rows": seed["matched_rows"],
-           "seed_quarantined": seed["seed_quarantined"]},
+           "extra_silver_rows": seed["extra_silver_rows"], "seed_quarantined": seed["seed_quarantined"]},
           "golden .psv from a real legacy run (sha256-pinned in the unit contract)")
 
     # PRS-04: trailer reconciliation enforced — the manifest's mismatched files
@@ -428,6 +445,7 @@ def cmd_job(dbx: Databricks, args) -> int:
     n = names(args)
     record, file_exp = read_expectations(dbx, n)
     build_sql = ";\n\n".join([
+        P.line_number_gate(n),  # same refusal the CLI path enforces
         P.build_silver(n, record),
         P.build_quarantine(n, record, file_exp),
         P.build_parse_runs(n, file_exp),

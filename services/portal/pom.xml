@@ -31,6 +31,7 @@
     <!-- Wave 1 children append exactly one module each:
          <module>user-preferences-service</module>
          <module>feedback-service</module> -->
+    <module>feedback-service</module>
   </modules>
 
   <properties>

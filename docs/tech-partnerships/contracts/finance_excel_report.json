@@ -1,0 +1,43 @@
+{
+  "unit": "finance_excel_report",
+  "source_artifact_path": "etl/legacy-extra/jobs/finance_excel_report.pl",
+  "target_objects": [
+    "ow_tp.gold.billing_summary_<ns>",
+    "ow_tp.gold.billing_summary_delta_<ns>",
+    "ow_tp.ops.report_runs_<ns>",
+    "dashboard ow_tp_billing_migration_<ns>",
+    "job ow_tp_report_<ns>"
+  ],
+  "golden_baseline_location": "$OTTERWORKS_LEGACY_ROOT/reports/finance_billing_<stamp>.csv (and the .xls copy, sha256 c8923a71ab5a2d8048ad06ae91840631c009551e9082755fa4672e034a15627e) from a real run of `make legacy-etl-run JOB=finance_excel_report`; for ns=demo the six rows are EUR/INVOICE 22 101554.41, EUR/CREDIT 6 33375.97, GBP/INVOICE 32 183113.58, GBP/CREDIT 5 28454.59, USD/INVOICE 28 130502.15, USD/CREDIT 7 33390.44",
+  "acceptance_checks": [
+    {"id": "RPT-01", "description": "Aggregate parity to the cent: ow_tp.gold.billing_summary_<ns> grouped by currency x record type equals the six golden report rows exactly, on both RecordCount and TotalAmount, compared in integer cents."},
+    {"id": "RPT-02", "description": "Amounts are summed as exact decimals from the typed silver column; no float accumulation and no re-derivation from the .psv text."},
+    {"id": "RPT-03", "description": "The gold table carries a legacy-vs-lakehouse delta column per group, so a divergence is visible in the artifact itself rather than discovered by a human diffing two files."},
+    {"id": "RPT-04", "description": "Quarantined records are excluded from the rollup and reported as a separate declared count, so a total can never silently include a record the parse layer rejected — and the exclusion is visible next to the total."},
+    {"id": "RPT-05", "description": "The report of record is a real artifact: an AI/BI dashboard page over gold, not a CSV renamed to .xls. Any file export declares its true format."},
+    {"id": "RPT-06", "description": "Delivery is honest: the distribution list is managed configuration (no hardcoded personal recipient), and a delivery attempt records success or failure in ow_tp.ops.report_runs_<ns>. A missing delivery transport is a recorded failure, not the legacy silent no-op."},
+    {"id": "RPT-07", "description": "Deterministic and idempotent: re-running the report for the same inputs produces byte-identical group values and does not double-count; the run is dated by the data period, not by wall-clock localtime at execution."},
+    {"id": "RPT-08", "description": "Row ordering and label semantics are declared: record type 01 renders INVOICE, 02 CREDIT, and any other value is surfaced as an explicit unknown group rather than folded into a total."}
+  ],
+  "encoding_policy": {
+    "input_encoding": "reads typed silver columns only; never re-parses fixed-width bytes or .psv text",
+    "byte_transparency": "not applicable at gold; provenance is carried instead — each gold row records the silver version it aggregated so a total can be traced back to the exact input state",
+    "invalid_bytes": "unreachable at this layer: undecodable input is quarantined at silver and cannot enter the rollup"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "fail",
+    "details": "Gold aggregates only records that passed silver expectations. A NULL in a grouping key (currency or record type) fails the run rather than creating an unlabelled group; a NULL amount is impossible by silver contract and fails loudly if encountered. The legacy behaviour of coercing a bad amount to 0.00 and an unknown record type to UNKNOWN(xx) inside the totals is explicitly retired."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "A period with no silver records writes a report run with zero groups and a declared zero total — distinguishable from a failed run and from a period that was never processed. The legacy script cannot express this: an unreadable parsed file is skipped and its absence looks identical to a genuine zero."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {"id": "RPT-A1", "description": "A record type outside {01,02}, which the legacy report labels UNKNOWN(<rt>) while still adding its amount to the currency total.", "status": "must-detect"},
+    {"id": "RPT-A2", "description": "A non-numeric amount coerced to 0.00 by the legacy awk, which silently understates the currency total.", "status": "must-detect"},
+    {"id": "RPT-A3", "description": "A parsed file that cannot be opened, which the legacy Perl skips with `|| next` so the report ships short with no indication.", "status": "must-detect"},
+    {"id": "RPT-A4", "description": "Delivery failure when no sendmail binary exists on the host.", "status": "coverage_gap", "reason": "There is no SMTP transport in this environment, so successful delivery cannot be proven here; the unit must record the attempt and its failure, and the recon report must declare delivery as unverified rather than asserting it."}
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "unit": "parse_custbill_fixedwidth",
+  "source_artifact_path": "etl/legacy-extra/jobs/parse_custbill_fixedwidth.sh",
+  "target_objects": [
+    "ow_tp.silver.custbill_records_<ns>",
+    "ow_tp.silver.custbill_quarantine_<ns>",
+    "ow_tp.ops.parse_expectations_<ns>",
+    "job ow_tp_parse_<ns>"
+  ],
+  "golden_baseline_location": "$OTTERWORKS_LEGACY_ROOT/parsed/CUSTBILL_DEMO_001.psv (sha256 7fc03e8ceb88ce807b18e3e0a8bb2450b7677108495bdcb883881887c09665bf) and CUSTBILL_DEMO_002.psv (sha256 b576ad3de53b835643dc9096781cb491e6a03b3712c675c5598ab05f8c3c54a3), 50 rows each, from a real run of `make legacy-etl-run JOB=parse_custbill_fixedwidth`; malformed-record coverage is graded against the 2019-2024 history manifest at $OTTERWORKS_LEGACY_ROOT/sftp-drop/history/expected/demo-history-expected.json (sha256 d230027ae2eab43194f455e2b8f4822105b298019649732060f29f266662c653)",
+  "acceptance_checks": [
+    {"id": "PRS-01", "description": "Layout fidelity: copybook CBCUST01 positions are parsed as declared (1-10 cust id, 11-40 name, 41-48 date, 49-60 amount with implied 2 decimals, 61-63 currency, 64-65 record type). HDR/TRL records are excluded from the record set."},
+    {"id": "PRS-02", "description": "Typed columns: amount is DECIMAL (cents-exact, never float), date is DATE, record type resolves to INVOICE (01) / CREDIT (02), currency is a 3-char code. No string surgery on dates or amounts."},
+    {"id": "PRS-03", "description": "Row parity against the golden .psv for the clean seed: 100 rows for ns=demo, every silver row matching a .psv row on all six fields, with zero rows quarantined for that input."},
+    {"id": "PRS-04", "description": "Trailer reconciliation is enforced, not logged: a file whose TRL count disagrees with its body count fails the file and quarantines its records with reason trailer_count_mismatch. This is the deficiency ETL-0187 asked for in 2011."},
+    {"id": "PRS-05", "description": "Declared expectations are stored as data (ow_tp.ops.parse_expectations_<ns>), not buried in code: layout width, date validity, currency whitelist, record-type domain, amount numeric. Each quarantined row carries the expectation id it violated and the raw source line."},
+    {"id": "PRS-06", "description": "Malformed-record coverage against the history feed: every record the manifest declares malformed is quarantined with the matching reason class, and no record the manifest declares valid is quarantined. Set equality both ways, not counts only."},
+    {"id": "PRS-07", "description": "Idempotency: re-parsing the same input replaces rather than appends; row counts, quarantine counts and amount totals are unchanged, proven with Delta history before/after."},
+    {"id": "PRS-08", "description": "No orphaned temp state (the legacy parser leaves /tmp/cb_body.$$ behind on failure) and no blanket error suppression: a parse failure fails the run with the file and record offset named."}
+  ],
+  "encoding_policy": {
+    "input_encoding": "single-byte fixed-width, decoded at silver only",
+    "byte_transparency": "bronze bytes are the input of record; parsing never rewrites the landed object. Trailing pad spaces are trimmed from text fields (matching legacy behaviour for id, name and currency) and that trim is declared, not incidental.",
+    "invalid_bytes": "a record containing bytes that are not decodable in the declared encoding is quarantined with reason undecodable_bytes and its raw bytes retained hex-encoded — the legacy parser would have passed it through mangled"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "fail",
+    "details": "Fixed-width input has no delimiters, so 'extra fields' means a record longer than the declared layout and a short record means one shorter: both are quarantined (reason record_length_mismatch) rather than sliced by cut into silently wrong values. A field that is blank or unparseable in a declared-NOT-NULL position quarantines the record with the offending field named (reason classes invalid_date, non_numeric_amount, unknown_currency, unknown_record_type) — never NULL-filled into silver, and never attributed to the previous record."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "A period or file with no records writes zero silver rows for that file and records a parse_runs entry with records=0, trailer=0 — a successful empty parse. A period with no file at all is absent from parse_runs entirely, so 'nothing arrived' and 'an empty file arrived' are distinguishable in recon rather than both reading as zero."
+  },
+  "trigger_granularity": "per-file",
+  "planted_anomalies": [
+    {"id": "PRS-A1", "description": "Records whose BILL-DATE is not a valid calendar date (the legacy parser reformats them to YYYY-MM-DD with no validity check).", "status": "must-detect"},
+    {"id": "PRS-A2", "description": "Records whose BILL-AMT contains non-numeric bytes, which the legacy awk coerces to 0.00 and passes into finance totals.", "status": "must-detect"},
+    {"id": "PRS-A3", "description": "Files whose TRL trailer count disagrees with the number of body records.", "status": "must-detect"},
+    {"id": "PRS-A4", "description": "Records shorter or longer than the declared 65-byte layout.", "status": "must-detect"},
+    {"id": "PRS-A5", "description": "A currency outside the declared whitelist or a record type outside {01,02} — the legacy report renders the latter as UNKNOWN(<rt>) and keeps its amount in the totals.", "status": "must-detect"},
+    {"id": "PRS-A6", "description": "Duplicate customer id within a single drop file.", "status": "coverage_gap", "reason": "The feed has no declared uniqueness rule per file (a customer can legitimately appear on an invoice and a credit in the same drop), so duplicate ids are not a defect class and must not be quarantined; deduplication policy belongs to the gold rollup unit."}
+  ]
+}

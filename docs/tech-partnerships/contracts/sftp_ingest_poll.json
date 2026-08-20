@@ -1,0 +1,42 @@
+{
+  "unit": "sftp_ingest_poll",
+  "source_artifact_path": "etl/legacy-extra/jobs/sftp_ingest_poll.ksh",
+  "target_objects": [
+    "/Volumes/ow_tp/bronze/landing/<ns>/ingest/",
+    "ow_tp.bronze.custbill_landed_<ns>",
+    "ow_tp.ops.ingest_runs_<ns>",
+    "job ow_tp_ingest_<ns>"
+  ],
+  "golden_baseline_location": "$OTTERWORKS_LEGACY_ROOT/incoming/CUSTBILL_DEMO_00{1,2}.dat.done and $OTTERWORKS_LEGACY_ROOT/archive/CUSTBILL_DEMO_00{1,2}.dat.<stamp> from a real run of `make legacy-etl-run JOB=sftp_ingest_poll` (NS=demo: 2 files, 3430 bytes each)",
+  "acceptance_checks": [
+    {"id": "ING-01", "description": "Every source file present in the drop directory is landed exactly once, with the landed object byte-identical to the source (sha256 per file recorded in ow_tp.ops.ingest_runs_<ns>)."},
+    {"id": "ING-02", "description": "Landing is atomic: a partially transferred file is never visible to downstream readers. The size-compared-twice settle heuristic is replaced by an explicit completion protocol (upload to a staging path then rename/commit, or a checksum manifest handshake)."},
+    {"id": "ING-03", "description": "No hostname branching and no absolute environment paths: target and namespace come from job parameters."},
+    {"id": "ING-04", "description": "Concurrency safety without a lock file: two overlapping runs over the same drop directory produce the same landed set and no duplicate rows, proven by running the job twice concurrently."},
+    {"id": "ING-05", "description": "Re-running the job after a completed run lands nothing new and leaves row counts and checksums unchanged (idempotent, not append-blind)."},
+    {"id": "ING-06", "description": "Failures surface: an unreadable or checksum-mismatched file fails the run with the file named, instead of being suppressed by `2>/dev/null || true`."},
+    {"id": "ING-07", "description": "Retention is declared and enforced by rule (landed objects and their manifest rows carry a retention class), replacing an archive directory that grows forever and inputs renamed .done and never purged."},
+    {"id": "ING-08", "description": "Recon: the set of file names, byte sizes and sha256 values landed for ns equals the set the legacy ingest produced into incoming/ and archive/ for the same seed, to the byte."}
+  ],
+  "encoding_policy": {
+    "input_encoding": "single-byte fixed-width, treated as opaque bytes; no decoding at ingest",
+    "byte_transparency": "landed objects are byte-identical to source; sha256 recorded at landing and re-verified on read. No trimming, re-encoding, line-ending translation or record splitting at this layer.",
+    "invalid_bytes": "preserved as-is and never rejected at ingest; byte-level problems are surfaced at silver, so a file is never silently dropped for its contents"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Ingest does not parse, so record-level malformation is out of scope here and is attributed at silver. Ingest only rejects at file level: a file whose bytes changed mid-transfer, or whose checksum does not match its manifest entry."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "An empty drop directory is a successful run that lands nothing and writes an ingest_runs row with files=0 — distinct from a zero-byte file, which IS landed (byte-transparently) and recorded with size 0 so the downstream layer can distinguish 'no file arrived' from 'an empty file arrived'."
+  },
+  "trigger_granularity": "per-file",
+  "planted_anomalies": [
+    {"id": "ING-A1", "description": "A file still being written when the poll begins (the legacy settle hack compares size twice, 1s apart, and can copy a half-written file).", "status": "must-detect"},
+    {"id": "ING-A2", "description": "A stale lock file left behind by a crashed run, which the legacy job warns about and then ignores.", "status": "must-detect"},
+    {"id": "ING-A3", "description": "The same file re-appearing in the drop directory after a completed run (mainframe re-send), which must not double-land.", "status": "must-detect"},
+    {"id": "ING-A4", "description": "A drop file whose bytes are not valid in the declared encoding.", "status": "coverage_gap", "reason": "Ingest is byte-transparent by contract, so encoding validity is not knowable at this layer; it is detected and quarantined by the parse unit at silver."}
+  ]
+}

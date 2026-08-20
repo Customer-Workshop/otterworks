@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "finance_excel_report",
   "namespace": "w2report",
-  "generated_at": "2026-08-20T03:22:04Z",
+  "generated_at": "2026-08-20T03:34:33Z",
   "run_mode": "live",
   "checks": [
     {
@@ -196,7 +196,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "silver/quarantine/gold/delta rebuilt from bronze (silver was v3); all gold groups byte-identical"
+    "evidence": "silver/quarantine/gold/delta rebuilt from bronze (silver was v5); all gold groups byte-identical"
   },
   "planted_anomaly_detections": {
     "expected_set": [

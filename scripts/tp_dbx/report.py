@@ -28,6 +28,7 @@ creates objects suffixed with its own namespace.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import smtplib
@@ -256,14 +257,19 @@ def build_quarantine_sql(n: Names, batch: str) -> str:
     FROM (SELECT * FROM row_defects UNION ALL SELECT * FROM trailer_defects)"""
 
 
-def rollup_sql(n: Names, silver_version: int) -> str:
+def rollup_sql(n: Names) -> str:
     """The report of record: exact-cents rollup over clean silver, with the
-    legacy baseline and its delta carried in the table itself."""
+    legacy baseline and its delta carried in the table itself. The silver
+    version is resolved when the statement runs, so scheduled runs stamp the
+    version they actually aggregated. The excluded count covers records
+    withheld from the totals; file-level trailer mismatch notices are not
+    records and are not counted."""
     return f"""
     INSERT OVERWRITE {n.gold}
     WITH clean AS (SELECT * FROM {n.silver} WHERE batch = 'clean'),
     quarantined AS (
-      SELECT count(*) AS excluded FROM {n.quarantine} WHERE batch = 'clean'
+      SELECT count(*) AS excluded FROM {n.quarantine}
+      WHERE batch = 'clean' AND reason != 'trailer_count_mismatch'
     ),
     groups AS (
       SELECT currency, record_type, {RT_LABEL} AS record_type_label,
@@ -279,7 +285,7 @@ def rollup_sql(n: Names, silver_version: int) -> str:
            g.total_amount_cents - coalesce(b.total_amount_cents, 0) AS delta_cents,
            g.record_count - coalesce(b.record_count, 0) AS delta_count,
            q.excluded AS excluded_quarantine_count,
-           {int(silver_version)} AS silver_version
+           (SELECT max(version) FROM (DESCRIBE HISTORY {n.silver})) AS silver_version
     FROM groups g
     CROSS JOIN period p CROSS JOIN quarantined q
     LEFT JOIN {n.baseline} b
@@ -384,10 +390,14 @@ def cmd_provision(dbx: Databricks, args) -> int:
     n = names(args)
     for statement in provision_sql(n):
         dbx.sql_ok(statement)
-    dbx.sql_ok(f"""
-        INSERT OVERWRITE {n.recipients} VALUES
-        ('finance-reports@otterworks.dev', true, 'finance team distribution list'),
-        ('jake@otterworks.dev', false, 'left 2020; retained inactive for audit, never mailed')""")
+    if int(dbx.sql_ok(f"SELECT count(*) FROM {n.recipients}").scalar()) == 0:
+        dbx.sql_ok(f"""
+            INSERT INTO {n.recipients} VALUES
+            ('finance-reports@otterworks.dev', true, 'finance team distribution list'),
+            ('jake@otterworks.dev', false, 'left 2020; retained inactive for audit, never mailed')""")
+        print("seeded managed recipient list")
+    else:
+        print("recipient list already managed; leaving it untouched")
     print(f"provisioned finance report unit tables for ns={n.ns}")
     return 0
 
@@ -448,9 +458,9 @@ def cmd_load(dbx: Databricks, args) -> int:
 
 def cmd_report(dbx: Databricks, args) -> int:
     n = names(args)
-    version = silver_version(dbx, n)
-    dbx.sql_ok(rollup_sql(n, version))
+    dbx.sql_ok(rollup_sql(n))
     dbx.sql_ok(delta_sql(n))
+    version = int(dbx.sql_ok(f"SELECT max(silver_version) FROM {n.gold}").scalar())
     stats = dbx.sql_ok(
         f"SELECT count(*) AS groups, coalesce(sum(record_count), 0) AS records, "
         f"coalesce(sum(total_amount_cents), 0) AS cents, "
@@ -502,9 +512,9 @@ def cmd_probe(dbx: Databricks, args) -> int:
         "nonnumeric_amount_quarantined": dbx.sql_ok(
             f"SELECT cust_id, reason FROM {n.quarantine} "
             f"WHERE batch='probe' AND reason='nonnumeric_amount'").rows,
-        "probe_rows_in_clean_gold": dbx.sql_ok(
-            f"SELECT count(*) FROM {n.gold} WHERE currency NOT IN "
-            f"(SELECT currency FROM {n.baseline})").scalar(),
+        "gold_records_minus_clean_silver": int(dbx.sql_ok(
+            f"SELECT coalesce((SELECT sum(record_count) FROM {n.gold}), 0) - "
+            f"(SELECT count(*) FROM {n.silver} WHERE batch='clean')").scalar()),
     }
     print(json.dumps(results, indent=2))
     return 0
@@ -629,12 +639,10 @@ def cmd_job(dbx: Databricks, args) -> int:
     and the delta from bronze. Schedule stays PAUSED — nothing in the shared
     workspace runs unattended."""
     n = names(args)
-    import base64
-    version = silver_version(dbx, n)
     statements = ";\n\n".join([
         build_silver_sql(n, "clean"),
         build_quarantine_sql(n, "clean"),
-        rollup_sql(n, version),
+        rollup_sql(n),
         delta_sql(n),
     ])
     sql_path = f"{NOTEBOOK_DIR}/finance_report_{n.ns}.sql"
@@ -735,7 +743,8 @@ def cmd_recon(dbx: Databricks, args) -> int:
     quarantine_declared = dbx.sql_ok(
         f"SELECT min(excluded_quarantine_count) FROM {n.gold}").scalar()
     quarantine_actual = dbx.sql_ok(
-        f"SELECT count(*) FROM {n.quarantine} WHERE batch = 'clean'").scalar()
+        f"SELECT count(*) FROM {n.quarantine} "
+        f"WHERE batch = 'clean' AND reason != 'trailer_count_mismatch'").scalar()
     silver_plus_quarantine = dbx.sql_ok(
         f"SELECT (SELECT count(*) FROM {n.silver} WHERE batch='clean') + "
         f"(SELECT count(*) FROM {n.quarantine} WHERE batch='clean' AND reason != 'trailer_count_mismatch')").scalar()
@@ -773,7 +782,7 @@ def cmd_recon(dbx: Databricks, args) -> int:
     version = silver_version(dbx, n)
     dbx.sql_ok(build_silver_sql(n, "clean"))
     dbx.sql_ok(build_quarantine_sql(n, "clean"))
-    dbx.sql_ok(rollup_sql(n, silver_version(dbx, n)))
+    dbx.sql_ok(rollup_sql(n))
     dbx.sql_ok(delta_sql(n))
     after = gold_rows()
     idempotent = before == after
@@ -871,7 +880,8 @@ def main() -> int:
     load = sub.add_parser("load")
     load.add_argument("--expect-files", type=int, default=0)
     report = sub.add_parser("report")
-    report.add_argument("--allow-delivery-failure", action="store_true", default=True)
+    report.add_argument("--allow-delivery-failure", action=argparse.BooleanOptionalAction, default=True,
+                        help="pass --no-allow-delivery-failure to make a failed delivery fail the command")
     sub.add_parser("probe")
     sub.add_parser("dashboard")
     sub.add_parser("job")

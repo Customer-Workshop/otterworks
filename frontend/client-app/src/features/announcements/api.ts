@@ -1,8 +1,8 @@
-// Announcements is served by the legacy portal today and by the extracted
-// announcements-service after the cut. The browser always talks same-origin to the
-// `/announcements-api` proxy (Vite in dev/preview, nginx in production), whose target is
-// selected by the ANNOUNCEMENTS_API_URL env var; VITE_ANNOUNCEMENTS_API_URL overrides the
-// whole base URL for builds that have no same-origin proxy (native/desktop shells).
+// Announcements is served by the extracted announcements-service, and by the legacy portal on
+// rollback. The browser always talks same-origin to the `/announcements-api` proxy (Vite in
+// dev/preview, nginx in production), whose target is selected by the ANNOUNCEMENTS_API_URL env
+// var — see docs/migration/traffic-routing.md; VITE_ANNOUNCEMENTS_API_URL overrides the whole
+// base URL for builds that have no same-origin proxy (native/desktop shells).
 export const ANNOUNCEMENTS_BASE_URL =
   import.meta.env.VITE_ANNOUNCEMENTS_API_URL ||
   `${window.location.origin}/announcements-api`;

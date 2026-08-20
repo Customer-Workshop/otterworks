@@ -28,11 +28,42 @@ server {
         proxy_set_header Connection $connection_upgrade;
     }
 
-    # Proxy /announcements-api/* to whichever portal backend owns announcements — the
-    # legacy monolith or the extracted announcements-service — selected by
-    # ANNOUNCEMENTS_API_URL. The prefix is stripped, so /api/announcements is passed through.
+    # One prefix and one env var per portal bounded context: the prefix is stripped, so the
+    # backend sees its own /api/* path unchanged, and the env var selects the backend — the
+    # extracted service by default, the legacy monolith on rollback. Changing the var and
+    # restarting the container is the whole switch; see docs/migration/traffic-routing.md.
+    #
+    # The target is held in a variable so nginx resolves it per request through the container
+    # DNS resolver instead of at startup: a context whose backend is not deployed yet must not
+    # stop the app from booting.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=30s;
+
     location /announcements-api/ {
-        proxy_pass ${ANNOUNCEMENTS_API_URL}/;
+        set $announcements_backend ${ANNOUNCEMENTS_API_URL};
+        rewrite ^/announcements-api/(.*)$ /$1 break;
+        proxy_pass $announcements_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /user-preferences-api/ {
+        set $user_preferences_backend ${USER_PREFERENCES_API_URL};
+        rewrite ^/user-preferences-api/(.*)$ /$1 break;
+        proxy_pass $user_preferences_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /feedback-api/ {
+        set $feedback_backend ${FEEDBACK_API_URL};
+        rewrite ^/feedback-api/(.*)$ /$1 break;
+        proxy_pass $feedback_backend;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

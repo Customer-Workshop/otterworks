@@ -12,15 +12,27 @@ const apiProxy = {
     changeOrigin: true,
   },
 };
-// The announcements slice talks same-origin to /announcements-api; ANNOUNCEMENTS_API_URL
-// selects which portal backend serves it — the legacy monolith (8095) today, the extracted
-// announcements-service (8101) after the cut. Both expose the same /api/announcements paths.
-const announcementsProxy = {
-  "/announcements-api": {
-    target: process.env.ANNOUNCEMENTS_API_URL || "http://localhost:8095",
+// Each portal bounded context is reached same-origin through its own /<context>-api prefix,
+// and one env var per context selects which backend serves it: the extracted service by
+// default, the legacy monolith (8095) on rollback. Both expose the same /api/* paths, so the
+// prefix is stripped and nothing else changes. See docs/migration/traffic-routing.md.
+const portalProxy = (prefix: string, target: string) => ({
+  [`/${prefix}`]: {
+    target,
     changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/announcements-api/, ""),
+    rewrite: (path: string) => path.replace(new RegExp(`^/${prefix}`), ""),
   },
+});
+const portalProxies = {
+  ...portalProxy(
+    "announcements-api",
+    process.env.ANNOUNCEMENTS_API_URL || "http://localhost:8101",
+  ),
+  ...portalProxy(
+    "user-preferences-api",
+    process.env.USER_PREFERENCES_API_URL || "http://localhost:8102",
+  ),
+  ...portalProxy("feedback-api", process.env.FEEDBACK_API_URL || "http://localhost:8103"),
 };
 const billingProxy = {
   "/billing-api": {
@@ -40,11 +52,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: { ...apiProxy, ...announcementsProxy, ...billingProxy },
+    proxy: { ...apiProxy, ...portalProxies, ...billingProxy },
   },
   preview: {
     port: 3000,
-    proxy: { ...apiProxy, ...announcementsProxy, ...billingProxy },
+    proxy: { ...apiProxy, ...portalProxies, ...billingProxy },
   },
   test: {
     include: ["src/**/*.{test,spec}.{ts,tsx}"],

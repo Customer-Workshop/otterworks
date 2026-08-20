@@ -20,6 +20,13 @@ HEALTHCHECK --interval=10s --timeout=3s CMD wget -q -O /dev/null http://127.0.0.
 # substituted into the nginx config template at container start.
 ENV API_GATEWAY_URL=http://api-gateway:8080
 
-# Portal backend serving /api/announcements; flipped to the extracted
-# announcements-service (http://announcements-service:8101) at the cut.
-ENV ANNOUNCEMENTS_API_URL=http://legacy-portal:8095
+# Makes the base image publish the container's own nameservers as NGINX_LOCAL_RESOLVERS, which
+# the config template uses to resolve the portal backends per request rather than at startup.
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+
+# Portal backend per bounded context. These now point at the extracted services; rolling a
+# context back to the monolith is one env var (http://legacy-portal:8095) and a restart, with
+# no rebuild. See docs/migration/traffic-routing.md.
+ENV ANNOUNCEMENTS_API_URL=http://announcements-service:8101
+ENV USER_PREFERENCES_API_URL=http://user-preferences-service:8102
+ENV FEEDBACK_API_URL=http://feedback-service:8103

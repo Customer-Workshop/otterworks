@@ -10,6 +10,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Deprecated: this context is served by {@code user-preferences-service}. The routes below are kept
+ * working, byte-identical, for rollback and for the parity suites; callers are pointed at
+ * the extracted service by configuration (see {@code docs/migration/traffic-routing.md}).
+ * {@link com.otterworks.legacyportal.common.DeprecatedContextRoutesFilter} adds the
+ * Deprecation/Sunset headers. Do not change the responses here.
+ */
 @RestController
 @RequestMapping("/api/preferences")
 public class UserPreferenceController {

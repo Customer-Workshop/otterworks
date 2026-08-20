@@ -117,6 +117,66 @@ class AnnouncementsIntegrationTest {
         assertThat(listed).hasSize(2);
     }
 
+    /**
+     * §2.1: publishedOnly=false still returns every row after a publish. The row *order* of
+     * that branch is the engine's, not the contract's — PostgreSQL relocates an updated row in
+     * the heap, so a published row moves to the end of an unordered scan where H2 kept it in
+     * insertion order. The contract forbids an ORDER BY on this branch, so the set is what is
+     * asserted here and the parity scenarios only replay this branch before any update.
+     */
+    @Test
+    void publishedOnlyFalseReturnsEveryRowAfterAPublish() {
+        long first = create("A", false).get("id").asLong();
+        create("B", false);
+        create("C", true);
+
+        post("/api/announcements/" + first + "/publish", "");
+
+        JsonNode listed =
+                rest.getForObject("/api/announcements?publishedOnly=false", JsonNode.class);
+
+        assertThat(listed).hasSize(3);
+        assertThat(listed).extracting(node -> node.get("title").asText())
+                .containsExactlyInAnyOrder("A", "B", "C");
+    }
+
+    /** §1, §2.3: the length bounds are inclusive, and one character over is rejected. */
+    @Test
+    void titleAndBodyLengthBoundsAreInclusive() {
+        String title200 = "T".repeat(200);
+        String body4000 = "B".repeat(4000);
+
+        ResponseEntity<JsonNode> atBound =
+                post(
+                        "/api/announcements",
+                        "{\"title\":\"%s\",\"body\":\"%s\",\"published\":false}"
+                                .formatted(title200, body4000));
+
+        assertThat(atBound.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(atBound.getBody().get("title").asText()).hasSize(200);
+        assertThat(atBound.getBody().get("body").asText()).hasSize(4000);
+
+        ResponseEntity<JsonNode> overBound =
+                post(
+                        "/api/announcements",
+                        "{\"title\":\"%s\",\"body\":\"body\"}".formatted("T".repeat(201)));
+
+        assertThat(overBound.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertDefaultEnvelope(overBound.getBody(), 400, "Bad Request", "/api/announcements");
+        assertThat(repository.count()).isEqualTo(1);
+    }
+
+    /** §2.3: a rejected create burns no identity value and persists nothing. */
+    @Test
+    void aRejectedCreatePersistsNothing() {
+        post("/api/announcements", "{\"title\":\"\",\"body\":\"body\"}");
+        post("/api/announcements", "{\"title\":");
+
+        assertThat(repository.count()).isZero();
+        assertThat(rest.getForObject("/api/announcements?publishedOnly=false", JsonNode.class))
+                .isEmpty();
+    }
+
     /** §2.1: an empty table is []. */
     @Test
     void emptyTableListsAsAnEmptyArray() {

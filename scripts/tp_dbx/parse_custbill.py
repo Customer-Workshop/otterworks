@@ -96,8 +96,11 @@ def cmd_land(dbx: Databricks, args) -> int:
     n = names(args)
     root = Path(args.legacy_root)
     if args.feed == "seed":
-        candidates = sorted(root.glob("incoming/CUSTBILL_*.dat")) or [
-            p.with_suffix("") for p in sorted(root.glob("incoming/CUSTBILL_*.dat.done"))
+        # scope to this namespace's drops: every namespace stages into the same
+        # legacy root, so an unscoped glob would mix in a sibling demo's files
+        pattern = f"incoming/CUSTBILL_{args.source_ns.upper()}_*.dat"
+        candidates = sorted(root.glob(pattern)) or [
+            p.with_suffix("") for p in sorted(root.glob(pattern + ".done"))
         ]
         files = []
         for path in candidates:

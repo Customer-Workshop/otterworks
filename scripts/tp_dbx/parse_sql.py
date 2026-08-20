@@ -104,7 +104,7 @@ def provision(n: ParseNames) -> list[str]:
               ingested_at TIMESTAMP)
             USING DELTA
             COMMENT 'Bronze: byte-preserved CUSTBILL drops, one row per line (input of record)'""",
-        f"""CREATE OR REPLACE TABLE {n.silver} (
+        f"""CREATE TABLE IF NOT EXISTS {n.silver} (
               cust_id STRING, cust_name STRING,
               bill_date DATE COMMENT 'Real DATE, validity enforced by EXP-DATE',
               amount DECIMAL(12,2) COMMENT 'PIC 9(10)V99 implied decimal, cents-exact',
@@ -115,7 +115,7 @@ def provision(n: ParseNames) -> list[str]:
               source_year INT, record_offset INT COMMENT 'line number in the source file')
             USING DELTA
             COMMENT 'Silver: validated CUSTBILL billing records (quarantined rows excluded)'""",
-        f"""CREATE OR REPLACE TABLE {n.quarantine} (
+        f"""CREATE TABLE IF NOT EXISTS {n.quarantine} (
               source_file STRING, source_feed STRING, source_period STRING, source_year INT,
               record_offset INT COMMENT 'line number in the source file; 0 for file-scope defects',
               cust_id STRING,
@@ -285,14 +285,18 @@ def build_silver(n: ParseNames, record_expectations: list[dict]) -> str:
 def file_counts(n: ParseNames) -> str:
     # FULL OUTER JOIN of the landed-file registry with the bronze lines: a
     # zero-byte file has a registry row but no bronze rows, so it still yields
-    # a body_count=0 outcome instead of vanishing.
+    # a body_count=0 outcome instead of vanishing. A file with no lines at all
+    # is a successful empty parse per the contract's empty_input_semantics, so
+    # its trailer_count reconciles as 0 = 0 rather than firing EXP-TRL; a
+    # non-empty file that lacks a TRL record still fails (NULL trailer vs body).
     return f"""
       SELECT coalesce(r.source_file, b.source_file) AS source_file,
              coalesce(r.source_feed, b.source_feed) AS source_feed,
              coalesce(r.source_period, b.source_period) AS source_period,
              coalesce(r.source_year, b.source_year) AS source_year,
              coalesce(b.body_count, 0) AS body_count,
-             b.trailer_count, b.trailer_line
+             CASE WHEN b.source_file IS NULL THEN 0 ELSE b.trailer_count END AS trailer_count,
+             b.trailer_line
       FROM {n.files} r
       FULL OUTER JOIN (
         SELECT source_file, source_feed, source_period, source_year,

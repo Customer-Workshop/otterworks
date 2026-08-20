@@ -43,6 +43,7 @@ for arg in "$@"; do
     --skip-platform)  SKIP_PLATFORM=true ;;
     --skip-terraform) SKIP_TERRAFORM=true ;;
     --skip-build)     SKIP_BUILD=true ;;
+    *)                echo "[deploy] Unknown argument (ignored): $arg" >&2 ;;
   esac
 done
 

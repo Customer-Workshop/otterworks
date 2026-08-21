@@ -23,17 +23,27 @@ graded against, and the Playwright spec that reproduces it. The findings on
 
 | Finding | Sev | Surface | Symptom in the browser |
 |---|---|---|---|
-| `OW-UI-101` | high | every authenticated route | notification calls return `400`; the bell badge and `/notifications` render as if empty |
+| `OW-UI-101` | high | every authenticated route | the unread-count badge query resolves `undefined` (client reads `data.count`, service answers `{userId, unreadCount}`); `/notifications` renders as if empty |
 | `OW-UI-102` | high | `/settings` | the settings form posts to a route that answers `404`; input is silently discarded |
 | `OW-UI-103` | medium | `/files` | a text file's detail page never shows its contents |
 | `OW-UI-104` | medium | `/files` | Download reports no progress, success, or failure |
-| `OW-UI-105` | medium | `/trash` | permanent delete destroys an item with no confirmation |
+
+A sixth entry (`OW-UI-105`, unconfirmed permanent delete) was withdrawn: the
+Trash page already confirms by name (`src/pages/trash.tsx`), and the spec written
+for it passed against the unfixed app — which is exactly how `make ui-repro`
+catches a bad registry entry. Expect a filed symptom to have drifted, and grade
+against a finding's `expected`, not its `symptom`.
 
 `status` is a closed set — `open` or `remediated`. Any other value is a hard
 error, so a typo cannot skip a gate. `open` findings may carry
 `accepted_console_errors`; `remediated` findings may not, and the harness refuses
 to run if one does. That pairing is what makes the gate tighten as the backlog
 burns down instead of decaying into a permanent allowlist.
+
+The sweep also fails on a **stale suppression** — an `accepted_console_errors`
+rule that matched nothing on the run. A defect that stopped reproducing must be
+reconciled in the registry; leaving its suppression behind would mask the next
+regression on that route forever.
 
 None of these are the planted bug described in `AGENTS.md` (the admin-service
 Rails logger). They are genuine gaps in the client app and its contracts, and

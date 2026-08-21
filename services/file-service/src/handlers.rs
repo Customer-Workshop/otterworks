@@ -372,6 +372,7 @@ pub async fn download_file(
 }
 
 pub async fn download_content(
+    req: HttpRequest,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
@@ -381,7 +382,22 @@ pub async fn download_content(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    let user_id: Uuid = req
+        .headers()
+        .get("X-User-ID")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
+
     let file = meta.get_file(&file_id).await?;
+    if file.owner_id != user_id {
+        let share = meta.find_existing_share(&file_id, &user_id).await?;
+        if share.is_none() {
+            return Err(ServiceError::Forbidden(
+                "not authorized to download this file".into(),
+            ));
+        }
+    }
     let bytes = s3.download_object(&file.s3_key).await?;
     let filename = file.name.replace(['"', '\r', '\n'], "_");
 

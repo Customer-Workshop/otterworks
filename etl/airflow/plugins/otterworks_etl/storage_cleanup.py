@@ -35,22 +35,24 @@ CREATE TABLE IF NOT EXISTS {table} (
 
 
 def list_s3_objects(s3_hook: Any, config: StorageCleanupConfig) -> list[dict[str, Any]]:
-    """Inventory every object under the configured files prefix."""
-    keys: Sequence[str] = s3_hook.list_keys(
-        bucket_name=config.file_storage_bucket, prefix=config.files_prefix
-    ) or []
+    """Inventory every object under the configured files prefix.
+
+    Key and size both come from the ``list_objects_v2`` pages, so the inventory
+    costs one request per page rather than an extra HEAD per object.
+    """
+    paginator = s3_hook.get_conn().get_paginator("list_objects_v2")
+    pages = paginator.paginate(
+        Bucket=config.file_storage_bucket, Prefix=config.files_prefix
+    )
 
     objects: list[dict[str, Any]] = []
-    for key in keys:
-        if key.endswith("/"):
-            # Zero-byte directory markers are not real objects.
-            continue
-        meta = s3_hook.head_object(key=key, bucket_name=config.file_storage_bucket)
-        if meta is None:
-            # The key disappeared between LIST and HEAD; treat it as gone.
-            logger.warning("Key %s vanished between list and head; skipping", key)
-            continue
-        objects.append({"key": key, "size": int(meta["ContentLength"])})
+    for page in pages:
+        for entry in page.get("Contents", []):
+            key = entry["Key"]
+            if key.endswith("/"):
+                # Zero-byte directory markers are not real objects.
+                continue
+            objects.append({"key": key, "size": int(entry["Size"])})
 
     total_bytes = sum(obj["size"] for obj in objects)
     logger.info(

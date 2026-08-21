@@ -131,9 +131,43 @@ def test_list_metadata_references_follows_pagination(config) -> None:
     assert calls[1]["ExclusiveStartKey"] == {"file_id": "f1"}
 
 
+def test_list_s3_objects_paginates_without_head_requests(config) -> None:
+    pages = [
+        {"Contents": [{"Key": "files/a.txt", "Size": 4}, {"Key": "files/", "Size": 0}]},
+        {"Contents": [{"Key": "files/b.txt", "Size": 2}]},
+    ]
+
+    class FakePaginator:
+        def paginate(self, **kwargs: Any) -> Any:
+            assert kwargs == {
+                "Bucket": config.file_storage_bucket,
+                "Prefix": config.files_prefix,
+            }
+            return iter(pages)
+
+    class FakeConn:
+        def get_paginator(self, name: str) -> Any:
+            assert name == "list_objects_v2"
+            return FakePaginator()
+
+    class FakeHook:
+        def get_conn(self) -> Any:
+            return FakeConn()
+
+        def head_object(self, **kwargs: Any) -> Any:  # pragma: no cover - must not run
+            raise AssertionError("inventory must not issue per-object HEAD requests")
+
+    objects = storage_cleanup.list_s3_objects(FakeHook(), config)
+
+    assert objects == [
+        {"key": "files/a.txt", "size": 4},
+        {"key": "files/b.txt", "size": 2},
+    ]
+
+
 def test_extract_failures_propagate(config) -> None:
     class ExplodingHook:
-        def list_keys(self, **kwargs: Any) -> Any:
+        def get_conn(self) -> Any:
             raise RuntimeError("throttled")
 
     with pytest.raises(RuntimeError, match="throttled"):

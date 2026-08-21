@@ -133,3 +133,14 @@ def test_generated_seed_is_current() -> None:
 
     seed_path = Path(__file__).parents[1] / "db" / "seed.sql"
     assert seed_path.read_text() == generate()
+
+
+def test_reset_truncates_every_migrated_table() -> None:
+    import re
+
+    from app.db import MIGRATION, TRUNCATE
+
+    pattern = r"CREATE TABLE IF NOT EXISTS (billing_svc\.\w+)"
+    created = set(re.findall(pattern, MIGRATION.read_text()))
+    truncated = set(re.findall(r"billing_svc\.\w+", TRUNCATE))
+    assert created == truncated

@@ -33,7 +33,7 @@ findings:
   - id: OW-UI-101
     title: Notification data calls return 400 on every authenticated route
     severity: high
-    status: open
+    status: remediated
     source: docs/exploratory-qa-report.md
     routes: [/dashboard, /files, /notifications]
     symptom: >
@@ -46,9 +46,6 @@ findings:
       unread count, and the notifications page distinguishes "no notifications"
       from "could not load notifications".
     spec: e2e/ui-defects/ow-ui-101.spec.ts
-    accepted_console_errors:
-      - url_pattern: /api/v1/notifications
-        status: 400
 
   - id: OW-UI-102
     title: Settings page calls a route that does not exist

@@ -30,7 +30,7 @@ export default function NotificationsPage() {
 function NotificationsContent() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => notificationsApi.list(),
   });
@@ -79,6 +79,12 @@ function NotificationsContent() {
       {/* Notifications */}
       {isLoading ? (
         <PageLoader />
+      ) : isError ? (
+        <EmptyState
+          icon={Bell}
+          title="Could not load notifications"
+          description="Something went wrong while loading your notifications. Please try again later."
+        />
       ) : notifications.length === 0 ? (
         <EmptyState
           icon={Bell}

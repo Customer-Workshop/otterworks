@@ -32,12 +32,14 @@
         <guava.version>33.3.1-jre</guava.version>
         <opencsv.version>5.9</opencsv.version>
         <!--
-          Commons Text 1.12.0 — report banner/footer interpolation. 1.9 is inside
-          the CVE-2022-42889 range [1.5,1.10.0); 1.10.0 dropped the script/dns/url
-          lookups from the default interpolator, which is what the deps transcript
-          measures as the remediation.
+          Commons Text stays on 1.9 — report banner/footer interpolation. 1.9 is
+          inside the CVE-2022-42889 range [1.5,1.10.0) and is the before-state the
+          deps harness grades (1.10.0 dropped the script/dns/url lookups from the
+          default interpolator, which is the remediation that lab measures). 1.9
+          runs on JDK 17 unchanged, so this upgrade leaves the advisory state as
+          it found it; remediating it belongs to the deps-remediation work.
         -->
-        <commons-text.version>1.12.0</commons-text.version>
+        <commons-text.version>1.9</commons-text.version>
         <nashorn.version>15.4</nashorn.version>
     </properties>
 

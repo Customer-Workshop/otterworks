@@ -44,6 +44,22 @@ modules:
     test: -B test
     cases: cases/legacy-portal.json
 
+  - id: feedback-service
+    path: services/feedback-service
+    build: maven
+    java_home:
+      - $JAVA_HOME_17_X64
+      - /usr/lib/jvm/java-17-openjdk-amd64
+    # Spring Boot 3.2 on Java 17, with its own checked-in wrapper (3.9.9) — the same tool
+    # ci.yml builds it with. `mvn` is the fallback where the wrapper cannot be resolved.
+    tool:
+      - ./mvnw
+      - mvn
+    test: -B test
+    # No interpolation call path (it carries none of the portal's Commons Configuration
+    # wiring): measured for the dependency tree only.
+    cases: null
+
   - id: notification-service
     path: services/notification-service
     build: gradle

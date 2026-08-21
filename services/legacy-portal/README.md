@@ -1,14 +1,18 @@
 # Legacy Portal — modular monolith (rehost / decomposition "before" state)
 
 `legacy-portal` is a **legacy modular monolith**: a single deployable Spring Boot application
-(Java 11, Spring Boot 2.7.x, built with Maven) that bundles **three bounded contexts** into one
-process. It exists as a realistic **"before" state** for two migration demos:
+(Java 11, Spring Boot 2.7.x, built with Maven) that bundles its remaining **two bounded contexts**
+into one process. It exists as a realistic **"before" state** for two migration demos:
 
 - **Rehost (lift-and-shift → EC2)** — it **runs on a VM / on-prem host today** (plain Docker
   Compose, a fat JAR under systemd), deliberately *not* on the repo's Helm/EKS path. That makes it
   the natural starting point for a lift-and-shift-to-EC2 demo.
-- **Monolith decomposition (→ microservices / Lambda)** — its three contexts are cleanly separated
-  by package **and by database schema**, so the seams for splitting it into services are obvious.
+- **Monolith decomposition (→ microservices / Lambda)** — its contexts are cleanly separated by
+  package **and by database schema**, so the seams for splitting it into services are obvious. The
+  **feedback** context has already been extracted along one of those seams — it now lives in
+  [`services/feedback-service`](../feedback-service) (Java 17 / Spring Boot 3.2), owns the
+  `feedback` schema exclusively, and serves `/api/feedback*` on port 8096. The portal no longer
+  creates that schema or serves those routes.
 
 > This component is part of the OtterWorks **golden app** as a durable before-state. The
 > after-state (EC2/ASG IaC, decomposed services) is intentionally **not** included here.
@@ -23,7 +27,10 @@ and the datasource. That is exactly what makes this a good decomposition candida
 |---|---|---|---|
 | Announcements | `com.otterworks.legacyportal.announcements` | `announcements` | `GET/POST /api/announcements`, `GET /api/announcements/{id}`, `POST /api/announcements/{id}/publish` |
 | User Preferences | `com.otterworks.legacyportal.userpreferences` | `user_preferences` | `GET /api/preferences/{userId}`, `PUT /api/preferences/{userId}` |
-| Feedback | `com.otterworks.legacyportal.feedback` | `feedback` | `POST /api/feedback`, `GET /api/feedback?userId=`, `GET /api/feedback/average-rating` |
+
+| Extracted | New home | Schema | Routes |
+|---|---|---|---|
+| Feedback | [`services/feedback-service`](../feedback-service) | `feedback` (owned there) | `POST /api/feedback`, `GET /api/feedback?userId=`, `GET /api/feedback/average-rating` on port 8096 |
 
 Shared, non-domain plumbing lives in `com.otterworks.legacyportal.common` (health endpoint,
 exception handling).
@@ -33,8 +40,8 @@ exception handling).
 - **Independent data ownership** — one schema per context; no shared tables or joins across
   contexts, so each context's tables can be lifted into a per-service database.
 - **Independent routes** — each context owns a distinct `/api/*` prefix that maps 1:1 to a future
-  service (e.g. an `announcements-service`, a `preferences-service`, a `feedback-service`, or a
-  Lambda per context).
+  service (e.g. an `announcements-service` or a `preferences-service`, or a Lambda per context) —
+  as already done for `feedback-service`.
 - **No cross-context object references** — contexts do not call each other's services directly, so
   extracting one does not drag the others along.
 
@@ -65,7 +72,7 @@ curl http://localhost:8095/health
 docker compose -f docker-compose.onprem.yml down -v
 ```
 
-This brings up PostgreSQL alongside the app; the three schemas are created by
+This brings up PostgreSQL alongside the app; the remaining two schemas are created by
 [`scripts/initdb.sql`](scripts/initdb.sql). This stack is intentionally separate from the
 Helm/EKS deploy path — it models the on-prem host the rehost demo lifts *from*.
 

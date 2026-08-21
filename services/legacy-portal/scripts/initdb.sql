@@ -2,4 +2,4 @@
 -- become an independent database when legacy-portal is split into microservices.
 CREATE SCHEMA IF NOT EXISTS announcements;
 CREATE SCHEMA IF NOT EXISTS user_preferences;
-CREATE SCHEMA IF NOT EXISTS feedback;
+-- The feedback schema moved out with the context: services/feedback-service/scripts/initdb.sql.

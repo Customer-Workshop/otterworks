@@ -1,0 +1,52 @@
+# Local stack for feedback-service: the service plus the PostgreSQL database it owns.
+#
+# Mirrors the legacy-portal on-prem stack it was extracted from (services/legacy-portal/
+# docker-compose.onprem.yml) and is likewise separate from the repo's Helm/EKS deploy path.
+# The service listens on 8096 — clear of legacy-portal's 8095 and the 8081-8091 range used by
+# the golden app's services.
+#
+#   Usage (from services/feedback-service/):
+#     docker compose up --build
+#     curl http://localhost:8096/health
+#     docker compose down -v
+services:
+  feedback-db:
+    image: postgres:15-alpine
+    container_name: feedback-db
+    environment:
+      POSTGRES_DB: feedback
+      POSTGRES_USER: feedback
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-feedback}
+    volumes:
+      - ./scripts/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql:ro
+      - feedback-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedback -d feedback"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  feedback-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feedback-service
+    depends_on:
+      feedback-db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://feedback-db:5432/feedback
+      SPRING_DATASOURCE_USERNAME: feedback
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-feedback}
+    ports:
+      - "8096:8096"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+
+volumes:
+  feedback-db-data:

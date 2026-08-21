@@ -54,13 +54,15 @@ class LegacyPortalApplicationTest {
                 .andExpect(jsonPath("$.theme").value("light"));
     }
 
+    /** Feedback was extracted into services/feedback-service; the portal must not serve it. */
     @Test
-    void feedbackModuleValidatesRating() throws Exception {
+    void feedbackRoutesAreNoLongerServed() throws Exception {
+        mockMvc.perform(get("/api/feedback").param("userId", "u1")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/feedback/average-rating")).andExpect(status().isNotFound());
         mockMvc.perform(
                         post("/api/feedback")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        "{\"userId\":\"u1\",\"rating\":9,\"message\":\"bad rating\"}"))
-                .andExpect(status().isBadRequest());
+                                .content("{\"userId\":\"u1\",\"rating\":5,\"message\":\"hello\"}"))
+                .andExpect(status().isNotFound());
     }
 }

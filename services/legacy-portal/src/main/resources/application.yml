@@ -5,10 +5,10 @@ spring:
   application:
     name: legacy-portal
   # Default profile: embedded H2 with ONE SCHEMA PER BOUNDED CONTEXT. The schema
-  # boundaries (announcements / user_preferences / feedback) are the decomposition seams —
-  # each could become its own database when the monolith is split into services.
+  # boundaries (announcements / user_preferences) are the decomposition seams — each could
+  # become its own database when the monolith is split into services, as feedback already has.
   datasource:
-    url: 'jdbc:h2:mem:legacyportal;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS ANNOUNCEMENTS\;CREATE SCHEMA IF NOT EXISTS USER_PREFERENCES\;CREATE SCHEMA IF NOT EXISTS FEEDBACK'
+    url: 'jdbc:h2:mem:legacyportal;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS ANNOUNCEMENTS\;CREATE SCHEMA IF NOT EXISTS USER_PREFERENCES'
     username: sa
     password: ''
     driver-class-name: org.h2.Driver
@@ -31,7 +31,7 @@ management:
 
 ---
 # On-prem / VM profile: talks to a real PostgreSQL running alongside the app on the VM
-# (see docker-compose.onprem.yml and scripts/run-onprem.sh). The three schemas are created
+# (see docker-compose.onprem.yml and scripts/run-onprem.sh). Both schemas are created
 # by scripts/initdb.sql at database init time.
 spring:
   config:

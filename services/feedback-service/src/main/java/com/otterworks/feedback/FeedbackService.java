@@ -1,4 +1,4 @@
-package com.otterworks.legacyportal.feedback;
+package com.otterworks.feedback;
 
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -30,6 +30,10 @@ public class FeedbackService {
         return repository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    /**
+     * Average rating across all feedback. Empty input yields {@code 0.0} — never null and never a
+     * 404 — preserved verbatim from the monolith's behavior.
+     */
     @Transactional(readOnly = true)
     public double averageRating() {
         List<Feedback> all = repository.findAll();

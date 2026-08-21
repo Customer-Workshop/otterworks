@@ -6,9 +6,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * OtterWorks Legacy Portal — a modular monolith.
  *
- * <p>Three bounded contexts (announcements, user-preferences, feedback) are bundled into a single
- * deployable, each living in its own package with its own routes and its own database schema. This
- * is a deliberate decomposition candidate: the module seams map cleanly onto future microservices.
+ * <p>Two bounded contexts (announcements, user-preferences) are bundled into a single deployable,
+ * each living in its own package with its own routes and its own database schema. This is a
+ * deliberate decomposition candidate: the module seams map cleanly onto future microservices — the
+ * feedback context has already been extracted into services/feedback-service.
  */
 @SpringBootApplication
 public class LegacyPortalApplication {

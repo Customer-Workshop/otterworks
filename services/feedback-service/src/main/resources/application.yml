@@ -1,0 +1,48 @@
+server:
+  port: 8096
+
+spring:
+  application:
+    name: feedback-service
+  # Default profile: embedded H2. The feedback schema is owned exclusively by this
+  # service — legacy-portal no longer creates or touches it.
+  datasource:
+    url: 'jdbc:h2:mem:feedback;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS FEEDBACK'
+    username: sa
+    password: ''
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+---
+# PostgreSQL profile: talks to the service's own database (see docker-compose.yml).
+# The feedback schema is created by scripts/initdb.sql at database init time.
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/feedback}
+    username: ${SPRING_DATASOURCE_USERNAME:feedback}
+    password: ${SPRING_DATASOURCE_PASSWORD:feedback}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

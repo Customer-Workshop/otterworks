@@ -7,28 +7,23 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- LEGACY: Spring Boot 2.7.18 — final 2.7.x release (Java 8-19). Upgrade target: 3.2+ -->
-        <version>2.7.18</version>
+        <version>3.2.5</version>
         <relativePath/>
     </parent>
 
     <groupId>com.otterworks</groupId>
-    <artifactId>legacy-portal</artifactId>
+    <artifactId>feedback-service</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>
-    <name>OtterWorks Legacy Portal</name>
-    <description>Legacy modular monolith bundling the announcements and user-preferences bounded
-        contexts in one deployable. Runs on a VM today — a rehost and monolith-decomposition
-        "before" state; the feedback context has been extracted into feedback-service.</description>
+    <name>OtterWorks Feedback Service</name>
+    <description>Standalone service owning the feedback bounded context, extracted from the
+        legacy-portal modular monolith. Owns the feedback schema exclusively.</description>
 
     <properties>
-        <!-- LEGACY: Java 11 source/target. Upgrade target: Java 17+ -->
-        <java.version>11</java.version>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Commons Configuration 2.8.0 — portal settings file with interpolation -->
-        <commons-configuration2.version>2.8.0</commons-configuration2.version>
     </properties>
 
     <dependencies>
@@ -49,26 +44,13 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Portal branding/settings file with interpolation -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-configuration2</artifactId>
-            <version>${commons-configuration2.version}</version>
-        </dependency>
-        <!-- Required at runtime by the Commons Configuration builder API -->
-        <dependency>
-            <groupId>commons-beanutils</groupId>
-            <artifactId>commons-beanutils</artifactId>
-            <version>1.11.0</version>
-        </dependency>
-
-        <!-- Embedded DB used by the default profile, run-onprem.sh, and tests. -->
+        <!-- Embedded DB used by the default profile, run-local.sh, and tests. -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- PostgreSQL driver for the on-prem "postgres" profile (docker-compose.onprem.yml). -->
+        <!-- PostgreSQL driver for the "postgres" profile (docker-compose.yml). -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -83,7 +65,7 @@
     </dependencies>
 
     <build>
-        <finalName>legacy-portal</finalName>
+        <finalName>feedback-service</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

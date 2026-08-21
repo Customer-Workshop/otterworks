@@ -47,5 +47,48 @@ modules:
     status: pending
     entrypoints: {}
   dunning:
-    status: pending
-    entrypoints: {}
+    status: extracted
+    entrypoints:
+      billing.fn_overdue_accounts:
+        method: GET
+        path: /api/dunning/overdue-accounts
+        inputs:
+          query:
+            as_of: as_of
+        response:
+          business_fields:
+            tenant_ids: {json_path: "$[*].tenant_id", type: text, collect: true}
+            days_overdue: {json_path: "$[*].days_overdue", type: integer, collect: true}
+      billing.sp_schedule_dunning:
+        method: POST
+        path: /api/dunning/schedule
+        inputs:
+          body:
+            as_of: as_of
+        response:
+          business_fields:
+            attempt_no: {json_path: "$.attempt_no", type: integer}
+            scheduled_for: {json_path: "$.scheduled_for", type: text}
+            status: {json_path: "$.status", type: text}
+          probes:
+            schedule_rows:
+              json_path: "$.attempts"
+              type: rows
+      billing.sp_suspend_overdue:
+        method: POST
+        path: /api/dunning/suspensions
+        inputs:
+          body:
+            as_of: as_of
+        response:
+          business_fields:
+            status: {json_path: "$.status", type: text}
+            suspended_on: {json_path: "$.suspended_on", type: text}
+            notification_kinds:
+              json_path: "$.notifications[*].kind"
+              type: text
+              collect: true
+          probes:
+            suspension_notifications:
+              json_path: "$.notifications"
+              type: rows

@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record etl-airflow-setup etl-airflow-import etl-airflow-test etl-airflow-check
 
 SHELL := /bin/bash
 
@@ -429,3 +429,19 @@ eq-tests: ## Run the affected module's own suite against the recorded pass list
 eq-record: ## Record the before-state as the reference evidence (REASON="..." required)
 	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make eq-record REASON="baseline before OW-SEC-401 refactor"' >&2; exit 2)
 	$(EQ) record --reason "$(REASON)" $(if $(FINDING),--finding $(FINDING),) $(if $(ALLOW_RERECORD),--allow-rerecord,)
+
+# --- ETL / Airflow ---------------------------------------------------------
+# The migrated ETL DAGs live in etl/airflow/ (Airflow 2.8.4, Python 3.11).
+# See etl/airflow/README.md.
+
+etl-airflow-setup: ## Create etl/airflow/.venv with the pinned Airflow requirements
+	etl/airflow/check.sh setup
+
+etl-airflow-import: ## DAG-import check for etl/airflow/dags
+	etl/airflow/check.sh import
+
+etl-airflow-test: ## Run the etl/airflow pytest suite
+	etl/airflow/check.sh test
+
+etl-airflow-check: ## DAG-import check + pytest for etl/airflow
+	etl/airflow/check.sh all

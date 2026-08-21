@@ -1,0 +1,5 @@
+.venv/
+.airflow-test-home/
+logs/
+*.db
+__pycache__/

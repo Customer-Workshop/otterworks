@@ -1,0 +1,2 @@
+# Shared helper package — importable as `common.*`, never scanned for DAGs.
+common/

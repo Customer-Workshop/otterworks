@@ -110,3 +110,7 @@ __pycache__/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+
+# --- ETL / Airflow ---
+etl/airflow/.airflow/
+etl/airflow/.venv/

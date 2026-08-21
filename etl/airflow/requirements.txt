@@ -1,0 +1,6 @@
+# Runtime dependencies for the OtterWorks Airflow DAGs (Python 3.11).
+# Install pinned to the matching Airflow constraints file:
+#   pip install -r requirements.txt -c constraints-2.8.4-python3.11.txt
+apache-airflow==2.8.4
+apache-airflow-providers-amazon==8.19.0
+apache-airflow-providers-postgres==5.10.2

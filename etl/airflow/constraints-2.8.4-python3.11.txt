@@ -1,0 +1,12 @@
+# Airflow constraints reference for this deployment.
+#
+# The authoritative constraints file for Airflow 2.8.4 on Python 3.11 is
+# published by the Apache Airflow project and is vendored by reference rather
+# than copied, so it can never drift from upstream:
+#
+#   https://raw.githubusercontent.com/apache/airflow/constraints-2.8.4/constraints-3.11.txt
+#
+# pip resolves the URL below transitively, so
+#   pip install -r requirements.txt -c constraints-2.8.4-python3.11.txt
+# is equivalent to installing against the upstream constraints file.
+-c https://raw.githubusercontent.com/apache/airflow/constraints-2.8.4/constraints-3.11.txt

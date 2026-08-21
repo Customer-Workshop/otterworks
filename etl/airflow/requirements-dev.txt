@@ -1,0 +1,7 @@
+# Test/lint dependencies. Installed on top of requirements.txt WITHOUT the
+# Airflow constraints file (the constraints pin older pytest/moto releases).
+-r requirements.txt
+pytest==8.1.1
+pytest-mock==3.14.0
+moto[s3,dynamodb]==5.0.5
+ruff==0.4.4

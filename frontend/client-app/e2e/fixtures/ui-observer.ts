@@ -56,14 +56,27 @@ export function loadSweepConfig(): SweepConfig {
   };
 }
 
+/**
+ * Match an observation against the suppression rules.
+ *
+ * A failed request surfaces twice: as the response itself, which carries a
+ * status, and as a browser console error, which does not. `status` is therefore
+ * only applied to network observations — a console error is matched on its text
+ * and location, so a rule must still name a `url_pattern` or a `message` to
+ * suppress one. A rule with nothing but a status never suppresses console noise.
+ */
 export function isAccepted(obs: Observation, accepted: AcceptedRule[]): AcceptedRule | undefined {
   return accepted.find((rule) => {
-    if (rule.status !== undefined && rule.status !== obs.status) return false;
-    if (rule.url_pattern && !(obs.url ?? "").includes(rule.url_pattern)) return false;
+    const haystack = `${obs.url ?? ""} ${obs.text}`;
+    if (rule.url_pattern && !haystack.includes(rule.url_pattern)) return false;
     if (rule.message && !obs.text.includes(rule.message)) return false;
-    return (
-      rule.status !== undefined || Boolean(rule.url_pattern) || Boolean(rule.message)
-    );
+    if (obs.kind === "network") {
+      if (rule.status !== undefined && rule.status !== obs.status) return false;
+      return (
+        rule.status !== undefined || Boolean(rule.url_pattern) || Boolean(rule.message)
+      );
+    }
+    return Boolean(rule.url_pattern) || Boolean(rule.message);
   });
 }
 

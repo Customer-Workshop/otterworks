@@ -51,24 +51,11 @@ findings:
       from "could not load notifications".
     spec: e2e/ui-defects/ow-ui-101.spec.ts
 
-  - id: OW-UI-102
-    title: Settings page calls a route that does not exist
-    severity: high
-    status: open
-    source: docs/exploratory-qa-report.md
-    routes: [/settings]
-    symptom: >
-      The settings form renders and appears functional, but GET
-      /api/v1/settings returns 404, so nothing is loaded from or persisted to
-      the backend and the user gets no error.
-    expected: >
-      Either the settings surface is backed by a real endpoint, or the
-      backend-backed controls are disabled with a visible explanation. A form
-      that silently discards input is the defect.
-    spec: e2e/ui-defects/ow-ui-102.spec.ts
-    accepted_console_errors:
-      - url_pattern: /api/v1/settings
-        status: 404
+# OW-UI-102 ("settings page calls a route that does not exist") was withdrawn:
+# GET and PATCH /api/v1/settings return 200 for a logged-in user (verified
+# against the running stack), the settings page loads and persists real values,
+# and the recorded 404 suppression matched nothing on the sweep — the harness's
+# stale-suppression check is how the bad entry was caught.
 
   - id: OW-UI-103
     title: Text file detail page never shows the file contents

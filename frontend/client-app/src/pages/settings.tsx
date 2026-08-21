@@ -12,7 +12,6 @@ import { useAuthStore } from "@/stores/auth-store";
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -37,7 +36,7 @@ function SettingsContent() {
   });
 
   const profileMutation = useMutation({
-    mutationFn: (data: ProfileForm) => authApi.updateProfile(data),
+    mutationFn: (data: ProfileForm) => authApi.updateProfile({ displayName: data.displayName }),
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
     },
@@ -60,13 +59,12 @@ function SettingsContent() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       displayName: user?.displayName || "",
-      email: user?.email || "",
     },
   });
 
   useEffect(() => {
     if (user) {
-      reset({ displayName: user.displayName, email: user.email });
+      reset({ displayName: user.displayName });
     }
   }, [user, reset]);
 
@@ -105,12 +103,13 @@ function SettingsContent() {
             <input
               id="email"
               type="email"
-              {...register("email")}
-              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+              value={user?.email ?? ""}
+              disabled
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
             />
-            {errors.email && (
-              <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
-            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Email addresses cannot be changed.
+            </p>
           </div>
 
           <div className="flex justify-end">
@@ -126,6 +125,12 @@ function SettingsContent() {
 
           {profileMutation.isSuccess && (
             <p className="text-sm text-green-600">Profile updated successfully.</p>
+          )}
+
+          {profileMutation.isError && (
+            <p className="text-sm text-red-600">
+              Could not save your profile. Please try again.
+            </p>
           )}
         </form>
       </section>

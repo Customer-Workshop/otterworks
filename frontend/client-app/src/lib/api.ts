@@ -103,7 +103,7 @@ export const authApi = {
     return data;
   },
   updateProfile: async (updates: Partial<User>): Promise<User> => {
-    const { data } = await apiClient.patch<User>("/auth/profile", updates);
+    const { data } = await apiClient.put<User>("/auth/profile", updates);
     return data;
   },
   logout: async (): Promise<void> => {

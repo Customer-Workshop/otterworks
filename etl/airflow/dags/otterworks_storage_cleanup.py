@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from botocore.exceptions import ClientError
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -167,8 +169,10 @@ def move_to_quarantine(ti: Any, ds: str) -> int:
     """Copy each orphan into the quarantine bucket, then delete the original.
 
     Any failure fails the task (the legacy script counted failures, logged a
-    warning and exited 0). Copy-then-delete is safe to retry: an object that
-    was already moved is no longer listed by the upstream inventory.
+    warning and exited 0). A task retry re-reads the same upstream XCom rather
+    than re-listing the bucket, so an object moved before an earlier attempt
+    failed is still in the list: a source key that no longer exists means the
+    move already happened and counts as quarantined.
     """
     orphans = ti.xcom_pull(task_ids="find_orphaned_objects")["orphaned"]
     if not orphans:
@@ -181,6 +185,14 @@ def move_to_quarantine(ti: Any, ds: str) -> int:
 
     def quarantine(obj: dict[str, Any]) -> None:
         source_key = obj["key"]
+        try:
+            client.head_object(Bucket=source_bucket, Key=source_key)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] not in ("404", "NoSuchKey"):
+                raise
+            log.info("%s was already quarantined by an earlier attempt", source_key)
+            return
+
         client.copy_object(
             Bucket=quarantine_bucket,
             Key=quarantine_key(ds, source_key),

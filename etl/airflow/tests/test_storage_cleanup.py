@@ -155,14 +155,47 @@ def test_move_to_quarantine_is_a_noop_without_orphans(s3):
     assert dag_module.move_to_quarantine(ti, ds="2024-05-01") == 0
 
 
+def test_move_to_quarantine_tolerates_objects_moved_by_an_earlier_attempt(s3):
+    """A retry re-reads the same XCom, so already-moved objects must not fail it."""
+    s3.put_object(Bucket="otterworks-file-storage", Key="files/b.txt", Body=b"data")
+    ti = FakeTI(
+        {
+            "find_orphaned_objects": {
+                "orphaned": [
+                    {"key": "files/a.txt", "size": 4},  # moved before the failure
+                    {"key": "files/b.txt", "size": 4},
+                ]
+            }
+        }
+    )
+
+    assert dag_module.move_to_quarantine(ti, ds="2024-05-01") == 2
+    assert s3.get_object(
+        Bucket="otterworks-file-quarantine", Key="quarantined/2024-05-01/files/b.txt"
+    )["Body"].read() == b"data"
+
+
 def test_move_to_quarantine_fails_loudly(s3, monkeypatch):
     """The legacy script logged a warning and exited 0; this must raise."""
+    s3.put_object(Bucket="otterworks-file-storage", Key="files/a.txt", Body=b"data")
+    real_get_var = dag_module.get_var
+    monkeypatch.setattr(
+        dag_module,
+        "get_var",
+        lambda key, *args, **kwargs: (
+            "otterworks-bucket-that-does-not-exist"
+            if key == dag_module.VAR_QUARANTINE_BUCKET
+            else real_get_var(key, *args, **kwargs)
+        ),
+    )
     ti = FakeTI(
-        {"find_orphaned_objects": {"orphaned": [{"key": "files/missing.txt", "size": 1}]}}
+        {"find_orphaned_objects": {"orphaned": [{"key": "files/a.txt", "size": 4}]}}
     )
 
     with pytest.raises(RuntimeError, match="quarantine"):
         dag_module.move_to_quarantine(ti, ds="2024-05-01")
+
+    assert s3.get_object(Bucket="otterworks-file-storage", Key="files/a.txt")
 
 
 def test_generate_storage_report_writes_to_the_data_lake(s3):

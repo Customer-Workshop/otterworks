@@ -31,24 +31,27 @@ app:
 
 findings:
   - id: OW-UI-101
-    title: Notification data calls return 400 on every authenticated route
+    title: The unread-count badge errors on every authenticated route
     severity: high
     status: open
     source: docs/exploratory-qa-report.md
     routes: [/dashboard, /files, /notifications]
     symptom: >
-      GET /api/v1/notifications/unread-count and GET /api/v1/notifications
-      return 400 Bad Request on every authenticated page. The bell badge is
-      unreliable and the notifications page renders its empty state while its
-      own data calls are failing, so the UI looks healthy and is not.
+      The bell polls GET /api/v1/notifications/unread-count on every
+      authenticated page. The report recorded 400 Bad Request; the gateway now
+      forwards the caller identity, so the call returns 200 with
+      {userId, unreadCount} and the client reads data.count instead — the query
+      resolves undefined and the console carries "Query data cannot be
+      undefined" on every route. Either way the badge never shows a count, and
+      the notifications page renders its empty state when its list call fails,
+      so the UI looks healthy and is not.
     expected: >
       Both calls return 200 for a logged-in user, the badge reflects the real
       unread count, and the notifications page distinguishes "no notifications"
       from "could not load notifications".
     spec: e2e/ui-defects/ow-ui-101.spec.ts
     accepted_console_errors:
-      - url_pattern: /api/v1/notifications
-        status: 400
+      - message: 'Query data cannot be undefined'
 
   - id: OW-UI-102
     title: Settings page calls a route that does not exist
@@ -97,16 +100,8 @@ findings:
       the user can see.
     spec: e2e/ui-defects/ow-ui-104.spec.ts
 
-  - id: OW-UI-105
-    title: Permanent delete from Trash is not confirmed
-    severity: medium
-    status: open
-    source: docs/exploratory-qa-report.md
-    routes: [/trash]
-    symptom: >
-      The Trash page's Delete action permanently destroys an item with no
-      confirmation step.
-    expected: >
-      Permanent deletion requires an explicit confirmation that names what is
-      being destroyed, and the item is only gone after confirming.
-    spec: e2e/ui-defects/ow-ui-105.spec.ts
+# OW-UI-105 ("permanent delete from Trash is not confirmed") was withdrawn: the
+# Trash page already opens a confirmation dialog naming the file, Cancel keeps
+# it, and only "Delete permanently" destroys it
+# (frontend/client-app/src/pages/trash.tsx). A reproduction spec written for it
+# passes against the unfixed app, which is how the harness caught the bad entry.

@@ -17,6 +17,10 @@ import {
  * Suppressions come from qa/registry.yaml via the harness
  * (`python3 qa/harness/ui_gate.py gate`); running this spec directly suppresses
  * nothing. Screenshots for each route land in qa/reports/screenshots/.
+ *
+ * A suppression that matches nothing fails the sweep too: the defect it covers
+ * no longer reproduces, and left in place it would mask the next regression on
+ * that route.
  */
 const { routes, accepted } = loadSweepConfig();
 
@@ -30,7 +34,7 @@ test.describe("authenticated route sweep", () => {
 
     const unexpected: Observation[] = [];
     const suppressed: Observation[] = [];
-    const usedRules = new Set<AcceptedRule>();
+    const used = new Set<AcceptedRule>();
 
     for (const route of routes) {
       state.route = route;
@@ -41,7 +45,7 @@ test.describe("authenticated route sweep", () => {
 
       for (const obs of observations.slice(before)) {
         const matching = accepted.filter((rule) => isAccepted(obs, [rule]));
-        for (const rule of matching) usedRules.add(rule);
+        for (const rule of matching) used.add(rule);
         (matching.length > 0 ? suppressed : unexpected).push(obs);
       }
     }
@@ -59,15 +63,18 @@ test.describe("authenticated route sweep", () => {
       )}`
     ).toEqual([]);
 
-    const stale = accepted.filter((rule) => !usedRules.has(rule));
+    const stale = accepted.filter((rule) => !used.has(rule));
     expect(
-      stale,
-      `stale suppressions — these accepted_console_errors matched nothing on the sweep. ` +
-        `The defect no longer reproduces: run \`make ui-verify FINDING=<id>\` and mark it remediated ` +
-        `(or re-triage the finding) instead of leaving a suppression that would mask a regression:\n` +
-        stale
-          .map((r) => `  [${r.finding}] url_pattern=${r.url_pattern ?? "-"} status=${r.status ?? "-"} message=${r.message ?? "-"}`)
-          .join("\n")
+      stale.map(
+        (r) =>
+          `[${r.finding}] url_pattern=${r.url_pattern ?? "-"} status=${
+            r.status ?? "-"
+          } message=${r.message ?? "-"}`
+      ),
+      "stale suppressions — these accepted_console_errors matched nothing on the " +
+        "sweep, so the defect no longer reproduces as recorded. Reconcile the " +
+        "registry (verify and remediate the finding, or re-triage its symptom) " +
+        "rather than leaving a suppression that would mask the next regression"
     ).toEqual([]);
   });
 });

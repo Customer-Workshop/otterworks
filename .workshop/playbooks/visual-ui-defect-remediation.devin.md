@@ -121,14 +121,25 @@ Two consequences worth internalizing:
 - Do not widen a suppression to get to green. If the gate flags something you did
   not expect, it is either a real defect (register it) or your fix leaked (fix
   it). A broadened pattern silently covers future regressions too.
-- Worked example, from the run that produced this playbook: every authenticated
-  route was quietly firing `400` on the notification calls. The backend requires
-  the caller's identity as a header; the browser client called the gateway
-  without it, and the notifications page rendered "no notifications" on the
-  failure — so the UI looked healthy on every screen. Unit tests passed on both
-  sides, because each side's tests supplied what the other was missing. The
-  browser sweep found it in the first minute, and the gate would not go green
-  until the contract was true end to end.
+- **Expect the symptom to have drifted, and grade against the expectation.** The
+  registry records what someone saw on the day they filed it; the code has moved
+  since. Reproduce first, then reconcile: if the recorded symptom is gone but the
+  expected behavior is still violated, the finding is still open — say what
+  changed and what you found instead.
+- Worked example, from the run that produced this playbook: the notification
+  finding was filed as `400` on every authenticated route because the backend
+  requires the caller's identity as a header and the client never sent it. By the
+  time it was worked, the gateway injected that header from the JWT and both
+  calls returned `200` — the recorded symptom no longer reproduced. The
+  expectation was still violated for a different reason: the client read
+  `data.count` from a response whose contract is `{userId, unreadCount}`, so the
+  badge query resolved `undefined`, React Query logged
+  `Query data cannot be undefined` on *every* authenticated route, and the badge
+  could never show a count. That console error — not a status code — is what
+  failed the sweep, and a one-line client fix (`data.unreadCount`) plus a real
+  error state on the notifications page is what closed it. Unit tests passed
+  throughout, on both sides, because each side's tests supplied what the other
+  was missing.
 
 ## Forbidden actions
 

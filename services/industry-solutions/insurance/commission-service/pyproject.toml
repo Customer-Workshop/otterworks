@@ -1,0 +1,34 @@
+[project]
+name = "commission-service"
+version = "0.1.0"
+description = "Commission Pay business rules extracted out of Oracle COMMISSION_PKG"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.110,<1",
+  "uvicorn[standard]>=0.29,<1",
+  "pydantic>=2.6,<3",
+  "pydantic-settings>=2.2,<3",
+  "oracledb>=2.4,<4",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.27,<1",
+  "pytest>=8,<9",
+  "ruff>=0.9,<1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+  "rule(rule_id): associates a test with a rule id in RULE_LEDGER.md",
+  "case(case_id): associates a test with a case in db/tests/run_tests.sql",
+]

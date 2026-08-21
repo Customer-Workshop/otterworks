@@ -1,10 +1,15 @@
 # OtterWorks Industry Solutions — Insurance (Commission Pay)
 
-The legacy **Commission Pay** application fixture: an insurance commission
-system whose business logic lives entirely in **Oracle stored procedures**
-(PL/SQL), with a companion **OLAP** star schema fed by a PL/SQL ETL. This is
-the database-centric *before state* that stored-procedure modernization demos
-extract from.
+The **Commission Pay** application fixture: an insurance commission system with
+an Oracle OLTP schema, a companion **OLAP** star schema fed by a PL/SQL ETL,
+and — since the extraction described below — a Python **commission-service**
+that owns the business rules the `COMMISSION_PKG` package used to hold.
+
+The package is still the entry point every Oracle caller uses, but its body is
+now a thin delegate: it marshals each call to the service over HTTP and
+re-raises the service's verdict, so the rules exist in exactly one place. The
+rules themselves, their original PL/SQL line ranges and their test coverage are
+catalogued in [RULE_LEDGER.md](RULE_LEDGER.md).
 
 ## Why Oracle Database Free
 
@@ -21,25 +26,32 @@ irrelevant for this fixture. It runs locally in Docker Compose, bound to
 services/industry-solutions/insurance/
   db/startup/  00_init.sh                 — idempotent init orchestrator (auto-run by the image on boot)
   db/setup/    01_users.sql               — schema/user creation (run by 00_init.sh as SYSTEM)
+               02_service_acl.sql         — network ACL letting COMMISSION_PAY call the service
   db/oltp/     01_tables.sql              — agents, products, policies, rates, splits, ledger, audit
                02_seed.sql                — deterministic test data
-               03_commission_pkg.sql      — COMMISSION_PKG: all business rules (PL/SQL)
+               03_commission_pkg.sql      — COMMISSION_PKG: thin delegate to commission-service
   db/olap/     01_star_schema.sql         — dim_agent / dim_product / dim_period / fact_commission
                02_etl_pkg.sql             — DW_ETL_PKG.LOAD_COMMISSION_FACTS + summary MV
   db/tests/    run_tests.sql              — OLTP suite (12+ cases, PASS/FAIL, non-zero exit on failure)
                run_olap_tests.sql         — ETL/star-schema suite (run after the OLTP suite)
+  commission-service/                     — the extracted rules (Python 3.12 / FastAPI)
+    app/domain.py                         — the rules, one function per package procedure
+    app/repository.py                     — persistence only, against the unchanged tables
+    app/numbers.py                        — Oracle NUMBER semantics (exact decimal, no floats)
+    tests/test_rules.py                   — a test per rule in RULE_LEDGER.md
+    tests/test_parity_oracle.py           — every run_tests.sql case, replayed via the service
 ```
 
 Two schemas inside the `FREEPDB1` pluggable database:
 
-- **`COMMISSION_PAY`** (OLTP) — the transactional system of record. All
-  business rules are in `COMMISSION_PKG`; there is deliberately no application
-  tier duplicating them.
+- **`COMMISSION_PAY`** (OLTP) — the transactional system of record. The tables
+  are unchanged; `COMMISSION_PKG` keeps its signatures and its `ORA-20xxx`
+  contract but delegates the decisions to `commission-service`.
 - **`COMMISSION_DW`** (OLAP) — the analytics warehouse: star schema, idempotent
   `MERGE`-based ETL reading the OLTP schema, and the
   `MV_AGENT_COMMISSION_SUMMARY` materialized view.
 
-## The business rules (all in `COMMISSION_PKG`)
+## The business rules (owned by `commission-service`)
 
 - **`upsert_commission_rate`** — create/supersede a commission rate for a
   product (default) or a specific agent. Rates must be in `(0, 50]`; the prior
@@ -64,10 +76,16 @@ From the repo root (NS is any alphanumeric namespace; ports are derived from
 it so concurrent namespaces never collide):
 
 ```bash
-make insurance-up NS=dev     # pulls Oracle Free, first boot takes a few minutes
-make insurance-test NS=dev   # runs the OLTP suite, then the OLAP suite
-make insurance-down NS=dev   # tears down and deletes the data volume
+make insurance-up NS=dev       # Oracle Free + commission-service; first boot takes a few minutes
+make insurance-test NS=dev     # runs the OLTP suite, then the OLAP suite
+make insurance-parity NS=dev   # rule + parity suites against the same fixture database
+make insurance-down NS=dev     # tears down and deletes the data volume
 ```
+
+The parity suite snapshots and restores the OLTP tables around itself, so it can
+be run before or after the Oracle suites without disturbing them. Without a
+reachable fixture the parity cases skip and the rule tests still run, which is
+what CI does.
 
 Expected test output ends with:
 

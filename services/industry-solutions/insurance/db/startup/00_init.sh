@@ -59,6 +59,10 @@ SQL
     run_sql "system/${ORACLE_PWD}" "${SQL_DIR}/setup/01_users.sql"
   fi
 
+  # Network ACE for the delegate's callouts; must exist before the package body
+  # that uses UTL_HTTP is compiled against it.
+  run_sql "system/${ORACLE_PWD}" "${SQL_DIR}/setup/02_service_acl.sql"
+
   run_sql "commission_pay/commission_pay" "${SQL_DIR}/oltp/01_tables.sql"
   run_sql "commission_pay/commission_pay" "${SQL_DIR}/oltp/02_seed.sql"
   run_sql "commission_pay/commission_pay" "${SQL_DIR}/oltp/03_commission_pkg.sql"

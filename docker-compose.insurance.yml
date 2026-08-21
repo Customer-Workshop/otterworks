@@ -1,9 +1,10 @@
 # OtterWorks Industry Solutions — insurance Commission Pay fixture.
 # Oracle Database Free (23ai+) running the OLTP schema (COMMISSION_PAY,
 # tables + PL/SQL business logic) and the OLAP schema (COMMISSION_DW, star
-# schema + ETL + materialized view) in FREEPDB1. Standalone and local-only,
-# deliberately outside the Helm/EKS deployment path — this is the legacy
-# database-centric before state a modernization extracts from.
+# schema + ETL + materialized view) in FREEPDB1, alongside commission-service,
+# the application tier that now owns the Commission Pay business rules the
+# PL/SQL package used to hold. Standalone and local-only, deliberately outside
+# the Helm/EKS deployment path.
 services:
   insurance-oracle:
     image: container-registry.oracle.com/database/free:latest
@@ -23,6 +24,14 @@ services:
       timeout: 10s
       retries: 60
       start_period: 120s
+
+  commission-service:
+    build:
+      context: ./services/industry-solutions/insurance/commission-service
+    environment:
+      COMMISSION_SVC_DSN: insurance-oracle:1521/FREEPDB1
+    ports:
+      - "127.0.0.1:${INSURANCE_SVC_PORT:-58000}:8000"
 
 volumes:
   insurance-oracle-data:

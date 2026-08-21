@@ -40,9 +40,9 @@ test.describe("authenticated route sweep", () => {
       await captureRoute(page, route);
 
       for (const obs of observations.slice(before)) {
-        const rule = isAccepted(obs, accepted);
-        if (rule) usedRules.add(rule);
-        (rule ? suppressed : unexpected).push(obs);
+        const matching = accepted.filter((rule) => isAccepted(obs, [rule]));
+        for (const rule of matching) usedRules.add(rule);
+        (matching.length > 0 ? suppressed : unexpected).push(obs);
       }
     }
 

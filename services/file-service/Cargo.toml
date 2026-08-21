@@ -16,14 +16,14 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tracing-actix-web = "0.7"
-tracing-opentelemetry = "0.22"
-opentelemetry = "0.21"
-opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
-opentelemetry-otlp = "0.14"
+tracing-opentelemetry = "0.33"
+opentelemetry = "0.32"
+opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"] }
+opentelemetry-otlp = "0.32"
 aws-config = "1.1"
-aws-sdk-s3 = "1.15"
-aws-sdk-dynamodb = "1.14"
-aws-sdk-sns = "1.13"
+aws-sdk-s3 = { version = "1.15", default-features = false, features = ["default-https-client", "rt-tokio", "sigv4a"] }
+aws-sdk-dynamodb = { version = "1.14", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-sns = { version = "1.13", default-features = false, features = ["default-https-client", "rt-tokio"] }
 aws-smithy-types = "1.1"
 futures-util = "0.3"
 bytes = "1"
@@ -31,9 +31,9 @@ mime = "0.3"
 thiserror = "1"
 anyhow = "1"
 dotenvy = "0.15"
-prometheus = "0.13"
+prometheus = "0.14"
 lazy_static = "1.4"
-redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "1.6", features = ["tokio-comp", "connection-manager"] }
 
 [dev-dependencies]
 actix-rt = "2"

@@ -63,12 +63,15 @@ class Registry:
     authenticated_routes: list[str]
     findings: list[Finding]
 
-    def get(self, finding_id: str) -> Finding:
+    def get(self, finding_id: str) -> Finding | None:
+        """The named finding, or None when it is not registered.
+
+        Callers report an unknown id as inconclusive (exit 2), not as a failure.
+        """
         for f in self.findings:
             if f.id == finding_id:
                 return f
-        known = ", ".join(f.id for f in self.findings)
-        raise SystemExit(f"unknown finding {finding_id!r}; registered: {known}")
+        return None
 
 
 def load_registry() -> Registry:
@@ -186,8 +189,19 @@ def cmd_list(reg: Registry, _args: argparse.Namespace) -> int:
     return 0
 
 
+def report_unknown(reg: Registry, finding_id: str) -> int:
+    known = ", ".join(f.id for f in reg.findings)
+    print(
+        f"unknown finding {finding_id!r}; registered: {known}",
+        file=sys.stderr,
+    )
+    return 2
+
+
 def cmd_repro(reg: Registry, args: argparse.Namespace) -> int:
     finding = reg.get(args.finding)
+    if finding is None:
+        return report_unknown(reg, args.finding)
     path = spec_path(reg, finding)
     if not path.exists():
         print(
@@ -228,6 +242,8 @@ def cmd_repro(reg: Registry, args: argparse.Namespace) -> int:
 
 def cmd_verify(reg: Registry, args: argparse.Namespace) -> int:
     finding = reg.get(args.finding)
+    if finding is None:
+        return report_unknown(reg, args.finding)
     path = spec_path(reg, finding)
     if not path.exists():
         print(f"{finding.id}: no spec at {finding.spec}", file=sys.stderr)

@@ -38,9 +38,8 @@ def reset() -> None:
             ).fetchall()
         ]
         if tables:
-            targets = ", ".join(
-                sql.Identifier(settings.schema_name, table).as_string(connection)
-                for table in tables
+            targets = sql.SQL(", ").join(
+                sql.Identifier(settings.schema_name, table) for table in tables
             )
-            connection.execute(f"TRUNCATE TABLE {targets} CASCADE")
+            connection.execute(sql.SQL("TRUNCATE TABLE {} CASCADE").format(targets))
         connection.execute(SEED.read_text())

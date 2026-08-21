@@ -51,6 +51,16 @@ default_args = {
     tags=["otterworks", "storage", "migrated-from-cron"],
 )
 def otterworks_storage_cleanup() -> None:
+    def run_date() -> str:
+        """UTC date the run covers.
+
+        ``data_interval_end`` (not ``ds``) keeps the legacy dating: the interval
+        for the 02:30 run of day D ends on day D, while ``ds`` would stamp D-1.
+        It is fixed per DAG run, so retries and replays reuse the same date and
+        stay idempotent.
+        """
+        return get_current_context()["data_interval_end"].in_timezone("UTC").strftime("%Y-%m-%d")
+
     @task
     def list_s3_objects() -> list[dict[str, Any]]:
         config = StorageCleanupConfig.from_variables()
@@ -72,13 +82,12 @@ def otterworks_storage_cleanup() -> None:
     @task
     def move_to_quarantine(diff: dict[str, Any]) -> dict[str, Any]:
         config = StorageCleanupConfig.from_variables()
-        ds = get_current_context()["ds"]
         return storage_cleanup.move_to_quarantine(
             S3Hook(aws_conn_id=AWS_CONN_ID),
             PostgresHook(postgres_conn_id=POSTGRES_CONN_ID),
             config,
             diff["orphans"],
-            ds,
+            run_date(),
         )
 
     @task
@@ -86,8 +95,7 @@ def otterworks_storage_cleanup() -> None:
         diff: dict[str, Any], quarantine_result: dict[str, Any]
     ) -> str:
         config = StorageCleanupConfig.from_variables()
-        ds = get_current_context()["ds"]
-        report = storage_cleanup.build_report(config, ds, diff, quarantine_result)
+        report = storage_cleanup.build_report(config, run_date(), diff, quarantine_result)
         return storage_cleanup.publish_report(S3Hook(aws_conn_id=AWS_CONN_ID), config, report)
 
     objects = list_s3_objects()

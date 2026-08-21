@@ -63,13 +63,15 @@ is stored in version control and the DAG never reads `etl/config.ini`.
 
 ### Idempotency
 
-Re-running the same logical date is a no-op beyond logging:
+Every run derives one date, `data_interval_end` in UTC — the day the run executes, matching the
+legacy `datetime.now()` dating (`ds` would stamp the previous day). It is fixed per DAG run, so
+retries and replays of the same run reuse it and are a no-op beyond logging:
 
-- the quarantine destination key is `quarantined/<ds>/<source key>`, derived from the logical
-  date, and an object already at that key is skipped instead of re-copied;
+- the quarantine destination key is `quarantined/<date>/<source key>`, and an object already at
+  that key is skipped instead of re-copied;
 - the source delete is a no-op when the key is already gone;
 - the ledger insert is `ON CONFLICT (report_date, s3_key) DO NOTHING`;
-- the report is written to the single per-date key `reports/storage-cleanup/<ds>/report.json`.
+- the report is written to the single per-date key `reports/storage-cleanup/<date>/report.json`.
 
 `catchup=False`: the job compares *current* bucket state against *current* metadata, so a
 backfilled run for an old logical date would observe today's inventory and simply re-quarantine

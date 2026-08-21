@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import psycopg
+from psycopg import sql
 from psycopg.rows import dict_row
 
 from app.config import settings
@@ -24,11 +25,22 @@ def migrate() -> None:
 def reset() -> None:
     with connect() as connection:
         connection.execute(MIGRATION.read_text())
-        connection.execute(
-            """
-            TRUNCATE TABLE billing_svc.subscriptions,
-                           billing_svc.plans,
-                           billing_svc.tenants
-            """
-        )
+        tables = [
+            row["table_name"]
+            for row in connection.execute(
+                """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = %s AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+                """,
+                (settings.schema_name,),
+            ).fetchall()
+        ]
+        if tables:
+            targets = ", ".join(
+                sql.Identifier(settings.schema_name, table).as_string(connection)
+                for table in tables
+            )
+            connection.execute(f"TRUNCATE TABLE {targets} CASCADE")
         connection.execute(SEED.read_text())

@@ -51,8 +51,6 @@ findings:
       from "could not load notifications".
     spec: e2e/ui-defects/ow-ui-101.spec.ts
     accepted_console_errors:
-      - url_pattern: /api/v1/notifications
-        status: 400
       - message: 'Query data cannot be undefined'
 
   - id: OW-UI-102
@@ -102,16 +100,8 @@ findings:
       the user can see.
     spec: e2e/ui-defects/ow-ui-104.spec.ts
 
-  - id: OW-UI-105
-    title: Permanent delete from Trash is not confirmed
-    severity: medium
-    status: open
-    source: docs/exploratory-qa-report.md
-    routes: [/trash]
-    symptom: >
-      The Trash page's Delete action permanently destroys an item with no
-      confirmation step.
-    expected: >
-      Permanent deletion requires an explicit confirmation that names what is
-      being destroyed, and the item is only gone after confirming.
-    spec: e2e/ui-defects/ow-ui-105.spec.ts
+# OW-UI-105 ("permanent delete from Trash is not confirmed") was withdrawn: the
+# Trash page already opens a confirmation dialog naming the file, Cancel keeps
+# it, and only "Delete permanently" destroys it
+# (frontend/client-app/src/pages/trash.tsx). A reproduction spec written for it
+# passes against the unfixed app, which is how the harness caught the bad entry.

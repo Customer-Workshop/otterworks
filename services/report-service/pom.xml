@@ -35,6 +35,10 @@
              Deliberately unchanged: CVE-2022-42889 is the advisory the deps-*
              harness measures on this repo and is remediated by its own exercise. -->
         <commons-text.version>1.9</commons-text.version>
+        <!-- Standalone Nashorn: the JDK dropped its bundled script engine in 15,
+             so this restores the javax.script "javascript" engine the banner/footer
+             interpolation resolved through on Java 8. -->
+        <nashorn.version>15.4</nashorn.version>
         <opencsv.version>5.9</opencsv.version>
         <mockito.version>5.11.0</mockito.version>
         <surefire.version>3.2.5</surefire.version>
@@ -110,6 +114,13 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
             <version>${commons-text.version}</version>
+        </dependency>
+
+        <!-- Script engine for Commons Text's ${script:...} lookup, removed from the JDK in 15 -->
+        <dependency>
+            <groupId>org.openjdk.nashorn</groupId>
+            <artifactId>nashorn-core</artifactId>
+            <version>${nashorn.version}</version>
         </dependency>
 
         <dependency>

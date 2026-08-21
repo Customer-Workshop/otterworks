@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -12,8 +12,15 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.db import connect, migrate, reset
-from app.domain import catalog, change_plan, entitlement
-from app.repository import PostgresPlansRepository
+from app.domain import (
+    catalog,
+    change_plan,
+    entitlement,
+    overdue_accounts,
+    schedule_dunning,
+    suspend_overdue,
+)
+from app.repository import PostgresDunningRepository, PostgresPlansRepository
 
 
 @asynccontextmanager
@@ -35,6 +42,14 @@ app.add_middleware(
 class PlanChange(BaseModel):
     plan_id: UUID
     effective_on: date
+
+
+class DunningRun(BaseModel):
+    as_of: date
+
+
+def _timestamp(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 @app.get("/health")
@@ -127,3 +142,63 @@ def change_tenant_plan(tenant_id: Annotated[UUID, Path()], request: PlanChange) 
             status_code=409,
             detail="this plan change has already been requested",
         ) from error
+
+
+@app.get("/api/dunning/overdue")
+def list_overdue_accounts(as_of: Annotated[date, Query()]) -> list[dict]:
+    with connect() as connection:
+        accounts = overdue_accounts(PostgresDunningRepository(connection).list_invoices(), as_of)
+    return [
+        {
+            "tenant_id": str(account.tenant_id),
+            "invoice_id": str(account.invoice_id),
+            "total": f"{account.total:.2f}",
+            "days_overdue": account.days_overdue,
+            "tenant_status": account.tenant_status,
+        }
+        for account in accounts
+    ]
+
+
+@app.post("/api/dunning/schedule")
+def run_schedule_dunning(request: DunningRun) -> dict:
+    with connect() as connection:
+        attempts = schedule_dunning(PostgresDunningRepository(connection), request.as_of)
+    rows = [
+        {
+            "invoice_id": str(attempt.invoice_id),
+            "attempt_no": attempt.attempt_no,
+            "scheduled_for": attempt.scheduled_for.isoformat(),
+            "status": attempt.status,
+        }
+        for attempt in attempts
+    ]
+    return {"attempts": rows, "latest_attempt": rows[-1] if rows else None}
+
+
+@app.post("/api/dunning/suspend")
+def run_suspend_overdue(request: DunningRun) -> dict:
+    with connect() as connection:
+        suspensions, notifications = suspend_overdue(
+            PostgresDunningRepository(connection), request.as_of
+        )
+    return {
+        "suspensions": [
+            {
+                "tenant_id": str(item.tenant_id),
+                "subscription_id": str(item.subscription_id),
+                "status": item.status,
+                "suspended_on": item.suspended_on.isoformat(),
+            }
+            for item in suspensions
+        ],
+        "notifications": [
+            {
+                "id": str(item.notification_id),
+                "tenant_id": str(item.tenant_id),
+                "kind": item.kind,
+                "sent_at": _timestamp(item.sent_at),
+            }
+            for item in notifications
+        ],
+    }

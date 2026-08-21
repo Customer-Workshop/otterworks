@@ -1,8 +1,16 @@
 # Billing Service
 
-This FastAPI service is the extraction target for the plans module. It owns a
-separate Postgres `billing_svc` schema, keeps the HTTP layer thin, and places
-plans behavior in a plain-Python domain layer.
+This FastAPI service is the extraction target for the plans and dunning
+modules. It owns a separate Postgres `billing_svc` schema, keeps the HTTP layer
+thin, and places the extracted behavior in a plain-Python domain layer.
+
+The dunning endpoints are `GET /api/dunning/overdue`,
+`POST /api/dunning/schedule`, and `POST /api/dunning/suspend`. Scheduling
+returns the whole attempt ledger ordered by `(invoice_id, attempt_no)` plus
+`latest_attempt`, the final row of that ordering; suspension returns the
+subscriptions it suspended and every suspension notification on file. Attempt
+and notification identifiers keep the legacy md5-derived values so the two
+estates converge on the same rows.
 
 ## Development
 

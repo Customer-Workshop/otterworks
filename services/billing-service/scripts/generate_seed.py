@@ -6,7 +6,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 LEGACY = ROOT / "services" / "legacy-billing" / "db" / "seed.sql"
 OUTPUT = ROOT / "services" / "billing-service" / "db" / "seed.sql"
-TABLES = ("tenants", "plans", "subscriptions")
+TABLES = (
+    "tenants",
+    "plans",
+    "subscriptions",
+    "rating_periods",
+    "invoices",
+    "dunning_attempts",
+    "notifications",
+)
 
 
 def generate() -> str:

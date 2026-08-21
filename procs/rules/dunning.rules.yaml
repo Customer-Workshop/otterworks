@@ -1,0 +1,146 @@
+module: dunning
+rules:
+  - id: DUNNING-001
+    statement: >-
+      Overdue accounts list every invoice with status 'overdue' issued strictly before the
+      as-of date, joined to its tenant status, ordered by issued_at then invoice id.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [11, 17]
+    inputs: [as_of]
+    outputs: [tenant_id, invoice_id, total, tenant_status]
+    confidence: high
+    scenarios: [DUNNING-001]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-002
+    statement: >-
+      Days overdue is the whole-day difference between the as-of date and the invoice
+      issue date, and the invoice total keeps its numeric scale.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [11, 11]
+    inputs: [as_of]
+    outputs: [days_overdue, total]
+    confidence: high
+    scenarios: [DUNNING-001]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-003
+    statement: >-
+      Scheduling walks every overdue invoice, regardless of issue date, in issued_at then
+      invoice id order.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [28, 33]
+    inputs: [as_of]
+    outputs: [dunning_attempts]
+    confidence: high
+    scenarios: [DUNNING-002, DUNNING-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-004
+    statement: >-
+      A scheduled attempt takes the invoice's highest existing attempt_no plus one, starting
+      at 1 when the invoice has no attempts.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [34, 36]
+    inputs: [as_of]
+    outputs: [attempt_no]
+    confidence: high
+    scenarios: [DUNNING-002, DUNNING-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-005
+    statement: >-
+      A Saturday as-of date rolls the scheduled contact forward two days and a Sunday one
+      day; every other ISO weekday schedules on the as-of date itself.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [37, 42]
+    inputs: [as_of]
+    outputs: [scheduled_for]
+    confidence: high
+    scenarios: [DUNNING-002, DUNNING-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-006
+    statement: >-
+      Each attempt is inserted as 'scheduled' with the deterministic md5(invoice_id ||
+      attempt_no) identifier and a repeated (invoice_id, attempt_no) is ignored.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [43, 48]
+    inputs: [as_of]
+    outputs: [dunning_attempts]
+    confidence: high
+    scenarios: [DUNNING-002, DUNNING-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-007
+    statement: >-
+      Suspension applies to tenants that are still active and hold an overdue invoice issued
+      at least fourteen days before the as-of date; already suspended tenants are untouched.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [59, 71]
+    inputs: [as_of]
+    outputs: [tenants]
+    confidence: high
+    scenarios: [DUNNING-004, DUNNING-005]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-008
+    statement: >-
+      Suspending a tenant suspends its active subscriptions and stamps suspended_on with the
+      as-of date.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [72, 75]
+    inputs: [as_of]
+    outputs: [subscriptions]
+    confidence: high
+    scenarios: [DUNNING-004]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.
+  - id: DUNNING-009
+    statement: >-
+      A suspension notification is recorded once per tenant and as-of date, with the
+      deterministic md5(tenant_id || 'suspension' || as_of) identifier and midnight sent_at.
+    source:
+      file: services/legacy-billing/db/procs/dunning.sql
+      lines: [76, 84]
+    inputs: [as_of]
+    outputs: [notifications]
+    confidence: high
+    scenarios: [DUNNING-004, DUNNING-005]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Approved for the dunning extraction.

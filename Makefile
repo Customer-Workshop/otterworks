@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record ui-list ui-repro ui-verify ui-gate
 
 SHELL := /bin/bash
 
@@ -429,3 +429,28 @@ eq-tests: ## Run the affected module's own suite against the recorded pass list
 eq-record: ## Record the before-state as the reference evidence (REASON="..." required)
 	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make eq-record REASON="baseline before OW-SEC-401 refactor"' >&2; exit 2)
 	$(EQ) record --reason "$(REASON)" $(if $(FINDING),--finding $(FINDING),) $(if $(ALLOW_RERECORD),--allow-rerecord,)
+
+# --- User-facing (browser) defect registry and gate ---
+#
+# qa/registry.yaml registers each defect an exploratory browser pass found, the
+# routes it appears on, and the Playwright spec that reproduces it. The gate
+# sweeps every authenticated route for console/network errors and suppresses
+# only those belonging to findings still marked `open`. Reports and route
+# screenshots land in qa/reports/ (git-ignored: collect them as CI artifacts and
+# paste the summary into the PR).
+
+UIQA := uv run --with pyyaml==6.0.2 qa/harness/ui_gate.py
+
+ui-list: ## List registered user-facing findings and whether each has a spec
+	$(UIQA) list
+
+ui-repro: ## Require a finding's spec to fail against the running app (FINDING=<id>)
+	@test -n "$(FINDING)" || (echo 'FINDING is required, e.g. make ui-repro FINDING=OW-UI-101' >&2; exit 2)
+	$(UIQA) repro --finding $(FINDING)
+
+ui-verify: ## Require a finding's spec to pass and its suppression to be gone (FINDING=<id>)
+	@test -n "$(FINDING)" || (echo 'FINDING is required, e.g. make ui-verify FINDING=OW-UI-101' >&2; exit 2)
+	$(UIQA) verify --finding $(FINDING)
+
+ui-gate: ## Sweep every authenticated route plus every remediated finding's spec
+	$(UIQA) gate

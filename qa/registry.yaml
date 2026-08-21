@@ -1,0 +1,112 @@
+# Registry of user-facing defects found by exploratory QA against the running app.
+#
+# Every entry is a defect a human (or Devin) saw in a browser, not a static
+# analysis hit. `status` gates the loop:
+#
+#   open        — the defect still reproduces; its accepted_console_errors (if
+#                 any) are suppressed by the console gate so the gate stays
+#                 usable while the backlog burns down.
+#   remediated  — the defect is fixed; its spec must pass and it may no longer
+#                 carry accepted_console_errors, so the gate now enforces it.
+#
+# `status` is a closed set (see qa/harness/ui_gate.py): a value outside it is a
+# hard error, so a typo cannot quietly skip a gate.
+version: 1
+
+app:
+  name: client-app
+  dir: frontend/client-app
+  base_url: http://localhost:3000
+  # Routes the console gate sweeps as an authenticated user. Keep in sync with
+  # the app's router: a route that is never visited is never gated.
+  authenticated_routes:
+    - /dashboard
+    - /files
+    - /documents
+    - /search
+    - /shared
+    - /trash
+    - /notifications
+    - /settings
+
+findings:
+  - id: OW-UI-101
+    title: Notification data calls return 400 on every authenticated route
+    severity: high
+    status: open
+    source: docs/exploratory-qa-report.md
+    routes: [/dashboard, /files, /notifications]
+    symptom: >
+      GET /api/v1/notifications/unread-count and GET /api/v1/notifications
+      return 400 Bad Request on every authenticated page. The bell badge is
+      unreliable and the notifications page renders its empty state while its
+      own data calls are failing, so the UI looks healthy and is not.
+    expected: >
+      Both calls return 200 for a logged-in user, the badge reflects the real
+      unread count, and the notifications page distinguishes "no notifications"
+      from "could not load notifications".
+    spec: e2e/ui-defects/ow-ui-101.spec.ts
+    accepted_console_errors:
+      - url_pattern: /api/v1/notifications
+        status: 400
+
+  - id: OW-UI-102
+    title: Settings page calls a route that does not exist
+    severity: high
+    status: open
+    source: docs/exploratory-qa-report.md
+    routes: [/settings]
+    symptom: >
+      The settings form renders and appears functional, but GET
+      /api/v1/settings returns 404, so nothing is loaded from or persisted to
+      the backend and the user gets no error.
+    expected: >
+      Either the settings surface is backed by a real endpoint, or the
+      backend-backed controls are disabled with a visible explanation. A form
+      that silently discards input is the defect.
+    spec: e2e/ui-defects/ow-ui-102.spec.ts
+    accepted_console_errors:
+      - url_pattern: /api/v1/settings
+        status: 404
+
+  - id: OW-UI-103
+    title: Text file detail page never shows the file contents
+    severity: medium
+    status: open
+    source: docs/exploratory-qa-report.md
+    routes: [/files]
+    symptom: >
+      Uploading a .txt file and opening its detail page renders Preview and
+      Details sections, but the uploaded text is nowhere on the page.
+    expected: >
+      The detail page of a text file shows its contents inline, without a
+      download.
+    spec: e2e/ui-defects/ow-ui-103.spec.ts
+
+  - id: OW-UI-104
+    title: Download action gives no visible feedback
+    severity: medium
+    status: open
+    source: docs/exploratory-qa-report.md
+    routes: [/files]
+    symptom: >
+      Clicking Download on the file detail page produces no progress, success
+      or failure state, so a silent failure is indistinguishable from success.
+    expected: >
+      The download reports at least a started and a finished (or failed) state
+      the user can see.
+    spec: e2e/ui-defects/ow-ui-104.spec.ts
+
+  - id: OW-UI-105
+    title: Permanent delete from Trash is not confirmed
+    severity: medium
+    status: open
+    source: docs/exploratory-qa-report.md
+    routes: [/trash]
+    symptom: >
+      The Trash page's Delete action permanently destroys an item with no
+      confirmation step.
+    expected: >
+      Permanent deletion requires an explicit confirmation that names what is
+      being destroyed, and the item is only gone after confirming.
+    spec: e2e/ui-defects/ow-ui-105.spec.ts

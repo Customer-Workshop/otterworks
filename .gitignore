@@ -110,3 +110,6 @@ __pycache__/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+
+# --- User-facing QA reports (generated) ---
+qa/reports/

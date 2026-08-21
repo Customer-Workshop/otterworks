@@ -45,9 +45,12 @@ class StorageCleanupConfig:
 
     @classmethod
     def from_variables(cls) -> StorageCleanupConfig:
-        values = {key: Variable.get(key, default_var=default) for key, default in DEFAULTS.items()}
+        values = {
+            key: Variable.get(key, default_var=default) for key, default in DEFAULTS.items()
+        }
         logger.info(
-            "Resolved storage cleanup configuration: source=s3://%s/%s metadata_table=%s quarantine=s3://%s/%s",
+            "Resolved storage cleanup configuration: source=s3://%s/%s "
+            "metadata_table=%s quarantine=s3://%s/%s",
             values["otterworks_file_storage_bucket"],
             values["otterworks_files_prefix"],
             values["otterworks_file_metadata_table"],

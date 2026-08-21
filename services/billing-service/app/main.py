@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -12,8 +13,18 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.db import connect, migrate, reset
-from app.domain import catalog, change_plan, entitlement
-from app.repository import PostgresPlansRepository
+from app.domain import (
+    InvoiceLineRow,
+    PreviewLine,
+    catalog,
+    change_plan,
+    entitlement,
+    invoice_lines,
+    invoice_preview,
+    issue_invoice,
+    sql_round,
+)
+from app.repository import PostgresInvoicingRepository, PostgresPlansRepository
 
 
 @asynccontextmanager
@@ -35,6 +46,41 @@ app.add_middleware(
 class PlanChange(BaseModel):
     plan_id: UUID
     effective_on: date
+
+
+class InvoiceIssue(BaseModel):
+    period_start: date
+    period_end: date
+
+
+def money(value: Decimal | None) -> str | None:
+    if value is None:
+        return None
+    amount = sql_round(value, 2)
+    if not amount:
+        amount = abs(amount)
+    return f"{amount:.2f}"
+
+
+def preview_payload(line: PreviewLine) -> dict:
+    return {
+        "line_no": line.line_no,
+        "line_type": line.line_type,
+        "description": line.description,
+        "amount": money(line.amount),
+        "tax_amount": money(line.tax_amount),
+        "credit_applied": money(line.credit_applied),
+        "total": money(line.total),
+    }
+
+
+def line_payload(line: InvoiceLineRow) -> dict:
+    return {
+        "line_no": line.line_no,
+        "line_type": line.line_type,
+        "description": line.description,
+        "amount": money(line.amount),
+    }
 
 
 @app.get("/health")
@@ -127,3 +173,61 @@ def change_tenant_plan(tenant_id: Annotated[UUID, Path()], request: PlanChange) 
             status_code=409,
             detail="this plan change has already been requested",
         ) from error
+
+
+@app.get("/api/tenants/{tenant_id}/invoice-preview")
+def preview_invoice(
+    tenant_id: Annotated[UUID, Path()],
+    period_start: Annotated[date, Query()],
+    period_end: Annotated[date, Query()],
+) -> list[dict]:
+    with connect() as connection:
+        lines = invoice_preview(
+            PostgresInvoicingRepository(connection), tenant_id, period_start, period_end
+        )
+    return [preview_payload(line) for line in lines]
+
+
+@app.post("/api/tenants/{tenant_id}/invoice")
+def issue_tenant_invoice(
+    tenant_id: Annotated[UUID, Path()], request: InvoiceIssue
+) -> dict:
+    with connect() as connection:
+        issued = issue_invoice(
+            PostgresInvoicingRepository(connection),
+            tenant_id,
+            request.period_start,
+            request.period_end,
+        )
+    invoice = issued.invoices[0] if issued.invoices else None
+    return {
+        "status": invoice.status if invoice else None,
+        "subtotal": money(invoice.subtotal) if invoice else None,
+        "tax": money(invoice.tax) if invoice else None,
+        "total": money(invoice.total) if invoice else None,
+        "invoice_state": [
+            {
+                "status": item.status,
+                "subtotal": money(item.subtotal),
+                "tax": money(item.tax),
+                "total": money(item.total),
+            }
+            for item in issued.invoices
+        ],
+        "credit_notes": [
+            {
+                "id": str(note.credit_note_id),
+                "issued_on": note.issued_on.isoformat(),
+                "remaining_amount": money(note.remaining_amount),
+            }
+            for note in issued.credit_notes
+        ],
+        "lines": [line_payload(line) for line in issued.lines],
+    }
+
+
+@app.get("/api/invoices/{invoice_id}/lines")
+def list_invoice_lines(invoice_id: Annotated[UUID, Path()]) -> list[dict]:
+    with connect() as connection:
+        lines = invoice_lines(PostgresInvoicingRepository(connection), invoice_id)
+    return [line_payload(line) for line in lines]

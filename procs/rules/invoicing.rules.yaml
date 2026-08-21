@@ -1,0 +1,168 @@
+module: invoicing
+rules:
+  - id: INVOICING-001
+    statement: >-
+      A preview is always five ordered lines: the plan line, the usage-overage line, the
+      regional and local tax halves, and the credit line, numbered 1 through 5.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [45, 58]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [line_no, line_type, description, amount, tax_amount, credit_applied, total]
+    confidence: high
+    scenarios: [INVOICE-001, INVOICE-002]
+    question: >-
+      The UNION ALL has no ORDER BY, so the row order is not guaranteed by the statement.
+      Is the recorded 1..5 order part of the contract?
+    answer: >-
+      Yes. Every transcript exhibits ascending line_no, and sp_issue_invoice persists the
+      rows under a unique (invoice_id, line_no) key, so the extraction orders the lines by
+      line_no explicitly in the domain layer instead of relying on row order.
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-002
+    statement: >-
+      The plan line carries the plan code and the monthly fee rounded to two places, and the
+      usage line carries the rating overage rounded to two places; both lines are tax free.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [23, 50]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [description, amount, total]
+    confidence: high
+    scenarios: [INVOICE-001]
+    question: >-
+      `ORDER BY s.starts_on DESC LIMIT 1` is not a total order when a tenant has two
+      subscriptions starting on the same day. Which one wins?
+    answer: >-
+      The subscription with the lowest id among those with the latest starts_on. No seeded
+      tenant has same-day subscriptions, so the transcripts do not discriminate; the
+      extraction pins the tiebreaker so the choice is deterministic.
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-003
+    statement: >-
+      Tax is 8.25% of the plan fee plus the overage and is split into two equal halves; a
+      tax-exempt tenant is taxed zero. The per-line tax_amount column is always zero.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [39, 54]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [amount, tax_amount, total]
+    confidence: high
+    scenarios: [INVOICE-001, INVOICE-002]
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-004
+    statement: >-
+      The credit line applies the lesser of the tenant's open credit-note balance and the
+      gross amount rounded to two places, and reports it as a negative total.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [34, 58]
+    inputs: [tenant_id]
+    outputs: [credit_applied, total]
+    confidence: high
+    scenarios: [INVOICE-001, INVOICE-002]
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-005
+    statement: >-
+      Issuing an invoice finalizes the rating period first and derives the period, invoice and
+      line identifiers from md5 digests, so re-issuing the same period is an upsert that
+      restores the 'issued' status and rebuilds the lines rather than duplicating them.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [85, 113]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [status, invoice_state]
+    confidence: high
+    scenarios: [INVOICE-005]
+    question: >-
+      sp_issue_invoice calls sp_finalize_rating, which belongs to the rating module. How is
+      that dependency satisfied by an invoicing-only extraction?
+    answer: >-
+      Invoicing reproduces the rating finalization and usage-rating computation it depends on
+      inside its own domain layer, because the invoice cannot be written without its rating
+      period row. It duplicates no rating-module file; deduplication with the rating
+      extraction is left to review once both land.
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-006
+    statement: >-
+      The invoice subtotal sums the per-line rounded plan and usage amounts, the tax sums the
+      per-line rounded tax halves, and the total is subtotal plus tax less the applied credit,
+      rounded to two places.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [114, 125]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [subtotal, tax, total, invoice_state]
+    confidence: high
+    scenarios: [INVOICE-003, INVOICE-004, INVOICE-005]
+    question: >-
+      Rounding each tax half before summing differs from rounding the total tax once. Which
+      does the procedure do?
+    answer: >-
+      Each half is rounded first and the halves are then summed, so a tax of 4.0425 is stored
+      as 4.04 rather than 4.05. The extraction rounds at the same point.
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-007
+    statement: >-
+      Applied credit is drawn from the tenant's open credit notes in issued_on then id order,
+      each note being decremented by the credit still outstanding when the loop reaches it and
+      floored at zero.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [127, 138]
+    inputs: [tenant_id]
+    outputs: [credit_ids, issued_on, remaining]
+    confidence: high
+    scenarios: [INVOICE-003, INVOICE-004]
+    question: >-
+      The remaining credit is decremented by the note's balance as read at the top of the
+      iteration, not by the amount actually consumed. Is that carried over?
+    answer: >-
+      Yes. The procedure subtracts the pre-update remaining_amount, which over-consumes the
+      running credit whenever a note is only partially drawn; the transcripts record that
+      behavior and the extraction reproduces it rather than correcting it.
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.
+  - id: INVOICING-008
+    statement: >-
+      Reading an invoice's persisted lines returns line_no, line_type, description and amount
+      ordered by line_no, and an invoice with no lines returns an empty list.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [62, 75]
+    inputs: [invoice_id]
+    outputs: [line_no, line_type, description, amount]
+    confidence: high
+    scenarios: [INVOICE-006]
+    decision:
+      status: approved
+      reviewer: billing-platform
+      date: "2026-08-21"
+      note: Approved for the invoicing extraction.

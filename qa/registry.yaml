@@ -72,7 +72,7 @@ findings:
   - id: OW-UI-103
     title: Text file detail page never shows the file contents
     severity: medium
-    status: open
+    status: remediated
     source: docs/exploratory-qa-report.md
     routes: [/files]
     symptom: >
@@ -82,6 +82,22 @@ findings:
       The detail page of a text file shows its contents inline, without a
       download.
     spec: e2e/ui-defects/ow-ui-103.spec.ts
+
+  - id: OW-UI-106
+    title: Text preview shows a false "File truncated" banner on small files
+    severity: low
+    status: open
+    source: qa/registry.yaml
+    routes: [/files]
+    symptom: >
+      The inline text preview on the file detail page shows "File truncated —
+      showing first 500 KB. Download the file to see full contents." even for
+      files far below the 500 KB preview limit, because the preview treats any
+      HTTP 206 response to its Range request as truncation.
+    expected: >
+      The truncation banner appears only when the file is actually larger than
+      the previewed range.
+    spec: e2e/ui-defects/ow-ui-106.spec.ts
 
   - id: OW-UI-104
     title: Download action gives no visible feedback

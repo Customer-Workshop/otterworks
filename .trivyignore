@@ -3,6 +3,11 @@
 # report-service is excluded via skip-dirs (intentional legacy Java 8 service for upgrade exercise).
 
 # --- etl/airflow: requires Airflow 2.9+ upgrade (major version) ---
+# CVE-2026-45360 / CVE-2026-40961 are only fixed in 3.2.2 — every 2.x release is
+# affected. Acknowledged to keep the migration on the 2.8+ target of
+# etl/ETL_UPGRADE_GUIDE.md; revisit with the Airflow 3 upgrade.
+CVE-2026-45360
+CVE-2026-40961
 CVE-2024-39877
 CVE-2024-45034
 CVE-2024-56373

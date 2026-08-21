@@ -28,7 +28,7 @@ graded against, and the Playwright spec that reproduces it. The findings on
 | `OW-UI-103` | medium | `/files` | a text file's detail page never shows its contents |
 | `OW-UI-104` | medium | `/files` | Download reports no progress, success, or failure |
 
-A sixth entry (`OW-UI-105`, unconfirmed permanent delete) was withdrawn: the
+A fifth entry (`OW-UI-105`, unconfirmed permanent delete) was withdrawn: the
 Trash page already confirms by name (`src/pages/trash.tsx`), and the spec written
 for it passed against the unfixed app — which is exactly how `make ui-repro`
 catches a bad registry entry. Expect a filed symptom to have drifted, and grade

@@ -54,7 +54,7 @@ let isVerifyingToken = false;
 
 apiClient.interceptors.response.use(
   (response) => {
-    if (response.data) {
+    if (response.data && !(response.data instanceof Blob)) {
       response.data = transformKeys(response.data);
     }
     return response;

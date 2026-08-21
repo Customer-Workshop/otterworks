@@ -371,6 +371,29 @@ pub async fn download_file(
     }))
 }
 
+pub async fn download_content(
+    s3: web::Data<S3Client>,
+    meta: web::Data<MetadataClient>,
+    path: web::Path<String>,
+) -> Result<HttpResponse, ServiceError> {
+    let file_id: Uuid = path
+        .into_inner()
+        .parse()
+        .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    let file = meta.get_file(&file_id).await?;
+    let bytes = s3.download_object(&file.s3_key).await?;
+    let filename = file.name.replace(['"', '\r', '\n'], "_");
+
+    Ok(HttpResponse::Ok()
+        .content_type(file.mime_type.clone())
+        .insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"{filename}\""),
+        ))
+        .body(bytes))
+}
+
 pub async fn move_file(
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,

@@ -86,7 +86,7 @@ findings:
   - id: OW-UI-104
     title: Download action gives no visible feedback
     severity: medium
-    status: open
+    status: remediated
     source: docs/exploratory-qa-report.md
     routes: [/files]
     symptom: >

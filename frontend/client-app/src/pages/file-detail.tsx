@@ -24,6 +24,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ShareDialog } from "@/components/files/share-dialog";
 import { TextFilePreview, PdfFilePreview, ImageFilePreview } from "@/components/files/file-preview";
 import { filesApi, authApi } from "@/lib/api";
+import { downloadFileToDisk } from "@/lib/download";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
 
 export default function FileDetailPage() {
@@ -157,17 +158,7 @@ function FileDetailContent() {
             onClick={async () => {
               setIsDownloading(true);
               try {
-                const downloadUrl = await filesApi.getDownloadUrl(file.id);
-                const a = document.createElement("a");
-                a.href = downloadUrl;
-                a.download = file.name;
-                a.rel = "noopener";
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                toast.success(`Downloading ${file.name}`);
-              } catch {
-                toast.error("Download failed. Please try again.");
+                await downloadFileToDisk(file.id, file.name);
               } finally {
                 setIsDownloading(false);
               }

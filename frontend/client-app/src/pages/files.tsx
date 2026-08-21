@@ -28,6 +28,7 @@ import { FileGridSkeleton, FileListSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { filesApi } from "@/lib/api";
+import { downloadFileToDisk } from "@/lib/download";
 import { useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import type { ViewMode, SortField } from "@/types";
@@ -237,21 +238,7 @@ function FileBrowserContent() {
   };
 
   const handleDownload = useCallback(
-    async (id: string, name: string) => {
-      try {
-        const url = await filesApi.getDownloadUrl(id);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        toast.success(`Downloading ${name}`);
-      } catch {
-        toast.error("Download failed");
-      }
-    },
+    (id: string, name: string) => downloadFileToDisk(id, name),
     []
   );
 

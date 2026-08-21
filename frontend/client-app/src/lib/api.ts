@@ -234,6 +234,12 @@ export const filesApi = {
     });
     return normalizeFileItem(data);
   },
+  downloadContent: async (id: string): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>(`/files/${id}/content`, {
+      responseType: "blob",
+    });
+    return data;
+  },
   getDownloadUrl: async (id: string): Promise<string> => {
     const { data } = await apiClient.get<{ url: string; expiresInSecs: number }>(`/files/${id}/download`);
     // Presigned URLs from S3/LocalStack use the internal Docker hostname.

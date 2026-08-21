@@ -100,7 +100,7 @@ fun Application.configurePlugins(config: AppConfig = AppConfig.load()) {
 
 fun Application.configureDependencyInjection(
     config: AppConfig,
-    prometheusRegistry: io.micrometer.prometheus.PrometheusMeterRegistry,
+    prometheusRegistry: io.micrometer.prometheusmetrics.PrometheusMeterRegistry,
 ) {
     install(Koin) {
         slf4jLogger()

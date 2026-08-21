@@ -6,6 +6,7 @@ import {
   isAccepted,
   loadSweepConfig,
   observe,
+  type AcceptedRule,
   type Observation,
 } from "./fixtures/ui-observer";
 
@@ -29,6 +30,7 @@ test.describe("authenticated route sweep", () => {
 
     const unexpected: Observation[] = [];
     const suppressed: Observation[] = [];
+    const usedRules = new Set<AcceptedRule>();
 
     for (const route of routes) {
       state.route = route;
@@ -39,6 +41,7 @@ test.describe("authenticated route sweep", () => {
 
       for (const obs of observations.slice(before)) {
         const rule = isAccepted(obs, accepted);
+        if (rule) usedRules.add(rule);
         (rule ? suppressed : unexpected).push(obs);
       }
     }
@@ -54,6 +57,17 @@ test.describe("authenticated route sweep", () => {
       `unregistered UI errors — either fix them or register them in qa/registry.yaml:\n${describeObservations(
         unexpected
       )}`
+    ).toEqual([]);
+
+    const stale = accepted.filter((rule) => !usedRules.has(rule));
+    expect(
+      stale,
+      `stale suppressions — these accepted_console_errors matched nothing on the sweep. ` +
+        `The defect no longer reproduces: run \`make ui-verify FINDING=<id>\` and mark it remediated ` +
+        `(or re-triage the finding) instead of leaving a suppression that would mask a regression:\n` +
+        stale
+          .map((r) => `  [${r.finding}] url_pattern=${r.url_pattern ?? "-"} status=${r.status ?? "-"} message=${r.message ?? "-"}`)
+          .join("\n")
     ).toEqual([]);
   });
 });

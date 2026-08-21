@@ -31,16 +31,20 @@ app:
 
 findings:
   - id: OW-UI-101
-    title: Notification data calls return 400 on every authenticated route
+    title: The unread-count badge errors on every authenticated route
     severity: high
     status: open
     source: docs/exploratory-qa-report.md
     routes: [/dashboard, /files, /notifications]
     symptom: >
-      GET /api/v1/notifications/unread-count and GET /api/v1/notifications
-      return 400 Bad Request on every authenticated page. The bell badge is
-      unreliable and the notifications page renders its empty state while its
-      own data calls are failing, so the UI looks healthy and is not.
+      The bell polls GET /api/v1/notifications/unread-count on every
+      authenticated page. The report recorded 400 Bad Request; the gateway now
+      forwards the caller identity, so the call returns 200 with
+      {userId, unreadCount} and the client reads data.count instead — the query
+      resolves undefined and the console carries "Query data cannot be
+      undefined" on every route. Either way the badge never shows a count, and
+      the notifications page renders its empty state when its list call fails,
+      so the UI looks healthy and is not.
     expected: >
       Both calls return 200 for a logged-in user, the badge reflects the real
       unread count, and the notifications page distinguishes "no notifications"
@@ -49,6 +53,7 @@ findings:
     accepted_console_errors:
       - url_pattern: /api/v1/notifications
         status: 400
+      - message: 'Query data cannot be undefined'
 
   - id: OW-UI-102
     title: Settings page calls a route that does not exist

@@ -1,0 +1,174 @@
+module: rating
+rules:
+  - id: RATING-R001
+    statement: >-
+      Rating picks the single subscription overlapping the period with the latest
+      starts_on, and reads quota and overage rate from that subscription's plan.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [31, 41]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [quota_units]
+    confidence: high
+    scenarios: [RATING-001, RATING-002]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Same selection predicate and ordering as the legacy SELECT ... INTO.
+  - id: RATING-R002
+    statement: >-
+      Used units are the sum of usage events whose UTC calendar date falls inside the
+      inclusive period, and zero when the tenant has no events in the period.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [43, 46]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [used_units]
+    confidence: high
+    scenarios: [RATING-001]
+    question: >-
+      occurred_at is timestamptz and is compared as occurred_at::date; which calendar
+      date does the extraction use?
+    answer: >-
+      The UTC calendar date, because the recorder and the legacy container both run with
+      the session time zone set to UTC.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Matches the contract rule that timestamptz::date is the UTC calendar date.
+  - id: RATING-R003
+    statement: >-
+      Rollover is the sum of rollover units of finalized periods starting in the three
+      calendar months before the period start, capped at twice the plan quota.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [48, 56]
+    inputs: [tenant_id, period_start]
+    outputs: [rollover_units]
+    confidence: high
+    scenarios: [RATING-002]
+    question: >-
+      How is the interval '3 months' lower bound reproduced outside SQL?
+    answer: >-
+      By calendar month subtraction from period_start with end-of-month clamping, which
+      is what PostgreSQL's date - interval '3 months' computes, and the bound is
+      inclusive while the upper bound (period_start) is exclusive.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Prior-period rollover is double-capped exactly as the procedure writes it.
+  - id: RATING-R004
+    statement: >-
+      Billable units are used units minus rollover minus quota, floored at zero.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [57, 57]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [billable_units]
+    confidence: high
+    scenarios: [RATING-001, RATING-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: GREATEST(..., 0) keeps under-quota tenants at zero billable units.
+  - id: RATING-R005
+    statement: >-
+      Billable units split into a first tier of at most 101 units and a second tier of
+      the remainder.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [58, 59]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [first_tier_units, second_tier_units]
+    confidence: high
+    scenarios: [RATING-004, RATING-005]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: The 101-unit boundary is reproduced verbatim, including the off-by-one it implies.
+  - id: RATING-R006
+    statement: >-
+      The overage amount charges the first tier at the plan rate and the second tier at
+      1.5 times that rate, rounded half-up to two decimals at that point.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [60, 60]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [overage_amount]
+    confidence: high
+    scenarios: [RATING-006]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Decimal arithmetic end to end, rounded where the procedure rounds.
+  - id: RATING-R007
+    statement: >-
+      A subscription suspended inside the period prorates billable units and the already
+      rounded overage amount by the inclusive suspended-day share of the period.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [62, 72]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [billable_units, overage_amount]
+    confidence: high
+    scenarios: [RATING-003]
+    question: >-
+      Is the overage amount prorated from the unrounded tier total or from the amount
+      already rounded to two decimals?
+    answer: >-
+      From the already rounded amount: the procedure rounds at line 60 and prorates that
+      value, so the extraction rounds twice in the same order (for RATING-003 that is
+      8.7325 -> 8.73 -> 4.365 -> 4.37).
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Day counts are inclusive on both ends, as the procedure's +1 terms imply.
+  - id: RATING-R008
+    statement: >-
+      The usage summary groups a tenant's in-period events by kind, ordered by kind, with
+      an event count and a unit sum per kind.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [79, 93]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [kind, event_count, units]
+    confidence: high
+    scenarios: [RATING-007]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: Ordering is applied in the domain layer, not left to physical row order.
+  - id: RATING-R009
+    statement: >-
+      Finalizing upserts the deterministic md5-derived rating period, rates it, and
+      upserts the rating result whose stored rollover is the unused quota, not the
+      rollover the rating applied.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [95, 139]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [used_units, quota_units, rollover_units, billable_units, overage_amount]
+    confidence: high
+    scenarios: [RATING-008]
+    question: >-
+      The rating_results row is read back to answer the request; in what order are those
+      rows returned when a period carries more than one result?
+    answer: >-
+      By created_at then id. The probe query has no ORDER BY and the seeded fixture has
+      one result per period, so the extraction pins a deterministic total order rather
+      than relying on physical row order.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-21"
+      note: >-
+        The stored rollover_units is GREATEST(quota - used, 0), which differs from the
+        rollover the rating consumed; both are reproduced as written.

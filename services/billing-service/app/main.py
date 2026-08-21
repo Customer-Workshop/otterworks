@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -12,8 +13,16 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.db import connect, migrate, reset
-from app.domain import catalog, change_plan, entitlement
-from app.repository import PostgresPlansRepository
+from app.domain import (
+    RatingResultRow,
+    catalog,
+    change_plan,
+    entitlement,
+    finalize_rating,
+    usage_rating,
+    usage_summary,
+)
+from app.repository import PostgresPlansRepository, PostgresRatingRepository
 
 
 @asynccontextmanager
@@ -35,6 +44,25 @@ app.add_middleware(
 class PlanChange(BaseModel):
     plan_id: UUID
     effective_on: date
+
+
+class RatingFinalize(BaseModel):
+    period_start: date
+    period_end: date
+
+
+def money(value: Decimal | None) -> str | None:
+    return None if value is None else f"{value:.2f}"
+
+
+def rating_result_payload(row: RatingResultRow) -> dict:
+    return {
+        "used_units": row.used_units,
+        "quota_units": row.quota_units,
+        "rollover_units": row.rollover_units,
+        "billable_units": row.billable_units,
+        "overage_amount": money(row.overage_amount),
+    }
 
 
 @app.get("/health")
@@ -127,3 +155,76 @@ def change_tenant_plan(tenant_id: Annotated[UUID, Path()], request: PlanChange) 
             status_code=409,
             detail="this plan change has already been requested",
         ) from error
+
+
+@app.get("/api/tenants/{tenant_id}/rating")
+def get_usage_rating(
+    tenant_id: Annotated[UUID, Path()],
+    period_start: Annotated[date, Query()],
+    period_end: Annotated[date, Query()],
+) -> dict:
+    with connect() as connection:
+        row = usage_rating(
+            PostgresRatingRepository(connection),
+            tenant_id,
+            period_start,
+            period_end,
+        )
+    return {
+        "tenant_id": str(row.tenant_id),
+        "period_start": row.period_start.isoformat(),
+        "period_end": row.period_end.isoformat(),
+        "used_units": row.used_units,
+        "quota_units": row.quota_units,
+        "rollover_units": row.rollover_units,
+        "billable_units": row.billable_units,
+        "first_tier_units": row.first_tier_units,
+        "second_tier_units": row.second_tier_units,
+        "overage_amount": money(row.overage_amount),
+    }
+
+
+@app.get("/api/tenants/{tenant_id}/usage-summary")
+def get_usage_summary(
+    tenant_id: Annotated[UUID, Path()],
+    period_start: Annotated[date, Query()],
+    period_end: Annotated[date, Query()],
+) -> list[dict]:
+    with connect() as connection:
+        rows = usage_summary(
+            PostgresRatingRepository(connection),
+            tenant_id,
+            period_start,
+            period_end,
+        )
+    return [
+        {"kind": row.kind, "event_count": row.event_count, "units": row.units}
+        for row in rows
+    ]
+
+
+@app.post("/api/tenants/{tenant_id}/rating-finalize")
+def finalize_tenant_rating(
+    tenant_id: Annotated[UUID, Path()],
+    request: RatingFinalize,
+) -> dict:
+    with connect() as connection:
+        rows = finalize_rating(
+            PostgresRatingRepository(connection),
+            tenant_id,
+            request.period_start,
+            request.period_end,
+        )
+    results = [rating_result_payload(row) for row in rows]
+    latest = results[-1] if results else None
+    return {
+        "tenant_id": str(tenant_id),
+        "period_start": request.period_start.isoformat(),
+        "period_end": request.period_end.isoformat(),
+        "used_units": latest["used_units"] if latest else None,
+        "quota_units": latest["quota_units"] if latest else None,
+        "rollover_units": latest["rollover_units"] if latest else None,
+        "billable_units": latest["billable_units"] if latest else None,
+        "overage_amount": latest["overage_amount"] if latest else None,
+        "rating_result": results,
+    }

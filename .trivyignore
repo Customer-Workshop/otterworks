@@ -9,6 +9,13 @@ CVE-2024-56373
 CVE-2025-54550
 CVE-2025-68675
 
+# --- etl/airflow: Airflow 3-only issues matched against 2.8.x by CPE range ---
+# Both list a fixed version of 3.2.2 with no 2.x fix. Per OSV, CVE-2026-40961 was
+# introduced in 3.0.0, and CVE-2026-45360 covers deadline-reference deserialization,
+# an Airflow 3 feature. Revisit with the Airflow 3 upgrade.
+CVE-2026-40961
+CVE-2026-45360
+
 # --- frontend/admin-dashboard: requires Angular 19+ upgrade (major version) ---
 CVE-2025-66035
 CVE-2025-66412

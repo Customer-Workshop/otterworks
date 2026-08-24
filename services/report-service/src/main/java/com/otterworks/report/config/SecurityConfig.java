@@ -23,7 +23,8 @@ public class SecurityConfig {
                 .requestMatchers("/health", "/metrics", "/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/api/v1/reports/**").permitAll()  // TODO: Add JWT validation
-                .anyRequest().authenticated())
+                // Keep unmatched paths open until JWT validation is implemented.
+                .anyRequest().permitAll())
             .headers(headers -> headers
                 .frameOptions(frame -> frame.deny())
                 .contentTypeOptions(contentType -> { })

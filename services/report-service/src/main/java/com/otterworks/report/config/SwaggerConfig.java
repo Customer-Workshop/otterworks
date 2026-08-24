@@ -14,7 +14,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("OtterWorks Report Service API")
-                        .description("Legacy report generation service for PDF, CSV, and Excel exports")
+                        .description("Report generation service for PDF, CSV, and Excel exports")
                         .version("0.1.0")
                         .contact(new Contact()
                                 .name("OtterWorks Engineering")

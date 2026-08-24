@@ -16,7 +16,7 @@
     <version>0.1.0</version>
     <packaging>jar</packaging>
     <name>OtterWorks Report Service</name>
-    <description>Legacy report generation service — PDF, CSV, Excel exports from analytics and audit data</description>
+    <description>Report generation service — PDF, CSV, Excel exports from analytics and audit data</description>
 
     <properties>
         <java.version>17</java.version>
@@ -25,7 +25,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <poi.version>5.2.5</poi.version>
-        <commons-lang.version>3.14.0</commons-lang.version>
+        <commons-lang3.version>3.14.0</commons-lang3.version>
         <commons-io.version>2.15.1</commons-io.version>
         <guava.version>33.1.0-jre</guava.version>
         <!-- Commons Text 1.9 — report banner/footer interpolation -->
@@ -88,7 +88,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>${commons-lang.version}</version>
+            <version>${commons-lang3.version}</version>
         </dependency>
 
         <!-- Commons Text — report banner and footer interpolation -->
@@ -98,11 +98,12 @@
             <version>${commons-text.version}</version>
         </dependency>
 
-        <!-- Retain the JavaScript lookup behavior on Java 17 for the transcript contract. -->
+        <!-- Test-scoped for transcript measurement fidelity; deliberately absent from runtime. -->
         <dependency>
             <groupId>org.openjdk.nashorn</groupId>
             <artifactId>nashorn-core</artifactId>
             <version>15.4</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

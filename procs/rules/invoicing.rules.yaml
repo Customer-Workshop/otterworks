@@ -1,0 +1,247 @@
+module: invoicing
+rules:
+  - id: INVOICE-R001
+    statement: >-
+      An invoice is priced from the plan of the subscription that overlaps the period, preferring
+      the latest start date when several overlap.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [23, 29]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [plan_code, monthly_fee]
+    confidence: high
+    scenarios: [INVOICE-001]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; same subscription selection the rating logic uses.
+  - id: INVOICE-R002
+    statement: >-
+      The usage line on an invoice is the overage amount produced by rating the same tenant and
+      period.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [31, 32]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [usage_amount]
+    confidence: high
+    scenarios: [INVOICE-001]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. Invoicing reuses the rating logic rather than re-deriving overage, including
+        its suspension proration.
+  - id: INVOICE-R003
+    statement: >-
+      Credit available to an invoice is the total remaining amount of the tenant's credit notes
+      that still have a positive balance.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [34, 37]
+    inputs: [tenant_id]
+    outputs: [credit_available]
+    confidence: high
+    scenarios: [INVOICE-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. Credit is tenant-wide and not scoped to the period being invoiced, so any
+        open note can settle this invoice.
+  - id: INVOICE-R004
+    statement: >-
+      Tax is zero for a tax-exempt customer and otherwise 8.25% of the plan fee plus the usage
+      overage.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [39, 43]
+    inputs: [tenant_id, monthly_fee, usage_amount]
+    outputs: [tax]
+    confidence: high
+    scenarios: [INVOICE-001, INVOICE-002]
+    question: >-
+      A single blended 8.25% rate is applied regardless of the customer's location. Is that the
+      rule to carry forward?
+    answer: >-
+      Yes for this extraction. The rate is what every recorded invoice was computed with, and
+      the split into regional and local halves below is presentational. Introducing
+      jurisdiction-specific rates is a tax-engine change and is out of scope.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved unchanged; tax exemption is read from the customer record.
+  - id: INVOICE-R005
+    statement: >-
+      A preview always returns five lines in fixed order — plan, usage, regional tax, local tax,
+      credit — where each tax line carries half the computed tax and the separate tax column on
+      every line is zero.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [45, 55]
+    inputs: [monthly_fee, usage_amount, tax]
+    outputs: [line_no, line_type, description, amount, tax_amount, total]
+    confidence: high
+    scenarios: [INVOICE-001, INVOICE-002]
+    question: >-
+      Tax is reported in the amount column of two tax lines while the dedicated tax_amount
+      column stays zero. Is the empty column dead, or does something read it?
+    answer: >-
+      It is dead in the recorded behaviour and stays zero. The extraction keeps the column so
+      the preview contract is unchanged for callers, and carries the tax in the amount column
+      exactly as recorded; the tax total on an issued invoice is derived from the tax lines, not
+      from that column.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved as recorded; halving is not re-rounded, each half keeps full precision.
+  - id: INVOICE-R006
+    statement: >-
+      The credit line applies the smaller of the available credit and the invoice gross of plan
+      fee, usage and tax, reported as a positive credit applied and a negative line total.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [56, 58]
+    inputs: [credit_available, monthly_fee, usage_amount, tax]
+    outputs: [credit_applied, total]
+    confidence: high
+    scenarios: [INVOICE-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. Credit can settle an invoice to exactly zero but never overpays it, and a
+        tenant with no credit gets a zero line rather than no line.
+  - id: INVOICE-R007
+    statement: The persisted lines of an issued invoice are read back in line-number order.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [62, 75]
+    inputs: [invoice_id]
+    outputs: [line_no, line_type, description, amount]
+    confidence: high
+    scenarios: [INVOICE-006]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. In the document model these lines live inside their invoice, so the read is a
+        single-document lookup and the stored order is the contract.
+  - id: INVOICE-R008
+    statement: >-
+      Issuing an invoice first finalizes the period's rating, then upserts one invoice per tenant
+      period, keyed off the period, and marks it issued even if it already existed.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [93, 100]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [invoice_id, status]
+    confidence: high
+    scenarios: [INVOICE-005]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. Re-issuing is deliberate and idempotent on identity: the same period always
+        resolves to the same invoice.
+  - id: INVOICE-R009
+    statement: >-
+      Issuing replaces the invoice's lines wholesale with the current preview, persisting the
+      signed total for the credit line and the amount for every other line.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [102, 113]
+    inputs: [invoice_id, preview_lines]
+    outputs: [invoice_lines]
+    confidence: high
+    scenarios: [INVOICE-005]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. The credit line is the one place where the stored amount is the negative
+        total rather than the line amount.
+  - id: INVOICE-R010
+    statement: >-
+      Invoice totals are the subtotal of the plan and usage lines, the tax as the sum of the two
+      tax lines each rounded to two decimals, and the total as subtotal plus tax less the credit
+      applied.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [114, 125]
+    inputs: [preview_lines, credit_applied]
+    outputs: [subtotal, tax, total]
+    confidence: high
+    scenarios: [INVOICE-005]
+    question: >-
+      Rounding each half of the tax before summing can differ by a cent from rounding the tax
+      once. Which does the invoice use?
+    answer: >-
+      Each half is rounded first and then summed, exactly as recorded, so the persisted tax is
+      the sum of the two rounded tax lines and always reconciles line-by-line against the
+      invoice the customer received.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; totals must reconcile against the stored lines, not against a recomputation.
+  - id: INVOICE-R011
+    statement: >-
+      Applied credit is drawn down across the tenant's open credit notes oldest first, by issue
+      date then note identity, each note's remaining balance floored at zero.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [127, 138]
+    inputs: [tenant_id, credit_applied]
+    outputs: [credit_notes]
+    confidence: high
+    scenarios: [INVOICE-003, INVOICE-004]
+    question: >-
+      Each note is reduced by the whole outstanding credit rather than by the part it can cover,
+      and the running remainder is reduced by that note's original balance. Is the drawdown
+      exact?
+    answer: >-
+      It is not exact, and it is preserved as recorded. Because each note is debited the full
+      outstanding figure and floored at zero, a note can absorb more than the invoice consumed;
+      the recorded scenarios pin the resulting balances, so the extraction reproduces the
+      arithmetic including the snapshot of balances taken before any note is written.
+      Correcting the drawdown would change customer credit balances and is a separate decision.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved verbatim, including the ordering tie-break on note identity when two notes
+        share an issue date.
+  - id: INVOICE-R012
+    statement: >-
+      A period with no overlapping subscription or plan, and a request for the lines of an
+      invoice that does not exist, fail instead of returning an empty or unpriced invoice.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [17, 32]
+    inputs: [tenant_id, period_start, period_end, invoice_id]
+    outputs: [error]
+    confidence: medium
+    scenarios: [INVOICE-001, INVOICE-006]
+    question: >-
+      Legacy leaves the plan unset and prices the invoice off NULL amounts. Is that behaviour to
+      reproduce?
+    answer: >-
+      No. The extracted service fails closed with a 404. A NULL plan fee produced an invoice
+      that looked issued while carrying no amounts, which is worse than refusing to invoice; no
+      recorded scenario exercises it.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved as a deliberate, documented divergence from the legacy NULL fall-through.

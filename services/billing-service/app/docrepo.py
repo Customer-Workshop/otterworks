@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from uuid import UUID
@@ -9,15 +8,8 @@ from bson.decimal128 import Decimal128
 
 from app.docstore import database
 from app.domain import PlanRow, SubscriptionRow
+from app.invoicing import CreditNoteRow, CustomerRow, InvoiceLineRow, InvoiceRow
 from app.rating import RatingPeriodRow, RatingResultRow, UsageEventRow
-
-
-@dataclass(frozen=True)
-class CustomerRow:
-    tenant_id: UUID
-    name: str
-    tax_exempt: bool
-    status: str
 
 
 def _decimal(value: Decimal128 | Decimal | str) -> Decimal:
@@ -162,4 +154,95 @@ class DocumentRatingRepository:
         collection.replace_one(conflict, document, upsert=True)
         return RatingPeriodRow(
             UUID(stored_period_id), tenant_id, period_start, period_end, result
+        )
+
+    def list_credit_notes(self, tenant_id: UUID) -> list[CreditNoteRow]:
+        documents = database()["credit_notes"].find({"tenant_id": str(tenant_id)})
+        return [
+            CreditNoteRow(
+                note_id=UUID(document["_id"]),
+                tenant_id=UUID(document["tenant_id"]),
+                issued_on=_date(document["issued_on"]),
+                amount=_decimal(document["amount"]),
+                remaining_amount=_decimal(document["remaining_amount"]),
+            )
+            for document in documents
+        ]
+
+    def get_invoice(self, invoice_id: UUID) -> InvoiceRow | None:
+        document = database()["invoices"].find_one({"_id": str(invoice_id)})
+        if document is None:
+            return None
+        return InvoiceRow(
+            invoice_id=UUID(document["_id"]),
+            tenant_id=UUID(document["tenant_id"]),
+            period_id=UUID(document["period_id"]),
+            issued_at=_timestamp(document["issued_at"]),
+            subtotal=_decimal(document["subtotal"]),
+            tax=_decimal(document["tax"]),
+            total=_decimal(document["total"]),
+            status=document["status"],
+            lines=[
+                InvoiceLineRow(
+                    line_no=line["line_no"],
+                    line_type=line["line_type"],
+                    description=line["description"],
+                    amount=_decimal(line["amount"]),
+                )
+                for line in document.get("lines", [])
+            ],
+        )
+
+    def upsert_invoice(
+        self,
+        tenant_id: UUID,
+        period_id: UUID,
+        invoice_id: UUID,
+        issued_at: datetime,
+        subtotal: Decimal,
+        tax: Decimal,
+        total: Decimal,
+        status: str,
+        lines: list[InvoiceLineRow],
+    ) -> InvoiceRow:
+        collection = database()["invoices"]
+        conflict = {"tenant_id": str(tenant_id), "period_id": str(period_id)}
+        existing = collection.find_one(conflict)
+        stored_invoice_id = existing["_id"] if existing is not None else str(invoice_id)
+        document = {
+            "_id": stored_invoice_id,
+            "tenant_id": str(tenant_id),
+            "period_id": str(period_id),
+            "issued_at": _timestamp(issued_at),
+            "subtotal": Decimal128(subtotal),
+            "tax": Decimal128(tax),
+            "total": Decimal128(total),
+            "status": status,
+            "lines": [
+                {
+                    "line_no": line.line_no,
+                    "line_type": line.line_type,
+                    "description": line.description,
+                    "amount": Decimal128(line.amount),
+                }
+                for line in lines
+            ],
+        }
+        collection.replace_one(conflict, document, upsert=True)
+        return InvoiceRow(
+            invoice_id=UUID(stored_invoice_id),
+            tenant_id=tenant_id,
+            period_id=period_id,
+            issued_at=issued_at,
+            subtotal=subtotal,
+            tax=tax,
+            total=total,
+            status=status,
+            lines=lines,
+        )
+
+    def update_credit_note(self, note_id: UUID, remaining_amount: Decimal) -> None:
+        database()["credit_notes"].update_one(
+            {"_id": str(note_id)},
+            {"$set": {"remaining_amount": Decimal128(remaining_amount)}},
         )

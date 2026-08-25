@@ -16,6 +16,10 @@ from app.db import connect, migrate, reset
 from app.docrepo import DocumentRatingRepository
 from app.docstore import database, reset_documents
 from app.domain import catalog, change_plan, entitlement
+from app.invoicing import InvoiceNotFoundError
+from app.invoicing import invoice_lines as read_invoice_lines
+from app.invoicing import issue as issue_invoice
+from app.invoicing import preview as invoice_preview
 from app.rating import RatingNotFoundError, finalize, rate, usage_summary
 from app.repository import PostgresPlansRepository
 
@@ -65,6 +69,28 @@ def _rating_result_response(result) -> dict[str, int | str]:
         "rollover_units": result.rollover_units,
         "billable_units": result.billable_units,
         "overage_amount": f"{result.overage_amount:.2f}",
+    }
+
+
+def _invoice_line_response(line) -> dict[str, int | str]:
+    amount = str(line.amount) if line.line_type == "tax" else f"{line.amount:.2f}"
+    return {
+        "line_no": line.line_no,
+        "line_type": line.line_type,
+        "description": line.description,
+        "amount": amount,
+        "tax_amount": f"{line.tax_amount:.2f}",
+        "credit_applied": f"{line.credit_applied:.2f}",
+        "total": f"{line.total:.2f}",
+    }
+
+
+def _invoice_state_response(invoice) -> dict[str, str]:
+    return {
+        "status": invoice.status,
+        "subtotal": f"{invoice.subtotal:.2f}",
+        "tax": f"{invoice.tax:.2f}",
+        "total": f"{invoice.total:.2f}",
     }
 
 
@@ -209,3 +235,67 @@ def finalize_rating(
         raise HTTPException(status_code=500, detail="rating result was not persisted")
     result = _rating_result_response(persisted.result)
     return {**result, "rating_result": [result]}
+
+
+@app.get("/api/tenants/{tenant_id}/invoice-preview")
+def get_invoice_preview(
+    tenant_id: Annotated[UUID, Path()],
+    period_start: Annotated[date, Query()],
+    period_end: Annotated[date, Query()],
+) -> dict[str, list[dict[str, int | str]]]:
+    try:
+        lines = invoice_preview(
+            DocumentRatingRepository(), tenant_id, period_start, period_end
+        )
+    except (InvoiceNotFoundError, RatingNotFoundError) as error:
+        raise HTTPException(status_code=404, detail="invoice not found") from error
+    return {"lines": [_invoice_line_response(line) for line in lines]}
+
+
+@app.get("/api/invoices/{invoice_id}/lines")
+def get_invoice_lines(
+    invoice_id: Annotated[UUID, Path()],
+) -> dict[str, list[dict[str, int | str]]]:
+    try:
+        lines = read_invoice_lines(DocumentRatingRepository(), invoice_id)
+    except InvoiceNotFoundError as error:
+        raise HTTPException(status_code=404, detail="invoice not found") from error
+    return {
+        "lines": [
+            {
+                "line_no": line.line_no,
+                "line_type": line.line_type,
+                "description": line.description,
+                "amount": f"{line.amount:.2f}",
+            }
+            for line in lines
+        ]
+    }
+
+
+@app.post("/api/tenants/{tenant_id}/invoice-issue")
+def issue_tenant_invoice(
+    tenant_id: Annotated[UUID, Path()], request: RatingPeriod
+) -> dict[str, object]:
+    try:
+        invoice, credit_notes = issue_invoice(
+            DocumentRatingRepository(),
+            tenant_id,
+            request.period_start,
+            request.period_end,
+        )
+    except (InvoiceNotFoundError, RatingNotFoundError) as error:
+        raise HTTPException(status_code=404, detail="invoice not found") from error
+    state = _invoice_state_response(invoice)
+    return {
+        "invoice": state,
+        "invoice_state": [state],
+        "credit_notes": [
+            {
+                "id": str(note.note_id),
+                "issued_on": note.issued_on.isoformat(),
+                "remaining_amount": f"{note.remaining_amount:.2f}",
+            }
+            for note in credit_notes
+        ],
+    }

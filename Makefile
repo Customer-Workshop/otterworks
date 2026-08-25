@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity mongo-customers-migrate mongo-customers-recon mongo-customers-test tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain
 
 SHELL := /bin/bash
 
@@ -131,6 +131,32 @@ oracle-parity: procs-validate ## Oracle vs Postgres parity run (NS=<namespace>; 
 	TZ=UTC LC_ALL=C $(PROCS_ENV) DB_NAME=billing_$(NS) DB_PORT=$(PROCS_DB_PORT) $(PROCS_UV) procs/harness/record.py --output-dir $(ORACLE_PARITY_RUN)/$(NS)/postgres
 	TZ=UTC LC_ALL=C DB_PORT=$(ORACLE_BILLING_DB_PORT) $(ORACLE_PARITY_UV) procs/harness/oracle_record.py --output-dir $(ORACLE_PARITY_RUN)/$(NS)/oracle
 	TZ=UTC LC_ALL=C uv run procs/harness/oracle_parity.py --postgres-dir $(ORACLE_PARITY_RUN)/$(NS)/postgres --oracle-dir $(ORACLE_PARITY_RUN)/$(NS)/oracle --namespace $(NS)
+
+# --- mongo_customers: Oracle CUSTOMER_MASTER + ENTITY_ATTR_VALUE -> MongoDB ---
+
+MONGO_CUSTOMERS_DIR = migrations/mongodb/mongo_customers
+MONGO_CUSTOMERS_UV = uv run --no-project --with oracledb==2.5.1 --with pymongo==4.10.1
+
+mongo-customers-migrate: ## Migrate the customer estate into MongoDB (NS=<ns>; needs oracle-billing-up + TP_MONGODB_URI)
+ifndef NS
+	$(error NS is required, e.g. make mongo-customers-migrate NS=demo)
+endif
+	$(call validate_ns)
+	TZ=UTC LC_ALL=C DB_PORT=$(ORACLE_BILLING_DB_PORT) $(MONGO_CUSTOMERS_UV) \
+		$(MONGO_CUSTOMERS_DIR)/migrate.py --ns $(NS) $(if $(SUMMARY_OUT),--summary-out $(SUMMARY_OUT),)
+
+mongo-customers-recon: ## Recompute counts/checksum/anomaly sets from MongoDB and write the recon report (NS=<ns>)
+ifndef NS
+	$(error NS is required, e.g. make mongo-customers-recon NS=demo)
+endif
+	$(call validate_ns)
+	TZ=UTC LC_ALL=C DB_PORT=$(ORACLE_BILLING_DB_PORT) $(MONGO_CUSTOMERS_UV) \
+		$(MONGO_CUSTOMERS_DIR)/recon.py --ns $(NS) --run-mode $(or $(RUN_MODE),fixture) \
+		$(foreach s,$(RUN_SUMMARIES),--run-summary $(s))
+
+mongo-customers-test: ## Unit-test the mongo_customers transform (no cluster, no Oracle)
+	uv run --no-project --with oracledb==2.5.1 --with pymongo==4.10.1 --with pytest==8.3.3 \
+		python -m pytest $(MONGO_CUSTOMERS_DIR)/tests -q
 
 # --- Local Development ---
 

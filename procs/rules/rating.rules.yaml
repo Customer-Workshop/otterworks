@@ -1,0 +1,257 @@
+module: rating
+rules:
+  - id: RATING-R001
+    statement: >-
+      Rating uses the single subscription that overlaps the requested period, preferring the
+      latest start date when several overlap.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [31, 37]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [subscription_id, subscription_status, suspended_on]
+    confidence: high
+    scenarios: [RATING-001, RATING-008]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; matches the recorded legacy selection for every rating scenario.
+  - id: RATING-R002
+    statement: The quota and pricing for a period come from the plan of that selected subscription.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [39, 41]
+    inputs: [subscription_id]
+    outputs: [quota_units, overage_rate]
+    confidence: high
+    scenarios: [RATING-001]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; the plan on the subscription, not the tenant's newest plan.
+  - id: RATING-R003
+    statement: >-
+      Used units are the sum of usage-event units whose event date falls inside the period,
+      inclusive of both endpoints, and are zero when the tenant has no usage.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [43, 46]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [used_units]
+    confidence: high
+    scenarios: [RATING-001, RATING-007]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. Inclusive endpoints matter: the 2026-02-28 events are inside a period ending
+        2026-02-28.
+  - id: RATING-R004
+    statement: >-
+      Carried-in rollover is the sum of rollover units recorded by finalized periods that start
+      before this period and no earlier than three months before it, capped at twice the plan
+      quota.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [48, 54]
+    inputs: [tenant_id, period_start, quota_units]
+    outputs: [rollover_units]
+    confidence: high
+    scenarios: [RATING-002]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. The three-month window is relative to period_start and excludes the period
+        being rated.
+  - id: RATING-R005
+    statement: The carried-in rollover is capped a second time at twice the plan quota before use.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [56, 56]
+    inputs: [rollover_units, quota_units]
+    outputs: [rollover_units]
+    confidence: high
+    scenarios: [RATING-002]
+    question: >-
+      The cap is applied twice with the same bound; is the second application meaningful, or is
+      it redundant?
+    answer: >-
+      Redundant but preserved verbatim. Both bounds are 2x quota, so the second cap can never
+      lower the value further; it is kept so the extracted code reads like the recorded
+      behaviour and stays correct if the two bounds ever diverge.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved as a faithful no-op; no behavioural change.
+  - id: RATING-R006
+    statement: >-
+      Billable units are used units less carried-in rollover less the plan quota, floored at
+      zero.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [57, 57]
+    inputs: [used_units, rollover_units, quota_units]
+    outputs: [billable_units]
+    confidence: high
+    scenarios: [RATING-002, RATING-003]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; rollover is consumed before quota and never produces a credit.
+  - id: RATING-R007
+    statement: >-
+      Billable units are split into a first tier of at most 101 units and a second tier holding
+      the remainder.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [58, 59]
+    inputs: [billable_units]
+    outputs: [first_tier_units, second_tier_units]
+    confidence: high
+    scenarios: [RATING-004, RATING-005, RATING-006]
+    question: >-
+      Is the 101-unit first tier a real pricing boundary, or an off-by-one against an intended
+      100-unit tier?
+    answer: >-
+      Treated as the real boundary. It is the boundary the invoices customers have already paid
+      were computed with, and the recorded rating scenarios pin 101 at the tier edge, so
+      changing it would change money. Any correction is a pricing decision, not part of this
+      extraction.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved unchanged; flagged to pricing as a separate follow-up.
+  - id: RATING-R008
+    statement: >-
+      The overage amount charges first-tier units at the plan rate and second-tier units at 1.5x
+      the plan rate, rounded half-up to two decimals.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [60, 60]
+    inputs: [first_tier_units, second_tier_units, overage_rate]
+    outputs: [overage_amount]
+    confidence: high
+    scenarios: [RATING-004, RATING-006]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved. Exact decimal arithmetic with half-up rounding is required: 101 units at
+        0.055 is 5.555, which must bill as 5.56.
+  - id: RATING-R009
+    statement: >-
+      When the subscription is suspended on a date inside the period, billable units and the
+      overage amount are prorated by the share of period days from the suspension date to the
+      period end, inclusive.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [62, 72]
+    inputs: [subscription_status, suspended_on, period_start, period_end]
+    outputs: [billable_units, overage_amount]
+    confidence: high
+    scenarios: [RATING-003]
+    question: >-
+      Proration keeps the days from suspension to period end rather than the days served before
+      suspension. Is that intended?
+    answer: >-
+      Intended as recorded, and preserved. Suspension mid-period is rare and the recorded
+      behaviour is what the ledger of issued invoices reflects; reversing the numerator would
+      silently change historical restatements.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved verbatim; the tier split itself is computed before proration.
+  - id: RATING-R010
+    statement: >-
+      The usage summary groups a tenant's in-period events by kind, ordered by kind, reporting
+      the event count and total units per kind.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [79, 93]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [kind, event_count, units]
+    confidence: high
+    scenarios: [RATING-007]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; ordering is part of the contract because callers collect the rows in order.
+  - id: RATING-R011
+    statement: >-
+      Finalizing a period upserts the period record keyed by the tenant and period start,
+      refreshing its end date, and re-runs the rating for that period.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [95, 121]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [rating_period]
+    confidence: high
+    scenarios: [RATING-008]
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: Approved; finalizing the same period twice must not create a second period.
+  - id: RATING-R012
+    statement: >-
+      The rollover units persisted by finalization are the unused part of the quota, the quota
+      less used units floored at zero, which is not the carried-in rollover used to rate the
+      period.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [123, 137]
+    inputs: [used_units, quota_units, billable_units, overage_amount]
+    outputs: [rating_result]
+    confidence: high
+    scenarios: [RATING-008]
+    question: >-
+      Two different quantities are both called rollover: the carried-in rollover that reduces
+      billable units, and the persisted unused-quota figure. Which one does finalization store?
+    answer: >-
+      Finalization stores the unused-quota figure, and that is the figure later periods read
+      back as carried-in rollover. The extraction reproduces both quantities separately rather
+      than reconciling them, so a period that consumed 200 carried-in units still persists
+      rollover 0 when usage exceeded the quota.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved as recorded. Reconciling the two would change every downstream period's
+        carried-in rollover and is out of scope for the extraction.
+  - id: RATING-R013
+    statement: >-
+      A period with no overlapping subscription, or a subscription whose plan is missing, has no
+      rating: the request fails instead of producing a rating with empty quota and pricing.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [31, 41]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [error]
+    confidence: medium
+    scenarios: [RATING-001]
+    question: >-
+      Legacy leaves the plan row unset and lets the arithmetic fall through to NULL amounts. Is
+      that a behaviour to reproduce?
+    answer: >-
+      No. The extracted service fails closed with a 404 instead. A NULL quota or rate in the
+      procedure produced a rating row that looks valid to callers while carrying no amounts; the
+      recorded scenarios never exercise it, so nothing depends on the fall-through, and
+      reproducing it would let an unpriced tenant bill silently as zero.
+    decision:
+      status: approved
+      reviewer: product-owner
+      date: "2026-08-25"
+      note: >-
+        Approved as a deliberate, documented divergence from the legacy NULL fall-through; no
+        recorded scenario changes behaviour.

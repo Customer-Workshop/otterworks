@@ -13,8 +13,10 @@ from pymongo.errors import PyMongoError
 
 from app.config import settings
 from app.db import connect, migrate, reset
+from app.docrepo import DocumentRatingRepository
 from app.docstore import database, reset_documents
 from app.domain import catalog, change_plan, entitlement
+from app.rating import RatingNotFoundError, finalize, rate, usage_summary
 from app.repository import PostgresPlansRepository
 
 
@@ -37,6 +39,33 @@ app.add_middleware(
 class PlanChange(BaseModel):
     plan_id: UUID
     effective_on: date
+
+
+class RatingPeriod(BaseModel):
+    period_start: date
+    period_end: date
+
+
+def _rating_response(result) -> dict[str, int | str]:
+    return {
+        "used_units": result.used_units,
+        "quota_units": result.quota_units,
+        "rollover_units": result.rollover_units,
+        "billable_units": result.billable_units,
+        "first_tier_units": result.first_tier_units,
+        "second_tier_units": result.second_tier_units,
+        "overage_amount": f"{result.overage_amount:.2f}",
+    }
+
+
+def _rating_result_response(result) -> dict[str, int | str]:
+    return {
+        "used_units": result.used_units,
+        "quota_units": result.quota_units,
+        "rollover_units": result.rollover_units,
+        "billable_units": result.billable_units,
+        "overage_amount": f"{result.overage_amount:.2f}",
+    }
 
 
 @app.get("/health")
@@ -134,3 +163,49 @@ def change_tenant_plan(tenant_id: Annotated[UUID, Path()], request: PlanChange) 
             status_code=409,
             detail="this plan change has already been requested",
         ) from error
+
+
+@app.get("/api/tenants/{tenant_id}/rating")
+def get_rating(
+    tenant_id: Annotated[UUID, Path()],
+    period_start: Annotated[date, Query()],
+    period_end: Annotated[date, Query()],
+) -> dict[str, int | str]:
+    try:
+        return _rating_response(
+            rate(DocumentRatingRepository(), tenant_id, period_start, period_end)
+        )
+    except RatingNotFoundError as error:
+        raise HTTPException(status_code=404, detail="rating not found") from error
+
+
+@app.get("/api/tenants/{tenant_id}/usage-summary")
+def get_usage_summary(
+    tenant_id: Annotated[UUID, Path()],
+    period_start: Annotated[date, Query()],
+    period_end: Annotated[date, Query()],
+) -> dict[str, list[dict[str, int | str]]]:
+    return {
+        "summary": usage_summary(
+            DocumentRatingRepository(), tenant_id, period_start, period_end
+        )
+    }
+
+
+@app.post("/api/tenants/{tenant_id}/rating-finalize")
+def finalize_rating(
+    tenant_id: Annotated[UUID, Path()], request: RatingPeriod
+) -> dict[str, int | str | list[dict[str, int | str]]]:
+    try:
+        persisted = finalize(
+            DocumentRatingRepository(),
+            tenant_id,
+            request.period_start,
+            request.period_end,
+        )
+    except RatingNotFoundError as error:
+        raise HTTPException(status_code=404, detail="rating not found") from error
+    if persisted.result is None:
+        raise HTTPException(status_code=500, detail="rating result was not persisted")
+    result = _rating_result_response(persisted.result)
+    return {**result, "rating_result": [result]}

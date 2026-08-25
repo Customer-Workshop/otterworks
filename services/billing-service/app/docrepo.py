@@ -136,8 +136,15 @@ class DocumentRatingRepository:
         period_id: UUID,
         result: RatingResultRow,
     ) -> RatingPeriodRow:
+        collection = database()["rating_periods"]
+        conflict = {
+            "tenant_id": str(tenant_id),
+            "period_start": _midnight(period_start),
+        }
+        existing = collection.find_one(conflict)
+        stored_period_id = existing["_id"] if existing is not None else str(period_id)
         document = {
-            "_id": str(period_id),
+            "_id": stored_period_id,
             "tenant_id": str(tenant_id),
             "period_start": _midnight(period_start),
             "period_end": _midnight(period_end),
@@ -152,9 +159,7 @@ class DocumentRatingRepository:
                 "created_at": _timestamp(result.created_at),
             },
         }
-        database()["rating_periods"].replace_one(
-            {"tenant_id": str(tenant_id), "period_start": _midnight(period_start)},
-            document,
-            upsert=True,
+        collection.replace_one(conflict, document, upsert=True)
+        return RatingPeriodRow(
+            UUID(stored_period_id), tenant_id, period_start, period_end, result
         )
-        return RatingPeriodRow(period_id, tenant_id, period_start, period_end, result)

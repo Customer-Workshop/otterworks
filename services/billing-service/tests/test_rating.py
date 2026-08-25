@@ -53,7 +53,16 @@ class FakeRepository:
         period_id: UUID,
         result: RatingResultRow,
     ) -> RatingPeriodRow:
-        row = RatingPeriodRow(period_id, tenant_id, period_start, period_end, result)
+        existing = next(
+            (
+                item
+                for item in self.periods
+                if item.tenant_id == tenant_id and item.period_start == period_start
+            ),
+            None,
+        )
+        stored_period_id = existing.period_id if existing is not None else period_id
+        row = RatingPeriodRow(stored_period_id, tenant_id, period_start, period_end, result)
         self.upserts.append(row)
         self.periods = [
             item
@@ -260,6 +269,27 @@ def test_finalize_upserts_period_and_refreshes_end_date() -> None:
     persisted = finalize(repo, TENANT, PERIOD, date(2026, 3, 1))
     assert len(repo.upserts) == 1
     assert persisted.period_end == date(2026, 3, 1)
+
+
+@pytest.mark.rule("RATING-R011")
+def test_finalize_updates_existing_period_without_changing_its_id() -> None:
+    existing = RatingPeriodRow(
+        UUID("40000000-0000-0000-0000-000000000002"),
+        TENANT,
+        date(2026, 1, 1),
+        date(2026, 1, 31),
+        None,
+    )
+    repo = repository(used_units=260, periods=[existing])
+    persisted = finalize(repo, TENANT, date(2026, 1, 1), date(2026, 1, 31))
+    matching = [
+        item
+        for item in repo.periods
+        if item.tenant_id == TENANT and item.period_start == date(2026, 1, 1)
+    ]
+    assert persisted.period_id == existing.period_id
+    assert len(matching) == 1
+    assert matching[0].period_id == existing.period_id
 
 
 @pytest.mark.rule("RATING-R012")

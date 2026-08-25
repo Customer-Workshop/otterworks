@@ -71,7 +71,7 @@ SNAPSHOT_COLUMNS = [
 ]
 BYTE_COLUMNS = {"title", "content"}
 # Fields that must never be defaulted when NULL in the source.
-DOCUMENT_REQUIRED = ["owner_id", "version", "created_at", "updated_at", "title"]
+DOCUMENT_REQUIRED = ["owner_id", "version", "created_at", "updated_at", "title", "word_count"]
 VERSION_REQUIRED = ["document_id", "version_number", "created_at", "created_by"]
 SNAPSHOT_REQUIRED = ["document_id", "created_at", "created_by", "state_b64"]
 
@@ -579,6 +579,9 @@ def self_test() -> int:
 
     expect_quarantine(
         "null owner", lambda: build_document(ns, {**base, "owner_id": None}, []), "null_required_field"
+    )
+    expect_quarantine(
+        "null word_count", lambda: build_document(ns, {**base, "word_count": None}, []), "null_required_field"
     )
     expect_quarantine(
         "null updated_at", lambda: build_document(ns, {**base, "updated_at": None}, []), "null_required_field"

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -32,16 +33,24 @@ QUARANTINE = "documents_quarantine"
 MAX_EMBEDDED_VERSIONS = 200
 
 
+def _validate_ns(ns: str) -> str:
+    if not isinstance(ns, str) or re.fullmatch(r"[a-z][a-z0-9_]{0,30}", ns) is None:
+        raise SystemExit(
+            f"invalid namespace {ns!r}: must match ^[a-z][a-z0-9_]{{0,30}}$"
+        )
+    return ns
+
+
 def database_name(ns: str) -> str:
-    return f"{DB_PREFIX}_{ns}"
+    return f"{DB_PREFIX}_{_validate_ns(ns)}"
 
 
 def quarantine_database_name(ns: str) -> str:
-    return f"{DB_PREFIX}_{ns}_quarantine"
+    return f"{DB_PREFIX}_{_validate_ns(ns)}_quarantine"
 
 
 def source_schema(ns: str) -> str:
-    return f"otterworks_{ns}"
+    return f"otterworks_{_validate_ns(ns)}"
 
 
 def document_key(ns: str, legacy_id: str) -> str:

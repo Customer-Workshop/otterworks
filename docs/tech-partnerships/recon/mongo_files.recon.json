@@ -1,0 +1,319 @@
+{
+  "checks": [
+    {
+      "actual": {
+        "deterministic_id_sample": {
+          "matched": 5,
+          "sample_size": 5
+        },
+        "distinct_document_ids": 10000,
+        "documents": 10000
+      },
+      "expected": {
+        "baseline_manifest_items": 10000,
+        "documents": 10000
+      },
+      "id": "doc-count",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) vs dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed)"
+    },
+    {
+      "actual": {
+        "documents_without_tenant": 0,
+        "tenant_bson": [
+          "string"
+        ],
+        "tenant_index": true
+      },
+      "expected": {
+        "documents_without_tenant": 0,
+        "tenant_bson": [
+          "string"
+        ],
+        "tenant_index": true
+      },
+      "id": "tenant-field",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed)"
+    },
+    {
+      "actual": {
+        "explicit_nulls": 0,
+        "field_types": {
+          "created_at": [
+            "date"
+          ],
+          "is_trashed": [
+            "bool"
+          ],
+          "legacy_id": [
+            "string"
+          ],
+          "modified_at": [
+            "date"
+          ],
+          "orphaned_metadata": [
+            "bool"
+          ],
+          "size_bytes": [
+            "long"
+          ],
+          "storage_key": [
+            "string"
+          ],
+          "tenant": [
+            "string"
+          ],
+          "version": [
+            "long"
+          ]
+        },
+        "is_trashed_bson": [
+          "bool"
+        ],
+        "mapping_self_test": "pass",
+        "modified_at_bson": [
+          "date"
+        ],
+        "size_bytes_bson": [
+          "long"
+        ],
+        "size_bytes_total": 1268715381927
+      },
+      "expected": {
+        "explicit_nulls": 0,
+        "is_trashed_bson": [
+          "bool"
+        ],
+        "mapping_self_test": "pass",
+        "modified_at_bson": [
+          "date"
+        ],
+        "size_bytes_bson": [
+          "long"
+        ],
+        "size_bytes_total": 1268715381927
+      },
+      "id": "type-fidelity",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) BSON types, dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed) byte totals, migrate.py --self-test for binary/boolean/absent-attribute mapping"
+    },
+    {
+      "actual": {
+        "checksum_rows": 10000,
+        "documents": 10000,
+        "migration_page_counts": [
+          2789,
+          2789,
+          2792,
+          1630
+        ],
+        "migration_pages": 4
+      },
+      "expected": {
+        "page_counts": [
+          2789,
+          2789,
+          2792,
+          1630
+        ],
+        "pages": 4,
+        "summed_page_counts": 10000
+      },
+      "id": "pagination-completeness",
+      "result": "pass",
+      "source_of_truth": "dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed) vs mongodb:ow_tp_mongodb_demo.files (recomputed)"
+    },
+    {
+      "actual": {
+        "deleted_or_reparented": 0,
+        "missing": [],
+        "orphaned_metadata": 40,
+        "set_digest": "b7a256e6d83e4ff5a37b20bbe10f22eceede0d2cd0c3c62b264e9c5f8f2c6992",
+        "unexpected": []
+      },
+      "expected": {
+        "baseline_manifest_anomaly": 40,
+        "legacy_ids": [
+          "09469cfc-94b5-40b7-95cd-39d4f2d610f1",
+          "0bea2d95-5c0b-4905-a77f-cfe8fa8ef266",
+          "1537f253-8392-4835-960b-7745159186b9",
+          "193c5636-a5d3-4b27-80f3-9ad9cc0db8ad",
+          "1e94ec4c-daa3-4312-b9b0-a25a2e2dc5a4",
+          "22bbaccf-7d13-43b5-85b6-e39c24ba3010",
+          "2728be0a-4ea7-4193-9ea2-bf01730362e2",
+          "4fad10a0-6596-4702-82cf-0a3c61adbc88",
+          "5978a85e-d875-4c5e-8330-bd84d7185772",
+          "5eb7c396-1a06-4de5-b3b6-e40612983e07",
+          "5ee20541-ad1b-4719-b12f-2d1741cb7b50",
+          "638a536f-f10c-445b-9fad-dc2c46fe27cd",
+          "68ae546a-4ba4-4d74-aa97-8ffd318a7d39",
+          "69ebada0-9b3a-47f3-861f-8a9b004bdd01",
+          "75a55eff-9502-4d6b-8cb1-f08adc2f8757",
+          "7729c46f-ade2-4e77-9189-4f0d3e214951",
+          "7926f16a-a543-4281-ac1f-6c7a17c6b26e",
+          "7b95f7a6-7d63-4f5c-9ac4-f92e970fded4",
+          "7c6096ae-6dea-4ff9-af1d-c032b828f925",
+          "7c98ea5a-9b9b-4b3d-a1ad-4cabc54203e0",
+          "855830df-b727-4a3d-b3b4-5a28257bca15",
+          "87f85b2d-c10f-4684-b23e-2dbd47a1f403",
+          "94d2bd79-a773-4c49-9158-6a2da6d0dbcb",
+          "9becd831-0b0d-43c6-a037-8fac0dd9ff54",
+          "9d84308b-9d65-4d22-af39-17850fbd6b30",
+          "ab7c7723-1407-4509-a735-1e93430456a2",
+          "ae07a85c-019d-4a6f-bc8c-5ce34b8095fa",
+          "afef0026-1a90-4133-8d3a-307c9fbbaa8a",
+          "b461b24a-eb45-47a6-a71d-036a8deb3edc",
+          "b90c47cc-29b5-4dc2-b705-bb4db20a9ac5",
+          "caf96d17-eb4b-4ea9-b622-29940983926a",
+          "cbe7fb30-3b41-4d38-9cd4-ce5065306e04",
+          "daee66fc-51fb-432c-b522-8c858801b673",
+          "e1747410-571d-48b2-8243-34fece905486",
+          "e2cc82b9-f2b0-401d-8766-5869bf36d1d3",
+          "e5194447-f0a5-4bc3-9f57-d8bb5916cce6",
+          "fd0c5f0b-a57e-470e-afe4-ef1b461b859e",
+          "fdbe4ce4-e958-47e7-87cc-f9c88dbb9f96",
+          "fed95d77-150e-4587-a75b-2f2b23bb0e1c",
+          "ff00ab82-f830-4c99-97bf-710c23d16fe6"
+        ],
+        "orphaned_metadata": 40,
+        "set_digest": "b7a256e6d83e4ff5a37b20bbe10f22eceede0d2cd0c3c62b264e9c5f8f2c6992"
+      },
+      "id": "orphans-reported",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) orphaned_metadata:true vs dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed)"
+    },
+    {
+      "actual": {
+        "error_code": 121,
+        "indexes": [
+          "_id_",
+          "tenant",
+          "tenant_legacy_id",
+          "tenant_modified_at",
+          "tenant_orphaned_metadata",
+          "tenant_owner",
+          "tenant_storage_key"
+        ],
+        "string_date_rejected": true,
+        "validation_action": "error",
+        "validator_matches_source": true
+      },
+      "expected": {
+        "error_code": 121,
+        "indexes": [
+          "_id_",
+          "tenant",
+          "tenant_legacy_id",
+          "tenant_modified_at",
+          "tenant_orphaned_metadata",
+          "tenant_owner",
+          "tenant_storage_key"
+        ],
+        "string_date_rejected": true,
+        "validation_action": "error",
+        "validator_matches_source": true
+      },
+      "id": "validator",
+      "result": "pass",
+      "source_of_truth": "live insert probe against ow_tp_mongodb_demo.files and its listCollections options"
+    },
+    {
+      "actual": {
+        "checksum": "db614663b2c6d41141cae82261b416d5",
+        "rows": 10000
+      },
+      "expected": {
+        "checksum": "db614663b2c6d41141cae82261b416d5",
+        "recomputed_from_source": "db614663b2c6d41141cae82261b416d5"
+      },
+      "id": "checksum",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) md5-sum fold over legacy_id|size_bytes|storage_key, compared with dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed) and the estate manifest dynamodb.file-metadata"
+    },
+    {
+      "actual": {
+        "checksum": "db614663b2c6d41141cae82261b416d5",
+        "count": 10000,
+        "duplicate_documents": 0,
+        "duplicate_legacy_ids": 0,
+        "orphans": 40,
+        "second_run": {
+          "migrated": 10000,
+          "quarantined": 0,
+          "scanned": 10000
+        }
+      },
+      "expected": {
+        "checksum": "db614663b2c6d41141cae82261b416d5",
+        "count": 10000,
+        "duplicate_documents": 0,
+        "orphans": 40
+      },
+      "id": "idempotency",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) recomputed before and after a second full migration run"
+    },
+    {
+      "actual": {
+        "extras_attributed": {},
+        "null_attribution": "fail (never defaulted)",
+        "quarantined": 0,
+        "reasons": {}
+      },
+      "expected": {
+        "null_attribution": "fail (never defaulted)",
+        "quarantined": 0,
+        "reasons": {}
+      },
+      "id": "quarantine-attribution",
+      "result": "pass",
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo_quarantine.files_quarantine counts and migrate.py --self-test for each reason code"
+    },
+    {
+      "actual": {
+        "existing_documents_preserved": true,
+        "migrated": 0,
+        "no_op": true,
+        "probe_namespace": "reconnoopprobe",
+        "scanned": 0
+      },
+      "expected": {
+        "existing_documents_preserved": true,
+        "migrated": 0,
+        "no_op": true,
+        "scanned": 0
+      },
+      "id": "empty-input-no-op",
+      "result": "pass",
+      "source_of_truth": "migration run over an empty namespace-filtered scan, with ow_tp_mongodb_demo.files counted before and after"
+    }
+  ],
+  "generated_at": "2026-01-15T00:00:00Z",
+  "idempotency_rerun": {
+    "evidence": "second full run over ns=demo scanned 10000 items; documents 10000 -> 10000, checksum db614663b2c6d41141cae82261b416d5 -> db614663b2c6d41141cae82261b416d5, orphaned_metadata 40 -> 40, duplicate documents 0, duplicate legacy ids 0",
+    "performed": true,
+    "result": "pass"
+  },
+  "kind": "recon-report",
+  "namespace": "demo",
+  "planted_anomaly_detections": {
+    "actual_set": [
+      "orphaned_metadata"
+    ],
+    "expected_set": [
+      "orphaned_metadata"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "run_mode": "fixture",
+  "unit": "mongo_files",
+  "unverified_paths": [
+    "run_mode=fixture: every value here is recomputed from a local MongoDB fixture, not from the Atlas cluster; the live figures are recomputed separately against Atlas.",
+    "anomaly missing_hours (s3.data-lake/events/demo/): the S3 event lake is outside this workload's document model, so no MongoDB unit reads it and this anomaly is uncovered here by contract.",
+    "invalid_encoding and the missing_tenant/missing_storage_key/missing_timestamp/invalid_timestamp quarantine reasons are exercised through migrate.py --self-test: the file-service's own metadata holds no such items, so no quarantine document exists in the store to count.",
+    "DynamoDB attribute types absent from this table (B/SS/NS/BS, nested L/M) are mapped and asserted in migrate.py --self-test only."
+  ],
+  "values_recomputed_from_target": true
+}

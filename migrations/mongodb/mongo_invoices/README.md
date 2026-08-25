@@ -67,8 +67,8 @@ zero or a placeholder.
 ## Running
 
 The wrapper pins `TZ=UTC`, `LC_ALL=C`, and `LANG=C` through
-`scripts/tp-run-deterministic.sh` and uses
-`.venv-tp-mongo/bin/python`.
+`scripts/tp-run-deterministic.sh`, then invokes `uv run --no-project` with
+the pinned `oracledb==2.5.1` and `pymongo==4.10.1` dependencies.
 
 Run the migration:
 

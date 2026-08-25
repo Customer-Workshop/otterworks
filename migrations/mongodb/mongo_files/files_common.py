@@ -50,9 +50,21 @@ QUARANTINE_REASONS = (
     "invalid_timestamp",
 )
 
+MAX_DATABASE_NAME_BYTES = 38
+
 
 def db_names(ns: str) -> tuple[str, str]:
-    return f"ow_tp_mongodb_{ns}", f"ow_tp_mongodb_{ns}_quarantine"
+    names = (f"ow_tp_mongodb_{ns}", f"ow_tp_mongodb_{ns}_quarantine")
+    for name in names:
+        size = len(name.encode("utf-8"))
+        if size > MAX_DATABASE_NAME_BYTES:
+            raise ValueError(
+                f"namespace {ns!r} derives database name {name!r} "
+                f"({size} bytes), exceeding Atlas's "
+                f"{MAX_DATABASE_NAME_BYTES}-byte database-name limit; "
+                "shorten the namespace"
+            )
+    return names
 
 
 COLLECTION = "files"

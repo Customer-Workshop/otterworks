@@ -8,7 +8,6 @@ fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/../../.." && pwd)"
-venv_python="$repo_root/.venv-tp-mongo/bin/python"
 
 case "$1" in
   migrate|recon|selftest)
@@ -21,11 +20,9 @@ case "$1" in
     ;;
 esac
 
-if [ ! -x "$venv_python" ]; then
-  echo "missing virtualenv interpreter: $venv_python" >&2
-  exit 1
-fi
-
 exec "$repo_root/scripts/tp-run-deterministic.sh" \
   env PYTHONPATH="$script_dir${PYTHONPATH:+:$PYTHONPATH}" \
-  "$venv_python" "$script_dir/$action.py" "$@"
+  uv run --no-project \
+  --with oracledb==2.5.1 \
+  --with pymongo==4.10.1 \
+  "$script_dir/$action.py" "$@"

@@ -209,7 +209,7 @@ def validator_probe(files) -> dict:
 def empty_input_probe(client, files, ns: str) -> dict:
     """An empty namespace-filtered scan must be a no-op, not a truncation."""
     before = files.count_documents({"tenant": ns})
-    probe_ns = "reconnoopprobe"
+    probe_ns = "noopprobe"
     summary = run_migration(probe_ns, client, verbose=False)
     if summary["no_op"]:  # only ever drop the empty databases this probe created
         client.drop_database(db_names(probe_ns)[0])

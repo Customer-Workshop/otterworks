@@ -44,8 +44,9 @@ from files_common import (  # noqa: E402
 from migrate import run_migration, self_test  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-MANIFEST = REPO_ROOT / "testdata" / "legacy" / "manifests" / "demo.json"
+MANIFEST_DIR = REPO_ROOT / "testdata" / "legacy" / "manifests"
 BASELINE_KEY = "dynamodb.file-metadata"
+ANOMALY_KIND = "orphaned_metadata"
 UNIT = "mongo_files"
 
 DOC_STORE = "mongodb:ow_tp_mongodb_{ns}.files (recomputed)"
@@ -65,6 +66,30 @@ def generated_at() -> str:
         if pinned else datetime.now(timezone.utc)
     )
     return moment.replace(tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def baseline(ns: str) -> dict:
+    """Read this namespace's manifest: the target facts plus its anomaly count.
+
+    Every expectation is derived from the namespace under recon, so no count is
+    pinned to one namespace in code. The manifest is only ever read: its values
+    are what the recomputed ones are compared against, never a result.
+    """
+    path = MANIFEST_DIR / f"{ns}.json"
+    if not path.exists():
+        raise SystemExit(
+            f"no baseline manifest for ns={ns} at {path.relative_to(REPO_ROOT)}: "
+            "recon cannot grade a namespace it has no before-contract for"
+        )
+    manifest = json.loads(path.read_text())
+    return {
+        **manifest["targets"][BASELINE_KEY],
+        "manifest": str(path.relative_to(REPO_ROOT)),
+        "anomaly_count": sum(
+            entry["count"] for entry in manifest.get("planted_anomalies", [])
+            if entry["kind"] == ANOMALY_KIND and entry["target"] == BASELINE_KEY
+        ),
+    }
 
 
 def log(msg: str) -> None:
@@ -216,7 +241,7 @@ def build_report(ns: str, client: MongoClient) -> dict:
     files = files_db[COLLECTION]
     quarantine = client[quarantine_db_name][QUARANTINE_COLLECTION]
 
-    baseline = json.loads(MANIFEST.read_text())["targets"][BASELINE_KEY]
+    base = baseline(ns)
     src = source_facts(ns)
     tgt = target_facts(files, ns)
     shape = collection_shape(files_db)
@@ -250,13 +275,13 @@ def build_report(ns: str, client: MongoClient) -> dict:
         {
             "id": "doc-count",
             "expected": {"documents": src["items"],
-                         "baseline_manifest_items": baseline["items"]},
+                         "baseline_manifest_items": base["items"]},
             "actual": {"documents": tgt["count"],
                        "distinct_document_ids": tgt["distinct_ids"],
                        "deterministic_id_sample": ids},
             "source_of_truth": f"{DOC_STORE.format(ns=ns)} vs {SOURCE_SCAN}",
             "result": "pass" if (
-                tgt["count"] == src["items"] == baseline["items"]
+                tgt["count"] == src["items"] == base["items"]
                 and tgt["distinct_ids"] == tgt["count"]
                 and ids["matched"] == ids["sample_size"]
             ) else "fail",
@@ -325,7 +350,7 @@ def build_report(ns: str, client: MongoClient) -> dict:
         {
             "id": "orphans-reported",
             "expected": {"orphaned_metadata": len(expected_orphans),
-                         "baseline_manifest_anomaly": 40,
+                         "baseline_manifest_anomaly": base["anomaly_count"],
                          "set_digest": set_digest(expected_orphans),
                          "legacy_ids": sorted(expected_orphans)},
             "actual": {"orphaned_metadata": len(actual_orphans),
@@ -337,7 +362,8 @@ def build_report(ns: str, client: MongoClient) -> dict:
                 f"{DOC_STORE.format(ns=ns)} orphaned_metadata:true vs {SOURCE_SCAN}"
             ),
             "result": "pass" if (
-                expected_orphans == actual_orphans and len(actual_orphans) == 40
+                expected_orphans == actual_orphans
+                and len(actual_orphans) == base["anomaly_count"]
                 and src["items"] == tgt["count"]
             ) else "fail",
         },
@@ -365,16 +391,16 @@ def build_report(ns: str, client: MongoClient) -> dict:
         },
         {
             "id": "checksum",
-            "expected": {"checksum": baseline["checksum"],
+            "expected": {"checksum": base["checksum"],
                          "recomputed_from_source": src["checksum"]},
             "actual": {"checksum": tgt["checksum"], "rows": tgt["checksum_rows"]},
             "source_of_truth": (
                 f"{DOC_STORE.format(ns=ns)} md5-sum fold over "
                 f"legacy_id|size_bytes|storage_key, compared with {SOURCE_SCAN} and "
-                f"the estate manifest {BASELINE_KEY}"
+                f"{base['manifest']} {BASELINE_KEY}"
             ),
             "result": "pass" if (
-                tgt["checksum"] == src["checksum"] == baseline["checksum"]
+                tgt["checksum"] == src["checksum"] == base["checksum"]
             ) else "fail",
         },
         {
@@ -467,7 +493,7 @@ def build_report(ns: str, client: MongoClient) -> dict:
             "run_mode=fixture: every value here is recomputed from a local MongoDB "
             "fixture, not from the Atlas cluster; the live figures are recomputed "
             "separately against Atlas.",
-            "anomaly missing_hours (s3.data-lake/events/demo/): the S3 event lake is "
+            f"anomaly missing_hours (s3.data-lake/events/{ns}/): the S3 event lake is "
             "outside this workload's document model, so no MongoDB unit reads it and "
             "this anomaly is uncovered here by contract.",
             "invalid_encoding and the missing_tenant/missing_storage_key/"

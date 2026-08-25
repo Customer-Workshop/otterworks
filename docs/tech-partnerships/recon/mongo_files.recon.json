@@ -229,7 +229,7 @@
       },
       "id": "checksum",
       "result": "pass",
-      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) md5-sum fold over legacy_id|size_bytes|storage_key, compared with dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed) and the estate manifest dynamodb.file-metadata"
+      "source_of_truth": "mongodb:ow_tp_mongodb_demo.files (recomputed) md5-sum fold over legacy_id|size_bytes|storage_key, compared with dynamodb:otterworks-file-metadata paginated ns-filtered scan (recomputed) and testdata/legacy/manifests/demo.json dynamodb.file-metadata"
     },
     {
       "actual": {

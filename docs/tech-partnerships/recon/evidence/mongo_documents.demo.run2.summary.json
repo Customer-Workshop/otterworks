@@ -1,0 +1,61 @@
+{
+  "batch_size": 250,
+  "batches": 10,
+  "database": "ow_tp_mongodb_demo",
+  "empty_source_noop": false,
+  "extras_columns": [],
+  "migrated": {
+    "documents": 2000,
+    "snapshots": 390,
+    "versions_embedded": 13876
+  },
+  "ns": "demo",
+  "orphaned_snapshots": [
+    "60bfc8b6-ef1b-4ecf-bf98-49267e67054d",
+    "9e6c9aa9-2522-4008-b8de-d94a2964917c",
+    "ae8c479d-8de3-46f8-bfc8-a942df697f2f",
+    "cce98042-94a1-4e9a-98b9-4b1069a76fa1",
+    "e0de8004-a5ec-472f-b008-150408e83560",
+    "e61553f8-e4ea-4caf-b7d7-863fa9547358"
+  ],
+  "quarantine_database": "ow_tp_mongodb_demo_quarantine",
+  "quarantined": {},
+  "run_mode": "fixture",
+  "source": {
+    "document_snapshots": 390,
+    "document_versions": 13876,
+    "documents": 2000
+  },
+  "version_gap_documents": {
+    "4e73d26c-1b17-4c29-a972-723f6a81d5a6": [
+      3
+    ],
+    "54f581c5-c84d-4e03-9d49-8a53205d5468": [
+      6
+    ],
+    "55651142-8ab8-4fc3-93f7-2f53b8924e79": [
+      2
+    ],
+    "5908ebb5-dbb7-45f5-b6c7-0e35421f3512": [
+      2
+    ],
+    "83683854-d16e-42ff-a6cd-dba0778c8ebc": [
+      5
+    ],
+    "91e0ef71-06e8-4176-8634-b3d37c66435b": [
+      3
+    ],
+    "9e712908-6721-4e4a-837d-a235146eb26b": [
+      4
+    ],
+    "cf385bde-c00f-43f4-ba79-5e734af2a082": [
+      3
+    ],
+    "d03d71b1-a7e5-494a-bb12-c1e79866b084": [
+      9
+    ],
+    "fb541d99-8a4a-4911-a0e3-934d4bbf312d": [
+      2
+    ]
+  }
+}

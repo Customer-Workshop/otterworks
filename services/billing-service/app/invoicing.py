@@ -7,8 +7,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Protocol
 from uuid import UUID
 
-from app.domain import PlanRow, SubscriptionRow
-from app.rating import RatingRepository, finalize, period_id_for, rate
+from app.domain import PlanRow
+from app.rating import RatingRepository, finalize, period_id_for, rate, select_subscription
 
 MONEY_QUANTUM = Decimal("0.01")
 TAX_RATE = Decimal("0.0825")
@@ -98,22 +98,10 @@ def _money(value: Decimal) -> Decimal:
     return value.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
 
 
-def _subscription(
-    subscriptions: list[SubscriptionRow], period_start: date, period_end: date
-) -> SubscriptionRow | None:
-    overlapping = [
-        subscription
-        for subscription in subscriptions
-        if subscription.starts_on <= period_end
-        and (subscription.ends_on is None or subscription.ends_on >= period_start)
-    ]
-    return max(overlapping, key=lambda subscription: subscription.starts_on, default=None)
-
-
 def _plan(
     repository: InvoicingRepository, tenant_id: UUID, period_start: date, period_end: date
 ) -> PlanRow:
-    subscription = _subscription(
+    subscription = select_subscription(
         repository.list_subscriptions(tenant_id), period_start, period_end
     )
     if subscription is None:

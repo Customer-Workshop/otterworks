@@ -73,15 +73,14 @@ def _rating_result_response(result) -> dict[str, int | str]:
 
 
 def _invoice_line_response(line) -> dict[str, int | str]:
-    amount = str(line.amount) if line.line_type == "tax" else f"{line.amount:.2f}"
     return {
         "line_no": line.line_no,
         "line_type": line.line_type,
         "description": line.description,
-        "amount": amount,
-        "tax_amount": f"{line.tax_amount:.2f}",
-        "credit_applied": f"{line.credit_applied:.2f}",
-        "total": f"{line.total:.2f}",
+        "amount": str(line.amount),
+        "tax_amount": str(line.tax_amount),
+        "credit_applied": str(line.credit_applied),
+        "total": str(line.total),
     }
 
 

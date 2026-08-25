@@ -64,7 +64,16 @@ class FakeRepository:
         period_id: UUID,
         result: RatingResultRow,
     ) -> RatingPeriodRow:
-        row = RatingPeriodRow(period_id, tenant_id, period_start, period_end, result)
+        existing = next(
+            (
+                item
+                for item in self.periods
+                if item.tenant_id == tenant_id and item.period_start == period_start
+            ),
+            None,
+        )
+        stored_period_id = existing.period_id if existing is not None else period_id
+        row = RatingPeriodRow(stored_period_id, tenant_id, period_start, period_end, result)
         self.rating_upserts.append(row)
         self.periods = [
             item

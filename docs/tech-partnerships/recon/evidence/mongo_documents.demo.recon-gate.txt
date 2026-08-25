@@ -2,7 +2,7 @@
   ok  otterworks_emptyns present and empty
 == 1. empty source set is a no-op ==
 [mongo_documents] source set is empty: no-op, prior documents and snapshots left untouched
-[mongo_documents] summary written: /home/ubuntu/tmp/tmp.CnOklI6LpA/empty.json
+[mongo_documents] summary written: /home/ubuntu/tmp/tmp.ucKLpyUOGp/empty.json
   ok  empty source: no-op, exit 0, nothing written
 == 2. drop one surfaced version gap and one surfaced orphan from the store ==
   mutated document 9e712908-6721-4e4a-837d-a235146eb26b (gaps [4] -> [])
@@ -28,7 +28,7 @@
 [recon:mongo_documents] quarantine-empty-for-this-estate           PASS  expected=0 actual=0
 [recon:mongo_documents] planted-anomaly-sets-match                 FAIL  expected={'missing': [], 'unexpected': []} actual={'missing': ['orphaned_snapshots:60bfc8b6-ef1b-4ecf-bf98-49267e67054d', 'version_gaps:9e712908-6721-4e4a-837d-a235146eb26b:4'], 'unexpected': []}
 [recon:mongo_documents] idempotency-fingerprint                    PASS  expected='c1419bb1a167ef1040e8d16865c438d7f1572c3d2dc58e4689e08658126226a5' actual='c1419bb1a167ef1040e8d16865c438d7f1572c3d2dc58e4689e08658126226a5'
-[recon:mongo_documents] report written: /home/ubuntu/tmp/tmp.CnOklI6LpA/mutated.recon.json
+[recon:mongo_documents] report written: /home/ubuntu/tmp/tmp.ucKLpyUOGp/mutated.recon.json
 [recon:mongo_documents] FAIL: ['snapshots-no-fabricated-parent', 'orphaned-snapshots-reported', 'orphaned-snapshots-count-matches-baseline', 'version-gaps-reported', 'version-gaps-count-matches-baseline', 'planted-anomaly-sets-match']
   ok  recon exit=1, missing=['orphaned_snapshots:60bfc8b6-ef1b-4ecf-bf98-49267e67054d', 'version_gaps:9e712908-6721-4e4a-837d-a235146eb26b:4']
   ok  failing checks: ['snapshots-no-fabricated-parent', 'orphaned-snapshots-reported', 'orphaned-snapshots-count-matches-baseline', 'version-gaps-reported', 'version-gaps-count-matches-baseline', 'planted-anomaly-sets-match']

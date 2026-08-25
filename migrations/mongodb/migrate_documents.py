@@ -199,6 +199,30 @@ def quarantine_record(ns: str, table: str, legacy_id, reason: str, detail: dict,
     }
 
 
+def quarantine_document_with_versions(
+    ns: str, row: dict, exc: Quarantined, version_rows: list[dict]
+) -> list[dict]:
+    parent_id = row.get("id")
+    parent_detail = {
+        "parent_document_id": str(parent_id) if parent_id is not None else None,
+    }
+    records = [
+        quarantine_record(ns, "documents", parent_id, exc.reason, exc.detail, row)
+    ]
+    records.extend(
+        quarantine_record(
+            ns,
+            "document_versions",
+            vrow.get("id"),
+            "parent_document_quarantined",
+            parent_detail,
+            vrow,
+        )
+        for vrow in version_rows
+    )
+    return records
+
+
 # ── row transforms (pure) ────────────────────────────────────────────────────
 
 
@@ -440,10 +464,12 @@ def migrate(ns: str, run_mode: str, batch_size: int) -> dict:
                 try:
                     doc, bad_versions = build_document(ns, row, versions_by_doc.get(legacy_id, []))
                 except Quarantined as exc:
-                    quarantine_ops.append(
-                        quarantine_record(ns, "documents", row.get("id"), exc.reason, exc.detail, row)
+                    records = quarantine_document_with_versions(
+                        ns, row, exc, versions_by_doc.get(legacy_id, [])
                     )
-                    quarantine_reasons[exc.reason] += 1
+                    quarantine_ops.extend(records)
+                    for record in records:
+                        quarantine_reasons[record["reason"]] += 1
                     continue
                 quarantine_ops.extend(bad_versions)
                 for record in bad_versions:
@@ -586,6 +612,37 @@ def self_test() -> int:
     expect_quarantine(
         "null updated_at", lambda: build_document(ns, {**base, "updated_at": None}, []), "null_required_field"
     )
+    parent_versions = [
+        {
+            "id": f"{i:08d}-6666-6666-6666-666666666666",
+            "document_id": base["id"],
+            "version_number": i,
+            "title": b"t",
+            "content": b"c",
+            "created_by": base["owner_id"],
+            "created_at": now,
+        }
+        for i in (1, 2)
+    ]
+    parent_row = {**base, "owner_id": None}
+    try:
+        build_document(ns, parent_row, parent_versions)
+    except Quarantined as exc:
+        records = quarantine_document_with_versions(ns, parent_row, exc, parent_versions)
+        expected_reasons = ["null_required_field", *(["parent_document_quarantined"] * len(parent_versions))]
+        if (
+            len(records) != len(parent_versions) + 1
+            or [record["reason"] for record in records] != expected_reasons
+            or any(
+                record["detail"].get("parent_document_id") != base["id"]
+                for record in records[1:]
+            )
+        ):
+            failures.append("quarantined parent versions: attribution records were incomplete")
+        else:
+            print("  ok  quarantined parent versions -> attributed")
+    else:
+        failures.append("quarantined parent versions: parent was accepted")
     expect_quarantine(
         "invalid utf-8 title",
         lambda: build_document(ns, {**base, "title": b"\xff\xfe bad"}, []),

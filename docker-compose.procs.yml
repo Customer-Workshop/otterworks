@@ -57,8 +57,12 @@ services:
     depends_on:
       billing-service-db:
         condition: service_healthy
+      billing-service-docs:
+        condition: service_healthy
     environment:
       BILLING_SVC_DATABASE_URL: postgresql://billing_svc:billing_svc@billing-service-db:5432/billing_svc_${NS:-dev}
+      BILLING_SVC_DOCUMENT_URI: mongodb://billing-service-docs:27017
+      BILLING_SVC_DOCUMENT_DB: billing_docs_${NS:-dev}
       BILLING_SVC_ALLOW_INTERNAL_RESET: "true"
     ports:
       - "127.0.0.1:${PROCS_TARGET_PORT:-8097}:8097"
@@ -67,6 +71,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+
+  billing-service-docs:
+    image: mongo:7
+    ports:
+      - "127.0.0.1:${PROCS_TARGET_DOCS_PORT:-57432}:27017"
+    volumes:
+      - billing-service-docs-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
 
   billing-service-db:
     image: postgres:16
@@ -87,3 +103,4 @@ services:
 volumes:
   legacy-billing-db-data:
   billing-service-db-data:
+  billing-service-docs-data:

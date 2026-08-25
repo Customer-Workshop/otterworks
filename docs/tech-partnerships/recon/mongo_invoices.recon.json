@@ -1,0 +1,434 @@
+{
+  "checks": [
+    {
+      "actual": 18750,
+      "expected": 18750,
+      "id": "doc-count",
+      "result": "pass",
+      "source_of_truth": "OW_BILLING.INVOICE_HEADER rows for the namespace batch that the estate can represent as a document -- a header whose issue date is NULL or unparseable is quarantined instead -- vs countDocuments on the invoices collection"
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "id": "doc-count-deterministic-id",
+      "result": "pass",
+      "source_of_truth": "every stored _id re-derived as uuid5(namespace, INVOICE_ID) from the document's own source key"
+    },
+    {
+      "actual": 149963,
+      "expected": 149963,
+      "id": "embedded-lines",
+      "result": "pass",
+      "source_of_truth": "source INVOICE_LINE rows the contract requires to be embedded -- every row re-classified from the source at recon time, excluding orphans and every other quarantine disposition -- vs the sum of embedded line items read back from the collection"
+    },
+    {
+      "actual": [],
+      "expected": [],
+      "id": "embedded-line-set",
+      "result": "pass",
+      "source_of_truth": "symmetric difference between the source line ids the contract requires to be embedded and the line ids actually embedded in the collection"
+    },
+    {
+      "actual": {
+        "orphan_no_header": 37
+      },
+      "expected": {
+        "orphan_no_header": 37
+      },
+      "id": "quarantine-disposition",
+      "result": "pass",
+      "source_of_truth": "quarantine reason breakdown re-derived by classifying every source row against the contract vs the reasons actually stored in the quarantine collection"
+    },
+    {
+      "actual": [
+        "0e7a3dc2-d003-464a-9c2b-14125c79cbe9",
+        "0fbd756a-1d5f-bdfb-4cb9-81d2cbb4fee4",
+        "0fe3f0d5-2e0d-87dc-0933-f84887549f80",
+        "1c435cb0-171d-69c3-f600-a5f4bc7e90fe",
+        "21367220-1d41-e396-0f3b-dbf2ae5d91e9",
+        "4b34c0f1-8476-f678-add0-b3f921a7cd5f",
+        "4c826f11-c733-eac0-9318-29ae919beec4",
+        "50526783-22bf-ae7c-f6ba-4f8aa111b611",
+        "57f7b9b0-9e76-4439-48b9-3b71025322a4",
+        "670cd75f-cf78-0b95-5426-a95484ef2a0e",
+        "7242b80f-45f6-4bbf-3153-bb2ce0c6441e",
+        "78572c4c-b635-7daa-183e-5490237ab052",
+        "78f6a5bb-18f3-bf6e-2aa3-92f241f6c5b1",
+        "8c12956a-e778-88e6-67d5-ad44d3b540c3",
+        "8c95dd3d-97ed-420d-1965-cf320c34fb84",
+        "8e85a5db-53c9-a05b-3049-752bb6632003",
+        "90ddc15d-a71e-ea73-9392-338da7255605",
+        "95d5043f-e481-1de8-cd92-bd76bc09dc19",
+        "97f42ec8-39e7-19f2-9a76-84414644efc3",
+        "982209a3-c282-e02f-83ec-ee9d0b474d7f",
+        "9dd7ea2b-091d-c45f-abd6-2a2fb2e43891",
+        "9f1600ed-b570-0274-d42e-c1dab91038c4",
+        "a53ea126-8621-3e3c-a8be-88435d7ca266",
+        "aef7cf16-4fdc-e2bc-7de5-ddbc1782c43a",
+        "b0479162-4897-2f54-82d5-c08044b3a1a7",
+        "b259311b-5098-d0f9-a658-585d6eff8f81",
+        "bddd1f4a-cad4-50cb-a066-9ee465981778",
+        "c08e04e0-0a1c-27fc-12a4-802a2421036c",
+        "c1008e17-8f78-a845-2ba2-bccd154a0b9c",
+        "c4a55285-efd8-3c27-d21e-ab29cdf11eae",
+        "c8ee4242-005d-bf23-d5a0-d8c906ef6f3f",
+        "cfb214f7-cf89-751a-ed4c-8ef1bfa2665d",
+        "d032629f-368d-fc21-534c-13866e7dd45a",
+        "da96e215-3481-a34b-2d84-c4a8f67ee7e3",
+        "e77fefbf-059b-62cb-f889-1c7296f933b5",
+        "f032b198-0c91-8ccd-a23d-3804994faacd",
+        "f2053077-7f8a-ea53-b9ed-7c5e2b9fce88"
+      ],
+      "expected": [
+        "0e7a3dc2-d003-464a-9c2b-14125c79cbe9",
+        "0fbd756a-1d5f-bdfb-4cb9-81d2cbb4fee4",
+        "0fe3f0d5-2e0d-87dc-0933-f84887549f80",
+        "1c435cb0-171d-69c3-f600-a5f4bc7e90fe",
+        "21367220-1d41-e396-0f3b-dbf2ae5d91e9",
+        "4b34c0f1-8476-f678-add0-b3f921a7cd5f",
+        "4c826f11-c733-eac0-9318-29ae919beec4",
+        "50526783-22bf-ae7c-f6ba-4f8aa111b611",
+        "57f7b9b0-9e76-4439-48b9-3b71025322a4",
+        "670cd75f-cf78-0b95-5426-a95484ef2a0e",
+        "7242b80f-45f6-4bbf-3153-bb2ce0c6441e",
+        "78572c4c-b635-7daa-183e-5490237ab052",
+        "78f6a5bb-18f3-bf6e-2aa3-92f241f6c5b1",
+        "8c12956a-e778-88e6-67d5-ad44d3b540c3",
+        "8c95dd3d-97ed-420d-1965-cf320c34fb84",
+        "8e85a5db-53c9-a05b-3049-752bb6632003",
+        "90ddc15d-a71e-ea73-9392-338da7255605",
+        "95d5043f-e481-1de8-cd92-bd76bc09dc19",
+        "97f42ec8-39e7-19f2-9a76-84414644efc3",
+        "982209a3-c282-e02f-83ec-ee9d0b474d7f",
+        "9dd7ea2b-091d-c45f-abd6-2a2fb2e43891",
+        "9f1600ed-b570-0274-d42e-c1dab91038c4",
+        "a53ea126-8621-3e3c-a8be-88435d7ca266",
+        "aef7cf16-4fdc-e2bc-7de5-ddbc1782c43a",
+        "b0479162-4897-2f54-82d5-c08044b3a1a7",
+        "b259311b-5098-d0f9-a658-585d6eff8f81",
+        "bddd1f4a-cad4-50cb-a066-9ee465981778",
+        "c08e04e0-0a1c-27fc-12a4-802a2421036c",
+        "c1008e17-8f78-a845-2ba2-bccd154a0b9c",
+        "c4a55285-efd8-3c27-d21e-ab29cdf11eae",
+        "c8ee4242-005d-bf23-d5a0-d8c906ef6f3f",
+        "cfb214f7-cf89-751a-ed4c-8ef1bfa2665d",
+        "d032629f-368d-fc21-534c-13866e7dd45a",
+        "da96e215-3481-a34b-2d84-c4a8f67ee7e3",
+        "e77fefbf-059b-62cb-f889-1c7296f933b5",
+        "f032b198-0c91-8ccd-a23d-3804994faacd",
+        "f2053077-7f8a-ea53-b9ed-7c5e2b9fce88"
+      ],
+      "id": "orphans-quarantined",
+      "result": "pass",
+      "source_of_truth": "Oracle anti-join for INVOICE_LINE rows without an INVOICE_HEADER vs quarantined documents with reason orphan_no_header"
+    },
+    {
+      "actual": [],
+      "expected": [],
+      "id": "orphans-never-attached",
+      "result": "pass",
+      "source_of_truth": "orphaned source line ids intersected with the line ids embedded in the collection: an orphan must never be attached to a header"
+    },
+    {
+      "actual": [],
+      "expected": [],
+      "id": "money-exactness",
+      "result": "pass",
+      "source_of_truth": "per-invoice line count, SUM(amount) and SUM(tax_amt) from Oracle compared with the same values summed from the embedded lines as exact decimals"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "money-exactness-bson-type",
+      "result": "pass",
+      "source_of_truth": "count of embedded money and quantity fields whose stored BSON type is not decimal128"
+    },
+    {
+      "actual": {
+        "invoices_total": 18750,
+        "invoices_whose_header_total_differs_from_lines": 18750
+      },
+      "expected": "reported, never reconciled away",
+      "id": "legacy-header-total-variance",
+      "result": "pass",
+      "source_of_truth": "header_total compared with the summed line amounts on each migrated document; the legacy estate does not derive INVOICE_HEADER.TOTAL_AMT from its lines, so the variance is surfaced rather than corrected"
+    },
+    {
+      "actual": {
+        "code": 121,
+        "rejected": true
+      },
+      "expected": {
+        "code": 121,
+        "rejected": true
+      },
+      "id": "validator",
+      "result": "pass",
+      "source_of_truth": "insert of a document carrying the legacy DD-MON-YY string issue date, rejected by the collection's $jsonSchema validator"
+    },
+    {
+      "actual": "88a66751f0b08b476b492105a2efc537",
+      "expected": "88a66751f0b08b476b492105a2efc537",
+      "id": "checksum",
+      "result": "pass",
+      "source_of_truth": "md5 over line_id:amount in line_id order, recomputed from the embedded lines plus the quarantined lines held in the document store"
+    },
+    {
+      "actual": "88a66751f0b08b476b492105a2efc537",
+      "expected": "88a66751f0b08b476b492105a2efc537",
+      "id": "checksum-source-recompute",
+      "result": "pass",
+      "source_of_truth": "the same checksum recomputed directly from Oracle at recon time, independent of the baseline document"
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "id": "null-attribution",
+      "result": "pass",
+      "source_of_truth": "source rows with a NULL amount, quantity or foreign key vs quarantined documents carrying a null reason code: a NULL is never defaulted to zero"
+    },
+    {
+      "actual": [],
+      "expected": [],
+      "id": "byte-transparency",
+      "result": "pass",
+      "source_of_truth": "every embedded line's free-text description compared byte-for-byte against its source row"
+    },
+    {
+      "actual": {
+        "invoices_over_limit": 0,
+        "max_lines_on_one_invoice": 23,
+        "sample": []
+      },
+      "expected": {
+        "limit": 25,
+        "over_limit": "reported, never truncated"
+      },
+      "id": "bounded-line-model",
+      "result": "pass",
+      "source_of_truth": "line array sizes read back from the collection"
+    },
+    {
+      "actual": {
+        "action": "no-op",
+        "exit_code": 0,
+        "invoices_unchanged": true
+      },
+      "expected": {
+        "action": "no-op",
+        "exit_code": 0,
+        "invoices_unchanged": true
+      },
+      "id": "empty-input-semantics",
+      "result": "pass",
+      "source_of_truth": "migration run against a namespace with no source rows, with the invoices count taken before and after"
+    },
+    {
+      "actual": {
+        "header_rows": 18750,
+        "line_rows": 150000
+      },
+      "expected": {
+        "header_rows": 18750,
+        "line_rows": 150000
+      },
+      "id": "baseline-manifest-parity",
+      "result": "pass",
+      "source_of_truth": "immutable baseline manifest compared with the live source counts recounted at recon time"
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "id": "idempotency",
+      "result": "pass",
+      "source_of_truth": "two consecutive migration runs of the same namespace compared on written counts, embedded line counts and quarantine reasons, with the target recomputed after the second run"
+    }
+  ],
+  "failed_checks": [],
+  "generated_at": "2026-08-25T21:39:09Z",
+  "idempotency_rerun": {
+    "evidence": "{\"post_rerun_recomputed\": {\"checksum\": \"88a66751f0b08b476b492105a2efc537\", \"documents\": 18750, \"embedded_lines\": 149963, \"quarantined\": {\"orphan_no_header\": 37}}, \"run_1\": {\"embedded_lines\": 149963, \"quarantined_by_reason\": {\"orphan_no_header\": 37}, \"source\": {\"headers\": 18750, \"lines\": 150000}, \"written\": {\"invoices\": 18750, \"quarantined\": 37}}, \"run_2\": {\"embedded_lines\": 149963, \"quarantined_by_reason\": {\"orphan_no_header\": 37}, \"source\": {\"headers\": 18750, \"lines\": 150000}, \"written\": {\"invoices\": 18750, \"quarantined\": 37}}}",
+    "performed": true,
+    "result": "pass"
+  },
+  "kind": "recon-report",
+  "namespace": "demo",
+  "planted_anomaly_detections": {
+    "actual_set": [
+      "orphaned_row:0e7a3dc2-d003-464a-9c2b-14125c79cbe9",
+      "orphaned_row:0fbd756a-1d5f-bdfb-4cb9-81d2cbb4fee4",
+      "orphaned_row:0fe3f0d5-2e0d-87dc-0933-f84887549f80",
+      "orphaned_row:1c435cb0-171d-69c3-f600-a5f4bc7e90fe",
+      "orphaned_row:21367220-1d41-e396-0f3b-dbf2ae5d91e9",
+      "orphaned_row:4b34c0f1-8476-f678-add0-b3f921a7cd5f",
+      "orphaned_row:4c826f11-c733-eac0-9318-29ae919beec4",
+      "orphaned_row:50526783-22bf-ae7c-f6ba-4f8aa111b611",
+      "orphaned_row:57f7b9b0-9e76-4439-48b9-3b71025322a4",
+      "orphaned_row:670cd75f-cf78-0b95-5426-a95484ef2a0e",
+      "orphaned_row:7242b80f-45f6-4bbf-3153-bb2ce0c6441e",
+      "orphaned_row:78572c4c-b635-7daa-183e-5490237ab052",
+      "orphaned_row:78f6a5bb-18f3-bf6e-2aa3-92f241f6c5b1",
+      "orphaned_row:8c12956a-e778-88e6-67d5-ad44d3b540c3",
+      "orphaned_row:8c95dd3d-97ed-420d-1965-cf320c34fb84",
+      "orphaned_row:8e85a5db-53c9-a05b-3049-752bb6632003",
+      "orphaned_row:90ddc15d-a71e-ea73-9392-338da7255605",
+      "orphaned_row:95d5043f-e481-1de8-cd92-bd76bc09dc19",
+      "orphaned_row:97f42ec8-39e7-19f2-9a76-84414644efc3",
+      "orphaned_row:982209a3-c282-e02f-83ec-ee9d0b474d7f",
+      "orphaned_row:9dd7ea2b-091d-c45f-abd6-2a2fb2e43891",
+      "orphaned_row:9f1600ed-b570-0274-d42e-c1dab91038c4",
+      "orphaned_row:a53ea126-8621-3e3c-a8be-88435d7ca266",
+      "orphaned_row:aef7cf16-4fdc-e2bc-7de5-ddbc1782c43a",
+      "orphaned_row:b0479162-4897-2f54-82d5-c08044b3a1a7",
+      "orphaned_row:b259311b-5098-d0f9-a658-585d6eff8f81",
+      "orphaned_row:bddd1f4a-cad4-50cb-a066-9ee465981778",
+      "orphaned_row:c08e04e0-0a1c-27fc-12a4-802a2421036c",
+      "orphaned_row:c1008e17-8f78-a845-2ba2-bccd154a0b9c",
+      "orphaned_row:c4a55285-efd8-3c27-d21e-ab29cdf11eae",
+      "orphaned_row:c8ee4242-005d-bf23-d5a0-d8c906ef6f3f",
+      "orphaned_row:cfb214f7-cf89-751a-ed4c-8ef1bfa2665d",
+      "orphaned_row:d032629f-368d-fc21-534c-13866e7dd45a",
+      "orphaned_row:da96e215-3481-a34b-2d84-c4a8f67ee7e3",
+      "orphaned_row:e77fefbf-059b-62cb-f889-1c7296f933b5",
+      "orphaned_row:f032b198-0c91-8ccd-a23d-3804994faacd",
+      "orphaned_row:f2053077-7f8a-ea53-b9ed-7c5e2b9fce88"
+    ],
+    "expected_set": [
+      "orphaned_row:0e7a3dc2-d003-464a-9c2b-14125c79cbe9",
+      "orphaned_row:0fbd756a-1d5f-bdfb-4cb9-81d2cbb4fee4",
+      "orphaned_row:0fe3f0d5-2e0d-87dc-0933-f84887549f80",
+      "orphaned_row:1c435cb0-171d-69c3-f600-a5f4bc7e90fe",
+      "orphaned_row:21367220-1d41-e396-0f3b-dbf2ae5d91e9",
+      "orphaned_row:4b34c0f1-8476-f678-add0-b3f921a7cd5f",
+      "orphaned_row:4c826f11-c733-eac0-9318-29ae919beec4",
+      "orphaned_row:50526783-22bf-ae7c-f6ba-4f8aa111b611",
+      "orphaned_row:57f7b9b0-9e76-4439-48b9-3b71025322a4",
+      "orphaned_row:670cd75f-cf78-0b95-5426-a95484ef2a0e",
+      "orphaned_row:7242b80f-45f6-4bbf-3153-bb2ce0c6441e",
+      "orphaned_row:78572c4c-b635-7daa-183e-5490237ab052",
+      "orphaned_row:78f6a5bb-18f3-bf6e-2aa3-92f241f6c5b1",
+      "orphaned_row:8c12956a-e778-88e6-67d5-ad44d3b540c3",
+      "orphaned_row:8c95dd3d-97ed-420d-1965-cf320c34fb84",
+      "orphaned_row:8e85a5db-53c9-a05b-3049-752bb6632003",
+      "orphaned_row:90ddc15d-a71e-ea73-9392-338da7255605",
+      "orphaned_row:95d5043f-e481-1de8-cd92-bd76bc09dc19",
+      "orphaned_row:97f42ec8-39e7-19f2-9a76-84414644efc3",
+      "orphaned_row:982209a3-c282-e02f-83ec-ee9d0b474d7f",
+      "orphaned_row:9dd7ea2b-091d-c45f-abd6-2a2fb2e43891",
+      "orphaned_row:9f1600ed-b570-0274-d42e-c1dab91038c4",
+      "orphaned_row:a53ea126-8621-3e3c-a8be-88435d7ca266",
+      "orphaned_row:aef7cf16-4fdc-e2bc-7de5-ddbc1782c43a",
+      "orphaned_row:b0479162-4897-2f54-82d5-c08044b3a1a7",
+      "orphaned_row:b259311b-5098-d0f9-a658-585d6eff8f81",
+      "orphaned_row:bddd1f4a-cad4-50cb-a066-9ee465981778",
+      "orphaned_row:c08e04e0-0a1c-27fc-12a4-802a2421036c",
+      "orphaned_row:c1008e17-8f78-a845-2ba2-bccd154a0b9c",
+      "orphaned_row:c4a55285-efd8-3c27-d21e-ab29cdf11eae",
+      "orphaned_row:c8ee4242-005d-bf23-d5a0-d8c906ef6f3f",
+      "orphaned_row:cfb214f7-cf89-751a-ed4c-8ef1bfa2665d",
+      "orphaned_row:d032629f-368d-fc21-534c-13866e7dd45a",
+      "orphaned_row:da96e215-3481-a34b-2d84-c4a8f67ee7e3",
+      "orphaned_row:e77fefbf-059b-62cb-f889-1c7296f933b5",
+      "orphaned_row:f032b198-0c91-8ccd-a23d-3804994faacd",
+      "orphaned_row:f2053077-7f8a-ea53-b9ed-7c5e2b9fce88"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "result": "pass",
+  "run_mode": "fixture",
+  "source": {
+    "batch_no": 85559852,
+    "schema": "OW_BILLING",
+    "system": "oracle",
+    "tables": [
+      "INVOICE_HEADER",
+      "INVOICE_LINE"
+    ]
+  },
+  "target": {
+    "collection": "invoices",
+    "database": "ow_tp_mongodb_demo",
+    "quarantine_collection": "invoice_lines_quarantine",
+    "quarantine_database": "ow_tp_mongodb_demo_quarantine",
+    "quarantined_by_reason": {
+      "orphan_no_header": 37
+    }
+  },
+  "unit": "mongo_invoices",
+  "unverified_paths": [
+    "live Atlas recon (this report is run_mode=fixture; the live recompute is run by the orchestrating session in an uncontended window)",
+    "invalid_encoding quarantine: the estate's INVOICE_LINE text in this namespace decodes cleanly as UTF-8, so the invalid-byte path is covered only by selftest.py and is not exercised against live source rows",
+    "invalid_date quarantine for INVOICE_LINE.INVOICE_DT: no unparseable line date is present in this namespace, so that branch is covered only by selftest.py",
+    "NULL amount/quantity/foreign-key quarantine: this namespace's source rows carry no NULLs in those columns, so the null-attribution check is 0-vs-0 and the branch is covered only by selftest.py",
+    "header_unusable quarantine: every INVOICE_HEADER row in this namespace carries a parseable issue date, so no header is quarantined and the path that carries its lines into quarantine with it is covered only by selftest.py"
+  ],
+  "values_recomputed_from_target": true,
+  "pre_pr_self_check": [
+    {
+      "check": "NULL and missing attribution cannot fail open",
+      "result": "pass",
+      "evidence": "null-attribution is 0-vs-0 for this namespace; selftest.py covers NULL foreign keys and precedence over unusable headers"
+    },
+    {
+      "check": "Namespace references use ow_tp or ow-tp prefixes",
+      "result": "pass",
+      "evidence": "target databases and collections are namespace-scoped and use ow_tp_mongodb_<ns>; local fixture is ow-tp-mongo-fixture"
+    },
+    {
+      "check": "No shared table DDL drops, replaces, or alters",
+      "result": "pass",
+      "evidence": "migration creates or updates only namespace-scoped MongoDB collections"
+    },
+    {
+      "check": "Rerun cleanup cannot remove newer run data",
+      "result": "pass",
+      "evidence": "cleanup filters by namespace; two migrations completed with swept_stale invoices=0 and quarantine=0"
+    },
+    {
+      "check": "Cleanup retains run evidence and recon artifacts",
+      "result": "pass",
+      "evidence": "cleanup is limited to target documents; migration summaries and this recon artifact remain available"
+    },
+    {
+      "check": "No secrets, tokens, or real distribution-list/email addresses",
+      "result": "pass",
+      "evidence": "target source, README, evidence, and recon artifact contain no credentials, tokens, email addresses, or personal names"
+    },
+    {
+      "check": "Parity-versus-tolerance decision matches the contract",
+      "result": "pass",
+      "evidence": "recon applies the contract's exact counts, Decimal128 checks, embedded line set, quarantine disposition, orphan set, and checksum"
+    },
+    {
+      "check": "Idempotency proven by an actual rerun",
+      "result": "pass",
+      "evidence": "run5.json and run6.json were supplied to recon and the idempotency check passed"
+    },
+    {
+      "check": "Recon values recomputed from target platform",
+      "result": "pass",
+      "evidence": "values_recomputed_from_target=true; counts, embedded line set, quarantine disposition, and checksum were recomputed from MongoDB"
+    },
+    {
+      "check": "Unverified or untested paths listed",
+      "result": "pass",
+      "evidence": "unverified_paths lists live Atlas recon; selftest.py covers invalid encoding, invalid dates, NULL attribution, extra delimited content, byte transparency, and unusable headers"
+    },
+    {
+      "check": "Recon report kind and artifact path",
+      "result": "pass",
+      "evidence": "kind is recon-report and the artifact is stored at docs/tech-partnerships/recon/mongo_invoices.recon.json"
+    },
+    {
+      "check": "Capability preflight passed for every required path",
+      "result": "coverage-gap",
+      "evidence": "official Atlas preflight was not run because this handoff prohibits Atlas access; local MongoDB ping and Oracle connectivity were verified"
+    },
+    {
+      "check": "tp-smoke is green",
+      "result": "pass",
+      "evidence": "make tp-smoke completed with tp-smoke: all checks passed"
+    }
+  ]
+}

@@ -9,9 +9,11 @@ import psycopg
 from fastapi import FastAPI, HTTPException, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pymongo.errors import PyMongoError
 
 from app.config import settings
 from app.db import connect, migrate, reset
+from app.docstore import database, reset_documents
 from app.domain import catalog, change_plan, entitlement
 from app.repository import PostgresPlansRepository
 
@@ -44,6 +46,10 @@ def health() -> dict[str, str]:
             connection.execute("SELECT 1")
     except psycopg.Error as error:
         raise HTTPException(status_code=503, detail="database unavailable") from error
+    try:
+        database().command("ping")
+    except PyMongoError as error:
+        raise HTTPException(status_code=503, detail="database unavailable") from error
     return {"status": "healthy", "service": settings.app_name}
 
 
@@ -52,6 +58,7 @@ def internal_reset() -> Response:
     if not settings.allow_internal_reset:
         raise HTTPException(status_code=404, detail="internal reset is disabled")
     reset()
+    reset_documents()
     return Response(status_code=204)
 
 

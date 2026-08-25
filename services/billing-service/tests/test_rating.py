@@ -277,7 +277,7 @@ def test_finalize_updates_existing_period_without_changing_its_id() -> None:
         UUID("40000000-0000-0000-0000-000000000002"),
         TENANT,
         date(2026, 1, 1),
-        date(2026, 1, 31),
+        date(2026, 1, 30),
         None,
     )
     repo = repository(used_units=260, periods=[existing])
@@ -288,8 +288,11 @@ def test_finalize_updates_existing_period_without_changing_its_id() -> None:
         if item.tenant_id == TENANT and item.period_start == date(2026, 1, 1)
     ]
     assert persisted.period_id == existing.period_id
+    assert persisted.period_end == date(2026, 1, 31)
     assert len(matching) == 1
     assert matching[0].period_id == existing.period_id
+    assert matching[0].period_end == date(2026, 1, 31)
+    assert matching[0].result == persisted.result
 
 
 @pytest.mark.rule("RATING-R012")

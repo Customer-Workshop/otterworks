@@ -102,7 +102,7 @@ def _rounded_integer(value: Decimal) -> int:
     return int(value.quantize(INTEGER_QUANTUM, rounding=ROUND_HALF_UP))
 
 
-def select_subscription(
+def _subscription(
     subscriptions: list[SubscriptionRow], period_start: date, period_end: date
 ) -> SubscriptionRow | None:
     overlapping = [
@@ -120,9 +120,7 @@ def rate(
     period_start: date,
     period_end: date,
 ) -> Rating:
-    subscription = select_subscription(
-        repository.list_subscriptions(tenant_id), period_start, period_end
-    )
+    subscription = _subscription(repository.list_subscriptions(tenant_id), period_start, period_end)
     if subscription is None:
         raise RatingNotFoundError("rating subscription not found")
     plan = repository.get_plan(subscription.plan_id)

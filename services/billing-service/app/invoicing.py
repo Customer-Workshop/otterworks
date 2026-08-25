@@ -8,7 +8,7 @@ from typing import Protocol
 from uuid import UUID
 
 from app.domain import PlanRow
-from app.rating import RatingRepository, finalize, period_id_for, rate, select_subscription
+from app.rating import RatingRepository, _subscription, finalize, period_id_for, rate
 
 MONEY_QUANTUM = Decimal("0.01")
 TAX_RATE = Decimal("0.0825")
@@ -101,7 +101,7 @@ def _money(value: Decimal) -> Decimal:
 def _plan(
     repository: InvoicingRepository, tenant_id: UUID, period_start: date, period_end: date
 ) -> PlanRow:
-    subscription = select_subscription(
+    subscription = _subscription(
         repository.list_subscriptions(tenant_id), period_start, period_end
     )
     if subscription is None:

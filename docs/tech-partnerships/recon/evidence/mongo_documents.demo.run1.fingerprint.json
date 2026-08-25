@@ -1,0 +1,14 @@
+{
+  "checksums": {
+    "documents": "e70001cf6110014dab6e1d80adb40285",
+    "snapshots": "abe69084205723d6ad79e825b8c752dd",
+    "versions": "13bc033b2780a0569d7f2217e85d7303"
+  },
+  "digest": "c1419bb1a167ef1040e8d16865c438d7f1572c3d2dc58e4689e08658126226a5",
+  "documents": 2000,
+  "orphaned_snapshots": 6,
+  "quarantined": 0,
+  "snapshots": 390,
+  "version_gap_documents": 10,
+  "versions": 13876
+}

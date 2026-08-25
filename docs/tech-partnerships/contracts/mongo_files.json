@@ -1,0 +1,71 @@
+{
+  "unit": "mongo_files",
+  "source_artifact_path": "testdata/legacy/seed_legacy.py",
+  "target_objects": [
+    "atlas:ow_tp_mongodb_demo.files",
+    "atlas:ow_tp_mongodb_demo_quarantine.files_quarantine"
+  ],
+  "golden_baseline_location": "testdata/legacy/manifests/demo.json#targets.dynamodb.file-metadata",
+  "acceptance_checks": [
+    {
+      "id": "doc-count",
+      "description": "files holds exactly 10000 documents for ns=demo, item-per-document 1:1 with the ns-filtered DynamoDB scan, with deterministic _id (uuid5 of the source key)."
+    },
+    {
+      "id": "tenant-field",
+      "description": "The DynamoDB ns attribute becomes an indexed tenant field on every document; no document is written without it."
+    },
+    {
+      "id": "type-fidelity",
+      "description": "DynamoDB attribute types map without loss: N to a numeric BSON type (no float drift on sizes), BOOL to boolean, B to BSON binary, and absent attributes are omitted rather than written as null."
+    },
+    {
+      "id": "pagination-completeness",
+      "description": "The source scan is fully paginated: recon proves the migrated count equals the summed page counts, so a truncated scan cannot pass as green."
+    },
+    {
+      "id": "orphans-reported",
+      "description": "The 40 orphaned metadata items (no owning document) are migrated but flagged and enumerated as orphaned_metadata; they are never deleted or re-parented."
+    },
+    {
+      "id": "validator",
+      "description": "files carries a $jsonSchema validator requiring the tenant field, a string storage key, and a date-typed modified timestamp; a legacy string date is rejected with server error 121."
+    },
+    {
+      "id": "checksum",
+      "description": "Recon recomputes the manifest checksum db614663b2c6d41141cae82261b416d5 from the Atlas collection and matches it exactly."
+    },
+    {
+      "id": "idempotency",
+      "description": "Re-running the migration for ns=demo reproduces identical counts, checksum, and orphan set with no duplicates."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "UTF-8 (DynamoDB S attributes)",
+    "byte_transparency": "Storage keys and filenames are carried through byte-for-byte, including spaces and non-ASCII characters; no URL-encoding, lowercasing, or path normalization.",
+    "invalid_bytes": "An S attribute that cannot be decoded as UTF-8 is quarantined with reason invalid_encoding and its raw bytes recorded as hex; B attributes are stored as BSON binary."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "fail",
+    "details": "Unknown extra DynamoDB attributes are preserved in a named extras subdocument and attributed in the recon report. A missing ns, storage key, or timestamp is never defaulted: the item is quarantined with a reason code."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "An empty ns-filtered scan leaves prior files untouched and exits zero; it never clears the collection."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {
+      "id": "orphaned_metadata",
+      "description": "40 orphaned dynamodb.file-metadata items must be surfaced as an exact set of 40 flagged documents.",
+      "status": "must-detect"
+    },
+    {
+      "id": "missing_hours",
+      "description": "1 missing S3 event hour under s3.data-lake/events/demo/ is planted in the legacy estate but no MongoDB workload ingests the S3 event lake this run.",
+      "status": "coverage_gap",
+      "reason": "The S3 event lake is not part of the document model being migrated to Atlas (customers, invoices, documents, files); it is claimed by the Databricks track, so no unit reads it and the anomaly is intentionally uncovered here."
+    }
+  ]
+}

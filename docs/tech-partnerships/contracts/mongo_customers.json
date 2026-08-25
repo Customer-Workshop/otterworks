@@ -1,0 +1,70 @@
+{
+  "unit": "mongo_customers",
+  "source_artifact_path": "services/legacy-billing/db/oracle",
+  "target_objects": [
+    "atlas:ow_tp_mongodb_demo.customers",
+    "atlas:ow_tp_mongodb_demo_quarantine.customers_quarantine"
+  ],
+  "golden_baseline_location": "testdata/legacy/manifests/demo.json#targets.oracle.OW_BILLING.CUSTOMER_MASTER",
+  "acceptance_checks": [
+    {
+      "id": "doc-count",
+      "description": "customers holds exactly 25000 documents for ns=demo, one per CUSTOMER_MASTER row, keyed by a deterministic _id derived from CUSTOMER_ID (uuid5, never uuid4)."
+    },
+    {
+      "id": "eav-fold",
+      "description": "All 8333 ENTITY_ATTR_VALUE rows fold into the owning customer's attributes subdocument; no EAV row is dropped, and attribute names are preserved verbatim (including TAX_REGION_OVERRIDE)."
+    },
+    {
+      "id": "csv-to-array",
+      "description": "RELATED_ACCT_IDS and PROMO_CODES_CSV become real BSON arrays; a well-formed empty list becomes an empty array, never a null or a one-element array containing an empty string."
+    },
+    {
+      "id": "date-conversion",
+      "description": "Valid DD-MON-YY SIGNUP_DT strings become BSON dates in UTC; the 50 dirty values are quarantined, never coerced, defaulted, or silently nulled."
+    },
+    {
+      "id": "sparse-columns",
+      "description": "Sparse legacy columns (ADDR_LINE_1..6, PHONE1..4, FLAG_01..20, UDF_01..40) are emitted only when the source value is non-null; absent fields are omitted rather than written as null."
+    },
+    {
+      "id": "validator",
+      "description": "customers carries a $jsonSchema validator that rejects a string signup_dt and rejects an unknown top-level field such as tax_region_override; rejection is proven with server error 121 evidence."
+    },
+    {
+      "id": "checksum",
+      "description": "Recon recomputes the manifest's line-format md5 checksum 4f92feef2ad58dbab30e289957931928 from the Atlas collection and matches it exactly."
+    },
+    {
+      "id": "idempotency",
+      "description": "Re-running the migration for ns=demo reproduces identical counts, checksums, and quarantine sets with no duplicate documents."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "UTF-8 (Oracle AL32UTF8)",
+    "byte_transparency": "Text values are carried through byte-for-byte after decoding; no normalization, case folding, or whitespace trimming.",
+    "invalid_bytes": "A value that cannot be decoded as UTF-8 is quarantined with reason invalid_encoding and its raw bytes recorded as hex; it is never replaced with U+FFFD and never silently dropped."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "fail",
+    "details": "Malformed CSV list entries are tolerated: the document is written with the parsable elements and the row is attributed in the quarantine collection with the raw source string and a reason code. A NULL or missing source value may never fail open into a valid-looking document: if a required target field has no source value, the record is quarantined rather than defaulted."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "A run over an empty source set leaves prior output untouched and exits zero; it never truncates or drops customers."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {
+      "id": "dirty_dates",
+      "description": "50 dirty SIGNUP_DT strings in oracle.OW_BILLING.CUSTOMER_MASTER.SIGNUP_DT (e.g. 31-FEB-24, N/A) must be surfaced as an exact set of 50 quarantined customers.",
+      "status": "must-detect"
+    },
+    {
+      "id": "malformed_csv_lists",
+      "description": "31 malformed RELATED_ACCT_IDS lists must be surfaced as an exact set of 31 attributed records.",
+      "status": "must-detect"
+    }
+  ]
+}

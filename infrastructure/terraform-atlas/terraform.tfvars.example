@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and replace the placeholder project ID.
+project_id = "000000000000000000000000"
+
+# The defaults target the shared, pre-existing demo cluster and demo namespace.
+# cluster_name = "otterworks-demo"
+# namespaces   = ["demo"]
+
+# Keep this entry aligned with the VM's Atlas access-list entry.
+# access_entries = {
+#   vm_egress = {
+#     ip_address = "140.232.64.3"
+#     comment    = "otterworks-tp track=mongodb namespace=demo"
+#   }
+# }

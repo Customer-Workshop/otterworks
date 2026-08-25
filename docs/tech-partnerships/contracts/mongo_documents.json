@@ -1,0 +1,67 @@
+{
+  "unit": "mongo_documents",
+  "source_artifact_path": "testdata/legacy/seed_legacy.py",
+  "target_objects": [
+    "atlas:ow_tp_mongodb_demo.documents",
+    "atlas:ow_tp_mongodb_demo.document_snapshots",
+    "atlas:ow_tp_mongodb_demo_quarantine.documents_quarantine"
+  ],
+  "golden_baseline_location": "testdata/legacy/manifests/demo.json#targets.postgres.otterworks_demo.documents",
+  "acceptance_checks": [
+    {
+      "id": "doc-count",
+      "description": "documents holds exactly 2000 documents for ns=demo, one per postgres documents row, with deterministic _id (uuid5 of the source key)."
+    },
+    {
+      "id": "versions-embedded",
+      "description": "All 13876 document_versions rows are represented as a bounded per-document version subarray ordered by version number; no version row is lost and none is duplicated."
+    },
+    {
+      "id": "snapshots-referenced",
+      "description": "All 390 document_snapshots rows are migrated and reference their owning document by its migrated key; the 6 orphaned snapshots are reported rather than attached to a fabricated parent."
+    },
+    {
+      "id": "version-gaps-reported",
+      "description": "The 10 documents with non-contiguous version sequences are reported as version_gaps with the missing version numbers enumerated; gaps are never renumbered or backfilled."
+    },
+    {
+      "id": "validator",
+      "description": "documents carries a $jsonSchema validator requiring the tenant/ns field, a date-typed updated timestamp, and versions as an array of objects; a string date is rejected with server error 121."
+    },
+    {
+      "id": "checksum",
+      "description": "Recon recomputes the manifest checksums e70001cf6110014dab6e1d80adb40285 (documents), 13bc033b2780a0569d7f2217e85d7303 (versions) and abe69084205723d6ad79e825b8c752dd (snapshots) from Atlas and matches all three exactly."
+    },
+    {
+      "id": "idempotency",
+      "description": "Re-running the migration for ns=demo reproduces identical counts, checksums, gap set, and orphan set."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "UTF-8 (Postgres client_encoding UTF8)",
+    "byte_transparency": "Document bodies and titles are carried through byte-for-byte after decoding; no HTML/markdown rewriting, trimming, or Unicode normalization.",
+    "invalid_bytes": "A value that cannot be decoded as UTF-8 is quarantined with reason invalid_encoding and its raw bytes recorded as hex; bytea content is preserved as BSON binary rather than lossily decoded."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "fail",
+    "details": "Unexpected extra fields in a source row are carried into an explicitly named extras subdocument and attributed in the recon report. A NULL owner, version number, or timestamp is never defaulted: the record is quarantined with a reason code."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "An empty source set leaves prior documents and snapshots untouched and exits zero."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {
+      "id": "version_gaps",
+      "description": "10 planted document version gaps in postgres.otterworks_demo.document_versions must be surfaced as an exact set of 10.",
+      "status": "must-detect"
+    },
+    {
+      "id": "orphaned_snapshots",
+      "description": "6 orphaned postgres.otterworks_demo.document_snapshots rows must be surfaced as an exact set of 6.",
+      "status": "must-detect"
+    }
+  ]
+}

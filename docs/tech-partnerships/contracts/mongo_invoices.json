@@ -1,0 +1,61 @@
+{
+  "unit": "mongo_invoices",
+  "source_artifact_path": "services/legacy-billing/db/oracle",
+  "target_objects": [
+    "atlas:ow_tp_mongodb_demo.invoices",
+    "atlas:ow_tp_mongodb_demo_quarantine.invoice_lines_quarantine"
+  ],
+  "golden_baseline_location": "testdata/legacy/manifests/demo.json#targets.oracle.OW_BILLING.INVOICE_HEADER",
+  "acceptance_checks": [
+    {
+      "id": "doc-count",
+      "description": "invoices holds exactly 18750 documents for ns=demo, one per INVOICE_HEADER row, with deterministic _id derived from INVOICE_ID (uuid5)."
+    },
+    {
+      "id": "embedded-lines",
+      "description": "Exactly 149963 line items are embedded across those headers (150000 source rows minus 37 orphans); no invoice exceeds the bounded ~25-line model without being reported."
+    },
+    {
+      "id": "orphans-quarantined",
+      "description": "The 37 INVOICE_LINE rows whose header does not exist are written to the quarantine collection with their source keys, and are never attached to a synthesized or guessed header."
+    },
+    {
+      "id": "money-exactness",
+      "description": "Monetary and tax amounts round-trip exactly with no floating-point drift (BSON decimal128 or scaled integers), and per-invoice line totals equal the header total to the cent."
+    },
+    {
+      "id": "validator",
+      "description": "invoices carries a $jsonSchema validator requiring the header key, a date-typed issue date, and a lines array of objects; a legacy-shaped string date is rejected with server error 121."
+    },
+    {
+      "id": "checksum",
+      "description": "Recon recomputes the manifest's INVOICE_LINE checksum 88a66751f0b08b476b492105a2efc537 from the embedded lines in Atlas and matches it exactly."
+    },
+    {
+      "id": "idempotency",
+      "description": "Re-running the migration for ns=demo reproduces identical header counts, embedded-line counts, checksums, and the same 37-row orphan set."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "UTF-8 (Oracle AL32UTF8)",
+    "byte_transparency": "Descriptions and free-text line fields are carried through byte-for-byte after decoding, with no trimming or normalization.",
+    "invalid_bytes": "A value that cannot be decoded as UTF-8 is quarantined with reason invalid_encoding and its raw bytes recorded as hex; never replaced with a substitution character."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "fail",
+    "details": "A line row with unexpected extra delimited content is written with the parsed fields and attributed in quarantine. A NULL amount, quantity, or foreign key is never defaulted to zero or to a placeholder header: the line is quarantined with a reason code."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "An empty source set leaves prior invoices untouched and exits zero."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {
+      "id": "orphaned_rows",
+      "description": "37 orphaned oracle.OW_BILLING.INVOICE_LINE rows must be surfaced as an exact set of 37 quarantined lines.",
+      "status": "must-detect"
+    }
+  ]
+}

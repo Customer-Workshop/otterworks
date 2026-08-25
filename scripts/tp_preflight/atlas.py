@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
 import ipaddress
+import os
 import re
 import urllib.parse
 import uuid
-from requests import delete, get, post
-from requests.auth import HTTPDigestAuth
 
 from common import (
     Manifest,
@@ -17,6 +15,8 @@ from common import (
     require_env,
     validate_https_endpoint,
 )
+from requests import delete, get, post
+from requests.auth import HTTPDigestAuth
 
 
 def validate_probe_ip(value):
@@ -54,6 +54,9 @@ raw_base = os.environ.get("TP_ATLAS_API_BASE", "https://cloud.mongodb.com/api/at
 parsed_base = validate_https_endpoint(raw_base, "TP_ATLAS_API_BASE")
 if parsed_base.hostname != "cloud.mongodb.com":
     raise SystemExit("TP_ATLAS_API_BASE must use cloud.mongodb.com")
+webhook_url = os.environ.get("TP_ATLAS_TEST_WEBHOOK_URL",
+                             "https://webhook.example.com/ow-tp-preflight")
+validate_https_endpoint(webhook_url, "TP_ATLAS_TEST_WEBHOOK_URL")
 base = raw_base.rstrip("/")
 project = os.environ["MONGODB_ATLAS_PROJECT_ID"]
 if not re.fullmatch(r"[A-Za-z0-9_-]+", project):
@@ -153,6 +156,7 @@ def delete_entry(entry):
 
 
 pending_collections = {}
+pending_alerts = {}
 
 
 def reconcile_collections():
@@ -173,6 +177,83 @@ def reconcile_collections():
                 pass
 
 
+VALIDATOR_LOOSE = {
+    "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["customer_id"],
+        "properties": {"customer_id": {"bsonType": "string"}},
+    }
+}
+VALIDATOR_TIGHT = {
+    "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["customer_id", "signup_dt"],
+        "properties": {
+            "customer_id": {"bsonType": "string"},
+            "signup_dt": {"bsonType": "date"},
+        },
+    }
+}
+
+
+def validator_ddl(client):
+    """Probe schema-validation DDL: create with a validator, then collMod it."""
+    from pymongo.errors import WriteError
+
+    database = client["ow_tp_preflight"]
+    name = f"ow_tp_validator_{uuid.uuid4().hex}"
+    try:
+        database.create_collection(name, validator=VALIDATOR_LOOSE,
+                                   validationLevel="strict", validationAction="error")
+        pending_collections[name] = (client, database)
+    except Exception as exc:
+        m.add("validator-create", "Create a collection with a $jsonSchema validator",
+              "MongoDB wire protocol createCollection", "denied", exception_detail(exc))
+        m.add("validator-collmod", "Tighten a collection validator with collMod",
+              "MongoDB wire protocol collMod", "denied", "validator create failed")
+        m.add("validator-enforced", "The validator rejects a legacy-shaped document",
+              "MongoDB wire protocol insert", "denied", "validator create failed")
+        return
+    try:
+        database[name].insert_one({"customer_id": "C1"})
+        m.add("validator-create", "Create a collection with a $jsonSchema validator",
+              "MongoDB wire protocol createCollection", "verified",
+              "conforming document accepted")
+        rejected = False
+        try:
+            database[name].insert_one({"customer_id": 42})
+        except WriteError as exc:
+            rejected = "validation" in str(exc).lower() or exc.code in (121, 9)
+        m.add("validator-enforced", "The validator rejects a legacy-shaped document",
+              "MongoDB wire protocol insert", "verified" if rejected else "denied",
+              "non-conforming insert rejected" if rejected
+              else "non-conforming insert was NOT rejected")
+        try:
+            database.command({"collMod": name, "validator": VALIDATOR_TIGHT,
+                              "validationLevel": "strict", "validationAction": "error"})
+            tightened = False
+            try:
+                database[name].insert_one({"customer_id": "C2"})
+            except WriteError:
+                tightened = True
+            m.add("validator-collmod", "Tighten a collection validator with collMod",
+                  "MongoDB wire protocol collMod", "verified" if tightened else "denied",
+                  "collMod applied and enforced" if tightened
+                  else "collMod returned ok but the new rule was not enforced")
+        except Exception as exc:
+            m.add("validator-collmod", "Tighten a collection validator with collMod",
+                  "MongoDB wire protocol collMod", "denied", exception_detail(exc))
+    finally:
+        try:
+            database.drop_collection(name)
+            pending_collections.pop(name, None)
+        except Exception as exc:
+            m.add("validator-cleanup", "Drop the temporary validator probe collection",
+                  "MongoDB wire protocol", "denied",
+                  f"{name} may remain in ow_tp_preflight; manual cleanup required: "
+                  f"{exception_detail(exc)}")
+
+
 def db_user_write():
     client = None
     try:
@@ -186,6 +267,7 @@ def db_user_write():
         database.drop_collection(name)
         pending_collections.pop(name, None)
         m.add("db-user-write", "Insert and delete a temporary document with the DB user", "MongoDB wire protocol", "verified", "temporary collection cleaned")
+        validator_ddl(client)
         client.close()
     except Exception as exc:
         m.add("db-user-write", "Insert and delete a temporary document with the DB user", "MongoDB wire protocol", "denied", exception_detail(exc))
@@ -285,15 +367,79 @@ def reconcile_ambiguous(entry):
     cleanup_registry.pop(api_entry_ip(entry), None)
 
 
+def delete_alert_config(alert_id):
+    url = f"{base}/groups/{project}/alertConfigs/{urllib.parse.quote(alert_id, safe='')}"
+    try:
+        response = delete(url, auth=auth, headers=headers, timeout=30)
+        if response.ok or response.status_code == 404:
+            m.add("alert-webhook-delete", "Delete the temporary webhook alert configuration",
+                  "Atlas alertConfigs DELETE", "verified", f"HTTP {response.status_code}")
+            return
+        m.add("alert-webhook-delete", "Delete the temporary webhook alert configuration",
+              "Atlas alertConfigs DELETE", "denied",
+              f"HTTP {response.status_code}: alert {alert_id} may remain; manual cleanup required")
+    except Exception as exc:
+        m.add("alert-webhook-delete", "Delete the temporary webhook alert configuration",
+              "Atlas alertConfigs DELETE", "denied",
+              f"alert {alert_id} may remain; manual cleanup required: {exception_detail(exc)}")
+
+
+def reconcile_alerts():
+    for alert_id in list(pending_alerts):
+        delete_alert_config(alert_id)
+        pending_alerts.pop(alert_id, None)
+
+
+def alert_webhook_probe():
+    """Probe the alert-to-webhook path used by the showcase failure loop."""
+    if os.environ.get("TP_ATLAS_PROBE_ALERTS", "1") != "1":
+        for probe_id, description in (("alert-config-read", "Read project alert configurations"),
+                                      ("alert-webhook-create", "Create a disabled webhook alert configuration"),
+                                      ("alert-webhook-delete", "Delete the temporary webhook alert configuration")):
+            m.add(probe_id, description, "Atlas alertConfigs", "skipped",
+                  "TP_ATLAS_PROBE_ALERTS is not 1")
+        return
+    check("alert-config-read", "Read project alert configurations", get,
+          f"{base}/groups/{project}/alertConfigs")
+    body = {
+        "eventTypeName": "OUTSIDE_METRIC_THRESHOLD",
+        "enabled": False,
+        "notifications": [{"typeName": "WEBHOOK", "delayMin": 0, "intervalMin": 5,
+                           "webhookUrl": webhook_url}],
+        "metricThreshold": {"metricName": "ASSERT_REGULAR", "operator": "GREATER_THAN",
+                            "threshold": 99, "units": "RAW", "mode": "AVERAGE"},
+    }
+    created = check("alert-webhook-create", "Create a disabled webhook alert configuration",
+                    post, f"{base}/groups/{project}/alertConfigs", json=body)
+    alert_id = None
+    if created is not None and created.ok:
+        try:
+            alert_id = created.json().get("id")
+        except ValueError:
+            alert_id = None
+    if alert_id:
+        pending_alerts[alert_id] = True
+        reconcile_alerts()
+    elif created is not None and created.ok:
+        m.add("alert-webhook-delete", "Delete the temporary webhook alert configuration",
+              "Atlas alertConfigs DELETE", "denied",
+              "created alert id was not returned; manual cleanup required")
+    else:
+        m.add("alert-webhook-delete", "Delete the temporary webhook alert configuration",
+              "Atlas alertConfigs DELETE", "skipped", "no alert configuration was created")
+
+
 def cleanup_entries():
     for key, entry in list(cleanup_registry.items()):
         delete_entry(entry)
         cleanup_registry.pop(key, None)
     reconcile_collections()
+    reconcile_alerts()
 
 
 install_signal_handlers(m, "atlas", cleanup_entries)
 try:
+    alert_webhook_probe()
     if probe_ip in listed or f"{probe_ip}/32" in listed:
         m.add("access-list-post", "Create a temporary API access-list entry",
               "Atlas accessList POST", "skipped", f"{probe_ip} is already listed exactly")

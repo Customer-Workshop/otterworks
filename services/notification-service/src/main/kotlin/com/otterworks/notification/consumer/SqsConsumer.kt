@@ -95,7 +95,7 @@ class SqsConsumer(
                                 logger.debug { "Deleted SQS message: ${msg.messageId}" }
                             } else {
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message, removing poison message from queue: ${msg.messageId}, body: ${msg.body}" }
+                                logger.warn { "Failed to parse SQS message, removing poison message from queue: ${msg.messageId}" }
                                 val deleteRequest = DeleteMessageRequest {
                                     queueUrl = config.sqsQueueUrl
                                     receiptHandle = msg.receiptHandle

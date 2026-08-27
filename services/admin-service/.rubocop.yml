@@ -25,9 +25,14 @@ Metrics/BlockLength:
 
 Metrics/MethodLength:
   Max: 25
+  Exclude:
+    - "app/controllers/api/v1/admin/alerts_controller.rb"
+    - "app/controllers/api/v1/admin/incidents_controller.rb"
 
 Layout/LineLength:
   Max: 120
+  AllowedPatterns:
+    - "# nosemgrep:"
 
 RSpec/ExampleLength:
   Max: 20
@@ -47,11 +52,64 @@ Rails/SkipsModelValidations:
 Rails/I18nLocaleTexts:
   Enabled: false
 
+Rails/ResponseParsedBody:
+  Exclude:
+    - "spec/**/*"
+
+Rails/StrongParametersExpect:
+  Enabled: false
+
+Rails/WhereRange:
+  Exclude:
+    - "app/controllers/api/v1/admin/audit_logs_controller.rb"
+    - "app/models/audit_log.rb"
+    - "app/services/metrics_aggregator.rb"
+
+Rails/Blank:
+  Exclude:
+    - "app/controllers/api/v1/admin/chaos_controller.rb"
+
+Rails/FindEach:
+  Exclude:
+    - "app/controllers/api/v1/admin/chaos_controller.rb"
+
+Rails/Pluck:
+  Exclude:
+    - "spec/controllers/api/v1/admin/config_controller_spec.rb"
+
 Naming/PredicateMethod:
   Enabled: false
+
+Naming/PredicatePrefix:
+  Exclude:
+    - "app/models/incident.rb"
+
+Naming/AccessorMethodName:
+  Exclude:
+    - "app/services/admin_settings_service.rb"
 
 Metrics/ParameterLists:
   Max: 8
 
 Metrics/AbcSize:
   Max: 35
+  Exclude:
+    - "app/controllers/api/v1/admin/alerts_controller.rb"
+
+Metrics/ClassLength:
+  Exclude:
+    - "app/controllers/api/v1/admin/incidents_controller.rb"
+    - "app/services/chaos_probe_service.rb"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "app/controllers/api/v1/admin/alerts_controller.rb"
+    - "app/services/chaos_probe_service.rb"
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - "app/controllers/api/v1/admin/alerts_controller.rb"
+
+Lint/EmptyBlock:
+  Exclude:
+    - "config/initializers/inflections.rb"

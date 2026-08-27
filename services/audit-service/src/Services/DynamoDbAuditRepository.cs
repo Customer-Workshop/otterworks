@@ -292,24 +292,28 @@ public class DynamoDbAuditRepository : IAuditRepository
             };
 
             var batchResponse = await _dynamoDb.BatchWriteItemAsync(batchRequest);
+            var unprocessedItems = batchResponse.UnprocessedItems ??
+                new Dictionary<string, List<WriteRequest>>();
 
             var retryCount = 0;
-            while (batchResponse.UnprocessedItems.Count > 0 && retryCount < 5)
+            while (unprocessedItems.Count > 0 && retryCount < 5)
             {
                 retryCount++;
                 var delayMs = (int)Math.Pow(2, retryCount) * 100;
                 _logger.LogWarning("Retrying {Count} unprocessed delete items (attempt {Retry})",
-                    batchResponse.UnprocessedItems.Values.Sum(v => v.Count), retryCount);
+                    unprocessedItems.Values.Sum(v => v.Count), retryCount);
                 await Task.Delay(delayMs);
                 batchResponse = await _dynamoDb.BatchWriteItemAsync(new BatchWriteItemRequest
                 {
-                    RequestItems = batchResponse.UnprocessedItems,
+                    RequestItems = unprocessedItems,
                 });
+                unprocessedItems = batchResponse.UnprocessedItems ??
+                    new Dictionary<string, List<WriteRequest>>();
             }
 
-            if (batchResponse.UnprocessedItems.Count > 0)
+            if (unprocessedItems.Count > 0)
             {
-                var failedCount = batchResponse.UnprocessedItems.Values.Sum(v => v.Count);
+                var failedCount = unprocessedItems.Values.Sum(v => v.Count);
                 totalFailed += failedCount;
                 _logger.LogError("Failed to delete {Count} items after retries", failedCount);
             }

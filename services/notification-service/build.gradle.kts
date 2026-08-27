@@ -1,8 +1,8 @@
 plugins {
-    kotlin("jvm") version "1.9.23"
-    kotlin("plugin.serialization") version "1.9.23"
-    id("io.ktor.plugin") version "2.3.9"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    kotlin("jvm") version "2.4.10"
+    kotlin("plugin.serialization") version "2.4.10"
+    id("io.ktor.plugin") version "3.5.2"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = "com.otterworks"
@@ -16,12 +16,12 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "2.3.9"
-val awsSdkVersion = "1.0.70"
-val coroutinesVersion = "1.8.0"
-val koinVersion = "3.5.3"
-val micrometerVersion = "1.12.4"
-val commonsTextVersion = "1.9"
+val ktorVersion = "3.5.2"
+val awsSdkVersion = "1.8.33"
+val coroutinesVersion = "1.11.0"
+val koinVersion = "4.2.2"
+val micrometerVersion = "1.17.0"
+val commonsTextVersion = "1.15.0"
 
 dependencies {
     // Ktor Server
@@ -51,7 +51,7 @@ dependencies {
     implementation("org.apache.commons:commons-text:$commonsTextVersion")
 
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
     // Dependency Injection - Koin
@@ -60,30 +60,29 @@ dependencies {
     implementation("io.insert-koin:koin-logger-slf4j:$koinVersion")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.5.3")
-    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
-    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
+    implementation("ch.qos.logback:logback-classic:1.6.3")
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0")
+    implementation("io.github.oshai:kotlin-logging-jvm:8.0.4")
 
     // Metrics & Tracing
     implementation("io.micrometer:micrometer-registry-prometheus:$micrometerVersion")
-    implementation("io.opentelemetry:opentelemetry-api:1.36.0")
-    implementation("io.opentelemetry:opentelemetry-sdk:1.36.0")
-    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.36.0")
+    implementation("io.opentelemetry:opentelemetry-api:1.65.0")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.65.0")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.65.0")
 
     // Redis (chaos flag checks)
-    implementation("redis.clients:jedis:5.1.3")
+    implementation("redis.clients:jedis:8.0.0")
 
     // Testing
-    testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.23")
-    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.10")
+    testImplementation("io.mockk:mockk:1.14.11")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
     testImplementation("io.insert-koin:koin-test:$koinVersion")
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 tasks.withType<Test> {

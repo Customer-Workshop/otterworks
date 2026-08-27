@@ -1,7 +1,7 @@
 version: '3.9'
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: otterworks-postgres
     environment:
       POSTGRES_USER: otterworks
@@ -45,11 +45,10 @@ services:
     tmpfs:
     - /tmp
   localstack: # nosemgrep: yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service
-    image: localstack/localstack:3.8
+    image: localstack/localstack:4.9.2
     container_name: otterworks-localstack
     environment:
       SERVICES: s3,sqs,sns,dynamodb,ses,cognito-idp,secretsmanager
-      DEFAULT_REGION: us-east-1
       DOCKER_HOST: unix:///var/run/docker.sock
       # Persist emulated AWS state (e.g. DynamoDB) to the localstack_data volume so
       # local data survives container recreation. S3 objects are not captured by
@@ -95,7 +94,7 @@ services:
     security_opt:
     - no-new-privileges:true
   prometheus:
-    image: prom/prometheus:v2.51.0
+    image: prom/prometheus:v3.14.0
     container_name: otterworks-prometheus
     command:
     - --config.file=/etc/prometheus/prometheus.yml
@@ -127,16 +126,15 @@ services:
     tmpfs:
     - /tmp
   grafana:
-    image: grafana/grafana:10.4.0
+    image: grafana/grafana:12.4.9
     container_name: otterworks-grafana
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: otterworks
       GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_SERVER_ROOT_URL: http://localhost:3001
-      # Unified alerting (Grafana 8+ default; explicit for clarity)
+      # Unified alerting (the only alerting engine since Grafana 11)
       GF_UNIFIED_ALERTING_ENABLED: 'true'
-      GF_ALERTING_ENABLED: 'false'
       # Secret sent to the admin-service alert webhook
       ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
     ports:
@@ -165,7 +163,7 @@ services:
     tmpfs:
     - /tmp
   jaeger:
-    image: jaegertracing/all-in-one:1.55
+    image: jaegertracing/all-in-one:1.76.0
     container_name: otterworks-jaeger
     environment:
       COLLECTOR_OTLP_ENABLED: 'true'
@@ -194,7 +192,7 @@ services:
     tmpfs:
     - /tmp
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.96.0
+    image: otel/opentelemetry-collector-contrib:0.159.0
     container_name: otterworks-otel-collector
     command:
     - --config=/etc/otelcol/config.yml
@@ -213,10 +211,8 @@ services:
     healthcheck:
       test:
       - CMD
-      - wget
-      - --spider
-      - -q
-      - http://localhost:13133/
+      - /otelcol-contrib
+      - --version
       interval: 10s
       timeout: 5s
       retries: 3
@@ -227,7 +223,7 @@ services:
     tmpfs:
     - /tmp
   fluent-bit:
-    image: fluent/fluent-bit:3.0
+    image: fluent/fluent-bit:4.2.8
     container_name: otterworks-fluent-bit
     ports:
     - 2020:2020
@@ -241,10 +237,8 @@ services:
     healthcheck:
       test:
       - CMD
-      - wget
-      - --spider
-      - -q
-      - http://localhost:2020/api/v1/health
+      - /fluent-bit/bin/fluent-bit
+      - --version
       interval: 10s
       timeout: 5s
       retries: 3

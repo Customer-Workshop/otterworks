@@ -48,7 +48,7 @@ processors:
           sampling_percentage: 10
 
 exporters:
-  otlp/jaeger:
+  otlp_grpc/jaeger:
     endpoint: jaeger:4317
     tls:
       insecure: true
@@ -59,7 +59,7 @@ exporters:
     resource_to_telemetry_conversion:
       enabled: true
 
-  logging:
+  debug:
     verbosity: normal
     sampling_initial: 5
     sampling_thereafter: 200
@@ -78,15 +78,21 @@ service:
     logs:
       level: info
     metrics:
-      address: 0.0.0.0:8888
+      level: detailed
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
 
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, attributes/service, tail_sampling, batch]
-      exporters: [otlp/jaeger, logging]
+      exporters: [otlp_grpc/jaeger, debug]
 
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, attributes/service, batch]
-      exporters: [prometheus, logging]
+      exporters: [prometheus, debug]

@@ -7,5 +7,7 @@ policies:
     group_wait: 10s
     group_interval: 30s
     repeat_interval: 4h
-    matchers:
-      - team=otterworks
+    routes:
+      - receiver: Default
+        object_matchers:
+          - ['team', '=', 'otterworks']

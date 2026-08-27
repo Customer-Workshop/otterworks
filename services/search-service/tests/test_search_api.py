@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -104,6 +106,46 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.get_json()
         assert data["suggestions"] == []
+
+    def test_suggest_ranked_orders_by_ranking_score(self, client, mock_meilisearch_client):
+        """Ranked suggestions are sorted by _rankingScore descending."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Test Doc Low", "_rankingScore": 0.2},
+                {"title": "Test Doc High", "_rankingScore": 0.9},
+            ],
+        }
+
+        with patch("app.api.search._chaos_active", return_value=True):
+            response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["suggestions"] == ["Test Doc High", "Test Doc Low"]
+
+    def test_suggest_ranked_handles_missing_ranking_score(self, client, mock_meilisearch_client):
+        """Ranked suggestions do not 500 when _rankingScore is absent."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 1,
+            "hits": [{"title": "Test Doc"}],
+        }
+
+        with patch("app.api.search._chaos_active", return_value=True):
+            response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Test Doc"]
+
+    def test_suggest_ranked_empty_index(self, client, mock_meilisearch_client):
+        """Ranked suggestions return empty list on an empty index."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {"estimatedTotalHits": 0, "hits": []}
+
+        with patch("app.api.search._chaos_active", return_value=True):
+            response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
 
 
 class TestAdvancedSearchEndpoint:

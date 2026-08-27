@@ -323,13 +323,13 @@ function MarginsContent() {
               placeholder="Filter by SKU, name, supplier…"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-otter-500"
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-64 focus:outline-hidden focus:ring-2 focus:ring-otter-500"
               data-testid="grid-filter"
             />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-otter-500"
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-otter-500"
               data-testid="category-filter"
             >
               <option value="all">All categories</option>

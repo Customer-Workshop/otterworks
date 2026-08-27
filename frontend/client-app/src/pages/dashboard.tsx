@@ -278,7 +278,7 @@ function ActivityRow({ item }: Readonly<{ item: ActivityItem }>) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div
-        className={`w-2 h-2 rounded-full flex-shrink-0 ${
+        className={`w-2 h-2 rounded-full shrink-0 ${
           iconMap[item.type]?.replace("text-", "bg-") || "bg-gray-400"
         }`}
       />
@@ -288,7 +288,7 @@ function ActivityRow({ item }: Readonly<{ item: ActivityItem }>) {
           {item.description}
         </p>
       </div>
-      <span className="text-xs text-gray-400 flex-shrink-0">
+      <span className="text-xs text-gray-400 shrink-0">
         {formatRelativeTime(item.createdAt)}
       </span>
     </div>

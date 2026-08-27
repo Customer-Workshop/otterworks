@@ -194,7 +194,7 @@ export function ImageFilePreview({ presignedUrl, fileName }: ImageFilePreviewPro
     <img
       src={presignedUrl}
       alt={fileName}
-      className="max-w-full max-h-[500px] rounded-lg shadow-sm"
+      className="max-w-full max-h-[500px] rounded-lg shadow-xs"
       onError={() => setError(true)}
     />
   );

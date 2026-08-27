@@ -269,7 +269,7 @@ function FileBrowserContent() {
   return (
     <div {...getRootProps()} className="max-w-7xl mx-auto space-y-6 relative">
       {isDragActive && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-otter-600/10 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-otter-600/10 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl border-2 border-dashed border-otter-500 p-12 text-center">
             <Upload size={48} className="mx-auto mb-4 text-otter-600" />
             <p className="text-lg font-semibold text-gray-900">Drop files to upload</p>
@@ -352,7 +352,7 @@ function FileBrowserContent() {
               const [field, direction] = e.target.value.split("-") as [SortField, "asc" | "desc"];
               setSortConfig({ field, direction });
             }}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-otter-500"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-hidden focus:ring-2 focus:ring-otter-500"
           >
             <option value="updatedAt-desc">Last modified</option>
             <option value="updatedAt-asc">Oldest modified</option>
@@ -390,7 +390,7 @@ function FileBrowserContent() {
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             placeholder="Folder name"
-            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500"
+            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-otter-500"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter" && newFolderName.trim()) {

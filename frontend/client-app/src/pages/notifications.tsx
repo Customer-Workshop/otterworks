@@ -155,7 +155,7 @@ function NotificationRow({
     >
       {notification.actorName ? (
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
           style={{
             backgroundColor: generateColor(notification.actorId || notification.actorName),
           }}
@@ -165,7 +165,7 @@ function NotificationRow({
       ) : (
         <div
           className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+            "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
             color
           )}
         >
@@ -182,7 +182,7 @@ function NotificationRow({
         </p>
       </div>
       {!notification.read && (
-        <div className="w-2.5 h-2.5 rounded-full bg-otter-600 flex-shrink-0 mt-1.5" />
+        <div className="w-2.5 h-2.5 rounded-full bg-otter-600 shrink-0 mt-1.5" />
       )}
     </div>
   );

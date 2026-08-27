@@ -70,7 +70,7 @@ export default function BillingEntitlementPage() {
       {isLoading && <p role="status">Loading entitlement…</p>}
       {!isLoading && !error && !entitlement && <p>No entitlement found.</p>}
       {!isLoading && entitlement && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm" aria-label="Tenant entitlement">
+        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-xs" aria-label="Tenant entitlement">
           <p className="text-sm text-gray-600">Tenant {entitlement.tenant_id}</p>
           <h2 className="mt-2 text-2xl font-semibold">{entitlement.plan_code}</h2>
           <dl className="mt-5 grid gap-3 sm:grid-cols-2">

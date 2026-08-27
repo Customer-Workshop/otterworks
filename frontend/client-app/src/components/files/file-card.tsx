@@ -122,7 +122,7 @@ export function FileCard({
     return (
       <div className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50 rounded-lg transition group border-b border-gray-100 last:border-0">
         {selectionActive && (
-          <div className="flex-shrink-0" onClick={handleCheckboxClick}>
+          <div className="shrink-0" onClick={handleCheckboxClick}>
             <input
               type="checkbox"
               checked={selected}
@@ -135,7 +135,7 @@ export function FileCard({
           to={file.isFolder ? `/files?folder=${file.id}` : `/files/${file.id}`}
           className="flex items-center gap-4 flex-1 min-w-0"
         >
-          <div className="w-10 h-10 rounded-lg bg-otter-50 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-otter-50 flex items-center justify-center shrink-0">
             <Icon size={20} className="text-otter-600" />
           </div>
           <div className="flex-1 min-w-0">
@@ -151,7 +151,7 @@ export function FileCard({
                     if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }
                   }}
                   onBlur={submitRename}
-                  className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
+                  className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-hidden focus:ring-1 focus:ring-otter-500 w-full"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 />
               </div>
@@ -168,7 +168,7 @@ export function FileCard({
         </Link>
         <button
           onClick={handleStarClick}
-          className="p-1 rounded hover:bg-gray-200 transition flex-shrink-0"
+          className="p-1 rounded hover:bg-gray-200 transition shrink-0"
           aria-label={starred ? "Unstar" : "Star"}
         >
           <Star
@@ -269,7 +269,7 @@ export function FileCard({
                 if (e.key === "Escape") { renameDoneRef.current = true; setIsRenaming(false); setRenameValue(file.name); }
               }}
               onBlur={submitRename}
-              className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-none focus:ring-1 focus:ring-otter-500 w-full"
+              className="text-sm font-medium text-gray-900 px-1 py-0.5 border border-otter-400 rounded focus:outline-hidden focus:ring-1 focus:ring-otter-500 w-full"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
             />
           </div>

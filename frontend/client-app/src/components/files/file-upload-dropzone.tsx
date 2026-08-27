@@ -214,7 +214,7 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
               key={item.id}
               className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200"
             >
-              <FileIcon size={16} className="text-gray-400 flex-shrink-0" />
+              <FileIcon size={16} className="text-gray-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-700 truncate">{item.file.name}</p>
                 <div className="flex items-center gap-2">
@@ -236,10 +236,10 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
                 )}
               </div>
               {item.status === "done" && (
-                <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                <CheckCircle2 size={16} className="text-green-500 shrink-0" />
               )}
               {item.status === "error" && (
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => retryUpload(item.id)}
                     className="p-1 text-gray-400 hover:text-otter-600 transition"
@@ -253,7 +253,7 @@ export const FileUploadDropzone = forwardRef(function FileUploadDropzone(
               {item.status === "uploading" && (
                 <button
                   onClick={() => cancelUpload(item.id)}
-                  className="p-1 text-gray-400 hover:text-red-500 transition flex-shrink-0"
+                  className="p-1 text-gray-400 hover:text-red-500 transition shrink-0"
                   title="Cancel upload"
                 >
                   <X size={14} />

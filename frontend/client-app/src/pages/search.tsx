@@ -97,7 +97,7 @@ function SearchContent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search files, documents, and folders..."
-          className="w-full pl-12 pr-20 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent"
+          className="w-full pl-12 pr-20 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-otter-500 focus:border-transparent"
           autoFocus
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -204,7 +204,7 @@ function SearchResultRow({ result }: Readonly<{ result: SearchResult }>) {
     >
       <div
         className={cn(
-          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
           iconColor
         )}
       >

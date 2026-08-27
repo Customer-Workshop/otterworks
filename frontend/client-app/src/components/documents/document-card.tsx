@@ -41,7 +41,7 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid", onSta
         to={`/documents/${document.id}`}
         className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 rounded-lg transition group"
       >
-        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
           <FileText size={20} className="text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
@@ -67,7 +67,7 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid", onSta
         )}
         <button
           onClick={handleStarClick}
-          className="p-1 rounded hover:bg-gray-200 transition flex-shrink-0"
+          className="p-1 rounded hover:bg-gray-200 transition shrink-0"
           aria-label={starred ? "Unstar" : "Star"}
         >
           <Star
@@ -105,7 +105,7 @@ export function DocumentCard({ document, onDelete, onShare, view = "grid", onSta
       className="group relative flex flex-col rounded-xl border border-gray-200 bg-white hover:shadow-md transition overflow-hidden"
     >
       {/* Preview area */}
-      <div className="h-32 bg-gradient-to-br from-blue-50 to-otter-50 p-4 flex items-start">
+      <div className="h-32 bg-linear-to-br from-blue-50 to-otter-50 p-4 flex items-start">
         <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">
           {document.content
             ? document.content.replace(/<[^>]{0,2048}>/g, "").slice(0, 200)

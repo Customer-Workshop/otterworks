@@ -110,7 +110,7 @@ export function CollaborativeEditor({ documentId, initialContent, onUpdate }: Co
       editorProps: {
         attributes: {
           class:
-            "prose prose-sm max-w-none focus:outline-none min-h-[500px] px-8 py-6",
+            "prose prose-sm max-w-none focus:outline-hidden min-h-[500px] px-8 py-6",
         },
       },
       onUpdate: ({ editor: ed }) => {

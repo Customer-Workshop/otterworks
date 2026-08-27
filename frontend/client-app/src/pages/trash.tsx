@@ -109,7 +109,7 @@ function TrashContent() {
       {/* Warning banner */}
       {items.length > 0 && (
         <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
+          <AlertTriangle size={18} className="text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">
             Items in trash are automatically deleted after 30 days. Restore items to keep them.
           </p>
@@ -194,7 +194,7 @@ function TrashRow({
 
   return (
     <div className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition">
-      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
         <Icon size={20} className="text-gray-400" />
       </div>
       <div className="flex-1 min-w-0">

@@ -91,7 +91,7 @@ function SettingsContent() {
               id="name"
               type="text"
               {...register("displayName")}
-              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
             />
             {errors.displayName && (
               <p className="text-xs text-red-500 mt-1">{errors.displayName.message}</p>
@@ -106,7 +106,7 @@ function SettingsContent() {
               id="email"
               type="email"
               {...register("email")}
-              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+              className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
             />
             {errors.email && (
               <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>

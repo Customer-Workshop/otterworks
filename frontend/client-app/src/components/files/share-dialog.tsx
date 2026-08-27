@@ -160,7 +160,7 @@ export function ShareDialog({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Add people by email"
-                    className="flex-1 px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
+                    className="flex-1 px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-otter-500 focus:border-transparent transition"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleShare();
                     }}
@@ -168,7 +168,7 @@ export function ShareDialog({
                   <select
                     value={permission}
                     onChange={(e) => setPermission(e.target.value as "view" | "edit")}
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-otter-500"
+                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-otter-500"
                   >
                     <option value="view">Viewer</option>
                     <option value="edit">Editor</option>
@@ -226,7 +226,7 @@ export function ShareDialog({
                             className="flex items-center justify-between py-2 group"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-otter-100 flex items-center justify-center text-xs font-medium text-otter-700 flex-shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-otter-100 flex items-center justify-center text-xs font-medium text-otter-700 shrink-0">
                                 {displayName.charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
@@ -238,7 +238,7 @@ export function ShareDialog({
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <div className="relative">
                                 <select
                                   value={user.permission === "edit" ? "edit" : "view"}
@@ -250,7 +250,7 @@ export function ShareDialog({
                                   }
                                   disabled={isUpdating || isRemoving}
                                   className={cn(
-                                    "appearance-none pl-2 pr-6 py-1 text-xs rounded-full border cursor-pointer focus:outline-none focus:ring-2 focus:ring-otter-500 bg-white",
+                                    "appearance-none pl-2 pr-6 py-1 text-xs rounded-full border cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-otter-500 bg-white",
                                     isUpdating
                                       ? "opacity-50 cursor-wait"
                                       : "border-gray-200 text-gray-600 hover:border-gray-300"
@@ -332,7 +332,7 @@ export function ShareDialog({
                       </p>
                     </div>
                     {linkAccess === "restricted" && (
-                      <Check size={16} className="text-otter-600 flex-shrink-0" />
+                      <Check size={16} className="text-otter-600 shrink-0" />
                     )}
                   </button>
                   <button
@@ -366,14 +366,14 @@ export function ShareDialog({
                       </p>
                     </div>
                     {linkAccess === "anyone" && (
-                      <Check size={16} className="text-otter-600 flex-shrink-0" />
+                      <Check size={16} className="text-otter-600 shrink-0" />
                     )}
                   </button>
                 </div>
 
                 {/* Copy link section */}
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                  <Link2 size={20} className="text-gray-400 flex-shrink-0" />
+                  <Link2 size={20} className="text-gray-400 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700 truncate">
                       {typeof window !== "undefined"
@@ -388,7 +388,7 @@ export function ShareDialog({
                   </div>
                   <button
                     onClick={handleCopyLink}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex-shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shrink-0"
                   >
                     {copied ? (
                       <>

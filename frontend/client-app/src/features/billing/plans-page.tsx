@@ -64,7 +64,7 @@ export default function BillingPlansPage() {
       {!isLoading && plans.length > 0 && (
         <ul className="grid gap-4 md:grid-cols-3" aria-label="Available plans">
           {plans.map((plan) => (
-            <li key={plan.plan_id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <li key={plan.plan_id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
               <h2 className="text-xl font-semibold">{plan.code}</h2>
               <p className="mt-1 text-sm text-gray-600">{plan.tier}</p>
               <p className="mt-4 text-2xl font-bold">${plan.monthly_fee}<span className="text-sm font-normal"> / month</span></p>

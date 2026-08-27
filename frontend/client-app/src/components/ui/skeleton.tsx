@@ -27,7 +27,7 @@ export function FileCardSkeleton() {
 export function FileListRowSkeleton() {
   return (
     <div className="flex items-center gap-4 px-4 py-2.5">
-      <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+      <Skeleton className="w-10 h-10 rounded-lg shrink-0" />
       <Skeleton className="h-4 flex-1 max-w-[200px]" />
       <Skeleton className="h-3 w-24 hidden sm:block" />
       <Skeleton className="h-3 w-16 hidden sm:block" />

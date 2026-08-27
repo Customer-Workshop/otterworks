@@ -129,7 +129,7 @@ function DocumentEditorContent() {
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 flex-shrink-0"
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 shrink-0"
           >
             <ArrowLeft size={20} />
           </button>
@@ -149,7 +149,7 @@ function DocumentEditorContent() {
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="text-xl font-bold text-gray-900 bg-transparent border-b-2 border-otter-500 outline-none flex-1 min-w-0"
+              className="text-xl font-bold text-gray-900 bg-transparent border-b-2 border-otter-500 outline-hidden flex-1 min-w-0"
               autoFocus
             />
           ) : (
@@ -223,7 +223,7 @@ function DocumentEditorContent() {
 
       {/* Share dialog */}
       {shareOpen && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900">Share document</h3>
             <button onClick={() => setShareOpen(false)} className="p-1 rounded hover:bg-gray-100 text-gray-400">
@@ -236,7 +236,7 @@ function DocumentEditorContent() {
               value={shareEmail}
               onChange={(e) => setShareEmail(e.target.value)}
               placeholder="Enter email address"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-otter-500"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-otter-500"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && shareEmail.trim() && shareStatus !== "sending") {
                   setShareStatus("sending");

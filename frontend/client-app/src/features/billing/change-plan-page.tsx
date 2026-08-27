@@ -116,7 +116,7 @@ export default function BillingChangePlanPage() {
       {!isLoading && !error && plans.length === 0 && <p>No plans are available.</p>}
       {!isLoading && plans.length > 0 && (
         <form
-          className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+          className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-xs"
           onSubmit={(event) => {
             event.preventDefault();
             submit();

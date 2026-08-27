@@ -15,10 +15,13 @@
 # dependency tree, and the report names it. A module whose candidates all fail is
 # reported unmeasured. `test` is the arguments appended to the resolved tool.
 modules:
-  # Both Maven modules pin JDK 11: their recorded transcripts include the
-  # ${script:javascript:...} lookup, which only resolves while the JVM still ships
-  # Nashorn (JDK <= 14). Measured on a newer JDK the script case would report a
-  # behavior change that never happened, so an absent JDK 11 must read as unmeasured.
+  # Both Maven modules' recorded transcripts include the ${script:javascript:...}
+  # lookup, which needs a JS engine on the JVM. legacy-portal therefore pins JDK 11,
+  # the last line that still ships Nashorn built in (JDK <= 14): measured on a newer
+  # JDK the script case would report a behavior change that never happened, so an
+  # absent JDK 11 must read as unmeasured. report-service is on Java 17 and cannot be
+  # compiled on 11 at all; it carries org.openjdk.nashorn:nashorn-core, so the script
+  # case resolves exactly as recorded and an absent JDK 17 is what reads as unmeasured.
   - id: report-service
     path: services/report-service
     build: maven

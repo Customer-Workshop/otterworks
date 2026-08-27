@@ -1,9 +1,3 @@
-buildscript {
-    configurations.configureEach {
-        resolutionStrategy.force("org.apache.commons:commons-lang3:3.20.0")
-    }
-}
-
 plugins {
     kotlin("jvm") version "2.2.20"
     kotlin("plugin.serialization") version "2.2.20"

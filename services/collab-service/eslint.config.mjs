@@ -17,11 +17,11 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",
-        globals: {
-          ...globals.node,
-          ...globals.jest,
-          ...globals.es2022,
-        },
+      },
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+        ...globals.es2022,
       },
     },
     plugins: {

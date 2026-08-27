@@ -35,6 +35,7 @@
         <!-- Commons Text 1.9 — report banner/footer interpolation. Version is fixed by the
              dependency-remediation lab (security/deps/advisory.yaml); do not bump here. -->
         <commons-text.version>1.9</commons-text.version>
+        <nashorn.version>15.4</nashorn.version>
     </properties>
 
     <dependencies>
@@ -97,6 +98,15 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${commons-lang3.version}</version>
+        </dependency>
+
+        <!-- JDK 15 removed the built-in Nashorn engine, which the report banner/footer
+             interpolation relies on for ${script:javascript:...} templates. Keeps that
+             behaviour identical on JDK 17; see security/deps/expected/report-service.json. -->
+        <dependency>
+            <groupId>org.openjdk.nashorn</groupId>
+            <artifactId>nashorn-core</artifactId>
+            <version>${nashorn.version}</version>
         </dependency>
 
         <!-- Commons Text — report banner and footer interpolation -->

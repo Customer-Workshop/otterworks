@@ -23,8 +23,8 @@ modules:
     path: services/report-service
     build: maven
     java_home:
-      - $JAVA_HOME_11_X64
-      - /usr/lib/jvm/java-11-openjdk-amd64
+      - $JAVA_HOME_17_X64
+      - /usr/lib/jvm/java-17-openjdk-amd64
     # No wrapper in this module; the `mvn` on PATH is what ci.yml uses for it too.
     test: -B test
     cases: cases/report-service.json

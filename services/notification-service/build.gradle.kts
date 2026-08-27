@@ -1,8 +1,8 @@
 plugins {
-    kotlin("jvm") version "1.9.23"
-    kotlin("plugin.serialization") version "1.9.23"
-    id("io.ktor.plugin") version "2.3.9"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    kotlin("jvm") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
+    id("io.ktor.plugin") version "3.2.3"
+    id("com.gradleup.shadow") version "8.3.8"
 }
 
 group = "com.otterworks"
@@ -16,12 +16,12 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "2.3.9"
-val awsSdkVersion = "1.0.70"
-val coroutinesVersion = "1.8.0"
-val koinVersion = "3.5.3"
+val ktorVersion = "3.2.3"
+val awsSdkVersion = "1.5.123"
+val coroutinesVersion = "1.10.2"
+val koinVersion = "4.1.1"
 val micrometerVersion = "1.12.4"
-val commonsTextVersion = "1.9"
+val commonsTextVersion = "1.10.0"
 
 dependencies {
     // Ktor Server
@@ -51,7 +51,7 @@ dependencies {
     implementation("org.apache.commons:commons-text:$commonsTextVersion")
 
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
     // Dependency Injection - Koin
@@ -74,9 +74,8 @@ dependencies {
     implementation("redis.clients:jedis:5.1.3")
 
     // Testing
-    testImplementation("io.ktor:ktor-server-tests-jvm:$ktorVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.23")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.20")
     testImplementation("io.mockk:mockk:1.13.10")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
     testImplementation("io.insert-koin:koin-test:$koinVersion")

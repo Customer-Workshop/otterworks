@@ -150,7 +150,8 @@ public class DynamoDbAuditRepository : IAuditRepository
                 scanRequest.ExclusiveStartKey = response.LastEvaluatedKey;
 
             response = await _dynamoDb.ScanAsync(scanRequest);
-            allEvents.AddRange(response.Items.Select(MapToAuditEvent));
+            if (response.Items is { Count: > 0 })
+                allEvents.AddRange(response.Items.Select(MapToAuditEvent));
         }
         while (response.LastEvaluatedKey?.Count > 0);
 
@@ -193,7 +194,8 @@ public class DynamoDbAuditRepository : IAuditRepository
                 scanRequest.ExclusiveStartKey = response.LastEvaluatedKey;
 
             response = await _dynamoDb.ScanAsync(scanRequest);
-            events.AddRange(response.Items.Select(MapToAuditEvent));
+            if (response.Items is { Count: > 0 })
+                events.AddRange(response.Items.Select(MapToAuditEvent));
         }
         while (response.LastEvaluatedKey?.Count > 0);
 
@@ -222,7 +224,8 @@ public class DynamoDbAuditRepository : IAuditRepository
                 scanRequest.ExclusiveStartKey = response.LastEvaluatedKey;
 
             response = await _dynamoDb.ScanAsync(scanRequest);
-            events.AddRange(response.Items.Select(MapToAuditEvent));
+            if (response.Items is { Count: > 0 })
+                events.AddRange(response.Items.Select(MapToAuditEvent));
         }
         while (response.LastEvaluatedKey?.Count > 0);
 
@@ -256,7 +259,8 @@ public class DynamoDbAuditRepository : IAuditRepository
                 scanRequest.ExclusiveStartKey = response.LastEvaluatedKey;
 
             response = await _dynamoDb.ScanAsync(scanRequest);
-            events.AddRange(response.Items.Select(MapToAuditEvent));
+            if (response.Items is { Count: > 0 })
+                events.AddRange(response.Items.Select(MapToAuditEvent));
         }
         while (response.LastEvaluatedKey?.Count > 0);
 

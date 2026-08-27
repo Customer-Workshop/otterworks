@@ -56,9 +56,12 @@ public class SnsConsumer : BackgroundService
 
                 var response = await _sqsClient.ReceiveMessageAsync(receiveRequest, stoppingToken);
 
-                foreach (var message in response.Messages)
+                if (response.Messages is { Count: > 0 })
                 {
-                    await ProcessMessageAsync(message, stoppingToken);
+                    foreach (var message in response.Messages)
+                    {
+                        await ProcessMessageAsync(message, stoppingToken);
+                    }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

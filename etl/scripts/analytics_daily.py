@@ -71,7 +71,7 @@ def main():
                 QueueUrl=sqs_queue_url,
                 MaxNumberOfMessages=batch_size,
                 WaitTimeSeconds=5,
-                AttributeNames=["All"],
+                MessageSystemAttributeNames=["All"],
                 MessageAttributeNames=["All"],
             )
             consecutive_errors = 0
@@ -230,7 +230,7 @@ def main():
         uploaded = df[df["eventType"] == "file_uploaded"]
         files_uploaded = len(uploaded)
         if "sizeBytes" in df.columns:
-            bytes_uploaded = int(uploaded["sizeBytes"].fillna(0).sum())
+            bytes_uploaded = int(pd.to_numeric(uploaded["sizeBytes"], errors="coerce").fillna(0).sum())
         if "fileId" in df.columns:
             active_files.update(uploaded["fileId"].dropna().unique())
 

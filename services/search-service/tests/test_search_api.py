@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import app.api.search as search_module
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -97,6 +99,30 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.get_json()
         assert len(data["suggestions"]) >= 1
+
+    def test_suggest_ranked_path_never_500(self, client, mock_meilisearch_client, monkeypatch):
+        """Ranked enrichment path returns 200 even when _rankingScore is absent."""
+        monkeypatch.setattr(search_module, "_chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 1,
+            "hits": [{"id": "doc-1", "title": "Test Document"}],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["query"] == "te"
+
+    def test_suggest_ranked_path_empty_index(self, client, mock_meilisearch_client, monkeypatch):
+        """Ranked enrichment path returns 200 with an empty index."""
+        monkeypatch.setattr(search_module, "_chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {"estimatedTotalHits": 0, "hits": []}
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
 
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""

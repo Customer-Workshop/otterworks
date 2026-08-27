@@ -1,4 +1,4 @@
-FROM gradle:8.6-jdk17 AS builder
+FROM gradle:9.7.1-jdk21 AS builder
 
 WORKDIR /app
 COPY build.gradle settings.gradle ./
@@ -8,7 +8,7 @@ RUN gradle dependencies --no-daemon || true
 COPY src ./src
 RUN gradle bootJar --no-daemon
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar

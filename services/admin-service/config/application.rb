@@ -14,7 +14,7 @@ require_relative '../app/middleware/jwt_authenticator'
 
 module AdminService
   class Application < Rails::Application
-    config.load_defaults 7.1
+    config.load_defaults 8.0
     config.api_only = true
 
     # Exclude middleware from Zeitwerk autoloading — it is manually

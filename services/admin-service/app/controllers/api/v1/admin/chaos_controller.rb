@@ -23,7 +23,7 @@ module Api
             return render json: {
               error:    'Invalid service/scenario combination',
               valid:    VALID_SCENARIOS,
-            }, status: :unprocessable_entity
+            }, status: :unprocessable_content
           end
 
           redis_key = "chaos:#{svc}:#{scenario}"

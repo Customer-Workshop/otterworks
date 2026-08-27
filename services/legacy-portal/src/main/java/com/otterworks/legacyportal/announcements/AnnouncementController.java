@@ -1,11 +1,11 @@
 package com.otterworks.legacyportal.announcements;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

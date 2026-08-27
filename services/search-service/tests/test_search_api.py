@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -94,6 +96,23 @@ class TestSuggestEndpoint:
         }
 
         response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["suggestions"]) >= 1
+
+    def test_suggest_with_ranking_enrichment_missing_score(self, client, mock_meilisearch_client):
+        """Ranking enrichment must not 500 when _rankingScore is absent."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Test Doc 1"},
+                {"title": "Test Doc 2"},
+            ],
+        }
+
+        with patch("app.api.search._chaos_active", return_value=True):
+            response = client.get("/api/v1/search/suggest?q=te")
         assert response.status_code == 200
         data = response.get_json()
         assert len(data["suggestions"]) >= 1

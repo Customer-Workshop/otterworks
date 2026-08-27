@@ -1,9 +1,9 @@
 package com.otterworks.analytics.api
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity}
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 import com.otterworks.analytics.model.*
 import com.otterworks.analytics.model.MarketJsonProtocol.{*, given}
 import com.otterworks.analytics.repository.MarketRepository

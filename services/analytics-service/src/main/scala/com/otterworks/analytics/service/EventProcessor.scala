@@ -1,7 +1,7 @@
 package com.otterworks.analytics.service
 
-import akka.actor.typed.ActorSystem
-import akka.stream.scaladsl.{Sink, Source}
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import com.otterworks.analytics.config.{AppConfig, SqsConfig}
 import org.slf4j.LoggerFactory
 import io.circe.parser.decode

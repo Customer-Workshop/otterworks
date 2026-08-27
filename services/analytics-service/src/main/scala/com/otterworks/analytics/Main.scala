@@ -1,10 +1,10 @@
 package com.otterworks.analytics
 
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives.*
-import akka.http.scaladsl.server.Route
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.server.Directives.*
+import org.apache.pekko.http.scaladsl.server.Route
 import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes, MarginRoutes, MarketIngestRoutes}
 import com.otterworks.analytics.batch.MarketSeeder
 import com.otterworks.analytics.config.AppConfig
@@ -68,7 +68,7 @@ object Main:
       case None =>
         pathPrefix("api" / "v1" / "analytics" / ("margins" | "market")) {
           complete(
-            akka.http.scaladsl.model.StatusCodes.ServiceUnavailable,
+            org.apache.pekko.http.scaladsl.model.StatusCodes.ServiceUnavailable,
             "margins/market endpoints require the durable PostgreSQL store")
         }
 

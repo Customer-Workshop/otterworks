@@ -16,7 +16,7 @@
   </appender>
 
   <logger name="com.otterworks.analytics" level="DEBUG"/>
-  <logger name="akka" level="INFO"/>
+  <logger name="org.apache.pekko" level="INFO"/>
   <logger name="slick" level="INFO"/>
 
   <root level="INFO">

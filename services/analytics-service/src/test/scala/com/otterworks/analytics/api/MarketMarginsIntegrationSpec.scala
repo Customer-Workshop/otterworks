@@ -1,8 +1,8 @@
 package com.otterworks.analytics.api
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import com.otterworks.analytics.batch.MarketSeeder
 import com.otterworks.analytics.config.PostgresConfig
@@ -137,7 +137,7 @@ class MarketMarginsIntegrationSpec
 
   private def routes =
     val (_, r, svc) = requireStack()
-    akka.http.scaladsl.server.Directives.concat(
+    org.apache.pekko.http.scaladsl.server.Directives.concat(
       MarginRoutes(svc, r).routes,
       MarketIngestRoutes(svc, r).routes,
     )

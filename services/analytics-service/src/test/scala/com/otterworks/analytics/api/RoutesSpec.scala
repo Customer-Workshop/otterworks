@@ -1,9 +1,9 @@
 package com.otterworks.analytics.api
 
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
-import akka.http.scaladsl.server.Directives.concat
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import org.apache.pekko.http.scaladsl.server.Directives.concat
+import org.apache.pekko.http.scaladsl.testkit.ScalatestRouteTest
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
 import com.otterworks.analytics.config.PostgresConfig
 import com.otterworks.analytics.model.*
 import com.otterworks.analytics.model.AnalyticsEventJsonProtocol.{*, given}

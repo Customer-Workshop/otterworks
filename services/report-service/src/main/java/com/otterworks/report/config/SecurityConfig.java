@@ -1,43 +1,40 @@
 package com.otterworks.report.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-// LEGACY: WebSecurityConfigurerAdapter removed in Spring Security 6.
-// Upgrade target: SecurityFilterChain @Bean method
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
 /**
- * Security configuration using the deprecated WebSecurityConfigurerAdapter pattern.
+ * Security configuration.
  *
- * UPGRADE NOTES:
- * - Replace extends WebSecurityConfigurerAdapter with a @Bean SecurityFilterChain method
- * - Replace antMatchers() with requestMatchers()
- * - Replace authorizeRequests() with authorizeHttpRequests()
- * - Move from javax.servlet to jakarta.servlet
+ * Same rules as before the Spring Security 6 migration: stateless sessions, CSRF
+ * off (no cookie-based auth), and health/metrics/actuator, the OpenAPI endpoints
+ * and the report API permitted. The OpenAPI paths moved from SpringFox's
+ * /v2/api-docs and /swagger-resources to springdoc's /v3/api-docs.
  */
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        // LEGACY: Uses deprecated antMatchers() and authorizeRequests()
-        // Upgrade: requestMatchers() and authorizeHttpRequests()
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http // nosemgrep: java.spring.security.audit.spring-csrf-disabled.spring-csrf-disabled
-            .csrf().disable()
-            .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            .and()
-            .authorizeRequests()
-                .antMatchers("/health", "/metrics", "/actuator/**").permitAll()
-                .antMatchers("/swagger-ui/**", "/swagger-resources/**", "/v2/api-docs/**").permitAll()
-                .antMatchers("/api/v1/reports/**").permitAll()  // TODO: Add JWT validation
-            .and()
-            .headers()
-                .frameOptions().deny()
-                .contentTypeOptions().and()
-                .xssProtection().block(true);
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/health", "/metrics", "/actuator/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/api/v1/reports/**").permitAll())  // TODO: Add JWT validation
+            .headers(headers -> headers
+                .frameOptions(frameOptions -> frameOptions.deny())
+                .contentTypeOptions(Customizer.withDefaults())
+                .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK)));
+
+        return http.build();
     }
 }

@@ -116,7 +116,7 @@ OtterWorks is a collaborative file storage and document editing platform (functi
 - **Key Patterns**: ActiveRecord, ActiveAdmin gem, Pundit authorization, Sidekiq background jobs, RSpec testing
 
 ### 10. Audit Service (`services/audit-service/`)
-- **Language**: C# 12
+- **Language**: C# 14
 - **Framework**: ASP.NET 10 Minimal API
 - **Database**: DynamoDB (audit events), S3 (long-term archive)
 - **Purpose**: Immutable audit trail for all user and system actions. Compliance reporting, data retention policies, GDPR data export/deletion tracking.

@@ -15,8 +15,9 @@ import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { setupWSConnection } = require('y-websocket/bin/utils');
+const setupWSConnection = import('@y/websocket-server/utils').then(
+  ({ setupWSConnection }) => setupWSConnection,
+);
 
 const config = loadConfig();
 
@@ -130,8 +131,10 @@ const collabManager = setupCollaborationHandlers(
 // y-websocket server for TipTap/Yjs collaborative editing
 const wss = new WebSocketServer({ noServer: true });
 wss.on('connection', (conn, req) => {
-  setupWSConnection(conn, req);
-  logger.info({ url: req.url }, 'y-websocket_client_connected');
+  setupWSConnection.then((setup) => {
+    setup(conn, req);
+    logger.info({ url: req.url }, 'y-websocket_client_connected');
+  });
 });
 
 // Route WebSocket upgrades: Socket.IO paths go to Socket.IO, all others to y-websocket

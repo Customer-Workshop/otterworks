@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import type { Socket } from 'socket.io';
-import type { ExtendedError } from 'socket.io/dist/namespace';
+import type { ExtendedError } from 'socket.io';
 import type { Logger } from 'pino';
 
 export interface AuthenticatedUser {

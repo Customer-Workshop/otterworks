@@ -46,5 +46,5 @@ are referenced via `secretKeyRef` (never placed on argv).
 
 ## Docker
 
-Multi-stage `Dockerfile` (node:20-alpine, `output: 'standalone'`) builds a minimal runnable
+Multi-stage `Dockerfile` (node:24-alpine, `output: 'standalone'`) builds a minimal runnable
 image serving on port 3000.

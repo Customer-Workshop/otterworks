@@ -117,7 +117,7 @@ OtterWorks is a collaborative file storage and document editing platform (functi
 
 ### 10. Audit Service (`services/audit-service/`)
 - **Language**: C# 12
-- **Framework**: ASP.NET 8 Minimal API
+- **Framework**: ASP.NET 10 Minimal API
 - **Database**: DynamoDB (audit events), S3 (long-term archive)
 - **Purpose**: Immutable audit trail for all user and system actions. Compliance reporting, data retention policies, GDPR data export/deletion tracking.
 - **Port**: 8090

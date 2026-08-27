@@ -84,9 +84,16 @@ impl ResponseError for ServiceError {
             ),
         };
 
+        let message = if status.is_server_error() {
+            tracing::error!(error = %self, "Internal service error");
+            format!("{} (see service logs for details)", error_type)
+        } else {
+            self.to_string()
+        };
+
         HttpResponse::build(status).json(ErrorResponse {
             error: error_type.to_string(),
-            message: self.to_string(),
+            message,
         })
     }
 }

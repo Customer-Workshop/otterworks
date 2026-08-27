@@ -12,7 +12,7 @@ Uses `dorny/paths-filter` for **change detection** — only services with modifi
 
 | Service | Language | CI Steps | Status |
 |---------|----------|----------|--------|
-| api-gateway | Go 1.22 | `go vet`, `go test -race`, `go build` | Passing |
+| api-gateway | Go 1.26 | `go vet`, `go test -race`, `go build` | Passing |
 | auth-service | Java 17 (Gradle) | `gradle check` | Passing |
 | file-service | Rust (stable) | `cargo fmt --check`, `cargo clippy`, `cargo test`, `cargo build --release` | Passing |
 | document-service | Python 3.12 (Poetry) | `ruff check`, `pytest --cov` | Passing |

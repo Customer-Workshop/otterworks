@@ -143,7 +143,7 @@ Required GitHub Actions secrets:
 
 | Service | Language | Manifest | Scan Target |
 |---------|----------|----------|-------------|
-| api-gateway | Go 1.22 | `go.mod` | Go modules |
+| api-gateway | Go 1.26 | `go.mod` | Go modules |
 | auth-service | Java 17 | `build.gradle` | Gradle dependencies |
 | file-service | Rust | `Cargo.toml` | Cargo crates |
 | document-service | Python 3.12 | `pyproject.toml` | Poetry packages |

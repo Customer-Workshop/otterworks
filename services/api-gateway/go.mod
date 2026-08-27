@@ -1,6 +1,8 @@
 module github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway
 
-go 1.22
+go 1.26
+
+toolchain go1.26.7
 
 require (
 	github.com/go-chi/chi/v5 v5.0.12

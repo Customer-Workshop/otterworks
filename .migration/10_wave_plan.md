@@ -67,12 +67,15 @@ The finance report is the only consumer we can actually see, so it is the closes
 business-recognisable acceptance test. It is also a PII egress point: gold must carry no unmasked
 `CUSTOMER_MASTER` column, and a PR that copies cleartext PII into gold or an export is rejected.
 
-## Fan-out shape (STOP C)
+## Fan-out shape (STOP C — approved)
 
-| Wave | Units | Concurrency possible | Constraint |
+Wave 1 runs at **width 4**: all four bronze units concurrently (customer STOP C decision,
+2026-08-28). Waves 2–4 stay serial; that is a correctness constraint, not a width choice.
+
+| Wave | Units | Concurrency | Constraint |
 | --- | --- | --- | --- |
 | 0 | 1 (parent) | serial | everything depends on it |
-| 1 | 4 | up to 4 | disjoint write targets |
+| 1 | 4 | **4 (approved)** | disjoint write targets |
 | 2 | 2 | serial (rating → invoicing) | pilot, fixed at intake |
 | 3 | 1 | serial | shares `SUBSCRIPTIONS` with wave 4 |
 | 4 | 1 | serial | write-target collision |
@@ -86,9 +89,14 @@ Halt conditions, in every wave: a write-target collision, a systematic failure (
 entry wrong in more than one unit), or a quarantine rate above 5% of source rows. Each wave is
 reconciled independently; a green rollup does not substitute for a per-unit `*.recon.json`.
 
+What width 4 costs, recorded so it is not a surprise later: four children land at once against a
+dictionary that has not yet met real data, so a wrong dictionary entry is discovered four times
+in parallel instead of once. The mitigation is wave 0, not narrower fan-out — the dictionary, the
+per-unit contracts, and the capability manifest are all landed and approved before any of the four
+start, and a systematic failure halts the whole wave rather than being patched per unit.
+
 ## Unresolved, and deliberately so
 
-- **STOP C** — fan-out width for wave 1, plus the schedule and dependency approval. Customer's call.
 - **STOP E** — cutover authorization and how long the Oracle source stays readable through
   federation afterwards. With the consumer population declared unmapped and no audit observation
   window (D4-2), source retention is the only remaining hedge against a reader nobody knew about.

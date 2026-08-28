@@ -41,7 +41,10 @@ planning prose where both exist.
 | Semantic dictionary | **PROPOSED** — resolve Oracle semantics once in the dictionary before child fan-out; child PRs may consume but not redefine those decisions. |
 | Opening hazard agenda | **FACT** — address string dates, `NVL`/`DECODE`, `TO_DATE`, `ROWNUM`, `WHEN OTHERS THEN NULL`, EAV, 155/158-column tables, and unprecisioned `NUMBER` first (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:107-118`). |
 | Date policy | **FACT** — unparseable `VARCHAR2(9)` dates quarantine the row, continue the load, and count the quarantine in recon (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:155-156`). |
-| SQL drift rules | **PROPOSED** — reject a PR for `DOUBLE` money, per-child Oracle semantic reinterpretation, untyped `NUMBER`, an MV/view in place of the declared gold Delta table, an unhandled hazard, or silent exception swallowing. |
+| History tables | **FACT** — existing `CUSTOMER_MASTER_HIST` and `SUBSCRIPTIONS_HIST` rows migrate as first-class data; their trigger capture is retired in the target. `HIST_DT` is a `DD-MON-YY HH24:MI:SS` string subject to the same quarantine rule, and `HIST_OP` carries `UPD`/`DEL` (`services/legacy-billing/db/oracle/schema/01_tables.sql:189-223`; `services/legacy-billing/db/oracle/schema/02_horror.sql:358-374`; `.migration/06_decisions.md:18`). |
+| History boundary | **FACT** — a deleted customer's last known state may exist only in `_HIST`; Delta history starts at the first target run and cannot reconstruct pre-cutover change history (`services/legacy-billing/db/oracle/schema/01_tables.sql:206-223`; `services/legacy-billing/db/oracle/schema/02_horror.sql:358-374`; `.migration/06_decisions.md:18`). |
+| Forward-looking trigger rules | **FACT** — make `trg_sub_no_uncancel`, `trg_usage_events_check`, `trg_customer_master_seq`, `trg_entity_attr_value_seq`, and `trg_billing_audit_log_id` explicit, tested dictionary/pipeline logic (`services/legacy-billing/db/oracle/schema/01_tables.sql:168-187,226-253`; `services/legacy-billing/db/oracle/schema/02_horror.sql:346-355,391-399`; `.migration/06_decisions.md:19`). |
+| SQL drift rules | **PROPOSED** — reject a PR for `DOUBLE` money, per-child Oracle semantic reinterpretation, untyped `NUMBER`, an MV/view in place of the declared gold Delta table, an unhandled hazard, silent exception swallowing, a newly written `_HIST` table, dropped `_HIST` data, or an omitted forward-looking trigger rule. |
 
 ## PIPELINE profile
 
@@ -52,9 +55,11 @@ planning prose where both exist.
 | Refresh mode | **PROPOSED** — use incremental processing where a reliable key exists, otherwise full refresh; each unit must state its choice. |
 | Invalid data | **FACT** — reject/quarantine rows into a rescue table, never drop them or silently null them (`.migration/03_recon_tolerances.md:25-38`). |
 | Quarantine accounting | **FACT** — compare both sides over the same population and report quarantine beside money comparisons (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:162-167`). |
+| History migration | **FACT** — migrate `_HIST` tables as first-class tables, including `HIST_DT` string-date quarantine and `UPD`/`DEL` operation semantics; do not write `_HIST` tables going forward. Delta history begins at the first target run and is not pre-cutover history (`services/legacy-billing/db/oracle/schema/01_tables.sql:189-223`; `services/legacy-billing/db/oracle/schema/02_horror.sql:358-374`; `.migration/06_decisions.md:18`). |
+| Forward-looking rules | **FACT** — encode and test the five remaining trigger rules in pipeline logic: cancelled status 30 cannot be changed; usage units must be positive and `kind_cd` must exist in `CODES` for `USAGE_KIND`; sequence/derived-column behavior populates `cust_seq_no`, `cust_name_upper`, `row_version_no`, `eav_id`, and `log_id` (`services/legacy-billing/db/oracle/schema/01_tables.sql:168-187,226-253`; `services/legacy-billing/db/oracle/schema/02_horror.sql:346-355,391-399`; `.migration/06_decisions.md:19`). |
 | Logging | **PROPOSED** — structured job logging replaces `/var/log/etl/*.log`; failures remain visible and attributable. |
 | Exceptions | **FACT** — no equivalent of `WHEN OTHERS THEN NULL`; swallowed failures are a migration hazard (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:117-118`; `services/legacy-billing/db/oracle/schema/04_jobs.sql:19-28`). |
-| Pipeline drift rules | **PROPOSED** — reject a PR for non-idempotent restart behavior, an unstated refresh mode, missing rescue/count accounting, silent drops/nulling, unstructured-only logs, or swallowed exceptions. |
+| Pipeline drift rules | **PROPOSED** — reject a PR for non-idempotent restart behavior, an unstated refresh mode, missing rescue/count accounting, silent drops/nulling, unstructured-only logs, swallowed exceptions, writing `_HIST` tables, dropping `_HIST` data as audit noise, or silently omitting any of the five forward-looking trigger rules even when recon is green. |
 
 ## ORCHESTRATION profile
 
@@ -94,11 +99,11 @@ planning prose where both exist.
 |---|---|
 | Coexistence | **FACT** — federation-first via Lakehouse Federation over JDBC to Oracle; customer-approved and recon mode is `LIVE` (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:138-145,153-154`). |
 | Dual-write | **PROPOSED** — no dual-write. |
-| PII | **FACT** — `CUSTOMER_MASTER` carries PII (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:226-230`). |
-| Access control | **PROPOSED** — confirm masking and least privilege at STOP A. |
+| PII | **FACT** — `CUSTOMER_MASTER` carries PII, and real values land in bronze/silver under the approved mask-on-read policy (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:226-230`; `.migration/06_decisions.md:17`). |
+| Access control | **FACT** — Unity Catalog column masks restrict cleartext to the migration principal; assessment and cutover principals remain masked (`.migration/06_decisions.md:17`). |
 | Source retention | **FACT** — post-cutover Oracle retention/decommissioning is an open STOP E decision (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:255-259`). |
 | Dependency access | **FACT** — targeted grants replaced `SELECT_CATALOG_ROLE`; AWR was deliberately not granted (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:178-194`). |
-| Data/dependency drift rules | **PROPOSED** — reject a PR for a non-LIVE recon claim, dual-write, unapproved PII exposure, broad catalog grants, or a source-retention assumption presented as settled. |
+| Data/dependency drift rules | **PROPOSED** — reject a PR for a non-LIVE recon claim, dual-write, unapproved PII exposure, any PII column without a mask, unmasked PII copied into gold or an export, broad catalog grants, or a source-retention assumption presented as settled. |
 
 ## Cross-profile reconciliation
 
@@ -107,10 +112,11 @@ planning prose where both exist.
 - **PROPOSED** — pipeline and orchestration jobs must publish the namespace and structured run identifiers used by the recon report; consumer exports must read the same gold tables that recon checks.
 - **PROPOSED** — SQL dictionary decisions control both pipeline typing and consumer aggregates; a child may not pass recon by changing a consumer-facing semantic independently.
 
-## Open questions for STOP A and downstream stops
+## Open questions for downstream stops
 
-1. **PROPOSED — STOP A:** confirm masking and least-privilege rules for PII in `CUSTOMER_MASTER`.
-2. **PROPOSED — STOP A:** confirm the existing serverless SQL warehouse name/data source and migration-principal scope.
-3. **FACT — STOP B:** pipeline choice remains downstream; each unit must declare full refresh or incremental mode (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:255-260`).
-4. **FACT — STOP E:** decide how long Oracle remains readable over federation after cutover (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:255-259`).
-5. **FACT — accepted risk:** do not reopen consumer observation as a gate; D4-2 is closed by customer decision (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:196-224`).
+The STOP A decisions are resolved in `.migration/06_decisions.md:17-21`; only these
+downstream decisions remain open:
+
+1. **FACT — STOP B:** pipeline choice; each unit must declare full refresh or incremental mode (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:255-261`).
+2. **FACT — STOP C:** fan-out width for waves after the pilot (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:260-261`).
+3. **FACT — STOP E:** decide how long Oracle remains readable over federation after cutover (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:255-259`).

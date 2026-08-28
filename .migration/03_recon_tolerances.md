@@ -47,7 +47,7 @@ money mismatch even when every converted expression is correct. Therefore:
    loaded row count must equal the source row count exactly.
 4. **A load that quarantines every row fails loudly.** Quarantine rate above 5% of a
    unit's source rows halts the unit and escalates rather than reporting green on a small
-   surviving population. (PROPOSED threshold.)
+   surviving population. (FACT (customer-confirmed 2026-08-28).)
 
 ## Recon economics
 

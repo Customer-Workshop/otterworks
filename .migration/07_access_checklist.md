@@ -94,7 +94,7 @@ demo	setup-ok
 | Tier | Status and access model |
 |---|---|
 | Assessment principal | **PROPOSED** — metadata/read-only access to the in-scope Oracle schema and target metadata. |
-| Migration principal | **PROPOSED** — sandbox write plus legacy read-only scoped to in-scope schemas; no legacy DDL/DML and no production-catalog grants. |
+| Migration principal | **FACT** — sandbox write plus legacy read-only scoped to in-scope schemas; no legacy DDL/DML and no production-catalog grants. This is the only principal exempt from Unity Catalog column masks when cleartext is required (`.migration/06_decisions.md:17`). |
 | Cutover principal | **PROPOSED** — customer-held production repoint rights, used once at STOP E. |
 | Secret names | **PROPOSED** — assessment: `DATABRICKS_DEMO_HOST`, `DATABRICKS_DEMO_TOKEN`; migration: `DATABRICKS_DEMO_HOST`, `DATABRICKS_DEMO_TOKEN`, plus only approved `ow_tp` secret keys; cutover: customer-held repoint credential name. Values are never documented. |
 | Attribution | **FACT** — activity must be attributable per session through the customer's own audit tables; the unified audit surface is readable after D10-1, but no observation window is authorized (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:178-224`). |

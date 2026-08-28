@@ -3,12 +3,15 @@
 Evidence below records the commands actually run and their output. Secret values are
 never printed or stored. The Oracle container was reused and remains running.
 
+Evidence rule: commands reference credentials by environment variable or secret name,
+never by value, so evidence files stay safe to paste into a PR.
+
 ## Probe 1 — Oracle read as `OW_BILLING`: WORKS
 
 **Command:**
 
 ```sh
-docker exec -i otterworks-oracle-billing-oracle-billing-1 bash -lc "sqlplus -s ow_billing/ow_billing@localhost:1521/FREEPDB1" <<'SQL'
+docker exec -e OW_BILLING_USER -e OW_BILLING_PASSWORD -i otterworks-oracle-billing-oracle-billing-1 bash -lc 'sqlplus -s "$OW_BILLING_USER/$OW_BILLING_PASSWORD@localhost:1521/FREEPDB1"' <<'SQL'
 SET PAGESIZE 100
 SET HEADING ON
 SELECT COUNT(*) AS customer_master_count FROM customer_master;
@@ -16,6 +19,9 @@ SELECT COUNT(*) AS v_sql_count FROM v$sql;
 EXIT;
 SQL
 ```
+
+The fixture credential is defined in `docker-compose.oracle-billing.yml:26` and is a
+local fixture default, not a managed secret.
 
 **Actual output:**
 

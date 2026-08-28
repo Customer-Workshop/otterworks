@@ -56,21 +56,23 @@ findings:
   - id: OW-UI-102
     title: Settings page calls a route that does not exist
     severity: high
-    status: open
+    status: remediated
     source: docs/exploratory-qa-report.md
     routes: [/settings]
     symptom: >
       The settings form renders and appears functional, but GET
       /api/v1/settings returns 404, so nothing is loaded from or persisted to
-      the backend and the user gets no error.
+      the backend and the user gets no error. By the time the finding was
+      worked, GET/PATCH /api/v1/settings existed and answered 200; the
+      expectation was still violated on the same page by the profile form,
+      which saved via PATCH /api/v1/auth/profile while the backend only
+      exposes PUT — every save answered 500 and the input was silently
+      discarded with no error shown.
     expected: >
       Either the settings surface is backed by a real endpoint, or the
       backend-backed controls are disabled with a visible explanation. A form
       that silently discards input is the defect.
     spec: e2e/ui-defects/ow-ui-102.spec.ts
-    accepted_console_errors:
-      - url_pattern: /api/v1/settings
-        status: 404
 
   - id: OW-UI-103
     title: Text file detail page never shows the file contents

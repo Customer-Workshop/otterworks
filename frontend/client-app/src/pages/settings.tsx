@@ -127,6 +127,11 @@ function SettingsContent() {
           {profileMutation.isSuccess && (
             <p className="text-sm text-green-600">Profile updated successfully.</p>
           )}
+          {profileMutation.isError && (
+            <p className="text-sm text-red-600">
+              Could not save your profile. Please try again.
+            </p>
+          )}
         </form>
       </section>
 

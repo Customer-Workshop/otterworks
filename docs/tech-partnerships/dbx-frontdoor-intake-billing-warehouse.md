@@ -145,18 +145,37 @@ use the existing serverless SQL warehouse and do not touch unprefixed objects.
 
 ## 6. Customer decisions and remaining dependency
 
-Both intake blockers are **resolved** (customer, 2026-08-28):
+Decisions taken by the customer at intake (2026-08-28):
 
 | ID | Item | Answer |
 |---|---|---|
 | ~~OPEN-1~~ | Estate scope | **`OW_BILLING` only.** `COMMISSION_DW` (star schema + PL/SQL ETL + MV under `services/industry-solutions/insurance/db/olap/`) is **out of scope** for this run — not deferred into a wave of it, simply not in this run's inventory. |
 | ~~OPEN-2~~ | JDBC path Databricks → Oracle for Lakehouse Federation | **Approved.** Recon mode LIVE; federation-first coexistence stands (§5). |
+| TOL-1 | Money comparison tolerance | **Exact to the cent.** Any difference on a `NUMBER(14,2)` amount fails recon — no epsilon, no relative tolerance on totals. Sets the target type to `DECIMAL(14,2)` and forbids any double-precision path through rating or invoicing. |
+| TOL-2 | Unparseable `VARCHAR2(9)` date values | **Quarantine the row, continue the load, count quarantined rows in recon.** Quarantine counts are recon output, not a warning to be swallowed; a load that quarantines everything must fail loudly rather than report success on zero rows. |
+| PILOT-1 | Pilot composition | **`PKG_RATING` + `PKG_INVOICING` only — 2 units**, well under the width cap. Deliberately the hardest units first: they are the critical path and the slowest-converting, so the pilot's feedback is worth the most before fan-out. |
+| D4-1 | Consumer population | **Declared UNMAPPED by the customer.** Nothing is known to read `OW_BILLING` beyond the batch chain and the finance report, and nothing rules others out either. |
+
+TOL-1 and TOL-2 interact, and the chain must not lose the interaction: money is compared
+exactly, but rows can be quarantined for an unrelated bad date. A quarantined row removes
+its amounts from the target totals, so **recon must compare money over the same row
+population on both sides** (source minus quarantined, versus target) or every quarantine
+will present as a money mismatch. State the quarantine count alongside every money
+comparison.
+
+**D4-1 is a declared coverage gap, not a task.** With no query history (§3) and the
+consumer population declared unmapped, no sweep in this run can prove who reads the
+estate. Per the contract policy, that must be written into the contract as an explicit
+coverage gap up front and surfaced at cutover authorization — not discovered at rollup,
+and never quietly converted into "no consumers found". Concretely, this means cutover
+carries an unquantified risk of breaking an unknown reader, and the D10-1 grant plus an
+observation window on `unified_audit_trail` is the only thing that would narrow it.
 
 Still open, and the one thing the chain must carry forward:
 
 | ID | Item | Impact if unresolved |
 |---|---|---|
-| D10-1 | Catalog/workload grant for the migration identity (`SELECT_CATALOG_ROLE`, or targeted `SELECT` on `V$SQL`, `V$ACTIVE_SESSION_HISTORY`, `UNIFIED_AUDIT_TRAIL`) | D4 consumer sweep runs on artifact evidence only; see §3. Note this is a *partial* mitigation even when granted — AWR has no rows to grant access to. |
+| D10-1 | Catalog/workload grant for the migration identity (`SELECT_CATALOG_ROLE`, or targeted `SELECT` on `V$SQL`, `V$ACTIVE_SESSION_HISTORY`, `UNIFIED_AUDIT_TRAIL`) | D4 consumer sweep runs on artifact evidence only; see §3. Note this is a *partial* mitigation even when granted — AWR has no rows to grant access to. Raised in priority by D4-1: with the consumer population unmapped, the audit trail is the only remaining way to observe real readers. Owner (Oracle DBA) not yet named. |
 
 `OW_BILLING` holds only `CREATE SESSION/TABLE/VIEW/PROCEDURE/TRIGGER/SEQUENCE/TYPE/JOB`
 (probe P13) — no catalog role, which is exactly the D10-1 gap.
@@ -181,17 +200,19 @@ Settled here — do **not** re-ask any of it at STOP A:
 - Source catalog access confirmed; target capability proven by preflight (§2, §5).
 - No view layer; unit mix is procedural (§2, §5).
 - No dialect skill; generic ANSI plus a wave-0 build item (§4).
-- Family defaults, complexity weighting, and the pilot candidates (§5).
+- Family defaults and complexity weighting (§5).
+- Tolerances: money exact to the cent, unparseable dates quarantined and counted (§6).
+- Pilot: `PKG_RATING` + `PKG_INVOICING`, 2 units (§6).
+- D4 consumer population declared unmapped — carry as a contract coverage gap (§6).
 - Baseline volumes for recon reference (§7).
 
 Still to be decided downstream, by the party named:
 
-- **D10-1** (customer): the catalog/workload grant. Setup should put it on the access
-  checklist; it is not a blocker for ingest, only a quality ceiling on D4.
-- **Tolerances** (STOP A): must be set knowing money is `NUMBER(14,2)` and dates are
-  strings — exact-match on money, and an explicit unparseable-date policy.
-- **Pipeline choice** (STOP B) and **plan/fan-out width** (STOP C): user's call, unchanged
-  by this intake. Pilot width ≤ 5, and rating/invoicing should be in the pilot (§5).
+- **D10-1 owner** (customer): who on the Oracle side actions the catalog grant. Setup puts
+  it on the access checklist; not a blocker for ingest, but with D4-1 unmapped it is the
+  only lever left on consumer risk.
+- **Pipeline choice** (STOP B) and **fan-out width for the waves after the pilot**
+  (STOP C): user's call, unchanged by this intake.
 
 No inventory, analysis, or conversion was performed in this session, per the front-door
 scope.

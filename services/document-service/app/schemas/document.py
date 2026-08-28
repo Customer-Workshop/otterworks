@@ -9,6 +9,12 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentCreate(BaseModel):
+    """Create (POST). ``owner_id`` is never trusted as the owner: the owner is
+    derived from the authenticated caller and a value naming anyone else is refused.
+    """
+
+    model_config = {"extra": "forbid"}
+
     title: str = Field(..., min_length=1, max_length=500)
     content: str = Field(default="")
     content_type: str = Field(default="text/markdown")
@@ -19,6 +25,8 @@ class DocumentCreate(BaseModel):
 class DocumentUpdate(BaseModel):
     """Full replace (PUT)."""
 
+    model_config = {"extra": "forbid"}
+
     title: str = Field(..., min_length=1, max_length=500)
     content: str = Field(default="")
     content_type: str = Field(default="text/markdown")
@@ -27,6 +35,8 @@ class DocumentUpdate(BaseModel):
 
 class DocumentPatch(BaseModel):
     """Partial update (PATCH)."""
+
+    model_config = {"extra": "forbid"}
 
     title: str | None = Field(None, min_length=1, max_length=500)
     content: str | None = None
@@ -125,6 +135,12 @@ class TemplateResponse(BaseModel):
 
 
 class DocumentFromTemplate(BaseModel):
+    """Instantiate a template. ``owner_id`` follows the same rule as
+    :class:`DocumentCreate`: it may only name the authenticated caller.
+    """
+
+    model_config = {"extra": "forbid"}
+
     title: str = Field(..., min_length=1, max_length=500)
-    owner_id: UUID
+    owner_id: UUID | None = None
     folder_id: UUID | None = None

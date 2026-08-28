@@ -260,10 +260,52 @@ async def test_create_document_via_jwt_hs384(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
+async def test_create_document_owner_id_of_another_user_rejected(client: AsyncClient):
+    """Mass assignment: a caller may not create a document owned by someone else."""
+    victim_id = uuid.uuid4()
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Planted", "content": "planted", "owner_id": str(victim_id)},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_from_template_owner_id_of_another_user_rejected(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    victim_id = uuid.uuid4()
+    tpl = await client.post(
+        "/api/v1/templates/",
+        json={
+            "name": "T",
+            "content": "tpl body",
+            "content_type": "text/markdown",
+            "created_by": str(owner_id),
+        },
+    )
+    assert tpl.status_code == 201
+    resp = await client.post(
+        f"/api/v1/documents/from-template/{tpl.json()['id']}",
+        json={"title": "Planted", "owner_id": str(victim_id)},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_document_unknown_field_rejected(client: AsyncClient):
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Doc", "content": "x", "is_admin": True},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_document_x_user_id_header_ignored(anon_client: AsyncClient):
     """X-User-Id header alone is not trusted (prevents identity spoofing)."""
     user_id = uuid.uuid4()
-    resp = await client.post(
+    resp = await anon_client.post(
         "/api/v1/documents/",
         json={"title": "Header Doc"},
         headers={"X-User-Id": str(user_id)},
@@ -272,9 +314,9 @@ async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_no_auth_returns_401(client: AsyncClient):
-    """Creating a document without owner_id and without auth returns 401."""
-    resp = await client.post(
+async def test_create_document_no_auth_returns_401(anon_client: AsyncClient):
+    """Creating a document without auth returns 401."""
+    resp = await anon_client.post(
         "/api/v1/documents/",
         json={"title": "No Auth Doc"},
     )

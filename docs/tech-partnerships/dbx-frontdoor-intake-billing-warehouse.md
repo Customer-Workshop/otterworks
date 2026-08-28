@@ -15,7 +15,7 @@ Probe date: 2026-08-28. Probe script: `dbx_intake_probe.sql` (15 read-only probe
 | Engine | Oracle Database (single-instance, PDB `FREEPDB1`) | probe P1 |
 | Edition/banner | `Oracle AI Database 26ai Free Release 23.26.3.0.0` | probe P1/P2 |
 | Version | `23.0.0.0.0` (full `23.26.3.0.0`) | probe P1 |
-| Warehouse schema | `OW_BILLING` | probe P3 |
+| Warehouse schema | `OW_BILLING` — **in scope for this run** (customer decision) | probe P3 |
 | Connection | host port 52521 → container 1521, service `FREEPDB1` | `docker-compose.oracle-billing.yml` |
 | Family | Oracle EDW — SQL warehouse estate | this playbook |
 
@@ -134,16 +134,29 @@ Set here so downstream sessions inherit them:
   sequences, materialized-view refresh, and the history-table pattern → liquid
   clustering, identity/surrogate-key policy, and Delta table layout. Do not carry the
   index list over one-for-one.
-- **Coexistence: federation-first** (Lakehouse Federation over JDBC to Oracle), subject
-  to the approval in §6. Fallback is exported snapshots with a narrowed recon scope.
+- **Coexistence: federation-first** — Lakehouse Federation over JDBC to Oracle, **approved
+  by the customer**. Recon mode is therefore **LIVE**: recon recomputes from the target and
+  compares against the source over federation, and the snapshot fallback is not needed.
 
-## 6. OPEN — owned by the customer
+Target-side capability is already proven and does not need re-probing at setup: the nightly
+capability preflight reported `databricks 11/0 denied` (11 probes verified, none denied) in
+`#ow-migrations`/`#ow-tp-status` on 2026-08-28. Shared Databricks namespace is `ow_tp`;
+use the existing serverless SQL warehouse and do not touch unprefixed objects.
+
+## 6. Customer decisions and remaining dependency
+
+Both intake blockers are **resolved** (customer, 2026-08-28):
+
+| ID | Item | Answer |
+|---|---|---|
+| ~~OPEN-1~~ | Estate scope | **`OW_BILLING` only.** `COMMISSION_DW` (star schema + PL/SQL ETL + MV under `services/industry-solutions/insurance/db/olap/`) is **out of scope** for this run — not deferred into a wave of it, simply not in this run's inventory. |
+| ~~OPEN-2~~ | JDBC path Databricks → Oracle for Lakehouse Federation | **Approved.** Recon mode LIVE; federation-first coexistence stands (§5). |
+
+Still open, and the one thing the chain must carry forward:
 
 | ID | Item | Impact if unresolved |
 |---|---|---|
-| OPEN-1 | **Estate scope**: the `OW_BILLING` billing warehouse (this record), the `COMMISSION_DW` star schema + PL/SQL ETL + MV under `services/industry-solutions/insurance/db/olap/`, or both as separate waves | inventory cannot start; `COMMISSION_DW` has a genuine dimensional model and would carry a different unit mix |
-| OPEN-2 | **JDBC/federation approval** from Databricks to Oracle | decides whether recon mode is LIVE or DEGRADED, and the recon scope with it |
-| D10-1 | Catalog/workload grant for the migration identity (`SELECT_CATALOG_ROLE`, or targeted `SELECT` on `V$SQL`, `V$ACTIVE_SESSION_HISTORY`, `UNIFIED_AUDIT_TRAIL`) | D4 consumer sweep runs on artifact evidence only; see §3 |
+| D10-1 | Catalog/workload grant for the migration identity (`SELECT_CATALOG_ROLE`, or targeted `SELECT` on `V$SQL`, `V$ACTIVE_SESSION_HISTORY`, `UNIFIED_AUDIT_TRAIL`) | D4 consumer sweep runs on artifact evidence only; see §3. Note this is a *partial* mitigation even when granted — AWR has no rows to grant access to. |
 
 `OW_BILLING` holds only `CREATE SESSION/TABLE/VIEW/PROCEDURE/TRIGGER/SEQUENCE/TYPE/JOB`
 (probe P13) — no catalog role, which is exactly the D10-1 gap.
@@ -158,8 +171,27 @@ documented baseline for this namespace.
 ## 8. Hand-off
 
 Next: `!dbx_migration_setup` (target state + `.migration/` workspace + tolerances +
-access checklist → STOP A), then the standard chain under `!dbx_migrate_pipeline`. Carry
-into setup: the pinned engine (§1), the access posture including D10-1 (§2, §3), the
-absent dialect skill and its wave-0 item (§4), the family defaults (§5), and both OPEN
-items (§6) — OPEN-1 must be answered before inventory, OPEN-2 before tolerances are
-pinned, since it decides LIVE vs DEGRADED recon mode.
+access checklist → STOP A), then the standard chain under `!dbx_migrate_pipeline`.
+
+Settled here — do **not** re-ask any of it at STOP A:
+
+- Engine and version, connection, schema (§1).
+- Scope: `OW_BILLING` only (§6).
+- Federation approved, recon mode LIVE (§5, §6).
+- Source catalog access confirmed; target capability proven by preflight (§2, §5).
+- No view layer; unit mix is procedural (§2, §5).
+- No dialect skill; generic ANSI plus a wave-0 build item (§4).
+- Family defaults, complexity weighting, and the pilot candidates (§5).
+- Baseline volumes for recon reference (§7).
+
+Still to be decided downstream, by the party named:
+
+- **D10-1** (customer): the catalog/workload grant. Setup should put it on the access
+  checklist; it is not a blocker for ingest, only a quality ceiling on D4.
+- **Tolerances** (STOP A): must be set knowing money is `NUMBER(14,2)` and dates are
+  strings — exact-match on money, and an explicit unparseable-date policy.
+- **Pipeline choice** (STOP B) and **plan/fan-out width** (STOP C): user's call, unchanged
+  by this intake. Pilot width ≤ 5, and rating/invoicing should be in the pilot (§5).
+
+No inventory, analysis, or conversion was performed in this session, per the front-door
+scope.

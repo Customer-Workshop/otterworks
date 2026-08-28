@@ -51,23 +51,23 @@ Two consequences the chain must carry:
   package→table edges, so lineage extraction works, but it says nothing about who *reads*
   the outputs. That is the D4 problem in §3.
 
-## 3. Query history / consumer evidence — BLOCKED (D10, evidence gap)
+## 3. Query history / consumer evidence — partially unblocked (evidence gap remains)
 
 Consumer detection for this family normally mines query history. Probed four surfaces as
-the schema owner; all four are unavailable:
+the schema owner; initially all four were unavailable, and three have since been granted:
 
-| Surface | As `OW_BILLING` | As `SYSDBA` |
-|---|---|---|
-| `v$sql` (shared SQL area) | `ORA-00942` | 481 rows |
-| `dba_hist_sqlstat` (AWR) | `ORA-00942` | 0 rows |
-| `v$active_session_history` (ASH) | `ORA-00942` | 8 rows |
-| `unified_audit_trail` | `ORA-00942` | 13,893 rows |
+| Surface | As `OW_BILLING` (at intake) | As `SYSDBA` | As `OW_BILLING` (after grant) |
+|---|---|---|---|
+| `v$sql` (shared SQL area) | `ORA-00942` | 481 rows | 524 rows |
+| `dba_hist_sqlstat` (AWR) | `ORA-00942` | 0 rows | `ORA-00942` (not granted; 0 rows to see) |
+| `v$active_session_history` (ASH) | `ORA-00942` | 8 rows | 18 rows |
+| `unified_audit_trail` | `ORA-00942` | 13,893 rows | 13,894 rows |
 
 Read this carefully, because the two failure causes have different fixes:
 
-- `v$sql` / ASH / audit trail are a **grant problem**: the data exists, the migration
-  identity cannot see it. Fixable with `SELECT_CATALOG_ROLE` (or targeted `SELECT` grants)
-  — registered as **D10-1** below.
+- `v$sql` / ASH / audit trail were a **grant problem**: the data existed, the migration
+  identity could not see it. **Resolved** — see D10-1 in §6 for the exact grants applied
+  and the verification above.
 - AWR returns **0 rows even as SYSDBA**: on this distribution there is no retained
   historical workload repository to mine at all. A grant will not conjure it. Even with
   D10-1 granted, `v$sql` is a volatile shared-pool snapshot (481 rows, aged out
@@ -85,7 +85,7 @@ are weaker (they show what was *written*, not what currently *runs*):
 - `services/legacy-billing/db/oracle/schema/04_jobs.sql` — in-database scheduled work.
 - Application call sites into `OW_BILLING` (`services/`), plus the report distribution
   list baked into `finance_excel_report.pl`.
-- `unified_audit_trail` once D10-1 lands: usable as a *sampled* consumer signal over the
+- `unified_audit_trail`, now readable: usable as a *sampled* consumer signal over the
   observation window, not as a historical census. Worth taking; not worth trusting alone.
 
 Any inventory claim of the form "nothing reads this" must be labelled as
@@ -143,7 +143,7 @@ capability preflight reported `databricks 11/0 denied` (11 probes verified, none
 `#ow-migrations`/`#ow-tp-status` on 2026-08-28. Shared Databricks namespace is `ow_tp`;
 use the existing serverless SQL warehouse and do not touch unprefixed objects.
 
-## 6. Customer decisions and remaining dependency
+## 6. Customer decisions and dependencies
 
 Decisions taken by the customer at intake (2026-08-28):
 
@@ -155,6 +155,7 @@ Decisions taken by the customer at intake (2026-08-28):
 | TOL-2 | Unparseable `VARCHAR2(9)` date values | **Quarantine the row, continue the load, count quarantined rows in recon.** Quarantine counts are recon output, not a warning to be swallowed; a load that quarantines everything must fail loudly rather than report success on zero rows. |
 | PILOT-1 | Pilot composition | **`PKG_RATING` + `PKG_INVOICING` only — 2 units**, well under the width cap. Deliberately the hardest units first: they are the critical path and the slowest-converting, so the pilot's feedback is worth the most before fan-out. |
 | D4-1 | Consumer population | **Declared UNMAPPED by the customer.** Nothing is known to read `OW_BILLING` beyond the batch chain and the finance report, and nothing rules others out either. |
+| D10-1 | Catalog/workload access for the migration identity | **Targeted grants, not `SELECT_CATALOG_ROLE`** — least privilege deliberately chosen over breadth. Applied and verified (below). |
 
 TOL-1 and TOL-2 interact, and the chain must not lose the interaction: money is compared
 exactly, but rows can be quarantined for an unrelated bad date. A quarantined row removes
@@ -168,17 +169,35 @@ consumer population declared unmapped, no sweep in this run can prove who reads 
 estate. Per the contract policy, that must be written into the contract as an explicit
 coverage gap up front and surfaced at cutover authorization — not discovered at rollup,
 and never quietly converted into "no consumers found". Concretely, this means cutover
-carries an unquantified risk of breaking an unknown reader, and the D10-1 grant plus an
-observation window on `unified_audit_trail` is the only thing that would narrow it.
+carries an unquantified risk of breaking an unknown reader, and the D10-1 grant (now
+applied) plus an observation window on `unified_audit_trail` is the only thing that would
+narrow it.
 
-Still open, and the one thing the chain must carry forward:
+### D10-1, closed
 
-| ID | Item | Impact if unresolved |
-|---|---|---|
-| D10-1 | Catalog/workload grant for the migration identity (`SELECT_CATALOG_ROLE`, or targeted `SELECT` on `V$SQL`, `V$ACTIVE_SESSION_HISTORY`, `UNIFIED_AUDIT_TRAIL`) | D4 consumer sweep runs on artifact evidence only; see §3. Note this is a *partial* mitigation even when granted — AWR has no rows to grant access to. Raised in priority by D4-1: with the consumer population unmapped, the audit trail is the only remaining way to observe real readers. Owner (Oracle DBA) not yet named. |
+Granted in `FREEPDB1`, exactly three objects and nothing else:
 
-`OW_BILLING` holds only `CREATE SESSION/TABLE/VIEW/PROCEDURE/TRIGGER/SEQUENCE/TYPE/JOB`
-(probe P13) — no catalog role, which is exactly the D10-1 gap.
+```sql
+GRANT SELECT ON SYS.V_$SQL                     TO OW_BILLING;
+GRANT SELECT ON SYS.V_$ACTIVE_SESSION_HISTORY  TO OW_BILLING;
+GRANT SELECT ON AUDSYS.UNIFIED_AUDIT_TRAIL     TO OW_BILLING;  -- not SYS; PUBLIC synonym only
+```
+
+Two notes for anyone reproducing this: the grantable objects are the `V_$` base views, not
+the `V$` synonyms, and `UNIFIED_AUDIT_TRAIL` is owned by `AUDSYS` — granting it on `SYS`
+fails with `ORA-00942`, which is easy to misread as the same permission error the grant was
+meant to fix. Re-probed as `OW_BILLING` afterwards to confirm the grants took (§3).
+
+AWR was deliberately left out of the grant: it holds 0 rows even for SYSDBA, so access to
+it would buy nothing.
+
+**What this does and does not fix.** The migration identity can now read the audit trail
+and the live shared-pool/ASH snapshots, which makes the sampled consumer signal in §3 real
+rather than aspirational. It does **not** produce historical workload coverage — `v$sql` is
+a volatile shared-pool snapshot and the audit trail records what auditing was configured to
+record. D4-1 therefore stands as a coverage gap regardless of this grant, and the honest
+mitigation is an audit-trail observation window long enough to catch periodic readers
+(month-end especially) before cutover authorization.
 
 ## 7. Baseline volumes (NS=demo, seed 714559852)
 
@@ -204,13 +223,13 @@ Settled here — do **not** re-ask any of it at STOP A:
 - Tolerances: money exact to the cent, unparseable dates quarantined and counted (§6).
 - Pilot: `PKG_RATING` + `PKG_INVOICING`, 2 units (§6).
 - D4 consumer population declared unmapped — carry as a contract coverage gap (§6).
+- D10-1 catalog access: granted, verified, and closed — do not re-request it (§6).
 - Baseline volumes for recon reference (§7).
 
 Still to be decided downstream, by the party named:
 
-- **D10-1 owner** (customer): who on the Oracle side actions the catalog grant. Setup puts
-  it on the access checklist; not a blocker for ingest, but with D4-1 unmapped it is the
-  only lever left on consumer risk.
+- **Audit-trail observation window** (STOP A): how long to sample `unified_audit_trail`
+  before cutover authorization, now that it is readable. The only lever left on D4-1.
 - **Pipeline choice** (STOP B) and **fan-out width for the waves after the pilot**
   (STOP C): user's call, unchanged by this intake.
 

@@ -114,7 +114,7 @@ planning prose where both exist.
 
 ## Open questions for downstream stops
 
-The STOP A decisions are resolved in `.migration/06_decisions.md:17-21`; only these
+The STOP A decisions are resolved in `.migration/06_decisions.md:17-20`; only these
 downstream decisions remain open:
 
 1. **FACT — STOP B:** pipeline choice; each unit must declare full refresh or incremental mode (`docs/tech-partnerships/dbx-frontdoor-intake-billing-warehouse.md:255-261`).

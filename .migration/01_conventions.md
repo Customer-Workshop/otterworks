@@ -13,9 +13,9 @@
 | Namespace | **FACT** — every job has `ns`, paths use `<ns>/<unit>/...`, and rows carry `ns` (`docs/tech-partnerships/contracts/README.md:27-29`). |
 | Secrets | **FACT** — secret names may be documented, values never enter branches; jobs read values through `dbutils.secrets` (`origin/tech-partnerships-solutions:infrastructure/terraform-databricks/README.md:47-51`). |
 | Branch contents | **FACT** — code only, never data, state, or secrets (`docs/tech-partnerships/contracts/README.md:27-29`). |
-| Shared-table DDL | **FACT** — never run DDL against a shared table; parent-owned shared state is not a child scratch surface (`docs/tech-partnerships/contracts/README.md:19-22`; `.migration/06_decisions.md:21`). |
-| Contended recon | **FACT** — other sessions may rewrite the shared `ow_tp` `ns=demo` slice; never accept a recon that is green only in a contended window. Every unit recon states its `ns` and is re-runnable (`.migration/06_decisions.md:21`). |
-| Files API scope | **FACT** — the Databricks PAT needs the `files` scope for `/Volumes/ow_tp/bronze/landing`; that scope is verified present. Do not invent per-child landing workarounds (`.migration/06_decisions.md:21`). |
+| Shared-table DDL | **FACT** — never run DDL against a shared table; parent-owned shared state is not a child scratch surface (`docs/tech-partnerships/contracts/README.md:19-22`). |
+| Contended recon | **FACT** — other sessions may rewrite the shared `ow_tp` `ns=demo` slice; never accept a recon that is green only in a contended window. Every unit recon states its `ns` and is re-runnable. |
+| Files API scope | **FACT** — the Databricks PAT needs the `files` scope for `/Volumes/ow_tp/bronze/landing`; that scope is verified present. Do not invent per-child landing workarounds. |
 
 ## Review rejection checklist
 

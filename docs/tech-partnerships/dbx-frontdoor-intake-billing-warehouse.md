@@ -85,8 +85,9 @@ are weaker (they show what was *written*, not what currently *runs*):
 - `services/legacy-billing/db/oracle/schema/04_jobs.sql` — in-database scheduled work.
 - Application call sites into `OW_BILLING` (`services/`), plus the report distribution
   list baked into `finance_excel_report.pl`.
-- `unified_audit_trail`, now readable: usable as a *sampled* consumer signal over the
-  observation window, not as a historical census. Worth taking; not worth trusting alone.
+- `unified_audit_trail`, now readable but **not being sampled** — the customer declined an
+  observation window (D4-2, §6). It is available for diagnosis after the fact, not as
+  consumer evidence before cutover.
 
 Any inventory claim of the form "nothing reads this" must be labelled as
 artifact-derived, not history-derived, for the whole engagement.
@@ -156,6 +157,7 @@ Decisions taken by the customer at intake (2026-08-28):
 | PILOT-1 | Pilot composition | **`PKG_RATING` + `PKG_INVOICING` only — 2 units**, well under the width cap. Deliberately the hardest units first: they are the critical path and the slowest-converting, so the pilot's feedback is worth the most before fan-out. |
 | D4-1 | Consumer population | **Declared UNMAPPED by the customer.** Nothing is known to read `OW_BILLING` beyond the batch chain and the finance report, and nothing rules others out either. |
 | D10-1 | Catalog/workload access for the migration identity | **Targeted grants, not `SELECT_CATALOG_ROLE`** — least privilege deliberately chosen over breadth. Applied and verified (below). |
+| D4-2 | Audit-trail observation window before cutover | **None. Risk accepted by the customer.** No sampling of `unified_audit_trail` will be performed, so no reader evidence will be collected even though the surface is now readable. See the accepted-risk note below. |
 
 TOL-1 and TOL-2 interact, and the chain must not lose the interaction: money is compared
 exactly, but rows can be quarantined for an unrelated bad date. A quarantined row removes
@@ -169,9 +171,9 @@ consumer population declared unmapped, no sweep in this run can prove who reads 
 estate. Per the contract policy, that must be written into the contract as an explicit
 coverage gap up front and surfaced at cutover authorization — not discovered at rollup,
 and never quietly converted into "no consumers found". Concretely, this means cutover
-carries an unquantified risk of breaking an unknown reader, and the D10-1 grant (now
-applied) plus an observation window on `unified_audit_trail` is the only thing that would
-narrow it.
+carries an unquantified risk of breaking an unknown reader. The one available mitigation —
+an observation window on the now-readable `unified_audit_trail` — has been declined
+(D4-2), so the gap will not narrow before cutover.
 
 ### D10-1, closed
 
@@ -191,13 +193,35 @@ meant to fix. Re-probed as `OW_BILLING` afterwards to confirm the grants took (�
 AWR was deliberately left out of the grant: it holds 0 rows even for SYSDBA, so access to
 it would buy nothing.
 
-**What this does and does not fix.** The migration identity can now read the audit trail
-and the live shared-pool/ASH snapshots, which makes the sampled consumer signal in §3 real
-rather than aspirational. It does **not** produce historical workload coverage — `v$sql` is
-a volatile shared-pool snapshot and the audit trail records what auditing was configured to
-record. D4-1 therefore stands as a coverage gap regardless of this grant, and the honest
-mitigation is an audit-trail observation window long enough to catch periodic readers
-(month-end especially) before cutover authorization.
+### Accepted risk: unmapped consumers, no observation window (D4-1 + D4-2)
+
+These two decisions compound, and the chain must carry the combination rather than either
+half: the consumer population is declared unmapped, and no audit sampling will be done to
+narrow it. So cutover authorization will happen with **zero evidence about who actually
+reads this estate** — not weak evidence, none. The artifact sweep (§3) still enumerates
+what the repo *shows* reading `OW_BILLING`, and that remains the basis of the D4 inventory,
+but it cannot see an ad-hoc reader, a direct JDBC connection, or a report someone runs by
+hand.
+
+Consequences the plan must state plainly rather than discover:
+
+- No "nothing reads this" claim may be made about any unit, at any point in the engagement.
+  Unreferenced-by-artifacts is the strongest available statement.
+- The first signal of a missed reader will be a user complaint after cutover, not a check.
+- Mitigation that costs nothing and is therefore recommended: keep the Oracle source
+  readable over the existing federation link for a defined period after cutover, so a
+  surprised reader is a redirect rather than an incident. Federation is already approved
+  (§5), so this is a decommissioning-timing decision, not new work.
+- Because no window is being run, `unified_audit_trail` access (D10-1) buys nothing for D4
+  in practice. It stays granted — it is useful for incident diagnosis if a missed reader
+  does surface — but it is no longer a mitigation.
+
+**What the grant does and does not fix.** The migration identity can now read the audit
+trail and the live shared-pool/ASH snapshots. It does **not** produce historical workload
+coverage — `v$sql` is a volatile shared-pool snapshot and the audit trail records only what
+auditing was configured to record. D4-1 therefore stands as a coverage gap regardless of this grant, and with D4-2
+declined the grant's remaining value is diagnostic: if a missed reader surfaces after
+cutover, the audit trail is where you go to identify it.
 
 ## 7. Baseline volumes (NS=demo, seed 714559852)
 
@@ -224,12 +248,15 @@ Settled here — do **not** re-ask any of it at STOP A:
 - Pilot: `PKG_RATING` + `PKG_INVOICING`, 2 units (§6).
 - D4 consumer population declared unmapped — carry as a contract coverage gap (§6).
 - D10-1 catalog access: granted, verified, and closed — do not re-request it (§6).
+- No audit observation window; unmapped-consumer risk formally accepted (§6). Do not
+  re-propose sampling as a gate, and do not soften the coverage gap in the contract.
 - Baseline volumes for recon reference (§7).
 
 Still to be decided downstream, by the party named:
 
-- **Audit-trail observation window** (STOP A): how long to sample `unified_audit_trail`
-  before cutover authorization, now that it is readable. The only lever left on D4-1.
+- **Post-cutover source retention** (STOP E): how long the Oracle source stays readable
+  over federation after cutover. With D4-2 declined this is the only remaining hedge on
+  unmapped-reader risk, and it is a decommissioning-timing call, not new work.
 - **Pipeline choice** (STOP B) and **fan-out width for the waves after the pilot**
   (STOP C): user's call, unchanged by this intake.
 

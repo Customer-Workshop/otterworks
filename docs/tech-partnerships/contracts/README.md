@@ -35,12 +35,12 @@ informationally rather than treated as recon reports.
 - The legacy scripts under `etl/` are the demo's before-state: **do not edit them**, and
   do not touch the golden app path (`make up` / `make test`, `services/`, compose files,
   CI). Every PR must pass `make tp-smoke`.
-- Deliver a stacked PR series, bottom-up mergeable, based off `tech-partnerships`:
-  1. `jobs_<unit>.tf` (+ table DDL for your own tables),
-  2. pipeline code (notebook / job source),
-  3. recon evidence (recon script + committed report).
-  Never one monolithic PR. Never merge to `main`; never merge from
-  `tech-partnerships-solutions` (reference only).
+- Deliver **one PR per unit**, based off the run branch `tp-run/<track>-<timestamp>` — never off
+  `tech-partnerships`, never a stacked series. One PR carries `jobs_<unit>.tf` (plus DDL for your
+  own tables), the pipeline code, and the recon evidence together, so the unit is reviewable as
+  one thing and cannot land half-done. A unit is done only when its PR is **merged** into the run
+  branch. Never merge to `main`; never merge from `tech-partnerships-solutions` (fallback
+  recording, not a correctness reference).
 
 ## Reconciliation honesty rule
 
@@ -70,3 +70,19 @@ the provenance of your baseline explicitly in the recon report.
 | `storage_cleanup_daily.py` | Python, 2014 | [storage_cleanup_daily.md](storage_cleanup_daily.md) |
 | `user_activity_daily.py` | Python, 2014 | [user_activity_daily.md](user_activity_daily.md) |
 | `run_all.sh` + estate rollup | bash, 2014 | [gold_estate_rollup.md](gold_estate_rollup.md) (second wave) |
+
+### OW_BILLING Databricks run
+
+| Unit | Wave | Contract |
+|---|---|---|
+| `bronze_core` | 1 | [bronze_core.json](bronze_core.json) |
+| `bronze_wide` | 1 | [bronze_wide.json](bronze_wide.json) |
+| `bronze_hist` | 1 | [bronze_hist.json](bronze_hist.json) |
+| `bronze_custbill` | 1 | [bronze_custbill.json](bronze_custbill.json) |
+| `silver_rating` | 2 (pilot) | [silver_rating.json](silver_rating.json) |
+| `silver_invoicing` | 2 (pilot) | [silver_invoicing.json](silver_invoicing.json) |
+| `silver_plans` | 3 | [silver_plans.json](silver_plans.json) |
+| `silver_dunning` | 4 | [silver_dunning.json](silver_dunning.json) |
+| `gold_finance` | 5 | [gold_finance.json](gold_finance.json) |
+| `dict` | 0 (shared) | Parent-owned; no per-unit contract |
+| `recon` | 0 (shared) | Parent-owned; no per-unit contract |

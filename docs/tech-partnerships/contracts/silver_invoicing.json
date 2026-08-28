@@ -1,0 +1,95 @@
+{
+  "unit": "silver_invoicing",
+  "source_artifact_path": "services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql",
+  "target_objects": [
+    "ow_tp.silver.invoices",
+    "ow_tp.silver.invoice_lines",
+    "ow_tp.silver.credit_applications",
+    "ow_tp.silver.quarantine_silver_invoicing"
+  ],
+  "golden_baseline_location": "procs/transcripts/invoicing/INVOICE-001..006.json (6 recorded legacy transcripts, pinned by SOURCE_SHA/FIXTURE_SHA), plus federated LIVE comparison of invoices and invoice_lines. Pilot unit.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-MONEY",
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+    },
+    {
+      "id": "ACC-QUAR",
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-TRANSCRIPTS",
+      "description": "All 6 invoicing transcripts reproduce exactly, including tax and total lines."
+    },
+    {
+      "id": "ACC-INLINE-RATING",
+      "description": "Invoicing recomputes rating inline and consumes it as a shared helper (D-10). It must NOT read the persisted RATING_RESULTS: the source reads pkg_rating.g_overage_amount from package globals, and wiring it to the table changes invoice totals."
+    },
+    {
+      "id": "ACC-TAX",
+      "description": "Tax rate is the source's hardcoded 0.0825, split into two halves that are each left unrounded before summation (D-11). Rounding the halves changes cents on a large fraction of invoices."
+    },
+    {
+      "id": "ACC-CREDIT-BURN",
+      "description": "Credit notes are applied sequentially in the source's order, including the over-application the sequential burn-down produces (D-12). This cannot be made set-based without changing results."
+    },
+    {
+      "id": "ACC-REBUILD",
+      "description": "The source deletes and rebuilds invoice lines on every issue. The target achieves the same end state via MERGE plus a scoped delete of lines for that invoice and ns only — never a table-wide delete, and never DDL on a shared table."
+    },
+    {
+      "id": "ACC-PILOT-FEEDBACK",
+      "description": "Same pilot exit obligation as silver_rating: dictionary corrections land in 09_ before wave 3, with the observed quarantine rate stated."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-GLOBAL-DEPENDENCY",
+      "description": "Invoicing depends on rating through package globals rather than a table.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-HARDCODED-TAX",
+      "description": "TAX_RATE CONSTANT NUMBER := 0.0825 embedded in the package body.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-HALF-CENT-TAX",
+      "description": "Tax split into two unrounded halves.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-CREDIT-OVERAPPLY",
+      "description": "Sequential credit burn-down that can over-apply a credit.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-DYNAMIC-SQL",
+      "description": "Dynamic SQL in the issue path whose statement text depends on runtime values.",
+      "status": "must-detect"
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "AL32UTF8 via federated Oracle JDBC (FREEPDB1/OW_BILLING)",
+    "byte_transparency": "Values are carried through as Unicode text without re-encoding; no transliteration, no NFC/NFD normalisation, no whitespace trimming. A trailing-space-padded CHAR column keeps its padding.",
+    "invalid_bytes": "Unconvertible bytes are not silently replaced: the row is quarantined with reason ENC_INVALID and counted in recon."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Source NULL and empty string are distinct and must stay distinct: a NULL stays NULL, a zero-length VARCHAR2 stays zero-length. Never coalesce NULL to '' or to 0 to make a comparison pass. An unexpected extra column from the source fails the unit rather than being ignored, because a schema drift no one declared is a correctness event."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "A tenant with nothing billable produces whatever the source produces — a zero invoice or no invoice — as pinned by the transcripts; the converter does not choose."
+  },
+  "trigger_granularity": "per-batch"
+}

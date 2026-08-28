@@ -1,0 +1,84 @@
+{
+  "unit": "bronze_wide",
+  "source_artifact_path": "services/legacy-billing/db/oracle/schema/02_horror.sql",
+  "target_objects": [
+    "ow_tp.bronze.customer_master",
+    "ow_tp.bronze.entity_attr_value",
+    "ow_tp.bronze.invoice_line",
+    "ow_tp.bronze.invoice_header",
+    "ow_tp.bronze.quarantine_bronze_wide"
+  ],
+  "golden_baseline_location": "Live Oracle OW_BILLING via Lakehouse Federation (recon mode LIVE); CUSTOMER_MASTER compared column-by-column at its full declared width, not a selected subset.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-MONEY",
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+    },
+    {
+      "id": "ACC-QUAR",
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-PII-MASK",
+      "description": "Every PII column of customer_master carries a Unity Catalog column mask restricting cleartext to the migration principal (STOPA-PII). A PR that lands a PII column without a mask is rejected, and no unmasked PII may be copied to gold or an export."
+    },
+    {
+      "id": "ACC-DATES",
+      "description": "VARCHAR2(9) date columns are parsed per D-04/D-05: unparseable values quarantine the row with reason DATE_UNPARSEABLE, and the 2-digit-year window is the explicit source window, not Java's 80-year pivot."
+    },
+    {
+      "id": "ACC-EAV",
+      "description": "entity_attr_value is migrated as the EAV table it is, with attribute names and values preserved verbatim; it is not pivoted, deduplicated, or type-inferred during bronze."
+    },
+    {
+      "id": "ACC-WIDTH",
+      "description": "No column of the wide tables is dropped as unused. A column with 100% NULLs still lands, because absence in bronze cannot be distinguished later from absence in the source."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-STRING-DATES",
+      "description": "VARCHAR2(9) DD-MON-YY free-text dates in customer_master, including values that do not parse at all.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-GL-ACCT-CSV",
+      "description": "GL_ACCT_CSV holds a comma-separated list inside one column.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-EAV-TYPELESS",
+      "description": "entity_attr_value stores every attribute as text regardless of its real type.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-DENORM-COPIES",
+      "description": "invoice_line/invoice_header duplicate invoice data that also exists in the normalised invoices/invoice_lines tables, with no FK and no guarantee the two agree.",
+      "status": "coverage_gap",
+      "reason": "Reconciling the denormalised copies against the normalised tables is a source data-quality question, not a migration parity question; both sides are migrated as-is and the disagreement is reported, not resolved. Declared here so it is not mistaken for a conversion defect."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "AL32UTF8 via federated Oracle JDBC (FREEPDB1/OW_BILLING)",
+    "byte_transparency": "Values are carried through as Unicode text without re-encoding; no transliteration, no NFC/NFD normalisation, no whitespace trimming. A trailing-space-padded CHAR column keeps its padding.",
+    "invalid_bytes": "Unconvertible bytes are not silently replaced: the row is quarantined with reason ENC_INVALID and counted in recon."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Source NULL and empty string are distinct and must stay distinct: a NULL stays NULL, a zero-length VARCHAR2 stays zero-length. Never coalesce NULL to '' or to 0 to make a comparison pass. An unexpected extra column from the source fails the unit rather than being ignored, because a schema drift no one declared is a correctness event."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "Same as bronze_core: empty in, empty out for this ns, with an explicit recon report. Never delete another ns's slice."
+  },
+  "trigger_granularity": "per-batch"
+}

@@ -1,0 +1,63 @@
+{
+  "unit": "gold_finance",
+  "source_artifact_path": "etl/legacy-extra/jobs/finance_excel_report.pl",
+  "target_objects": [
+    "ow_tp.gold.finance_monthly",
+    "ow_tp.gold.finance_report_export"
+  ],
+  "golden_baseline_location": "Output of the legacy Perl report run through scripts/tp-run-deterministic.sh over the same inputs. This is the only consumer of the estate we can actually see, so its numbers are the business-recognisable acceptance test.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-MONEY",
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-NO-PII",
+      "description": "Gold carries no unmasked CUSTOMER_MASTER PII, and no export copies cleartext PII out (STOPA-PII). A PR that does either is rejected regardless of its recon result."
+    },
+    {
+      "id": "ACC-LEGACY-TOTALS",
+      "description": "Every total, subtotal and grouping in the legacy report reproduces to the cent, including totals the legacy report computes inconsistently — differences are reported as listed, deliberate divergences, never silently corrected."
+    },
+    {
+      "id": "ACC-CONSUMER-GAP",
+      "description": "The recon report restates the D4-1 coverage gap: the consumer population is declared unmapped and no audit observation window was run (D4-2), so 'the finance report is the only consumer' is an artifact-derived claim, not evidence."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-PERL-ROUNDING",
+      "description": "Report totals accumulated in Perl floating point rather than decimal.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-UNMAPPED-CONSUMERS",
+      "description": "Readers of OW_BILLING outside the visible batch chain and this report.",
+      "status": "coverage_gap",
+      "reason": "The consumer population is declared UNMAPPED at intake (D4-1) and the customer declined an audit observation window (D4-2), so no evidence about real readers exists or will be collected. Declared as a coverage gap here rather than implied by the report's coverage."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "AL32UTF8 via federated Oracle JDBC (FREEPDB1/OW_BILLING)",
+    "byte_transparency": "Values are carried through as Unicode text without re-encoding; no transliteration, no NFC/NFD normalisation, no whitespace trimming. A trailing-space-padded CHAR column keeps its padding.",
+    "invalid_bytes": "Unconvertible bytes are not silently replaced: the row is quarantined with reason ENC_INVALID and counted in recon."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Source NULL and empty string are distinct and must stay distinct: a NULL stays NULL, a zero-length VARCHAR2 stays zero-length. Never coalesce NULL to '' or to 0 to make a comparison pass. An unexpected extra column from the source fails the unit rather than being ignored, because a schema drift no one declared is a correctness event."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "A month with no invoices produces a report with explicit zeros, matching the legacy report's shape, rather than an absent report a consumer would read as 'not run yet'."
+  },
+  "trigger_granularity": "per-batch"
+}

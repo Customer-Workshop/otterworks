@@ -1,0 +1,87 @@
+{
+  "unit": "silver_dunning",
+  "source_artifact_path": "services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql, services/legacy-billing/db/oracle/schema/04_jobs.sql (JOB_NIGHTLY_DUNNING)",
+  "target_objects": [
+    "ow_tp.silver.dunning_attempts",
+    "ow_tp.silver.notifications",
+    "ow_tp.silver.tenants",
+    "ow_tp.silver.subscriptions",
+    "ow_tp.silver.quarantine_silver_dunning"
+  ],
+  "golden_baseline_location": "procs/transcripts/dunning/DUNNING-001..005.json (5 recorded legacy transcripts, pinned by SOURCE_SHA/FIXTURE_SHA), plus federated LIVE comparison. Runs alone in its own wave because of the write-target collision below.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-QUAR",
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-TRANSCRIPTS",
+      "description": "All 5 dunning transcripts reproduce exactly."
+    },
+    {
+      "id": "ACC-COLLISION",
+      "description": "This unit writes tenants and subscriptions, which bronze_core loads and silver_plans also writes — the estate's only write-target collision. It runs in its own wave, writes only its own ns slice, never runs DDL on those tables, and stops and reports if it finds another unit's uncommitted state there rather than resolving the conflict locally."
+    },
+    {
+      "id": "ACC-TWO-ENTRYPOINTS",
+      "description": "JOB_NIGHTLY_DUNNING calls sp_schedule_dunning then sp_suspend_overdue in one job action, in that order and in one logical batch; splitting them into independently scheduled tasks changes which invoices are seen by the sweep."
+    },
+    {
+      "id": "ACC-WEEKEND-SHIFT",
+      "description": "The weekend shift via DECODE on TO_CHAR(dt,'DY') is reproduced with the source's NLS day abbreviations, not the platform locale's (D-06); a locale-dependent translation shifts attempts by days."
+    },
+    {
+      "id": "ACC-NO-SWALLOW",
+      "description": "The source's WHEN OTHERS THEN NULL around the attempt insert is NOT reproduced: a failed insert fails the unit loudly. Silently losing dunning attempts is one of the deficiencies this conversion retires, and the behavioural difference is listed explicitly in the recon report."
+    },
+    {
+      "id": "ACC-SUSPENSION",
+      "description": "The 14-day suspension sweep is reproduced exactly on which subscriptions it suspends, and interacts correctly with the cancelled-stays-cancelled rule (STOPA-TRIGGERS)."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-SWALLOWED-INSERT",
+      "description": "WHEN OTHERS THEN NULL around the dunning attempt insert.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-LOCALE-DAY",
+      "description": "Weekend detection through TO_CHAR(...,'DY') string comparison.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-SHARED-WRITE",
+      "description": "Writes to tenants and subscriptions owned by other units.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-NOTIFICATION-SIDE-EFFECT",
+      "description": "Notification rows written as a side effect of the sweep, with no idempotency key in source, so a legacy rerun duplicates them.",
+      "status": "must-detect"
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "AL32UTF8 via federated Oracle JDBC (FREEPDB1/OW_BILLING)",
+    "byte_transparency": "Values are carried through as Unicode text without re-encoding; no transliteration, no NFC/NFD normalisation, no whitespace trimming. A trailing-space-padded CHAR column keeps its padding.",
+    "invalid_bytes": "Unconvertible bytes are not silently replaced: the row is quarantined with reason ENC_INVALID and counted in recon."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Source NULL and empty string are distinct and must stay distinct: a NULL stays NULL, a zero-length VARCHAR2 stays zero-length. Never coalesce NULL to '' or to 0 to make a comparison pass. An unexpected extra column from the source fails the unit rather than being ignored, because a schema drift no one declared is a correctness event."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "No overdue invoices is a normal night: no attempts, no notifications, no suspensions, and prior output left intact. It must not clear dunning_attempts."
+  },
+  "trigger_granularity": "per-batch"
+}

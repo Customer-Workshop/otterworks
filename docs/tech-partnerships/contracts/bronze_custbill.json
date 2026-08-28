@@ -1,0 +1,90 @@
+{
+  "unit": "bronze_custbill",
+  "source_artifact_path": "etl/legacy-extra/jobs/parse_custbill_fixedwidth.sh (copybook CBCUST01), fed by etl/legacy-extra/jobs/sftp_ingest_poll.ksh",
+  "target_objects": [
+    "ow_tp.bronze.custbill_records",
+    "ow_tp.bronze.quarantine_bronze_custbill",
+    "/Volumes/ow_tp/bronze/landing/<ns>/custbill/"
+  ],
+  "golden_baseline_location": "Output of the legacy parser run through scripts/tp-run-deterministic.sh (TZ=UTC, LC_ALL=C, frozen clock) over the same input files: the pipe-delimited .psv in $ROOT/parsed. Never synthesise a baseline; if the legacy parser cannot run, report recon_result: blocked with the exact command and error.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-MONEY",
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+    },
+    {
+      "id": "ACC-QUAR",
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-IMPLIED-DEC",
+      "description": "BILL-AMT is PIC 9(10)V99 with an implied decimal: value = digits / 100, materialised as DECIMAL(14,2) (D-21). Reading it as an integer inflates money 100x and still looks valid downstream, so recon must compare against the legacy .psv's two-decimal output."
+    },
+    {
+      "id": "ACC-NONNUMERIC-AMT",
+      "description": "The legacy parser coerces a non-numeric BILL-AMT to 0 via awk's `amt=$4+0`. The target must NOT silently reproduce a zero: such a record is quarantined with reason AMT_NON_NUMERIC and counted, and the divergence from legacy behaviour is stated in the recon report as a deliberate, listed difference."
+    },
+    {
+      "id": "ACC-BILL-DATE",
+      "description": "BILL-DATE is reformatted YYYYMMDD -> YYYY-MM-DD with no validity check in source. An impossible date (e.g. month 13 or 00000000) quarantines the row with reason DATE_INVALID rather than landing as a reformatted string."
+    },
+    {
+      "id": "ACC-HDR-TRL",
+      "description": "HDR and TRL records are excluded from the data population, and the TRL record's count at positions 4-13 is reconciled against the loaded+quarantined count. A mismatch fails the unit: the legacy job only logged it (ETL-0187, never implemented), and that gap is one of the deficiencies this conversion retires."
+    },
+    {
+      "id": "ACC-PARTIAL-FILE",
+      "description": "A file still being written (the legacy ingest has no atomic rename and a lock file it never cleans up) must not be half-loaded: only complete files, identified by a completed transfer marker or a stable size/checksum, are ingested, and idempotency is by file identity plus ns."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-IMPLIED-DECIMAL",
+      "description": "Implied-decimal BILL-AMT (PIC 9(10)V99).",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-NONNUMERIC-AMT",
+      "description": "Records whose BILL-AMT is not numeric, coerced to 0 by the legacy parser.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-INVALID-DATE",
+      "description": "BILL-DATE values that are not real dates.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-TRAILER-MISMATCH",
+      "description": "Files whose TRL count disagrees with the number of detail records.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-SHORT-RECORD",
+      "description": "Records shorter than 65 bytes, which the legacy `cut` pads into empty fields instead of rejecting.",
+      "status": "must-detect"
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "single-byte ASCII (the legacy parser slices with `cut -c`, which is character-based, so any multibyte byte would shift every downstream column)",
+    "byte_transparency": "Slice by byte position 1-65 exactly as the copybook CBCUST01 declares. Do not trim any field except CUST-ID, CUST-NAME and CURRENCY, which the legacy parser trims with `gsub(/ +$/,\"\",...)`; BILL-DATE, BILL-AMT and REC-TYPE keep their padding, so REC-TYPE comparisons must tolerate it.",
+    "invalid_bytes": "A record containing a non-ASCII byte is quarantined with reason ENC_INVALID rather than sliced, because column positions can no longer be trusted."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "This is a fixed-width feed, so 'extra fields' means a record longer than 65 bytes: the surplus bytes are captured in a raw_overflow column and the record is flagged, not truncated silently. A record shorter than 65 bytes is quarantined with reason RECORD_SHORT rather than padded, because the legacy parser's padding is indistinguishable from a genuinely blank field. Blank (all-space) fields land as NULL with the reason recorded, never as empty string masquerading as data."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "No files present is a normal poll outcome, not an error and not an instruction to empty the table: the job no-ops, writes a recon report with files_seen=0, and leaves prior output intact. Deleting prior output on an empty poll would erase earlier batches every quiet interval."
+  },
+  "trigger_granularity": "per-file"
+}

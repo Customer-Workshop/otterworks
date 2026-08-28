@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import app.api.search as search_module
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -97,6 +99,20 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.get_json()
         assert len(data["suggestions"]) >= 1
+
+    def test_suggest_ranking_path_missing_score(self, client, mock_meilisearch_client, monkeypatch):
+        """Ranking enrichment tolerates results without _rankingScore."""
+        monkeypatch.setattr(search_module, "_chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 1,
+            "hits": [{"title": "Test Doc"}],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "suggestions" in data
 
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""

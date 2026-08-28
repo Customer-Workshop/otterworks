@@ -21,11 +21,11 @@
   "acceptance_checks": [
     {
       "id": "ACC-MONEY",
-      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (T1). A DOUBLE anywhere in a money lineage rejects the PR."
     },
     {
       "id": "ACC-QUAR",
-      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (T2/T3, §Quarantine). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
     },
     {
       "id": "ACC-IDEM",
@@ -37,7 +37,7 @@
     },
     {
       "id": "ACC-TYPES",
-      "description": "Unbounded Oracle NUMBER columns are pinned to a declared Databricks type per D-16 rather than defaulting to DOUBLE; the mapping is recorded per column in the recon report."
+      "description": "Unbounded Oracle NUMBER columns are pinned to a declared Databricks type per D-23 and T6 rather than defaulting to DOUBLE; the mapping is recorded per column in the recon report."
     },
     {
       "id": "ACC-AUDIT",

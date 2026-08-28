@@ -12,7 +12,7 @@
   "acceptance_checks": [
     {
       "id": "ACC-QUAR",
-      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (T2/T3, §Quarantine). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
     },
     {
       "id": "ACC-IDEM",
@@ -36,7 +36,7 @@
     },
     {
       "id": "ACC-WEEKEND-SHIFT",
-      "description": "The weekend shift via DECODE on TO_CHAR(dt,'DY') is reproduced with the source's NLS day abbreviations, not the platform locale's (D-06); a locale-dependent translation shifts attempts by days."
+      "description": "The weekend shift via DECODE on TO_CHAR(dt,'DY') is reproduced with the source's NLS day abbreviations, not the platform locale's (D-24); a locale-dependent translation shifts attempts by days."
     },
     {
       "id": "ACC-NO-SWALLOW",
@@ -44,7 +44,7 @@
     },
     {
       "id": "ACC-SUSPENSION",
-      "description": "The 14-day suspension sweep is reproduced exactly on which subscriptions it suspends, and interacts correctly with the cancelled-stays-cancelled rule (STOPA-TRIGGERS)."
+      "description": "The 14-day suspension sweep is reproduced exactly on which subscriptions it suspends, and interacts correctly with the cancelled-stays-cancelled rule (STOPA-TRIGGERS, D-16)."
     }
   ],
   "planted_anomalies": [

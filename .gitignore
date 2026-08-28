@@ -106,7 +106,6 @@ __pycache__/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
-*.tfstate*
 
 # Legacy seed manifests (runtime artifacts)
 testdata/legacy/manifests/*.json

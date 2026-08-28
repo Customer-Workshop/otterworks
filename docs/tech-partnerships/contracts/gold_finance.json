@@ -9,7 +9,7 @@
   "acceptance_checks": [
     {
       "id": "ACC-MONEY",
-      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (T1). A DOUBLE anywhere in a money lineage rejects the PR."
     },
     {
       "id": "ACC-IDEM",

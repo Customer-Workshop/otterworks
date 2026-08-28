@@ -20,6 +20,11 @@ state and application.
 - Volume paths are `<ns>/<unit>/...`.
 - Child jobs consume this stack's outputs instead of hardcoding shared values.
 
+The `ow_tp` secret scope is pre-existing and parent-owned. It is referenced by
+name only through the `secret_scope` variable and is never managed by
+Terraform; the Databricks provider exposes no data source for workspace secret
+scopes.
+
 Provider authentication is supplied by the `DATABRICKS_HOST` and
 `DATABRICKS_TOKEN` environment variables. Invocation may map the demo
 credentials to those names; credentials and host values must never be written

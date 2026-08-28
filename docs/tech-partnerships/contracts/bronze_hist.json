@@ -10,7 +10,7 @@
   "acceptance_checks": [
     {
       "id": "ACC-QUAR",
-      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (T2/T3, §Quarantine). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
     },
     {
       "id": "ACC-IDEM",
@@ -22,15 +22,15 @@
     },
     {
       "id": "ACC-HIST-FIRSTCLASS",
-      "description": "Both _HIST tables are migrated as first-class tables with every row, not summarised and not discarded as audit noise (STOPA-HIST). HIST_OP values UPD and DEL are preserved verbatim."
+      "description": "Both _HIST tables are migrated as first-class tables with every row, not summarised and not discarded as audit noise (STOPA-HIST, D-17). HIST_OP values UPD and DEL are preserved verbatim."
     },
     {
       "id": "ACC-HIST-DT",
-      "description": "HIST_DT is a DD-MON-YY HH24:MI:SS string parsed under the same quarantine rule as every other string date (D-04); the time component is preserved, not truncated to a date."
+      "description": "HIST_DT is a DD-MON-YY HH24:MI:SS string parsed under the same quarantine rule as every other string date (D-06); the time component is preserved, not truncated to a date."
     },
     {
       "id": "ACC-HIST-NOCAPTURE",
-      "description": "The target pipeline writes no new _HIST rows and recreates no trigger-style capture (STOPA-HIST). Forward-looking change history comes from Delta history only."
+      "description": "The target pipeline writes no new _HIST rows and recreates no trigger-style capture (STOPA-HIST, D-17). Forward-looking change history comes from Delta history only."
     },
     {
       "id": "ACC-HIST-DELETED",

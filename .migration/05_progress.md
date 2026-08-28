@@ -15,7 +15,6 @@ Status flow: `NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED`
 | Capability preflight | `COMPLETE` | Parent | `.migration/07_access_checklist.md` records `probes: 11, denied: 0`. |
 | Shared Terraform | `COMPLETE` | Parent | `infrastructure/terraform-databricks/` shared stack landed; children add only `jobs_<unit>.tf`. |
 | Dictionary | `COMPLETE` | Parent | `.migration/09_semantic_dictionary.md` is in place from PR #1358. |
+| Quarantine reason codes | `COMPLETE` | Parent | `.migration/11_quarantine_codes.md`; closed code set with no `OTHER`. |
 
-Remaining wave-0 work: capture golden baselines from `procs/transcripts/` and
-add the quarantine reason-code table if it is not already present in
-`.migration/`.
+Remaining wave-0 work: capture golden baselines from `procs/transcripts/`.

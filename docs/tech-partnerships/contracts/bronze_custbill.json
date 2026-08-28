@@ -10,11 +10,11 @@
   "acceptance_checks": [
     {
       "id": "ACC-MONEY",
-      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (TOL-1). A DOUBLE anywhere in a money lineage rejects the PR."
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (T1). A DOUBLE anywhere in a money lineage rejects the PR."
     },
     {
       "id": "ACC-QUAR",
-      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (TOL-2). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (T2/T3, §Quarantine). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
     },
     {
       "id": "ACC-IDEM",
@@ -75,7 +75,7 @@
   "encoding_policy": {
     "input_encoding": "single-byte ASCII (the legacy parser slices with `cut -c`, which is character-based, so any multibyte byte would shift every downstream column)",
     "byte_transparency": "Slice by byte position 1-65 exactly as the copybook CBCUST01 declares. Do not trim any field except CUST-ID, CUST-NAME and CURRENCY, which the legacy parser trims with `gsub(/ +$/,\"\",...)`; BILL-DATE, BILL-AMT and REC-TYPE keep their padding, so REC-TYPE comparisons must tolerate it.",
-    "invalid_bytes": "A record containing a non-ASCII byte is quarantined with reason ENC_INVALID rather than sliced, because column positions can no longer be trusted."
+    "invalid_bytes": "A record containing a non-ASCII byte is quarantined with reason ENC_INVALID rather than sliced (D-25), because column positions can no longer be trusted."
   },
   "malformed_record_policy": {
     "extra_delimited_fields": "tolerate-and-attribute",

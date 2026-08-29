@@ -1,0 +1,265 @@
+{
+  "unit": "silver_dunning",
+  "job_name": "ow_tp_silver_dunning",
+  "catalog": "ow_tp",
+  "schema": "silver",
+  "bronze_schema": "bronze",
+  "source_artifact_path": "services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql, services/legacy-billing/db/oracle/schema/04_jobs.sql (JOB_NIGHTLY_DUNNING)",
+  "source_entrypoints": [
+    "pkg_dunning.fn_overdue_accounts",
+    "pkg_dunning.sp_schedule_dunning",
+    "pkg_dunning.sp_suspend_overdue"
+  ],
+  "bronze_inputs": [
+    "ow_tp.bronze.dunning_attempts",
+    "ow_tp.bronze.notifications",
+    "ow_tp.bronze.tenants",
+    "ow_tp.bronze.codes"
+  ],
+  "silver_inputs": [
+    "ow_tp.silver.invoices"
+  ],
+  "read_only_inputs_note": "ow_tp.silver.invoices is silver_invoicing's target and is read-only here: it supplies the status_cd = 40 population fn_overdue_accounts, sp_schedule_dunning and sp_suspend_overdue all drive from. ow_tp.bronze.tenants is bronze_core's target and is read-only here; this unit's tenant-status output goes to ow_tp.silver.tenants and never back to bronze.",
+  "quarantine_table": "ow_tp.silver.quarantine_silver_dunning",
+  "quarantine_reasons": [
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "FK_ORPHAN",
+    "CODE_UNKNOWN",
+    "NUMERIC_OVERFLOW"
+  ],
+  "quarantine_reason_notes": {
+    "NUMERIC_OVERFLOW": "a reachable guard, evaluated on every attempt row (attempt_no outside INT, |invoice_total| beyond DECIMAL(14,2)) and reported every run. No value in ow_tp.bronze.dunning_attempts or ow_tp.silver.invoices can reach it, because both columns are already INT and DECIMAL(14,2) there, so its population is expected at zero and the recon report says so in plain words rather than claiming a detection."
+  },
+  "quarantine_reasons_declared_unreachable": {
+    "BAD_DATE": "no VARCHAR2 date reaches this unit: DUNNING_ATTEMPTS.scheduled_for is a DATE and NOTIFICATIONS.sent_at a TIMESTAMP, both already typed in bronze",
+    "DATE_INVALID": "same as BAD_DATE — no string date is parsed here",
+    "AMT_NON_NUMERIC": "no fixed-width or text money field reaches this unit; the only money it carries is INVOICES.total, already DECIMAL(14,2) in silver",
+    "ENC_INVALID": "no byte-positional feed reaches this unit; federated text passes through unchanged (D-25)"
+  },
+  "quarantine_halt_threshold_pct": 5.0,
+  "quarantine_halt_bases": {
+    "dunning_attempts": "attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run — numerator and denominator on that one population",
+    "tenants": "tenants: every OW_BILLING.TENANTS row in ns — numerator and denominator on that one population",
+    "notifications": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run — numerator and denominator on that one population",
+    "subscriptions_swept": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) — numerator and denominator on that one population"
+  },
+  "quarantine_halt_basis_note": "each declared population is evaluated against the threshold with its own paired numerator and denominator, and the unit halts if any one of them exceeds it: tolerance item 5 forbids diluting a population, not evaluating all of them. Phase 1 evaluates dunning_attempts, phase 2 evaluates tenants, notifications and subscriptions_swept; a halt in phase 1 stops phase 2 through the task dependency, and quarantine rows are persisted before either evaluation (tolerance item 6).",
+  "dunning_constants": {
+    "overdue_status_cd": 40,
+    "active_tenant_status_cd": 10,
+    "suspended_tenant_status_cd": 20,
+    "active_subscription_status_cd": 10,
+    "suspended_subscription_status_cd": 20,
+    "cancelled_subscription_status_cd": 30,
+    "attempt_scheduled_status_cd": 10,
+    "notification_kind_suspension_cd": 3,
+    "suspend_cutoff_days": 14,
+    "tenant_status_map": {
+      "10": "active",
+      "20": "suspended"
+    },
+    "tenant_status_default": "UNKNOWN",
+    "attempt_status_map": {
+      "10": "scheduled",
+      "20": "sent",
+      "30": "skipped"
+    },
+    "notification_kind_map": {
+      "1": "invoice",
+      "2": "dunning",
+      "3": "suspension"
+    },
+    "weekend_shift_days": {
+      "SAT": 2,
+      "SUN": 1
+    },
+    "day_abbreviations_english": ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"],
+    "day_abbreviation_source": "TO_CHAR(dt, 'DY', 'NLS_DATE_LANGUAGE=ENGLISH') — reproduced by indexing this array with dayofweek(dt) (1 = SUN .. 7 = SAT), whose origin day the notebook proves against pinned dates before it is used; date_format(dt,'EEE') is never emitted (D-24)",
+    "date_compare_format": "yyyyMMdd",
+    "overdue_predicate": "date_format(issued_at,'yyyyMMdd') < date_format(as_of,'yyyyMMdd') — strictly less than, so an invoice issued earlier on the same calendar day is not overdue (D-07)",
+    "suspend_predicate": "date_format(issued_at,'yyyyMMdd') <= date_format(as_of - 14 days,'yyyyMMdd') — inclusive (D-07)",
+    "schedule_predicate": "status_cd = 40 only: sp_schedule_dunning's cursor carries no date filter at all, so it visits every overdue invoice, including one issued today that fn_overdue_accounts excludes",
+    "days_overdue_expr": "datediff(trunc(as_of), trunc(issued_at)) — Oracle TRUNC(p_as_of) - TRUNC(CAST(i.issued_at AS DATE)), an integer day count on truncated dates",
+    "attempt_id_input": "invoice_id || TO_CHAR(attempt_no)",
+    "notification_id_input": "tenant_id || 'suspension' || TO_CHAR(TRUNC(p_as_of), 'YYYY-MM-DD')",
+    "attempt_no_expr": "coalesce(max(attempt_no), 0) + 1 per invoice_id (NVL(MAX(attempt_no),0)+1), evaluated set-wise over the ingest attempt population only",
+    "suspended_on_expr": "TRUNC(p_as_of) — the truncated date, not the run timestamp"
+  },
+  "job": {
+    "name": "ow_tp_silver_dunning",
+    "max_concurrent_runs": 1,
+    "compute": "serverless (no job_clusters, no instance pools, no warehouse created)",
+    "parameters": ["ns", "as_of", "catalog", "schema", "bronze_schema", "landing_root", "spec_path", "invoice_source"],
+    "tasks": [
+      {"task_key": "schedule_dunning", "phase": "schedule", "source": "pkg_dunning.sp_schedule_dunning", "depends_on": []},
+      {"task_key": "suspend_overdue", "phase": "suspend", "source": "pkg_dunning.sp_suspend_overdue", "depends_on": ["schedule_dunning"]}
+    ],
+    "batch_id": "{{job.run_id}} — one batch id for both tasks, which is how phase 2 finds the snapshot phase 1 wrote",
+    "terraform_file": "infrastructure/terraform-databricks/jobs_silver_dunning.tf"
+  },
+  "invoice_source_policy": {
+    "default": "silver",
+    "silver": "ow_tp.silver.invoices, silver_invoicing's target, read-only: the population every namespace holding migrated source data drives from",
+    "bronze": "ow_tp.bronze.invoices, used only by a declared generated-fixture namespace. Seeding fixture invoices into ow_tp.silver.invoices would mean writing another unit's silver target, which this unit is forbidden even in a scratch namespace, so the fixture's invoices are generated in bronze and the notebook reads them there. The only difference is the FROM clause; the recon report declares it as an unverified path for that namespace."
+  },
+  "fixture_namespaces": {
+    "dunning_edge": "generated fixture, declared as generated: exercises the populations the demo seed leaves at zero (a missing tenant row kept by the outer join, an UNKNOWN tenant status, a same-calendar-day invoice, subscriptions left at 20 and at 30, a tenant already carrying a suspension notification on another date, and each reachable quarantine reason) with enough clean rows that no population crosses the 5% halt. No row of it is customer history and it never writes ns=demo or ns=plans_edge (wave 3's fixture namespace).",
+    "dunning_halt": "generated fixture whose attempt population is deliberately more than 5% rejects, used once to show the halt actually fires and that the rejected rows are already persisted when it does."
+  },
+  "contract_inaccuracies_reported_upstream": [
+    {
+      "contract_item": "ANOM-NOTIFICATION-SIDE-EFFECT",
+      "contract_says": "notification rows written as a side effect of the sweep, with no idempotency key in source, so a legacy rerun duplicates them",
+      "source_actually_does": "the INSERT carries WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE tenant_id = t.tenant_id AND kind_cd = 3 AND sent_at = CAST(TRUNC(p_as_of) AS TIMESTAMP)), and uq_notifications (tenant_id, kind_cd, sent_at) backs it: a legacy rerun on the same p_as_of adds nothing. What a rerun on a *different* p_as_of adds is a second notification for a tenant still at status_cd = 10 — and the sweep's own UPDATE TENANTS SET status_cd = 20 takes the tenants it just suspended out of that population.",
+      "resolution": "the source is reproduced, not the contract's description; the contract file is not edited by this unit and the inaccuracy is reported to the parent session for a central decision"
+    }
+  ],
+  "one_snapshot_policy": {
+    "acceptance_check": "ACC-TWO-ENTRYPOINTS",
+    "rule": "JOB_NIGHTLY_DUNNING runs sp_schedule_dunning then sp_suspend_overdue inside one job action, over one state of the invoice population. The target is one job with two ordered notebook tasks (schedule_dunning -> suspend_overdue, depends_on) in one run. Phase 1 persists the overdue snapshot once, as JSON under the run's ns-scoped volume path; phase 2 reads that file and never re-queries ow_tp.silver.invoices for its population. Phase 2 fails closed if the snapshot file for its batch is absent.",
+    "snapshot_path": "<landing_root>/<ns>/silver_dunning/snapshots/<batch_id>/overdue_snapshot.json",
+    "snapshot_population": "every ow_tp.silver.invoices row in ns with status_cd = 40, carrying the three source predicates as columns (in_schedule_driver, overdue_by_fn, in_suspend_cutoff), days_overdue, the DECODE tenant_status, and the invoice total"
+  },
+  "shared_write_policy": {
+    "acceptance_check": "ACC-COLLISION",
+    "dictionary_ref": "D-30",
+    "table": "ow_tp.silver.subscriptions",
+    "owned_by": "silver_plans (wave 3)",
+    "match_key": ["id", "ns"],
+    "updatable_columns": ["status_cd", "suspended_on"],
+    "audit_columns_added": [],
+    "audit_columns_note": "D-30 allows the updating unit its own audit columns, but adding one to ow_tp.silver.subscriptions is DDL on another unit's table, which this unit is forbidden. So no column is added and no column outside updatable_columns is written; the per-row evidence (which ids were updated, their prior status_cd, and the count) lives in the recon report and in this unit's own ow_tp.silver.tenants rows instead.",
+    "forbidden": [
+      "INSERT",
+      "DELETE",
+      "DDL (CREATE/ALTER/DROP, including adding an audit column)",
+      "writing starts_on, ends_on, plan_id, tenant_id, status_cd_before, closed_by_change, closeout_seq or any other silver_plans column",
+      "writing _origin, _batch_id or _loaded_at"
+    ],
+    "attribution_precondition": "every matched row must carry an _origin this unit recognises as a merged unit's and a non-empty _batch_id; a matched row that does not is not resolved locally — the unit raises and reports centrally",
+    "recognised_origins": ["source-migrated", "target-change"],
+    "no_delete_note": "this unit issues no DELETE at all, on any table. D-31's carve-out covers rows a unit generated itself under a job input it no longer accepts; this unit's driver is the source's own overdue population, so no row it writes qualifies (D-28, D-31). Separately, and outside the deployed job: the validation harness under scripts/tp_databricks/silver_dunning/ does DELETE this unit's own rows in the namespace it reconciles, to make the recon report's cold load cold after earlier validation runs. That is harness setup, it is published in the report's reconciled_namespace_setup, and no notebook the job runs contains a DELETE."
+  },
+  "declared_divergences": [
+    {
+      "id": "DIV-NO-SWALLOW",
+      "acceptance_check": "ACC-NO-SWALLOW",
+      "source": "WHEN OTHERS THEN NULL around the attempt INSERT in sp_schedule_dunning, with g_scheduled_cnt incremented only on success",
+      "target": "no swallow: an attempt this unit cannot write fails the unit loudly, and an attempt the source could not have written is quarantined with its closed reason code and counted",
+      "measured": "attempts the source's handler would have swallowed, by cause (FK_ORPHAN on the missing tenant row, KEY_DUPLICATE on uq_dunning_attempts), reported in the recon report"
+    },
+    {
+      "id": "DIV-RERUN-APPENDS",
+      "acceptance_check": "ACC-IDEM",
+      "source": "sp_schedule_dunning re-run on the same p_as_of reads NVL(MAX(attempt_no),0)+1 from a DUNNING_ATTEMPTS table its own previous run already grew, so it appends another attempt per overdue invoice on every run",
+      "target": "attempt numbering is pinned set-wise to the ingest attempt population (ow_tp.bronze.dunning_attempts), so the ids are a function of (ns, as_of, ingest state) and a rerun is a true no-op",
+      "dictionary_ref": "D-27",
+      "measured": "attempts a source rerun would append, per run"
+    },
+    {
+      "id": "DIV-NO-HIST",
+      "dictionary_ref": "D-17",
+      "source": "trg_subscriptions_hist writes one SUBSCRIPTIONS_HIST row per subscription sp_suspend_overdue updates, with HIST_DT as a 'DD-MON-YY HH24:MI:SS' string",
+      "target": "retired: no _HIST write from the target. Delta history covers the change instead."
+    },
+    {
+      "id": "DIV-NO-GLOBALS",
+      "dictionary_ref": "D-10",
+      "source": "g_last_run_dt and g_scheduled_cnt are package state, and pkg_ow_util.log_msg reports the count from an autonomous transaction",
+      "target": "carried as explicit run-level output fields (as_of, scheduled_count) in the run summary and the recon report, not as package state; BILLING_AUDIT_LOG stays out of parity scope (D-20)"
+    }
+  ],
+  "tables": [
+    {
+      "target": "dunning_attempts",
+      "source_table": "OW_BILLING.DUNNING_ATTEMPTS",
+      "merge_key": ["id", "ns"],
+      "cluster_by": ["invoice_id", "ns"],
+      "source_columns": ["id", "tenant_id", "invoice_id", "attempt_no", "scheduled_for", "status_cd"],
+      "columns": [
+        {"name": "id", "target_type": "STRING NOT NULL", "note": "f_md5_uuid(invoice_id || TO_CHAR(attempt_no)) for rows this run schedules; the ingest id for migrated rows (D-14)"},
+        {"name": "tenant_id", "target_type": "STRING NOT NULL"},
+        {"name": "invoice_id", "target_type": "STRING NOT NULL"},
+        {"name": "attempt_no", "target_type": "INT NOT NULL"},
+        {"name": "scheduled_for", "target_type": "TIMESTAMP NOT NULL"},
+        {"name": "status_cd", "target_type": "INT NOT NULL"},
+        {"name": "status", "target_type": "STRING", "audit": true, "note": "CODES('DUN_STATUS') description of status_cd"},
+        {"name": "as_of", "target_type": "DATE", "audit": true, "note": "the run's TRUNC(p_as_of), carried on every row this run judged, migrated rows included, so the whole slice states which night's state it holds"},
+        {"name": "attempt_no_basis", "target_type": "INT", "audit": true, "note": "NVL(MAX(attempt_no),0) the numbering read for this invoice; NULL on migrated rows"},
+        {"name": "source_day_of_week", "target_type": "STRING", "audit": true, "note": "the English NLS day abbreviation of TRUNC(p_as_of), the value the source DECODE compares"},
+        {"name": "weekend_shift_days", "target_type": "INT", "audit": true, "note": "0, 1 or 2 — the DECODE's shift, so ANOM-LOCALE-DAY is evidenced per row"},
+        {"name": "unshifted_scheduled_for", "target_type": "TIMESTAMP", "audit": true, "note": "TRUNC(p_as_of) before the weekend shift"},
+        {"name": "invoice_total", "target_type": "DECIMAL(14,2)", "audit": true, "note": "the driving invoice's total, an audit column and not a source column of DUNNING_ATTEMPTS: it carries the money of the population this unit drives from so parity is exact to the cent on a Delta target (T1)"},
+        {"name": "invoice_issued_at", "target_type": "TIMESTAMP", "audit": true},
+        {"name": "days_overdue", "target_type": "INT", "audit": true},
+        {"name": "overdue_by_fn", "target_type": "BOOLEAN", "audit": true, "note": "true when fn_overdue_accounts' strictly-less-than predicate holds; sp_schedule_dunning's cursor has no date filter, so a same-day invoice is false here and still scheduled"},
+        {"name": "tenant_status", "target_type": "STRING", "audit": true, "note": "the DECODE(t.status_cd,...) value, 'UNKNOWN' for a missing or unmapped tenant row (D-03, D-18)"}
+      ]
+    },
+    {
+      "target": "notifications",
+      "source_table": "OW_BILLING.NOTIFICATIONS",
+      "merge_key": ["id", "ns"],
+      "cluster_by": ["tenant_id", "ns"],
+      "source_columns": ["id", "tenant_id", "kind_cd", "sent_at"],
+      "columns": [
+        {"name": "id", "target_type": "STRING NOT NULL", "note": "f_md5_uuid(tenant_id || 'suspension' || TO_CHAR(TRUNC(p_as_of),'YYYY-MM-DD')) for rows this run writes; the ingest id for migrated rows (D-14)"},
+        {"name": "tenant_id", "target_type": "STRING NOT NULL"},
+        {"name": "kind_cd", "target_type": "INT NOT NULL"},
+        {"name": "sent_at", "target_type": "TIMESTAMP NOT NULL"},
+        {"name": "kind", "target_type": "STRING", "audit": true, "note": "CODES('NOTIF_KIND') description of kind_cd"},
+        {"name": "as_of", "target_type": "DATE", "audit": true},
+        {"name": "written_by_sweep", "target_type": "BOOLEAN", "audit": true},
+        {"name": "tenant_status_before", "target_type": "INT", "audit": true, "note": "the tenant status the sweep's IF v_active > 0 test read"}
+      ]
+    },
+    {
+      "target": "tenants",
+      "source_table": "OW_BILLING.TENANTS",
+      "merge_key": ["id", "ns"],
+      "cluster_by": ["id", "ns"],
+      "source_columns": ["id", "name", "tax_exempt_yn", "status_cd"],
+      "columns": [
+        {"name": "id", "target_type": "STRING NOT NULL"},
+        {"name": "name", "target_type": "STRING"},
+        {"name": "tax_exempt_yn", "target_type": "STRING"},
+        {"name": "status_cd", "target_type": "INT NOT NULL", "note": "the status after the sweep: 20 where the sweep suspended the tenant, otherwise the ingest status"},
+        {"name": "status", "target_type": "STRING", "audit": true},
+        {"name": "status_cd_ingest", "target_type": "INT", "audit": true, "note": "the ow_tp.bronze.tenants status this unit read; the sweep's UPDATE TENANTS SET status_cd = 20 is expressed as this column plus status_cd, never as a write back to bronze"},
+        {"name": "as_of", "target_type": "DATE", "audit": true},
+        {"name": "sweep_candidate", "target_type": "BOOLEAN", "audit": true, "note": "in the DISTINCT tenant_id cursor: has a status_cd = 40 invoice issued on or before TRUNC(p_as_of) - 14"},
+        {"name": "suspended_by_sweep", "target_type": "BOOLEAN", "audit": true},
+        {"name": "skipped_inactive_at_ingest", "target_type": "BOOLEAN", "audit": true, "note": "a sweep candidate whose ingest status was not 10, so IF v_active > 0 was false and the source did nothing for it"},
+        {"name": "overdue_invoices", "target_type": "INT", "audit": true},
+        {"name": "first_overdue_issued_at", "target_type": "TIMESTAMP", "audit": true},
+        {"name": "subscriptions_suspended", "target_type": "INT", "audit": true, "note": "a state count, not a delta: this tenant's ow_tp.silver.subscriptions rows that stand at status_cd = 20 with suspended_on = TRUNC(p_as_of) once this run's matched updates are applied. Counting only the rows this run changed would fall to zero on a rerun, which would make the rerun a change rather than a no-op (ACC-IDEM); a row already suspended on this same date by ingest is therefore counted here too."},
+        {"name": "subscriptions_left_suspended", "target_type": "INT", "audit": true, "note": "at status_cd = 20 with a suspended_on other than TRUNC(p_as_of) — suspended before this night and left alone"},
+        {"name": "subscriptions_left_cancelled", "target_type": "INT", "audit": true, "note": "at status_cd = 30, left alone — also the trg_sub_no_uncancel rule (D-16)"}
+      ]
+    }
+  ],
+  "shared_tables": [
+    {
+      "target": "subscriptions",
+      "source_table": "OW_BILLING.SUBSCRIPTIONS",
+      "owned_by": "silver_plans",
+      "match_key": ["id", "ns"],
+      "updated_columns": ["status_cd", "suspended_on"],
+      "matched_only": true
+    }
+  ],
+  "planted_anomalies": [
+    "ANOM-SWALLOWED-INSERT",
+    "ANOM-LOCALE-DAY",
+    "ANOM-SHARED-WRITE",
+    "ANOM-NOTIFICATION-SIDE-EFFECT"
+  ],
+  "transcripts": [
+    "procs/oracle/transcripts/dunning/DUNNING-001.json",
+    "procs/oracle/transcripts/dunning/DUNNING-002.json",
+    "procs/oracle/transcripts/dunning/DUNNING-003.json",
+    "procs/oracle/transcripts/dunning/DUNNING-004.json",
+    "procs/oracle/transcripts/dunning/DUNNING-005.json"
+  ]
+}

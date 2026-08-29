@@ -23,7 +23,12 @@
     "NUMERIC_OVERFLOW"
   ],
   "quarantine_halt_threshold_pct": 5.0,
-  "quarantine_halt_basis": "subscription driver: one row per source OW_BILLING.SUBSCRIPTIONS row in ns plus one row per declared plan-change request this run applies — numerator and denominator on that one population",
+  "quarantine_halt_bases": {
+    "plans": "plans: every OW_BILLING.PLANS row in ns — numerator and denominator on that one population",
+    "subscriptions": "subscription driver: one row per source OW_BILLING.SUBSCRIPTIONS row in ns plus one row per plan-change request this run applies — numerator and denominator on that one population",
+    "entitlements": "entitlements: one row per tenant in ns whose fn_entitlement cursor population is non-empty in the source — numerator and denominator on that one population"
+  },
+  "quarantine_halt_basis_note": "each declared population is evaluated against the threshold with its own paired numerator and denominator, and the unit halts if any one of them exceeds it: tolerance item 5 forbids diluting a population, not evaluating all of them",
   "plans_constants": {
     "tier_map": {
       "1": "starter",
@@ -66,6 +71,11 @@
     "note": "The source has no change-request table: sp_change_plan is called by the application with (p_tenant_id, p_plan_id, p_effective_on). The run's population is therefore declared here and derived deterministically from bronze so both sides of the recon can build the identical set independently.",
     "derivation": "one request per tenant that has a covering subscription on entitlement_on: p_plan_id is the next plan after the tenant's covering plan in fn_list_plans order (monthly_fee, code) over the active plans, cyclically; p_effective_on is change_effective_on. A tenant with no covering subscription gets no request.",
     "default_effective_on": "2026-03-01",
+    "application_policy": {
+      "default": "transcript-pinned only: with no applied_requests parameter the run applies just the requests a transcript pins, and every other subscription keeps its migrated source state",
+      "note": "the derived population is a synthetic call population and is always measured; applying it in a namespace holding migrated source data would publish plan changes the source never had into a table waves 4 and 5 read next, so it is written nowhere and the resulting source/target row-count asymmetry is declared in the recon report instead",
+      "declared_input": "applied_requests, a JSON array of {tenant_id, plan_id, effective_on, label}; at most one accepted request per tenant per run, because two sp_change_plan calls for one tenant are sequential invocations whose second call reads what the first left"
+    },
     "overrides_are_pinned_from_transcripts": [
       {
         "tenant_id": "00000000-0000-0000-0000-000000000001",
@@ -82,6 +92,15 @@
     ]
   },
   "entitlement_on": "2026-02-28",
+  "shared_writer_policy": {
+    "table": "ow_tp.silver.subscriptions",
+    "other_declared_writer": "wave 4 (sp_suspend_overdue), per .migration/10_wave_plan.md",
+    "origins_this_unit_owns": [
+      "source-migrated",
+      "target-change"
+    ],
+    "rule": "the MERGE's UPDATE branch fires only when the matched target row's _origin is one this unit owns, so a row another wave has taken over keeps its status, suspended_on and every other field; the rows skipped for that reason are counted and published rather than overwritten. No DELETE, no INSERT OVERWRITE and no table-wide statement is issued against a shared table (D-28), and no cross-unit locking or publication protocol is invented here."
+  },
   "tables": [
     {
       "target": "plans",

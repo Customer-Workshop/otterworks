@@ -211,9 +211,11 @@ SELECT 'inserted', n.id, n.tenant_id, n.plan_id,
  ORDER BY 3, 5, 2
 """
 
-# The end state of SUBSCRIPTIONS for the requested tenants, as the procedure would leave it:
-# untouched rows, closed rows with their new values, and the inserted row. This is what the
-# PLANS-004/005 transcripts pin.
+# The end state of SUBSCRIPTIONS as the applied requests would leave it: every source row, the
+# requested tenants' rows carrying their close-out values, and one inserted row per request. The
+# population is the whole table rather than the requested tenants, because a namespace holding
+# migrated source data keeps every other subscription exactly as the source has it. This is what
+# the PLANS-004/005 transcripts pin.
 CHANGE_PLAN_END_STATE_SQL = """
 WITH req AS (
     SELECT jt.tenant_id, jt.plan_id, TO_DATE(jt.effective_on, 'YYYY-MM-DD') AS effective_on
@@ -237,9 +239,8 @@ SELECT tenant_id, id, plan_id, starts_on, ends_on, status_cd, origin FROM (
            NVL(c.new_status_cd, s.status_cd) AS status_cd,
            CASE WHEN c.id IS NULL THEN 'unchanged' ELSE 'closed' END AS origin,
            s.starts_on AS ord
-      FROM subscriptions s, closed c, req r
+      FROM subscriptions s, closed c
      WHERE c.id (+) = s.id
-       AND s.tenant_id = r.tenant_id
     UNION ALL
     SELECT r.tenant_id,
            pkg_ow_util.f_md5_uuid(
@@ -431,13 +432,38 @@ def derive_requests(entitlement_on: str, effective_on: str, overrides: list[dict
     return sorted(pinned + rest, key=lambda r: (r["tenant_id"], r["effective_on"]))
 
 
-def snapshot(entitlement_on: str, requests: list[dict]) -> dict:
+def pinned_requests(requests: list[dict]) -> list[dict]:
+    """The transcript-pinned subset: the only requests a migrated namespace applies."""
+    return [r for r in requests if r.get("pinned_by_transcript")]
+
+
+def snapshot(
+    entitlement_on: str, requests: list[dict], derived_requests: list[dict] | None = None
+) -> dict:
     """One read-only session: counts, fn_list_plans, fn_entitlement, and sp_change_plan's result.
 
-    `requests` is the run's declared plan-change population,
+    `requests` is the population this run **applies**,
     `[{"tenant_id": ..., "plan_id": ..., "effective_on": "YYYY-MM-DD"}]`, evaluated here by Oracle
-    without touching a row.
+    without touching a row. `derived_requests` is the wider population the spec's rule derives; the
+    requests in it this run does not apply are measured as an *unwritten* exposure - Oracle
+    evaluates what they would have closed and inserted, and nothing is written on either side.
     """
+    applied_keys = {(r["tenant_id"], r["plan_id"], r["effective_on"]) for r in requests}
+    unapplied = [
+        r
+        for r in (derived_requests or [])
+        if (r["tenant_id"], r["plan_id"], r["effective_on"]) not in applied_keys
+    ]
+    unapplied_json = json.dumps(
+        [
+            {
+                "tenant_id": r["tenant_id"],
+                "plan_id": r["plan_id"],
+                "effective_on": r["effective_on"],
+            }
+            for r in unapplied
+        ]
+    )
     req_json = json.dumps(
         [
             {
@@ -579,6 +605,29 @@ def snapshot(entitlement_on: str, requests: list[dict]) -> dict:
             for r in _rows(cur, CHANGE_PLAN_END_STATE_SQL, requests=req_json)
         ]
         reapply = _rows(cur, REAPPLY_SQL, requests=req_json)[0]
+        if unapplied:
+            _un = _rows(cur, REAPPLY_SQL, requests=unapplied_json)[0]
+            _un_rows = _rows(cur, CHANGE_PLAN_SQL, requests=unapplied_json)
+            unwritten = {
+                "requests": int(_un[0]),
+                "tenants": len({r["tenant_id"] for r in unapplied}),
+                "open_subscriptions_they_would_have_closed": sum(
+                    1 for r in _un_rows if r[0] == "closed"
+                ),
+                "new_subscriptions_they_would_have_inserted": sum(
+                    1 for r in _un_rows if r[0] == "inserted"
+                ),
+                "new_ids_that_already_exist_in_the_source": int(_un[1] or 0),
+            }
+        else:
+            unwritten = {
+                "requests": 0,
+                "tenants": 0,
+                "open_subscriptions_they_would_have_closed": 0,
+                "new_subscriptions_they_would_have_inserted": 0,
+                "new_ids_that_already_exist_in_the_source": 0,
+            }
+        unwritten["written"] = False
         sample_keys = [
             {
                 "tenant_id": r[0],
@@ -645,6 +694,7 @@ def snapshot(entitlement_on: str, requests: list[dict]) -> dict:
                 exact += 1
     change_populations["open_subscriptions_left_overlapping_by_the_strict_less_than"] = overlap
     change_populations["open_subscriptions_starting_exactly_on_the_effective_date"] = exact
+    change_populations["derived_but_not_applied"] = unwritten
 
     return {
         "oracle_banner": banner,
@@ -658,6 +708,8 @@ def snapshot(entitlement_on: str, requests: list[dict]) -> dict:
         "global_walk": global_walk,
         "populations": populations,
         "change_requests": requests,
+        "change_requests_derived": derived_requests if derived_requests is not None else requests,
+        "change_requests_derived_but_not_applied": unapplied,
         "change_rows": change_rows,
         "change_end_state": end_state,
         "change_populations": change_populations,

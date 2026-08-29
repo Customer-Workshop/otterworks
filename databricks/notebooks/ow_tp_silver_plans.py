@@ -61,6 +61,17 @@
 # MAGIC `ow_tp.silver.subscriptions` is also written by wave 4 (`sp_suspend_overdue`): this unit
 # MAGIC `MERGE`s the identities it produces and never deletes or rewrites a row it did not produce, and
 # MAGIC it invents no cross-unit locking or publication protocol (D-28, `.migration/10_wave_plan.md`).
+# MAGIC Ownership is enforced in the `MERGE` itself: a matched row is updated only when its `_origin`
+# MAGIC is one this unit writes, so a row another wave owns keeps that wave's status, `suspended_on`
+# MAGIC and every other field. The rows this run declined to update for that reason are counted
+# MAGIC (`rows_matched_but_owned_by_another_writer`) instead of being silently overwritten.
+# MAGIC
+# MAGIC The `sp_change_plan` request population this run **applies** is a declared job input
+# MAGIC (`applied_requests`), and it is not the same thing as the population the spec's rule *derives*.
+# MAGIC The derived population is always computed and measured, and the requests actually applied are
+# MAGIC either the ones passed in or — with nothing passed in — only the transcript-pinned ones: a
+# MAGIC migrated namespace holds the source's own subscriptions, and this unit does not publish plan
+# MAGIC changes the source never had into a table waves 4 and 5 read next.
 
 # COMMAND ----------
 
@@ -79,6 +90,11 @@ dbutils.widgets.text("change_effective_on", "2026-03-01")
 dbutils.widgets.text("landing_root", "/Volumes/ow_tp/bronze/landing")
 dbutils.widgets.text("spec_path", "/Workspace/Shared/ow_tp/silver_plans_spec.json")
 dbutils.widgets.text("batch_id", "")
+# The sp_change_plan requests this run applies, as JSON:
+#   [{"tenant_id": ..., "plan_id": ..., "effective_on": "YYYY-MM-DD", "label": ...}]
+# Empty means "apply only the transcript-pinned requests in the spec", which is the policy for a
+# namespace holding migrated source data.
+dbutils.widgets.text("applied_requests", "")
 
 NS = dbutils.widgets.get("ns").strip()
 CATALOG = dbutils.widgets.get("catalog").strip()
@@ -89,6 +105,7 @@ CHANGE_EFFECTIVE_ON = dbutils.widgets.get("change_effective_on").strip()
 LANDING_ROOT = dbutils.widgets.get("landing_root").strip().rstrip("/")
 SPEC_PATH = dbutils.widgets.get("spec_path").strip()
 BATCH_ID = dbutils.widgets.get("batch_id").strip()
+APPLIED_REQUESTS_JSON = dbutils.widgets.get("applied_requests").strip()
 
 UNIT = "silver_plans"
 
@@ -164,11 +181,50 @@ REASONS = set(SPEC["quarantine_reasons"])
 HALT_PCT = float(SPEC["quarantine_halt_threshold_pct"])
 TABLES = {t["target"]: t for t in SPEC["tables"]}
 CHANGE_OVERRIDES = SPEC["change_requests"]["overrides_are_pinned_from_transcripts"]
+# The origins this unit writes. A subscription row carrying anything else belongs to another wave
+# (wave 4's sp_suspend_overdue writes this table too) and is never updated here.
+OWNED_ORIGINS = tuple(SPEC["shared_writer_policy"]["origins_this_unit_owns"])
+
+
+def parse_applied_requests(raw: str) -> list[dict]:
+    """The declared request population, validated: these values reach SQL as literals."""
+    if not raw:
+        return []
+    rows = json.loads(raw)
+    if not isinstance(rows, list):
+        raise ValueError("applied_requests must be a JSON array of request objects")
+    out = []
+    for row in rows:
+        req = {k: row.get(k) for k in ("tenant_id", "plan_id", "effective_on", "label")}
+        for key in ("tenant_id", "plan_id"):
+            if not isinstance(req[key], str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,64}", req[key]):
+                raise ValueError(f"applied_requests[].{key}={req[key]!r} is not an id literal")
+        if not isinstance(req["effective_on"], str) or not re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}", req["effective_on"]
+        ):
+            raise ValueError(f"applied_requests[].effective_on={req['effective_on']!r} is not a date")
+        datetime.date.fromisoformat(req["effective_on"])
+        label = req["label"]
+        if label is not None and (
+            not isinstance(label, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,64}", label)
+        ):
+            raise ValueError(f"applied_requests[].label={label!r} is not a label literal")
+        out.append(req)
+    return out
+
+
+APPLIED_REQUESTS = parse_applied_requests(APPLIED_REQUESTS_JSON)
+REQUEST_POLICY = (
+    "declared: the requests passed to this run in the applied_requests parameter"
+    if APPLIED_REQUESTS_JSON
+    else SPEC["change_requests"]["application_policy"]["default"]
+)
 
 print(
     f"ns={NS} entitlement_on={ENTITLEMENT_ON} change_effective_on={CHANGE_EFFECTIVE_ON} "
     f"batch_id={BATCH_ID} targets={sorted(TABLES)} quarantine={QUARANTINE}"
 )
+print(f"request application policy: {REQUEST_POLICY} ({len(APPLIED_REQUESTS)} declared)")
 
 # COMMAND ----------
 
@@ -391,10 +447,13 @@ print(
 
 # MAGIC %md ## `OW_BILLING.SUBSCRIPTIONS`, judged
 # MAGIC
-# MAGIC A subscription whose **plan** is missing is *not* a reject: `p.id (+) = s.plan_id` keeps it and
-# MAGIC null-extends the plan columns (D-18), so `FK_ORPHAN` here is about the **tenant** reference only
-# MAGIC — the one the source enforces with `fk_sub_tenant` and the one D-19 declares mandatory. The live
-# MAGIC exposure of both is measured rather than assumed.
+# MAGIC A subscription whose **plan** is missing *from the source* is not a reject: `p.id (+) = s.plan_id`
+# MAGIC keeps it and null-extends the plan columns (D-18). A plan **this run rejected** is a different
+# MAGIC thing entirely: Oracle joins it successfully, so null-extending its subscriptions would forge
+# MAGIC parity out of a load failure and would land in the `ACC-OUTER-JOIN` count. Plan presence is
+# MAGIC therefore evaluated against the *source* population (`v_plans_judged`), and a row that depends
+# MAGIC on a plan this run rejected is itself rejected under `FK_ORPHAN` with its own detail. Both
+# MAGIC populations are measured separately.
 
 # COMMAND ----------
 
@@ -413,22 +472,45 @@ base AS (
          coalesce(d.id_rows, 0) AS id_rows,
          EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.tenants t
                   WHERE t.`ns` = {NS_LIT} AND t.`id` = s.`tenant_id`) AS tenant_exists,
-         EXISTS (SELECT 1 FROM v_plans_loaded p WHERE p.`id` = s.`plan_id`) AS plan_exists
+         -- Presence in the *source* population, not in what this run managed to load: that is what
+         -- decides whether D-18's outer join null-extends.
+         EXISTS (SELECT 1 FROM v_plans_judged p WHERE p.`id` = s.`plan_id`)
+           AS plan_exists_in_source,
+         EXISTS (SELECT 1 FROM v_plans_judged p
+                  WHERE p.`id` = s.`plan_id` AND p.`quarantine_reason` IS NOT NULL)
+           AS plan_rejected_by_this_run
   FROM {CATALOG}.{BRONZE}.subscriptions s
   LEFT JOIN dup_id d ON d.`id` = s.`id`
   WHERE s.`ns` = {NS_LIT}
+),
+judged AS (
+  SELECT b.*,
+         CASE
+           WHEN b.`id` IS NULL OR b.`tenant_id` IS NULL OR b.`starts_on` IS NULL THEN 'KEY_NULL'
+           WHEN b.`status_cd_raw` IS NOT NULL AND b.`status_cd` IS NULL THEN 'NUMERIC_OVERFLOW'
+           WHEN b.id_rows > 1 THEN 'KEY_DUPLICATE'
+           -- fk_sub_tenant is enforced in the source, so this guards a bronze slice that lost a
+           -- tenant, not the source. A plan missing from the *source* is deliberately not a reject
+           -- (D-18); a plan this run rejected is, because Oracle joins it and this port cannot.
+           WHEN NOT b.tenant_exists OR b.plan_rejected_by_this_run THEN 'FK_ORPHAN'
+           ELSE NULL
+         END AS `quarantine_reason`
+  FROM base b
 )
-SELECT b.*,
+SELECT j.*,
        CASE
-         WHEN b.`id` IS NULL OR b.`tenant_id` IS NULL OR b.`starts_on` IS NULL THEN 'KEY_NULL'
-         WHEN b.`status_cd_raw` IS NOT NULL AND b.`status_cd` IS NULL THEN 'NUMERIC_OVERFLOW'
-         WHEN b.id_rows > 1 THEN 'KEY_DUPLICATE'
-         -- fk_sub_tenant is enforced in the source, so this guards a bronze slice that lost a
-         -- tenant, not the source. A missing *plan* is deliberately not a reject (D-18).
-         WHEN NOT b.tenant_exists THEN 'FK_ORPHAN'
-         ELSE NULL
-       END AS `quarantine_reason`
-FROM base b
+         WHEN j.`quarantine_reason` IS NULL THEN NULL
+         WHEN j.`quarantine_reason` = 'KEY_NULL'
+           THEN 'subscriptions.id, .tenant_id or .starts_on is null'
+         WHEN j.`quarantine_reason` = 'KEY_DUPLICATE'
+           THEN 'two bronze SUBSCRIPTIONS rows share an id, which pk_subscriptions forbids in the source'
+         WHEN j.`quarantine_reason` = 'NUMERIC_OVERFLOW'
+           THEN 'status_cd does not fit its pinned target type'
+         WHEN NOT j.tenant_exists
+           THEN 'the tenant fk_sub_tenant points at is not in bronze (a plan missing from the source is not a reject: p.id (+) = s.plan_id keeps the subscription and null-extends it, D-18)'
+         ELSE 'the PLANS row this subscription references is present in the source population but was rejected by this run, so the dependent row is rejected too rather than null-extended: D-18 null extension is for a plan the source itself does not have'
+       END AS `quarantine_detail`
+FROM judged j
 """
 spark.sql(SUBS_SQL).createOrReplaceTempView("v_subs_judged")
 spark.sql(
@@ -437,9 +519,16 @@ spark.sql(
 )
 
 subs_with_missing_plan = spark.sql(
-    "SELECT count(*) FROM v_subs_loaded WHERE NOT plan_exists"
+    "SELECT count(*) FROM v_subs_loaded WHERE NOT plan_exists_in_source"
 ).collect()[0][0]
-print(f"subscriptions: rows with a missing plan row (kept, null-extended) = {subs_with_missing_plan}")
+subs_on_a_plan_rejected_this_run = spark.sql(
+    "SELECT count(*) FROM v_subs_judged WHERE plan_rejected_by_this_run"
+).collect()[0][0]
+print(
+    f"subscriptions: rows whose plan is absent from the source (kept, null-extended) = "
+    f"{subs_with_missing_plan}; rows rejected because their plan was rejected by this run = "
+    f"{subs_on_a_plan_rejected_this_run}"
+)
 
 # COMMAND ----------
 
@@ -470,7 +559,10 @@ WITH sub AS (
   FROM v_subs_loaded s
 ),
 -- The returned cursor: tenants ⋈ subscriptions, plans outer-joined so a missing plan null-extends
--- (D-18), ORDER BY starts_on DESC + ROWNUM <= 1 pinned with the D-08 tie-break.
+-- (D-18), ORDER BY starts_on DESC + ROWNUM <= 1 pinned with the D-08 tie-break. The outer join is
+-- against the *loaded* plans and that is now exactly D-18's population: a subscription whose plan is
+-- present in the source but was rejected by this run is itself rejected upstream, so it never
+-- reaches here to null-extend and pose as parity.
 cursor_cand AS (
   SELECT t.`id` AS tenant_id, s.`id` AS subscription_id, s.`plan_id`, s.`starts_on`, s.`ends_on`,
          s.`status_cd`, s.cursor_covers, s.sentinel_covers,
@@ -685,11 +777,25 @@ if (_probe[4], _probe[5], _probe[6]) != ("UNKNOWN", "UNKNOWN", "cancelled"):
 # MAGIC %md ## `sp_change_plan`, re-expressed
 # MAGIC
 # MAGIC The source has no change-request table: the procedure is called by the application with
-# MAGIC `(p_tenant_id, p_plan_id, p_effective_on)`. The run's request population is therefore a declared
-# MAGIC job input, derived deterministically from bronze by the rule in the spec — next plan in
-# MAGIC `fn_list_plans` order, cyclically, for every tenant with a covering subscription — with the two
-# MAGIC requests pinned by transcripts `PLANS-004`/`PLANS-005` overriding it. Both sides of the recon
-# MAGIC build the same set from their own copy of the data, and the recon report compares them.
+# MAGIC `(p_tenant_id, p_plan_id, p_effective_on)`. Two populations therefore exist here and they are
+# MAGIC deliberately not the same one:
+# MAGIC
+# MAGIC * the **derived** population — the spec's rule (next plan in `fn_list_plans` order, cyclically,
+# MAGIC   for every tenant with a covering subscription), with the transcript-pinned requests overriding
+# MAGIC   it. It is computed on both sides of the recon from each side's own copy of the data and
+# MAGIC   compared, and it is *measured, not written*: it is a synthetic call population, and applying it
+# MAGIC   to a namespace holding migrated source data would publish plan changes the source never had
+# MAGIC   into a table waves 4 and 5 read next.
+# MAGIC * the **applied** population — what this run actually writes. With nothing passed in it is the
+# MAGIC   transcript-pinned requests only; a scratch namespace passes its fixture's requests in
+# MAGIC   explicitly. The requests derived but not applied are reported as exposure, together with the
+# MAGIC   source/target row-count asymmetry that not applying them leaves behind.
+# MAGIC
+# MAGIC An applied request whose `f_md5_uuid` id already exists in bronze is where the source raises
+# MAGIC ORA-00001 after committing its close-outs. This port converges instead, deterministically: the
+# MAGIC close-outs are applied, and the existing identity keeps the bronze row's payload (carried
+# MAGIC through this run's own close-out if it is closed) while the request's insert is suppressed — one
+# MAGIC row per merge key, never two.
 # MAGIC
 # MAGIC The close-out is `ends_on = p_effective_on - 1` and `status_cd = DECODE(r.status_cd, 30, 30, 10)`
 # MAGIC per row, with `trg_sub_no_uncancel` folded in (it re-asserts the same 30). The loop's result does
@@ -732,31 +838,104 @@ UNION ALL
 SELECT d.* FROM derived d
 WHERE NOT EXISTS (SELECT 1 FROM overrides o WHERE o.`tenant_id` = d.`tenant_id`)
 """
-spark.sql(REQ_SQL).createOrReplaceTempView("v_requests_raw")
+spark.sql(REQ_SQL).createOrReplaceTempView("v_requests_derived")
+
+
+def new_id_expr(prefix: str = "r") -> str:
+    return f_md5_uuid(
+        f"concat({prefix}.`tenant_id`, {prefix}.`plan_id`, "
+        f"date_format({prefix}.`effective_on`, 'yyyy-MM-dd'))"
+    )
+
+
+spark.sql(
+    "CREATE OR REPLACE TEMP VIEW v_requests_derived_keyed AS "
+    f"SELECT r.*, {new_id_expr()} AS `new_subscription_id` FROM v_requests_derived r"
+)
+
+if APPLIED_REQUESTS:
+    APPLIED_SQL = " UNION ALL ".join(
+        f"SELECT {sql_str(r['tenant_id'])} AS `tenant_id`, {sql_str(r['plan_id'])} AS `plan_id`, "
+        f"TIMESTAMP'{r['effective_on']} 00:00:00' AS `effective_on`, "
+        f"{sql_str(r['label']) if r['label'] else 'CAST(NULL AS STRING)'} AS `pinned_by_transcript`"
+        for r in APPLIED_REQUESTS
+    )
+else:
+    # The default policy: only the requests a transcript pins. Every other subscription in the
+    # namespace keeps its migrated source state.
+    APPLIED_SQL = (
+        "SELECT * FROM v_requests_derived WHERE `pinned_by_transcript` IS NOT NULL"
+    )
+spark.sql(APPLIED_SQL).createOrReplaceTempView("v_requests_raw")
 
 REQ_JUDGED_SQL = f"""
-SELECT r.*,
-       {f_md5_uuid("concat(r.`tenant_id`, r.`plan_id`, date_format(r.`effective_on`, 'yyyy-MM-dd'))")}
-         AS `new_subscription_id`,
-       to_json(struct(r.`tenant_id`, r.`plan_id`, r.`effective_on`, r.`pinned_by_transcript`))
-         AS `raw_source_payload`,
+WITH keyed AS (
+  SELECT r.*, {new_id_expr()} AS `new_subscription_id`
+  FROM v_requests_raw r
+),
+dup AS (
+  SELECT `new_subscription_id`, count(*) AS id_rows FROM keyed GROUP BY `new_subscription_id`
+),
+base AS (
+  SELECT k.*,
+         coalesce(d.id_rows, 0) AS id_rows,
+         EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.tenants t
+                  WHERE t.`ns` = {NS_LIT} AND t.`id` = k.`tenant_id`) AS tenant_exists,
+         EXISTS (SELECT 1 FROM v_plans_judged p WHERE p.`id` = k.`plan_id`)
+           AS plan_exists_in_source,
+         EXISTS (SELECT 1 FROM v_plans_judged p
+                  WHERE p.`id` = k.`plan_id` AND p.`quarantine_reason` IS NOT NULL)
+           AS plan_rejected_by_this_run,
+         EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.subscriptions b
+                  WHERE b.`ns` = {NS_LIT} AND b.`id` = k.`new_subscription_id`)
+           AS new_id_already_in_the_source
+  FROM keyed k
+  LEFT JOIN dup d ON d.`new_subscription_id` = k.`new_subscription_id`
+),
+judged AS (
+  SELECT b.*,
+         to_json(struct(b.`tenant_id`, b.`plan_id`, b.`effective_on`, b.`pinned_by_transcript`,
+                        b.`new_subscription_id`)) AS `raw_source_payload`,
+         CASE
+           WHEN b.`tenant_id` IS NULL OR b.`plan_id` IS NULL OR b.`effective_on` IS NULL
+             THEN 'KEY_NULL'
+           -- Two applied requests deriving the same f_md5_uuid id would be two source rows for one
+           -- merge key, which is the one thing a MERGE cannot resolve deterministically.
+           WHEN b.id_rows > 1 THEN 'KEY_DUPLICATE'
+           -- fk_sub_tenant and fk_sub_plan both apply to the row the source INSERTs, so a request
+           -- pointing at a tenant or a plan that is absent from the source, or at a plan this run
+           -- rejected, cannot produce a subscription.
+           WHEN NOT b.tenant_exists OR NOT b.plan_exists_in_source
+             OR b.plan_rejected_by_this_run THEN 'FK_ORPHAN'
+           ELSE NULL
+         END AS `quarantine_reason`
+  FROM base b
+)
+SELECT j.*,
        CASE
-         WHEN r.`tenant_id` IS NULL OR r.`plan_id` IS NULL OR r.`effective_on` IS NULL
-           THEN 'KEY_NULL'
-         -- fk_sub_tenant and fk_sub_plan both apply to the row the source INSERTs, so a request
-         -- pointing at a tenant or a plan this run did not load cannot produce a subscription.
-         WHEN NOT EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.tenants t
-                           WHERE t.`ns` = {NS_LIT} AND t.`id` = r.`tenant_id`)
-           OR NOT EXISTS (SELECT 1 FROM v_plans_loaded p WHERE p.`id` = r.`plan_id`)
-           THEN 'FK_ORPHAN'
-         ELSE NULL
-       END AS `quarantine_reason`
-FROM v_requests_raw r
+         WHEN j.`quarantine_reason` IS NULL THEN NULL
+         WHEN j.`quarantine_reason` = 'KEY_NULL'
+           THEN 'a declared plan-change request has no tenant, plan or effective date, so f_md5_uuid cannot key the subscription it would insert'
+         WHEN j.`quarantine_reason` = 'KEY_DUPLICATE'
+           THEN 'two applied requests derive the same f_md5_uuid subscription id, which pk_subscriptions forbids in the source and a MERGE cannot resolve to one row'
+         WHEN NOT j.tenant_exists
+           THEN 'the tenant this request would insert a subscription for is not in bronze, so fk_sub_tenant could not hold'
+         WHEN NOT j.plan_exists_in_source
+           THEN 'the plan this request names is absent from the source PLANS population, so fk_sub_plan could not hold on the row the source INSERTs'
+         ELSE 'the plan this request names is present in the source population but was rejected by this run, so the dependent subscription is rejected rather than written on a plan this port did not load'
+       END AS `quarantine_detail`
+FROM judged j
 """
 spark.sql(REQ_JUDGED_SQL).createOrReplaceTempView("v_requests_judged")
 spark.sql(
     "CREATE OR REPLACE TEMP VIEW v_requests AS "
     "SELECT * FROM v_requests_judged WHERE `quarantine_reason` IS NULL"
+)
+# The identities this run actually inserts: an accepted request whose derived id is already a bronze
+# subscription converges onto that row instead of producing a second row for the same merge key.
+spark.sql(
+    "CREATE OR REPLACE TEMP VIEW v_requests_new AS "
+    "SELECT * FROM v_requests WHERE NOT new_id_already_in_the_source"
 )
 
 CLOSEOUT_SQL = f"""
@@ -780,6 +959,21 @@ SELECT o.`id`,
 FROM open_subs o
 """
 spark.sql(CLOSEOUT_SQL).createOrReplaceTempView("v_closeout")
+
+# Two accepted requests for one tenant are two *sequential* source invocations: the first one's
+# close-outs and its inserted subscription are what the second one then sees. Re-expressing them in
+# one set-wise pass would close a row twice and produce two rows for one merge key, so it is refused
+# rather than approximated — one request per tenant per run, and a second call is a second run.
+_multi = spark.sql(
+    "SELECT count(*) FROM (SELECT `tenant_id` FROM v_requests GROUP BY `tenant_id` "
+    "HAVING count(*) > 1)"
+).collect()[0][0]
+if _multi:
+    raise ValueError(
+        f"{_multi} tenant(s) carry more than one accepted plan-change request in this run: "
+        "sp_change_plan is called once per change and its close-out reads the state the previous "
+        "call left, so this port applies at most one request per tenant per run"
+    )
 
 # The subscriptions the strict `<` leaves open: they start on or after the effective date, so the
 # cursor never sees them and they overlap the subscription the procedure then inserts.
@@ -823,9 +1017,21 @@ SELECT r.`new_subscription_id` AS `id`, r.`tenant_id`, r.`plan_id`,
        CAST(NULL AS INT), r.`effective_on` AS `change_effective_on`, r.`plan_id` AS `change_plan_id`,
        false, false, false,
        'target-change' AS `_origin`
-FROM v_requests r
+FROM v_requests_new r
 """
 spark.sql(SUBS_SRC_SQL).createOrReplaceTempView("v_subs_src")
+
+# One row per merge key, checked rather than assumed: the generated rows are keyed by f_md5_uuid and
+# a derived id that is already a bronze subscription would otherwise appear twice (the ORA-00001
+# shape, D-26).
+_dupe_key = spark.sql(
+    "SELECT count(*) FROM (SELECT `id` FROM v_subs_src GROUP BY `id` HAVING count(*) > 1)"
+).collect()[0][0]
+if _dupe_key:
+    raise AssertionError(
+        f"{_dupe_key} subscription merge key(s) carry more than one source row: the MERGE would be "
+        "non-deterministic"
+    )
 
 _close = spark.sql(
     f"""
@@ -840,12 +1046,28 @@ _close = spark.sql(
     """
 ).collect()[0]
 _reapply = spark.sql(
-    f"""
-    SELECT count(*) FROM v_requests r
-    WHERE EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.subscriptions b
-                   WHERE b.`ns` = {NS_LIT} AND b.`id` = r.`new_subscription_id`)
-    """
+    "SELECT count(*) FROM v_requests WHERE new_id_already_in_the_source"
 ).collect()[0][0]
+# The population the spec's rule derives but this run does not apply, and what applying it would
+# have done: measured exposure, written nowhere.
+_unapplied = spark.sql(
+    f"""
+    WITH unapplied AS (
+      SELECT d.* FROM v_requests_derived_keyed d
+      WHERE NOT EXISTS (
+        SELECT 1 FROM v_requests_raw a
+        WHERE a.`tenant_id` = d.`tenant_id` AND a.`effective_on` = d.`effective_on`
+      )
+    )
+    SELECT (SELECT count(*) FROM unapplied),
+           (SELECT count(DISTINCT `tenant_id`) FROM unapplied),
+           (SELECT count(*) FROM v_subs_loaded s JOIN unapplied u ON u.`tenant_id` = s.`tenant_id`
+             WHERE s.`ends_on` IS NULL AND s.`starts_on` < u.`effective_on`),
+           (SELECT count(*) FROM unapplied u
+             WHERE EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.subscriptions b
+                            WHERE b.`ns` = {NS_LIT} AND b.`id` = u.`new_subscription_id`))
+    """
+).collect()[0]
 _eq_start = spark.sql(
     """
     SELECT count(*) FROM v_subs_loaded s JOIN v_requests r ON r.`tenant_id` = s.`tenant_id`
@@ -853,10 +1075,18 @@ _eq_start = spark.sql(
     """
 ).collect()[0][0]
 
+derived_requests = spark.table("v_requests_derived").count()
+applied_requests = spark.table("v_requests_judged").count()
+accepted_requests = spark.table("v_requests").count()
+new_identities = spark.table("v_requests_new").count()
+
 change_populations = {
     "change_effective_on_default": CHANGE_EFFECTIVE_ON,
-    "requests": spark.table("v_requests_judged").count(),
-    "requests_accepted": spark.table("v_requests").count(),
+    "request_application_policy": REQUEST_POLICY,
+    "requests_derived_by_the_spec_rule": derived_requests,
+    "requests": applied_requests,
+    "requests_applied_by_this_run": applied_requests,
+    "requests_accepted": accepted_requests,
     "requests_pinned_by_a_transcript": spark.sql(
         "SELECT count(*) FROM v_requests WHERE `pinned_by_transcript` IS NOT NULL"
     ).collect()[0][0],
@@ -867,8 +1097,22 @@ change_populations = {
     "closeout_ends_on_carrying_a_time_component": int(_close[4] or 0),
     "open_subscriptions_left_overlapping_by_the_strict_less_than": spark.table("v_overlap").count(),
     "open_subscriptions_starting_exactly_on_the_effective_date": int(_eq_start),
-    "new_subscriptions": spark.table("v_requests").count(),
+    "new_subscriptions": new_identities,
     "new_ids_already_present_in_the_source": int(_reapply),
+    "inserts_suppressed_by_an_existing_identity": int(_reapply),
+    "derived_but_not_applied": {
+        "requests": int(_unapplied[0] or 0),
+        "tenants": int(_unapplied[1] or 0),
+        "open_subscriptions_they_would_have_closed": int(_unapplied[2] or 0),
+        "new_subscriptions_they_would_have_inserted": int(_unapplied[0] or 0),
+        "new_ids_that_already_exist_in_the_source": int(_unapplied[3] or 0),
+        "written": False,
+        "note": "the spec's derivation rule is a synthetic call population, so the requests it "
+        "derives beyond the applied policy are measured here and written nowhere: every other "
+        "subscription in this namespace keeps its migrated source state. The target therefore "
+        "carries one row per source subscription plus one per applied request that created a new "
+        "identity, and that asymmetry is declared rather than closed by writing the difference.",
+    },
     "closeout_order_pinned_to": CONST["closeout_order_by"],
 }
 print(json.dumps(change_populations, indent=1))
@@ -880,11 +1124,94 @@ print(json.dumps(change_populations, indent=1))
 # MAGIC Reasons come from the closed set in `.migration/11_quarantine_codes.md`; nothing local is
 # MAGIC invented and there is no catch-all. Note what is deliberately *not* a reject here: an unmapped
 # MAGIC or NULL `tier_cd` (it is the literal `'UNKNOWN'`), an inactive plan (it is loaded, unlisted), and
-# MAGIC a subscription whose plan row is missing (D-18 keeps it and null-extends).
+# MAGIC a subscription whose plan row is missing *from the source* (D-18 keeps it and null-extends).
+# MAGIC
+# MAGIC Every rejection this unit *counts* also has a physical row here, including the entitlement ones:
+# MAGIC a tenant whose covering subscription was rejected has no entitlement row, and the reason carried
+# MAGIC is the reason of the very row `fn_entitlement`'s cursor would have returned, so it is exactly one
+# MAGIC closed reason and not a summary of several.
 
 # COMMAND ----------
 
 REQ_SOURCE_TABLE = "OW_BILLING.SUBSCRIPTIONS+PKG_PLANS.SP_CHANGE_PLAN(request)"
+ENT_SOURCE_TABLE = "PKG_PLANS.FN_ENTITLEMENT(tenant)"
+
+# The entitlement rows this run did not produce, one per tenant whose cursor population exists in the
+# source but survived nothing: the reason is taken from the candidate the cursor would have picked
+# (ORDER BY starts_on DESC, id DESC — the same pinned D-08 tie-break), so each rejection carries one
+# closed reason with the rejected candidate's own payload beside it.
+ENT_REJECT_SQL = f"""
+WITH cand AS (
+  SELECT t.`id` AS `tenant_id`, s.`id` AS `subscription_id`, s.`quarantine_reason`,
+         s.`quarantine_detail`, s.`raw_source_payload`,
+         row_number() OVER (PARTITION BY t.`id`
+                            ORDER BY s.`starts_on` DESC, s.`id` DESC) AS rn,
+         count(*) OVER (PARTITION BY t.`id`) AS candidate_rows
+  FROM {CATALOG}.{BRONZE}.tenants t
+  JOIN v_subs_judged s ON s.`tenant_id` = t.`id`
+  WHERE t.`ns` = {NS_LIT}
+    AND s.`starts_on` <= {AS_OF_TS}
+    AND (s.`ends_on` IS NULL OR s.`ends_on` >= {AS_OF_TS})
+),
+pick AS (SELECT * FROM cand WHERE rn = 1)
+SELECT p.`tenant_id`, p.`subscription_id`, p.`quarantine_reason`,
+       CAST(p.candidate_rows AS INT) AS `candidate_rows`,
+       concat_ws('|', p.`tenant_id`, {sql_str(ENTITLEMENT_ON)}) AS `source_key`,
+       to_json(named_struct(
+         'tenant_id', p.`tenant_id`,
+         'as_of_on', {sql_str(ENTITLEMENT_ON)},
+         'cursor_candidate_rows', p.candidate_rows,
+         'the_subscription_the_cursor_would_have_returned', p.`subscription_id`,
+         'that_subscriptions_rejection', p.`quarantine_reason`,
+         'that_subscriptions_payload', p.`raw_source_payload`)) AS `raw_source_payload`,
+       concat('fn_entitlement returns no row for this tenant because the subscription its cursor ',
+              'would have picked was rejected by this run: ', p.`quarantine_detail`)
+         AS `quarantine_detail`
+FROM pick p
+WHERE NOT EXISTS (SELECT 1 FROM v_entitlements e WHERE e.`tenant_id` = p.`tenant_id`)
+"""
+spark.sql(ENT_REJECT_SQL).createOrReplaceTempView("v_ent_rejects")
+ent_rejected_tenants = spark.table("v_ent_rejects").count()
+if ent_rejected_tenants != ent_source_tenants - ent_loaded_tenants:
+    raise AssertionError(
+        "the entitlement rejection ledger does not account for every tenant in the source cursor "
+        f"population: source={ent_source_tenants} loaded={ent_loaded_tenants} "
+        f"physical_rejects={ent_rejected_tenants}"
+    )
+# A tenant whose cursor pick was rejected but which still has another surviving candidate would get
+# an entitlement row built from a *different* subscription than the one Oracle's cursor returns. That
+# is a divergence, not a reject, and it is not claimed as parity: it is measured and fails closed.
+ent_pick_rejected = spark.sql(
+    f"""
+    WITH cand AS (
+      SELECT s.`tenant_id`, s.`id`, s.`quarantine_reason`,
+             row_number() OVER (PARTITION BY s.`tenant_id`
+                                ORDER BY s.`starts_on` DESC, s.`id` DESC) AS rn
+      FROM v_subs_judged s
+      JOIN {CATALOG}.{BRONZE}.tenants t ON t.`ns` = {NS_LIT} AND t.`id` = s.`tenant_id`
+      WHERE s.`starts_on` <= {AS_OF_TS}
+        AND (s.`ends_on` IS NULL OR s.`ends_on` >= {AS_OF_TS})
+    )
+    SELECT count(*) FROM cand c JOIN v_entitlements e ON e.`tenant_id` = c.`tenant_id`
+    WHERE c.rn = 1 AND c.`quarantine_reason` IS NOT NULL
+    """
+).collect()[0][0]
+if ent_pick_rejected:
+    raise AssertionError(
+        f"{ent_pick_rejected} tenant(s) hold an entitlement row built from a subscription other than "
+        "the one fn_entitlement's cursor would have returned, because that one was rejected by this "
+        "run: the row would look like parity and would not be — stop and report"
+    )
+
+_ent_reason_null = spark.sql(
+    "SELECT count(*) FROM v_ent_rejects WHERE `quarantine_reason` IS NULL"
+).collect()[0][0]
+if _ent_reason_null:
+    raise AssertionError(
+        f"{_ent_reason_null} entitlement rejection(s) carry no reason: the tenant's picked cursor "
+        "candidate was not itself rejected, so the missing entitlement row has an unexplained cause "
+        "— stop and report rather than inventing a code"
+    )
 
 QUAR_SQL = f"""
 SELECT `quarantine_reason`, {NS_LIT} AS `ns`, 'OW_BILLING.PLANS' AS `source_table`,
@@ -901,12 +1228,7 @@ FROM v_plans_judged WHERE `quarantine_reason` IS NOT NULL
 
 UNION ALL
 SELECT `quarantine_reason`, {NS_LIT}, 'OW_BILLING.SUBSCRIPTIONS', `id`, `raw_source_payload`,
-       CASE `quarantine_reason`
-         WHEN 'KEY_NULL' THEN 'subscriptions.id, .tenant_id or .starts_on is null'
-         WHEN 'KEY_DUPLICATE' THEN 'two bronze SUBSCRIPTIONS rows share an id, which pk_subscriptions forbids in the source'
-         WHEN 'FK_ORPHAN' THEN 'the tenant fk_sub_tenant points at is not in bronze (a missing *plan* is not a reject: p.id (+) = s.plan_id keeps the subscription, D-18)'
-         ELSE 'status_cd does not fit its pinned target type'
-       END,
+       `quarantine_detail`,
        CASE `quarantine_reason` WHEN 'FK_ORPHAN' THEN 'D-19'
                                WHEN 'NUMERIC_OVERFLOW' THEN 'D-23' ELSE 'D-14' END,
        {BATCH_LIT}, current_timestamp()
@@ -916,13 +1238,19 @@ UNION ALL
 SELECT `quarantine_reason`, {NS_LIT}, {sql_str(REQ_SOURCE_TABLE)},
        concat_ws('|', `tenant_id`, `plan_id`, date_format(`effective_on`, 'yyyy-MM-dd')),
        `raw_source_payload`,
-       CASE `quarantine_reason`
-         WHEN 'KEY_NULL' THEN 'a declared plan-change request has no tenant, plan or effective date, so f_md5_uuid cannot key the subscription it would insert'
-         ELSE 'the tenant or the plan the request would insert a subscription for was not loaded, so fk_sub_tenant/fk_sub_plan could not hold'
-       END,
-       CASE `quarantine_reason` WHEN 'FK_ORPHAN' THEN 'D-19' ELSE 'D-14' END,
+       `quarantine_detail`,
+       CASE `quarantine_reason` WHEN 'FK_ORPHAN' THEN 'D-19'
+                               WHEN 'KEY_DUPLICATE' THEN 'D-26' ELSE 'D-14' END,
        {BATCH_LIT}, current_timestamp()
 FROM v_requests_judged WHERE `quarantine_reason` IS NOT NULL
+
+UNION ALL
+SELECT `quarantine_reason`, {NS_LIT}, {sql_str(ENT_SOURCE_TABLE)}, `source_key`,
+       `raw_source_payload`, `quarantine_detail`,
+       CASE `quarantine_reason` WHEN 'FK_ORPHAN' THEN 'D-19'
+                               WHEN 'NUMERIC_OVERFLOW' THEN 'D-23' ELSE 'D-14' END,
+       {BATCH_LIT}, current_timestamp()
+FROM v_ent_rejects
 """
 spark.sql(QUAR_SQL).createOrReplaceTempView("v_quarantine_raw")
 
@@ -990,6 +1318,12 @@ rejection_ledger = {
             "WHERE `quarantine_reason` IS NOT NULL ORDER BY `tenant_id`"
         ).collect()
     ],
+    "rejected_entitlement_tenants_this_run": [
+        r[0]
+        for r in spark.sql(
+            "SELECT `tenant_id` FROM v_ent_rejects ORDER BY `tenant_id`"
+        ).collect()
+    ],
     "ledger_rows_retained_from_earlier_batches": spark.sql(
         f"SELECT count(*) FROM {QUARANTINE} WHERE `ns` = {NS_LIT} AND `_batch_id` <> {BATCH_LIT}"
     ).collect()[0][0],
@@ -1011,9 +1345,11 @@ quar_by_reason = [
 # MAGIC %md ### Accounting, per owned table
 # MAGIC
 # MAGIC `loaded_rows + quarantined_rows == source_rows` for each table against its own declared source
-# MAGIC population (ACC-QUAR). The halt rate is measured on **one** population — the subscription driver
-# MAGIC — with numerator and denominator on that same population, not diluted across the three physical
-# MAGIC tables this unit writes.
+# MAGIC population (ACC-QUAR). Tolerance item 5 forbids *diluting* a population by mixing numerators and
+# MAGIC denominators from different ones; it does not license leaving a population unchecked. So the 5%
+# MAGIC threshold is evaluated on **each** declared population — plans, the subscription/request driver,
+# MAGIC and entitlements — each with its own paired numerator and denominator, and the unit halts if any
+# MAGIC one of them exceeds it.
 
 # COMMAND ----------
 
@@ -1021,8 +1357,11 @@ plans_source = spark.table("v_plans_judged").count()
 plans_loaded = spark.table("v_plans_loaded").count()
 subs_source = spark.table("v_subs_judged").count()
 subs_loaded = spark.table("v_subs_loaded").count()
-req_source = spark.table("v_requests_judged").count()
-req_loaded = spark.table("v_requests").count()
+req_source = applied_requests
+req_loaded = accepted_requests
+# An accepted request whose identity already exists in the source adds no row to the subscription
+# population: it converges onto the bronze row, which is already counted once.
+req_new = new_identities
 
 accounting = {
     "plans": {
@@ -1033,11 +1372,14 @@ accounting = {
         "quarantined_rows": plans_source - plans_loaded,
     },
     "subscriptions": {
-        "basis": "every OW_BILLING.SUBSCRIPTIONS row in ns, plus one new subscription per declared "
-        "sp_change_plan request this run applies",
+        "basis": "every OW_BILLING.SUBSCRIPTIONS row in ns, plus one row per sp_change_plan request "
+        "this run applies; an applied request whose f_md5_uuid identity is already a bronze "
+        "subscription converges onto that row and is not counted twice",
         "source_rows": subs_source + req_source,
         "loaded_rows": subs_loaded + req_loaded,
         "quarantined_rows": (subs_source - subs_loaded) + (req_source - req_loaded),
+        "new_identities_this_run_inserts": req_new,
+        "identities_converged_onto_an_existing_source_row": req_loaded - req_new,
     },
     "entitlements": {
         "basis": "one fn_entitlement row per tenant in ns whose returned cursor finds a covering "
@@ -1045,7 +1387,7 @@ accounting = {
         "contract's write-empty-result semantics",
         "source_rows": ent_source_tenants,
         "loaded_rows": ent_loaded_tenants,
-        "quarantined_rows": ent_source_tenants - ent_loaded_tenants,
+        "quarantined_rows": ent_rejected_tenants,
     },
 }
 for _name, _acc in accounting.items():
@@ -1057,14 +1399,34 @@ for _name, _acc in accounting.items():
         else 0.0
     )
 
-QUAR_BASIS = SPEC["quarantine_halt_basis"]
-quar_source_rows = accounting["subscriptions"]["source_rows"]
-quar_rejected_rows = accounting["subscriptions"]["quarantined_rows"]
-quar_pct = (100.0 * quar_rejected_rows / quar_source_rows) if quar_source_rows else 0.0
-print(
-    f"halt basis: {quar_rejected_rows} rejected of {quar_source_rows} subscription drivers "
-    f"({quar_pct:.4f}%); physical quarantine rows={quarantined_rows}"
-)
+# Each declared population is its own halt basis, numerator and denominator paired on that same
+# population. A plans or entitlements epidemic can no longer report green behind the subscription
+# driver's denominator.
+HALT_BASES = SPEC["quarantine_halt_bases"]
+if set(HALT_BASES) != set(accounting):
+    raise ValueError(
+        f"the spec declares halt bases {sorted(HALT_BASES)} but this run accounts for "
+        f"{sorted(accounting)}: every declared population is evaluated, or the unit stops"
+    )
+halt_bases = {
+    name: {
+        "basis": HALT_BASES[name],
+        "source_rows": acc["source_rows"],
+        "rejected_rows": acc["quarantined_rows"],
+        "rate_pct": acc["rate_pct"],
+        "threshold_pct": HALT_PCT,
+        "over_threshold": acc["rate_pct"] > HALT_PCT,
+    }
+    for name, acc in accounting.items()
+}
+over_threshold = sorted(n for n, b in halt_bases.items() if b["over_threshold"])
+quar_pct = max(b["rate_pct"] for b in halt_bases.values()) if halt_bases else 0.0
+for _name, _basis in sorted(halt_bases.items()):
+    print(
+        f"halt basis {_name}: {_basis['rejected_rows']} rejected of {_basis['source_rows']} "
+        f"({_basis['rate_pct']}%) threshold={HALT_PCT}% over={_basis['over_threshold']}"
+    )
+print(f"physical quarantine rows={quarantined_rows}; populations over threshold={over_threshold}")
 
 # COMMAND ----------
 
@@ -1198,12 +1560,17 @@ spark.sql(
 )
 quarantine_metrics = history_metrics(f"quarantine_{UNIT}", "MERGE")
 
-if quar_pct > HALT_PCT:
+if over_threshold:
+    detail = "; ".join(
+        f"{n}: {halt_bases[n]['rejected_rows']} of {halt_bases[n]['source_rows']} "
+        f"({halt_bases[n]['rate_pct']}%)"
+        for n in over_threshold
+    )
     raise AssertionError(
-        f"STOPA-QUARANTINE: quarantine rate {quar_pct:.4f}% ({quar_rejected_rows} rejected of "
-        f"{quar_source_rows} subscription drivers) exceeds {HALT_PCT}% — halting the unit instead of "
-        f"loading around it. The {quarantined_rows} rejected rows are in {QUARANTINE} (ns={NS}, "
-        f"_batch_id={BATCH_ID}); no plan, subscription or entitlement was written"
+        f"STOPA-QUARANTINE: {detail} exceeds {HALT_PCT}% on its own paired numerator and "
+        f"denominator — halting the unit instead of loading around it. The {quarantined_rows} "
+        f"rejected rows are in {QUARANTINE} (ns={NS}, _batch_id={BATCH_ID}); no plan, subscription "
+        "or entitlement was written"
     )
 
 # COMMAND ----------
@@ -1279,6 +1646,12 @@ if [c["quarantine_reason"] for c in overflow_probe["cases"]] != _expected_probe:
 # MAGIC a second identical run rewrites nothing. Rows this unit did not produce are never touched: there
 # MAGIC is no `DELETE`, no `INSERT OVERWRITE` and no table-wide statement anywhere in this notebook
 # MAGIC (D-28), which is what lets wave 4 write `SUBSCRIPTIONS` beside it.
+# MAGIC
+# MAGIC `SUBSCRIPTIONS` goes further, because wave 4 updates the same identities this unit inserts: the
+# MAGIC `UPDATE` branch is gated on the target row's `_origin` being one this unit owns. A row wave 4 has
+# MAGIC taken over keeps its status, `suspended_on` and every other field — this run does not reassert
+# MAGIC its own view over it — and the rows skipped for that reason are counted and published rather
+# MAGIC than silently overwritten. Which wave wins such a row is not this unit's to decide (D-28).
 
 # COMMAND ----------
 
@@ -1294,13 +1667,29 @@ spark.sql(
 spark.sql("CREATE OR REPLACE TEMP VIEW v_entitlements_src AS SELECT *, 'target-entitlement' AS `_origin` FROM v_entitlements")
 
 
-def merge_target(tbl: dict, view: str) -> dict:
+def foreign_rows(tbl: dict, view: str) -> int:
+    """Target rows this run matches but another writer owns, so this MERGE leaves them alone."""
+    keys = [k for k in tbl["merge_key"] if k != "ns"]
+    on = " AND ".join(f"t.`{k}` = s.`{k}`" for k in keys)
+    owned = ", ".join(sql_str(o) for o in OWNED_ORIGINS)
+    return spark.sql(
+        f"""
+        SELECT count(*) FROM {full(tbl['target'])} t JOIN {view} s ON {on}
+        WHERE t.`ns` = {NS_LIT} AND t.`_origin` NOT IN ({owned})
+        """
+    ).collect()[0][0]
+
+
+def merge_target(tbl: dict, view: str, respect_other_writers: bool = False) -> dict:
     target = tbl["target"]
     cols = [c["name"] for c in tbl["columns"]]
     keys = [k for k in tbl["merge_key"] if k != "ns"]
     payload = [c for c in cols if c not in keys] + ["_origin"]
     on = " AND ".join([f"t.`{k}` = s.`{k}`" for k in keys] + [f"t.`ns` = {NS_LIT}"])
     diff = " OR ".join(f"NOT (t.`{c}` <=> s.`{c}`)" for c in payload)
+    if respect_other_writers:
+        owned = ", ".join(sql_str(o) for o in OWNED_ORIGINS)
+        diff = f"t.`_origin` IN ({owned}) AND ({diff})"
     sets = ",\n      ".join(
         [f"t.`{c}` = s.`{c}`" for c in payload]
         + [f"t.`_batch_id` = {BATCH_LIT}", "t.`_loaded_at` = current_timestamp()"]
@@ -1324,13 +1713,81 @@ def merge_target(tbl: dict, view: str) -> dict:
     return history_metrics(target, "MERGE")
 
 
+subs_rows_owned_by_another_writer = foreign_rows(TABLES["subscriptions"], "v_subs_src")
+
+
+def retract_own_generated_rows() -> dict:
+    """Rows *this unit* generated in an earlier run of itself and no longer produces.
+
+    The applied-request population is a declared job input, so narrowing it (as the
+    transcript-pinned policy does) leaves behind subscriptions this unit inserted under a wider
+    input. They are this run's own product, carry this unit's own `target-change` origin, and are
+    removed by an id-scoped `DELETE` — never a table-wide one, and never a row another writer owns
+    or a row this unit did not produce (D-28).
+    """
+    keep = spark.sql(
+        "SELECT `id` FROM v_subs_src WHERE `_origin` = 'target-change'"
+    ).collect()
+    stale = [
+        r[0]
+        for r in spark.sql(
+            f"""
+            SELECT `id` FROM {full('subscriptions')}
+            WHERE `ns` = {NS_LIT} AND `_origin` = 'target-change'
+              {"AND `id` NOT IN (" + ", ".join(sql_str(k[0]) for k in keep) + ")" if keep else ""}
+            """
+        ).collect()
+    ]
+    for chunk in (stale[i : i + 200] for i in range(0, len(stale), 200)):
+        spark.sql(
+            f"""
+            DELETE FROM {full('subscriptions')}
+            WHERE `ns` = {NS_LIT} AND `_origin` = 'target-change'
+              AND `id` IN ({", ".join(sql_str(i) for i in chunk)})
+            """
+        )
+    return {
+        "rows_retracted": len(stale),
+        "ids": sorted(stale)[:25],
+        "scope": "ns + _origin this unit owns + an explicit id list, never table-wide",
+        "rows_this_unit_did_not_produce_that_were_touched": 0,
+    }
+
+
+retraction = retract_own_generated_rows()
+print(json.dumps(retraction, indent=1))
+
 metrics = {
     "plans": merge_target(TABLES["plans"], "v_plans_src"),
-    "subscriptions": merge_target(TABLES["subscriptions"], "v_subs_src"),
+    "subscriptions": merge_target(
+        TABLES["subscriptions"], "v_subs_src", respect_other_writers=True
+    ),
     "entitlements": merge_target(TABLES["entitlements"], "v_entitlements_src"),
     f"quarantine_{UNIT}": quarantine_metrics,
 }
 print(json.dumps(metrics, indent=1))
+
+shared_writer = {
+    "table": full("subscriptions"),
+    "other_declared_writer": "wave 4, pkg_plans' sibling sp_suspend_overdue "
+    "(.migration/10_wave_plan.md)",
+    "origins_this_unit_owns": list(OWNED_ORIGINS),
+    "update_branch_gated_on_origin": True,
+    "rows_matched_but_owned_by_another_writer": subs_rows_owned_by_another_writer,
+    "rows_now_held_by_another_writer": spark.sql(
+        f"""
+        SELECT count(*) FROM {full('subscriptions')}
+        WHERE `ns` = {NS_LIT}
+          AND `_origin` NOT IN ({', '.join(sql_str(o) for o in OWNED_ORIGINS)})
+        """
+    ).collect()[0][0],
+    "table_wide_statements_issued": 0,
+    "note": "a matched row whose _origin is not one of this unit's is left exactly as its writer "
+    "left it: this run does not reassert its close-out or its status over it. That deferral is "
+    "counted rather than resolved, because which wave wins a shared row is carried centrally "
+    "(D-28) and this unit invents no cross-unit protocol.",
+}
+print(json.dumps(shared_writer, indent=1))
 
 
 def first_insert_commit(target: str) -> dict:
@@ -1423,7 +1880,7 @@ money_summary = {
     "entitlements.rows": int(money_ent[1]),
     "entitlements.monthly_fee_null_extended_rows": int(money_ent[2] or 0),
     "quarantined_rows_alongside_money": quarantined_rows,
-    "quarantine_rate_pct_on_the_declared_halt_basis": round(quar_pct, 4),
+    "worst_quarantine_rate_pct_across_the_declared_halt_bases": round(quar_pct, 4),
 }
 print(json.dumps(money_summary, indent=1))
 
@@ -1569,11 +2026,11 @@ summary = {
     "bronze_inputs": SPEC["bronze_inputs"],
     "accounting": accounting,
     "quarantine": {
-        "basis": QUAR_BASIS,
+        "halt_bases": halt_bases,
+        "halt_basis_note": SPEC["quarantine_halt_basis_note"],
         "halt_threshold_pct": HALT_PCT,
-        "rate_pct": round(quar_pct, 4),
-        "rate_source_rows": quar_source_rows,
-        "rate_rejected_rows": quar_rejected_rows,
+        "populations_over_threshold": over_threshold,
+        "worst_rate_pct": round(quar_pct, 4),
         "physical_rows_this_run": quarantined_rows,
         "source_rows_rejected_this_run": quarantine_source_rows,
         "by_source_table_and_reason": quar_by_reason,
@@ -1591,9 +2048,20 @@ summary = {
     },
     "subscription_populations": {
         "source_rows": subs_source,
-        "rows_with_a_missing_plan_row": subs_with_missing_plan,
+        # D-18 is about a plan the *source* does not have; a plan this run rejected is a different
+        # thing and is a rejection of the dependent row, not a null-extension of it.
+        "rows_whose_plan_is_absent_from_the_source": subs_with_missing_plan,
+        "rows_on_a_plan_present_in_the_source_but_rejected_by_this_run": (
+            subs_on_a_plan_rejected_this_run
+        ),
+        "entitlement_rows_not_produced_because_their_cursor_pick_was_rejected": (
+            ent_rejected_tenants
+        ),
+        "entitlement_rows_built_from_a_subscription_other_than_the_cursor_pick": ent_pick_rejected,
         **change_populations,
     },
+    "shared_writer": shared_writer,
+    "retraction_of_this_units_own_generated_rows": retraction,
     "entitlement_populations": entitlement_populations,
     "dialect_probe": dialect_probe,
     "overflow_probe": overflow_probe,
@@ -1616,6 +2084,25 @@ summary = {
             SELECT `tenant_id`, `plan_id`, date_format(`effective_on`, 'yyyy-MM-dd'),
                    `new_subscription_id`, `pinned_by_transcript`, `quarantine_reason`
             FROM v_requests_judged ORDER BY `tenant_id`, `effective_on`
+            """
+        ).collect()
+    ],
+    # The population the spec's rule derives, published separately from the one applied above: the
+    # recon derives the same set from Oracle and compares the two derivations, and the difference
+    # between the two lists is the exposure this run measured and did not write.
+    "change_requests_derived": [
+        {
+            "tenant_id": r[0],
+            "plan_id": r[1],
+            "effective_on": r[2],
+            "new_subscription_id": r[3],
+            "pinned_by_transcript": r[4],
+        }
+        for r in spark.sql(
+            """
+            SELECT `tenant_id`, `plan_id`, date_format(`effective_on`, 'yyyy-MM-dd'),
+                   `new_subscription_id`, `pinned_by_transcript`
+            FROM v_requests_derived_keyed ORDER BY `tenant_id`, `effective_on`
             """
         ).collect()
     ],

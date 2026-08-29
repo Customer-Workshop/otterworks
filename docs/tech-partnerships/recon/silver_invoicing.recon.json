@@ -1,0 +1,2824 @@
+{
+ "checks": [
+  {
+   "actual": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "expected": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "id": "SRC-SHA",
+   "result": "pass",
+   "source_of_truth": "procs/oracle/transcripts/ORACLE_SOURCE_SHA vs the checked-out services/legacy-billing/db/oracle tree, digested by the recipe in procs/harness/oracle_record.py"
+  },
+  {
+   "actual": {
+    "loaded_plus_quarantined": 72
+   },
+   "expected": {
+    "loaded_plus_quarantined": 72
+   },
+   "halt_threshold_pct": 5,
+   "id": "ACC-QUAR-invoices",
+   "loaded_rows": 72,
+   "quarantine_by_source_table_and_reason": {},
+   "quarantine_pct_against_the_halt_threshold": 0.0,
+   "quarantine_pct_for_this_table": 0.0,
+   "quarantine_rate_basis": "invoice driver: one sp_issue_invoice per tenant-period in ns, plus each migrated source INVOICES row this run carries \u2014 numerator and denominator on that one population",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "the invoices population declared in the job run: one sp_issue_invoice driver per tenant in ns, plus the source's own INVOICES rows that this run does not re-issue",
+   "source_rows": 72
+  },
+  {
+   "actual": {
+    "loaded_plus_quarantined": 347
+   },
+   "expected": {
+    "loaded_plus_quarantined": 347
+   },
+   "halt_threshold_pct": 5,
+   "id": "ACC-QUAR-invoice_lines",
+   "loaded_rows": 347,
+   "quarantine_by_source_table_and_reason": {},
+   "quarantine_pct_against_the_halt_threshold": 0.0,
+   "quarantine_pct_for_this_table": 0.0,
+   "quarantine_rate_basis": "invoice driver: one sp_issue_invoice per tenant-period in ns, plus each migrated source INVOICES row this run carries \u2014 numerator and denominator on that one population",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "the invoice_lines population declared in the job run: 5 fn_invoice_preview lines per issued invoice, plus the source's own INVOICE_LINES rows for invoices this run does not re-issue",
+   "source_rows": 347
+  },
+  {
+   "actual": {
+    "loaded_plus_quarantined": 5
+   },
+   "expected": {
+    "loaded_plus_quarantined": 5
+   },
+   "halt_threshold_pct": 5,
+   "id": "ACC-QUAR-credit_applications",
+   "loaded_rows": 5,
+   "quarantine_by_source_table_and_reason": {},
+   "quarantine_pct_against_the_halt_threshold": 0.0,
+   "quarantine_pct_for_this_table": 0.0,
+   "quarantine_rate_basis": "invoice driver: one sp_issue_invoice per tenant-period in ns, plus each migrated source INVOICES row this run carries \u2014 numerator and denominator on that one population",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "the credit_applications population declared in the job run: one row per open credit note the issue sequence visits, for every driver",
+   "source_rows": 5
+  },
+  {
+   "actual": {
+    "rate_pct": 0.0,
+    "within_threshold": true
+   },
+   "basis": "invoice driver: one sp_issue_invoice per tenant-period in ns, plus each migrated source INVOICES row this run carries \u2014 numerator and denominator on that one population",
+   "expected": {
+    "rate_pct": 0.0,
+    "within_threshold": true
+   },
+   "halt_threshold_pct": 5,
+   "id": "ACC-QUAR-halt-basis",
+   "physical_quarantine_rows": 0,
+   "rejected_rows": 0,
+   "rejected_source_rows_collapsed_into_them": 0,
+   "result": "pass",
+   "source_of_truth": "the 5% halt measured on one declared population: rejected invoice drivers over invoice drivers. A physical quarantine row is not the unit of work \u2014 one rejected driver takes its five preview lines and its credit applications with it \u2014 so counting physical rows against the line population would dilute the threshold about six-fold",
+   "source_rows": 72
+  },
+  {
+   "actual": {
+    "duplicate_merge_identities_in_the_target": 0,
+    "probe_rows": [
+     1,
+     1
+    ]
+   },
+   "expected": {
+    "duplicate_merge_identities_in_the_target": 0,
+    "probe_rows": [
+     1,
+     1
+    ]
+   },
+   "id": "ACC-QUAR-merge-identity",
+   "identities_carrying_more_than_one_source_row": 0,
+   "physical_quarantine_rows": 0,
+   "probe": {
+    "cases": [
+     {
+      "merged_rows": 1,
+      "quarantine_reason": "KEY_DUPLICATE",
+      "raw_source_payload": "{\"rejected_source_rows\":2,\"payloads\":[\"{\\\"row\\\":1}\",\"{\\\"row\\\":2}\"]}"
+     },
+     {
+      "merged_rows": 1,
+      "quarantine_reason": "KEY_NULL",
+      "raw_source_payload": "{\"rejected_source_rows\":2,\"payloads\":[\"{\\\"row\\\":3}\",\"{\\\"row\\\":4}\"]}"
+     }
+    ],
+    "description": "two KEY_DUPLICATE rows under one source_key and two KEY_NULL rows with a null source_key, through the same grouping the load applies: each identity collapses to one record carrying both payloads and the count, so a rerun's MERGE matches one source row per target row",
+    "is_probe_of_target_expression_not_source_finding": true
+   },
+   "rejected_source_rows": 0,
+   "result": "pass",
+   "source_of_truth": "the quarantine rows are collapsed to one record per (ns, source_table, source_key, quarantine_reason) before the MERGE, so a rerun cannot hit a many-to-many match on KEY_DUPLICATE or multi-row KEY_NULL; the collapse is measured with a synthetic case through the same grouping the load applies"
+  },
+  {
+   "actual": {
+    "applications_left_unreconciled": 0,
+    "applications_outside_the_scope_changed": 0,
+    "planted_stale_application_survived": 0,
+    "real_applications_lost": 0
+   },
+   "delete_commit_metrics": {
+    "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (675185267155981, 237212360507050); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "attribution_rule_matched": "job_run_id",
+    "commit_from_this_run": true,
+    "operation": "DELETE",
+    "pre_run_version": 30,
+    "rows_deleted": 1,
+    "rows_inserted": 0,
+    "rows_updated": 0,
+    "version": 31,
+    "writing_job_run": {
+     "job_name": "ow_tp_silver_invoicing_demo_20260829092404c",
+     "job_run_id": "675185267155981"
+    }
+   },
+   "expected": {
+    "applications_left_unreconciled": 0,
+    "applications_outside_the_scope_changed": 0,
+    "planted_stale_application_survived": 0,
+    "real_applications_lost": 0
+   },
+   "id": "ACC-CREDIT-RECONCILE",
+   "proof": {
+    "applications_after_the_run": 5,
+    "applications_before_the_run": 6,
+    "applications_in_other_namespaces_after": 0,
+    "applications_in_other_namespaces_before": 0,
+    "batch_id": "20260829092404c",
+    "planted_row": {
+     "applied_amount": "10.00",
+     "credit_note_id": "stale-credit-note-20260829092404c",
+     "id": "stale-credit-probe-20260829092404c",
+     "invoice_id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+     "why_stale": "the recomputed sequence for this invoice does not visit this note, so the row is exactly the shape of an application left behind by a note that has gone, a balance now zero, or a corrected input"
+    },
+    "planted_row_present_after_the_run": 0,
+    "planted_row_present_before_the_run": 1,
+    "real_applications_kept": 5,
+    "reconciliation": {
+     "applications_left_unreconciled": 0,
+     "applications_outside_the_scope_after": 0,
+     "applications_outside_the_scope_before": 0,
+     "delete_commit_metrics": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (675185267155981, 237212360507050); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "DELETE",
+      "pre_run_version": 30,
+      "rows_deleted": 1,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 31,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_invoicing_demo_20260829092404c",
+       "job_run_id": "675185267155981"
+      }
+     },
+     "rows_matched_by_the_scoped_delete": 1,
+     "target_behaviour": "one static statement scoped to ns and to this run's invoices, removing only rows the recomputed sequence does not re-emit; applications of invoices outside the run are out of scope by construction and the count outside the scope is measured on both sides",
+     "target_statement": "DELETE FROM ow_tp.silver.credit_applications WHERE `ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_credit_apps_src)",
+     "why": "an application this unit wrote earlier that the recomputed sequence no longer produces would be counted as applied_by_other_invoices forever, so every later invoice would under-apply a real balance"
+    },
+    "run_id": 675185267155981,
+    "status": "measured"
+   },
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "the credit applications this run's invoices no longer produce are removed by one static DELETE scoped to ns and to those invoices, proven by a targeted case: one synthetic stale application planted on the target for an issued invoice under a note the sequence does not visit, then the unit run again. Without it the row would be counted as applied_by_other_invoices forever and every later invoice would under-apply a real balance",
+   "statement": "DELETE FROM ow_tp.silver.credit_applications WHERE `ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_credit_apps_src)"
+  },
+  {
+   "actual": {
+    "issued_rows": 69,
+    "migrated_rows": 3,
+    "rows": 72
+   },
+   "expected": {
+    "issued_rows": 69,
+    "migrated_rows": 3,
+    "rows": 72
+   },
+   "id": "ROWS-invoices",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_invoices": 3,
+   "source_of_truth": "ow_tp.silver.invoices COUNT(*) WHERE ns = 'demo' (recomputed from Delta) vs live Oracle: one issued invoice per non-quarantined tenant, plus the source's own INVOICES rows this run does not re-issue",
+   "source_tenants": 69,
+   "tenants_oracle_can_invoice": 69
+  },
+  {
+   "actual": {
+    "rows": 347
+   },
+   "expected": {
+    "rows": 347
+   },
+   "id": "ROWS-invoice_lines",
+   "issued_line_rows": 345,
+   "migrated_line_rows": 2,
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoice_lines COUNT(*) WHERE ns = 'demo' (recomputed from Delta): fn_invoice_preview's five lines per issued invoice plus the source's own lines for the invoices this run does not re-issue"
+  },
+  {
+   "actual": {
+    "rows": 5
+   },
+   "expected": {
+    "rows": 5
+   },
+   "id": "ROWS-credit_applications",
+   "notes_never_reached": 0,
+   "oracle_visited_rows": 5,
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.credit_applications COUNT(*) WHERE ns = 'demo' vs the notes live Oracle's own ordered cursor visits for the same invoices"
+  },
+  {
+   "actual": {
+    "rows_differing": 0,
+    "rows_in_target_not_in_source": []
+   },
+   "expected": {
+    "rows_differing": 0,
+    "rows_in_target_not_in_source": []
+   },
+   "id": "ACC-INVOICE-PARITY",
+   "mismatch_sample": [],
+   "per_column_mismatches": {
+    "billable_units": 0,
+    "charge_cap": 0,
+    "computed_rollover_units": 0,
+    "credit_applied": 0,
+    "credit_offered": 0,
+    "fee_subscription_id": 0,
+    "first_tier_units": 0,
+    "overage_amount": 0,
+    "overage_rate": 0,
+    "period_id": 0,
+    "plan_code": 0,
+    "plan_fee": 0,
+    "quota_units": 0,
+    "rating_subscription_id": 0,
+    "second_tier_units": 0,
+    "subtotal": 0,
+    "suspension_prorated": 0,
+    "tax": 0,
+    "tax_computed": 0,
+    "tax_exempt_yn": 0,
+    "tax_half": 0,
+    "total": 0,
+    "used_units": 0
+   },
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows_compared": 69,
+   "source_of_truth": "every issued invoice compared column by column against the invoice live Oracle computes for the same tenant and period (compute_preview/fn_invoice_preview/sp_issue_invoice, including the pkg_rating.compute_rating call they read through package globals, re-expressed as one read-only SQL statement and evaluated by Oracle)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.period_id",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.period_id vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "string"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.plan_code",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.plan_code vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "string"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.plan_fee",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.plan_fee vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.overage_amount",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.overage_amount vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.tax_exempt_yn",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.tax_exempt_yn vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "string"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.tax_computed",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.tax_computed vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(28,10)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.tax_half",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.tax_half vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(28,10)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.charge_cap",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.charge_cap vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.credit_offered",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.credit_offered vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.credit_applied",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.credit_applied vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.subtotal",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.subtotal vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.tax",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.tax vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.total",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.total vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.overage_rate",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.overage_rate vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(12,6)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.used_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.used_units vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.quota_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.quota_units vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.computed_rollover_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.computed_rollover_units vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.billable_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.billable_units vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.first_tier_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.first_tier_units vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.second_tier_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.second_tier_units vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.suspension_prorated",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.suspension_prorated vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "boolean"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.rating_subscription_id",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.rating_subscription_id vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "string"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-invoices.fee_subscription_id",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.invoices.fee_subscription_id vs the same value computed by live Oracle, over 69 issued invoices",
+   "target_type": "string"
+  },
+  {
+   "actual": {
+    "sum": "30144.69"
+   },
+   "expected": {
+    "sum": "30144.69"
+   },
+   "id": "ACC-MONEY-subtotal",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(subtotal) as live Oracle computes it for the invoiceable population vs SUM recomputed from ow_tp.silver.invoices (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "2251.52"
+   },
+   "expected": {
+    "sum": "2251.52"
+   },
+   "id": "ACC-MONEY-tax",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(tax) as live Oracle computes it for the invoiceable population vs SUM recomputed from ow_tp.silver.invoices (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "32265.13"
+   },
+   "expected": {
+    "sum": "32265.13"
+   },
+   "id": "ACC-MONEY-total",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(total) as live Oracle computes it for the invoiceable population vs SUM recomputed from ow_tp.silver.invoices (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "8831.00"
+   },
+   "expected": {
+    "sum": "8831.00"
+   },
+   "id": "ACC-MONEY-plan_fee",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(plan_fee) as live Oracle computes it for the invoiceable population vs SUM recomputed from ow_tp.silver.invoices (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "21313.69"
+   },
+   "expected": {
+    "sum": "21313.69"
+   },
+   "id": "ACC-MONEY-overage_amount",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(overage_amount) as live Oracle computes it for the invoiceable population vs SUM recomputed from ow_tp.silver.invoices (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "131.08"
+   },
+   "expected": {
+    "sum": "131.08"
+   },
+   "id": "ACC-MONEY-credit_applied",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(credit_applied) as live Oracle computes it for the invoiceable population vs SUM recomputed from ow_tp.silver.invoices (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "375.62"
+   },
+   "expected": {
+    "sum": "375.62"
+   },
+   "id": "ACC-MONEY-migrated-total",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 3,
+   "source_of_truth": "SUM(total) over the live Oracle OW_BILLING.INVOICES rows this run does not re-issue vs SUM recomputed from ow_tp.silver.invoices for the same rows"
+  },
+  {
+   "actual": {
+    "issued_line_sum": "32265.13"
+   },
+   "credit_line_total": "-131.08",
+   "expected": {
+    "issued_line_sum": "32265.13"
+   },
+   "id": "ACC-MONEY-line-sum",
+   "line_amount_total": "32426.42",
+   "line_amount_total_source_migrated": "161.29",
+   "note": "the migrated source invoices carry the source's own lines, whose sum is the source's and is reported beside this rather than folded into it",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "SUM(amount) over the issued rows of ow_tp.silver.invoice_lines against SUM(subtotal + tax - credit_applied) over ow_tp.silver.invoices, both recomputed from Delta: the five lines the source inserts add up to the header it writes",
+   "tax_line_total": "2251.52"
+  },
+  {
+   "actual": {
+    "float_columns": {},
+    "money_columns": {
+     "credit_applications.applied_amount": "decimal(14,2)",
+     "credit_applications.applied_by_other_invoices": "decimal(14,2)",
+     "credit_applications.bronze_remaining_amount": "decimal(14,2)",
+     "credit_applications.credit_running_after": "decimal(14,2)",
+     "credit_applications.credit_running_before": "decimal(14,2)",
+     "credit_applications.remaining_after": "decimal(14,2)",
+     "credit_applications.remaining_before": "decimal(14,2)",
+     "invoice_lines.amount": "decimal(14,2)",
+     "invoice_lines.preview_credit_applied": "decimal(14,2)",
+     "invoice_lines.preview_tax_amount": "decimal(14,2)",
+     "invoices.charge_cap": "decimal(14,2)",
+     "invoices.credit_applied": "decimal(14,2)",
+     "invoices.credit_offered": "decimal(14,2)",
+     "invoices.overage_amount": "decimal(14,2)",
+     "invoices.plan_fee": "decimal(14,2)",
+     "invoices.subtotal": "decimal(14,2)",
+     "invoices.tax": "decimal(14,2)",
+     "invoices.total": "decimal(14,2)"
+    }
+   },
+   "all_column_types": {
+    "credit_applications._batch_id": "string",
+    "credit_applications._loaded_at": "timestamp",
+    "credit_applications._origin": "string",
+    "credit_applications.applied_amount": "decimal(14,2)",
+    "credit_applications.applied_by_other_invoices": "decimal(14,2)",
+    "credit_applications.bronze_remaining_amount": "decimal(14,2)",
+    "credit_applications.credit_note_id": "string",
+    "credit_applications.credit_running_after": "decimal(14,2)",
+    "credit_applications.credit_running_before": "decimal(14,2)",
+    "credit_applications.id": "string",
+    "credit_applications.invoice_id": "string",
+    "credit_applications.issued_on": "timestamp",
+    "credit_applications.ns": "string",
+    "credit_applications.remaining_after": "decimal(14,2)",
+    "credit_applications.remaining_before": "decimal(14,2)",
+    "credit_applications.seq_no": "int",
+    "credit_applications.skipped_by_exit_when": "boolean",
+    "credit_applications.tenant_id": "string",
+    "invoice_lines._batch_id": "string",
+    "invoice_lines._loaded_at": "timestamp",
+    "invoice_lines._origin": "string",
+    "invoice_lines.amount": "decimal(14,2)",
+    "invoice_lines.description": "string",
+    "invoice_lines.id": "string",
+    "invoice_lines.invoice_id": "string",
+    "invoice_lines.line_no": "int",
+    "invoice_lines.line_type": "string",
+    "invoice_lines.ns": "string",
+    "invoice_lines.preview_amount": "decimal(28,10)",
+    "invoice_lines.preview_credit_applied": "decimal(14,2)",
+    "invoice_lines.preview_tax_amount": "decimal(14,2)",
+    "invoice_lines.preview_total": "decimal(28,10)",
+    "invoices._batch_id": "string",
+    "invoices._loaded_at": "timestamp",
+    "invoices._origin": "string",
+    "invoices.billable_units": "decimal(38,0)",
+    "invoices.charge_cap": "decimal(14,2)",
+    "invoices.computed_rollover_units": "decimal(38,0)",
+    "invoices.credit_applied": "decimal(14,2)",
+    "invoices.credit_offered": "decimal(14,2)",
+    "invoices.fee_subscription_id": "string",
+    "invoices.first_tier_units": "decimal(38,0)",
+    "invoices.id": "string",
+    "invoices.issued_at": "timestamp",
+    "invoices.ns": "string",
+    "invoices.overage_amount": "decimal(14,2)",
+    "invoices.overage_rate": "decimal(12,6)",
+    "invoices.period_id": "string",
+    "invoices.plan_code": "string",
+    "invoices.plan_fee": "decimal(14,2)",
+    "invoices.quota_units": "decimal(38,0)",
+    "invoices.rating_subscription_id": "string",
+    "invoices.second_tier_units": "decimal(38,0)",
+    "invoices.status_cd": "int",
+    "invoices.subtotal": "decimal(14,2)",
+    "invoices.suspension_prorated": "boolean",
+    "invoices.tax": "decimal(14,2)",
+    "invoices.tax_computed": "decimal(28,10)",
+    "invoices.tax_exempt_yn": "string",
+    "invoices.tax_half": "decimal(28,10)",
+    "invoices.tax_rate": "decimal(12,6)",
+    "invoices.tenant_id": "string",
+    "invoices.total": "decimal(14,2)",
+    "invoices.used_units": "decimal(38,0)",
+    "quarantine_silver_invoicing._batch_id": "string",
+    "quarantine_silver_invoicing._quarantined_at": "timestamp",
+    "quarantine_silver_invoicing.detail": "string",
+    "quarantine_silver_invoicing.dictionary_ref": "string",
+    "quarantine_silver_invoicing.ns": "string",
+    "quarantine_silver_invoicing.quarantine_reason": "string",
+    "quarantine_silver_invoicing.raw_source_payload": "string",
+    "quarantine_silver_invoicing.source_key": "string",
+    "quarantine_silver_invoicing.source_table": "string"
+   },
+   "expected": {
+    "float_columns": {},
+    "money_columns": {
+     "credit_applications.applied_amount": "decimal(14,2)",
+     "credit_applications.applied_by_other_invoices": "decimal(14,2)",
+     "credit_applications.bronze_remaining_amount": "decimal(14,2)",
+     "credit_applications.credit_running_after": "decimal(14,2)",
+     "credit_applications.credit_running_before": "decimal(14,2)",
+     "credit_applications.remaining_after": "decimal(14,2)",
+     "credit_applications.remaining_before": "decimal(14,2)",
+     "invoice_lines.amount": "decimal(14,2)",
+     "invoice_lines.preview_credit_applied": "decimal(14,2)",
+     "invoice_lines.preview_tax_amount": "decimal(14,2)",
+     "invoices.charge_cap": "decimal(14,2)",
+     "invoices.credit_applied": "decimal(14,2)",
+     "invoices.credit_offered": "decimal(14,2)",
+     "invoices.overage_amount": "decimal(14,2)",
+     "invoices.plan_fee": "decimal(14,2)",
+     "invoices.subtotal": "decimal(14,2)",
+     "invoices.tax": "decimal(14,2)",
+     "invoices.total": "decimal(14,2)"
+    }
+   },
+   "id": "ACC-MONEY-TYPES",
+   "result": "pass",
+   "source_of_truth": "ow_tp.information_schema.columns for the unit's four targets (D-23/T6: every money column is DECIMAL(14,2) end to end and no DOUBLE appears anywhere in the unit)",
+   "unrounded_carriers": {
+    "invoice_lines.preview_amount": "decimal(28,10)",
+    "invoice_lines.preview_total": "decimal(28,10)",
+    "invoices.tax_computed": "decimal(28,10)",
+    "invoices.tax_half": "decimal(28,10)"
+   }
+  },
+  {
+   "actual": {
+    "wrapped_greatest_null_0": null,
+    "wrapped_least_null_5": null
+   },
+   "expected": {
+    "wrapped_greatest_null_0": null,
+    "wrapped_least_null_5": null
+   },
+   "id": "ACC-NULL-PROP",
+   "result": "pass",
+   "source_of_truth": "D-01 probed on the warehouse: Spark's own least/greatest ignore NULL (least(NULL,5) = 5.00, greatest(NULL,0) = 0.00), the wrapper the pipeline uses propagates it as Oracle does",
+   "spark_builtin": {
+    "spark_greatest_null_0": "0.00",
+    "spark_least_null_5": "5.00",
+    "wrapped_greatest_null_0": null,
+    "wrapped_least_null_5": null
+   }
+  },
+  {
+   "actual": {
+    "invoice_ids": [
+     "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+     "b09d72c5-e3dd-b75f-4019-863721e8b63a",
+     "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+     "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+     "458781c6-55e5-dd08-d4bf-9c291e493b53",
+     "ec9434d5-6b88-cc45-051d-2187049adc12",
+     "504ef50e-ab74-b3b4-37b7-758d99b7cde7",
+     "8c573c67-a2c8-4e56-e5fc-18dfb62010f6",
+     "f947416b-6478-ac32-911a-12ca7f03a6fb",
+     "fc88765f-450b-88b4-cf92-dffbe9e4e04e"
+    ],
+    "period_ids": [
+     "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+     "d0a28620-e069-c023-6976-04338ccc3014",
+     "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+     "93503474-dde4-608b-cda9-1a7dbeedb1df",
+     "4b4f0b74-da71-a31a-eedd-a492d6164bca",
+     "1b886a8c-7ca6-751b-6c6f-d9435d323eb1",
+     "aec4140a-d0fb-c8f8-28aa-df4bfaf1f450",
+     "5db329d0-ac7e-84f6-bba9-ef9ff7520506",
+     "5dc02199-0345-1f48-ab13-8eeefeba5910",
+     "eb242c74-95e0-f4a6-c5a4-880f938f7ec7"
+    ]
+   },
+   "expected": {
+    "invoice_ids": [
+     "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+     "b09d72c5-e3dd-b75f-4019-863721e8b63a",
+     "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+     "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+     "458781c6-55e5-dd08-d4bf-9c291e493b53",
+     "ec9434d5-6b88-cc45-051d-2187049adc12",
+     "504ef50e-ab74-b3b4-37b7-758d99b7cde7",
+     "8c573c67-a2c8-4e56-e5fc-18dfb62010f6",
+     "f947416b-6478-ac32-911a-12ca7f03a6fb",
+     "fc88765f-450b-88b4-cf92-dffbe9e4e04e"
+    ],
+    "period_ids": [
+     "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+     "d0a28620-e069-c023-6976-04338ccc3014",
+     "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+     "93503474-dde4-608b-cda9-1a7dbeedb1df",
+     "4b4f0b74-da71-a31a-eedd-a492d6164bca",
+     "1b886a8c-7ca6-751b-6c6f-d9435d323eb1",
+     "aec4140a-d0fb-c8f8-28aa-df4bfaf1f450",
+     "5db329d0-ac7e-84f6-bba9-ef9ff7520506",
+     "5dc02199-0345-1f48-ab13-8eeefeba5910",
+     "eb242c74-95e0-f4a6-c5a4-880f938f7ec7"
+    ]
+   },
+   "id": "ACC-MERGE-KEY",
+   "line1_id_sample": [
+    {
+     "actual": "b59cb4c6-277a-bfd6-de48-f8143d2c4de4",
+     "expected": "b59cb4c6-277a-bfd6-de48-f8143d2c4de4"
+    },
+    {
+     "actual": "6c1c88c3-602c-e0fb-3df1-e8503fb4d4c3",
+     "expected": "6c1c88c3-602c-e0fb-3df1-e8503fb4d4c3"
+    },
+    {
+     "actual": "5ca27ee9-ef97-e1cb-66be-cbe9d48b699c",
+     "expected": "5ca27ee9-ef97-e1cb-66be-cbe9d48b699c"
+    },
+    {
+     "actual": "1bc306f8-5789-96ea-f29e-5c7fa10519e5",
+     "expected": "1bc306f8-5789-96ea-f29e-5c7fa10519e5"
+    },
+    {
+     "actual": "0ad68f9d-ee96-d371-d180-169fb800d20f",
+     "expected": "0ad68f9d-ee96-d371-d180-169fb800d20f"
+    },
+    {
+     "actual": "fdcfba40-b3a1-f198-fcd8-51e75ae397a8",
+     "expected": "fdcfba40-b3a1-f198-fcd8-51e75ae397a8"
+    },
+    {
+     "actual": "77564a21-1be3-de89-75a4-8b6b0825628e",
+     "expected": "77564a21-1be3-de89-75a4-8b6b0825628e"
+    },
+    {
+     "actual": "bc638c4a-f217-f835-855b-2167995ffcf5",
+     "expected": "bc638c4a-f217-f835-855b-2167995ffcf5"
+    },
+    {
+     "actual": "4b8a97a6-c20e-b1b8-de54-612eae0464f0",
+     "expected": "4b8a97a6-c20e-b1b8-de54-612eae0464f0"
+    },
+    {
+     "actual": "0f33c6f6-a8de-138b-302a-c503f7ac1c5d",
+     "expected": "0f33c6f6-a8de-138b-302a-c503f7ac1c5d"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "pkg_ow_util.f_md5_uuid called in live Oracle for a 10-tenant sample vs the MERGE keys in ow_tp.silver.invoices (D-14)"
+  },
+  {
+   "actual": {
+    "ns_of_every_row": "demo",
+    "rows_without_ns": 0
+   },
+   "expected": {
+    "ns_of_every_row": "demo",
+    "rows_without_ns": 0
+   },
+   "id": "ACC-NS",
+   "result": "pass",
+   "rows_in_other_namespaces": 0,
+   "source_of_truth": "every row in the unit's four targets carries ns = 'demo'; rows in other namespaces are untouched by this run",
+   "volume_path": "/Volumes/ow_tp/bronze/landing/demo/silver_invoicing/_runs/"
+  },
+  {
+   "actual": {
+    "rows_missing_required_fields": 0
+   },
+   "by_reason": [],
+   "closed_reason_set": [
+    "FK_ORPHAN",
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "CODE_UNKNOWN",
+    "NUMERIC_OVERFLOW"
+   ],
+   "expected": {
+    "rows_missing_required_fields": 0
+   },
+   "id": "ACC-QUARANTINE-SHAPE",
+   "result": "pass",
+   "rows": 0,
+   "source_of_truth": "ow_tp.silver.quarantine_silver_invoicing: every row carries quarantine_reason, ns, source_table and the raw source payload"
+  },
+  {
+   "actual": {
+    "checksums_identical": true,
+    "metrics_attributed_to_this_run": true,
+    "row_counts_identical": true,
+    "second_run_rows_changed": 0
+   },
+   "attribution_holds_under_the_deployed_job": "the deployed job's name is fixed and its batch id is {{job.run_id}}: attribution on the run id is what makes the proof hold there, and the name suffix is the fallback for a history entry with no job run id",
+   "attribution_rules_matched": [
+    "job_run_id"
+   ],
+   "expected": {
+    "checksums_identical": true,
+    "metrics_attributed_to_this_run": true,
+    "row_counts_identical": true,
+    "second_run_rows_changed": 0
+   },
+   "id": "ACC-IDEM",
+   "metrics_attribution": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+   "result": "pass",
+   "run1_checksums": {
+    "credit_applications": "1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb",
+    "invoice_lines": "a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645",
+    "invoices": "89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf"
+   },
+   "run1_counts": {
+    "credit_applications": {
+     "rows": 5,
+     "rows_without_ns": 0,
+     "source_migrated_rows": 0,
+     "target_issue_rows": 5
+    },
+    "invoice_lines": {
+     "rows": 347,
+     "rows_without_ns": 0,
+     "source_migrated_rows": 2,
+     "target_issue_rows": 345
+    },
+    "invoices": {
+     "rows": 72,
+     "rows_without_ns": 0,
+     "source_migrated_rows": 3,
+     "target_issue_rows": 69
+    }
+   },
+   "run1_merge_metrics": {
+    "credit_applications": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 25,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 27,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
+     }
+    },
+    "invoice_lines": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 26,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 28,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
+     }
+    },
+    "invoices": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 13,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 14,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
+     }
+    },
+    "quarantine_silver_invoicing": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 13,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 14,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
+     }
+    }
+   },
+   "run2_checksums": {
+    "credit_applications": "1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb",
+    "invoice_lines": "a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645",
+    "invoices": "89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf"
+   },
+   "run2_counts": {
+    "credit_applications": {
+     "rows": 5,
+     "rows_without_ns": 0,
+     "source_migrated_rows": 0,
+     "target_issue_rows": 5
+    },
+    "invoice_lines": {
+     "rows": 347,
+     "rows_without_ns": 0,
+     "source_migrated_rows": 2,
+     "target_issue_rows": 345
+    },
+    "invoices": {
+     "rows": 72,
+     "rows_without_ns": 0,
+     "source_migrated_rows": 3,
+     "target_issue_rows": 69
+    }
+   },
+   "run2_merge_metrics": {
+    "credit_applications": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 27,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 29,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "invoice_lines": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 28,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 30,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "invoices": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 14,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 15,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "quarantine_silver_invoicing": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 14,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 15,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    }
+   },
+   "source_of_truth": "Delta MERGE operationMetrics read from the commits the second identical run itself produced: each target's version is captured before the writes and the qualifying commit must carry one of this run's own job run ids in DESCRIBE HISTORY's job.jobRunId, falling back to the batch id in job.jobName only where history reports no run id at all. The run id holds under both submission modes \u2014 the deployed Terraform job is always named ow_tp_silver_invoicing and passes {{job.run_id}} as the batch id, so a name match would report its real writes as no commit \u2014 and neither a managed OPTIMIZE commit nor another session writing the shared ns=demo slice can be mistaken for this unit's write. A write that changed nothing produces no commit and is reported as such rather than borrowed from an older one. Plus the order-independent parity checksums of all three targets"
+  },
+  {
+   "actual": {
+    "lines_outside_the_scope_unchanged": true,
+    "statement_is_static_and_ns_scoped": true,
+    "table_wide_delete": false
+   },
+   "columns_held_at_first_issue": {
+    "credit_applications": [
+     "invoice_id",
+     "credit_note_id"
+    ],
+    "invoice_lines": [
+     "invoice_id",
+     "line_no"
+    ],
+    "invoices": [
+     "tenant_id",
+     "period_id",
+     "issued_at"
+    ]
+   },
+   "delete_commit_metrics": {
+    "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "attribution_rule_matched": "job_run_id",
+    "commit_from_this_run": true,
+    "operation": "DELETE",
+    "pre_run_version": 28,
+    "rows_deleted": 0,
+    "rows_inserted": 0,
+    "rows_updated": 0,
+    "version": 29,
+    "writing_job_run": {
+     "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+     "job_run_id": "72731003087577"
+    }
+   },
+   "delete_statement": "`ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_lines_issued)",
+   "expected": {
+    "lines_outside_the_scope_unchanged": true,
+    "statement_is_static_and_ns_scoped": true,
+    "table_wide_delete": false
+   },
+   "id": "ACC-REBUILD",
+   "lines_outside_scope_after": 2,
+   "lines_outside_scope_before": 2,
+   "reissue_update_columns": {
+    "credit_applications": [
+     "seq_no",
+     "issued_on",
+     "bronze_remaining_amount",
+     "applied_by_other_invoices",
+     "remaining_before",
+     "credit_running_before",
+     "applied_amount",
+     "remaining_after",
+     "credit_running_after",
+     "skipped_by_exit_when"
+    ],
+    "invoice_lines": [
+     "line_type",
+     "description",
+     "amount",
+     "preview_amount",
+     "preview_tax_amount",
+     "preview_credit_applied",
+     "preview_total"
+    ],
+    "invoices": [
+     "subtotal",
+     "tax",
+     "total",
+     "status_cd",
+     "plan_code",
+     "plan_fee",
+     "overage_amount",
+     "tax_exempt_yn",
+     "tax_rate",
+     "tax_computed",
+     "tax_half",
+     "charge_cap",
+     "credit_offered",
+     "credit_applied",
+     "overage_rate",
+     "used_units",
+     "quota_units",
+     "computed_rollover_units",
+     "billable_units",
+     "first_tier_units",
+     "second_tier_units",
+     "suspension_prorated",
+     "rating_subscription_id",
+     "fee_subscription_id"
+    ]
+   },
+   "reissues_of_source_invoices": 0,
+   "result": "pass",
+   "rows_matched": 0,
+   "source_construct": "EXECUTE IMMEDIATE 'DELETE FROM invoice_lines WHERE invoice_id = :1' USING v_invoice_id, then re-INSERT of every preview line (04_pkg_invoicing.sql:149-171)",
+   "source_of_truth": "the rebuild's own DELETE, measured by the job run: the statement text, the rows it matched, and the lines outside its scope counted before and after (ACC-REBUILD, D-20)"
+  },
+  {
+   "absolute_tax_delta": "0.26",
+   "actual": {
+    "halves_left_unrounded": true,
+    "oracle_two_unrounded_halves": [
+     "4.50",
+     "8.26",
+     "10.00"
+    ],
+    "tax_line_count": 2,
+    "tax_rate": "0.082500"
+   },
+   "distinct_rates_applied_this_run": 1,
+   "expected": {
+    "halves_left_unrounded": true,
+    "oracle_two_unrounded_halves": [
+     "4.50",
+     "8.26",
+     "10.00"
+    ],
+    "tax_line_count": 2,
+    "tax_rate": "0.082500"
+   },
+   "id": "ACC-TAX",
+   "invoices_changed_if_the_halves_were_rounded_first": 26,
+   "invoices_priced": 69,
+   "max_tax_delta": "0.01",
+   "oracle_probe": [
+    {
+     "base_amount": "54.56",
+     "tax_computed": "4.5012",
+     "tax_half": "2.2506",
+     "tax_if_rounded_once": "4.50",
+     "tax_two_unrounded_halves": "4.50"
+    },
+    {
+     "base_amount": "100.00",
+     "tax_computed": "8.25",
+     "tax_half": "4.125",
+     "tax_if_rounded_once": "8.25",
+     "tax_two_unrounded_halves": "8.26"
+    },
+    {
+     "base_amount": "121.21",
+     "tax_computed": "9.999825",
+     "tax_half": "4.9999125",
+     "tax_if_rounded_once": "10.00",
+     "tax_two_unrounded_halves": "10.00"
+    }
+   ],
+   "quarantined_rows": 0,
+   "rate_carrying_columns_in_bronze_or_silver": 1,
+   "result": "pass",
+   "sample": [
+    {
+     "tax_computed": "12.6530250000",
+     "tax_half": "6.3265125000",
+     "tax_half_rounded": "6.33",
+     "tax_if_rounded_once": "12.65",
+     "tax_two_unrounded_halves": "12.66",
+     "tenant_id": "00000000-0000-0000-0000-000000000002",
+     "total": "166.03"
+    },
+    {
+     "tax_computed": "4.5078000000",
+     "tax_half": "2.2539000000",
+     "tax_half_rounded": "2.25",
+     "tax_if_rounded_once": "4.51",
+     "tax_two_unrounded_halves": "4.50",
+     "tenant_id": "00000000-0000-0000-0000-000000000008",
+     "total": "59.14"
+    },
+    {
+     "tax_computed": "40.9686750000",
+     "tax_half": "20.4843375000",
+     "tax_half_rounded": "20.48",
+     "tax_if_rounded_once": "40.97",
+     "tax_two_unrounded_halves": "40.96",
+     "tenant_id": "14c97a8c-d41e-67c4-ef80-0ab6b63a0f7e",
+     "total": "537.55"
+    },
+    {
+     "tax_computed": "38.7057000000",
+     "tax_half": "19.3528500000",
+     "tax_half_rounded": "19.35",
+     "tax_if_rounded_once": "38.71",
+     "tax_two_unrounded_halves": "38.70",
+     "tenant_id": "18d73981-1b10-9666-d46e-bcef13a6dd76",
+     "total": "507.86"
+    },
+    {
+     "tax_computed": "24.7508250000",
+     "tax_half": "12.3754125000",
+     "tax_half_rounded": "12.38",
+     "tax_if_rounded_once": "24.75",
+     "tax_two_unrounded_halves": "24.76",
+     "tenant_id": "3c74f709-9c14-0338-188f-66ace530f3e3",
+     "total": "324.77"
+    },
+    {
+     "tax_computed": "17.7523500000",
+     "tax_half": "8.8761750000",
+     "tax_half_rounded": "8.88",
+     "tax_if_rounded_once": "17.75",
+     "tax_two_unrounded_halves": "17.76",
+     "tenant_id": "4dc2f443-4974-af80-c214-78aa82b2c812",
+     "total": "232.94"
+    }
+   ],
+   "source_of_truth": "the source's hardcoded 0.0825 and its two unrounded g_tax/2 halves, evaluated by live Oracle on three synthetic bases and compared with the same three bases pushed through the expression the job applies; the live population's own exposure to rounding the halves first is measured beside it (D-11)"
+  },
+  {
+   "actual": {
+    "keys_in_source_not_in_target": [],
+    "keys_in_target_not_in_source": [],
+    "order_by": [
+     "issued_on",
+     "id"
+    ],
+    "rows_differing": 0
+   },
+   "counter_carried_beyond_a_note_balance": "71.08",
+   "exclusion_scope": {
+    "driver_source_table": "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS+USAGE_EVENTS+CREDIT_NOTES",
+    "note": "the credit-burn parity check excludes only rejected_driver_tenants_this_run; a tenant in retained_but_not_rejected_by_this_run is compared like any other, so a rejection that no longer reproduces cannot hide a burn mismatch",
+    "quarantine_is_a_ledger_of_rejections_not_current_state": true,
+    "rejected_driver_tenants_this_run": [],
+    "rejected_driver_tenants_this_run_count": 0,
+    "retained_but_not_rejected_by_this_run": [],
+    "retained_driver_tenants_count": 0,
+    "retained_driver_tenants_in_target_before_this_run_s_merge": []
+   },
+   "expected": {
+    "keys_in_source_not_in_target": [],
+    "keys_in_target_not_in_source": [],
+    "order_by": [
+     "issued_on",
+     "id"
+    ],
+    "rows_differing": 0
+   },
+   "id": "ACC-CREDIT-BURN",
+   "keys_excluded_as_quarantined": [],
+   "mismatch_sample": [],
+   "notes_debited_by_more_than_their_own_balance": 2,
+   "notes_the_loop_never_reached": 0,
+   "order_determinism": "the source's ORDER BY issued_on, id is total because CREDIT_NOTES.id is the primary key, so the target orders by (issued_on, credit_note_id) and invents no tie-break; the sequence is deterministic on both sides",
+   "per_column_mismatches": {
+    "applied_amount": 0,
+    "credit_running_after": 0,
+    "credit_running_before": 0,
+    "issued_on": 0,
+    "remaining_after": 0,
+    "remaining_before": 0,
+    "seq_no": 0,
+    "skipped_by_exit_when": 0
+   },
+   "quarantined_rows": 0,
+   "quarantined_tenants_excluded": [],
+   "result": "pass",
+   "rows_compared": 5,
+   "sample": [
+    {
+     "applied_amount": "25.00",
+     "applied_by_other_invoices": "0.00",
+     "bronze_remaining_amount": "25.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000004",
+     "credit_running_after": "0.00",
+     "credit_running_before": "25.00",
+     "invoice_id": "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+     "issued_on": "2026-02-02",
+     "remaining_after": "0.00",
+     "remaining_before": "25.00",
+     "seq_no": 1,
+     "skipped_by_exit_when": false,
+     "tenant_id": "00000000-0000-0000-0000-000000000003"
+    },
+    {
+     "applied_amount": "30.00",
+     "applied_by_other_invoices": "0.00",
+     "bronze_remaining_amount": "30.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000001",
+     "credit_running_after": "23.04",
+     "credit_running_before": "53.04",
+     "invoice_id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+     "issued_on": "2026-02-01",
+     "remaining_after": "0.00",
+     "remaining_before": "30.00",
+     "seq_no": 1,
+     "skipped_by_exit_when": false,
+     "tenant_id": "00000000-0000-0000-0000-000000000004"
+    },
+    {
+     "applied_amount": "23.04",
+     "applied_by_other_invoices": "0.00",
+     "bronze_remaining_amount": "30.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000002",
+     "credit_running_after": "0.00",
+     "credit_running_before": "23.04",
+     "invoice_id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+     "issued_on": "2026-02-01",
+     "remaining_after": "6.96",
+     "remaining_before": "30.00",
+     "seq_no": 2,
+     "skipped_by_exit_when": false,
+     "tenant_id": "00000000-0000-0000-0000-000000000004"
+    },
+    {
+     "applied_amount": "5.00",
+     "applied_by_other_invoices": "0.00",
+     "bronze_remaining_amount": "5.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000005",
+     "credit_running_after": "48.04",
+     "credit_running_before": "53.04",
+     "invoice_id": "f947416b-6478-ac32-911a-12ca7f03a6fb",
+     "issued_on": "2026-01-31",
+     "remaining_after": "0.00",
+     "remaining_before": "5.00",
+     "seq_no": 1,
+     "skipped_by_exit_when": false,
+     "tenant_id": "00000000-0000-0000-0000-000000000009"
+    },
+    {
+     "applied_amount": "48.04",
+     "applied_by_other_invoices": "0.00",
+     "bronze_remaining_amount": "55.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000006",
+     "credit_running_after": "0.00",
+     "credit_running_before": "48.04",
+     "invoice_id": "f947416b-6478-ac32-911a-12ca7f03a6fb",
+     "issued_on": "2026-02-01",
+     "remaining_after": "6.96",
+     "remaining_before": "55.00",
+     "seq_no": 2,
+     "skipped_by_exit_when": false,
+     "tenant_id": "00000000-0000-0000-0000-000000000009"
+    }
+   ],
+   "source_of_truth": "the burn-down note by note against the same ordered sequence evaluated by live Oracle (ORDER BY issued_on, id, the counter decremented by each note's pre-update balance), recomputed from ow_tp.silver.credit_applications",
+   "source_rows_expected_in_target": 5
+  },
+  {
+   "actual": {
+    "excluded_tenants": [],
+    "exclusions_from_rejections_this_run_did_not_make": []
+   },
+   "expected": {
+    "excluded_tenants": [],
+    "exclusions_from_rejections_this_run_did_not_make": []
+   },
+   "id": "ACC-CREDIT-BURN-exclusion-scope",
+   "quarantined_rows": 0,
+   "rejected_by_this_run": [],
+   "result": "pass",
+   "retained_in_the_quarantine_ledger": [],
+   "source_of_truth": "the tenants the burn parity check exempts, against the tenants the run itself rejected. The quarantine table stays a ledger of rejections \u2014 the accounting depends on it and a rejection is not deleted once its cause stops reproducing \u2014 so the exemption is taken from the run's own rejection set rather than from every row the ledger retains. A tenant whose rejection no longer reproduces is compared like any other, and both reads are reported so the difference is measured rather than asserted",
+   "would_have_been_exempt_under_the_unscoped_read": []
+  },
+  {
+   "actual": {
+    "port_retracts_a_published_invoice": false
+   },
+   "expected": {
+    "port_retracts_a_published_invoice": false
+   },
+   "id": "PARITY-NO-RETRACTION",
+   "measured_population": {
+    "credit_applications": 0,
+    "declared_as": "parity with the source, not a divergence",
+    "estate_level_answer_if_retraction_is_wanted": "a period-scoped or full-refresh reconciliation, decided estate-wide alongside the cross-table publication protocol rather than by this unit",
+    "invoice_lines": 0,
+    "invoices": 0,
+    "population": "rows in ow_tp.silver.invoices for this ns that this run's accepted output does not contain: neither issued by this run nor carried as an accepted migrated source invoice",
+    "sample": [],
+    "source_behaviour": "sp_issue_invoice issues and re-issues; it never unpublishes, so an invoice of an earlier period stands even after its tenant loses its subscription, is deleted, or would now fail the preview",
+    "tenants": 0,
+    "total_money": "0.00",
+    "why_the_port_does_not_sweep_them": "deleting them would be the port inventing a retraction the source has no concept of; the scoped reconciliations above are deliberately confined to the invoices this run issues"
+   },
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "sp_issue_invoice issues and re-issues but never unpublishes: an invoice Oracle issued in an earlier period stands even once its tenant loses its subscription, is deleted, or would now fail the preview. The port keeps that behaviour \u2014 its reconciliations are scoped to the invoices the run issues, so an earlier publication with its lines and its credit applications is left alone \u2014 because sweeping it would be the port inventing a retraction the source has no concept of. Declared as parity, with the population it applies to measured on this run; a period-scoped or full-refresh reconciliation is the estate-level answer if the business wants retraction, and it is carried centrally alongside the cross-table publication item rather than decided by this unit"
+  },
+  {
+   "absolute_overage_delta": "14.78",
+   "actual": {
+    "rating_values_are_the_in_call_values": true,
+    "silver_rating_tables_read": []
+   },
+   "computed_rollover_mismatches_vs_oracle": 0,
+   "expected": {
+    "rating_values_are_the_in_call_values": true,
+    "silver_rating_tables_read": []
+   },
+   "id": "ACC-INLINE-RATING",
+   "inputs_read": [
+    "ow_tp.bronze.tenants",
+    "ow_tp.bronze.subscriptions",
+    "ow_tp.bronze.plans",
+    "ow_tp.bronze.usage_events",
+    "ow_tp.bronze.codes",
+    "ow_tp.bronze.credit_notes",
+    "ow_tp.bronze.invoices",
+    "ow_tp.bronze.invoice_lines",
+    "ow_tp.bronze.rating_periods",
+    "ow_tp.bronze.rating_results"
+   ],
+   "invoices_whose_overage_would_change_if_the_table_were_consumed": 2,
+   "quarantined_rows": 0,
+   "rating_input_policy": "The overage this unit prices with is recomputed inline from ow_tp.bronze.{tenants,subscriptions,plans,usage_events} by the same expressions pkg_rating.compute_rating evaluates, because the source reads it out of pkg_rating's package globals and never out of RATING_RESULTS (ACC-INLINE-RATING, D-10). ow_tp.bronze.rating_results is read for one thing only, and only because compute_rating itself reads it: the three-month rollover bank of periods strictly before this one. ow_tp.silver.rating_* is never read by this unit at all.",
+   "result": "pass",
+   "rows_compared": 69,
+   "rows_where_persisted_rollover_differs": 5,
+   "source_of_truth": "the inputs the job run declares and reads, against the invoice's own rating columns compared with live Oracle: the rollover on every invoice is the value the inline call computed, and the persisted D-09 value differs on the rows measured here, so consuming the table would have changed the money (D-10)"
+  },
+  {
+   "actual": {
+    "rows_differing": 0
+   },
+   "columns_differing": [],
+   "expected": {
+    "rows_differing": 0
+   },
+   "id": "ACC-MIGRATED-PARITY",
+   "lines": {
+    "columns_differing": [],
+    "rows_compared": 2,
+    "rows_differing": 0,
+    "source_rows": 2
+   },
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows_compared": 3,
+   "source_of_truth": "the source's own INVOICES rows for the invoices this run does not re-issue, compared column by column with the rows carried into ow_tp.silver.invoices",
+   "source_rows": 3
+  },
+  {
+   "actual": {
+    "columns_probed": [
+     "total",
+     "overage_amount",
+     "total",
+     "total"
+    ],
+    "reasons": [
+     "NUMERIC_OVERFLOW",
+     "NUMERIC_OVERFLOW",
+     "NUMERIC_OVERFLOW",
+     null
+    ]
+   },
+   "cases": [
+    {
+     "column": "total",
+     "pre_cast_expression": "CAST(1e14 AS DECIMAL(38,2))",
+     "quarantine_reason": "NUMERIC_OVERFLOW",
+     "raw_value": "100000000000000.00",
+     "value_after_cast": null
+    },
+    {
+     "column": "overage_amount",
+     "pre_cast_expression": "CAST(1e14 AS DECIMAL(38,2))",
+     "quarantine_reason": "NUMERIC_OVERFLOW",
+     "raw_value": "100000000000000.00",
+     "value_after_cast": null
+    },
+    {
+     "column": "total",
+     "pre_cast_expression": "CAST(NULL AS DECIMAL(38,2))",
+     "quarantine_reason": "NUMERIC_OVERFLOW",
+     "raw_value": null,
+     "value_after_cast": null
+    },
+    {
+     "column": "total",
+     "pre_cast_expression": "CAST(12.34 AS DECIMAL(38,2))",
+     "quarantine_reason": null,
+     "raw_value": "12.34",
+     "value_after_cast": "12.34"
+    }
+   ],
+   "expected": {
+    "columns_probed": [
+     "total",
+     "overage_amount",
+     "total",
+     "total"
+    ],
+    "reasons": [
+     "NUMERIC_OVERFLOW",
+     "NUMERIC_OVERFLOW",
+     "NUMERIC_OVERFLOW",
+     null
+    ]
+   },
+   "id": "QUAR-NUMERIC_OVERFLOW-REACHABLE",
+   "live_overflow_rows": 0,
+   "predicate_reads": "the pre-cast *_raw columns, so the cast cannot null or truncate the value before the guard sees it",
+   "result": "pass",
+   "source_of_truth": "synthetic amounts beyond DECIMAL(14,2) in the invoice total and in the rating overage (the money column most likely to overflow, now carried pre-cast so the guard reaches it before any narrowing), a derived total nulled by its cast while its inputs survived, and an in-range control \u2014 each pushed through the pinned-type cast and the same generated overflow predicate the load applies, evaluated by the job run. A probe of the target expression: it is not a finding about the source and it writes nothing"
+  },
+  {
+   "actual": {
+    "quarantine_merged_before_halt_decision": true
+   },
+   "expected": {
+    "quarantine_merged_before_halt_decision": true
+   },
+   "halt_threshold_pct": 5,
+   "id": "QUAR-PERSISTED-BEFORE-HALT",
+   "measured_quarantine_rate_pct": 0.0,
+   "quarantine_merge_metrics": {
+    "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "attribution_rule_matched": "job_run_id",
+    "commit_from_this_run": true,
+    "operation": "MERGE",
+    "pre_run_version": 14,
+    "rows_deleted": 0,
+    "rows_inserted": 0,
+    "rows_updated": 0,
+    "version": 15,
+    "writing_job_run": {
+     "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+     "job_run_id": "72731003087577"
+    }
+   },
+   "result": "pass",
+   "source_of_truth": "the job merges the rejected rows into the quarantine table and only then compares the rate with the 5% threshold and raises, so a halted run leaves the operator the payloads that caused it while no invoice, line or credit application is written"
+  },
+  {
+   "actual": {
+    "partial_invoices_written": 0
+   },
+   "expected": {
+    "partial_invoices_written": 0
+   },
+   "id": "ANOM-SWALLOWED-EXCEPTION-SURFACED",
+   "live_exposure": {
+    "tenants_where_the_two_subscription_picks_disagree": 0,
+    "tenants_with_an_unknown_usage_kind": 0,
+    "tenants_with_null_overage": 0,
+    "tenants_with_null_plan_fee": 0,
+    "tenants_with_null_tax": 0,
+    "tenants_without_a_covering_subscription_with_a_plan": 0,
+    "tenants_without_a_rating_subscription": 0
+   },
+   "quarantine_by_source_table_and_reason": {},
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "every source path in this unit's lineage that swallows a failure is enumerated with its live exposure by the job run; no issued invoice may carry a NULL money column, because a tenant that hits one of those paths is quarantined instead",
+   "source_swallowed_paths": [
+    "compute_preview: WHEN NO_DATA_FOUND THEN NULL around the plan/fee lookup \u2014 g_plan_code and g_plan_fee stay NULL and the preview continues, so the plan line's description and amount go NULL into NOT NULL columns later (04_pkg_invoicing.sql:44-46)",
+    "compute_preview: WHEN NO_DATA_FOUND THEN v_exempt := 'N' around the tenant lookup \u2014 a missing tenant is silently treated as taxable (04_pkg_invoicing.sql:61-63)",
+    "pkg_rating.compute_rating: two WHEN NO_DATA_FOUND THEN NULL handlers, which leave the quota and the rate NULL so g_overage_amount becomes NULL and the usage line follows it",
+    "pkg_ow_util.log_msg: WHEN OTHERS THEN ROLLBACK \u2014 the autonomous-transaction audit write sp_issue_invoice ends with is discarded silently (D-20, out of parity scope)",
+    "pkg_ow_util.f_str2dt: WHEN OTHERS THEN RETURN NULL \u2014 unparseable dates become NULL (not reached by this unit: invoicing reads DATE and TIMESTAMP columns only)"
+   ],
+   "target_behaviour": "quarantine with FK_ORPHAN (D-19 cause NO_COVERING_PLAN) or CODE_UNKNOWN (D-16), counted toward the 5% halt; no partial invoice, line or credit application is written for a quarantined tenant"
+  },
+  {
+   "actual": {
+    "amounts": [
+     "49.00",
+     "5.56",
+     "2.25",
+     "2.25",
+     "0.00"
+    ],
+    "line_numbers": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "totals": [
+     "49.00",
+     "5.56",
+     "2.25",
+     "2.25",
+     "0.00"
+    ]
+   },
+   "entrypoint": "pkg_invoicing.fn_invoice_preview",
+   "expected": {
+    "amounts": [
+     "49.00",
+     "5.56",
+     "2.25",
+     "2.25",
+     "0.00"
+    ],
+    "line_numbers": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "totals": [
+     "49.00",
+     "5.56",
+     "2.25",
+     "2.25",
+     "0.00"
+    ]
+   },
+   "id": "TRANSCRIPT-INVOICE-001",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/invoicing/INVOICE-001.json (pkg_invoicing.fn_invoice_preview), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "the five fn_invoice_preview rows the job run emitted for this tenant (the source entrypoint returns a cursor; the rows it returns are what sp_issue_invoice then inserts into ow_tp.silver.invoice_lines)",
+   "tenant_id": "00000000-0000-0000-0000-000000000006",
+   "unrounded_tax_halves": [
+    "2.2506000000",
+    "2.2506000000"
+   ]
+  },
+  {
+   "actual": {
+    "line_types": [
+     "plan",
+     "usage",
+     "tax",
+     "tax",
+     "credit"
+    ],
+    "tax_amount": [
+     "0.00",
+     "0.00",
+     "0.00",
+     "0.00",
+     "0.00"
+    ]
+   },
+   "entrypoint": "pkg_invoicing.fn_invoice_preview",
+   "expected": {
+    "line_types": [
+     "plan",
+     "usage",
+     "tax",
+     "tax",
+     "credit"
+    ],
+    "tax_amount": [
+     "0.00",
+     "0.00",
+     "0.00",
+     "0.00",
+     "0.00"
+    ]
+   },
+   "id": "TRANSCRIPT-INVOICE-002",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/invoicing/INVOICE-002.json (pkg_invoicing.fn_invoice_preview), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "the five fn_invoice_preview rows the job run emitted for this tenant (the source entrypoint returns a cursor; the rows it returns are what sp_issue_invoice then inserts into ow_tp.silver.invoice_lines)",
+   "tenant_id": "00000000-0000-0000-0000-000000000003",
+   "unrounded_tax_halves": [
+    "0.0000000000",
+    "0.0000000000"
+   ]
+  },
+  {
+   "actual": {
+    "credit_ids": [
+     "70000000-0000-0000-0000-000000000005",
+     "70000000-0000-0000-0000-000000000006"
+    ],
+    "invoice_state": [
+     {
+      "status": "issued",
+      "subtotal": "49.00",
+      "tax": "4.04",
+      "total": "0.00"
+     }
+    ],
+    "issued_on": [
+     "2026-01-31",
+     "2026-02-01"
+    ],
+    "remaining": [
+     "0.00",
+     "6.96"
+    ]
+   },
+   "entrypoint": "pkg_invoicing.sp_issue_invoice",
+   "expected": {
+    "credit_ids": [
+     "70000000-0000-0000-0000-000000000005",
+     "70000000-0000-0000-0000-000000000006"
+    ],
+    "invoice_state": [
+     {
+      "status": "issued",
+      "subtotal": "49.00",
+      "tax": "4.04",
+      "total": "0.00"
+     }
+    ],
+    "issued_on": [
+     "2026-01-31",
+     "2026-02-01"
+    ],
+    "remaining": [
+     "0.00",
+     "6.96"
+    ]
+   },
+   "id": "TRANSCRIPT-INVOICE-003",
+   "oracle_live": {
+    "credit_applied": "53.04",
+    "credit_offered": "60.00",
+    "subtotal": "49.00",
+    "tax": "4.04",
+    "total": "0.00"
+   },
+   "oracle_live_burn": [
+    {
+     "applied_amount": "5.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000005",
+     "credit_running_before": "53.04",
+     "remaining_after": "0.00",
+     "remaining_before": "5.00"
+    },
+    {
+     "applied_amount": "48.04",
+     "credit_note_id": "70000000-0000-0000-0000-000000000006",
+     "credit_running_before": "48.04",
+     "remaining_after": "6.96",
+     "remaining_before": "55.00"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/invoicing/INVOICE-003.json (pkg_invoicing.sp_issue_invoice), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.invoices and ow_tp.silver.credit_applications for this tenant's issued invoice",
+   "tenant_id": "00000000-0000-0000-0000-000000000009"
+  },
+  {
+   "actual": {
+    "credit_ids": [
+     "70000000-0000-0000-0000-000000000001",
+     "70000000-0000-0000-0000-000000000002"
+    ],
+    "invoice_state": [
+     {
+      "status": "issued",
+      "subtotal": "49.00",
+      "tax": "4.04",
+      "total": "0.00"
+     }
+    ],
+    "issued_on": [
+     "2026-02-01",
+     "2026-02-01"
+    ],
+    "remaining": [
+     "0.00",
+     "6.96"
+    ]
+   },
+   "entrypoint": "pkg_invoicing.sp_issue_invoice",
+   "expected": {
+    "credit_ids": [
+     "70000000-0000-0000-0000-000000000001",
+     "70000000-0000-0000-0000-000000000002"
+    ],
+    "invoice_state": [
+     {
+      "status": "issued",
+      "subtotal": "49.00",
+      "tax": "4.04",
+      "total": "0.00"
+     }
+    ],
+    "issued_on": [
+     "2026-02-01",
+     "2026-02-01"
+    ],
+    "remaining": [
+     "0.00",
+     "6.96"
+    ]
+   },
+   "id": "TRANSCRIPT-INVOICE-004",
+   "oracle_live": {
+    "credit_applied": "53.04",
+    "credit_offered": "60.00",
+    "subtotal": "49.00",
+    "tax": "4.04",
+    "total": "0.00"
+   },
+   "oracle_live_burn": [
+    {
+     "applied_amount": "30.00",
+     "credit_note_id": "70000000-0000-0000-0000-000000000001",
+     "credit_running_before": "53.04",
+     "remaining_after": "0.00",
+     "remaining_before": "30.00"
+    },
+    {
+     "applied_amount": "23.04",
+     "credit_note_id": "70000000-0000-0000-0000-000000000002",
+     "credit_running_before": "23.04",
+     "remaining_after": "6.96",
+     "remaining_before": "30.00"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/invoicing/INVOICE-004.json (pkg_invoicing.sp_issue_invoice), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.invoices and ow_tp.silver.credit_applications for this tenant's issued invoice",
+   "tenant_id": "00000000-0000-0000-0000-000000000004"
+  },
+  {
+   "actual": {
+    "invoice_state": [
+     {
+      "status": "issued",
+      "subtotal": "54.56",
+      "tax": "4.50",
+      "total": "59.06"
+     }
+    ],
+    "status": "issued",
+    "tax": "4.50",
+    "total": "59.06"
+   },
+   "entrypoint": "pkg_invoicing.sp_issue_invoice",
+   "expected": {
+    "invoice_state": [
+     {
+      "status": "issued",
+      "subtotal": "54.56",
+      "tax": "4.50",
+      "total": "59.06"
+     }
+    ],
+    "status": "issued",
+    "tax": "4.50",
+    "total": "59.06"
+   },
+   "id": "TRANSCRIPT-INVOICE-005",
+   "oracle_live": {
+    "credit_applied": "0.00",
+    "credit_offered": "0.00",
+    "subtotal": "54.56",
+    "tax": "4.50",
+    "total": "59.06"
+   },
+   "oracle_live_burn": [],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/invoicing/INVOICE-005.json (pkg_invoicing.sp_issue_invoice), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.invoices and ow_tp.silver.credit_applications for this tenant's issued invoice",
+   "tenant_id": "00000000-0000-0000-0000-000000000006"
+  },
+  {
+   "actual": {
+    "amounts": [
+     "149.00",
+     "12.29"
+    ],
+    "line_types": [
+     "plan",
+     "usage"
+    ]
+   },
+   "entrypoint": "pkg_invoicing.fn_invoice_lines",
+   "expected": {
+    "amounts": [
+     "149.00",
+     "12.29"
+    ],
+    "line_types": [
+     "plan",
+     "usage"
+    ]
+   },
+   "id": "TRANSCRIPT-INVOICE-006",
+   "invoice_id": "60000000-0000-0000-0000-000000000001",
+   "oracle_live": [
+    {
+     "amount": "149.00",
+     "description": "GROWTH",
+     "line_no": 1,
+     "line_type": "plan"
+    },
+    {
+     "amount": "12.29",
+     "description": "usage overage",
+     "line_no": 2,
+     "line_type": "usage"
+    }
+   ],
+   "origins": [
+    "source-migrated",
+    "source-migrated"
+   ],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/invoicing/INVOICE-006.json (pkg_invoicing.fn_invoice_lines), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.invoice_lines, projected in line_no order as fn_invoice_lines' own cursor projects it"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "absolute_overage_delta": "14.78",
+    "absolute_rollover_unit_delta": "1519",
+    "global_read_across_the_package_boundary": "g_overage := pkg_rating.g_overage_amount, set by pkg_rating.compute_rating and read by pkg_invoicing.compute_preview (04_pkg_invoicing.sql:48-49) \u2014 no table between the two",
+    "invoices_whose_overage_would_change_if_the_table_were_consumed": 2,
+    "rating_input": "recomputed inline from ow_tp.bronze.{tenants,subscriptions,plans,usage_events}; ow_tp.bronze.rating_results is read only as compute_rating's three-month rollover bank of earlier periods; ow_tp.silver.rating_* is not read",
+    "rows_compared": 69,
+    "rows_where_persisted_rollover_differs_from_in_call_value": 5,
+    "source_package_globals": [
+     "g_plan_code",
+     "g_plan_fee",
+     "g_overage",
+     "g_tax",
+     "g_credit"
+    ],
+    "target_behaviour": "no cross-call state: every value the two packages passed through a global is a column of the invoice row it belongs to, and the rating values on the row are the in-call values"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-GLOBAL-DEPENDENCY",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': the package globals pkg_invoicing declares and the one it reads out of pkg_rating are enumerated from the source and mapped onto explicit columns of the invoice row; the money consequence is then measured by repricing every invoice in this run from the persisted D-09 rollover instead of the value the inline call computed"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "distinct_rates_applied_this_run": 1,
+    "invoices_priced": 69,
+    "rate_applied": "0.082500",
+    "rate_carrying_columns_in_bronze_or_silver": 1,
+    "source_constant": "TAX_RATE CONSTANT NUMBER := 0.0825 (04_pkg_invoicing.sql:26), commented 'hardcoded 2011 combined rate'",
+    "target_behaviour": "the constant is pinned in databricks/ddl/silver_invoicing_spec.json, asserted equal to 0.0825 at load time, and written onto every invoice as tax_rate so a future rate change is a visible column change and not a silent reprice",
+    "tax_exempt_invoices": 6
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-HARDCODED-TAX",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': the rate the invoices were priced with is compared against the source constant and against the schema: every column in ow_tp.bronze and ow_tp.silver whose name could carry a tax rate is counted, so the claim that the rate has no data provenance is measured rather than asserted"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "absolute_tax_delta": "0.26",
+    "invoices_changed_if_the_halves_were_rounded_first": 26,
+    "invoices_priced": 69,
+    "invoices_whose_half_is_not_a_whole_cent": 62,
+    "max_tax_delta": "0.01",
+    "sample": [
+     {
+      "tax_computed": "12.6530250000",
+      "tax_half": "6.3265125000",
+      "tax_half_rounded": "6.33",
+      "tax_if_rounded_once": "12.65",
+      "tax_two_unrounded_halves": "12.66",
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "total": "166.03"
+     },
+     {
+      "tax_computed": "4.5078000000",
+      "tax_half": "2.2539000000",
+      "tax_half_rounded": "2.25",
+      "tax_if_rounded_once": "4.51",
+      "tax_two_unrounded_halves": "4.50",
+      "tenant_id": "00000000-0000-0000-0000-000000000008",
+      "total": "59.14"
+     },
+     {
+      "tax_computed": "40.9686750000",
+      "tax_half": "20.4843375000",
+      "tax_half_rounded": "20.48",
+      "tax_if_rounded_once": "40.97",
+      "tax_two_unrounded_halves": "40.96",
+      "tenant_id": "14c97a8c-d41e-67c4-ef80-0ab6b63a0f7e",
+      "total": "537.55"
+     },
+     {
+      "tax_computed": "38.7057000000",
+      "tax_half": "19.3528500000",
+      "tax_half_rounded": "19.35",
+      "tax_if_rounded_once": "38.71",
+      "tax_two_unrounded_halves": "38.70",
+      "tenant_id": "18d73981-1b10-9666-d46e-bcef13a6dd76",
+      "total": "507.86"
+     },
+     {
+      "tax_computed": "24.7508250000",
+      "tax_half": "12.3754125000",
+      "tax_half_rounded": "12.38",
+      "tax_if_rounded_once": "24.75",
+      "tax_two_unrounded_halves": "24.76",
+      "tenant_id": "3c74f709-9c14-0338-188f-66ace530f3e3",
+      "total": "324.77"
+     },
+     {
+      "tax_computed": "17.7523500000",
+      "tax_half": "8.8761750000",
+      "tax_half_rounded": "8.88",
+      "tax_if_rounded_once": "17.75",
+      "tax_two_unrounded_halves": "17.76",
+      "tenant_id": "4dc2f443-4974-af80-c214-78aa82b2c812",
+      "total": "232.94"
+     }
+    ],
+    "source_construct": "SELECT 3, 'tax', 'regional tax', g_tax / 2, ... UNION ALL SELECT 4, 'tax', 'local tax', g_tax / 2, ... (04_pkg_invoicing.sql:93-95), each accumulated as ROUND(v_amount, 2) into v_tax",
+    "target_behaviour": "tax_computed and tax_half are carried as DECIMAL(28,10), the halves are rounded only where the source's NUMBER(12,2) column rounds them, and the header tax is the sum of the two rounded halves"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-HALF-CENT-TAX",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': each invoice's tax is computed both ways over this run's own population \u2014 the source's two unrounded halves each rounded on insert and summed, and the single ROUND(g_tax, 2) a tidier implementation would have written \u2014 and the rows that differ are counted with their money delta"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "application_rows": 5,
+    "counter_carried_beyond_a_note_balance": "71.08",
+    "credit_already_applied_by_this_units_other_invoices": "0.00",
+    "credit_applied_total": "131.08",
+    "invoices_applying_credit": 3,
+    "note_balance_after_total": "13.92",
+    "note_balance_before_total": "145.00",
+    "notes_debited_by_more_than_their_own_balance": 2,
+    "notes_the_loop_never_reached": 0,
+    "order_determinism": "the source's ORDER BY issued_on, id is total because CREDIT_NOTES.id is the primary key, so the target orders by (issued_on, credit_note_id) and invents no tie-break; the sequence is deterministic on both sides",
+    "reissue_exposure": {
+     "credit_granted_by_the_first_issue_of_those_invoices": "106.08",
+     "credit_that_would_be_burned_again": "13.92",
+     "description": "a second sp_issue_invoice for the same period recomputes g_credit from the balances the first issue already reduced and burns them again, so across the two issues the tenant's notes are consumed by more than the credit the invoice finally grants",
+     "invoices_that_would_burn_credit_again": 2
+    },
+    "source_construct": "FOR r IN (... ORDER BY issued_on, id) LOOP EXIT WHEN v_credit <= 0; UPDATE credit_notes SET remaining_amount = GREATEST(remaining_amount - v_credit, 0) WHERE id = r.id; v_credit := GREATEST(v_credit - r.remaining_amount, 0); END LOOP (04_pkg_invoicing.sql:182-190)",
+    "target_behaviour": "the sequence is recomputed from bronze minus what this unit's *other* invoices applied, so it sees its own earlier applications across periods but a rerun of the same period re-derives the identical rows instead of burning the notes a second time; the divergence from the source's re-issue double-burn is declared in the recon report"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-CREDIT-OVERAPPLY",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': the burn-down is materialised one visited note at a time, with the running counter and both balances on every row, so the order and the over-application are measured rows rather than a claim; the re-issue exposure is then evaluated on those same rows"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "delete_commit_metrics": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "DELETE",
+     "pre_run_version": 28,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 29,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "lines_outside_the_scope_after": 2,
+    "lines_outside_the_scope_before": 2,
+    "rows_matched_by_the_scoped_delete": 0,
+    "source_constructs": [
+     "pkg_invoicing.sp_issue_invoice: EXECUTE IMMEDIATE 'DELETE FROM invoice_lines WHERE invoice_id = :1' USING v_invoice_id (04_pkg_invoicing.sql:149-150) \u2014 statement text built in the issue path, bound to a runtime invoice id",
+     "pkg_ow_util.f_code_desc: EXECUTE IMMEDIATE of a SELECT against CODES assembled into v_sql (01_pkg_util.sql:36-46) \u2014 reached from this unit only through the code lookups, which the target expresses as joins to ow_tp.bronze.codes"
+    ],
+    "target_behaviour": "one static statement, scoped to ns and to this run's invoices, with no string built from a row value anywhere in the write path; the rebuild's end state is the same as the source's delete-and-reinsert",
+    "target_statement": "DELETE FROM ow_tp.silver.invoice_lines WHERE `ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_lines_issued)"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-DYNAMIC-SQL",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': the source's issue path is read for EXECUTE IMMEDIATE and the statement it assembles is named with its bind; the target's replacement is the static DELETE below, whose own scope is measured on every run (rows matched, and rows outside the scope counted before and after to prove they were untouched)"
+  }
+ ],
+ "failed_checks": [],
+ "generated_at": "2026-08-29T09:58:24Z",
+ "idempotency_rerun": {
+  "evidence": "run 1 = serverless run 188833546218058 (batch 20260829092404a), run 2 = serverless run 72731003087577 (batch 20260829092404b), identical parameters (ns=demo, period 2026-02-01..2026-02-28). Second-run Delta MERGE metrics: {\"credit_applications\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 27, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 29, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}, \"invoice_lines\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 28, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 30, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}, \"invoices\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 14, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 15, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}, \"quarantine_silver_invoicing\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 14, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 15, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}}. Row counts after each run: {\"run1\": {\"credit_applications\": {\"rows\": 5, \"rows_without_ns\": 0, \"source_migrated_rows\": 0, \"target_issue_rows\": 5}, \"invoice_lines\": {\"rows\": 347, \"rows_without_ns\": 0, \"source_migrated_rows\": 2, \"target_issue_rows\": 345}, \"invoices\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_issue_rows\": 69}}, \"run2\": {\"credit_applications\": {\"rows\": 5, \"rows_without_ns\": 0, \"source_migrated_rows\": 0, \"target_issue_rows\": 5}, \"invoice_lines\": {\"rows\": 347, \"rows_without_ns\": 0, \"source_migrated_rows\": 2, \"target_issue_rows\": 345}, \"invoices\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_issue_rows\": 69}}}. Parity checksums after each run: {\"run1\": {\"credit_applications\": \"1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb\", \"invoice_lines\": \"a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645\", \"invoices\": \"89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf\"}, \"run2\": {\"credit_applications\": \"1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb\", \"invoice_lines\": \"a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645\", \"invoices\": \"89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf\"}}",
+  "performed": true,
+  "result": "pass"
+ },
+ "kind": "recon-report",
+ "namespace": "demo",
+ "planted_anomaly_detections": {
+  "actual_set": [
+   "ANOM-GLOBAL-DEPENDENCY",
+   "ANOM-HARDCODED-TAX",
+   "ANOM-HALF-CENT-TAX",
+   "ANOM-CREDIT-OVERAPPLY",
+   "ANOM-DYNAMIC-SQL"
+  ],
+  "detail": {
+   "ANOM-CREDIT-OVERAPPLY": {
+    "application_rows": 5,
+    "counter_carried_beyond_a_note_balance": "71.08",
+    "credit_already_applied_by_this_units_other_invoices": "0.00",
+    "credit_applied_total": "131.08",
+    "detected": true,
+    "detector": "the burn-down is materialised one visited note at a time, with the running counter and both balances on every row, so the order and the over-application are measured rows rather than a claim; the re-issue exposure is then evaluated on those same rows",
+    "invoices_applying_credit": 3,
+    "note_balance_after_total": "13.92",
+    "note_balance_before_total": "145.00",
+    "notes_debited_by_more_than_their_own_balance": 2,
+    "notes_the_loop_never_reached": 0,
+    "order_determinism": "the source's ORDER BY issued_on, id is total because CREDIT_NOTES.id is the primary key, so the target orders by (issued_on, credit_note_id) and invents no tie-break; the sequence is deterministic on both sides",
+    "reissue_exposure": {
+     "credit_granted_by_the_first_issue_of_those_invoices": "106.08",
+     "credit_that_would_be_burned_again": "13.92",
+     "description": "a second sp_issue_invoice for the same period recomputes g_credit from the balances the first issue already reduced and burns them again, so across the two issues the tenant's notes are consumed by more than the credit the invoice finally grants",
+     "invoices_that_would_burn_credit_again": 2
+    },
+    "source_construct": "FOR r IN (... ORDER BY issued_on, id) LOOP EXIT WHEN v_credit <= 0; UPDATE credit_notes SET remaining_amount = GREATEST(remaining_amount - v_credit, 0) WHERE id = r.id; v_credit := GREATEST(v_credit - r.remaining_amount, 0); END LOOP (04_pkg_invoicing.sql:182-190)",
+    "target_behaviour": "the sequence is recomputed from bronze minus what this unit's *other* invoices applied, so it sees its own earlier applications across periods but a rerun of the same period re-derives the identical rows instead of burning the notes a second time; the divergence from the source's re-issue double-burn is declared in the recon report"
+   },
+   "ANOM-DYNAMIC-SQL": {
+    "delete_commit_metrics": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "DELETE",
+     "pre_run_version": 28,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 29,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "detected": true,
+    "detector": "the source's issue path is read for EXECUTE IMMEDIATE and the statement it assembles is named with its bind; the target's replacement is the static DELETE below, whose own scope is measured on every run (rows matched, and rows outside the scope counted before and after to prove they were untouched)",
+    "lines_outside_the_scope_after": 2,
+    "lines_outside_the_scope_before": 2,
+    "rows_matched_by_the_scoped_delete": 0,
+    "source_constructs": [
+     "pkg_invoicing.sp_issue_invoice: EXECUTE IMMEDIATE 'DELETE FROM invoice_lines WHERE invoice_id = :1' USING v_invoice_id (04_pkg_invoicing.sql:149-150) \u2014 statement text built in the issue path, bound to a runtime invoice id",
+     "pkg_ow_util.f_code_desc: EXECUTE IMMEDIATE of a SELECT against CODES assembled into v_sql (01_pkg_util.sql:36-46) \u2014 reached from this unit only through the code lookups, which the target expresses as joins to ow_tp.bronze.codes"
+    ],
+    "target_behaviour": "one static statement, scoped to ns and to this run's invoices, with no string built from a row value anywhere in the write path; the rebuild's end state is the same as the source's delete-and-reinsert",
+    "target_statement": "DELETE FROM ow_tp.silver.invoice_lines WHERE `ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_lines_issued)"
+   },
+   "ANOM-GLOBAL-DEPENDENCY": {
+    "absolute_overage_delta": "14.78",
+    "absolute_rollover_unit_delta": "1519",
+    "detected": true,
+    "detector": "the package globals pkg_invoicing declares and the one it reads out of pkg_rating are enumerated from the source and mapped onto explicit columns of the invoice row; the money consequence is then measured by repricing every invoice in this run from the persisted D-09 rollover instead of the value the inline call computed",
+    "global_read_across_the_package_boundary": "g_overage := pkg_rating.g_overage_amount, set by pkg_rating.compute_rating and read by pkg_invoicing.compute_preview (04_pkg_invoicing.sql:48-49) \u2014 no table between the two",
+    "invoices_whose_overage_would_change_if_the_table_were_consumed": 2,
+    "rating_input": "recomputed inline from ow_tp.bronze.{tenants,subscriptions,plans,usage_events}; ow_tp.bronze.rating_results is read only as compute_rating's three-month rollover bank of earlier periods; ow_tp.silver.rating_* is not read",
+    "rows_compared": 69,
+    "rows_where_persisted_rollover_differs_from_in_call_value": 5,
+    "source_package_globals": [
+     "g_plan_code",
+     "g_plan_fee",
+     "g_overage",
+     "g_tax",
+     "g_credit"
+    ],
+    "target_behaviour": "no cross-call state: every value the two packages passed through a global is a column of the invoice row it belongs to, and the rating values on the row are the in-call values"
+   },
+   "ANOM-HALF-CENT-TAX": {
+    "absolute_tax_delta": "0.26",
+    "detected": true,
+    "detector": "each invoice's tax is computed both ways over this run's own population \u2014 the source's two unrounded halves each rounded on insert and summed, and the single ROUND(g_tax, 2) a tidier implementation would have written \u2014 and the rows that differ are counted with their money delta",
+    "invoices_changed_if_the_halves_were_rounded_first": 26,
+    "invoices_priced": 69,
+    "invoices_whose_half_is_not_a_whole_cent": 62,
+    "max_tax_delta": "0.01",
+    "sample": [
+     {
+      "tax_computed": "12.6530250000",
+      "tax_half": "6.3265125000",
+      "tax_half_rounded": "6.33",
+      "tax_if_rounded_once": "12.65",
+      "tax_two_unrounded_halves": "12.66",
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "total": "166.03"
+     },
+     {
+      "tax_computed": "4.5078000000",
+      "tax_half": "2.2539000000",
+      "tax_half_rounded": "2.25",
+      "tax_if_rounded_once": "4.51",
+      "tax_two_unrounded_halves": "4.50",
+      "tenant_id": "00000000-0000-0000-0000-000000000008",
+      "total": "59.14"
+     },
+     {
+      "tax_computed": "40.9686750000",
+      "tax_half": "20.4843375000",
+      "tax_half_rounded": "20.48",
+      "tax_if_rounded_once": "40.97",
+      "tax_two_unrounded_halves": "40.96",
+      "tenant_id": "14c97a8c-d41e-67c4-ef80-0ab6b63a0f7e",
+      "total": "537.55"
+     },
+     {
+      "tax_computed": "38.7057000000",
+      "tax_half": "19.3528500000",
+      "tax_half_rounded": "19.35",
+      "tax_if_rounded_once": "38.71",
+      "tax_two_unrounded_halves": "38.70",
+      "tenant_id": "18d73981-1b10-9666-d46e-bcef13a6dd76",
+      "total": "507.86"
+     },
+     {
+      "tax_computed": "24.7508250000",
+      "tax_half": "12.3754125000",
+      "tax_half_rounded": "12.38",
+      "tax_if_rounded_once": "24.75",
+      "tax_two_unrounded_halves": "24.76",
+      "tenant_id": "3c74f709-9c14-0338-188f-66ace530f3e3",
+      "total": "324.77"
+     },
+     {
+      "tax_computed": "17.7523500000",
+      "tax_half": "8.8761750000",
+      "tax_half_rounded": "8.88",
+      "tax_if_rounded_once": "17.75",
+      "tax_two_unrounded_halves": "17.76",
+      "tenant_id": "4dc2f443-4974-af80-c214-78aa82b2c812",
+      "total": "232.94"
+     }
+    ],
+    "source_construct": "SELECT 3, 'tax', 'regional tax', g_tax / 2, ... UNION ALL SELECT 4, 'tax', 'local tax', g_tax / 2, ... (04_pkg_invoicing.sql:93-95), each accumulated as ROUND(v_amount, 2) into v_tax",
+    "target_behaviour": "tax_computed and tax_half are carried as DECIMAL(28,10), the halves are rounded only where the source's NUMBER(12,2) column rounds them, and the header tax is the sum of the two rounded halves"
+   },
+   "ANOM-HARDCODED-TAX": {
+    "detected": true,
+    "detector": "the rate the invoices were priced with is compared against the source constant and against the schema: every column in ow_tp.bronze and ow_tp.silver whose name could carry a tax rate is counted, so the claim that the rate has no data provenance is measured rather than asserted",
+    "distinct_rates_applied_this_run": 1,
+    "invoices_priced": 69,
+    "rate_applied": "0.082500",
+    "rate_carrying_columns_in_bronze_or_silver": 1,
+    "source_constant": "TAX_RATE CONSTANT NUMBER := 0.0825 (04_pkg_invoicing.sql:26), commented 'hardcoded 2011 combined rate'",
+    "target_behaviour": "the constant is pinned in databricks/ddl/silver_invoicing_spec.json, asserted equal to 0.0825 at load time, and written onto every invoice as tax_rate so a future rate change is a visible column change and not a silent reprice",
+    "tax_exempt_invoices": 6
+   }
+  },
+  "expected_set": [
+   "ANOM-GLOBAL-DEPENDENCY",
+   "ANOM-HARDCODED-TAX",
+   "ANOM-HALF-CENT-TAX",
+   "ANOM-CREDIT-OVERAPPLY",
+   "ANOM-DYNAMIC-SQL"
+  ],
+  "missing": [],
+  "unexpected": []
+ },
+ "provenance": {
+  "baseline": {
+   "note": "procs/transcripts/ (Postgres) is a cross-check set and is not the baseline",
+   "pinned_sha_file": "procs/oracle/transcripts/ORACLE_SOURCE_SHA",
+   "transcripts": [
+    "INVOICE-001.json",
+    "INVOICE-002.json",
+    "INVOICE-003.json",
+    "INVOICE-004.json",
+    "INVOICE-005.json",
+    "INVOICE-006.json"
+   ]
+  },
+  "job_runs": [
+   {
+    "batch_id": "20260829092404a",
+    "run_id": 188833546218058,
+    "run_page_path": "/?o=7474651138173478#job/1080583062547303/run/188833546218058"
+   },
+   {
+    "batch_id": "20260829092404b",
+    "run_id": 72731003087577,
+    "run_page_path": "/?o=7474651138173478#job/25192634150947/run/72731003087577"
+   },
+   {
+    "batch_id": "20260829092404c",
+    "run_id": 675185267155981,
+    "run_page_path": "/?o=7474651138173478#job/403080087364043/run/675185267155981"
+   }
+  ],
+  "period": {
+   "end": "2026-02-28",
+   "start": "2026-02-01"
+  },
+  "seeded_scale": {
+   "command": "make oracle-billing-seed NS=demo SCALE=demo",
+   "manifest": "testdata/legacy/manifests/demo.json",
+   "seed": {
+    "generated_at": "2026-08-01T00:00:00Z",
+    "generator_version": "1",
+    "namespace": "demo",
+    "planted_anomalies": [
+     {
+      "count": 31,
+      "kind": "malformed_csv_lists",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.RELATED_ACCT_IDS"
+     },
+     {
+      "count": 50,
+      "kind": "dirty_dates",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.SIGNUP_DT"
+     },
+     {
+      "count": 37,
+      "kind": "orphaned_rows",
+      "target": "oracle.OW_BILLING.INVOICE_LINE"
+     }
+    ],
+    "seed": 714559852,
+    "seed_legacy_params": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     }
+    },
+    "targets": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "checksum": "4f92feef2ad58dbab30e289957931928",
+      "rows": 25000
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "rows": 8333
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "rows": 18750
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "checksum": "88a66751f0b08b476b492105a2efc537",
+      "rows": 150000
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "rows": 60
+     }
+    }
+   }
+  },
+  "source": {
+   "batch_chain_executed": false,
+   "counts": {
+    "credit_notes": 5,
+    "customer_master": 25000,
+    "entity_attr_value": 8333,
+    "invoice_line": 150000,
+    "invoice_lines": 2,
+    "invoices": 3,
+    "plans": 3,
+    "rating_periods": 3,
+    "rating_results": 3,
+    "subscriptions": 69,
+    "tenants": 69,
+    "usage_events": 814
+   },
+   "db_name": "FREEPDB1",
+   "entrypoints": [
+    "pkg_invoicing.compute_preview",
+    "pkg_invoicing.fn_invoice_preview",
+    "pkg_invoicing.fn_invoice_lines",
+    "pkg_invoicing.sp_issue_invoice"
+   ],
+   "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "oracle_version": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.3.0.0",
+   "package": "services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql",
+   "read_only": true,
+   "schema": "OW_BILLING",
+   "system": "Oracle OW_BILLING (live)"
+  },
+  "target": {
+   "bronze_inputs_read_only": [
+    "ow_tp.bronze.tenants",
+    "ow_tp.bronze.subscriptions",
+    "ow_tp.bronze.plans",
+    "ow_tp.bronze.usage_events",
+    "ow_tp.bronze.codes",
+    "ow_tp.bronze.credit_notes",
+    "ow_tp.bronze.invoices",
+    "ow_tp.bronze.invoice_lines",
+    "ow_tp.bronze.rating_periods",
+    "ow_tp.bronze.rating_results"
+   ],
+   "catalog": "ow_tp",
+   "checksums": {
+    "credit_applications": "1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb",
+    "invoice_lines": "a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645",
+    "invoices": "89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf"
+   },
+   "column_types": {
+    "credit_applications._batch_id": "string",
+    "credit_applications._loaded_at": "timestamp",
+    "credit_applications._origin": "string",
+    "credit_applications.applied_amount": "decimal(14,2)",
+    "credit_applications.applied_by_other_invoices": "decimal(14,2)",
+    "credit_applications.bronze_remaining_amount": "decimal(14,2)",
+    "credit_applications.credit_note_id": "string",
+    "credit_applications.credit_running_after": "decimal(14,2)",
+    "credit_applications.credit_running_before": "decimal(14,2)",
+    "credit_applications.id": "string",
+    "credit_applications.invoice_id": "string",
+    "credit_applications.issued_on": "timestamp",
+    "credit_applications.ns": "string",
+    "credit_applications.remaining_after": "decimal(14,2)",
+    "credit_applications.remaining_before": "decimal(14,2)",
+    "credit_applications.seq_no": "int",
+    "credit_applications.skipped_by_exit_when": "boolean",
+    "credit_applications.tenant_id": "string",
+    "invoice_lines._batch_id": "string",
+    "invoice_lines._loaded_at": "timestamp",
+    "invoice_lines._origin": "string",
+    "invoice_lines.amount": "decimal(14,2)",
+    "invoice_lines.description": "string",
+    "invoice_lines.id": "string",
+    "invoice_lines.invoice_id": "string",
+    "invoice_lines.line_no": "int",
+    "invoice_lines.line_type": "string",
+    "invoice_lines.ns": "string",
+    "invoice_lines.preview_amount": "decimal(28,10)",
+    "invoice_lines.preview_credit_applied": "decimal(14,2)",
+    "invoice_lines.preview_tax_amount": "decimal(14,2)",
+    "invoice_lines.preview_total": "decimal(28,10)",
+    "invoices._batch_id": "string",
+    "invoices._loaded_at": "timestamp",
+    "invoices._origin": "string",
+    "invoices.billable_units": "decimal(38,0)",
+    "invoices.charge_cap": "decimal(14,2)",
+    "invoices.computed_rollover_units": "decimal(38,0)",
+    "invoices.credit_applied": "decimal(14,2)",
+    "invoices.credit_offered": "decimal(14,2)",
+    "invoices.fee_subscription_id": "string",
+    "invoices.first_tier_units": "decimal(38,0)",
+    "invoices.id": "string",
+    "invoices.issued_at": "timestamp",
+    "invoices.ns": "string",
+    "invoices.overage_amount": "decimal(14,2)",
+    "invoices.overage_rate": "decimal(12,6)",
+    "invoices.period_id": "string",
+    "invoices.plan_code": "string",
+    "invoices.plan_fee": "decimal(14,2)",
+    "invoices.quota_units": "decimal(38,0)",
+    "invoices.rating_subscription_id": "string",
+    "invoices.second_tier_units": "decimal(38,0)",
+    "invoices.status_cd": "int",
+    "invoices.subtotal": "decimal(14,2)",
+    "invoices.suspension_prorated": "boolean",
+    "invoices.tax": "decimal(14,2)",
+    "invoices.tax_computed": "decimal(28,10)",
+    "invoices.tax_exempt_yn": "string",
+    "invoices.tax_half": "decimal(28,10)",
+    "invoices.tax_rate": "decimal(12,6)",
+    "invoices.tenant_id": "string",
+    "invoices.total": "decimal(14,2)",
+    "invoices.used_units": "decimal(38,0)",
+    "quarantine_silver_invoicing._batch_id": "string",
+    "quarantine_silver_invoicing._quarantined_at": "timestamp",
+    "quarantine_silver_invoicing.detail": "string",
+    "quarantine_silver_invoicing.dictionary_ref": "string",
+    "quarantine_silver_invoicing.ns": "string",
+    "quarantine_silver_invoicing.quarantine_reason": "string",
+    "quarantine_silver_invoicing.raw_source_payload": "string",
+    "quarantine_silver_invoicing.source_key": "string",
+    "quarantine_silver_invoicing.source_table": "string"
+   },
+   "compute": "serverless job compute for the notebook runs; pre-existing Serverless Starter Warehouse (565cd2fd713738c4) for the recon SQL. No cluster or warehouse was created.",
+   "money": {
+    "credit_applied_total": "131.08",
+    "credit_applied_total_from_applications": "131.08",
+    "credit_line_total": "-131.08",
+    "credit_notes_never_reached": 0,
+    "credit_offered_total": "145.00",
+    "credit_remaining_after_total": "13.92",
+    "credit_remaining_before_total": "145.00",
+    "line_amount_total": "32426.42",
+    "line_amount_total_source_migrated": "161.29",
+    "line_amount_total_target_issue": "32265.13",
+    "line_rows_source_migrated": 2,
+    "line_rows_target_issue": 345,
+    "overage_total": "21313.69",
+    "plan_fee_total": "8831.00",
+    "source_migrated_rows": 3,
+    "subtotal_total": "30491.69",
+    "subtotal_total_target_issue": "30144.69",
+    "target_issue_rows": 69,
+    "tax_line_total": "2251.52",
+    "tax_total": "2280.14",
+    "tax_total_target_issue": "2251.52",
+    "total_total": "32640.75",
+    "total_total_source_migrated": "375.62",
+    "total_total_target_issue": "32265.13"
+   },
+   "rating_input_policy": "The overage this unit prices with is recomputed inline from ow_tp.bronze.{tenants,subscriptions,plans,usage_events} by the same expressions pkg_rating.compute_rating evaluates, because the source reads it out of pkg_rating's package globals and never out of RATING_RESULTS (ACC-INLINE-RATING, D-10). ow_tp.bronze.rating_results is read for one thing only, and only because compute_rating itself reads it: the three-month rollover bank of periods strictly before this one. ow_tp.silver.rating_* is never read by this unit at all.",
+   "row_counts": {
+    "credit_applications": 5,
+    "invoice_lines": 347,
+    "invoices": 72,
+    "quarantine_silver_invoicing": 0
+   },
+   "schema": "silver",
+   "tables": [
+    "ow_tp.silver.invoices",
+    "ow_tp.silver.invoice_lines",
+    "ow_tp.silver.credit_applications",
+    "ow_tp.silver.quarantine_silver_invoicing"
+   ]
+  }
+ },
+ "quarantine": {
+  "accounting": {
+   "credit_applications": {
+    "basis": "one row per open credit note the issue sequence visits, for every driver",
+    "loaded_rows": 5,
+    "quarantined_rows": 0,
+    "rate_pct": 0.0,
+    "source_rows": 5
+   },
+   "invoice_lines": {
+    "basis": "5 fn_invoice_preview lines per issued invoice, plus the source's own INVOICE_LINES rows for invoices this run does not re-issue",
+    "loaded_rows": 347,
+    "quarantined_rows": 0,
+    "rate_pct": 0.0,
+    "source_rows": 347
+   },
+   "invoices": {
+    "basis": "one sp_issue_invoice driver per tenant in ns, plus the source's own INVOICES rows that this run does not re-issue",
+    "loaded_rows": 72,
+    "quarantined_rows": 0,
+    "rate_pct": 0.0,
+    "source_rows": 72
+   }
+  },
+  "by_source_table_and_reason": {},
+  "halt_threshold_pct": 5.0,
+  "identity_collapse_probe": {
+   "cases": [
+    {
+     "merged_rows": 1,
+     "quarantine_reason": "KEY_DUPLICATE",
+     "raw_source_payload": "{\"rejected_source_rows\":2,\"payloads\":[\"{\\\"row\\\":1}\",\"{\\\"row\\\":2}\"]}"
+    },
+    {
+     "merged_rows": 1,
+     "quarantine_reason": "KEY_NULL",
+     "raw_source_payload": "{\"rejected_source_rows\":2,\"payloads\":[\"{\\\"row\\\":3}\",\"{\\\"row\\\":4}\"]}"
+    }
+   ],
+   "description": "two KEY_DUPLICATE rows under one source_key and two KEY_NULL rows with a null source_key, through the same grouping the load applies: each identity collapses to one record carrying both payloads and the count, so a rerun's MERGE matches one source row per target row",
+   "is_probe_of_target_expression_not_source_finding": true
+  },
+  "merge_identities_with_multiple_source_rows": 0,
+  "persisted_before_halt_decision": true,
+  "rate_basis": "invoice driver: one sp_issue_invoice per tenant-period in ns, plus each migrated source INVOICES row this run carries \u2014 numerator and denominator on that one population",
+  "rate_pct": 0.0,
+  "rate_rejected_rows": 0,
+  "rate_source_rows": 72,
+  "rejection_ledger": {
+   "driver_source_table": "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS+USAGE_EVENTS+CREDIT_NOTES",
+   "note": "the credit-burn parity check excludes only rejected_driver_tenants_this_run; a tenant in retained_but_not_rejected_by_this_run is compared like any other, so a rejection that no longer reproduces cannot hide a burn mismatch",
+   "quarantine_is_a_ledger_of_rejections_not_current_state": true,
+   "rejected_driver_tenants_this_run": [],
+   "rejected_driver_tenants_this_run_count": 0,
+   "retained_but_not_rejected_by_this_run": [],
+   "retained_driver_tenants_count": 0,
+   "retained_driver_tenants_in_target_before_this_run_s_merge": []
+  },
+  "rows": 0,
+  "source_rows_rejected": 0
+ },
+ "recon_result": "green",
+ "run_mode": "live",
+ "swallowed_exceptions": {
+  "live_exposure": {
+   "tenants_where_the_two_subscription_picks_disagree": 0,
+   "tenants_with_an_unknown_usage_kind": 0,
+   "tenants_with_null_overage": 0,
+   "tenants_with_null_plan_fee": 0,
+   "tenants_with_null_tax": 0,
+   "tenants_without_a_covering_subscription_with_a_plan": 0,
+   "tenants_without_a_rating_subscription": 0
+  },
+  "source_swallowed_paths": [
+   "compute_preview: WHEN NO_DATA_FOUND THEN NULL around the plan/fee lookup \u2014 g_plan_code and g_plan_fee stay NULL and the preview continues, so the plan line's description and amount go NULL into NOT NULL columns later (04_pkg_invoicing.sql:44-46)",
+   "compute_preview: WHEN NO_DATA_FOUND THEN v_exempt := 'N' around the tenant lookup \u2014 a missing tenant is silently treated as taxable (04_pkg_invoicing.sql:61-63)",
+   "pkg_rating.compute_rating: two WHEN NO_DATA_FOUND THEN NULL handlers, which leave the quota and the rate NULL so g_overage_amount becomes NULL and the usage line follows it",
+   "pkg_ow_util.log_msg: WHEN OTHERS THEN ROLLBACK \u2014 the autonomous-transaction audit write sp_issue_invoice ends with is discarded silently (D-20, out of parity scope)",
+   "pkg_ow_util.f_str2dt: WHEN OTHERS THEN RETURN NULL \u2014 unparseable dates become NULL (not reached by this unit: invoicing reads DATE and TIMESTAMP columns only)"
+  ],
+  "target_behaviour": "quarantine with FK_ORPHAN (D-19 cause NO_COVERING_PLAN) or CODE_UNKNOWN (D-16), counted toward the 5% halt; no partial invoice, line or credit application is written for a quarantined tenant"
+ },
+ "unit": "silver_invoicing",
+ "unverified_paths": [
+  "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable (wave 1 established this), so no single query joins source to target. Each side is measured independently \u2014 Oracle by a read-only session, the target by the SQL warehouse \u2014 and compared row by row here.",
+  "The Oracle side of the parity comparison is compute_preview/fn_invoice_preview/sp_issue_invoice, with the pkg_rating.compute_rating call they depend on, re-expressed as read-only SQL evaluated by Oracle \u2014 not the PL/SQL package executed. Executing it would write INVOICES/INVOICE_LINES rows and burn CREDIT_NOTES down, mutating the estate; the six pinned transcripts are what tie the re-expression to the real engine.",
+  "The source's re-issue burns credit twice: sp_issue_invoice recomputes g_credit from the balances its own first issue already reduced, so across two issues the notes are consumed by more than the credit the invoice finally grants. This port re-derives the same rows instead, so a rerun is a no-op (ACC-IDEM). The exposure is measured (13.92 of credit across 2 invoices) but the double burn itself is deliberately not reproduced: it is a divergence, declared here rather than hidden.",
+  "Divergence \u2014 orphan invoice header on a failed issue: sp_issue_invoice INSERTs the INVOICES row before the line loop, so a tenant whose plan or usage line then raises (the D-19 NO_COVERING_PLAN case: NULL into INVOICE_LINES.description/.amount, both NOT NULL) leaves a zeroed header with no lines behind in the source. This port quarantines that tenant and writes no invoice at all, preferring a reject over a header whose money never landed. It becomes an invoices row-count delta of one row per affected tenant (source higher) as soon as quarantine is non-empty.",
+  "CREDIT_NOTES is a bronze target, so this unit never writes the burnt-down balances back: the burn-down is recorded in ow_tp.silver.credit_applications, one row per (invoice, note visited), carrying remaining_before/applied_amount/remaining_after. The source's in-place UPDATE of CREDIT_NOTES.remaining_amount therefore has no target column, and the balances in ow_tp.bronze.credit_notes stay as the bronze units loaded them.",
+  "Quarantine reasons with zero live exposure on this population: ['FK_ORPHAN', 'KEY_NULL', 'KEY_DUPLICATE', 'CODE_UNKNOWN', 'NUMERIC_OVERFLOW']. Each is implemented and its exposure measured as zero, so the write path for those reasons is exercised by no row here \u2014 implemented and unverified, not proven. NUMERIC_OVERFLOW's guard is additionally probed on a synthetic value (QUAR-NUMERIC_OVERFLOW-REACHABLE).",
+  "D-05/T4 (two-digit years resolving into the current century), D-06/BAD_DATE, D-25/ENC_INVALID and RECORD_SHORT/AMT_NON_NUMERIC are not reachable from this unit: invoicing reads typed DATE/TIMESTAMP/NUMBER columns out of bronze, so pkg_ow_util.f_str2dt and the delimited-record paths those codes describe are never called here. They belong to the bronze units that parse the flat files.",
+  "sp_issue_invoice ends with a pkg_ow_util.log_msg autonomous-transaction audit write whose WHEN OTHERS THEN ROLLBACK discards failures silently. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so no audit row is produced here and no audit parity is claimed.",
+  "ANOM-ROWNUM-1 (the rating unit's nondeterministic ROWNUM <= 1 subscription pick) is inside the inline rating this unit recomputes. No tenant in this population has two covering subscriptions with the same starts_on, so the tie is not exercised; the target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is implemented and unverified against a tie. The two picks compute_preview and compute_rating make disagree on 0 tenants here, and both are carried on the invoice row.",
+  "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove that no other session wrote between the two runs. The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run produced (version > the target's pre-run version, and the commit's job.jobRunId is one of this run's own run ids \u2014 serverless rejects spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which excludes a foreign commit from the proof but not a foreign write from the row counts taken afterwards. The job-name fallback (batch id as the name suffix) is not exercised here: DESCRIBE HISTORY reported a job run id for every commit of this run (job_run_id), so the fallback is implemented and unverified.",
+  "Divergence \u2014 cross-table atomicity: sp_issue_invoice is one Oracle transaction over the header, its lines and the credit burn-down, while this port makes three independent Delta commits plus a scoped DELETE. Between the invoices commit and the invoice_lines commit a reader can therefore see a header without its lines, and between the lines commit and the credit_applications commit a header and lines without the applications that reduced them \u2014 a window of one commit each, on the order of seconds, closed by the next run because the retry re-derives the identical rows and converges on the same end state (ACC-IDEM, proven by the second-run metrics). Staged publication behind a batch marker is an estate-wide target-architecture decision for every silver and gold unit rather than something this unit invents for itself, so it is recorded here and carried centrally into the wave plan as a pre-cutover design item; it is not implemented in this unit.",
+  "The stale credit-application removal path is proven by a targeted case (measured: one synthetic application planted on the target for an issued invoice under a note the recomputed sequence does not visit, then the unit run again), not by this population \u2014 a run over unchanged bronze produces the same applications every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured before/after counts.",
+  "Parity \u2014 no retraction: the source never unpublishes an invoice, so a publication whose driver has left the accepted population survives in the target too (PARITY-NO-RETRACTION). On this population that set is empty (0 invoices, 0 lines, 0 applications): every tenant bronze carries is still driven this run and quarantine is empty, so the behaviour is declared and measured at zero rather than demonstrated on an instance.",
+  "The batch-scoped exclusion the credit-burn check uses is measured but not stressed here: quarantine is empty on this population, so the run's own rejection set and the set the quarantine ledger retains are both empty and the difference between the scoped and unscoped reads is zero (ACC-CREDIT-BURN-exclusion-scope). The scoping is what stops a rejection that no longer reproduces from exempting its tenant forever; that case is unexercised by this population."
+ ],
+ "values_recomputed_from_target": true
+}

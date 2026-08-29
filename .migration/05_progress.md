@@ -39,9 +39,18 @@ validated by `make tp-validate-recon`.
   population because the rating/invoicing batch chain was not run against the source — deliberately,
   since generated volume is not evidence about this estate. T1 money parity is therefore proven on
   small populations in bronze; wave 2 (`silver_rating`, `silver_invoicing`) is where it meets volume.
-- **`ANOM-DENORM-COPIES` is unclosed.** The denormalised reporting copies can only be reconciled
-  against the normalised invoice tables owned by `bronze_core`; both were loading concurrently, so no
-  cross-unit comparison was run. It belongs to a parent-owned check now that both units are merged.
+- **`ANOM-DENORM-COPIES` — closed by a parent-owned cross-unit check** (2026-08-29, measured live
+  against Oracle at `SCALE=demo` and against the merged `ns=demo` targets, both units settled so
+  nothing in-flight was read). The source's disagreement is enormous and entirely real:
+  `INVOICE_HEADER` 18,750 rows / 187,618,458.58 and `INVOICE_LINE` 150,000 rows / 1,855,870,025.91
+  against `INVOICES` 3 rows / 375.62 and `INVOICE_LINES` 2 rows / 161.29. All nine measures — row
+  counts, distinct `invoice_no`, and the money sums on both sides — match source to target exactly,
+  so the migration carries the disagreement faithfully rather than resolving or hiding it. Resolving
+  it remains a source data-quality question and is explicitly **not** a parity question (the
+  `bronze_wide` contract declares it a coverage gap); what was unproven and is now proven is that
+  neither unit lost a row or a cent on either side of it. The denormalised copies are the ones a gold
+  finance consumer would find first and they are ~5 orders of magnitude larger, so wave 5 must state
+  which side it reads.
 - **No transaction spans a unit's tables.** Each target is merged separately, so a mid-publication
   failure leaves the unit's tables at different versions until the next run converges them. Acceptable
   for bronze (`MERGE` is convergent and reruns are no-ops); a snapshot-and-pointer publication is a

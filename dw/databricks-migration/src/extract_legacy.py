@@ -78,7 +78,7 @@ def extract(
         )
         with connection.cursor(name="legacy_extract") as cursor:
             cursor.itersize = 50_000
-            cursor.execute(
+            cursor.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                 sql.SQL("SELECT * FROM {}").format(
                     sql.Identifier(schema_name, table_name)
                 )

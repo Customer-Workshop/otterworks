@@ -258,6 +258,7 @@ def run_dq_probes(dsn: str) -> dict[str, int]:
 
 def catalog_tables(dsn: str) -> dict[str, int]:
     import psycopg2
+    from psycopg2 import sql
 
     with psycopg2.connect(dsn) as connection:
         with connection.cursor() as cursor:
@@ -273,7 +274,12 @@ def catalog_tables(dsn: str) -> dict[str, int]:
             names = [row[0] for row in cursor.fetchall()]
             counts: dict[str, int] = {}
             for name in names:
-                cursor.execute(f"SELECT COUNT(*) FROM {name}")  # noqa: S608
+                schema, table = name.split(".", 1)
+                cursor.execute(  # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query,python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                    sql.SQL("SELECT COUNT(*) FROM {}").format(
+                        sql.Identifier(schema, table)
+                    )
+                )
                 counts[name] = int(cursor.fetchone()[0])
     return counts
 

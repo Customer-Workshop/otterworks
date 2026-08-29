@@ -8,7 +8,7 @@ Sequence, once per invocation:
 3. deploy the notebook and its column spec under the parent-owned notebook root,
 4. run the notebook twice on serverless with identical inputs, then a third time with a corrected
    plan for one tenant to exercise the re-finalize path, then restore that tenant and prove the
-   rerun is a no-op again — the perturbation is an input override passed to the run, so neither
+   rerun is a no-op again — the perturbation is a per-run notebook input, so neither
    Oracle nor `ow_tp.bronze.*` is touched,
 5. recompute counts, money, types and every rated row **from the Delta targets** over the SQL
    warehouse, independently of what the notebook reported,
@@ -326,7 +326,7 @@ REFINALIZE_HELD = ("subscription_id", "quota_units", "created_at")
 def refinalize_probe(dbx: Dbx, ns: str, snap: dict, stamp: str) -> dict[str, Any]:
     """Re-rate one tenant on a corrected plan, then restore it.
 
-    The correction is supplied as an input override to the run, so the Oracle source and
+    The correction is supplied as a per-run notebook input, so the Oracle source and
     `ow_tp.bronze.*` are both untouched: what changes is only what the notebook is asked to rate.
     Run 3 re-finalizes the tenant on the corrected plan, run 4 rates it again from bronze alone,
     which puts the row back to the value the parity comparison is made against.
@@ -820,7 +820,7 @@ def build_report(
                     "row_restored_after_the_probe": refinalize["restored_to_pre_probe_values"],
                 },
                 "ow_tp.silver.rating_results read back from Delta before, after and after undoing a "
-                "re-rate of one tenant on a corrected plan supplied as an input override (Oracle and "
+                "re-rate of one tenant on a corrected plan supplied as a per-run notebook input (Oracle and "
                 "ow_tp.bronze.* untouched), against sp_finalize_rating's DUP_VAL_ON_INDEX UPDATE set",
                 tenant_id=refinalize["tenant_id"],
                 source_update_set=list(REFINALIZE_UPDATED),
@@ -925,8 +925,9 @@ def build_report(
         "with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. "
         "Proration at other suspension dates is implemented and unverified.",
         "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected "
-        "plan supplied as an input override to the run (neither Oracle nor ow_tp.bronze.* is "
-        "touched), and the row is read back before, after and after undoing it. The source side of "
+        "plan supplied as a per-run notebook input (neither Oracle nor ow_tp.bronze.* is touched, and "
+        "the deployed job declares no such parameter, so no operator run can rate from it), and the "
+        "row is read back before, after and after undoing it. The source side of "
         "that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than "
         "executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into "
         "the source. A source-executed re-rate is therefore unverified."

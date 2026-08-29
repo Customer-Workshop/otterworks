@@ -40,13 +40,6 @@ resource "databricks_job" "silver_rating" {
     default = "2026-02-28"
   }
 
-  # Corrected plan values for a re-rate, as JSON [{tenant_id, included_units, overage_rate}].
-  # Empty in normal operation: rating then reads the plan exactly as bronze carries it.
-  parameter {
-    name    = "plan_overrides"
-    default = ""
-  }
-
   # No secret is needed: this reads only ow_tp.bronze.* Unity Catalog tables and writes only
   # this unit's three ow_tp.silver.* targets, so there is no dbutils.secrets lookup or credential.
   task {
@@ -57,16 +50,18 @@ resource "databricks_job" "silver_rating" {
       notebook_path = databricks_notebook.silver_rating.path
       source        = "WORKSPACE"
 
+      # The notebook's plan_overrides widget is deliberately not wired to a job parameter: the
+      # deployed job rates money only from what bronze carries. It defaults to empty and is passed
+      # per run by the re-rate proof.
       base_parameters = {
-        ns             = "{{job.parameters.ns}}"
-        catalog        = "{{job.parameters.catalog}}"
-        schema         = "silver"
-        period_start   = "{{job.parameters.period_start}}"
-        period_end     = "{{job.parameters.period_end}}"
-        spec_path      = databricks_workspace_file.silver_rating_spec.path
-        landing_root   = var.landing_path
-        batch_id       = "{{job.run_id}}"
-        plan_overrides = "{{job.parameters.plan_overrides}}"
+        ns           = "{{job.parameters.ns}}"
+        catalog      = "{{job.parameters.catalog}}"
+        schema       = "silver"
+        period_start = "{{job.parameters.period_start}}"
+        period_end   = "{{job.parameters.period_end}}"
+        spec_path    = databricks_workspace_file.silver_rating_spec.path
+        landing_root = var.landing_path
+        batch_id     = "{{job.run_id}}"
       }
     }
 

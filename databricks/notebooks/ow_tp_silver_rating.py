@@ -79,6 +79,11 @@ if PERIOD_START > PERIOD_END:
 # A period is re-rated when a plan or subscription is corrected after it was first finalized. The
 # corrected plan values are supplied here rather than read from bronze, because bronze mirrors the
 # source and this unit never writes it. Empty (the default) means: rate from bronze alone.
+#
+# This is a per-run input of the re-rate proof, never a configured job parameter: the deployed
+# ow_tp_silver_rating job declares no plan_overrides parameter, so a scheduled or operator run rates
+# money only from what bronze carries. A real plan correction arrives through the source and reaches
+# bronze like every other value.
 PLAN_OVERRIDES: list[dict] = json.loads(PLAN_OVERRIDES_RAW) if PLAN_OVERRIDES_RAW else []
 if not isinstance(PLAN_OVERRIDES, list):
     raise ValueError("plan_overrides must be a JSON array of {tenant_id, included_units, overage_rate}")
@@ -91,7 +96,7 @@ for _ovr in PLAN_OVERRIDES:
         raise ValueError(f"plan_overrides tenant_id {_ovr['tenant_id']!r} must match ^[A-Za-z0-9_-]+$")
     if not re.fullmatch(r"\d{1,30}", str(_ovr["included_units"])):
         raise ValueError(f"plan_overrides included_units {_ovr['included_units']!r} must be a whole number")
-    if not re.fullmatch(r"\d{1,12}(\.\d{1,6})?", str(_ovr["overage_rate"])):
+    if not re.fullmatch(r"\d{1,6}(\.\d{1,6})?", str(_ovr["overage_rate"])):
         raise ValueError(f"plan_overrides overage_rate {_ovr['overage_rate']!r} must fit DECIMAL(12,6)")
 
 LANDING = f"{LANDING_ROOT}/{NS}/{UNIT}"

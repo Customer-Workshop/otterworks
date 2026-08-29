@@ -574,7 +574,7 @@
     "quota_units",
     "created_at"
    ],
-   "source_of_truth": "ow_tp.silver.rating_results read back from Delta before, after and after undoing a re-rate of one tenant on a corrected plan supplied as an input override (Oracle and ow_tp.bronze.* untouched), against sp_finalize_rating's DUP_VAL_ON_INDEX UPDATE set",
+   "source_of_truth": "ow_tp.silver.rating_results read back from Delta before, after and after undoing a re-rate of one tenant on a corrected plan supplied as a per-run notebook input (Oracle and ow_tp.bronze.* untouched), against sp_finalize_rating's DUP_VAL_ON_INDEX UPDATE set",
    "source_update_set": [
     "used_units",
     "rollover_units",
@@ -1390,7 +1390,7 @@
   "D-05/T4 (two-digit years resolving into the current century) is not reached by this unit: rating reads DATE and TIMESTAMP columns only, so pkg_ow_util.f_str2dt and its swallowed WHEN OTHERS are never called on this path.",
   "compute_rating ends with a pkg_ow_util.log_msg autonomous-transaction audit write. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so the rating run's audit rows are not produced here and no audit parity is claimed.",
   "Suspension proration is exercised by one tenant in this population (the only subscription with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. Proration at other suspension dates is implemented and unverified.",
-  "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected plan supplied as an input override to the run (neither Oracle nor ow_tp.bronze.* is touched), and the row is read back before, after and after undoing it. The source side of that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into the source. A source-executed re-rate is therefore unverified.",
+  "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected plan supplied as a per-run notebook input (neither Oracle nor ow_tp.bronze.* is touched, and the deployed job declares no such parameter, so no operator run can rate from it), and the row is read back before, after and after undoing it. The source side of that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into the source. A source-executed re-rate is therefore unverified.",
   "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove no other session wrote between the two runs."
  ],
  "values_recomputed_from_target": true

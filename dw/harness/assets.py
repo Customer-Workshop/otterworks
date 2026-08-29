@@ -140,10 +140,9 @@ def _closure(table: str) -> tuple[AssetSpec, ...]:
 
 def fingerprint_for(table: str) -> str:
     """Return the source fingerprint for one live core or mart asset."""
-    try:
-        assets = _closure(table)
-    except KeyError as error:
-        raise ValueError(f"no fingerprint input map for {table!r}") from error
+    if table not in ASSETS:
+        raise ValueError(f"no fingerprint input map for top-level asset {table!r}")
+    assets = _closure(table)
     return fingerprint(
         asset_sources=tuple(asset.elt for asset in assets),
         schema_sources=tuple(

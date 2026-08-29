@@ -1028,6 +1028,50 @@ _dup_identities = spark.sql(
     """
 ).collect()[0][0]
 
+# The driver identities *this run* rejected. The quarantine table is a ledger of rejections, so it
+# retains identities from earlier runs whose cause no longer reproduces; a corrected tenant must not
+# stay excluded from the credit-burn parity check on the strength of a rejection that this run did
+# not make. The run's own rejection set is published here, alongside what a read of every retained
+# row would have claimed, so the difference between the two is measured rather than asserted. The
+# retained row's `_batch_id` cannot carry this on its own: an unchanged rejection is not rewritten by
+# the MERGE, which is exactly what keeps a rerun a no-op.
+DRIVER_SOURCE_TABLE = "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS+USAGE_EVENTS+CREDIT_NOTES"
+rejected_driver_tenants_this_run = sorted(
+    r[0]
+    for r in spark.sql(
+        f"""
+        SELECT DISTINCT split(`source_key`, '\\\\|')[0]
+        FROM v_quarantine WHERE `source_table` = {sql_str(DRIVER_SOURCE_TABLE)}
+        """
+    ).collect()
+    if r[0] is not None
+)
+retained_driver_tenants = sorted(
+    r[0]
+    for r in spark.sql(
+        f"""
+        SELECT DISTINCT split(`source_key`, '\\\\|')[0]
+        FROM {QUARANTINE}
+        WHERE `ns` = {NS_LIT} AND `source_table` = {sql_str(DRIVER_SOURCE_TABLE)}
+        """
+    ).collect()
+    if r[0] is not None
+)
+rejection_ledger = {
+    "driver_source_table": DRIVER_SOURCE_TABLE,
+    "rejected_driver_tenants_this_run": rejected_driver_tenants_this_run,
+    "rejected_driver_tenants_this_run_count": len(rejected_driver_tenants_this_run),
+    "retained_driver_tenants_in_target_before_this_run_s_merge": retained_driver_tenants,
+    "retained_driver_tenants_count": len(retained_driver_tenants),
+    "retained_but_not_rejected_by_this_run": sorted(
+        set(retained_driver_tenants) - set(rejected_driver_tenants_this_run)
+    ),
+    "quarantine_is_a_ledger_of_rejections_not_current_state": True,
+    "note": "the credit-burn parity check excludes only rejected_driver_tenants_this_run; a tenant "
+    "in retained_but_not_rejected_by_this_run is compared like any other, so a rejection that no "
+    "longer reproduces cannot hide a burn mismatch",
+}
+
 bad_reasons = [
     r[0]
     for r in spark.sql("SELECT DISTINCT quarantine_reason FROM v_quarantine").collect()
@@ -1143,24 +1187,56 @@ def table_version(target: str) -> int:
     return int(v) if v is not None else -1
 
 
-# Every commit this run makes is made by a job run named for this run's batch id, and the version
-# each target sat at before the run is captured here. The idempotency proof then reads only the
-# commits this run produced: managed Delta interleaves maintenance commits (OPTIMIZE, VACUUM) and
-# ns=demo is shared with other sessions holding the same PAT, so "the newest MERGE" could otherwise
-# be somebody else's write dressed up as this unit's no-op.
+# Every commit this run makes is made by the job run executing this notebook, and the version each
+# target sat at before the run is captured here. The idempotency proof then reads only the commits
+# this run produced: managed Delta interleaves maintenance commits (OPTIMIZE, VACUUM) and ns=demo is
+# shared with other sessions holding the same PAT, so "the newest MERGE" could otherwise be somebody
+# else's write dressed up as this unit's no-op.
 # Serverless refuses spark.databricks.delta.commitInfo.userMetadata
 # ([CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION]), so the commit is identified by the job run that wrote
-# it: DESCRIBE HISTORY carries `job.jobName`, and every job this unit runs is named for its own batch
-# id.
+# it. `DESCRIBE HISTORY` carries both `job.jobRunId` and `job.jobName`, and the two submission modes
+# this unit runs under populate them differently: the deployed Terraform job is always named
+# `ow_tp_silver_invoicing` and passes `{{job.run_id}}` as the batch id, while the recon harness
+# submits a one-off run named for the batch id. Attribution is therefore on the run *id* — which
+# holds under both — and falls back to the name only where history reports no run id at all.
 WRITE_TARGETS = ("invoices", "invoice_lines", "credit_applications", f"quarantine_{UNIT}")
 base_versions = {t: table_version(t) for t in WRITE_TARGETS}
 print(f"target versions before this run's writes: {base_versions}")
 
 
+def context_run_ids() -> list[str]:
+    """This run's Databricks run identifiers, as the notebook context reports them.
+
+    A multitask job run and its task run carry different ids and `DESCRIBE HISTORY` reports the job
+    run, so every id the context exposes is collected rather than guessing which one a given
+    submission mode commits under.
+    """
+    ids: list[str] = []
+    try:
+        ctx = json.loads(
+            dbutils.notebook.entry_point.getDbutils().notebook().getContext().safeToJson()
+        )
+    except Exception as exc:  # noqa: BLE001 - a context this runtime does not expose is not fatal
+        print(f"notebook context carries no run id ({exc}); attribution falls back to the job name")
+        return ids
+    attrs = ctx.get("attributes") or {}
+    for key in ("multitaskParentRunId", "jobRunId", "rootRunId", "currentRunId", "runId", "idInJob"):
+        val = attrs.get(key)
+        if val not in (None, "") and str(val) not in ids:
+            ids.append(str(val))
+    return ids
+
+
+RUN_IDS = context_run_ids()
+# The deployed job passes {{job.run_id}} as batch_id, so a numeric batch id is itself a run id.
+if BATCH_ID.isdigit() and BATCH_ID not in RUN_IDS:
+    RUN_IDS.append(BATCH_ID)
 ATTRIBUTION = (
-    "version > the target's pre-run version AND the commit's job.jobName ends with this run's "
-    "batch id"
+    "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own "
+    f"run ids ({', '.join(RUN_IDS) if RUN_IDS else 'none reported'}); where DESCRIBE HISTORY reports "
+    "no job run id, the fallback is the commit's job.jobName ending with this run's batch id"
 )
+print(f"this run's job run ids for commit attribution: {RUN_IDS}")
 
 
 def writing_job(row) -> dict:
@@ -1171,13 +1247,22 @@ def writing_job(row) -> dict:
     return {"job_name": job["jobName"], "job_run_id": job["jobRunId"]}
 
 
+def commit_is_this_run(row) -> tuple[bool, str]:
+    """Whether a commit is this run's, and which attribution rule decided it."""
+    job = writing_job(row)
+    run_id = job["job_run_id"]
+    if run_id is not None and str(run_id) != "" and RUN_IDS:
+        return str(run_id) in RUN_IDS, "job_run_id"
+    return (job["job_name"] or "").endswith(BATCH_ID), "job_name_suffix"
+
+
 def history_metrics(target: str, operation: str) -> dict:
     """This run's own `operation` commit on `target`, from DESCRIBE HISTORY.
 
     A commit qualifies only if it is newer than the version the target sat at before this run
-    started *and* was written by the job run carrying this run's batch id in its name. A run performs
-    at most one MERGE and at most one DELETE per target, and a write that changed nothing produces no
-    commit at all — reported as such rather than borrowed from an older commit.
+    started *and* was written by one of this run's own job run ids. A run performs at most one MERGE
+    and at most one DELETE per target, and a write that changed nothing produces no commit at all —
+    reported as such rather than borrowed from an older commit.
     """
     rows = (
         spark.sql(f"DESCRIBE HISTORY {full(target)}")
@@ -1185,25 +1270,32 @@ def history_metrics(target: str, operation: str) -> dict:
         .orderBy("version", ascending=False)
         .collect()
     )
-    mine = [r for r in rows if (writing_job(r)["job_name"] or "").endswith(BATCH_ID)]
+    matched = [(r,) + commit_is_this_run(r) for r in rows]
+    mine = [(r, rule) for r, is_mine, rule in matched if is_mine]
     if not mine:
         return {
             "operation": operation,
             "version": None,
             "commit_from_this_run": False,
             "attributed_by": ATTRIBUTION,
+            "pre_run_version": base_versions[target],
+            "newer_commits_by_other_runs": [
+                {"version": int(r["version"]), "writing_job_run": writing_job(r)}
+                for r, _is_mine, _rule in matched
+            ],
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
             "note": "this run produced no such commit on this target: the write changed nothing",
         }
-    row = mine[0]
+    row, rule = mine[0]
     m = row["operationMetrics"] or {}
     out = {
         "operation": row["operation"],
         "version": int(row["version"]),
         "commit_from_this_run": True,
         "attributed_by": ATTRIBUTION,
+        "attribution_rule_matched": rule,
         "pre_run_version": base_versions[target],
         "writing_job_run": writing_job(row),
         "rows_inserted": int(m.get("numTargetRowsInserted", 0)),
@@ -1746,6 +1838,75 @@ if _left_over:
         f"{_left_over} credit applications for this run's invoices survive that the recomputed "
         "sequence does not produce — they would reduce every later invoice's available credit"
     )
+
+# COMMAND ----------
+
+# MAGIC %md ### Publications this run's driver population no longer produces
+# MAGIC
+# MAGIC `sp_issue_invoice` has no retraction: an invoice the source issued in an earlier period stands
+# MAGIC even once the tenant loses its subscription, is deleted, or would now fail the preview. The
+# MAGIC port keeps that behaviour — the reconciliations above are scoped to the invoices this run
+# MAGIC issues precisely so an earlier publication is left alone — so a published invoice whose driver
+# MAGIC is no longer in the accepted population survives, with its lines and its credit applications.
+# MAGIC That is parity, not drift, and the population it applies to is measured here rather than
+# MAGIC argued: a period-scoped or full-refresh reconciliation is the estate-level answer if the
+# MAGIC business ever wants retraction, and that decision is not this unit's to invent.
+
+# COMMAND ----------
+
+CURRENT_PUBLICATION = """
+`id` IN (SELECT `invoice_id` FROM v_issued)
+  OR `id` IN (SELECT `id` FROM v_mig_invoices WHERE `quarantine_reason` IS NULL)
+"""
+_surviving = spark.sql(
+    f"""
+    WITH surviving AS (
+      SELECT `id`, `tenant_id`, `total`, `_origin`
+      FROM {full('invoices')}
+      WHERE `ns` = {NS_LIT} AND NOT ({CURRENT_PUBLICATION})
+    )
+    SELECT count(*) AS invoices,
+           count(DISTINCT `tenant_id`) AS tenants,
+           CAST(coalesce(sum(`total`), 0) AS STRING) AS total_money,
+           (SELECT count(*) FROM {full('invoice_lines')} l
+             WHERE l.`ns` = {NS_LIT} AND l.`invoice_id` IN (SELECT `id` FROM surviving))
+             AS invoice_lines,
+           (SELECT count(*) FROM {full('credit_applications')} c
+             WHERE c.`ns` = {NS_LIT} AND c.`invoice_id` IN (SELECT `id` FROM surviving))
+             AS credit_applications
+    FROM surviving
+    """
+).collect()[0]
+surviving_publications = {
+    "declared_as": "parity with the source, not a divergence",
+    "source_behaviour": "sp_issue_invoice issues and re-issues; it never unpublishes, so an invoice "
+    "of an earlier period stands even after its tenant loses its subscription, is deleted, or would "
+    "now fail the preview",
+    "population": "rows in ow_tp.silver.invoices for this ns that this run's accepted output does "
+    "not contain: neither issued by this run nor carried as an accepted migrated source invoice",
+    "invoices": int(_surviving["invoices"]),
+    "tenants": int(_surviving["tenants"]),
+    "invoice_lines": int(_surviving["invoice_lines"]),
+    "credit_applications": int(_surviving["credit_applications"]),
+    "total_money": _surviving["total_money"],
+    "why_the_port_does_not_sweep_them": "deleting them would be the port inventing a retraction the "
+    "source has no concept of; the scoped reconciliations above are deliberately confined to the "
+    "invoices this run issues",
+    "estate_level_answer_if_retraction_is_wanted": "a period-scoped or full-refresh reconciliation, "
+    "decided estate-wide alongside the cross-table publication protocol rather than by this unit",
+    "sample": [
+        r.asDict()
+        for r in spark.sql(
+            f"""
+            SELECT `id`, `tenant_id`, CAST(`total` AS STRING) AS total, `_origin`
+            FROM {full('invoices')}
+            WHERE `ns` = {NS_LIT} AND NOT ({CURRENT_PUBLICATION})
+            ORDER BY `id` LIMIT 5
+            """
+        ).collect()
+    ],
+}
+print(f"publications this run's drivers no longer produce: {surviving_publications['invoices']}")
 
 # COMMAND ----------
 
@@ -2347,7 +2508,9 @@ summary = {
         "halt_threshold_pct": HALT_PCT,
         "by_source_table_and_reason": quar_by_reason,
         "persisted_before_halt_decision": True,
+        "rejection_ledger": rejection_ledger,
     },
+    "surviving_publications": surviving_publications,
     "target_counts": target_counts,
     "money": {
         "invoices": {

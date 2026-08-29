@@ -133,17 +133,18 @@
     "real_applications_lost": 0
    },
    "delete_commit_metrics": {
-    "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+    "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (675185267155981, 237212360507050); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "attribution_rule_matched": "job_run_id",
     "commit_from_this_run": true,
     "operation": "DELETE",
-    "pre_run_version": 16,
+    "pre_run_version": 30,
     "rows_deleted": 1,
     "rows_inserted": 0,
     "rows_updated": 0,
-    "version": 17,
+    "version": 31,
     "writing_job_run": {
-     "job_name": "ow_tp_silver_invoicing_demo_20260829080138c",
-     "job_run_id": "317582298517000"
+     "job_name": "ow_tp_silver_invoicing_demo_20260829092404c",
+     "job_run_id": "675185267155981"
     }
    },
    "expected": {
@@ -158,11 +159,11 @@
     "applications_before_the_run": 6,
     "applications_in_other_namespaces_after": 0,
     "applications_in_other_namespaces_before": 0,
-    "batch_id": "20260829080138c",
+    "batch_id": "20260829092404c",
     "planted_row": {
      "applied_amount": "10.00",
-     "credit_note_id": "stale-credit-note-20260829080138c",
-     "id": "stale-credit-probe-20260829080138c",
+     "credit_note_id": "stale-credit-note-20260829092404c",
+     "id": "stale-credit-probe-20260829092404c",
      "invoice_id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
      "why_stale": "the recomputed sequence for this invoice does not visit this note, so the row is exactly the shape of an application left behind by a note that has gone, a balance now zero, or a corrected input"
     },
@@ -174,17 +175,18 @@
      "applications_outside_the_scope_after": 0,
      "applications_outside_the_scope_before": 0,
      "delete_commit_metrics": {
-      "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (675185267155981, 237212360507050); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
       "commit_from_this_run": true,
       "operation": "DELETE",
-      "pre_run_version": 16,
+      "pre_run_version": 30,
       "rows_deleted": 1,
       "rows_inserted": 0,
       "rows_updated": 0,
-      "version": 17,
+      "version": 31,
       "writing_job_run": {
-       "job_name": "ow_tp_silver_invoicing_demo_20260829080138c",
-       "job_run_id": "317582298517000"
+       "job_name": "ow_tp_silver_invoicing_demo_20260829092404c",
+       "job_run_id": "675185267155981"
       }
      },
      "rows_matched_by_the_scoped_delete": 1,
@@ -192,7 +194,7 @@
      "target_statement": "DELETE FROM ow_tp.silver.credit_applications WHERE `ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_credit_apps_src)",
      "why": "an application this unit wrote earlier that the recomputed sequence no longer produces would be counted as applied_by_other_invoices forever, so every later invoice would under-apply a real balance"
     },
-    "run_id": 317582298517000,
+    "run_id": 675185267155981,
     "status": "measured"
    },
    "quarantined_rows": 0,
@@ -993,6 +995,10 @@
     "row_counts_identical": true,
     "second_run_rows_changed": 0
    },
+   "attribution_holds_under_the_deployed_job": "the deployed job's name is fixed and its batch id is {{job.run_id}}: attribution on the run id is what makes the proof hold there, and the name suffix is the fallback for a history entry with no job run id",
+   "attribution_rules_matched": [
+    "job_run_id"
+   ],
    "expected": {
     "checksums_identical": true,
     "metrics_attributed_to_this_run": true,
@@ -1000,7 +1006,7 @@
     "second_run_rows_changed": 0
    },
    "id": "ACC-IDEM",
-   "metrics_attribution": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+   "metrics_attribution": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
    "result": "pass",
    "run1_checksums": {
     "credit_applications": "1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb",
@@ -1029,59 +1035,63 @@
    },
    "run1_merge_metrics": {
     "credit_applications": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "MERGE",
-     "pre_run_version": 11,
+     "pre_run_version": 25,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 13,
+     "version": 27,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138a",
-      "job_run_id": "60434387680573"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
      }
     },
     "invoice_lines": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "MERGE",
-     "pre_run_version": 14,
+     "pre_run_version": 26,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 16,
+     "version": 28,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138a",
-      "job_run_id": "60434387680573"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
      }
     },
     "invoices": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "MERGE",
-     "pre_run_version": 7,
+     "pre_run_version": 13,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 8,
+     "version": 14,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138a",
-      "job_run_id": "60434387680573"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
      }
     },
     "quarantine_silver_invoicing": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (188833546218058, 793598796253965); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "MERGE",
-     "pre_run_version": 7,
+     "pre_run_version": 13,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 8,
+     "version": 14,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138a",
-      "job_run_id": "60434387680573"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404a",
+      "job_run_id": "188833546218058"
      }
     }
    },
@@ -1112,63 +1122,67 @@
    },
    "run2_merge_metrics": {
     "credit_applications": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "MERGE",
-     "pre_run_version": 13,
+     "pre_run_version": 27,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 29,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "invoice_lines": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 28,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 30,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
+     }
+    },
+    "invoices": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 14,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
      "version": 15,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-      "job_run_id": "1017604677246806"
-     }
-    },
-    "invoice_lines": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
-     "commit_from_this_run": true,
-     "operation": "MERGE",
-     "pre_run_version": 16,
-     "rows_deleted": 0,
-     "rows_inserted": 0,
-     "rows_updated": 0,
-     "version": 18,
-     "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-      "job_run_id": "1017604677246806"
-     }
-    },
-    "invoices": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
-     "commit_from_this_run": true,
-     "operation": "MERGE",
-     "pre_run_version": 8,
-     "rows_deleted": 0,
-     "rows_inserted": 0,
-     "rows_updated": 0,
-     "version": 9,
-     "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-      "job_run_id": "1017604677246806"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
      }
     },
     "quarantine_silver_invoicing": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "MERGE",
-     "pre_run_version": 8,
+     "pre_run_version": 14,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 9,
+     "version": 15,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-      "job_run_id": "1017604677246806"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
      }
     }
    },
-   "source_of_truth": "Delta MERGE operationMetrics read from the commits the second identical run itself produced: each target's version is captured before the writes and the qualifying commit must come from the job run named for this run's batch id, so neither a managed OPTIMIZE commit nor another session writing the shared ns=demo slice can be mistaken for this unit's write. A write that changed nothing produces no commit and is reported as such rather than borrowed from an older one. Plus the order-independent parity checksums of all three targets"
+   "source_of_truth": "Delta MERGE operationMetrics read from the commits the second identical run itself produced: each target's version is captured before the writes and the qualifying commit must carry one of this run's own job run ids in DESCRIBE HISTORY's job.jobRunId, falling back to the batch id in job.jobName only where history reports no run id at all. The run id holds under both submission modes \u2014 the deployed Terraform job is always named ow_tp_silver_invoicing and passes {{job.run_id}} as the batch id, so a name match would report its real writes as no commit \u2014 and neither a managed OPTIMIZE commit nor another session writing the shared ns=demo slice can be mistaken for this unit's write. A write that changed nothing produces no commit and is reported as such rather than borrowed from an older one. Plus the order-independent parity checksums of all three targets"
   },
   {
    "actual": {
@@ -1192,17 +1206,18 @@
     ]
    },
    "delete_commit_metrics": {
-    "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+    "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "attribution_rule_matched": "job_run_id",
     "commit_from_this_run": true,
     "operation": "DELETE",
-    "pre_run_version": 16,
+    "pre_run_version": 28,
     "rows_deleted": 0,
     "rows_inserted": 0,
     "rows_updated": 0,
-    "version": 17,
+    "version": 29,
     "writing_job_run": {
-     "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-     "job_run_id": "1017604677246806"
+     "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+     "job_run_id": "72731003087577"
     }
    },
    "delete_statement": "`ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_lines_issued)",
@@ -1391,6 +1406,16 @@
     "rows_differing": 0
    },
    "counter_carried_beyond_a_note_balance": "71.08",
+   "exclusion_scope": {
+    "driver_source_table": "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS+USAGE_EVENTS+CREDIT_NOTES",
+    "note": "the credit-burn parity check excludes only rejected_driver_tenants_this_run; a tenant in retained_but_not_rejected_by_this_run is compared like any other, so a rejection that no longer reproduces cannot hide a burn mismatch",
+    "quarantine_is_a_ledger_of_rejections_not_current_state": true,
+    "rejected_driver_tenants_this_run": [],
+    "rejected_driver_tenants_this_run_count": 0,
+    "retained_but_not_rejected_by_this_run": [],
+    "retained_driver_tenants_count": 0,
+    "retained_driver_tenants_in_target_before_this_run_s_merge": []
+   },
    "expected": {
     "keys_in_source_not_in_target": [],
     "keys_in_target_not_in_source": [],
@@ -1499,6 +1524,48 @@
    ],
    "source_of_truth": "the burn-down note by note against the same ordered sequence evaluated by live Oracle (ORDER BY issued_on, id, the counter decremented by each note's pre-update balance), recomputed from ow_tp.silver.credit_applications",
    "source_rows_expected_in_target": 5
+  },
+  {
+   "actual": {
+    "excluded_tenants": [],
+    "exclusions_from_rejections_this_run_did_not_make": []
+   },
+   "expected": {
+    "excluded_tenants": [],
+    "exclusions_from_rejections_this_run_did_not_make": []
+   },
+   "id": "ACC-CREDIT-BURN-exclusion-scope",
+   "quarantined_rows": 0,
+   "rejected_by_this_run": [],
+   "result": "pass",
+   "retained_in_the_quarantine_ledger": [],
+   "source_of_truth": "the tenants the burn parity check exempts, against the tenants the run itself rejected. The quarantine table stays a ledger of rejections \u2014 the accounting depends on it and a rejection is not deleted once its cause stops reproducing \u2014 so the exemption is taken from the run's own rejection set rather than from every row the ledger retains. A tenant whose rejection no longer reproduces is compared like any other, and both reads are reported so the difference is measured rather than asserted",
+   "would_have_been_exempt_under_the_unscoped_read": []
+  },
+  {
+   "actual": {
+    "port_retracts_a_published_invoice": false
+   },
+   "expected": {
+    "port_retracts_a_published_invoice": false
+   },
+   "id": "PARITY-NO-RETRACTION",
+   "measured_population": {
+    "credit_applications": 0,
+    "declared_as": "parity with the source, not a divergence",
+    "estate_level_answer_if_retraction_is_wanted": "a period-scoped or full-refresh reconciliation, decided estate-wide alongside the cross-table publication protocol rather than by this unit",
+    "invoice_lines": 0,
+    "invoices": 0,
+    "population": "rows in ow_tp.silver.invoices for this ns that this run's accepted output does not contain: neither issued by this run nor carried as an accepted migrated source invoice",
+    "sample": [],
+    "source_behaviour": "sp_issue_invoice issues and re-issues; it never unpublishes, so an invoice of an earlier period stands even after its tenant loses its subscription, is deleted, or would now fail the preview",
+    "tenants": 0,
+    "total_money": "0.00",
+    "why_the_port_does_not_sweep_them": "deleting them would be the port inventing a retraction the source has no concept of; the scoped reconciliations above are deliberately confined to the invoices this run issues"
+   },
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "sp_issue_invoice issues and re-issues but never unpublishes: an invoice Oracle issued in an earlier period stands even once its tenant loses its subscription, is deleted, or would now fail the preview. The port keeps that behaviour \u2014 its reconciliations are scoped to the invoices the run issues, so an earlier publication with its lines and its credit applications is left alone \u2014 because sweeping it would be the port inventing a retraction the source has no concept of. Declared as parity, with the population it applies to measured on this run; a period-scoped or full-refresh reconciliation is the estate-level answer if the business wants retraction, and it is carried centrally alongside the cross-table publication item rather than decided by this unit"
   },
   {
    "absolute_overage_delta": "14.78",
@@ -1629,17 +1696,18 @@
    "id": "QUAR-PERSISTED-BEFORE-HALT",
    "measured_quarantine_rate_pct": 0.0,
    "quarantine_merge_metrics": {
-    "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+    "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "attribution_rule_matched": "job_run_id",
     "commit_from_this_run": true,
     "operation": "MERGE",
-    "pre_run_version": 8,
+    "pre_run_version": 14,
     "rows_deleted": 0,
     "rows_inserted": 0,
     "rows_updated": 0,
-    "version": 9,
+    "version": 15,
     "writing_job_run": {
-     "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-     "job_run_id": "1017604677246806"
+     "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+     "job_run_id": "72731003087577"
     }
    },
    "result": "pass",
@@ -2176,17 +2244,18 @@
    },
    "evidence": {
     "delete_commit_metrics": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "DELETE",
-     "pre_run_version": 16,
+     "pre_run_version": 28,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 17,
+     "version": 29,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-      "job_run_id": "1017604677246806"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
      }
     },
     "lines_outside_the_scope_after": 2,
@@ -2208,9 +2277,9 @@
   }
  ],
  "failed_checks": [],
- "generated_at": "2026-08-29T08:35:16Z",
+ "generated_at": "2026-08-29T09:58:24Z",
  "idempotency_rerun": {
-  "evidence": "run 1 = serverless run 60434387680573 (batch 20260829080138a), run 2 = serverless run 1017604677246806 (batch 20260829080138b), identical parameters (ns=demo, period 2026-02-01..2026-02-28). Second-run Delta MERGE metrics: {\"credit_applications\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 13, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 15, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829080138b\", \"job_run_id\": \"1017604677246806\"}}, \"invoice_lines\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 16, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 18, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829080138b\", \"job_run_id\": \"1017604677246806\"}}, \"invoices\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 8, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 9, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829080138b\", \"job_run_id\": \"1017604677246806\"}}, \"quarantine_silver_invoicing\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 8, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 9, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829080138b\", \"job_run_id\": \"1017604677246806\"}}}. Row counts after each run: {\"run1\": {\"credit_applications\": {\"rows\": 5, \"rows_without_ns\": 0, \"source_migrated_rows\": 0, \"target_issue_rows\": 5}, \"invoice_lines\": {\"rows\": 347, \"rows_without_ns\": 0, \"source_migrated_rows\": 2, \"target_issue_rows\": 345}, \"invoices\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_issue_rows\": 69}}, \"run2\": {\"credit_applications\": {\"rows\": 5, \"rows_without_ns\": 0, \"source_migrated_rows\": 0, \"target_issue_rows\": 5}, \"invoice_lines\": {\"rows\": 347, \"rows_without_ns\": 0, \"source_migrated_rows\": 2, \"target_issue_rows\": 345}, \"invoices\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_issue_rows\": 69}}}. Parity checksums after each run: {\"run1\": {\"credit_applications\": \"1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb\", \"invoice_lines\": \"a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645\", \"invoices\": \"89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf\"}, \"run2\": {\"credit_applications\": \"1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb\", \"invoice_lines\": \"a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645\", \"invoices\": \"89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf\"}}",
+  "evidence": "run 1 = serverless run 188833546218058 (batch 20260829092404a), run 2 = serverless run 72731003087577 (batch 20260829092404b), identical parameters (ns=demo, period 2026-02-01..2026-02-28). Second-run Delta MERGE metrics: {\"credit_applications\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 27, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 29, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}, \"invoice_lines\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 28, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 30, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}, \"invoices\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 14, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 15, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}, \"quarantine_silver_invoicing\": {\"attributed_by\": \"version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id\", \"attribution_rule_matched\": \"job_run_id\", \"commit_from_this_run\": true, \"operation\": \"MERGE\", \"pre_run_version\": 14, \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 15, \"writing_job_run\": {\"job_name\": \"ow_tp_silver_invoicing_demo_20260829092404b\", \"job_run_id\": \"72731003087577\"}}}. Row counts after each run: {\"run1\": {\"credit_applications\": {\"rows\": 5, \"rows_without_ns\": 0, \"source_migrated_rows\": 0, \"target_issue_rows\": 5}, \"invoice_lines\": {\"rows\": 347, \"rows_without_ns\": 0, \"source_migrated_rows\": 2, \"target_issue_rows\": 345}, \"invoices\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_issue_rows\": 69}}, \"run2\": {\"credit_applications\": {\"rows\": 5, \"rows_without_ns\": 0, \"source_migrated_rows\": 0, \"target_issue_rows\": 5}, \"invoice_lines\": {\"rows\": 347, \"rows_without_ns\": 0, \"source_migrated_rows\": 2, \"target_issue_rows\": 345}, \"invoices\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_issue_rows\": 69}}}. Parity checksums after each run: {\"run1\": {\"credit_applications\": \"1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb\", \"invoice_lines\": \"a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645\", \"invoices\": \"89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf\"}, \"run2\": {\"credit_applications\": \"1438a360ad0e7a1cc988b4729beb35809b3ff52b6dca87106c1c2e853dc880eb\", \"invoice_lines\": \"a21cc37d52e16714a737c4d66b667ee5f14656b2d38a4fa353721515d1407645\", \"invoices\": \"89825cec4dc02b8fc86feef48343c963f70d203724d5ea11cbbab92d895a87cf\"}}",
   "performed": true,
   "result": "pass"
  },
@@ -2249,17 +2318,18 @@
    },
    "ANOM-DYNAMIC-SQL": {
     "delete_commit_metrics": {
-     "attributed_by": "version > the target's pre-run version AND the commit's job.jobName ends with this run's batch id",
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
      "commit_from_this_run": true,
      "operation": "DELETE",
-     "pre_run_version": 16,
+     "pre_run_version": 28,
      "rows_deleted": 0,
      "rows_inserted": 0,
      "rows_updated": 0,
-     "version": 17,
+     "version": 29,
      "writing_job_run": {
-      "job_name": "ow_tp_silver_invoicing_demo_20260829080138b",
-      "job_run_id": "1017604677246806"
+      "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+      "job_run_id": "72731003087577"
      }
     },
     "detected": true,
@@ -2397,19 +2467,19 @@
   },
   "job_runs": [
    {
-    "batch_id": "20260829080138a",
-    "run_id": 60434387680573,
-    "run_page_path": "/?o=7474651138173478#job/783859454140058/run/60434387680573"
+    "batch_id": "20260829092404a",
+    "run_id": 188833546218058,
+    "run_page_path": "/?o=7474651138173478#job/1080583062547303/run/188833546218058"
    },
    {
-    "batch_id": "20260829080138b",
-    "run_id": 1017604677246806,
-    "run_page_path": "/?o=7474651138173478#job/672348200590804/run/1017604677246806"
+    "batch_id": "20260829092404b",
+    "run_id": 72731003087577,
+    "run_page_path": "/?o=7474651138173478#job/25192634150947/run/72731003087577"
    },
    {
-    "batch_id": "20260829080138c",
-    "run_id": 317582298517000,
-    "run_page_path": "/?o=7474651138173478#job/991849548527918/run/317582298517000"
+    "batch_id": "20260829092404c",
+    "run_id": 675185267155981,
+    "run_page_path": "/?o=7474651138173478#job/403080087364043/run/675185267155981"
    }
   ],
   "period": {
@@ -2699,6 +2769,16 @@
   "rate_pct": 0.0,
   "rate_rejected_rows": 0,
   "rate_source_rows": 72,
+  "rejection_ledger": {
+   "driver_source_table": "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS+USAGE_EVENTS+CREDIT_NOTES",
+   "note": "the credit-burn parity check excludes only rejected_driver_tenants_this_run; a tenant in retained_but_not_rejected_by_this_run is compared like any other, so a rejection that no longer reproduces cannot hide a burn mismatch",
+   "quarantine_is_a_ledger_of_rejections_not_current_state": true,
+   "rejected_driver_tenants_this_run": [],
+   "rejected_driver_tenants_this_run_count": 0,
+   "retained_but_not_rejected_by_this_run": [],
+   "retained_driver_tenants_count": 0,
+   "retained_driver_tenants_in_target_before_this_run_s_merge": []
+  },
   "rows": 0,
   "source_rows_rejected": 0
  },
@@ -2734,9 +2814,11 @@
   "D-05/T4 (two-digit years resolving into the current century), D-06/BAD_DATE, D-25/ENC_INVALID and RECORD_SHORT/AMT_NON_NUMERIC are not reachable from this unit: invoicing reads typed DATE/TIMESTAMP/NUMBER columns out of bronze, so pkg_ow_util.f_str2dt and the delimited-record paths those codes describe are never called here. They belong to the bronze units that parse the flat files.",
   "sp_issue_invoice ends with a pkg_ow_util.log_msg autonomous-transaction audit write whose WHEN OTHERS THEN ROLLBACK discards failures silently. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so no audit row is produced here and no audit parity is claimed.",
   "ANOM-ROWNUM-1 (the rating unit's nondeterministic ROWNUM <= 1 subscription pick) is inside the inline rating this unit recomputes. No tenant in this population has two covering subscriptions with the same starts_on, so the tie is not exercised; the target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is implemented and unverified against a tie. The two picks compute_preview and compute_rating make disagree on 0 tenants here, and both are carried on the invoice row.",
-  "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove that no other session wrote between the two runs. The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run produced (version > the target's pre-run version, and the commit's job.jobName is the job run named for this run's batch id \u2014 serverless rejects spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which excludes a foreign commit from the proof but not a foreign write from the row counts taken afterwards.",
+  "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove that no other session wrote between the two runs. The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run produced (version > the target's pre-run version, and the commit's job.jobRunId is one of this run's own run ids \u2014 serverless rejects spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which excludes a foreign commit from the proof but not a foreign write from the row counts taken afterwards. The job-name fallback (batch id as the name suffix) is not exercised here: DESCRIBE HISTORY reported a job run id for every commit of this run (job_run_id), so the fallback is implemented and unverified.",
   "Divergence \u2014 cross-table atomicity: sp_issue_invoice is one Oracle transaction over the header, its lines and the credit burn-down, while this port makes three independent Delta commits plus a scoped DELETE. Between the invoices commit and the invoice_lines commit a reader can therefore see a header without its lines, and between the lines commit and the credit_applications commit a header and lines without the applications that reduced them \u2014 a window of one commit each, on the order of seconds, closed by the next run because the retry re-derives the identical rows and converges on the same end state (ACC-IDEM, proven by the second-run metrics). Staged publication behind a batch marker is an estate-wide target-architecture decision for every silver and gold unit rather than something this unit invents for itself, so it is recorded here and carried centrally into the wave plan as a pre-cutover design item; it is not implemented in this unit.",
-  "The stale credit-application removal path is proven by a targeted case (measured: one synthetic application planted on the target for an issued invoice under a note the recomputed sequence does not visit, then the unit run again), not by this population \u2014 a run over unchanged bronze produces the same applications every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured before/after counts."
+  "The stale credit-application removal path is proven by a targeted case (measured: one synthetic application planted on the target for an issued invoice under a note the recomputed sequence does not visit, then the unit run again), not by this population \u2014 a run over unchanged bronze produces the same applications every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured before/after counts.",
+  "Parity \u2014 no retraction: the source never unpublishes an invoice, so a publication whose driver has left the accepted population survives in the target too (PARITY-NO-RETRACTION). On this population that set is empty (0 invoices, 0 lines, 0 applications): every tenant bronze carries is still driven this run and quarantine is empty, so the behaviour is declared and measured at zero rather than demonstrated on an instance.",
+  "The batch-scoped exclusion the credit-burn check uses is measured but not stressed here: quarantine is empty on this population, so the run's own rejection set and the set the quarantine ledger retains are both empty and the difference between the scoped and unscoped reads is zero (ACC-CREDIT-BURN-exclusion-scope). The scoping is what stops a rejection that no longer reproduces from exempting its tenant forever; that case is unexercised by this population."
  ],
  "values_recomputed_from_target": true
 }

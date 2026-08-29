@@ -348,10 +348,12 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
             """
         )
     ]
-    # The quarantined driver identities, read from the quarantine table itself rather than inferred
-    # from whatever the burn comparison happens to miss: the burn check excludes exactly these
-    # tenants and nothing else, so a genuinely absent application cannot hide behind the exclusion.
-    quarantined_driver_tenants = sorted(
+    # Every driver identity the quarantine table *retains*, which is not the same set as the one the
+    # last run rejected: quarantine is a ledger of rejections, so an identity whose cause no longer
+    # reproduces stays on it. Excluding this set from the burn parity check would let a corrected
+    # tenant keep its exemption forever, so it is read here only to be reported against the run's own
+    # rejection set — the exclusion itself comes from that run (see `main`).
+    quarantined_driver_tenants_retained = sorted(
         {
             str(r[0])
             for r in dbx.sql(
@@ -446,7 +448,7 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
         "burn_rows": burn_rows,
         "column_types": types,
         "quarantine": quarantine,
-        "quarantined_driver_tenants": quarantined_driver_tenants,
+        "quarantined_driver_tenants_retained": quarantined_driver_tenants_retained,
         "quarantine_duplicate_merge_identities": quarantine_duplicate_identities,
         "quarantine_rows_missing_required_fields": quarantine_shape,
         "status_desc": status_desc,
@@ -806,6 +808,10 @@ def build_report(
     stale_proof: dict[str, Any],
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
+    # The evidence that depends on target *state* is read from the last run performed, which is the
+    # run the target snapshot reflects.
+    last_run = all_runs[-1]
+    ledger = last_run["quarantine"]["rejection_ledger"]
     src = oracle["source_counts"]
     acc = run2["quarantine"]["accounting"]
     quar_rows = run2["quarantine"]["rows"]
@@ -1206,13 +1212,28 @@ def build_report(
             },
             "Delta MERGE operationMetrics read from the commits the second identical run itself "
             "produced: each target's version is captured before the writes and the qualifying commit "
-            "must come from the job run named for this run's batch id, so neither a managed OPTIMIZE "
-            "commit nor another session writing the shared ns=demo slice can be mistaken for this "
-            "unit's write. A write that changed nothing produces no commit and is reported as such "
-            "rather than borrowed from an older one. Plus the order-independent parity checksums of "
-            "all three targets",
+            "must carry one of this run's own job run ids in DESCRIBE HISTORY's job.jobRunId, "
+            "falling back to the batch id in job.jobName only where history reports no run id at "
+            "all. The run id holds under both submission modes \u2014 the deployed Terraform job is "
+            "always named ow_tp_silver_invoicing and passes {{job.run_id}} as the batch id, so a "
+            "name match would report its real writes as no commit \u2014 and neither a managed "
+            "OPTIMIZE commit nor another session writing the shared ns=demo slice can be mistaken "
+            "for this unit's write. A write that changed nothing produces no commit and is reported "
+            "as such rather than borrowed from an older one. Plus the order-independent parity "
+            "checksums of all three targets",
             passed=idem_zero and counts_same and sums_same and attributed,
             metrics_attribution=next(iter(idem_metrics.values()))["attributed_by"],
+            attribution_rules_matched=sorted(
+                {
+                    m.get("attribution_rule_matched", "no commit to attribute")
+                    for m in idem_metrics.values()
+                }
+            ),
+            attribution_holds_under_the_deployed_job=(
+                "the deployed job's name is fixed and its batch id is {{job.run_id}}: attribution on "
+                "the run id is what makes the proof hold there, and the name suffix is the fallback "
+                "for a history entry with no job run id"
+            ),
             run1_merge_metrics=run1["merge_metrics"],
             run2_merge_metrics=idem_metrics,
             run1_checksums=run1["checksums"],
@@ -1338,6 +1359,57 @@ def build_report(
             notes_the_loop_never_reached=burn_anom["notes_the_loop_never_reached"],
             order_determinism=burn_anom["order_determinism"],
             sample=run2["credit_burn_sequence"][:10],
+            exclusion_scope=ledger,
+            quarantined_rows=quar_rows,
+        )
+    )
+
+    checks.append(
+        check(
+            "ACC-CREDIT-BURN-exclusion-scope",
+            {
+                "excluded_tenants": sorted(ledger["rejected_driver_tenants_this_run"]),
+                "exclusions_from_rejections_this_run_did_not_make": [],
+            },
+            {
+                "excluded_tenants": sorted(burn["quarantined_tenants_excluded"]),
+                "exclusions_from_rejections_this_run_did_not_make": sorted(
+                    set(burn["quarantined_tenants_excluded"])
+                    - set(ledger["rejected_driver_tenants_this_run"])
+                ),
+            },
+            "the tenants the burn parity check exempts, against the tenants the run itself rejected. "
+            "The quarantine table stays a ledger of rejections \u2014 the accounting depends on it and "
+            "a rejection is not deleted once its cause stops reproducing \u2014 so the exemption is "
+            "taken from the run's own rejection set rather than from every row the ledger retains. A "
+            "tenant whose rejection no longer reproduces is compared like any other, and both reads "
+            "are reported so the difference is measured rather than asserted",
+            rejected_by_this_run=sorted(ledger["rejected_driver_tenants_this_run"]),
+            retained_in_the_quarantine_ledger=snap["quarantined_driver_tenants_retained"],
+            would_have_been_exempt_under_the_unscoped_read=sorted(
+                set(snap["quarantined_driver_tenants_retained"])
+                - set(ledger["rejected_driver_tenants_this_run"])
+            ),
+            quarantined_rows=quar_rows,
+        )
+    )
+
+    surviving = last_run["surviving_publications"]
+    checks.append(
+        check(
+            "PARITY-NO-RETRACTION",
+            {"port_retracts_a_published_invoice": False},
+            {"port_retracts_a_published_invoice": False},
+            "sp_issue_invoice issues and re-issues but never unpublishes: an invoice Oracle issued in "
+            "an earlier period stands even once its tenant loses its subscription, is deleted, or "
+            "would now fail the preview. The port keeps that behaviour \u2014 its reconciliations are "
+            "scoped to the invoices the run issues, so an earlier publication with its lines and its "
+            "credit applications is left alone \u2014 because sweeping it would be the port inventing "
+            "a retraction the source has no concept of. Declared as parity, with the population it "
+            "applies to measured on this run; a period-scoped or full-refresh reconciliation is the "
+            "estate-level answer if the business wants retraction, and it is carried centrally "
+            "alongside the cross-table publication item rather than decided by this unit",
+            measured_population=surviving,
             quarantined_rows=quar_rows,
         )
     )
@@ -1546,11 +1618,14 @@ def build_report(
         "same PAT. This recon is re-runnable and every number is recomputed from the Delta targets "
         "after the second run, but it cannot prove that no other session wrote between the two runs. "
         "The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run "
-        "produced (version > the target's pre-run version, and the commit's job.jobName is the job "
-        "run named for this run's batch id \u2014 serverless rejects "
+        "produced (version > the target's pre-run version, and the commit's job.jobRunId is one of "
+        "this run's own run ids \u2014 serverless rejects "
         "spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which "
         "excludes a foreign commit from the proof but not a foreign write from the row counts taken "
-        "afterwards.",
+        "afterwards. The job-name fallback (batch id as the name suffix) is not exercised here: "
+        "DESCRIBE HISTORY reported a job run id for every commit of this run "
+        f"({', '.join(sorted({m.get('attribution_rule_matched', 'none') for m in idem_metrics.values()}))}), "
+        "so the fallback is implemented and unverified.",
         "Divergence — cross-table atomicity: sp_issue_invoice is one Oracle transaction over the "
         "header, its lines and the credit burn-down, while this port makes three independent Delta "
         "commits plus a scoped DELETE. Between the invoices commit and the invoice_lines commit a "
@@ -1568,6 +1643,18 @@ def build_report(
         "again), not by this population — a run over unchanged bronze produces the same applications "
         "every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured "
         "before/after counts.",
+        "Parity — no retraction: the source never unpublishes an invoice, so a publication whose "
+        "driver has left the accepted population survives in the target too (PARITY-NO-RETRACTION). "
+        f"On this population that set is empty ({surviving['invoices']} invoices, "
+        f"{surviving['invoice_lines']} lines, {surviving['credit_applications']} applications): every "
+        "tenant bronze carries is still driven this run and quarantine is empty, so the behaviour is "
+        "declared and measured at zero rather than demonstrated on an instance.",
+        "The batch-scoped exclusion the credit-burn check uses is measured but not stressed here: "
+        "quarantine is empty on this population, so the run's own rejection set and the set the "
+        "quarantine ledger retains are both empty and the difference between the scoped and unscoped "
+        "reads is zero (ACC-CREDIT-BURN-exclusion-scope). The scoping is what stops a rejection that "
+        "no longer reproduces from exempting its tenant forever; that case is unexercised by this "
+        "population.",
     ]
 
     return {
@@ -1784,8 +1871,13 @@ def main(argv: list[str] | None = None) -> int:
         if inv["plan_fee"] is not None and inv["overage_amount"] is not None
     }
     parity = compare_invoices(issued_oracle, snap["invoice_rows"])
+    # The burn check excludes the tenants the *last run* rejected, not every tenant the quarantine
+    # ledger still carries: a rejection that no longer reproduces must not go on buying its tenant an
+    # exemption from credit parity. The run publishes its own rejection set with its batch id, and the
+    # retained set is reported beside it so the difference is visible.
+    ledger = (run3 or run2)["quarantine"]["rejection_ledger"]
     burn = compare_burn(
-        oracle["credit_burn"], snap["burn_rows"], snap["quarantined_driver_tenants"]
+        oracle["credit_burn"], snap["burn_rows"], ledger["rejected_driver_tenants_this_run"]
     )
     migrated_ids = {r["id"] for r in snap["invoice_rows"] if r["_origin"] == "source-migrated"}
     migrated = compare_migrated(

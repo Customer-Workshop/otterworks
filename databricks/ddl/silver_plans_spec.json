@@ -1,0 +1,422 @@
+{
+  "unit": "silver_plans",
+  "job_name": "ow_tp_silver_plans",
+  "catalog": "ow_tp",
+  "schema": "silver",
+  "bronze_schema": "bronze",
+  "source_artifact_path": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql",
+  "source_entrypoints": [
+    "pkg_plans.fn_list_plans",
+    "pkg_plans.fn_entitlement",
+    "pkg_plans.sp_change_plan"
+  ],
+  "bronze_inputs": [
+    "ow_tp.bronze.plans",
+    "ow_tp.bronze.subscriptions",
+    "ow_tp.bronze.tenants"
+  ],
+  "quarantine_table": "ow_tp.silver.quarantine_silver_plans",
+  "quarantine_reasons": [
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "FK_ORPHAN",
+    "NUMERIC_OVERFLOW"
+  ],
+  "quarantine_halt_threshold_pct": 5.0,
+  "quarantine_halt_bases": {
+    "plans": "plans: every OW_BILLING.PLANS row in ns — numerator and denominator on that one population",
+    "subscriptions": "subscription driver: one row per source OW_BILLING.SUBSCRIPTIONS row in ns plus one row per plan-change request this run applies — numerator and denominator on that one population",
+    "entitlements": "entitlements: one row per tenant in ns whose fn_entitlement cursor population is non-empty in the source — numerator and denominator on that one population"
+  },
+  "quarantine_halt_basis_note": "each declared population is evaluated against the threshold with its own paired numerator and denominator, and the unit halts if any one of them exceeds it: tolerance item 5 forbids diluting a population, not evaluating all of them",
+  "plans_constants": {
+    "tier_map": {
+      "1": "starter",
+      "2": "growth",
+      "3": "scale"
+    },
+    "tier_default": "UNKNOWN",
+    "status_map": {
+      "10": "active",
+      "20": "suspended",
+      "30": "cancelled"
+    },
+    "status_default": "UNKNOWN",
+    "active_flag": "Y",
+    "inactive_nvl_default": "N",
+    "sentinel_end_date": "2099-12-31",
+    "sentinel_literal": "TO_DATE('31-DEC-99', 'DD-MON-YY')",
+    "active_status_cd": 10,
+    "suspended_status_cd": 20,
+    "cancelled_status_cd": 30,
+    "list_order_by": [
+      "monthly_fee",
+      "code"
+    ],
+    "covering_pick_order_by": [
+      "starts_on DESC",
+      "id DESC"
+    ],
+    "closeout_order_by": [
+      "tenant_id",
+      "starts_on",
+      "id"
+    ],
+    "global_iteration_order_by": [
+      "tenant_id"
+    ]
+  },
+  "change_requests": {
+    "population_is_a_declared_job_input": true,
+    "note": "The source has no change-request table: sp_change_plan is called by the application with (p_tenant_id, p_plan_id, p_effective_on). The run's population is therefore declared here and derived deterministically from bronze so both sides of the recon can build the identical set independently.",
+    "derivation": "one request per tenant that has a covering subscription on entitlement_on: p_plan_id is the next plan after the tenant's covering plan in fn_list_plans order (monthly_fee, code) over the active plans, cyclically; p_effective_on is change_effective_on. A tenant with no covering subscription gets no request.",
+    "default_effective_on": "2026-03-01",
+    "application_policy": {
+      "default": "transcript-pinned only: with no applied_requests parameter the run applies just the requests a transcript pins, and every other subscription keeps its migrated source state",
+      "note": "the derived population is a synthetic call population and is always measured; applying it in a namespace holding migrated source data would publish plan changes the source never had into a table waves 4 and 5 read next, so it is written nowhere and the resulting source/target row-count asymmetry is declared in the recon report instead",
+      "declared_input": "applied_requests, a JSON array of {tenant_id, plan_id, effective_on, label}; at most one accepted request per tenant per run, because two sp_change_plan calls for one tenant are sequential invocations whose second call reads what the first left"
+    },
+    "overrides_are_pinned_from_transcripts": [
+      {
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000002",
+        "effective_on": "2026-03-01",
+        "transcript": "PLANS-004"
+      },
+      {
+        "tenant_id": "00000000-0000-0000-0000-000000000004",
+        "plan_id": "10000000-0000-0000-0000-000000000003",
+        "effective_on": "2026-03-15",
+        "transcript": "PLANS-005"
+      }
+    ]
+  },
+  "entitlement_on": "2026-02-28",
+  "shared_writer_policy": {
+    "table": "ow_tp.silver.subscriptions",
+    "other_declared_writer": "wave 4 (sp_suspend_overdue), per .migration/10_wave_plan.md",
+    "origins_this_unit_owns": [
+      "source-migrated",
+      "target-change"
+    ],
+    "rule": "the MERGE's UPDATE branch fires only when the matched target row's _origin is one this unit owns, so a row another wave has taken over keeps its status, suspended_on and every other field; the rows skipped for that reason are counted and published rather than overwritten. No INSERT OVERWRITE and no table-wide statement is issued against a shared table, and no DELETE other than the id-scoped removal of rows this unit itself produced under a narrower declared input, which publishes the removed ids, their prior values and a measured count of rows touched that this unit did not produce (D-31; D-28 stands unchanged for source-published rows). No cross-unit locking or publication protocol is invented here.",
+    "what_the_origin_gate_does_not_protect": "wave 4's declared write. D-30 makes it a column-scoped MERGE ... WHEN MATCHED THEN UPDATE of status_cd/suspended_on on rows this unit and ingest created, preserving the owning unit's _origin/_batch_id, so its updates sit on rows whose _origin this unit owns and the gate does not skip them: a later silver_plans rerun would reassert the source's close-out semantics over dunning's columns. Reconciling that is D-30's column-ownership rule, implemented by wave 4, not here."
+  },
+  "tables": [
+    {
+      "target": "plans",
+      "source_table": "OW_BILLING.PLANS",
+      "merge_key": [
+        "id",
+        "ns"
+      ],
+      "natural_key": [
+        "id"
+      ],
+      "cluster_by": [
+        "id",
+        "ns"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "tier_cd",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "tier",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "monthly_fee",
+          "target_type": "DECIMAL(14,2)",
+          "class": "money"
+        },
+        {
+          "name": "included_units",
+          "target_type": "DECIMAL(38,0)",
+          "class": "count"
+        },
+        {
+          "name": "overage_rate",
+          "target_type": "DECIMAL(12,6)",
+          "class": "rate"
+        },
+        {
+          "name": "active_yn",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "active_nvl",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "listed_by_fn_list_plans",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "list_seq",
+          "target_type": "INT",
+          "class": "code"
+        }
+      ]
+    },
+    {
+      "target": "subscriptions",
+      "source_table": "OW_BILLING.SUBSCRIPTIONS",
+      "merge_key": [
+        "id",
+        "ns"
+      ],
+      "natural_key": [
+        "id"
+      ],
+      "cluster_by": [
+        "tenant_id",
+        "id",
+        "ns"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "tenant_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "plan_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "starts_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "ends_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "status_cd",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "suspended_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "status_cd_before",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "ends_on_before",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "closed_by_change",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "closeout_seq",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "change_effective_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "change_plan_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "reactivated_from_suspended",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "cancelled_preserved",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "overlaps_new_subscription",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        }
+      ]
+    },
+    {
+      "target": "entitlements",
+      "source_table": "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS",
+      "merge_key": [
+        "tenant_id",
+        "as_of_on",
+        "ns"
+      ],
+      "natural_key": [
+        "tenant_id",
+        "as_of_on"
+      ],
+      "cluster_by": [
+        "tenant_id",
+        "as_of_on",
+        "ns"
+      ],
+      "columns": [
+        {
+          "name": "tenant_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "as_of_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "subscription_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "plan_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "plan_code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "tier",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "monthly_fee",
+          "target_type": "DECIMAL(14,2)",
+          "class": "money"
+        },
+        {
+          "name": "included_units",
+          "target_type": "DECIMAL(38,0)",
+          "class": "count"
+        },
+        {
+          "name": "status_cd",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "subscription_status",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "effective_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "starts_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "ends_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "candidate_rows",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "tied_starts_on_rows",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "plan_null_extended",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "cursor_predicate_covers",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "sentinel_predicate_covers",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "predicates_disagree",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "global_lookup_matched",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "global_lookup_plan_code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "global_lookup_candidate_rows",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "global_iteration_seq",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "stale_global_plan_code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "stale_global_mismatch",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        }
+      ]
+    }
+  ]
+}

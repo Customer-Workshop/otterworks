@@ -47,6 +47,8 @@ serverless SQL warehouse to produce the recon evidence.
 
 from __future__ import annotations
 
+import re
+
 CATALOG = "ow_tp"
 SCHEMA = "bronze"
 UNIT = "bronze_custbill"
@@ -66,12 +68,28 @@ REC_TYPE_POS, REC_TYPE_LEN = 64, 2
 # Closed reason-code set (.migration/11_quarantine_codes.md) reachable from this unit.
 QUARANTINE_REASONS = ("ENC_INVALID", "RECORD_SHORT", "DATE_INVALID", "AMT_NON_NUMERIC")
 
+NS_PATTERN = re.compile(r"\A[a-z0-9_]{1,32}\Z")
+
 # COMMAND ----------
+
+
+def validate_ns(ns: str) -> str:
+    """``ns`` is the isolation boundary in a shared workspace, so it is checked.
+
+    An empty or malformed namespace is how a run reads or writes outside its own
+    slice, and it is also the only value spliced into this unit's SQL text.
+    """
+    if not isinstance(ns, str) or not NS_PATTERN.match(ns):
+        raise ValueError(
+            f"ns must match {NS_PATTERN.pattern} (lowercase letters, digits, underscore; "
+            f"1-32 chars); got {ns!r}"
+        )
+    return ns
 
 
 def landing_prefix(ns: str) -> str:
     """Volume prefix this unit reads, always ``<ns>/<unit>/...``."""
-    return f"{LANDING_ROOT}/{ns}/custbill"
+    return f"{LANDING_ROOT}/{validate_ns(ns)}/custbill"
 
 
 def create_records_table() -> str:
@@ -147,6 +165,7 @@ def parsed_source_cte(ns: str) -> str:
     whose ``TRL`` count agrees with their detail-record count reach ``evaluated``.
     """
     prefix = landing_prefix(ns)
+    ns = validate_ns(ns)
     uid = _f_md5_uuid("concat_ws('|', ns, source_file, cast(record_seq AS STRING))")
     return f"""
 WITH raw_files AS (
@@ -387,6 +406,7 @@ SELECT source_file, record_seq, quarantine_reason FROM evaluated ORDER BY source
 
 def loaded_rows(ns: str) -> str:
     """The loaded population, recomputed from the target table."""
+    ns = validate_ns(ns)
     return f"""
 SELECT source_file, record_seq, cust_id, cust_name, bill_date, bill_amt, currency,
        rec_type, raw_overflow, overflow_flag, record_bytes, record_uid
@@ -396,6 +416,7 @@ FROM {RECORDS_TABLE} WHERE ns = '{ns}' ORDER BY source_file, record_seq
 
 def quarantined_rows(ns: str) -> str:
     """The quarantined population, recomputed from the target table."""
+    ns = validate_ns(ns)
     return f"""
 SELECT source_file, record_seq, quarantine_reason, legacy_bill_amt, legacy_bill_date,
        record_bytes, raw_record, record_uid
@@ -405,6 +426,7 @@ FROM {QUARANTINE_TABLE} WHERE ns = '{ns}' ORDER BY source_file, record_seq
 
 def target_totals(ns: str) -> str:
     """Row counts, money total and a content checksum for the idempotency proof."""
+    ns = validate_ns(ns)
     return f"""
 SELECT
   (SELECT count(*) FROM {RECORDS_TABLE} WHERE ns = '{ns}')                     AS loaded_rows,
@@ -435,7 +457,8 @@ ORDER BY table_name, column_name
 # the recon runner leaves it inert.
 if "dbutils" in dir():  # pragma: no cover - notebook-only path
     dbutils.widgets.text("ns", "demo")  # noqa: F821
-    ns = dbutils.widgets.get("ns")  # noqa: F821
+    # Fail fast and loudly: a bad ns must not reach the volume or the SQL.
+    ns = validate_ns(dbutils.widgets.get("ns"))  # noqa: F821
     prefix = landing_prefix(ns)
 
     try:

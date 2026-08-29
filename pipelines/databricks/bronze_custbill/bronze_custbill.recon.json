@@ -2,10 +2,30 @@
   "kind": "recon-report",
   "unit": "bronze_custbill",
   "namespace": "demo",
-  "generated_at": "2026-08-29T00:24:24Z",
+  "generated_at": "2026-08-29T00:41:37Z",
   "run_mode": "live",
   "recon_result": "green",
   "values_recomputed_from_target": true,
+  "operator_action_required": {
+    "files_not_ingested": 2,
+    "rows_not_in_the_target": 3,
+    "items": [
+      {
+        "source_file": "CUSTBILL_DEMO_004.dat",
+        "why_not_ingested": "trailer count disagrees with detail count",
+        "trailer_count": 5,
+        "rows_in_this_file_not_in_the_target": 3,
+        "action": "reconcile the TRL count with the sender before redelivery; the file is refused whole, so no partial rows need removing"
+      },
+      {
+        "source_file": "CUSTBILL_DEMO_005.dat",
+        "why_not_ingested": "no matching completed-transfer marker: the file may still be being written",
+        "trailer_count": null,
+        "rows_in_this_file_not_in_the_target": 0,
+        "action": "ask the sender to redeliver the file with a completed-transfer marker; the pipeline picks it up on the next poll with no cleanup needed"
+      }
+    ]
+  },
   "provenance": {
     "landing_prefix": "/Volumes/ow_tp/bronze/landing/demo/custbill",
     "records_table": "ow_tp.bronze.custbill_records",

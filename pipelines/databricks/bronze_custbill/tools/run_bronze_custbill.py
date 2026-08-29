@@ -258,7 +258,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    ns = args.ns
+    # Fail fast on a malformed namespace: ns is this run's isolation boundary in a
+    # workspace other runs share, as well as the only value spliced into the SQL.
+    ns = pipeline.validate_ns(args.ns)
+    pipeline.validate_ns(args.empty_poll_ns)
     prefix = pipeline.landing_prefix(ns)
     provenance: dict[str, object] = {
         "landing_prefix": prefix,
@@ -602,6 +605,29 @@ def main() -> int:
         ),
     ]
 
+    # A green unit can still leave files on the floor: refusing a file is the
+    # correct outcome, but somebody has to chase the drop. Surfaced rather than
+    # left to be inferred from the file lists.
+    operator_action_required = [
+        {
+            "source_file": f["source_file"],
+            "why_not_ingested": f["rejected_because"],
+            "trailer_count": f["trailer_count"],
+            "rows_in_this_file_not_in_the_target": sum(
+                1 for row in baseline_rows_not_ingested if row.startswith(f["source_file"] + "#")
+            ),
+            "action": (
+                "ask the sender to redeliver the file with a completed-transfer marker; "
+                "the pipeline picks it up on the next poll with no cleanup needed"
+                if not next(c["transfer_marker_matches"] for c in census if c["source_file"] == f["source_file"])
+                else "reconcile the TRL count with the sender before redelivery; "
+                "the file is refused whole, so no partial rows need removing"
+            ),
+        }
+        for f in trailer_reconciliation
+        if not f["ingested"]
+    ]
+
     failed = [c["id"] for c in checks if c["result"] == "fail"]
     missing = [a for a in expected_set if a not in actual_set]
     if quarantine_rate > QUARANTINE_HALT_PCT:
@@ -621,6 +647,13 @@ def main() -> int:
         "run_mode": "live",
         "recon_result": recon_result,
         "values_recomputed_from_target": True,
+        # Read this before the counts: green means every ingested row reconciles,
+        # not that every landed file was ingested.
+        "operator_action_required": {
+            "files_not_ingested": len(operator_action_required),
+            "rows_not_in_the_target": len(baseline_rows_not_ingested),
+            "items": operator_action_required,
+        },
         "provenance": provenance,
         "counts": {
             "files_seen": len(census),

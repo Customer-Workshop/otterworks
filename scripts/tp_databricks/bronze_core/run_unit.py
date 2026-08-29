@@ -437,6 +437,16 @@ def build_report(
                 "reported rather than corrected."
             ),
             (
+                "The money-bearing core tables are still at their base population: invoices, "
+                "invoice_lines, rating_periods, rating_results, credit_notes, dunning_attempts "
+                "and notifications are rows the rating and invoicing packages write, and that "
+                "batch chain has not been run for the tenants added by the SCALE=demo load. "
+                "T1 money parity is therefore exact but over a handful of invoices; the "
+                "high-cardinality objects of this estate (CUSTOMER_MASTER, ENTITY_ATTR_VALUE, "
+                "INVOICE_HEADER, INVOICE_LINE, and with them the VARCHAR2 signup-date rejects "
+                "and the orphaned invoice lines) are targets of bronze_wide, not of this unit."
+            ),
+            (
                 "The ns=demo slice is shared with other sessions holding the same token. These "
                 "numbers were recomputed from the targets immediately after the second run; the "
                 "recon is rerunnable end to end (python3 -m scripts.tp_databricks.bronze_core "
@@ -445,6 +455,22 @@ def build_report(
         ],
         "provenance": {
             "source": profile["source"],
+            "source_population": {
+                "note": (
+                    "The source schema was brought up to its SCALE=demo baseline volume with the "
+                    "repo's own loader (make oracle-billing-seed NS=demo SCALE=demo: 25,000 "
+                    "customers / 150,000 invoice lines estate-wide) before any measurement below. "
+                    "These are baseline volumes for this environment, not the customer's "
+                    "production data volume."
+                ),
+                "loader": "make oracle-billing-seed NS=demo SCALE=demo",
+                "unit_source_rows": {
+                    t: p["source_rows"] for t, p in sorted(profile["tables"].items())
+                },
+                "unit_source_rows_total": sum(
+                    p["source_rows"] for p in profile["tables"].values()
+                ),
+            },
             "target": "Delta tables in ow_tp.bronze, read back through the pre-existing "
             "serverless SQL warehouse 565cd2fd713738c4",
             "transport": (

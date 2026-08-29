@@ -25,6 +25,7 @@
 
 import json
 import os
+import re
 
 dbutils.widgets.text("ns", "demo")
 dbutils.widgets.text("catalog", "ow_tp")
@@ -44,6 +45,12 @@ if not NS:
     raise ValueError("ns is required: every target row and every volume path is ns-scoped")
 if CATALOG != "ow_tp":
     raise ValueError("this unit only reads and writes the ow_tp catalog")
+
+# ns and batch_id reach SQL as literals and volume paths as path segments, so they are held to
+# the estate's namespace grammar instead of being escaped ad hoc at each use site.
+for _pname, _pval in (("ns", NS), ("batch_id", BATCH_ID)):
+    if _pval and not re.fullmatch(r"[A-Za-z0-9_-]+", _pval):
+        raise ValueError(f"{_pname}={_pval!r} must match ^[A-Za-z0-9_-]+$")
 
 UNIT = "bronze_core"
 LANDING = f"{LANDING_ROOT}/{NS}/{UNIT}"

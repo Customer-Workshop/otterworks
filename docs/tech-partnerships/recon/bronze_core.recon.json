@@ -45,25 +45,25 @@
     },
     {
       "actual": {
-        "loaded_plus_quarantined": 9
+        "loaded_plus_quarantined": 69
       },
       "expected": {
-        "loaded_plus_quarantined": 9
+        "loaded_plus_quarantined": 69
       },
       "id": "ACC-QUAR-tenants",
-      "loaded_rows": 9,
+      "loaded_rows": 69,
       "quarantine_pct": 0.0,
       "quarantined_rows": 0,
       "result": "pass",
       "source_of_truth": "live Oracle OW_BILLING.TENANTS COUNT(*) in the extract's read-only snapshot",
-      "source_rows": 9
+      "source_rows": 69
     },
     {
       "actual": {
-        "rows": 9
+        "rows": 69
       },
       "expected": {
-        "rows": 9
+        "rows": 69
       },
       "id": "ROWS-tenants",
       "quarantined_rows": 0,
@@ -72,11 +72,11 @@
     },
     {
       "actual": {
-        "row_hash_fold": "5801877032103918048",
+        "row_hash_fold": "46654092639720393801",
         "rows_only_in_source": 0
       },
       "expected": {
-        "row_hash_fold": "5801877032103918048",
+        "row_hash_fold": "46654092639720393801",
         "rows_only_in_source": 0
       },
       "id": "CHECKSUM-tenants",
@@ -144,25 +144,25 @@
     },
     {
       "actual": {
-        "loaded_plus_quarantined": 9
+        "loaded_plus_quarantined": 69
       },
       "expected": {
-        "loaded_plus_quarantined": 9
+        "loaded_plus_quarantined": 69
       },
       "id": "ACC-QUAR-subscriptions",
-      "loaded_rows": 9,
+      "loaded_rows": 69,
       "quarantine_pct": 0.0,
       "quarantined_rows": 0,
       "result": "pass",
       "source_of_truth": "live Oracle OW_BILLING.SUBSCRIPTIONS COUNT(*) in the extract's read-only snapshot",
-      "source_rows": 9
+      "source_rows": 69
     },
     {
       "actual": {
-        "rows": 9
+        "rows": 69
       },
       "expected": {
-        "rows": 9
+        "rows": 69
       },
       "id": "ROWS-subscriptions",
       "quarantined_rows": 0,
@@ -171,11 +171,11 @@
     },
     {
       "actual": {
-        "row_hash_fold": "5583301083157181201",
+        "row_hash_fold": "41089713903880743148",
         "rows_only_in_source": 0
       },
       "expected": {
-        "row_hash_fold": "5583301083157181201",
+        "row_hash_fold": "41089713903880743148",
         "rows_only_in_source": 0
       },
       "id": "CHECKSUM-subscriptions",
@@ -187,25 +187,25 @@
     },
     {
       "actual": {
-        "loaded_plus_quarantined": 10
+        "loaded_plus_quarantined": 814
       },
       "expected": {
-        "loaded_plus_quarantined": 10
+        "loaded_plus_quarantined": 814
       },
       "id": "ACC-QUAR-usage_events",
-      "loaded_rows": 10,
+      "loaded_rows": 814,
       "quarantine_pct": 0.0,
       "quarantined_rows": 0,
       "result": "pass",
       "source_of_truth": "live Oracle OW_BILLING.USAGE_EVENTS COUNT(*) in the extract's read-only snapshot",
-      "source_rows": 10
+      "source_rows": 814
     },
     {
       "actual": {
-        "rows": 10
+        "rows": 814
       },
       "expected": {
-        "rows": 10
+        "rows": 814
       },
       "id": "ROWS-usage_events",
       "quarantined_rows": 0,
@@ -214,11 +214,11 @@
     },
     {
       "actual": {
-        "row_hash_fold": "5183178818489150020",
+        "row_hash_fold": "474784500394229094627",
         "rows_only_in_source": 0
       },
       "expected": {
-        "row_hash_fold": "5183178818489150020",
+        "row_hash_fold": "474784500394229094627",
         "rows_only_in_source": 0
       },
       "id": "CHECKSUM-usage_events",
@@ -821,16 +821,16 @@
       "result": "pass",
       "source_of_truth": "quarantine rows recomputed from ow_tp.bronze.quarantine_bronze_core against live Oracle source counts",
       "totals": {
-        "loaded_rows": 81,
+        "loaded_rows": 1005,
         "quarantined_rows": 0,
-        "source_rows": 81
+        "source_rows": 1005
       }
     }
   ],
   "failed_checks": [],
-  "generated_at": "2026-08-29T00:48:54Z",
+  "generated_at": "2026-08-29T01:23:53Z",
   "idempotency_rerun": {
-    "evidence": "run 1 = job run 773449402892961 (batch 20260829004326a), run 2 = job run 313699384795316 (batch 20260829004326b) with byte-identical landing inputs. Second run MERGE metrics: {\"billing_audit_log\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"codes\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"credit_notes\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"dunning_attempts\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"invoice_lines\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"invoices\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"notifications\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"plans\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"rating_periods\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"rating_results\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"subscriptions\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"tenants\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"usage_events\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}}. Counts and canonical-row checksums recomputed from the Delta targets before and after the second run: identical.",
+    "evidence": "run 1 = job run 360352908864178 (batch 20260829011526a), run 2 = job run 967505694998420 (batch 20260829011526b) with byte-identical landing inputs. Second run MERGE metrics: {\"billing_audit_log\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"codes\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"credit_notes\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"dunning_attempts\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"invoice_lines\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"invoices\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"notifications\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"plans\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"rating_periods\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"rating_results\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"subscriptions\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"tenants\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"usage_events\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}}. Counts and canonical-row checksums recomputed from the Delta targets before and after the second run: identical.",
     "performed": true,
     "result": "pass"
   },
@@ -975,23 +975,43 @@
   "provenance": {
     "job_runs": [
       {
-        "batch_id": "20260829004326a",
-        "run_id": 773449402892961,
-        "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/?o=7474651138173478#job/480793228360778/run/773449402892961"
+        "batch_id": "20260829011526a",
+        "run_id": 360352908864178,
+        "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/?o=7474651138173478#job/439811784618374/run/360352908864178"
       },
       {
-        "batch_id": "20260829004326b",
-        "run_id": 313699384795316,
-        "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/?o=7474651138173478#job/924051217435778/run/313699384795316"
+        "batch_id": "20260829011526b",
+        "run_id": 967505694998420,
+        "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/?o=7474651138173478#job/841079284779219/run/967505694998420"
       }
     ],
     "row_level_comparison_limit": 200000,
     "source": {
       "db_name": "FREEPDB1",
-      "extracted_at": "2026-08-29T00:43:18+00:00",
+      "extracted_at": "2026-08-29T01:15:16+00:00",
       "oracle_version": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.3.0.0",
       "schema": "OW_BILLING",
       "transaction": "SET TRANSACTION READ ONLY (single snapshot for rows and aggregates)"
+    },
+    "source_population": {
+      "loader": "make oracle-billing-seed NS=demo SCALE=demo",
+      "note": "The source schema was brought up to its SCALE=demo baseline volume with the repo's own loader (make oracle-billing-seed NS=demo SCALE=demo: 25,000 customers / 150,000 invoice lines estate-wide) before any measurement below. These are baseline volumes for this environment, not the customer's production data volume.",
+      "unit_source_rows": {
+        "billing_audit_log": 0,
+        "codes": 32,
+        "credit_notes": 5,
+        "dunning_attempts": 1,
+        "invoice_lines": 2,
+        "invoices": 3,
+        "notifications": 1,
+        "plans": 3,
+        "rating_periods": 3,
+        "rating_results": 3,
+        "subscriptions": 69,
+        "tenants": 69,
+        "usage_events": 814
+      },
+      "unit_source_rows_total": 1005
     },
     "target": "Delta tables in ow_tp.bronze, read back through the pre-existing serverless SQL warehouse 565cd2fd713738c4",
     "transport": "Rows are extracted from the live Oracle service in a single read-only transaction and landed as text under /Volumes/ow_tp/bronze/landing/demo/bronze_core/, then loaded by job runs of the ow_tp_bronze_core notebook on serverless job compute. Lakehouse Federation to the OW_BILLING service was not reachable from the workspace, so parity is computed by comparing aggregates and canonical row hashes measured independently on each side rather than in a single federated query."
@@ -1004,6 +1024,7 @@
     "D-08 (non-unique ROWNUM ordering) is not reached: the unit reads whole tables and never selects a subset by row number, so no tie-breaking decision is made.",
     "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable, so no single federated query joins source to target; each side is measured independently and compared by canonical row hash. A federation-side type or NLS difference would therefore not be observed by this recon.",
     "Source deletions are not reconciled: the load has no MERGE delete clause, so a row deleted in Oracle after a load would remain in the bronze image. 'rows_only_in_target' in each CHECKSUM-* check is what detects this, and it is reported rather than corrected.",
+    "The money-bearing core tables are still at their base population: invoices, invoice_lines, rating_periods, rating_results, credit_notes, dunning_attempts and notifications are rows the rating and invoicing packages write, and that batch chain has not been run for the tenants added by the SCALE=demo load. T1 money parity is therefore exact but over a handful of invoices; the high-cardinality objects of this estate (CUSTOMER_MASTER, ENTITY_ATTR_VALUE, INVOICE_HEADER, INVOICE_LINE, and with them the VARCHAR2 signup-date rejects and the orphaned invoice lines) are targets of bronze_wide, not of this unit.",
     "The ns=demo slice is shared with other sessions holding the same token. These numbers were recomputed from the targets immediately after the second run; the recon is rerunnable end to end (python3 -m scripts.tp_databricks.bronze_core --ns demo) and should be rerun if the slice is rewritten."
   ],
   "values_recomputed_from_target": true

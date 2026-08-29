@@ -6,7 +6,7 @@
     "ow_tp.silver.rating_results",
     "ow_tp.silver.quarantine_silver_rating"
   ],
-  "golden_baseline_location": "procs/transcripts/rating/RATING-001..008.json (8 recorded legacy transcripts, pinned by SOURCE_SHA/FIXTURE_SHA), plus federated LIVE comparison of rating_results. Pilot unit: its recon is the evidence the dictionary survives contact with real data.",
+  "golden_baseline_location": "procs/oracle/transcripts/rating/RATING-001..008.json (8 immutable Oracle transcripts, pinned by procs/oracle/transcripts/ORACLE_SOURCE_SHA; see .migration/12_golden_baselines.md), plus federated LIVE comparison of rating_results. Pilot unit: its recon is the evidence the dictionary survives contact with real data. procs/transcripts/ is the Postgres cross-check set, not the baseline.",
   "acceptance_checks": [
     {
       "id": "ACC-MONEY",

@@ -7,7 +7,7 @@
     "ow_tp.silver.credit_applications",
     "ow_tp.silver.quarantine_silver_invoicing"
   ],
-  "golden_baseline_location": "procs/transcripts/invoicing/INVOICE-001..006.json (6 recorded legacy transcripts, pinned by SOURCE_SHA/FIXTURE_SHA), plus federated LIVE comparison of invoices and invoice_lines. Pilot unit.",
+  "golden_baseline_location": "procs/oracle/transcripts/invoicing/INVOICE-001..006.json (6 immutable Oracle transcripts, pinned by procs/oracle/transcripts/ORACLE_SOURCE_SHA; see .migration/12_golden_baselines.md), plus federated LIVE comparison of invoices and invoice_lines. Pilot unit. procs/transcripts/ is the Postgres cross-check set, not the baseline.",
   "acceptance_checks": [
     {
       "id": "ACC-MONEY",

@@ -93,3 +93,45 @@ Both pilot units are green and merged into the run branch, in the required order
   estate-level decisions. Wave 3 and 4 inherit them and must not invent unit-local answers.
 - **The re-issue double burn (D-27) stays undiverged-from.** A target rerun is a no-op; the source's
   second issue is not reproduced. Exposure measured at 13.92 across 2 invoices.
+
+## Wave 3 — `silver_plans`, closed
+
+| Unit | Status | PR | Evidence |
+|---|---|---|---|
+| `silver_plans` | `MERGED` | #1373 | 38/38 checks, `run_mode: live`, two declared namespaces. `ns=demo` (migrated source state) = 69 source-migrated subscriptions + the 2 transcript-pinned close-out identities and nothing else, parity 0/3 plans, 0/69 entitlements, 0/71 subscriptions, zero quarantine. `ns=plans_edge` (generated fixture, declared as such) carries the procedure evidence: `UNKNOWN` tiers 2, tied `starts_on` 1, plan absent from source 1, plan present-but-rejected 1, strict-`<` overlaps 2, cancelled visited 1, suspended→active 1, re-apply identity collision 1, plus the cold-load/no-op idempotency pair (25/79/71/5 inserted, then 0/0/0) attributed by pre-run Delta version + `job.jobRunId`. Halt bases evaluated per population: plans 3.85%, subscriptions 3.61%, entitlements 1.39% in `plans_edge`, 0% in `demo`. |
+
+Five defects found in review and re-proven live, all of which would have passed a naive green:
+
+1. **A fabricated plan-change batch published into `ns=demo`.** The spec derives one `sp_change_plan`
+   request per covering tenant; the first revision applied all 69, closing every open subscription and
+   inserting 69 synthetic ones, then reconciled Oracle's re-expression of the same invented input
+   against it. `ow_tp.silver.subscriptions` is what waves 4 and 5 read next. Only the transcript-pinned
+   requests are applied now; the other 67 are measured on both sides and written nowhere, with the
+   resulting 69-vs-71 row asymmetry declared rather than hidden.
+2. **Anomaly coverage that was listed, not exercised.** Six populations sat at zero on the demo seed,
+   including three `must-detect` anomalies. They are now demonstrated non-zero on a declared generated
+   fixture in a separate namespace, which never touches another unit's `ns=demo` bronze.
+3. **A 5% halt that could only fire on one of three populations** (item 5 of `03_recon_tolerances.md`,
+   the same defect wave 2 had) — now one paired numerator/denominator per declared population, and a
+   population that is accounted but not evaluated raises.
+4. **A plan the run rejected counted as Oracle's genuinely missing plan.** D-18 null extension is
+   source-presence-driven; a plan present in the source but rejected by this run rejects its dependents
+   as `FK_ORPHAN` instead. The two populations are now separately measured.
+5. **Idempotency evidence from already-converged tables and superseded code** — replaced by a true cold
+   load plus no-op rerun of the final code.
+
+### Carried out of wave 3
+
+- **D-30** (shared write targets are owned by *column*, not by row) and **D-31** (D-28's no-retraction
+  rule covers rows the *source* published, not a unit's own synthetic job input) are now binding; the
+  retraction section of `10_wave_plan.md` carries the boundary. Wave 4 must not read D-31 as licence to
+  sweep rows the source issued: its driver is the source's own overdue population, so it issues no
+  `DELETE` at all.
+- **The `_origin` gate does not protect wave 4's write, and the record says so.** It fires only on rows
+  carrying a foreign `_origin`; D-30 makes dunning's write a column-scoped update of
+  `status_cd`/`suspended_on` on rows whose `_origin` `silver_plans` owns, so the gate does not skip it
+  and a later `silver_plans` rerun would reassert the source's close-out over dunning's columns.
+  Reconciling that is wave 4's job under D-30, and the interleaved run stays declared-unexercised until
+  wave 4's writer exists.
+- **`sp_change_plan` was never executed against Oracle** (it mutates `SUBSCRIPTIONS`): the parity side
+  is Oracle's own evaluation of a read-only re-expression, and stays in `unverified_paths`.

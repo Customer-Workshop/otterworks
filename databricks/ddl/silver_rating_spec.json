@@ -1,0 +1,104 @@
+{
+  "unit": "silver_rating",
+  "job_name": "ow_tp_silver_rating",
+  "catalog": "ow_tp",
+  "schema": "silver",
+  "source_schema": "OW_BILLING",
+  "source_artifact": "services/legacy-billing/db/oracle/packages/03_pkg_rating.sql",
+  "source_entrypoints": [
+    "pkg_rating.compute_rating",
+    "pkg_rating.fn_usage_rating",
+    "pkg_rating.fn_usage_summary",
+    "pkg_rating.sp_finalize_rating"
+  ],
+  "bronze_inputs": [
+    "ow_tp.bronze.tenants",
+    "ow_tp.bronze.subscriptions",
+    "ow_tp.bronze.plans",
+    "ow_tp.bronze.usage_events",
+    "ow_tp.bronze.codes",
+    "ow_tp.bronze.rating_periods",
+    "ow_tp.bronze.rating_results"
+  ],
+  "quarantine_table": "quarantine_silver_rating",
+  "quarantine_reasons": [
+    "FK_ORPHAN",
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "CODE_UNKNOWN",
+    "NUMERIC_OVERFLOW"
+  ],
+  "quarantine_halt_threshold_pct": 5,
+  "rating_constants": {
+    "tier_break_units": 101,
+    "second_tier_multiplier": "1.5",
+    "rollover_lookback_months": 3,
+    "rollover_cap_multiple": 2,
+    "suspended_status_cd": 20,
+    "usage_kind_code_type": "USAGE_KIND"
+  },
+  "money_type": "DECIMAL(14,2)",
+  "count_type": "DECIMAL(38,0)",
+  "rate_type": "DECIMAL(12,6)",
+  "tables": [
+    {
+      "target": "rating_periods",
+      "source_table": "OW_BILLING.RATING_PERIODS",
+      "merge_key": ["id", "ns"],
+      "natural_key": ["tenant_id", "period_start"],
+      "cluster_by": ["tenant_id", "period_start", "ns"],
+      "columns": [
+        {"name": "id", "target_type": "STRING", "class": "md5_uuid", "parity": true},
+        {"name": "tenant_id", "target_type": "STRING", "class": "text", "parity": true},
+        {"name": "period_start", "target_type": "DATE", "class": "date", "parity": true},
+        {"name": "period_end", "target_type": "DATE", "class": "date", "parity": true}
+      ],
+      "refinalize_update_columns": ["period_end"]
+    },
+    {
+      "target": "rating_results",
+      "source_table": "OW_BILLING.RATING_RESULTS",
+      "merge_key": ["id", "ns"],
+      "natural_key": ["period_id"],
+      "cluster_by": ["period_id", "ns"],
+      "columns": [
+        {"name": "id", "target_type": "STRING", "class": "md5_uuid", "parity": true},
+        {"name": "period_id", "target_type": "STRING", "class": "md5_uuid", "parity": true},
+        {"name": "subscription_id", "target_type": "STRING", "class": "text", "parity": true},
+        {"name": "used_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": true},
+        {"name": "quota_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": true},
+        {"name": "rollover_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": true},
+        {"name": "billable_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": true},
+        {"name": "overage_amount", "target_type": "DECIMAL(14,2)", "class": "money", "parity": true},
+        {"name": "created_at", "target_type": "TIMESTAMP", "class": "ts", "parity": true},
+        {"name": "computed_rollover_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": false},
+        {"name": "first_tier_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": false},
+        {"name": "second_tier_units", "target_type": "DECIMAL(38,0)", "class": "count", "parity": false},
+        {"name": "suspension_prorated", "target_type": "BOOLEAN", "class": "flag", "parity": false},
+        {"name": "overage_rate", "target_type": "DECIMAL(12,6)", "class": "rate", "parity": false}
+      ],
+      "refinalize_update_columns": [
+        "used_units",
+        "rollover_units",
+        "billable_units",
+        "overage_amount"
+      ],
+      "explicit_state_columns": [
+        "computed_rollover_units",
+        "first_tier_units",
+        "second_tier_units",
+        "suspension_prorated",
+        "overage_rate"
+      ]
+    }
+  ],
+  "anomalies": [
+    "ANOM-ROLLOVER-PERSIST",
+    "ANOM-PKG-GLOBAL-STATE",
+    "ANOM-STRING-DATE-COMPARE",
+    "ANOM-ROWNUM-1",
+    "ANOM-SWALLOWED-EXCEPTION"
+  ],
+  "refinalize_semantics": "refinalize_update_columns is the column set sp_finalize_rating's DUP_VAL_ON_INDEX fallback actually assigns when a period is rated again. Everything outside it (subscription_id, quota_units, created_at on RATING_RESULTS; tenant_id, period_start on RATING_PERIODS) keeps its first-finalize value in the source, so a re-rate must not overwrite it. The explicit_state_columns have no source analogue and follow the money in the same update so the row stays internally consistent.",
+  "frozen_status": "silver_rating column and type contract; the load and the recon read this file so the pinned types cannot drift between them (T6, D-23)."
+}

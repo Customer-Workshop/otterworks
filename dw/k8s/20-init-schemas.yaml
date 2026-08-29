@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-dw-init
+  namespace: legacy-dw
+  labels:
+    app.kubernetes.io/name: analytics-dw
+    app.kubernetes.io/component: database
+data:
+  001-schemas.sql: |
+    CREATE SCHEMA IF NOT EXISTS staging;
+    CREATE SCHEMA IF NOT EXISTS core;
+    CREATE SCHEMA IF NOT EXISTS mart;

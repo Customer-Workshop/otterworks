@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: legacy-dw
+  labels:
+    app.kubernetes.io/part-of: legacy-warehouse
+    app.kubernetes.io/managed-by: kubectl

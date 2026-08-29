@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: analytics-dw
+  namespace: legacy-dw
+  labels:
+    app.kubernetes.io/name: analytics-dw
+    app.kubernetes.io/component: database
+spec:
+  serviceName: analytics-dw
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: analytics-dw
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: analytics-dw
+        app.kubernetes.io/component: database
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres
+          image: postgres:15
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-dw-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-dw-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-dw-credentials
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          volumeMounts:
+            - name: analytics-dw-data
+              mountPath: /var/lib/postgresql/data
+            - name: analytics-dw-init
+              mountPath: /docker-entrypoint-initdb.d/001-schemas.sql
+              subPath: 001-schemas.sql
+      volumes:
+        - name: analytics-dw-init
+          configMap:
+            name: analytics-dw-init
+  volumeClaimTemplates:
+    - metadata:
+        name: analytics-dw-data
+        labels:
+          app.kubernetes.io/name: analytics-dw
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: local-path

@@ -13,8 +13,8 @@ from sources import DuckDBSource, PostgresSource, Source
 
 # Add ordered assets here when sequence is part of their business contract.
 # Values are SQL fragments appended after ORDER BY, not user-supplied shell text.
-ORDERED_KEYS: dict[str, str] = {
-    "core.dim_customer_scd2": "customer_id, effective_from, customer_sk",
+ORDERED_KEYS: dict[str, tuple[str, ...]] = {
+    "core.dim_customer_scd2": ("customer_id", "effective_from", "customer_sk"),
 }
 
 
@@ -36,6 +36,18 @@ def _source(args: argparse.Namespace) -> Source:
     return DuckDBSource(args.database)
 
 
+def _has_top_level_comma(expression: str) -> bool:
+    depth = 0
+    for character in expression:
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth = max(0, depth - 1)
+        elif character == "," and depth == 0:
+            return True
+    return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", choices=("postgres", "duckdb"), required=True)
@@ -49,18 +61,33 @@ def main() -> int:
     )
     parser.add_argument(
         "--ordered-key",
-        help="temporary ordered-key override; only valid for one table",
+        action="append",
+        help="temporary ordered-key expression; repeat for each expression",
     )
     args = parser.parse_args()
     if args.ordered_key and len(args.tables) != 1:
         parser.error("--ordered-key requires exactly one table")
+    if args.ordered_key and any(
+        _has_top_level_comma(expression) for expression in args.ordered_key
+    ):
+        parser.error(
+            "--ordered-key accepts one expression per flag; "
+            "pass the flag once per expression"
+        )
 
     args.out.mkdir(parents=True, exist_ok=True)
     source = _source(args)
     try:
         for table in args.tables:
             columns = source.columns(table)
-            ordered_key = args.ordered_key or ORDERED_KEYS.get(table)
+            ordered_expressions = (
+                tuple(args.ordered_key)
+                if args.ordered_key
+                else ORDERED_KEYS.get(table)
+            )
+            ordered_key = (
+                ", ".join(ordered_expressions) if ordered_expressions else None
+            )
             with source.snapshot(table, columns) as reader:
                 manifest = build(
                     table=table,

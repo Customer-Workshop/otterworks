@@ -106,7 +106,7 @@ def test_spark_ordered_manifest_splits_composite_key() -> None:
             path="unused",
             table="core.dim_customer_scd2",
             fingerprint="test",
-            ordered_key="customer_id, effective_from, customer_sk",
+            ordered_key=("customer_id", "effective_from", "customer_sk"),
         )
 
         assert manifest.ordered is not None

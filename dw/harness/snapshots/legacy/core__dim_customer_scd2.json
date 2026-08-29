@@ -134,7 +134,7 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": "309d7d90205c5a60ca36f152d9660c9e48a6d12c1c6b10d49530aac8b5dadb07",
+  "fingerprint": "c97e5aeae9caeba6bdaef3ea80c1afa54a105ab45e9e783f9bd1be5bcc2f8e1a",
   "manifest_format": 4,
   "ordered": {
     "digest": 271574239099219996,

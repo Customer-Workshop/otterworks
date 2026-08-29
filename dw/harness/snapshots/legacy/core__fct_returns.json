@@ -123,7 +123,7 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": "8b93def2ee73555e235838746ccd2bf238dfeba13b8f0b91893486207075893b",
+  "fingerprint": "5c2c325d6f1854c46673fa40e83dce1c484888bdf55602d604af4b9d92a01747",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 27002,

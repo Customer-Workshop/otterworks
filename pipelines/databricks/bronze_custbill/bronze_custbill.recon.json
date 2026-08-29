@@ -1,0 +1,425 @@
+{
+  "kind": "recon-report",
+  "unit": "bronze_custbill",
+  "namespace": "demo",
+  "generated_at": "2026-08-29T00:41:37Z",
+  "run_mode": "live",
+  "recon_result": "green",
+  "values_recomputed_from_target": true,
+  "operator_action_required": {
+    "files_not_ingested": 2,
+    "rows_not_in_the_target": 3,
+    "items": [
+      {
+        "source_file": "CUSTBILL_DEMO_004.dat",
+        "why_not_ingested": "trailer count disagrees with detail count",
+        "trailer_count": 5,
+        "rows_in_this_file_not_in_the_target": 3,
+        "action": "reconcile the TRL count with the sender before redelivery; the file is refused whole, so no partial rows need removing"
+      },
+      {
+        "source_file": "CUSTBILL_DEMO_005.dat",
+        "why_not_ingested": "no matching completed-transfer marker: the file may still be being written",
+        "trailer_count": null,
+        "rows_in_this_file_not_in_the_target": 0,
+        "action": "ask the sender to redeliver the file with a completed-transfer marker; the pipeline picks it up on the next poll with no cleanup needed"
+      }
+    ]
+  },
+  "provenance": {
+    "landing_prefix": "/Volumes/ow_tp/bronze/landing/demo/custbill",
+    "records_table": "ow_tp.bronze.custbill_records",
+    "quarantine_table": "ow_tp.bronze.quarantine_bronze_custbill",
+    "warehouse": "Serverless Starter Warehouse",
+    "pipeline_source": "pipelines/databricks/bronze_custbill/notebooks/bronze_custbill.py",
+    "golden_baseline": "legacy parse_custbill_fixedwidth.sh output under $OTTERWORKS_LEGACY_ROOT/parsed, produced through scripts/tp-run-deterministic.sh (TZ=UTC, LC_ALL=C)",
+    "landed_files": [
+      "CUSTBILL_DEMO_001.dat",
+      "CUSTBILL_DEMO_001.dat.sha256",
+      "CUSTBILL_DEMO_002.dat",
+      "CUSTBILL_DEMO_002.dat.sha256",
+      "CUSTBILL_DEMO_003.dat",
+      "CUSTBILL_DEMO_003.dat.sha256",
+      "CUSTBILL_DEMO_004.dat",
+      "CUSTBILL_DEMO_004.dat.sha256",
+      "CUSTBILL_DEMO_005.dat"
+    ],
+    "landing_contents": [
+      "CUSTBILL_DEMO_001.dat",
+      "CUSTBILL_DEMO_001.dat.sha256",
+      "CUSTBILL_DEMO_002.dat",
+      "CUSTBILL_DEMO_002.dat.sha256",
+      "CUSTBILL_DEMO_003.dat",
+      "CUSTBILL_DEMO_003.dat.sha256",
+      "CUSTBILL_DEMO_004.dat",
+      "CUSTBILL_DEMO_004.dat.sha256",
+      "CUSTBILL_DEMO_005.dat"
+    ],
+    "first_run": {
+      "files_seen": 5,
+      "statements": [
+        "create_records_table",
+        "create_quarantine_table",
+        "merge_records",
+        "merge_quarantine"
+      ],
+      "no_op": false
+    },
+    "second_run": {
+      "files_seen": 5,
+      "statements": [
+        "create_records_table",
+        "create_quarantine_table",
+        "merge_records",
+        "merge_quarantine"
+      ],
+      "no_op": false
+    }
+  },
+  "counts": {
+    "files_seen": 5,
+    "files_ingested": [
+      "CUSTBILL_DEMO_001.dat",
+      "CUSTBILL_DEMO_002.dat",
+      "CUSTBILL_DEMO_003.dat"
+    ],
+    "files_rejected": [
+      {
+        "source_file": "CUSTBILL_DEMO_004.dat",
+        "trailer_count": 5,
+        "loaded_plus_quarantined": 0,
+        "ingested": false,
+        "rejected_because": "trailer count disagrees with detail count"
+      },
+      {
+        "source_file": "CUSTBILL_DEMO_005.dat",
+        "trailer_count": null,
+        "loaded_plus_quarantined": 0,
+        "ingested": false,
+        "rejected_because": "no matching completed-transfer marker: the file may still be being written"
+      }
+    ],
+    "source_rows": 112,
+    "loaded_rows": 107,
+    "quarantined_rows": 5,
+    "accounting_identity": "107 + 5 == 112",
+    "quarantine_rate_pct": "4.46",
+    "quarantine_halt_threshold_pct": "5",
+    "quarantine_by_reason": {
+      "AMT_NON_NUMERIC": 1,
+      "DATE_INVALID": 2,
+      "ENC_INVALID": 1,
+      "RECORD_SHORT": 1
+    }
+  },
+  "money": {
+    "column_type": "DECIMAL(14,2)",
+    "bill_amt_total_target": "1535776.08",
+    "bill_amt_total_legacy_baseline": "1535776.08",
+    "quarantined_rows_alongside_money": 5,
+    "quarantined_money_withheld_from_total": "9547.77"
+  },
+  "trailer_reconciliation": [
+    {
+      "source_file": "CUSTBILL_DEMO_001.dat",
+      "trailer_count": 50,
+      "loaded_plus_quarantined": 50,
+      "ingested": true,
+      "rejected_because": null
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_002.dat",
+      "trailer_count": 50,
+      "loaded_plus_quarantined": 50,
+      "ingested": true,
+      "rejected_because": null
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_003.dat",
+      "trailer_count": 12,
+      "loaded_plus_quarantined": 12,
+      "ingested": true,
+      "rejected_because": null
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_004.dat",
+      "trailer_count": 5,
+      "loaded_plus_quarantined": 0,
+      "ingested": false,
+      "rejected_because": "trailer count disagrees with detail count"
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_005.dat",
+      "trailer_count": null,
+      "loaded_plus_quarantined": 0,
+      "ingested": false,
+      "rejected_because": "no matching completed-transfer marker: the file may still be being written"
+    }
+  ],
+  "legacy_divergences": [
+    {
+      "source_file": "CUSTBILL_DEMO_003.dat",
+      "record_seq": 1,
+      "quarantine_reason": "DATE_INVALID",
+      "legacy_value_loaded_by_source": {
+        "bill_amt": "1234.56",
+        "bill_date": "2024-02-31"
+      },
+      "legacy_value_recorded_in_quarantine": {
+        "bill_amt": "1234.56",
+        "bill_date": "2024-02-31"
+      },
+      "legacy_replay_matches": true
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_003.dat",
+      "record_seq": 2,
+      "quarantine_reason": "AMT_NON_NUMERIC",
+      "legacy_value_loaded_by_source": {
+        "bill_amt": "0.00",
+        "bill_date": "2025-01-15"
+      },
+      "legacy_value_recorded_in_quarantine": {
+        "bill_amt": "0.00",
+        "bill_date": "2025-01-15"
+      },
+      "legacy_replay_matches": true
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_003.dat",
+      "record_seq": 3,
+      "quarantine_reason": "RECORD_SHORT",
+      "legacy_value_loaded_by_source": {
+        "bill_amt": "0.00",
+        "bill_date": "--"
+      },
+      "legacy_value_recorded_in_quarantine": {
+        "bill_amt": "0.00",
+        "bill_date": "--"
+      },
+      "legacy_replay_matches": true
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_003.dat",
+      "record_seq": 5,
+      "quarantine_reason": "ENC_INVALID",
+      "legacy_value_loaded_by_source": {
+        "bill_amt": "543.21",
+        "bill_date": "2025-03-17"
+      },
+      "legacy_value_recorded_in_quarantine": {
+        "bill_amt": "543.21",
+        "bill_date": "2025-03-17"
+      },
+      "legacy_replay_matches": true
+    },
+    {
+      "source_file": "CUSTBILL_DEMO_003.dat",
+      "record_seq": 6,
+      "quarantine_reason": "DATE_INVALID",
+      "legacy_value_loaded_by_source": {
+        "bill_amt": "7770.00",
+        "bill_date": "0000-00-00"
+      },
+      "legacy_value_recorded_in_quarantine": {
+        "bill_amt": "7770.00",
+        "bill_date": "0000-00-00"
+      },
+      "legacy_replay_matches": true
+    }
+  ],
+  "legacy_baseline_rows_outside_target_population": {
+    "count": 3,
+    "rows": [
+      "CUSTBILL_DEMO_004.dat#1",
+      "CUSTBILL_DEMO_004.dat#2",
+      "CUSTBILL_DEMO_004.dat#3"
+    ],
+    "why": "the legacy parser loads every detail record of every file it finds; these belong to files this unit refused to ingest (trailer mismatch, or no completed-transfer marker)"
+  },
+  "parity_mismatches": [],
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "run 1 loaded=107 quarantined=5 total=1535776.08 checksum=ea3cd60c8d43fd0b48190f81c3175be1; run 2 loaded=107 quarantined=5 total=1535776.08 checksum=ea3cd60c8d43fd0b48190f81c3175be1; latest MERGE metrics records={'numTargetRowsInserted': 0, 'numTargetRowsUpdated': 0, 'numTargetRowsDeleted': 0} quarantine={'numTargetRowsInserted': 0, 'numTargetRowsUpdated': 0, 'numTargetRowsDeleted': 0}"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "ANOM-IMPLIED-DECIMAL",
+      "ANOM-INVALID-DATE",
+      "ANOM-NONNUMERIC-AMT",
+      "ANOM-SHORT-RECORD",
+      "ANOM-TRAILER-MISMATCH"
+    ],
+    "actual_set": [
+      "ANOM-IMPLIED-DECIMAL",
+      "ANOM-INVALID-DATE",
+      "ANOM-NONNUMERIC-AMT",
+      "ANOM-SHORT-RECORD",
+      "ANOM-TRAILER-MISMATCH"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "checks": [
+    {
+      "id": "ACC-MONEY",
+      "expected": {
+        "bill_amt_total": "1535776.08",
+        "double_or_float_columns_anywhere_in_the_unit": 0,
+        "typed_money_column_types": [
+          "decimal(14,2)"
+        ]
+      },
+      "actual": {
+        "bill_amt_total": "1535776.08",
+        "double_or_float_columns_anywhere_in_the_unit": 0,
+        "typed_money_column_types": [
+          "decimal(14,2)"
+        ]
+      },
+      "source_of_truth": "legacy .psv BILL-AMT column summed as Decimal vs sum(bill_amt) recomputed from the target",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-QUAR",
+      "expected": {
+        "source_rows": 112,
+        "halt_threshold_pct": "5",
+        "over_threshold": false
+      },
+      "actual": {
+        "source_rows": 112,
+        "halt_threshold_pct": "5",
+        "over_threshold": false
+      },
+      "source_of_truth": "count(*) on both target tables vs the detail-record population of the ingested files",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-IDEM",
+      "expected": {
+        "loaded_rows": 107,
+        "quarantined_rows": 5,
+        "bill_amt_total": "1535776.08",
+        "loaded_checksum": "ea3cd60c8d43fd0b48190f81c3175be1",
+        "quarantine_checksum": "3312fbeffa979a6fa2655470ceb19c3c",
+        "second_run_rows_written": 0
+      },
+      "actual": {
+        "loaded_rows": 107,
+        "quarantined_rows": 5,
+        "bill_amt_total": "1535776.08",
+        "loaded_checksum": "ea3cd60c8d43fd0b48190f81c3175be1",
+        "quarantine_checksum": "3312fbeffa979a6fa2655470ceb19c3c",
+        "second_run_rows_written": 0
+      },
+      "source_of_truth": "target totals and md5 payload checksums after run 1 vs run 2, plus DESCRIBE HISTORY MERGE metrics",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-NS",
+      "expected": {
+        "rows_with_foreign_or_null_ns": 0,
+        "landing_prefix": "/Volumes/ow_tp/bronze/landing/demo/custbill",
+        "ns": "demo"
+      },
+      "actual": {
+        "rows_with_foreign_or_null_ns": 0,
+        "landing_prefix": "/Volumes/ow_tp/bronze/landing/demo/custbill",
+        "ns": "demo"
+      },
+      "source_of_truth": "count(*) filtered on ns in both target tables; landing prefix used by the pipeline",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-IMPLIED-DEC",
+      "expected": {
+        "rows_disagreeing_with_legacy_psv": 0,
+        "rows_compared": 107
+      },
+      "actual": {
+        "rows_disagreeing_with_legacy_psv": 0,
+        "rows_compared": 107
+      },
+      "source_of_truth": "field-by-field comparison of every loaded row against its legacy .psv line",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-NONNUMERIC-AMT",
+      "expected": {
+        "quarantined": true,
+        "legacy_zero_adopted_as_truth": false,
+        "legacy_value_replayed_exactly": true
+      },
+      "actual": {
+        "quarantined": true,
+        "legacy_zero_adopted_as_truth": false,
+        "legacy_value_replayed_exactly": true
+      },
+      "source_of_truth": "quarantine table rows vs the legacy .psv value for the same record",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-BILL-DATE",
+      "expected": {
+        "impossible_dates_quarantined": true,
+        "impossible_dates_landed": 0
+      },
+      "actual": {
+        "impossible_dates_quarantined": true,
+        "impossible_dates_landed": 0
+      },
+      "source_of_truth": "quarantine reasons recomputed from the target vs bill_date values in the records table",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-HDR-TRL",
+      "expected": {
+        "control_records_loaded": 0,
+        "files_with_trailer_mismatch_ingested": 0,
+        "trailer_reconciles_for_every_ingested_file": true
+      },
+      "actual": {
+        "control_records_loaded": 0,
+        "files_with_trailer_mismatch_ingested": 0,
+        "trailer_reconciles_for_every_ingested_file": true
+      },
+      "source_of_truth": "TRL positions 4-13 per file vs loaded+quarantined rows for that file, recomputed from the target",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-PARTIAL-FILE",
+      "expected": {
+        "files_without_matching_marker_ingested": 0
+      },
+      "actual": {
+        "files_without_matching_marker_ingested": 0
+      },
+      "source_of_truth": "landing census vs the source_file values present in the target tables",
+      "result": "pass"
+    },
+    {
+      "id": "EMPTY-POLL-NOOP",
+      "expected": {
+        "files_seen": 0,
+        "statements_executed": [],
+        "loaded_rows": 107,
+        "loaded_checksum": "ea3cd60c8d43fd0b48190f81c3175be1"
+      },
+      "actual": {
+        "files_seen": 0,
+        "statements_executed": [],
+        "loaded_rows": 107,
+        "loaded_checksum": "ea3cd60c8d43fd0b48190f81c3175be1"
+      },
+      "source_of_truth": "pipeline run against landing prefix /Volumes/ow_tp/bronze/landing/demo_emptypoll/custbill (no files), then the ns=demo totals re-read from the target",
+      "result": "pass"
+    }
+  ],
+  "unverified_paths": [
+    "Databricks Workflows job ow_tp_bronze_custbill was not triggered: the job is declared in infrastructure/terraform-databricks/jobs_bronze_custbill.tf and the parent applies the stack, so the notebook's statements were executed against the same serverless SQL warehouse instead of through a job run.",
+    "The legacy ingest poll (sftp_ingest_poll.ksh) was run without libfaketime: ksh segfaults under the LD_PRELOAD, so only TZ=UTC/LC_ALL=C were pinned for that step. It contributes no value to the parsed output, only archive-copy timestamps. The parse step that produces the golden baseline ran with the frozen clock.",
+    "Unity Catalog column masks over cust_id/cust_name are parent-owned (PII lands in cleartext here by design) and were not created or asserted by this unit."
+  ]
+}

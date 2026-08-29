@@ -11,6 +11,24 @@ SCHEMA = {
     "recon": ROOT / "docs/tech-partnerships/contracts/schema/recon-report.schema.json",
 }
 
+RECON_DIR = ROOT / "docs/tech-partnerships/recon"
+SKIP_DIRS = {".git", ".venv", "node_modules", "__pycache__"}
+
+def recon_candidates() -> list[Path]:
+    """Every recon artifact in the tree, wherever a unit chose to put it.
+
+    Units keep their evidence beside their pipeline code as often as under
+    docs/, so a gate that reads one directory silently passes the reports it
+    never opened.
+    """
+    found = {p for p in RECON_DIR.glob("*.json")}
+    found |= {
+        p
+        for p in ROOT.rglob("*.recon.json")
+        if not SKIP_DIRS & set(p.relative_to(ROOT).parts)
+    }
+    return sorted(found)
+
 def validate_file(path: Path, schema: dict) -> list[str]:
     try:
         data = json.loads(path.read_text())
@@ -47,7 +65,7 @@ def main() -> int:
     else:
         files = []
         legacy_prose = []
-        for candidate in sorted((ROOT / "docs/tech-partnerships/recon").glob("*.json")):
+        for candidate in recon_candidates():
             try:
                 data = json.loads(candidate.read_text())
             except Exception as exc:

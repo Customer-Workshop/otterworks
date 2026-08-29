@@ -8,7 +8,10 @@ reconciliation checks that must pass to the cent.
 Machine-readable recon reports must declare `"kind": "recon-report"` and use
 the `*.recon.json` filename convention. They are validated against
 `schema/recon-report.schema.json`; other JSON artifacts are reported
-informationally rather than treated as recon reports.
+informationally rather than treated as recon reports. `make tp-validate-recon`
+finds them anywhere in the tree, so a unit may keep its evidence beside its
+pipeline code or under `docs/tech-partnerships/recon/`; either way the gate reads
+it, and a report the gate never opened does not count as evidence.
 
 ## Shared rules (apply to every unit)
 

@@ -181,6 +181,16 @@ def scan_asset(path: Path, estate: Path) -> Asset:
     return asset
 
 
+def _resolve_sql_reference(reference: str, assets: list[Asset]) -> str | None:
+    matches = [
+        asset.path
+        for asset in assets
+        if reference == asset.path
+        or reference.endswith(f"/{asset.path}")
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def scheduled_assets(estate: Path) -> set[str]:
     """Resolve scheduled commands to exact ELT/procedure asset identities."""
     paths = [
@@ -211,16 +221,10 @@ def scheduled_assets(estate: Path) -> set[str]:
             continue
         text = path.read_text(errors="replace")
         for match in re.finditer(r"(?:[\w.-]+/)+[\w.-]+\.sql", text):
-            candidate = match.group(0)
-            matches = [
-                asset.path
-                for asset in assets
-                if candidate == asset.path
-                or candidate.endswith(f"/{asset.path}")
-            ]
-            if len(matches) == 1 and matches[0] not in named:
-                named.add(matches[0])
-                queued.append(matches[0])
+            candidate = _resolve_sql_reference(match.group(0), assets)
+            if candidate and candidate not in named:
+                named.add(candidate)
+                queued.append(candidate)
         for match in CALL_STATEMENT.finditer(text):
             procedure = (
                 f"{match.group('schema').lower()}.{match.group('name').lower()}"

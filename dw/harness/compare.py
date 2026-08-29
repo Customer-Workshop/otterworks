@@ -144,21 +144,24 @@ def compare(
     asset = legacy.table
     result = Result(asset=asset, status=Status.PASS)
 
+    if legacy.table != converted.table:
+        result.findings.append(
+            Finding("table", None, legacy.table, converted.table)
+        )
+
     if legacy.fingerprint != converted.fingerprint:
         detail = Finding(
             "fingerprint", None, legacy.fingerprint, converted.fingerprint
         )
         if not rerecord_reason:
-            return Result(
-                asset=asset,
-                status=Status.BLOCKED,
-                findings=[detail],
-                notes=[
-                    "input fingerprints differ, so the recorded manifest "
-                    "describes a different estate; re-record deliberately or "
-                    "pass --rerecord-reason to proceed with an audited override"
-                ],
+            result.status = Status.BLOCKED
+            result.findings.append(detail)
+            result.notes.append(
+                "input fingerprints differ, so the recorded manifest "
+                "describes a different estate; re-record deliberately or "
+                "pass --rerecord-reason to proceed with an audited override"
             )
+            return result
         result.notes.append(f"fingerprint override accepted: {rerecord_reason}")
         result.findings.append(detail)
 

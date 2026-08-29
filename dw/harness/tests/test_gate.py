@@ -111,6 +111,23 @@ def test_fingerprint_mismatch_blocks_and_override_is_audited(
     assert reason in report["notes"][0]
 
 
+def test_cross_table_fails_even_with_fingerprint_override() -> None:
+    legacy = _manifest("same")
+    converted = _manifest("same")
+    converted.table = "mart.other"
+
+    result = compare(
+        legacy,
+        converted,
+        rerecord_reason="intentional fixture rerecord",
+    )
+
+    assert result.status is Status.FAIL
+    assert result.findings[0].kind == "table"
+    assert result.findings[0].legacy == "mart.example"
+    assert result.findings[0].converted == "mart.other"
+
+
 def test_schema_incompatible_columns_fail_even_when_values_match() -> None:
     legacy = _manifest("same")
     converted = _manifest("same")

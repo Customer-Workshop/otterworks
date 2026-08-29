@@ -115,6 +115,10 @@ def test_spark_ordered_manifest_splits_composite_key() -> None:
             ("1", "2024-01-01 00:00:00", "11", "updated"),
             ("2", "2024-02-01 00:00:00", "20", "second"),
         ]
+        expected_digest = fold_ordered(
+            row_string(row) for row in ordered_rows
+        )[1]
+        assert manifest.ordered["digest"] == expected_digest
         permuted_digest = fold_ordered(
             row_string(row) for row in reversed(ordered_rows)
         )[1]

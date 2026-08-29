@@ -370,6 +370,12 @@ def build(table: str):
     }
 
 
+def ensure_table(name: str, df: DataFrame) -> None:
+    """Create the target empty if absent, so masks attach before any row is written."""
+    if not spark.catalog.tableExists(name):
+        df.limit(0).write.format("delta").saveAsTable(name)
+
+
 def merge(name: str, df: DataFrame, key_cols: list[str]) -> dict:
     """Make this run's population the state of this `ns`'s slice of the table.
 
@@ -463,19 +469,39 @@ if unit_rate > 5.0:
         f"are in {QUARANTINE_TABLE}; no target rows were written by this run."
     )
 
-for table, (target, key) in TARGETS.items():
-    results[table]["merge_metrics"] = merge(f"{CATALOG}.{SCHEMA}.{target}",
-                                            staged[table], ["ns", key.lower()])
-
 # COMMAND ----------
 # MAGIC %md ## PII column masks (ACC-PII-MASK)
+# MAGIC
+# MAGIC Installed **before** any business row is written: the targets are created empty
+# MAGIC and the masks attached first, so a cleartext value is never committed to a table
+# MAGIC whose PII columns are unmasked — on a first run or any later one. A mask failure
+# MAGIC aborts the run with this run's rows unpublished.
 
 # COMMAND ----------
+
+for table, (target, key) in TARGETS.items():
+    ensure_table(f"{CATALOG}.{SCHEMA}.{target}", staged[table])
 
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS {PII_READER_TABLE} (principal STRING)
     COMMENT 'Principals allowed to read bronze_wide PII cleartext'
 """)
+# The reader table is the mask's allow-list, so write access to it is equivalent to
+# cleartext access: it stays owner-only, and the load fails loudly rather than
+# publishing PII under a mask anything else can add itself to.
+WRITE_PRIVILEGES = ("MODIFY", "ALL_PRIVILEGES", "WRITE_FILES")
+write_grants = []
+for row in spark.sql(f"SHOW GRANTS ON TABLE {PII_READER_TABLE}").collect():
+    grant = {k.lower(): v for k, v in row.asDict().items()}
+    privilege = str(grant.get("actiontype") or grant.get("action_type") or "")
+    if privilege.upper() in WRITE_PRIVILEGES:
+        write_grants.append({"principal": grant.get("principal"),
+                             "privilege": privilege})
+if write_grants:
+    raise ValueError(
+        f"{PII_READER_TABLE} is the PII mask allow-list and must stay owner-only; "
+        f"write privileges are granted to {write_grants} — revoke them before loading")
+results["pii_reader_table_write_grants"] = write_grants
 spark.sql(f"""
     CREATE OR REPLACE FUNCTION {MASK_FUNCTION}(v STRING)
     RETURNS STRING
@@ -499,6 +525,15 @@ for table, cols in PII_COLUMNS.items():
         spark.sql(f"ALTER TABLE {target} ALTER COLUMN {c.lower()} "
                   f"SET MASK {MASK_FUNCTION}")
 results["pii_masked_columns"] = {t: len(c) for t, c in PII_COLUMNS.items()}
+
+# COMMAND ----------
+# MAGIC %md ## Publish rows into the masked targets
+
+# COMMAND ----------
+
+for table, (target, key) in TARGETS.items():
+    results[table]["merge_metrics"] = merge(f"{CATALOG}.{SCHEMA}.{target}",
+                                            staged[table], ["ns", key.lower()])
 
 # COMMAND ----------
 

@@ -61,6 +61,12 @@ The estate's one genuine **write-target collision**: `sp_suspend_overdue` mutate
 any wave discovers a second write-target collision, fan-out halts for that wave rather than being
 resolved locally.
 
+The collision is resolved by **column ownership, not row ownership** (D-30): dunning may update only
+the columns its source statement names (`status_cd`, `suspended_on`) on rows `silver_plans` and
+ingest created, matched on the declared key plus `ns`, with no insert, no delete, no DDL, and the
+owning unit's provenance columns left intact. It records which rows it touched and their prior
+values. Wave 5 reads those columns rather than re-deriving suspension state.
+
 ## Wave 5 — `gold_finance` + recon rollup
 
 The finance report is the only consumer we can actually see, so it is the closest thing to a

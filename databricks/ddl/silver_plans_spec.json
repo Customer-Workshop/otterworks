@@ -1,0 +1,402 @@
+{
+  "unit": "silver_plans",
+  "job_name": "ow_tp_silver_plans",
+  "catalog": "ow_tp",
+  "schema": "silver",
+  "bronze_schema": "bronze",
+  "source_artifact_path": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql",
+  "source_entrypoints": [
+    "pkg_plans.fn_list_plans",
+    "pkg_plans.fn_entitlement",
+    "pkg_plans.sp_change_plan"
+  ],
+  "bronze_inputs": [
+    "ow_tp.bronze.plans",
+    "ow_tp.bronze.subscriptions",
+    "ow_tp.bronze.tenants"
+  ],
+  "quarantine_table": "ow_tp.silver.quarantine_silver_plans",
+  "quarantine_reasons": [
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "FK_ORPHAN",
+    "NUMERIC_OVERFLOW"
+  ],
+  "quarantine_halt_threshold_pct": 5.0,
+  "quarantine_halt_basis": "subscription driver: one row per source OW_BILLING.SUBSCRIPTIONS row in ns plus one row per declared plan-change request this run applies — numerator and denominator on that one population",
+  "plans_constants": {
+    "tier_map": {
+      "1": "starter",
+      "2": "growth",
+      "3": "scale"
+    },
+    "tier_default": "UNKNOWN",
+    "status_map": {
+      "10": "active",
+      "20": "suspended",
+      "30": "cancelled"
+    },
+    "status_default": "UNKNOWN",
+    "active_flag": "Y",
+    "inactive_nvl_default": "N",
+    "sentinel_end_date": "2099-12-31",
+    "sentinel_literal": "TO_DATE('31-DEC-99', 'DD-MON-YY')",
+    "active_status_cd": 10,
+    "suspended_status_cd": 20,
+    "cancelled_status_cd": 30,
+    "list_order_by": [
+      "monthly_fee",
+      "code"
+    ],
+    "covering_pick_order_by": [
+      "starts_on DESC",
+      "id DESC"
+    ],
+    "closeout_order_by": [
+      "tenant_id",
+      "starts_on",
+      "id"
+    ],
+    "global_iteration_order_by": [
+      "tenant_id"
+    ]
+  },
+  "change_requests": {
+    "population_is_a_declared_job_input": true,
+    "note": "The source has no change-request table: sp_change_plan is called by the application with (p_tenant_id, p_plan_id, p_effective_on). The run's population is therefore declared here and derived deterministically from bronze so both sides of the recon can build the identical set independently.",
+    "derivation": "one request per tenant that has a covering subscription on entitlement_on: p_plan_id is the next plan after the tenant's covering plan in fn_list_plans order (monthly_fee, code) over the active plans, cyclically; p_effective_on is change_effective_on. A tenant with no covering subscription gets no request.",
+    "default_effective_on": "2026-03-01",
+    "overrides_are_pinned_from_transcripts": [
+      {
+        "tenant_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "10000000-0000-0000-0000-000000000002",
+        "effective_on": "2026-03-01",
+        "transcript": "PLANS-004"
+      },
+      {
+        "tenant_id": "00000000-0000-0000-0000-000000000004",
+        "plan_id": "10000000-0000-0000-0000-000000000003",
+        "effective_on": "2026-03-15",
+        "transcript": "PLANS-005"
+      }
+    ]
+  },
+  "entitlement_on": "2026-02-28",
+  "tables": [
+    {
+      "target": "plans",
+      "source_table": "OW_BILLING.PLANS",
+      "merge_key": [
+        "id",
+        "ns"
+      ],
+      "natural_key": [
+        "id"
+      ],
+      "cluster_by": [
+        "id",
+        "ns"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "tier_cd",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "tier",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "monthly_fee",
+          "target_type": "DECIMAL(14,2)",
+          "class": "money"
+        },
+        {
+          "name": "included_units",
+          "target_type": "DECIMAL(38,0)",
+          "class": "count"
+        },
+        {
+          "name": "overage_rate",
+          "target_type": "DECIMAL(12,6)",
+          "class": "rate"
+        },
+        {
+          "name": "active_yn",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "active_nvl",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "listed_by_fn_list_plans",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "list_seq",
+          "target_type": "INT",
+          "class": "code"
+        }
+      ]
+    },
+    {
+      "target": "subscriptions",
+      "source_table": "OW_BILLING.SUBSCRIPTIONS",
+      "merge_key": [
+        "id",
+        "ns"
+      ],
+      "natural_key": [
+        "id"
+      ],
+      "cluster_by": [
+        "tenant_id",
+        "id",
+        "ns"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "tenant_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "plan_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "starts_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "ends_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "status_cd",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "suspended_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "status_cd_before",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "ends_on_before",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "closed_by_change",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "closeout_seq",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "change_effective_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "change_plan_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "reactivated_from_suspended",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "cancelled_preserved",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "overlaps_new_subscription",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        }
+      ]
+    },
+    {
+      "target": "entitlements",
+      "source_table": "OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS",
+      "merge_key": [
+        "tenant_id",
+        "as_of_on",
+        "ns"
+      ],
+      "natural_key": [
+        "tenant_id",
+        "as_of_on"
+      ],
+      "cluster_by": [
+        "tenant_id",
+        "as_of_on",
+        "ns"
+      ],
+      "columns": [
+        {
+          "name": "tenant_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "as_of_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "subscription_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "plan_id",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "plan_code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "tier",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "monthly_fee",
+          "target_type": "DECIMAL(14,2)",
+          "class": "money"
+        },
+        {
+          "name": "included_units",
+          "target_type": "DECIMAL(38,0)",
+          "class": "count"
+        },
+        {
+          "name": "status_cd",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "subscription_status",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "effective_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "starts_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "ends_on",
+          "target_type": "TIMESTAMP",
+          "class": "timestamp"
+        },
+        {
+          "name": "candidate_rows",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "tied_starts_on_rows",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "plan_null_extended",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "cursor_predicate_covers",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "sentinel_predicate_covers",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "predicates_disagree",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "global_lookup_matched",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        },
+        {
+          "name": "global_lookup_plan_code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "global_lookup_candidate_rows",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "global_iteration_seq",
+          "target_type": "INT",
+          "class": "code"
+        },
+        {
+          "name": "stale_global_plan_code",
+          "target_type": "STRING",
+          "class": "text"
+        },
+        {
+          "name": "stale_global_mismatch",
+          "target_type": "BOOLEAN",
+          "class": "flag"
+        }
+      ]
+    }
+  ]
+}

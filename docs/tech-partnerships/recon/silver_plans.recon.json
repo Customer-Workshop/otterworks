@@ -1,0 +1,1366 @@
+{
+ "accounting": {
+  "entitlements": {
+   "basis": "one fn_entitlement row per tenant in ns whose returned cursor finds a covering subscription on 2026-02-28; a tenant with none yields an empty result set, per the contract's write-empty-result semantics",
+   "loaded_rows": 69,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 69
+  },
+  "plans": {
+   "basis": "every OW_BILLING.PLANS row in ns; fn_list_plans' active filter is carried as columns (active_nvl, listed_by_fn_list_plans, list_seq) rather than dropping rows",
+   "loaded_rows": 3,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 3
+  },
+  "subscriptions": {
+   "basis": "every OW_BILLING.SUBSCRIPTIONS row in ns, plus one new subscription per declared sp_change_plan request this run applies",
+   "loaded_rows": 138,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 138
+  }
+ },
+ "checks": [
+  {
+   "actual": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "expected": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "id": "SRC-SHA",
+   "result": "pass",
+   "source_of_truth": "procs/oracle/transcripts/ORACLE_SOURCE_SHA vs sha256 over services/legacy-billing/db/oracle/**/*.sql in the checked-out tree"
+  },
+  {
+   "actual": {
+    "plans": 3,
+    "subscriptions": 69,
+    "tenants": 69
+   },
+   "expected": {
+    "plans": 3,
+    "subscriptions": 69,
+    "tenants": 69
+   },
+   "id": "SRC-COUNTS",
+   "note": "the subscriptions figure is the bronze source population; the accounting basis adds one row per declared sp_change_plan request this run applies",
+   "result": "pass",
+   "source_of_truth": "live OW_BILLING counts vs the bronze slice the notebook read"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 3
+   },
+   "basis": "every OW_BILLING.PLANS row in ns; fn_list_plans' active filter is carried as columns (active_nvl, listed_by_fn_list_plans, list_seq) rather than dropping rows",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 3
+   },
+   "id": "ACC-QUAR-PLANS",
+   "loaded_rows": 3,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.plans, recomputed from Delta after the MERGE"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 138
+   },
+   "basis": "every OW_BILLING.SUBSCRIPTIONS row in ns, plus one new subscription per declared sp_change_plan request this run applies",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 138
+   },
+   "id": "ACC-QUAR-SUBSCRIPTIONS",
+   "loaded_rows": 138,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.subscriptions, recomputed from Delta after the MERGE"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 69
+   },
+   "basis": "one fn_entitlement row per tenant in ns whose returned cursor finds a covering subscription on 2026-02-28; a tenant with none yields an empty result set, per the contract's write-empty-result semantics",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 69
+   },
+   "id": "ACC-QUAR-ENTITLEMENTS",
+   "loaded_rows": 69,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.entitlements, recomputed from Delta after the MERGE"
+  },
+  {
+   "actual": {
+    "over_threshold": false,
+    "threshold_pct": 5.0
+   },
+   "basis": "subscription driver: one row per source OW_BILLING.SUBSCRIPTIONS row in ns plus one row per declared plan-change request this run applies \u2014 numerator and denominator on that one population",
+   "by_source_table_and_reason": [],
+   "closed_reason_set": [
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "FK_ORPHAN",
+    "NUMERIC_OVERFLOW"
+   ],
+   "expected": {
+    "over_threshold": false,
+    "threshold_pct": 5.0
+   },
+   "id": "ACC-QUAR-HALT-BASIS",
+   "physical_quarantine_rows": 0,
+   "quarantine_persisted_before_the_halt_was_evaluated": true,
+   "rate_pct": 0.0,
+   "rejected_rows": 0,
+   "result": "pass",
+   "source_of_truth": "the single declared halt basis, numerator and denominator on the same population",
+   "source_rows": 138
+  },
+  {
+   "actual": {
+    "entitlements": 69,
+    "plans": 3,
+    "subscriptions": 138
+   },
+   "expected": {
+    "entitlements": 69,
+    "plans": 3,
+    "subscriptions": 138
+   },
+   "id": "TGT-COUNTS",
+   "quarantine_rows": 0,
+   "result": "pass",
+   "source_of_truth": "count(*) over ow_tp.silver.* for ns=demo, read back from Delta"
+  },
+  {
+   "actual": {
+    "entitlements.monthly_fee_total": "8831.00",
+    "plans.monthly_fee_total": "697.00",
+    "plans.monthly_fee_total_listed_by_fn_list_plans": "697.00"
+   },
+   "expected": {
+    "entitlements.monthly_fee_total": "8831.00",
+    "plans.monthly_fee_total": "697.00",
+    "plans.monthly_fee_total_listed_by_fn_list_plans": "697.00"
+   },
+   "id": "ACC-MONEY",
+   "null_money_rows": {
+    "entitlements.monthly_fee_null_extended": 0,
+    "plans.monthly_fee": 0
+   },
+   "quarantine_rate_pct_on_the_declared_basis": 0.0,
+   "quarantined_rows_alongside_these_figures": 0,
+   "result": "pass",
+   "source_of_truth": "live Oracle PLANS/fn_entitlement money vs sum() over the Delta targets"
+  },
+  {
+   "actual": {
+    "entitlements.monthly_fee": "DECIMAL(14,2)",
+    "plans.monthly_fee": "DECIMAL(14,2)"
+   },
+   "expected": {
+    "entitlements.monthly_fee": "DECIMAL(14,2)",
+    "plans.monthly_fee": "DECIMAL(14,2)"
+   },
+   "id": "ACC-MONEY-TYPES",
+   "note": "a DOUBLE or FLOAT anywhere on a money lineage fails the unit; the bronze inputs are DECIMAL and every cast in the notebook is to DECIMAL(14,2)",
+   "result": "pass",
+   "source_of_truth": "ow_tp.information_schema.columns \u2014 the physical column types, not a claim"
+  },
+  {
+   "actual": {
+    "rows_compared": 3,
+    "rows_differing": 0
+   },
+   "columns_compared": [
+    "active_nvl",
+    "active_yn",
+    "code",
+    "included_units",
+    "listed_by_fn_list_plans",
+    "monthly_fee",
+    "overage_rate",
+    "tier",
+    "tier_cd"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_compared": 3,
+    "rows_differing": 0
+   },
+   "id": "PLANS-PARITY",
+   "result": "pass",
+   "source_of_truth": "live OW_BILLING.PLANS (with fn_list_plans' own DECODE and NVL evaluated by Oracle) vs ow_tp.silver.plans, field by field"
+  },
+  {
+   "actual": {
+    "rows_compared": 69,
+    "rows_differing": 0
+   },
+   "columns_compared": [
+    "candidate_rows",
+    "cursor_predicate_covers",
+    "effective_on",
+    "ends_on",
+    "included_units",
+    "monthly_fee",
+    "plan_code",
+    "plan_id",
+    "plan_null_extended",
+    "sentinel_predicate_covers",
+    "starts_on",
+    "status_cd",
+    "subscription_id",
+    "subscription_status",
+    "tied_starts_on_rows",
+    "tier"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_compared": 69,
+    "rows_differing": 0
+   },
+   "id": "ENTITLEMENT-PARITY",
+   "result": "pass",
+   "source_of_truth": "fn_entitlement's returned cursor, evaluated by Oracle per tenant, vs ow_tp.silver.entitlements, field by field"
+  },
+  {
+   "actual": {
+    "rows_compared": 138,
+    "rows_differing": 0
+   },
+   "columns_compared": [
+    "ends_on",
+    "plan_id",
+    "starts_on",
+    "status_cd",
+    "tenant_id"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_compared": 138,
+    "rows_differing": 0
+   },
+   "id": "SUBSCRIPTION-PARITY",
+   "note": "the procedure was never executed against the source (see unverified_paths)",
+   "result": "pass",
+   "source_of_truth": "the SUBSCRIPTIONS end state sp_change_plan would leave \u2014 re-expressed read-only and evaluated by Oracle \u2014 vs ow_tp.silver.subscriptions, field by field"
+  },
+  {
+   "actual": {
+    "oracle_TO_DATE_31_DEC_99": "2099-12-31",
+    "pinned_target_literal": "2099-12-31",
+    "tenants_covered_by_the_sentinel_predicate": 69
+   },
+   "expected": {
+    "oracle_TO_DATE_31_DEC_99": "2099-12-31",
+    "pinned_target_literal": "2099-12-31",
+    "tenants_covered_by_the_sentinel_predicate": 69
+   },
+   "id": "ACC-SENTINEL-99",
+   "note": "the port pins DATE'2099-12-31' from the spec instead of parsing '31-DEC-99', because a two-digit-year pivot is a property of the engine and its session settings rather than of the source text; the runtime's own parse is measured beside it. A 1999 sentinel would have expired every open subscription, which is the bug this check is for, not a data finding",
+   "result": "pass",
+   "source_of_truth": "TO_DATE('31-DEC-99','DD-MON-YY') evaluated by Oracle vs the pinned literal this port uses, with the covered population on both sides",
+   "spark_parse_of_the_same_literal": "2099-12-31",
+   "spark_two_digit_year_pivot_agrees_with_oracle": true,
+   "subscriptions_with_a_null_ends_on": {
+    "oracle": 69,
+    "target": 69
+   },
+   "the_two_predicates_are_distinct": {
+    "cursor": "(s.ends_on IS NULL OR s.ends_on >= p_on)",
+    "oracle_rows_where_they_disagree": 0,
+    "package_global_lookup": "NVL(s.ends_on, TO_DATE('31-DEC-99','DD-MON-YY')) >= p_on",
+    "target_tenants_where_they_disagree": 0
+   }
+  },
+  {
+   "actual": {
+    "join_kept_every_subscription": true,
+    "subscriptions_kept_with_a_missing_plan": 0
+   },
+   "expected": {
+    "join_kept_every_subscription": true,
+    "subscriptions_kept_with_a_missing_plan": 0
+   },
+   "id": "ACC-OUTER-JOIN",
+   "note": "the population is zero on this seed and is reported as a measured zero, not as a demonstration; the direction is still proven by the row counts, since an inner join would have dropped rows",
+   "null_extended_entitlement_rows": {
+    "oracle": 0,
+    "target": 0
+   },
+   "result": "pass",
+   "source_of_truth": "p.id (+) = s.plan_id in fn_entitlement, evaluated by Oracle, vs the LEFT JOIN in the notebook \u2014 direction and null-extension both"
+  },
+  {
+   "actual": {
+    "tenant_starts_on_groups_with_a_tie": 0,
+    "tie_break": [
+     "starts_on DESC",
+     "id DESC"
+    ]
+   },
+   "expected": {
+    "tenant_starts_on_groups_with_a_tie": 0,
+    "tie_break": [
+     "starts_on DESC",
+     "id DESC"
+    ]
+   },
+   "id": "ACC-ROWNUM",
+   "note": "measured, not asserted: both ROWNUM paths remain listed in unverified_paths because a tie would be decided by the source's plan, not by its text",
+   "result": "pass",
+   "rows_with_more_than_one_candidate": 0,
+   "source_of_truth": "the tie population measured on both sides, and the deterministic pick this port pinned for both ROWNUM sites"
+  },
+  {
+   "actual": {
+    "cancelled_preserved": 0,
+    "cancelled_visited": 0,
+    "closeout_status_from_20": 10,
+    "closeout_status_from_30": 30
+   },
+   "expected": {
+    "cancelled_preserved": 0,
+    "cancelled_visited": 0,
+    "closeout_status_from_20": 10,
+    "closeout_status_from_30": 30
+   },
+   "id": "ACC-CANCELLED",
+   "note": "no cancelled subscription is open on this seed, so the 30-stays-30 branch is measured at zero rows and proven on the expression instead (trg_sub_no_uncancel, D-16); the 20 \u2192 10 flip is customer-visible, is reproduced rather than corrected, and its population is named",
+   "result": "pass",
+   "source_of_truth": "DECODE(r.status_cd, 30, 30, 10) evaluated by Oracle, and the close-out population on both sides",
+   "suspended_to_active_flips": {
+    "oracle": 1,
+    "target": 1
+   }
+  },
+  {
+   "actual": {
+    "effective_on_minus_one_day": "2026-02-28 00:00:00",
+    "new_subscriptions": 69,
+    "open_subscriptions_left_overlapping_by_the_strict_less_than": 0,
+    "open_subscriptions_starting_exactly_on_the_effective_date": 0,
+    "subscriptions_closed": 69
+   },
+   "closeout_order_pinned_to": [
+    "tenant_id",
+    "starts_on",
+    "id"
+   ],
+   "expected": {
+    "effective_on_minus_one_day": "2026-02-28 00:00:00",
+    "new_subscriptions": 69,
+    "open_subscriptions_left_overlapping_by_the_strict_less_than": 0,
+    "open_subscriptions_starting_exactly_on_the_effective_date": 0,
+    "subscriptions_closed": 69
+   },
+   "id": "CHANGE-PLAN-CLOSEOUT",
+   "note": "every seeded subscription starts at midnight, so the time-carrying population is a measured zero; the expression itself is proven against Oracle's own DATE-with-time arithmetic in the dialect probe",
+   "oracle_date_arithmetic_with_a_time_component": "2026-02-28 06:30:00",
+   "requests": 69,
+   "requests_pinned_by_a_transcript": 2,
+   "result": "pass",
+   "source_of_truth": "the request population derived by the spec's rule, evaluated read-only by Oracle, vs ow_tp.silver.subscriptions after the MERGE",
+   "time_component_carried_rows": {
+    "oracle": 0,
+    "target": 0
+   }
+  },
+  {
+   "actual": {
+    "requests": 69,
+    "sets_identical": true
+   },
+   "expected": {
+    "requests": 69,
+    "sets_identical": true
+   },
+   "id": "CHANGE-REQUEST-DERIVATION",
+   "only_in_oracle": [],
+   "only_in_target": [],
+   "result": "pass",
+   "rule": "one request per tenant that has a covering subscription on entitlement_on: p_plan_id is the next plan after the tenant's covering plan in fn_list_plans order (monthly_fee, code) over the active plans, cyclically; p_effective_on is change_effective_on. A tenant with no covering subscription gets no request.",
+   "source_of_truth": "the spec's derivation rule evaluated independently on Oracle and on bronze"
+  },
+  {
+   "actual": {
+    "keys_compared": 69,
+    "keys_differing": 0
+   },
+   "differences": [],
+   "expected": {
+    "keys_compared": 69,
+    "keys_differing": 0
+   },
+   "id": "ACC-MERGE-KEY",
+   "result": "pass",
+   "source_of_truth": "pkg_ow_util.f_md5_uuid(tenant || plan || TO_CHAR(effective_on,'YYYY-MM-DD')) evaluated by Oracle vs the target's own derivation of the same id (D-14)"
+  },
+  {
+   "actual": {
+    "ns": "demo",
+    "rows_without_ns": {
+     "entitlements": 0,
+     "plans": 0,
+     "subscriptions": 0
+    },
+    "volume_path": "/Volumes/ow_tp/bronze/landing/demo/silver_plans"
+   },
+   "expected": {
+    "ns": "demo",
+    "rows_without_ns": {
+     "entitlements": 0,
+     "plans": 0,
+     "subscriptions": 0
+    },
+    "volume_path": "/Volumes/ow_tp/bronze/landing/demo/silver_plans"
+   },
+   "id": "ACC-NS",
+   "job_parameter": "ns",
+   "merge_keys": {
+    "entitlements": [
+     "tenant_id",
+     "as_of_on",
+     "ns"
+    ],
+    "plans": [
+     "id",
+     "ns"
+    ],
+    "subscriptions": [
+     "id",
+     "ns"
+    ]
+   },
+   "result": "pass",
+   "rows_in_other_namespaces_left_untouched": {
+    "entitlements": 0,
+    "plans": 0,
+    "subscriptions": 0
+   },
+   "source_of_truth": "ow_tp.silver.* for ns=demo, and the run summary path the notebook wrote"
+  },
+  {
+   "actual": {
+    "entitlements": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    },
+    "plans": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    },
+    "quarantine_silver_plans": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    },
+    "subscriptions": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    }
+   },
+   "cold_load_commits": {
+    "entitlements": {
+     "exists": true,
+     "is_this_run": false,
+     "rows_inserted": 69,
+     "timestamp": "2026-08-29 10:44:59",
+     "version": 1,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829103922a",
+      "job_run_id": "92367514941965"
+     }
+    },
+    "plans": {
+     "exists": true,
+     "is_this_run": false,
+     "rows_inserted": 3,
+     "timestamp": "2026-08-29 10:44:18",
+     "version": 1,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829103922a",
+      "job_run_id": "92367514941965"
+     }
+    },
+    "quarantine_silver_plans": {
+     "exists": false,
+     "note": "no MERGE commit on this target has ever inserted a row"
+    },
+    "subscriptions": {
+     "exists": true,
+     "is_this_run": false,
+     "rows_inserted": 138,
+     "timestamp": "2026-08-29 10:44:51",
+     "version": 1,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829103922a",
+      "job_run_id": "92367514941965"
+     }
+    }
+   },
+   "expected": {
+    "entitlements": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    },
+    "plans": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    },
+    "quarantine_silver_plans": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    },
+    "subscriptions": {
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0
+    }
+   },
+   "first_run": {
+    "batch_id": "20260829111008a",
+    "job_run_id": 757683422455768,
+    "merge_metrics": {
+     "entitlements": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 4,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 5,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+       "job_run_id": "757683422455768"
+      }
+     },
+     "plans": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 4,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 5,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+       "job_run_id": "757683422455768"
+      }
+     },
+     "quarantine_silver_plans": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 4,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 5,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+       "job_run_id": "757683422455768"
+      }
+     },
+     "subscriptions": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 4,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 5,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+       "job_run_id": "757683422455768"
+      }
+     }
+    }
+   },
+   "id": "ACC-IDEM",
+   "result": "pass",
+   "second_run": {
+    "attribution": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (904388531911235, 477429957453307); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+    "batch_id": "20260829111008b",
+    "job_run_id": 904388531911235,
+    "pre_run_versions": {
+     "entitlements": 5,
+     "plans": 5,
+     "quarantine_silver_plans": 5,
+     "subscriptions": 5
+    }
+   },
+   "source_of_truth": "DESCRIBE HISTORY on each target, restricted to commits newer than the target's pre-run version and written by the second run's own job.jobRunId",
+   "target_counts_after_each_run": {
+    "first": {
+     "entitlements": {
+      "distinct_origins": 1,
+      "rows": 69,
+      "rows_stamped_by_this_batch": 0,
+      "rows_without_ns": 0
+     },
+     "plans": {
+      "distinct_origins": 1,
+      "rows": 3,
+      "rows_stamped_by_this_batch": 0,
+      "rows_without_ns": 0
+     },
+     "quarantine_silver_plans": {
+      "rows": 0
+     },
+     "subscriptions": {
+      "distinct_origins": 2,
+      "rows": 138,
+      "rows_stamped_by_this_batch": 0,
+      "rows_without_ns": 0
+     }
+    },
+    "second": {
+     "entitlements": {
+      "distinct_origins": 1,
+      "rows": 69,
+      "rows_stamped_by_this_batch": 0,
+      "rows_without_ns": 0
+     },
+     "plans": {
+      "distinct_origins": 1,
+      "rows": 3,
+      "rows_stamped_by_this_batch": 0,
+      "rows_without_ns": 0
+     },
+     "quarantine_silver_plans": {
+      "rows": 0
+     },
+     "subscriptions": {
+      "distinct_origins": 2,
+      "rows": 138,
+      "rows_stamped_by_this_batch": 0,
+      "rows_without_ns": 0
+     }
+    }
+   }
+  },
+  {
+   "actual": {
+    "codes": [
+     "STARTER",
+     "GROWTH",
+     "SCALE"
+    ],
+    "fees": [
+     "49.00",
+     "149.00",
+     "499.00"
+    ]
+   },
+   "entrypoint": "pkg_plans.fn_list_plans",
+   "expected": {
+    "codes": [
+     "STARTER",
+     "GROWTH",
+     "SCALE"
+    ],
+    "fees": [
+     "49.00",
+     "149.00",
+     "499.00"
+    ]
+   },
+   "id": "TRANSCRIPT-PLANS-001",
+   "oracle_live": {
+    "codes": [
+     "STARTER",
+     "GROWTH",
+     "SCALE"
+    ],
+    "fees": [
+     "49.00",
+     "149.00",
+     "499.00"
+    ]
+   },
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/plans/PLANS-001.json (pkg_plans.fn_list_plans), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.plans, the rows carrying listed_by_fn_list_plans, in list_seq order \u2014 the function's own ORDER BY monthly_fee, code"
+  },
+  {
+   "actual": {
+    "included_units": "100",
+    "plan_code": "STARTER",
+    "subscription_status": "active",
+    "tier": "starter"
+   },
+   "as_of": "2026-02-28",
+   "entrypoint": "pkg_plans.fn_entitlement",
+   "expected": {
+    "included_units": "100",
+    "plan_code": "STARTER",
+    "subscription_status": "active",
+    "tier": "starter"
+   },
+   "id": "TRANSCRIPT-PLANS-002",
+   "oracle_live": {
+    "included_units": "100",
+    "plan_code": "STARTER",
+    "subscription_status": "active",
+    "tier": "starter"
+   },
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/plans/PLANS-002.json (pkg_plans.fn_entitlement), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.entitlements for this tenant at as_of_on = 2026-02-28",
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  {
+   "actual": {
+    "included_units": "500",
+    "plan_code": "GROWTH",
+    "subscription_status": "suspended",
+    "tier": "growth"
+   },
+   "as_of": "2026-02-28",
+   "entrypoint": "pkg_plans.fn_entitlement",
+   "expected": {
+    "included_units": "500",
+    "plan_code": "GROWTH",
+    "subscription_status": "suspended",
+    "tier": "growth"
+   },
+   "id": "TRANSCRIPT-PLANS-003",
+   "oracle_live": {
+    "included_units": "500",
+    "plan_code": "GROWTH",
+    "subscription_status": "suspended",
+    "tier": "growth"
+   },
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/plans/PLANS-003.json (pkg_plans.fn_entitlement), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.entitlements for this tenant at as_of_on = 2026-02-28",
+   "tenant_id": "00000000-0000-0000-0000-000000000002"
+  },
+  {
+   "actual": {
+    "subscriptions": [
+     {
+      "ends_on": "2026-02-28",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "status": "active"
+     },
+     {
+      "ends_on": null,
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-03-01",
+      "status": "active"
+     }
+    ]
+   },
+   "entrypoint": "pkg_plans.sp_change_plan",
+   "expected": {
+    "subscriptions": [
+     {
+      "ends_on": "2026-02-28",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "status": "active"
+     },
+     {
+      "ends_on": null,
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-03-01",
+      "status": "active"
+     }
+    ]
+   },
+   "id": "TRANSCRIPT-PLANS-004",
+   "inputs": {
+    "effective_on": "2026-03-01",
+    "plan_id": "10000000-0000-0000-0000-000000000002",
+    "tenant_id": "00000000-0000-0000-0000-000000000001"
+   },
+   "note": "sp_change_plan mutates SUBSCRIPTIONS and was not executed: the Oracle side is the read-only re-expression evaluated by Oracle (see unverified_paths)",
+   "oracle_live_read_only_reexpression": [
+    {
+     "ends_on": "2026-02-28",
+     "origin": "closed",
+     "plan_id": "10000000-0000-0000-0000-000000000001",
+     "starts_on": "2026-01-01",
+     "status": "active"
+    },
+    {
+     "ends_on": null,
+     "origin": "inserted",
+     "plan_id": "10000000-0000-0000-0000-000000000002",
+     "starts_on": "2026-03-01",
+     "status": "active"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/plans/PLANS-004.json (pkg_plans.sp_change_plan), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.subscriptions for this tenant, in starts_on order: the row the close-out loop closed and the row the static equivalent of the EXECUTE IMMEDIATE INSERT added",
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  {
+   "actual": {
+    "subscriptions": [
+     {
+      "ends_on": "2026-03-14",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "status": "active"
+     },
+     {
+      "ends_on": null,
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-03-15",
+      "status": "active"
+     }
+    ]
+   },
+   "entrypoint": "pkg_plans.sp_change_plan",
+   "expected": {
+    "subscriptions": [
+     {
+      "ends_on": "2026-03-14",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01",
+      "status": "active"
+     },
+     {
+      "ends_on": null,
+      "plan_id": "10000000-0000-0000-0000-000000000003",
+      "starts_on": "2026-03-15",
+      "status": "active"
+     }
+    ]
+   },
+   "id": "TRANSCRIPT-PLANS-005",
+   "inputs": {
+    "effective_on": "2026-03-15",
+    "plan_id": "10000000-0000-0000-0000-000000000003",
+    "tenant_id": "00000000-0000-0000-0000-000000000004"
+   },
+   "note": "sp_change_plan mutates SUBSCRIPTIONS and was not executed: the Oracle side is the read-only re-expression evaluated by Oracle (see unverified_paths)",
+   "oracle_live_read_only_reexpression": [
+    {
+     "ends_on": "2026-03-14",
+     "origin": "closed",
+     "plan_id": "10000000-0000-0000-0000-000000000001",
+     "starts_on": "2026-01-01",
+     "status": "active"
+    },
+    {
+     "ends_on": null,
+     "origin": "inserted",
+     "plan_id": "10000000-0000-0000-0000-000000000003",
+     "starts_on": "2026-03-15",
+     "status": "active"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/plans/PLANS-005.json (pkg_plans.sp_change_plan), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ow_tp.silver.subscriptions for this tenant, in starts_on order: the row the close-out loop closed and the row the static equivalent of the EXECUTE IMMEDIATE INSERT added",
+   "tenant_id": "00000000-0000-0000-0000-000000000004"
+  }
+ ],
+ "failed_checks": [],
+ "generated_at": "2026-08-29T11:23:22Z",
+ "idempotency_rerun": {
+  "evidence": "second identical run (batch 20260829111008b, job run 904388531911235): {\"plans\": {\"rows_inserted\": 0, \"rows_updated\": 0, \"rows_deleted\": 0}, \"subscriptions\": {\"rows_inserted\": 0, \"rows_updated\": 0, \"rows_deleted\": 0}, \"entitlements\": {\"rows_inserted\": 0, \"rows_updated\": 0, \"rows_deleted\": 0}, \"quarantine_silver_plans\": {\"rows_inserted\": 0, \"rows_updated\": 0, \"rows_deleted\": 0}}; commits attributed by job.jobRunId and each target's pre-run Delta version {\"plans\": 5, \"subscriptions\": 5, \"entitlements\": 5, \"quarantine_silver_plans\": 5}",
+  "performed": true,
+  "result": "pass"
+ },
+ "kind": "recon-report",
+ "measured_populations": {
+  "inactive_plans_loaded_but_unlisted": {
+   "oracle": 0,
+   "target": 0
+  },
+  "null_extended_plan_joins": {
+   "oracle": 0,
+   "target": 0
+  },
+  "overlapping_subscriptions_from_the_strict_less_than": {
+   "oracle": 0,
+   "target": 0
+  },
+  "plans_with_a_null_active_yn": {
+   "note": "NVL(active_yn,'N') = 'Y' makes a NULL active_yn inactive",
+   "oracle": 0,
+   "target": 0
+  },
+  "source_reapply_exposure": {
+   "note": "the source's INSERT has no DUP_VAL_ON_INDEX handler, so re-applying a change closes the open subscriptions and then raises ORA-00001, leaving the close-outs applied and no new subscription. This port does not reproduce that partial-effect failure: it MERGEs on the D-14 id plus ns, and the second identical run changed nothing. The exposure is measured on the request population above and is a declared divergence, not parity.",
+   "requests_whose_new_id_already_exists_in_the_source": 0,
+   "target_requests_whose_new_id_already_exists_in_bronze": 0
+  },
+  "suspended_to_active_flips_on_closeout": {
+   "oracle": 1,
+   "target": 1
+  },
+  "tenants_that_would_hit_the_stale_globals_mismatch": {
+   "note": "every tenant on this seed has a covering subscription, so the mismatch population is a measured zero; the walk is still reconstructed and published as columns so a non-zero population would be visible",
+   "oracle": 0,
+   "oracle_tenants_whose_global_lookup_finds_nothing": 0,
+   "target": 0,
+   "target_entitlement_rows_carrying_a_mismatch": 0
+  },
+  "tied_starts_on": {
+   "oracle": 0,
+   "target": 0
+  },
+  "unknown_tier_plans": {
+   "note": "an unmapped or NULL tier_cd is the literal 'UNKNOWN', not a NULL and not a quarantine",
+   "oracle": 0,
+   "target": 0
+  }
+ },
+ "money": {
+  "money_column_types": {
+   "entitlements.monthly_fee": "DECIMAL(14,2)",
+   "plans.monthly_fee": "DECIMAL(14,2)"
+  },
+  "oracle": {
+   "entitlements.monthly_fee_total": "8831.00",
+   "plans.monthly_fee_total": "697.00"
+  },
+  "quarantined_rows_alongside_every_figure": 0,
+  "target": {
+   "entitlements.included_units_total": "29400",
+   "entitlements.monthly_fee_null_extended_rows": 0,
+   "entitlements.monthly_fee_total": "8831.00",
+   "plans.monthly_fee_null_rows": 0,
+   "plans.monthly_fee_total": "697.00",
+   "plans.monthly_fee_total_listed_by_fn_list_plans": "697.00"
+  }
+ },
+ "namespace": "demo",
+ "planted_anomaly_detections": {
+  "actual_set": [
+   "ANOM-DYNAMIC-SQL",
+   "ANOM-PKG-GLOBAL-STATE",
+   "ANOM-ROWBYROW-CLOSEOUT",
+   "ANOM-ROWNUM-TIEBREAK",
+   "ANOM-SENTINEL-DATE",
+   "ANOM-SWALLOWED-EXCEPTION"
+  ],
+  "detail": {
+   "ANOM-DYNAMIC-SQL": {
+    "detected": true,
+    "detector": "the statement is read from the source and re-expressed as the static write in v_subs_src; nothing in this notebook assembles SQL from source data",
+    "new_subscriptions_written_by_the_static_equivalent": 69,
+    "source_construct": "v_sql := 'INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, status_cd) VALUES (:1, :2, :3, :4, 10)'; EXECUTE IMMEDIATE v_sql USING ... (02_pkg_plans.sql:100-104) \u2014 dynamic SQL for a perfectly static INSERT",
+    "target_behaviour": "static INSERT through the subscriptions MERGE, keyed by f_md5_uuid(tenant || plan || TO_CHAR(effective_on,'YYYY-MM-DD')) plus ns (D-20, D-14)"
+   },
+   "ANOM-PKG-GLOBAL-STATE": {
+    "detected": true,
+    "detector": "the walk is reconstructed in the declared tenant order and the value the swallowed exception leaves behind is carried as stale_global_plan_code with stale_global_mismatch beside it",
+    "entitlement_rows_carrying_a_mismatch": 0,
+    "global_iteration_order_pinned_to": [
+     "tenant_id"
+    ],
+    "note": "a tenant with no covering subscription has no entitlement row at all (the contract's write-empty-result shape), so the mismatch population is measured over every tenant in ns rather than over the rows the table holds",
+    "source_construct": "g_last_tenant_id := p_tenant_id is assigned before the SELECT ... INTO g_last_plan_code, whose WHEN OTHERS THEN NULL swallows NO_DATA_FOUND, and nothing ever invalidates the pair (02_pkg_plans.sql:39-50)",
+    "target_behaviour": "no package-global equivalent is built (D-10): global_lookup_matched, global_lookup_plan_code, stale_global_plan_code and stale_global_mismatch are columns on the entitlement row",
+    "tenants_that_would_hit_the_mismatch": 0
+   },
+   "ANOM-ROWBYROW-CLOSEOUT": {
+    "cancelled_preserved": 0,
+    "cancelled_visited": 0,
+    "detected": true,
+    "detector": "the loop is re-expressed set-wise with the order pinned and published as closeout_seq; each row's new state is a function of its own old state only, so the pinned order changes no value here \u2014 the order-dependence is in the source's shape",
+    "open_subscriptions_left_overlapping_by_the_strict_less_than": 0,
+    "open_subscriptions_starting_exactly_on_the_effective_date": 0,
+    "source_construct": "FOR r IN c_open_subs LOOP UPDATE subscriptions SET ends_on = p_effective_on - 1, status_cd = DECODE(r.status_cd, 30, 30, 10) WHERE CURRENT OF c_open_subs (02_pkg_plans.sql:90-95), over a FOR UPDATE cursor with no ORDER BY",
+    "subscriptions_closed": 69,
+    "suspended_to_active_flips": 1,
+    "target_behaviour": "pinned close-out order ['tenant_id', 'starts_on', 'id']; ends_on = effective_on - INTERVAL 1 DAY with any time component carried (D-07/T7); status 30 stays 30 (trg_sub_no_uncancel, D-16) and status 20 becomes 10, which is reproduced, not corrected"
+   },
+   "ANOM-ROWNUM-TIEBREAK": {
+    "detected": true,
+    "detector": "both picks are pinned to row_number() OVER (PARTITION BY tenant_id ORDER BY starts_on DESC, id DESC) = 1 (D-08) and the candidate and tie counts are carried on every entitlement row",
+    "rows_with_more_than_one_candidate": 0,
+    "rows_with_tied_starts_on": 0,
+    "source_construct": "AND ROWNUM = 1 with no ORDER BY in the global lookup (02_pkg_plans.sql:47), and ROWNUM <= 1 after ORDER BY s.starts_on DESC in the returned cursor (02_pkg_plans.sql:67-68) \u2014 neither is total, so a tie is decided by the plan",
+    "target_behaviour": "deterministic pick; the tie population is measured and the path is listed in the recon report's unverified paths rather than claimed as parity",
+    "tie_break_pinned_to": [
+     "starts_on DESC",
+     "id DESC"
+    ]
+   },
+   "ANOM-SENTINEL-DATE": {
+    "detected": true,
+    "detector": "the sentinel is pinned to DATE'2099-12-31' from the spec and both predicates are evaluated per row; the runtime's own parse of '31-DEC-99' is probed beside it and reported as measured, since a two-digit-year pivot belongs to the engine and not to the source text",
+    "pinned_literal": "2099-12-31",
+    "source_construct": "fn_entitlement's package-global lookup: NVL(s.ends_on, TO_DATE('31-DEC-99','DD-MON-YY')) >= p_on (02_pkg_plans.sql:46)",
+    "spark_parse_of_the_literal": "2099-12-31",
+    "subscriptions_with_a_null_ends_on": 69,
+    "target_behaviour": "the 2099 literal is used for the sentinel predicate and the cursor keeps its own (ends_on IS NULL OR ends_on >= p_on) form; the two predicates are two columns",
+    "tenants_covered_by_the_cursor_predicate": 69,
+    "tenants_covered_by_the_sentinel_predicate": 69,
+    "tenants_where_the_two_predicates_disagree": 0
+   },
+   "ANOM-SWALLOWED-EXCEPTION": {
+    "detected": true,
+    "detector": "the lookup's own outcome is a column (global_lookup_matched), so a swallowed failure is visible rather than silent (T12)",
+    "lookups_that_found_nothing": 0,
+    "source_construct": "EXCEPTION WHEN OTHERS THEN NULL around the global lookup (02_pkg_plans.sql:48-49): NO_DATA_FOUND, and anything else, is discarded and the function returns as if the lookup had succeeded",
+    "target_behaviour": "nothing is swallowed: a lookup that finds nothing is false in global_lookup_matched, and a request or subscription that cannot be loaded is quarantined with a closed reason rather than skipped",
+    "tenants_whose_lookup_would_raise_NO_DATA_FOUND": 0
+   }
+  },
+  "expected_set": [
+   "ANOM-SENTINEL-DATE",
+   "ANOM-ROWNUM-TIEBREAK",
+   "ANOM-ROWBYROW-CLOSEOUT",
+   "ANOM-PKG-GLOBAL-STATE",
+   "ANOM-DYNAMIC-SQL",
+   "ANOM-SWALLOWED-EXCEPTION"
+  ],
+  "missing": [],
+  "unexpected": []
+ },
+ "quarantine": {
+  "basis": "subscription driver: one row per source OW_BILLING.SUBSCRIPTIONS row in ns plus one row per declared plan-change request this run applies \u2014 numerator and denominator on that one population",
+  "by_source_table_and_reason": [],
+  "halt_threshold_pct": 5.0,
+  "persisted_before_halt_decision": true,
+  "physical_rows_this_run": 0,
+  "rate_pct": 0.0,
+  "rate_rejected_rows": 0,
+  "rate_source_rows": 138,
+  "rejection_ledger": {
+   "_batch_id": "20260829111008b",
+   "ledger_rows_retained_from_earlier_batches": 0,
+   "rejected_plan_ids_this_run": [],
+   "rejected_request_tenants_this_run": [],
+   "rejected_subscription_ids_this_run": []
+  },
+  "source_rows_rejected_this_run": 0
+ },
+ "recon_result": "pass",
+ "run_mode": "live",
+ "runs": [
+  {
+   "batch_id": "20260829111008a",
+   "change_effective_on": "2026-03-01",
+   "entitlement_on": "2026-02-28",
+   "job_run_id": 757683422455768,
+   "merge_metrics": {
+    "entitlements": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 4,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 5,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+      "job_run_id": "757683422455768"
+     }
+    },
+    "plans": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 4,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 5,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+      "job_run_id": "757683422455768"
+     }
+    },
+    "quarantine_silver_plans": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 4,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 5,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+      "job_run_id": "757683422455768"
+     }
+    },
+    "subscriptions": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (757683422455768, 171080161872835); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 4,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 5,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008a",
+      "job_run_id": "757683422455768"
+     }
+    }
+   },
+   "quarantine_rate_pct": 0.0,
+   "run_page_path": "/?o=7474651138173478#job/419266107257087/run/757683422455768",
+   "target_counts": {
+    "entitlements": {
+     "distinct_origins": 1,
+     "rows": 69,
+     "rows_stamped_by_this_batch": 0,
+     "rows_without_ns": 0
+    },
+    "plans": {
+     "distinct_origins": 1,
+     "rows": 3,
+     "rows_stamped_by_this_batch": 0,
+     "rows_without_ns": 0
+    },
+    "quarantine_silver_plans": {
+     "rows": 0
+    },
+    "subscriptions": {
+     "distinct_origins": 2,
+     "rows": 138,
+     "rows_stamped_by_this_batch": 0,
+     "rows_without_ns": 0
+    }
+   }
+  },
+  {
+   "batch_id": "20260829111008b",
+   "change_effective_on": "2026-03-01",
+   "entitlement_on": "2026-02-28",
+   "job_run_id": 904388531911235,
+   "merge_metrics": {
+    "entitlements": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (904388531911235, 477429957453307); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 5,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 6,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008b",
+      "job_run_id": "904388531911235"
+     }
+    },
+    "plans": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (904388531911235, 477429957453307); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 5,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 6,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008b",
+      "job_run_id": "904388531911235"
+     }
+    },
+    "quarantine_silver_plans": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (904388531911235, 477429957453307); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 5,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 6,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008b",
+      "job_run_id": "904388531911235"
+     }
+    },
+    "subscriptions": {
+     "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (904388531911235, 477429957453307); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+     "attribution_rule_matched": "job_run_id",
+     "commit_from_this_run": true,
+     "operation": "MERGE",
+     "pre_run_version": 5,
+     "rows_deleted": 0,
+     "rows_inserted": 0,
+     "rows_updated": 0,
+     "version": 6,
+     "writing_job_run": {
+      "job_name": "ow_tp_silver_plans_demo_20260829111008b",
+      "job_run_id": "904388531911235"
+     }
+    }
+   },
+   "quarantine_rate_pct": 0.0,
+   "run_page_path": "/?o=7474651138173478#job/414199633460283/run/904388531911235",
+   "target_counts": {
+    "entitlements": {
+     "distinct_origins": 1,
+     "rows": 69,
+     "rows_stamped_by_this_batch": 0,
+     "rows_without_ns": 0
+    },
+    "plans": {
+     "distinct_origins": 1,
+     "rows": 3,
+     "rows_stamped_by_this_batch": 0,
+     "rows_without_ns": 0
+    },
+    "quarantine_silver_plans": {
+     "rows": 0
+    },
+    "subscriptions": {
+     "distinct_origins": 2,
+     "rows": 138,
+     "rows_stamped_by_this_batch": 0,
+     "rows_without_ns": 0
+    }
+   }
+  }
+ ],
+ "source_provenance": {
+  "artifact": "services/legacy-billing/db/oracle/packages/02_pkg_plans.sql",
+  "bronze_inputs": [
+   "ow_tp.bronze.plans",
+   "ow_tp.bronze.subscriptions",
+   "ow_tp.bronze.tenants"
+  ],
+  "entrypoints": [
+   "pkg_plans.fn_list_plans",
+   "pkg_plans.fn_entitlement",
+   "pkg_plans.sp_change_plan"
+  ],
+  "live_source_counts": {
+   "codes": 32,
+   "plans": 3,
+   "subscriptions": 69,
+   "tenants": 69,
+   "usage_events": 814
+  },
+  "oracle_banner": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.3.0.0",
+  "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+  "pinned_sha_file": "procs/oracle/transcripts/ORACLE_SOURCE_SHA",
+  "postgres_transcripts_are_a_cross_check_not_the_baseline": true,
+  "seeded_scale": {
+   "command": "make oracle-billing-seed NS=demo SCALE=demo",
+   "manifest": "testdata/legacy/manifests/demo.json",
+   "seed": {
+    "generated_at": "2026-08-01T00:00:00Z",
+    "generator_version": "1",
+    "namespace": "demo",
+    "planted_anomalies": [
+     {
+      "count": 31,
+      "kind": "malformed_csv_lists",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.RELATED_ACCT_IDS"
+     },
+     {
+      "count": 50,
+      "kind": "dirty_dates",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.SIGNUP_DT"
+     },
+     {
+      "count": 37,
+      "kind": "orphaned_rows",
+      "target": "oracle.OW_BILLING.INVOICE_LINE"
+     }
+    ],
+    "seed": 714559852,
+    "seed_legacy_params": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     }
+    },
+    "targets": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "checksum": "4f92feef2ad58dbab30e289957931928",
+      "rows": 25000
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "rows": 8333
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "rows": 18750
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "checksum": "88a66751f0b08b476b492105a2efc537",
+      "rows": 150000
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "rows": 60
+     }
+    }
+   }
+  },
+  "transcripts": [
+   "PLANS-001.json",
+   "PLANS-002.json",
+   "PLANS-003.json",
+   "PLANS-004.json",
+   "PLANS-005.json"
+  ]
+ },
+ "unit": "silver_plans",
+ "unverified_paths": [
+  "pkg_plans.sp_change_plan was NOT executed against the source: it mutates SUBSCRIPTIONS. Its close-out loop and its INSERT are re-expressed as read-only SELECTs and evaluated by Oracle, so the parity side is Oracle's own evaluation of the re-expression rather than the procedure's own effect. Transcripts PLANS-004/005 pin the end state the procedure produces, and both reproduce.",
+  "ROWNUM = 1 in the package-global lookup has no ORDER BY at all, and ROWNUM <= 1 in the returned cursor orders only by starts_on DESC. Neither is a total order, so the source's answer under a tie is decided by its plan. Both are pinned to ['starts_on DESC', 'id DESC'] here; tenant/starts_on groups with a tie were measured at 0 on this seed, so no tie was exercised and neither path is claimed as parity.",
+  "The row-by-row close-out (ANOM-ROWBYROW-CLOSEOUT) is re-expressed set-wise with the order pinned to ['tenant_id', 'starts_on', 'id']. Each row's new state depends only on its own old state, so the pinned order changes no value on this data; the source's order-dependence is in its shape and was not exercised.",
+  "The suspended \u2192 active flip on close-out was exercised on 1 subscription(s). The cancelled-stays-cancelled branch was visited by 0 rows: no cancelled subscription is open on this seed, so trg_sub_no_uncancel/D-16 is proven on the expression (DECODE evaluated by Oracle) and not on a loaded row.",
+  "Populations measured at zero on this seed, reported as zero rather than as demonstrations: subscriptions whose plan row is missing (the outer join's null-extension), rows where fn_entitlement's two date predicates disagree, tenants with no covering subscription (so the stale package-global mismatch, whose walk is reconstructed but never triggered), close-out dates carrying a time component, and requests whose new id already exists in the source (the ORA-00001 re-apply exposure).",
+  "NUMERIC_OVERFLOW is unreachable from this bronze slice, whose money columns are already DECIMAL(14,2). Reachability is shown by pushing synthetic pre-cast values through the load's own wider raw column, try_cast and guard: [{\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(1e14 AS DECIMAL(38,6))\", \"raw_value\": \"100000000000000.000000\", \"value_after_cast\": null, \"quarantine_reason\": \"NUMERIC_OVERFLOW\"}, {\"column\": \"overage_rate\", \"pre_cast_expression\": \"CAST(1e7 AS DECIMAL(38,6))\", \"raw_value\": \"10000000.000000\", \"value_after_cast\": null, \"quarantine_reason\": \"NUMERIC_OVERFLOW\"}, {\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(NULL AS DECIMAL(38,6))\", \"raw_value\": null, \"value_after_cast\": null, \"quarantine_reason\": null}, {\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(49.00 AS DECIMAL(38,6))\", \"raw_value\": \"49.000000\", \"value_after_cast\": \"49.00\", \"quarantine_reason\": null}]",
+  "pkg_ow_util.log_msg writes BILLING_AUDIT_LOG in an autonomous transaction. Out of this unit's parity scope per D-20; it belongs to bronze_hist and is not reproduced.",
+  "ow_tp.silver.subscriptions is also written by wave 4 (sp_suspend_overdue). This unit only MERGEs the identities it produces, issues no DELETE, INSERT OVERWRITE or table-wide statement, and introduces no cross-unit locking or publication protocol (D-28): a second writer's rows would be left untouched, which is asserted by construction and not exercised here."
+ ],
+ "values_recomputed_from_target": true
+}

@@ -1,0 +1,51 @@
+{
+  "columns": [
+    {
+      "digest": 11413085360235607093,
+      "distinct": 6,
+      "max": "Outdoors",
+      "min": "Apparel",
+      "name": "category",
+      "non_null": 6,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "5",
+      "min": "5",
+      "name": "top_product_count",
+      "non_null": 6,
+      "sum": "30",
+      "type": "integer"
+    },
+    {
+      "digest": 5459360074507953088,
+      "distinct": 6,
+      "max": "Product 6106, Product 2236, Product 3136, Product 5416, Product 6316",
+      "min": "Product 2341, Product 6211, Product 2131, Product 3241, Product 5311",
+      "name": "product_names",
+      "non_null": 6,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 8141144777775949901,
+      "distinct": 6,
+      "max": "1141465.83",
+      "min": "1126607.77",
+      "name": "top_revenue",
+      "non_null": 6,
+      "sum": "6790082.84",
+      "type": "numeric"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 6,
+  "row_digest": 7693661310088345511,
+  "table": "mart.top_products_by_category"
+}

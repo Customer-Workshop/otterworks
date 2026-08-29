@@ -1,0 +1,71 @@
+{
+  "columns": [
+    {
+      "digest": 0,
+      "distinct": 1096,
+      "max": "2025-12-31",
+      "min": "2023-01-01",
+      "name": "order_date",
+      "non_null": 4384,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 0,
+      "distinct": 4,
+      "max": "WEB",
+      "min": "CALL_CENTER",
+      "name": "channel",
+      "non_null": 4384,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 2560617386597774150,
+      "distinct": 78,
+      "max": "89",
+      "min": "122",
+      "name": "order_count",
+      "non_null": 4384,
+      "sum": "400000",
+      "type": "bigint"
+    },
+    {
+      "digest": 3632249781347690887,
+      "distinct": 4382,
+      "max": "99990.82",
+      "min": "100018.95",
+      "name": "gross_revenue",
+      "non_null": 4384,
+      "sum": "485988866.21",
+      "type": "numeric"
+    },
+    {
+      "digest": 14217463972608689753,
+      "distinct": 4373,
+      "max": "9952.26",
+      "min": "10003.64",
+      "name": "discount_total",
+      "non_null": 4384,
+      "sum": "34017885.01",
+      "type": "numeric"
+    },
+    {
+      "digest": 9906059470617889061,
+      "distinct": 4382,
+      "max": "99930.96",
+      "min": "100007.07",
+      "name": "net_revenue",
+      "non_null": 4384,
+      "sum": "451970981.20",
+      "type": "numeric"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 4384,
+  "row_digest": 18403295723057148883,
+  "table": "mart.daily_revenue_by_channel"
+}

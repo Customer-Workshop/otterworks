@@ -1,0 +1,171 @@
+{
+  "columns": [
+    {
+      "digest": 7046270256621105603,
+      "distinct": 400000,
+      "max": "99999",
+      "min": "1",
+      "name": "order_id",
+      "non_null": 400000,
+      "sum": "80000200000",
+      "type": "bigint"
+    },
+    {
+      "digest": 14386124633453023073,
+      "distinct": 60000,
+      "max": "9999",
+      "min": "1",
+      "name": "customer_id",
+      "non_null": 400000,
+      "sum": "11999847705",
+      "type": "bigint"
+    },
+    {
+      "digest": 7829895915249938611,
+      "distinct": 400000,
+      "max": "2025-12-31 23:55:36",
+      "min": "2023-01-01 00:00:21",
+      "name": "order_ts",
+      "non_null": 400000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    },
+    {
+      "digest": 2378389183974044747,
+      "distinct": 1096,
+      "max": "2025-12-31",
+      "min": "2023-01-01",
+      "name": "order_date",
+      "non_null": 400000,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 5358511051518388026,
+      "distinct": 4,
+      "max": "WEB",
+      "min": "CALL_CENTER",
+      "name": "channel",
+      "non_null": 400000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 13570726964812145384,
+      "distinct": 73,
+      "max": "98",
+      "min": "0",
+      "name": "store_id",
+      "non_null": 400000,
+      "sum": "7366878",
+      "type": "integer"
+    },
+    {
+      "digest": 7354693972662505151,
+      "distinct": 4,
+      "max": "USD",
+      "min": "CAD",
+      "name": "currency_code",
+      "non_null": 400000,
+      "sum": null,
+      "type": "character"
+    },
+    {
+      "digest": 0,
+      "distinct": 3,
+      "max": "PENDING",
+      "min": "CANCELLED",
+      "name": "order_status",
+      "non_null": 400000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 4342640056470031455,
+      "distinct": 185051,
+      "max": "999.99",
+      "min": "100.00",
+      "name": "gross_amount",
+      "non_null": 400000,
+      "sum": "485988866.21",
+      "type": "numeric"
+    },
+    {
+      "digest": 3373956565356612928,
+      "distinct": 31129,
+      "max": "99.99",
+      "min": "0.00",
+      "name": "discount_amount",
+      "non_null": 400000,
+      "sum": "34017885.01",
+      "type": "numeric"
+    },
+    {
+      "digest": 18166237836592154628,
+      "distinct": 1800,
+      "max": "9.99",
+      "min": "10.00",
+      "name": "shipping_amount",
+      "non_null": 400000,
+      "sum": "4397883.77",
+      "type": "numeric"
+    },
+    {
+      "digest": 4203017950088072938,
+      "distinct": 19801,
+      "max": "99.99",
+      "min": "10.00",
+      "name": "tax_amount",
+      "non_null": 400000,
+      "sum": "40094086.46",
+      "type": "numeric"
+    },
+    {
+      "digest": 8116477856133729526,
+      "distinct": 200587,
+      "max": "999.99",
+      "min": "1000.00",
+      "name": "net_amount",
+      "non_null": 400000,
+      "sum": "496462951.43",
+      "type": "numeric"
+    },
+    {
+      "digest": 14508132204611400943,
+      "distinct": 41,
+      "max": "PROMO9",
+      "min": "\\N",
+      "name": "promo_code",
+      "non_null": 57143,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 17001508029318314743,
+      "distinct": 1096,
+      "max": "orders_2025-12-31.csv",
+      "min": "orders_2023-01-01.csv",
+      "name": "source_file",
+      "non_null": 400000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:30:00",
+      "min": "2026-01-01 03:30:00",
+      "name": "load_ts",
+      "non_null": 400000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 400000,
+  "row_digest": 16657048269270587278,
+  "table": "core.fct_orders"
+}

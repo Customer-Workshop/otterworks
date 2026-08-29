@@ -1,0 +1,61 @@
+{
+  "columns": [
+    {
+      "digest": 0,
+      "distinct": 48,
+      "max": "2025-12-01",
+      "min": "2022-01-01",
+      "name": "cohort_month",
+      "non_null": 1728,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 0,
+      "distinct": 36,
+      "max": "2025-12-01",
+      "min": "2023-01-01",
+      "name": "activity_month",
+      "non_null": 1728,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 0,
+      "distinct": 21,
+      "max": "1343",
+      "min": "1150",
+      "name": "cohort_size",
+      "non_null": 1728,
+      "sum": "2160000",
+      "type": "bigint"
+    },
+    {
+      "digest": 13584134931490647050,
+      "distinct": 204,
+      "max": "655",
+      "min": "400",
+      "name": "active_customers",
+      "non_null": 1728,
+      "sum": "923510",
+      "type": "bigint"
+    },
+    {
+      "digest": 17592354957542436827,
+      "distinct": 767,
+      "max": "0.4947",
+      "min": "0.3464",
+      "name": "retention_pct",
+      "non_null": 1728,
+      "sum": "738.5661",
+      "type": "numeric"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 1728,
+  "row_digest": 6708821834667810449,
+  "table": "mart.cohort_retention_monthly"
+}

@@ -1,4 +1,4 @@
-"""Translate the Redshift-only physical-layout clauses out of a DDL file."""
+"""Translate the supported Redshift estate syntax into PostgreSQL syntax."""
 
 from __future__ import annotations
 
@@ -31,6 +31,12 @@ SORTKEY = re.compile(
     r"\s+(?:(?:COMPOUND|INTERLEAVED)\s+)?SORTKEY\s*\([^)]*\)",
     re.IGNORECASE,
 )
+LISTAGG = re.compile(
+    r"\bLISTAGG\s*\(\s*(?P<value>[^,()]+?)\s*,\s*"
+    r"(?P<delimiter>'(?:''|[^'])*'|[^)]+?)\s*\)\s+"
+    r"WITHIN\s+GROUP\s*\(\s*ORDER\s+BY\s+(?P<order>[^)]+)\)",
+    re.IGNORECASE,
+)
 
 # These tokens are Redshift-specific, but are not part of this translator's
 # deliberately small supported surface. They are checked rather than dropped.
@@ -40,6 +46,13 @@ UNSUPPORTED = {
     "IDENTITY": re.compile(r"\bIDENTITY\s*(?:\(|\b)", re.IGNORECASE),
     "MAXFILESIZE": re.compile(r"\bMAXFILESIZE\b", re.IGNORECASE),
     "STATUPDATE": re.compile(r"\bSTATUPDATE\b", re.IGNORECASE),
+    "TOP": re.compile(r"\bTOP\s+\d+", re.IGNORECASE),
+    "QUALIFY": re.compile(r"\bQUALIFY\b", re.IGNORECASE),
+    "PIVOT": re.compile(r"\bPIVOT\b", re.IGNORECASE),
+    "UNPIVOT": re.compile(r"\bUNPIVOT\b", re.IGNORECASE),
+    "SUPER": re.compile(r"\bSUPER\b", re.IGNORECASE),
+    "JSON_PARSE": re.compile(r"\bJSON_PARSE\s*\(", re.IGNORECASE),
+    "REGEXP_SUBSTR": re.compile(r"\bREGEXP_SUBSTR\s*\(", re.IGNORECASE),
 }
 
 
@@ -90,6 +103,10 @@ def _validate(sql: str, source: Path) -> None:
         if pattern.search(masked):
             errors.append(f"unsupported Redshift construct {name}")
 
+    listagg_occurrences = len(re.findall(r"\bLISTAGG\s*\(", masked, re.IGNORECASE))
+    if listagg_occurrences != len(list(LISTAGG.finditer(masked))):
+        errors.append("unrecognised LISTAGG form")
+
     if errors:
         details = "; ".join(dict.fromkeys(errors))
         raise ValueError(f"{source}: {details}")
@@ -99,23 +116,34 @@ def translate(sql: str, source: Path = Path("<input>")) -> tuple[str, dict[str, 
     """Return translated SQL and counts of the supported clauses removed."""
     _validate(sql, source)
     masked = _without_comments(sql)
-    matches = [
-        ("ENCODE", match)
-        for match in ENCODE.finditer(masked)
-    ]
+    matches = [("ENCODE", match) for match in ENCODE.finditer(masked)]
     matches.extend(
         ("DISTSTYLE", match) for match in DISTSTYLE.finditer(masked)
     )
     matches.extend(("DISTKEY", match) for match in DISTKEY.finditer(masked))
     matches.extend(("SORTKEY", match) for match in SORTKEY.finditer(masked))
+    matches.extend(("LISTAGG", match) for match in LISTAGG.finditer(masked))
 
     output: list[str] = []
     cursor = 0
-    counts = {"ENCODE": 0, "DISTSTYLE": 0, "DISTKEY": 0, "SORTKEY": 0}
+    counts = {
+        "ENCODE": 0,
+        "DISTSTYLE": 0,
+        "DISTKEY": 0,
+        "SORTKEY": 0,
+        "LISTAGG": 0,
+    }
     for clause, match in sorted(matches, key=lambda item: item[1].start()):
         output.append(sql[cursor : match.start()])
         cursor = match.end()
         counts[clause] += 1
+        if clause == "LISTAGG":
+            output.append(
+                "STRING_AGG("
+                f"{match.group('value').strip()}, "
+                f"{match.group('delimiter').strip()} ORDER BY "
+                f"{match.group('order').strip()})"
+            )
     output.append(sql[cursor:])
     return "".join(output), counts
 

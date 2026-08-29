@@ -1,0 +1,91 @@
+{
+  "columns": [
+    {
+      "digest": 9133397301953824693,
+      "distinct": 36,
+      "max": "2025-12-01",
+      "min": "2023-01-01",
+      "name": "revenue_month",
+      "non_null": 280392,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 15695449540322022842,
+      "distinct": 8000,
+      "max": "999",
+      "min": "1",
+      "name": "product_id",
+      "non_null": 280392,
+      "sum": "1121761814",
+      "type": "bigint"
+    },
+    {
+      "digest": 10562429076626496413,
+      "distinct": 8000,
+      "max": "Product 999",
+      "min": "Product 1",
+      "name": "product_name",
+      "non_null": 280392,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 0,
+      "distinct": 6,
+      "max": "Outdoors",
+      "min": "Apparel",
+      "name": "category",
+      "non_null": 280392,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 4793988697573177589,
+      "distinct": 43,
+      "max": "9",
+      "min": "10",
+      "name": "units_sold",
+      "non_null": 280392,
+      "sum": "3303351",
+      "type": "bigint"
+    },
+    {
+      "digest": 2883422799660865197,
+      "distinct": 10,
+      "max": "9",
+      "min": "1",
+      "name": "order_count",
+      "non_null": 280392,
+      "sum": "1080002",
+      "type": "bigint"
+    },
+    {
+      "digest": 9976730250788796210,
+      "distinct": 185366,
+      "max": "999.96",
+      "min": "100.00",
+      "name": "revenue",
+      "non_null": 280392,
+      "sum": "565147801.07",
+      "type": "numeric"
+    },
+    {
+      "digest": 13633692707352465530,
+      "distinct": 112365,
+      "max": "999.99",
+      "min": "10.00",
+      "name": "margin",
+      "non_null": 280392,
+      "sum": "152516088.26",
+      "type": "numeric"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 280392,
+  "row_digest": 3411729339516197102,
+  "table": "mart.product_performance_monthly"
+}

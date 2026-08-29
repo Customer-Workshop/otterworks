@@ -1,0 +1,151 @@
+{
+  "columns": [
+    {
+      "digest": 5119575390267809762,
+      "distinct": 2000000,
+      "max": "999999",
+      "min": "1",
+      "name": "event_id",
+      "non_null": 2000000,
+      "sum": "2000001000000",
+      "type": "bigint"
+    },
+    {
+      "digest": 8110465729995638361,
+      "distinct": 285715,
+      "max": "99999",
+      "min": "1",
+      "name": "session_id",
+      "non_null": 2000000,
+      "sum": "285715285715",
+      "type": "bigint"
+    },
+    {
+      "digest": 10916763021832214669,
+      "distinct": 48001,
+      "max": "\\N",
+      "min": "10",
+      "name": "customer_id",
+      "non_null": 1599999,
+      "sum": "48001801513",
+      "type": "bigint"
+    },
+    {
+      "digest": 9201550532077358733,
+      "distinct": 2000000,
+      "max": "2025-12-31 23:59:06",
+      "min": "2023-01-01 00:00:07",
+      "name": "event_ts",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    },
+    {
+      "digest": 12594488148432380666,
+      "distinct": 2000000,
+      "max": "2025-12-31 15:59:06",
+      "min": "2022-12-31 16:00:07",
+      "name": "local_event_ts",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    },
+    {
+      "digest": 12787818848051396591,
+      "distinct": 1097,
+      "max": "2025-12-31",
+      "min": "2022-12-31",
+      "name": "local_event_date",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 12622211092037945863,
+      "distinct": 5,
+      "max": "search",
+      "min": "add_to_cart",
+      "name": "event_type",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 13004285451696232158,
+      "distinct": 8000,
+      "max": "/p/999",
+      "min": "/p/1",
+      "name": "page_url",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 4089283184135794016,
+      "distinct": 3,
+      "max": "tablet",
+      "min": "desktop",
+      "name": "device_type",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 11150099795414751049,
+      "distinct": 5,
+      "max": "paid_search",
+      "min": "affiliate",
+      "name": "utm_source",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 15377725106631859460,
+      "distinct": 7,
+      "max": "7",
+      "min": "1",
+      "name": "event_index",
+      "non_null": 2000000,
+      "sum": "7999995",
+      "type": "integer"
+    },
+    {
+      "digest": 0,
+      "distinct": 2,
+      "max": "7",
+      "min": "2",
+      "name": "session_event_count",
+      "non_null": 2000000,
+      "sum": "13999990",
+      "type": "integer"
+    },
+    {
+      "digest": 0,
+      "distinct": 2,
+      "max": "true",
+      "min": "false",
+      "name": "is_conversion",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "boolean"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:40:00",
+      "min": "2026-01-01 03:40:00",
+      "name": "load_ts",
+      "non_null": 2000000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 2000000,
+  "row_digest": 8231736876743774278,
+  "table": "core.fct_web_events"
+}

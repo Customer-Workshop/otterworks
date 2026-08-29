@@ -1,0 +1,111 @@
+{
+  "columns": [
+    {
+      "digest": 15997982134740044903,
+      "distinct": 8000,
+      "max": "999",
+      "min": "1",
+      "name": "product_id",
+      "non_null": 8000,
+      "sum": "32004000",
+      "type": "bigint"
+    },
+    {
+      "digest": 11994526595475357858,
+      "distinct": 8000,
+      "max": "Product 999",
+      "min": "Product 1",
+      "name": "product_name",
+      "non_null": 8000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 6643552398738570283,
+      "distinct": 6,
+      "max": "Outdoors",
+      "min": "Apparel",
+      "name": "category",
+      "non_null": 8000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 8618573239939646067,
+      "distinct": 24,
+      "max": "Subcat 9",
+      "min": "Subcat 0",
+      "name": "subcategory",
+      "non_null": 8000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 0,
+      "distinct": 40,
+      "max": "Brand 9",
+      "min": "Brand 0",
+      "name": "brand",
+      "non_null": 8000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 16874613171754031137,
+      "distinct": 7322,
+      "max": "99.90",
+      "min": "100.04",
+      "name": "unit_cost",
+      "non_null": 8000,
+      "sum": "1000295.58",
+      "type": "numeric"
+    },
+    {
+      "digest": 12879956182186215623,
+      "distinct": 7322,
+      "max": "99.98",
+      "min": "100.18",
+      "name": "list_price",
+      "non_null": 8000,
+      "sum": "1450430.56",
+      "type": "numeric"
+    },
+    {
+      "digest": 0,
+      "distinct": 2,
+      "max": "true",
+      "min": "false",
+      "name": "is_active",
+      "non_null": 8000,
+      "sum": null,
+      "type": "boolean"
+    },
+    {
+      "digest": 4811920747266958749,
+      "distinct": 120,
+      "max": "99",
+      "min": "1",
+      "name": "supplier_id",
+      "non_null": 8000,
+      "sum": "483319",
+      "type": "integer"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:20:00",
+      "min": "2026-01-01 03:20:00",
+      "name": "load_ts",
+      "non_null": 8000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 8000,
+  "row_digest": 13700073703099849779,
+  "table": "core.dim_product"
+}

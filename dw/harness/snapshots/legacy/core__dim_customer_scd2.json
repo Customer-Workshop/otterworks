@@ -1,0 +1,134 @@
+{
+  "columns": [
+    {
+      "digest": 11049407653569682278,
+      "distinct": 60000,
+      "max": "9999",
+      "min": "1",
+      "name": "customer_sk",
+      "non_null": 60000,
+      "sum": "1800030000",
+      "type": "bigint"
+    },
+    {
+      "digest": 13844340625670112384,
+      "distinct": 60000,
+      "max": "9999",
+      "min": "1",
+      "name": "customer_id",
+      "non_null": 60000,
+      "sum": "1800030000",
+      "type": "bigint"
+    },
+    {
+      "digest": 9708633163672677200,
+      "distinct": 60000,
+      "max": "Customer 9999",
+      "min": "Customer 1",
+      "name": "customer_name",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 16182718191350906292,
+      "distinct": 60000,
+      "max": "user9@example.com",
+      "min": "user10000@example.com",
+      "name": "email",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 4135408567796726916,
+      "distinct": 5,
+      "max": "US",
+      "min": "CA",
+      "name": "country_code",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character"
+    },
+    {
+      "digest": 8647507035375494471,
+      "distinct": 8,
+      "max": "Toronto",
+      "min": "Austin",
+      "name": "city",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 16828504706500847239,
+      "distinct": 3,
+      "max": "SMB",
+      "min": "CONSUMER",
+      "name": "segment",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 7377277282269565382,
+      "distinct": 2,
+      "max": "true",
+      "min": "false",
+      "name": "marketing_opt_in",
+      "non_null": 60000,
+      "sum": null,
+      "type": "boolean"
+    },
+    {
+      "digest": 953373957797979039,
+      "distinct": 60000,
+      "max": "ffffe60f2bc426f99d33d35197b57032",
+      "min": "000040bca5d4803f32e064691db3e255",
+      "name": "hash_diff",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:15:00",
+      "min": "2026-01-01 03:15:00",
+      "name": "effective_from",
+      "non_null": 60000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "9999-12-31 00:00:00",
+      "min": "9999-12-31 00:00:00",
+      "name": "effective_to",
+      "non_null": 60000,
+      "sum": null,
+      "type": "timestamp without time zone"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "true",
+      "min": "true",
+      "name": "is_current",
+      "non_null": 60000,
+      "sum": null,
+      "type": "boolean"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": {
+    "digest": 271574239099219996,
+    "key": "customer_id, effective_from, customer_sk"
+  },
+  "row_count": 60000,
+  "row_digest": 2345115796908232516,
+  "table": "core.dim_customer_scd2"
+}

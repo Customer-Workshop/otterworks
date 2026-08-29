@@ -1,0 +1,41 @@
+{
+  "columns": [
+    {
+      "digest": 3907616188807055236,
+      "distinct": 73,
+      "max": "98",
+      "min": "0",
+      "name": "store_id",
+      "non_null": 73,
+      "sum": "6588",
+      "type": "integer"
+    },
+    {
+      "digest": 7445102472041248730,
+      "distinct": 73,
+      "max": "Store 98",
+      "min": "Digital",
+      "name": "store_name",
+      "non_null": 73,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 12943800246639454515,
+      "distinct": 2,
+      "max": "RETAIL",
+      "min": "DIGITAL",
+      "name": "store_type",
+      "non_null": 73,
+      "sum": null,
+      "type": "character varying"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 73,
+  "row_digest": 911001512967694324,
+  "table": "core.dim_store"
+}

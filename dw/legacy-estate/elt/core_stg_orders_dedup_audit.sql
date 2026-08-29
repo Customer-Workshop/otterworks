@@ -1,0 +1,2 @@
+-- Dead asset by design. This file is retained for scanner coverage and is
+-- never scheduled or executed by the live dependency graph.

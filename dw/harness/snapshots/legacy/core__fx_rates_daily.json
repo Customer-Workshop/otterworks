@@ -1,0 +1,61 @@
+{
+  "columns": [
+    {
+      "digest": 0,
+      "distinct": 1096,
+      "max": "2025-12-31",
+      "min": "2023-01-01",
+      "name": "rate_date",
+      "non_null": 4384,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 0,
+      "distinct": 4,
+      "max": "USD",
+      "min": "CAD",
+      "name": "currency_code",
+      "non_null": 4384,
+      "sum": null,
+      "type": "character"
+    },
+    {
+      "digest": 3128433504929583318,
+      "distinct": 1201,
+      "max": "1.279970",
+      "min": "0.740030",
+      "name": "rate_to_usd",
+      "non_null": 4384,
+      "sum": "4504.567960",
+      "type": "numeric"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "SOURCE",
+      "min": "SOURCE",
+      "name": "rate_source",
+      "non_null": 4384,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:50:00",
+      "min": "2026-01-01 03:50:00",
+      "name": "load_ts",
+      "non_null": 4384,
+      "sum": null,
+      "type": "timestamp without time zone"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 4384,
+  "row_digest": 7596855054843454011,
+  "table": "core.fx_rates_daily"
+}

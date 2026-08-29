@@ -1,0 +1,121 @@
+{
+  "columns": [
+    {
+      "digest": 495638551252164674,
+      "distinct": 27002,
+      "max": "999963",
+      "min": "1000003",
+      "name": "return_id",
+      "non_null": 27002,
+      "sum": "16198289006",
+      "type": "bigint"
+    },
+    {
+      "digest": 17480899818286864247,
+      "distinct": 27002,
+      "max": "99988",
+      "min": "1",
+      "name": "order_id",
+      "non_null": 27002,
+      "sum": "5399438668",
+      "type": "bigint"
+    },
+    {
+      "digest": 4672087615339832949,
+      "distinct": 27002,
+      "max": "999963",
+      "min": "1000003",
+      "name": "order_item_id",
+      "non_null": 27002,
+      "sum": "16198289006",
+      "type": "bigint"
+    },
+    {
+      "digest": 5869901738261203062,
+      "distinct": 8000,
+      "max": "999",
+      "min": "1",
+      "name": "product_id",
+      "non_null": 27002,
+      "sum": "108012408",
+      "type": "bigint"
+    },
+    {
+      "digest": 5647975949062236046,
+      "distinct": 6,
+      "max": "Outdoors",
+      "min": "Apparel",
+      "name": "category",
+      "non_null": 27002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 1428042536665072992,
+      "distinct": 27002,
+      "max": "2026-01-30 21:43:06",
+      "min": "2023-01-02 18:50:09",
+      "name": "return_ts",
+      "non_null": 27002,
+      "sum": null,
+      "type": "timestamp without time zone"
+    },
+    {
+      "digest": 11499708083450306915,
+      "distinct": 1125,
+      "max": "2026-01-30",
+      "min": "2023-01-02",
+      "name": "return_date",
+      "non_null": 27002,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 10727250253782506961,
+      "distinct": 5,
+      "max": "WRONG_SIZE",
+      "min": "CHANGED_MIND",
+      "name": "reason_code",
+      "non_null": 27002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 14192753486656693362,
+      "distinct": 22748,
+      "max": "999.93",
+      "min": "100.01",
+      "name": "refund_amount",
+      "non_null": 27002,
+      "sum": "14107686.39",
+      "type": "numeric"
+    },
+    {
+      "digest": 12804211375942456865,
+      "distinct": 4,
+      "max": "USD",
+      "min": "CAD",
+      "name": "currency_code",
+      "non_null": 27002,
+      "sum": null,
+      "type": "character"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:45:00",
+      "min": "2026-01-01 03:45:00",
+      "name": "load_ts",
+      "non_null": 27002,
+      "sum": null,
+      "type": "timestamp without time zone"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 27002,
+  "row_digest": 5995460792955965008,
+  "table": "core.fct_returns"
+}

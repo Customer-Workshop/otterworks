@@ -1,0 +1,131 @@
+{
+  "columns": [
+    {
+      "digest": 5466346220470084694,
+      "distinct": 1826,
+      "max": "2026-12-31",
+      "min": "2022-01-01",
+      "name": "date_key",
+      "non_null": 1826,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 3595919805224981022,
+      "distinct": 5,
+      "max": "2026",
+      "min": "2022",
+      "name": "calendar_year",
+      "non_null": 1826,
+      "sum": "3695824",
+      "type": "integer"
+    },
+    {
+      "digest": 17275807159029277373,
+      "distinct": 12,
+      "max": "9",
+      "min": "1",
+      "name": "calendar_month",
+      "non_null": 1826,
+      "sum": "11912",
+      "type": "integer"
+    },
+    {
+      "digest": 9013778168153654148,
+      "distinct": 12,
+      "max": "September",
+      "min": "April    ",
+      "name": "month_name",
+      "non_null": 1826,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 3999274758404179245,
+      "distinct": 31,
+      "max": "9",
+      "min": "1",
+      "name": "calendar_day",
+      "non_null": 1826,
+      "sum": "28719",
+      "type": "integer"
+    },
+    {
+      "digest": 18149680367548308094,
+      "distinct": 7,
+      "max": "6",
+      "min": "0",
+      "name": "day_of_week",
+      "non_null": 1826,
+      "sum": "5476",
+      "type": "integer"
+    },
+    {
+      "digest": 5194134196595560819,
+      "distinct": 7,
+      "max": "Wednesday",
+      "min": "Friday   ",
+      "name": "day_name",
+      "non_null": 1826,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 8574759245172468428,
+      "distinct": 53,
+      "max": "9",
+      "min": "1",
+      "name": "week_of_year",
+      "non_null": 1826,
+      "sum": "48546",
+      "type": "integer"
+    },
+    {
+      "digest": 15366547137775636672,
+      "distinct": 4,
+      "max": "4",
+      "min": "1",
+      "name": "quarter_num",
+      "non_null": 1826,
+      "sum": "4581",
+      "type": "integer"
+    },
+    {
+      "digest": 15148649169786769529,
+      "distinct": 6,
+      "max": "2026",
+      "min": "2021",
+      "name": "fiscal_year",
+      "non_null": 1826,
+      "sum": "3695373",
+      "type": "integer"
+    },
+    {
+      "digest": 3624354999459037992,
+      "distinct": 4,
+      "max": "4",
+      "min": "1",
+      "name": "fiscal_quarter",
+      "non_null": 1826,
+      "sum": "4559",
+      "type": "integer"
+    },
+    {
+      "digest": 0,
+      "distinct": 2,
+      "max": "true",
+      "min": "false",
+      "name": "is_weekend",
+      "non_null": 1826,
+      "sum": null,
+      "type": "boolean"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 1826,
+  "row_digest": 6341679686999628338,
+  "table": "core.dim_date"
+}

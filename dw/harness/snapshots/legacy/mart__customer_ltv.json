@@ -1,0 +1,91 @@
+{
+  "columns": [
+    {
+      "digest": 11049407653569682278,
+      "distinct": 60000,
+      "max": "9999",
+      "min": "1",
+      "name": "customer_id",
+      "non_null": 60000,
+      "sum": "1800030000",
+      "type": "bigint"
+    },
+    {
+      "digest": 18074361559024903772,
+      "distinct": 3,
+      "max": "SMB",
+      "min": "CONSUMER",
+      "name": "segment",
+      "non_null": 60000,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 9401838192545413225,
+      "distinct": 439,
+      "max": "2024-03-14",
+      "min": "2023-01-01",
+      "name": "first_order_date",
+      "non_null": 60000,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 11944440009803389628,
+      "distinct": 516,
+      "max": "2025-12-31",
+      "min": "2024-05-23",
+      "name": "last_order_date",
+      "non_null": 60000,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 13735324917426475523,
+      "distinct": 3,
+      "max": "8",
+      "min": "6",
+      "name": "order_count",
+      "non_null": 60000,
+      "sum": "400000",
+      "type": "bigint"
+    },
+    {
+      "digest": 5198841792467949170,
+      "distinct": 57211,
+      "max": "9999.97",
+      "min": "10000.03",
+      "name": "lifetime_revenue",
+      "non_null": 60000,
+      "sum": "485988866.21",
+      "type": "numeric"
+    },
+    {
+      "digest": 10119456498030114720,
+      "distinct": 45287,
+      "max": "999.99",
+      "min": "0.00",
+      "name": "lifetime_discount",
+      "non_null": 60000,
+      "sum": "34017885.01",
+      "type": "numeric"
+    },
+    {
+      "digest": 15352997224207349717,
+      "distinct": 58160,
+      "max": "9999.84",
+      "min": "10000.03",
+      "name": "lifetime_net",
+      "non_null": 60000,
+      "sum": "451970981.20",
+      "type": "numeric"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 60000,
+  "row_digest": 180488616113752497,
+  "table": "mart.customer_ltv"
+}

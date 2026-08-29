@@ -1,0 +1,71 @@
+{
+  "columns": [
+    {
+      "digest": 1317572785123533240,
+      "distinct": 1097,
+      "max": "2025-12-31",
+      "min": "2022-12-31",
+      "name": "local_event_date",
+      "non_null": 1097,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 1812461713435309083,
+      "distinct": 31,
+      "max": "617",
+      "min": "1180",
+      "name": "sessions",
+      "non_null": 1097,
+      "sum": "2000000",
+      "type": "bigint"
+    },
+    {
+      "digest": 14584245016163250368,
+      "distinct": 69,
+      "max": "642",
+      "min": "209",
+      "name": "page_view_sessions",
+      "non_null": 1097,
+      "sum": "666668",
+      "type": "bigint"
+    },
+    {
+      "digest": 6935974023103490103,
+      "distinct": 45,
+      "max": "325",
+      "min": "102",
+      "name": "add_to_cart_sessions",
+      "non_null": 1097,
+      "sum": "333336",
+      "type": "bigint"
+    },
+    {
+      "digest": 9623386662577083828,
+      "distinct": 45,
+      "max": "324",
+      "min": "102",
+      "name": "checkout_sessions",
+      "non_null": 1097,
+      "sum": "333333",
+      "type": "bigint"
+    },
+    {
+      "digest": 13789065328126620285,
+      "distinct": 42,
+      "max": "323",
+      "min": "101",
+      "name": "purchase_sessions",
+      "non_null": 1097,
+      "sum": "333332",
+      "type": "bigint"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 1097,
+  "row_digest": 6523207280946223538,
+  "table": "mart.session_funnel_daily"
+}

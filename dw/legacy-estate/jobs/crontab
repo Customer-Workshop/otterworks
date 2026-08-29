@@ -1,0 +1,3 @@
+# Legacy warehouse schedules: nightly full ELT and hourly order arrivals.
+0 2 * * * /home/ubuntu/dwdemo/.venv/bin/python dw/legacy-estate/python/run_dag.py --dag legacy_dw_nightly
+0 * * * * /home/ubuntu/dwdemo/.venv/bin/python dw/legacy-estate/python/invoke_proc.py --procedure core.sp_load_orders_incremental

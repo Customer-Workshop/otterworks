@@ -12,7 +12,9 @@ from sources import DuckDBSource, PostgresSource, Source
 
 # Add ordered assets here when sequence is part of their business contract.
 # Values are SQL fragments appended after ORDER BY, not user-supplied shell text.
-ORDERED_KEYS: dict[str, str] = {}
+ORDERED_KEYS: dict[str, str] = {
+    "core.dim_customer_scd2": "customer_id, effective_from, customer_sk",
+}
 
 
 def _postgres_dsn() -> str:

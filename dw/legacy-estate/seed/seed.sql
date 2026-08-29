@@ -2,9 +2,13 @@
 -- analytics_dw landing-zone seed (deterministic)
 -- =====================================================================
 -- Populates the seven staging.* landing tables that the legacy ELT reads.
--- Everything is derived arithmetically from the row index, so the same
--- statements produce byte-identical data on every run and on every engine
--- that supports generate_series + BIGINT arithmetic (Postgres, DuckDB).
+-- Everything is derived arithmetically from the row index, so re-running the
+-- seed reproduces byte-identical data (verified: manifests match after a
+-- drop + reseed). Postgres is the reference engine and the only one the gates
+-- read from; the arithmetic here relies on Postgres integer division and
+-- NUMERIC semantics, so a different engine will produce a different -- though
+-- equally deterministic -- estate. Portability across engines is deliberately
+-- not claimed.
 --
 -- Derivation macro (inlined by hand because CREATE FUNCTION / CREATE MACRO
 -- are not portable): for row index i and stream k,

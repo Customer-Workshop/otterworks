@@ -1,0 +1,201 @@
+{
+  "columns": [
+    {
+      "digest": 7103220749786337752,
+      "distinct": 1080002,
+      "max": "999999",
+      "min": "1",
+      "name": "order_item_id",
+      "non_null": 1080002,
+      "sum": "648001063049",
+      "type": "bigint"
+    },
+    {
+      "digest": 5069463946095284749,
+      "distinct": 400000,
+      "max": "99999",
+      "min": "1",
+      "name": "order_id",
+      "non_null": 1080002,
+      "sum": "216000714348",
+      "type": "bigint"
+    },
+    {
+      "digest": 13423646208008799509,
+      "distinct": 60000,
+      "max": "9999",
+      "min": "1",
+      "name": "customer_id",
+      "non_null": 1080002,
+      "sum": "32400006976",
+      "type": "bigint"
+    },
+    {
+      "digest": 3232320862837354302,
+      "distinct": 1096,
+      "max": "2025-12-31",
+      "min": "2023-01-01",
+      "name": "order_date",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "date"
+    },
+    {
+      "digest": 13593660533775534458,
+      "distinct": 4,
+      "max": "WEB",
+      "min": "CALL_CENTER",
+      "name": "channel",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 2729837682249567283,
+      "distinct": 8000,
+      "max": "999",
+      "min": "1",
+      "name": "product_id",
+      "non_null": 1080002,
+      "sum": "4320481973",
+      "type": "bigint"
+    },
+    {
+      "digest": 13620462226147466800,
+      "distinct": 8000,
+      "max": "Product 999",
+      "min": "Product 1",
+      "name": "product_name",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 14210771936300364002,
+      "distinct": 6,
+      "max": "Outdoors",
+      "min": "Apparel",
+      "name": "category",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 7283697896364383708,
+      "distinct": 24,
+      "max": "Subcat 9",
+      "min": "Subcat 0",
+      "name": "subcategory",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 6958531993354403885,
+      "distinct": 40,
+      "max": "Brand 9",
+      "min": "Brand 0",
+      "name": "brand",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "character varying"
+    },
+    {
+      "digest": 9173139482610170309,
+      "distinct": 5,
+      "max": "5",
+      "min": "1",
+      "name": "quantity",
+      "non_null": 1080002,
+      "sum": "3303351",
+      "type": "integer"
+    },
+    {
+      "digest": 15833587609059267831,
+      "distinct": 7322,
+      "max": "99.98",
+      "min": "100.18",
+      "name": "unit_price",
+      "non_null": 1080002,
+      "sum": "195549815.50",
+      "type": "numeric"
+    },
+    {
+      "digest": 6671233160588066643,
+      "distinct": 11805,
+      "max": "99.99",
+      "min": "0.00",
+      "name": "item_discount",
+      "non_null": 1080002,
+      "sum": "33168993.34",
+      "type": "numeric"
+    },
+    {
+      "digest": 5146885934718031960,
+      "distinct": 48864,
+      "max": "999.96",
+      "min": "100.01",
+      "name": "line_amount",
+      "non_null": 1080002,
+      "sum": "565147801.07",
+      "type": "numeric"
+    },
+    {
+      "digest": 11703445694675546493,
+      "distinct": 13760,
+      "max": "99.95",
+      "min": "100.00",
+      "name": "cost_amount",
+      "non_null": 1080002,
+      "sum": "412631712.81",
+      "type": "numeric"
+    },
+    {
+      "digest": 13913084106908718603,
+      "distinct": 29200,
+      "max": "99.98",
+      "min": "10.00",
+      "name": "margin_amount",
+      "non_null": 1080002,
+      "sum": "152516088.26",
+      "type": "numeric"
+    },
+    {
+      "digest": 7553505570642865566,
+      "distinct": 4,
+      "max": "USD",
+      "min": "CAD",
+      "name": "currency_code",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "character"
+    },
+    {
+      "digest": 0,
+      "distinct": 2,
+      "max": "true",
+      "min": "false",
+      "name": "is_returned",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "boolean"
+    },
+    {
+      "digest": 0,
+      "distinct": 1,
+      "max": "2026-01-01 03:35:00",
+      "min": "2026-01-01 03:35:00",
+      "name": "load_ts",
+      "non_null": 1080002,
+      "sum": null,
+      "type": "timestamp without time zone"
+    }
+  ],
+  "engine": "postgres",
+  "fingerprint": null,
+  "manifest_format": 3,
+  "ordered": null,
+  "row_count": 1080002,
+  "row_digest": 4881384827643097060,
+  "table": "core.fct_order_items"
+}

@@ -422,6 +422,14 @@ print(f"rating drivers (tenants in ns={NS}): {spark.table('v_rating').count()}")
 # MAGIC   (`trg_usage_events_check`, D-16), so the rated units cannot be trusted.
 # MAGIC * `NUMERIC_OVERFLOW` — a computed value does not fit its pinned target type (D-23/T6). Money is
 # MAGIC   never widened or rescaled to make it fit.
+# MAGIC
+# MAGIC **Divergence, orphan period row.** `sp_finalize_rating` INSERTs the `RATING_PERIODS` row
+# MAGIC *before* it calls `compute_rating`, so a tenant whose `RATING_RESULTS` insert then raises (the
+# MAGIC D-19 case: `NULL` `quota_units`/`subscription_id` into `NOT NULL` columns) leaves an orphan
+# MAGIC period row with no result behind in the source. A quarantined tenant here gets neither a
+# MAGIC period nor a result row — a reject is preferable to a period row whose money never landed —
+# MAGIC so as soon as quarantine is non-empty `rating_periods` carries one row fewer per affected
+# MAGIC tenant than the source. Recorded as a divergence in the recon report, not a parity failure.
 
 # COMMAND ----------
 

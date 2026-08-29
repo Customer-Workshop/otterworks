@@ -747,6 +747,15 @@ def build_report(
         "(D-16), KEY_NULL, KEY_DUPLICATE and NUMERIC_OVERFLOW are all implemented and their live "
         "exposure measured as zero, so the quarantine write path itself is exercised by no row "
         "here — implemented and unverified, not proven.",
+        "Divergence — orphan RATING_PERIODS row on a failed finalize: sp_finalize_rating INSERTs the "
+        "RATING_PERIODS row before it calls compute_rating, so a tenant whose RATING_RESULTS insert "
+        "then raises (the D-19 NO_COVERING_PLAN case, NULL quota_units/subscription_id into NOT NULL "
+        "columns) leaves an orphan period row with no result behind in the source. This port "
+        "quarantines that tenant and writes neither a period nor a result row, preferring a "
+        "quarantined reject over a period row whose money never landed. That is a real behavioural "
+        "difference, invisible on this population only because quarantine is 0 rows: it becomes a "
+        "rating_periods row-count parity delta of one row per affected tenant (source higher) as "
+        "soon as quarantine is non-empty.",
         "D-05/T4 (two-digit years resolving into the current century) is not reached by this unit: "
         "rating reads DATE and TIMESTAMP columns only, so pkg_ow_util.f_str2dt and its swallowed "
         "WHEN OTHERS are never called on this path.",

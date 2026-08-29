@@ -185,10 +185,21 @@ def _number_handler(cursor, name, default_type, size, precision, scale):
     return None
 
 
+def _required_env(name: str) -> str:
+    """Credentials come from the environment by name; this file never carries a value."""
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(
+            f"{name} is not set: export the OW_BILLING credential named {name} "
+            f"(see .migration/07_access_checklist.md) before running the recon"
+        )
+    return value
+
+
 def connect():
     return oracledb.connect(
-        user=os.getenv("DB_USER", "ow_billing"),
-        password=os.getenv("DB_PASSWORD", "ow_billing"),
+        user=_required_env("DB_USER"),
+        password=_required_env("DB_PASSWORD"),
         host=os.getenv("DB_HOST", "localhost"),
         port=int(os.getenv("DB_PORT", "52521")),
         service_name=os.getenv("DB_SERVICE", "FREEPDB1"),

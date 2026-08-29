@@ -49,6 +49,7 @@
 
 # COMMAND ----------
 
+import datetime
 import json
 import re
 
@@ -89,6 +90,12 @@ for _pname, _pval in (("ns", NS), ("batch_id", BATCH_ID)):
 for _pname, _pval in (("period_start", PERIOD_START), ("period_end", PERIOD_END)):
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", _pval):
         raise ValueError(f"{_pname}={_pval!r} must be an ISO date (YYYY-MM-DD)")
+    # Shape alone admits 2026-02-31, which Spark then resolves to NULL and silently empties every
+    # period predicate below, so the parameter is held to a real calendar date.
+    try:
+        datetime.date.fromisoformat(_pval)
+    except ValueError as exc:
+        raise ValueError(f"{_pname}={_pval!r} is not a real calendar date: {exc}") from exc
 if PERIOD_START > PERIOD_END:
     raise ValueError(f"period_start {PERIOD_START} is after period_end {PERIOD_END}")
 
@@ -472,7 +479,9 @@ SELECT tenant_id,
        CAST(first_tier_units AS DECIMAL(38,0)) AS first_tier_units,
        CAST(second_tier_units AS DECIMAL(38,0)) AS second_tier_units,
        CAST(billable_units AS DECIMAL(38,0)) AS billable_units,
-       CAST(overage_amount AS DECIMAL(14,2)) AS overage_amount,
+       -- The pre-cast overage, kept wide: narrowing it to the pinned money type here would let the
+       -- cast decide the row's fate before the NUMERIC_OVERFLOW guard ever sees the value (D-23/T6).
+       CAST(overage_amount AS DECIMAL(38,2)) AS overage_amount_raw,
        suspension_prorated,
        -- D-09's persisted rollover, computed but never consumed: it is the value the *table* would
        -- have carried, and ANOM-GLOBAL-DEPENDENCY prices the invoice both ways to show the gap.
@@ -616,7 +625,7 @@ pre AS (
 taxed AS (
   SELECT p.*,
          CASE WHEN p.`tax_exempt_yn` = 'Y' THEN CAST(0 AS DECIMAL(28,10))
-              ELSE CAST(CAST(p.`plan_fee_raw` + p.`overage_amount` AS DECIMAL(20,2))
+              ELSE CAST(CAST(p.`plan_fee_raw` + p.`overage_amount_raw` AS DECIMAL(38,2))
                         * {TAX_RATE_LIT} AS DECIMAL(28,10)) END AS tax_computed_raw
   FROM pre p
 ),
@@ -630,7 +639,8 @@ halved AS (
 ),
 capped AS (
   SELECT h.*,
-         round(h.`plan_fee_raw` + h.`overage_amount` + h.`tax_computed_raw`, 2) AS charge_cap_raw
+         round(h.`plan_fee_raw` + h.`overage_amount_raw` + h.`tax_computed_raw`, 2)
+           AS charge_cap_raw
   FROM halved h
 ),
 applied AS (
@@ -643,13 +653,14 @@ applied AS (
 -- into v_tax, the credit line into v_credit, each added as ROUND(v_amount, 2).
 header AS (
   SELECT a.*,
-         round(round(a.`plan_fee_raw`, 2) + round(a.`overage_amount`, 2), 2) AS subtotal_raw,
+         round(round(a.`plan_fee_raw`, 2) + round(a.`overage_amount_raw`, 2), 2) AS subtotal_raw,
          round(round(a.`tax_half_raw`, 2) + round(a.`tax_half_raw`, 2), 2) AS tax_raw
   FROM applied a
 )
 SELECT h.*,
        round(h.`subtotal_raw` + h.`tax_raw` - h.`credit_applied_raw`, 2) AS total_raw,
        try_cast(h.`plan_fee_raw` AS DECIMAL(14,2)) AS plan_fee,
+       try_cast(h.`overage_amount_raw` AS DECIMAL(14,2)) AS overage_amount,
        try_cast(h.`tax_computed_raw` AS DECIMAL(28,10)) AS tax_computed,
        try_cast(h.`tax_half_raw` AS DECIMAL(28,10)) AS tax_half,
        try_cast(h.`charge_cap_raw` AS DECIMAL(14,2)) AS charge_cap,
@@ -715,6 +726,7 @@ MONEY_MAX = "999999999999.99"  # largest DECIMAL(14,2)
 UNROUNDED_MAX = "9" * 18 + ".9999999999"  # largest DECIMAL(28,10)
 MONEY_COLS = (
     "plan_fee",
+    "overage_amount",
     "charge_cap",
     "credit_offered",
     "credit_applied",
@@ -723,6 +735,20 @@ MONEY_COLS = (
     "total",
 )
 UNROUNDED_COLS = ("tax_computed", "tax_half")
+
+# Every money value this unit derives, with the inputs it is derived from: a narrowing cast anywhere
+# along the chain reports an out-of-range result as NULL, and a NULL that appears while its inputs
+# were present is an overflow, not a missing value. Tested so no intermediate can quietly empty a
+# money column between the source expression and the pinned type.
+DERIVED_MONEY = (
+    ("tax_computed_raw", ("plan_fee_raw", "overage_amount_raw")),
+    ("tax_half_raw", ("tax_computed_raw",)),
+    ("charge_cap_raw", ("plan_fee_raw", "overage_amount_raw", "tax_computed_raw")),
+    ("credit_applied_raw", ("credit_offered_raw",)),
+    ("subtotal_raw", ("plan_fee_raw", "overage_amount_raw")),
+    ("tax_raw", ("tax_half_raw",)),
+    ("total_raw", ("subtotal_raw", "tax_raw", "credit_applied_raw")),
+)
 
 
 def overflow_pred(p: str) -> str:
@@ -740,7 +766,9 @@ def overflow_pred(p: str) -> str:
     for c in UNROUNDED_COLS:
         parts.append(f"abs({p}`{c}_raw`) > CAST({UNROUNDED_MAX} AS DECIMAL(28,10))")
         parts.append(f"({p}`{c}_raw` IS NOT NULL AND {p}`{c}` IS NULL)")
-    parts.append(f"({p}`overage_amount` IS NOT NULL AND abs({p}`overage_amount`) > CAST({MONEY_MAX} AS DECIMAL(14,2)))")
+    for col, inputs in DERIVED_MONEY:
+        present = " AND ".join(f"{p}`{i}` IS NOT NULL" for i in inputs)
+        parts.append(f"({p}`{col}` IS NULL AND {present})")
     return "(" + "\n             OR ".join(parts) + ")"
 
 
@@ -749,10 +777,13 @@ SELECT p.*,
        CASE
          WHEN p.`tenant_id` IS NULL OR p.`period_id` IS NULL OR p.`invoice_id` IS NULL
            THEN 'KEY_NULL'
-         WHEN p.`plan_code` IS NULL OR p.`plan_fee_raw` IS NULL OR p.`overage_amount` IS NULL
+         -- The overflow guard is decided on the pre-cast values *before* any null-based branch:
+         -- an out-of-range amount nulls its pinned-type column, and were FK_ORPHAN asked first it
+         -- would answer for the one money column most likely to overflow (D-23/T6).
+         WHEN {overflow_pred("p.")} THEN 'NUMERIC_OVERFLOW'
+         WHEN p.`plan_code` IS NULL OR p.`plan_fee_raw` IS NULL OR p.`overage_amount_raw` IS NULL
            THEN 'FK_ORPHAN'
          WHEN p.`bad_usage_rows` > 0 THEN 'CODE_UNKNOWN'
-         WHEN {overflow_pred("p.")} THEN 'NUMERIC_OVERFLOW'
          ELSE NULL
        END AS quarantine_reason
 FROM v_preview p
@@ -827,18 +858,29 @@ dup_id AS (
 dup_no AS (
   SELECT `invoice_id`, `line_no`, count(*) AS no_rows
   FROM {CATALOG}.{BRONZE}.invoice_lines WHERE `ns` = {NS_LIT} GROUP BY `invoice_id`, `line_no`
+),
+-- The parent invoices this run will actually load, collapsed per id so a doubled parent cannot fan
+-- its children out.
+parent AS (
+  SELECT `id`,
+         max(CASE WHEN `quarantine_reason` IS NULL THEN 1 ELSE 0 END) AS accepted_rows,
+         max(CASE WHEN `quarantine_reason` IS NULL THEN 0 ELSE 1 END) AS rejected_rows
+  FROM v_mig_invoices GROUP BY `id`
 )
 SELECT l.`id`, l.`invoice_id`, CAST(l.`line_no` AS INT) AS line_no, l.`line_type`, l.`description`,
        CAST(l.`amount` AS DECIMAL(14,2)) AS amount_raw,
        try_cast(l.`amount` AS DECIMAL(14,2)) AS amount,
        to_json(struct(l.`id`, l.`invoice_id`, l.`line_no`, l.`line_type`, l.`description`,
                       l.`amount`)) AS raw_source_payload,
+       (coalesce(p.accepted_rows, 0) = 0 AND coalesce(p.rejected_rows, 0) = 1) AS parent_rejected,
        CASE
          WHEN l.`id` IS NULL OR l.`invoice_id` IS NULL OR l.`line_no` IS NULL THEN 'KEY_NULL'
          WHEN di.id_rows > 1 OR dn.no_rows > 1 THEN 'KEY_DUPLICATE'
-         WHEN NOT EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.invoices i
-                           WHERE i.`ns` = {NS_LIT} AND i.`id` = l.`invoice_id`)
-           THEN 'FK_ORPHAN'
+         -- Eligibility is the *accepted* parent set, not bronze: a parent rejected for a duplicate
+         -- or null key, an orphan or an overflow never reaches the target, so loading its lines
+         -- would leave children with no invoice to belong to. They are rejected with their parent,
+         -- carry their own quarantine row, and stay inside their own table's accounting (ACC-QUAR).
+         WHEN coalesce(p.accepted_rows, 0) = 0 THEN 'FK_ORPHAN'
          WHEN l.`amount` IS NOT NULL AND try_cast(l.`amount` AS DECIMAL(14,2)) IS NULL
            THEN 'NUMERIC_OVERFLOW'
          ELSE NULL
@@ -846,6 +888,7 @@ SELECT l.`id`, l.`invoice_id`, CAST(l.`line_no` AS INT) AS line_no, l.`line_type
 FROM {CATALOG}.{BRONZE}.invoice_lines l
 LEFT JOIN dup_id di ON di.`id` = l.`id`
 LEFT JOIN dup_no dn ON dn.`invoice_id` = l.`invoice_id` AND dn.`line_no` = l.`line_no`
+LEFT JOIN parent p ON p.`id` = l.`invoice_id`
 WHERE l.`ns` = {NS_LIT}
   AND NOT EXISTS (SELECT 1 FROM issued s WHERE s.id = l.`invoice_id`)
 """
@@ -861,7 +904,7 @@ SELECT `quarantine_reason`,
        coalesce(
          CASE WHEN `quarantine_reason` = 'CODE_UNKNOWN' THEN `bad_usage_payload` END,
          to_json(struct(`tenant_id`, `period_id`, `invoice_id`, `plan_code`, `plan_fee_raw`,
-                        `overage_amount`, `tax_computed_raw`, `credit_offered_raw`,
+                        `overage_amount_raw`, `tax_computed_raw`, `credit_offered_raw`,
                         `credit_applied_raw`, `subtotal_raw`, `tax_raw`, `total_raw`,
                         `rating_subscription_id`, `fee_subscription_id`, `usage_events_in_window`))
        ) AS `raw_source_payload`,
@@ -892,13 +935,98 @@ FROM v_mig_invoices WHERE `quarantine_reason` IS NOT NULL
 
 UNION ALL
 SELECT `quarantine_reason`, {NS_LIT}, 'OW_BILLING.INVOICE_LINES', `id`, `raw_source_payload`,
-       'migrated source invoice line rejected before it could be loaded',
+       CASE WHEN `parent_rejected`
+            THEN 'migrated source invoice line rejected with its parent invoice, which did not '
+                 || 'survive judgement, so the line would have had no invoice in the target'
+            ELSE 'migrated source invoice line rejected before it could be loaded' END,
        CASE `quarantine_reason` WHEN 'KEY_DUPLICATE' THEN 'D-14' WHEN 'FK_ORPHAN' THEN 'D-19'
                                WHEN 'KEY_NULL' THEN 'D-14' ELSE 'D-23' END,
        {BATCH_LIT}, current_timestamp()
 FROM v_mig_lines WHERE `quarantine_reason` IS NOT NULL
 """
-spark.sql(QUAR_SQL).createOrReplaceTempView("v_quarantine")
+spark.sql(QUAR_SQL).createOrReplaceTempView("v_quarantine_raw")
+
+# One record per MERGE identity (ns, source_table, source_key, quarantine_reason). Several source
+# rows legitimately share one identity — KEY_DUPLICATE is two bronze rows under one id by definition,
+# and every KEY_NULL row whose key is null shares the null key — and inserting them all would leave
+# the next run's MERGE matching one stored reject against many source rows, which Delta refuses. The
+# rows are collapsed deterministically instead: the count and every payload are carried so each
+# rejected source row is still diagnosable from the quarantine table alone.
+spark.sql(
+    """
+    CREATE OR REPLACE TEMP VIEW v_quarantine AS
+    SELECT `quarantine_reason`, `ns`, `source_table`, `source_key`,
+           CASE WHEN count(*) = 1 THEN min(`raw_source_payload`)
+                ELSE to_json(named_struct(
+                       'rejected_source_rows', count(*),
+                       'payloads', sort_array(collect_list(`raw_source_payload`)))) END
+             AS `raw_source_payload`,
+           CASE WHEN count(*) = 1 THEN min(`detail`)
+                ELSE concat(min(`detail`), ' — ', CAST(count(*) AS STRING),
+                            ' source rows share this rejection identity; every payload is carried '
+                            || 'in raw_source_payload') END AS `detail`,
+           min(`dictionary_ref`) AS `dictionary_ref`,
+           min(`_batch_id`) AS `_batch_id`,
+           min(`_quarantined_at`) AS `_quarantined_at`
+    FROM v_quarantine_raw
+    GROUP BY `quarantine_reason`, `ns`, `source_table`, `source_key`
+    """
+)
+quarantine_source_rows = spark.table("v_quarantine_raw").count()
+
+# The collapse's own reachability, measured rather than assumed: two synthetic rows under one merge
+# identity through the same grouping the load uses. A probe of the target expression; it writes
+# nothing.
+_dedup_probe = spark.sql(
+    """
+    WITH raw AS (
+      SELECT 'KEY_DUPLICATE' AS quarantine_reason, 'probe' AS ns, 'PROBE' AS source_table,
+             'k' AS source_key, '{"row":1}' AS raw_source_payload, 'd' AS detail,
+             'D-14' AS dictionary_ref, 'b' AS _batch_id, current_timestamp() AS _quarantined_at
+      UNION ALL
+      SELECT 'KEY_DUPLICATE', 'probe', 'PROBE', 'k', '{"row":2}', 'd', 'D-14', 'b',
+             current_timestamp()
+      UNION ALL
+      SELECT 'KEY_NULL', 'probe', 'PROBE', NULL, '{"row":3}', 'd', 'D-14', 'b', current_timestamp()
+      UNION ALL
+      SELECT 'KEY_NULL', 'probe', 'PROBE', NULL, '{"row":4}', 'd', 'D-14', 'b', current_timestamp()
+    )
+    SELECT `quarantine_reason`, count(*) AS merged_rows,
+           max(`raw_source_payload`) AS payload
+    FROM (
+      SELECT `quarantine_reason`, `source_key`,
+             to_json(named_struct('rejected_source_rows', count(*),
+                                  'payloads', sort_array(collect_list(`raw_source_payload`))))
+               AS raw_source_payload
+      FROM raw
+      GROUP BY `quarantine_reason`, `ns`, `source_table`, `source_key`
+    )
+    GROUP BY `quarantine_reason` ORDER BY `quarantine_reason`
+    """
+).collect()
+quarantine_identity_probe = {
+    "description": "two KEY_DUPLICATE rows under one source_key and two KEY_NULL rows with a null "
+    "source_key, through the same grouping the load applies: each identity collapses to one record "
+    "carrying both payloads and the count, so a rerun's MERGE matches one source row per target row",
+    "is_probe_of_target_expression_not_source_finding": True,
+    "cases": [
+        {"quarantine_reason": r[0], "merged_rows": r[1], "raw_source_payload": r[2]}
+        for r in _dedup_probe
+    ],
+}
+if [c["merged_rows"] for c in quarantine_identity_probe["cases"]] != [1, 1]:
+    raise AssertionError(
+        f"the quarantine identity collapse did not behave as declared: {quarantine_identity_probe}"
+    )
+
+_dup_identities = spark.sql(
+    """
+    SELECT count(*) FROM (
+      SELECT 1 FROM v_quarantine_raw
+      GROUP BY `quarantine_reason`, `ns`, `source_table`, `source_key` HAVING count(*) > 1
+    )
+    """
+).collect()[0][0]
 
 bad_reasons = [
     r[0]
@@ -976,12 +1104,31 @@ for _name, _acc in accounting.items():
     if _acc["loaded_rows"] + _acc["quarantined_rows"] != _acc["source_rows"]:
         raise AssertionError(f"quarantine accounting broken for {_name}: {_acc}")
 
+for _name, _acc in accounting.items():
+    _acc["rate_pct"] = (
+        round(100.0 * _acc["quarantined_rows"] / _acc["source_rows"], 4)
+        if _acc["source_rows"]
+        else 0.0
+    )
+
 quarantined_rows = spark.table("v_quarantine").count()
-source_rows_total = accounting["invoices"]["source_rows"] + accounting["invoice_lines"]["source_rows"]
-quar_pct = (100.0 * quarantined_rows / source_rows_total) if source_rows_total else 0.0
+
+# The halt rate's numerator and denominator are the *same* population: the invoice driver — one
+# sp_issue_invoice per tenant-period, plus each migrated source invoice this run carries. A physical
+# quarantine row is not that unit of work (one rejected driver takes five preview lines and its
+# credit applications with it), so measuring physical rows against the line population would divide
+# one reject by six-plus source rows and let far more than 5% of tenants fail without halting.
+QUAR_BASIS = (
+    "invoice driver: one sp_issue_invoice per tenant-period in ns, plus each migrated source "
+    "INVOICES row this run carries — numerator and denominator on that one population"
+)
+quar_source_rows = accounting["invoices"]["source_rows"]
+quar_rejected_rows = accounting["invoices"]["quarantined_rows"]
+quar_pct = (100.0 * quar_rejected_rows / quar_source_rows) if quar_source_rows else 0.0
 print(
-    f"drivers={drivers_source} loaded={drivers_loaded} quarantined_rows={quarantined_rows} "
-    f"({quar_pct:.4f}% of {source_rows_total} source rows)"
+    f"drivers={drivers_source} loaded={drivers_loaded} rejected_invoices={quar_rejected_rows} "
+    f"({quar_pct:.4f}% of {quar_source_rows} invoice drivers); "
+    f"physical quarantine rows={quarantined_rows}"
 )
 
 # COMMAND ----------
@@ -991,23 +1138,74 @@ print(
 # COMMAND ----------
 
 
-def history_metrics(target: str, operation: str) -> dict:
-    """The latest `operation` commit's own metrics from DESCRIBE HISTORY.
+def table_version(target: str) -> int:
+    v = spark.sql(f"SELECT max(version) FROM (DESCRIBE HISTORY {full(target)})").collect()[0][0]
+    return int(v) if v is not None else -1
 
-    Managed Delta appends its own maintenance commits (OPTIMIZE, VACUUM) to the same history, so
-    the newest entry is not necessarily this run's write, and reading it would report a no-op the
-    write never made. A run performs exactly one MERGE (and at most one DELETE) per target.
+
+# Every commit this run makes is made by a job run named for this run's batch id, and the version
+# each target sat at before the run is captured here. The idempotency proof then reads only the
+# commits this run produced: managed Delta interleaves maintenance commits (OPTIMIZE, VACUUM) and
+# ns=demo is shared with other sessions holding the same PAT, so "the newest MERGE" could otherwise
+# be somebody else's write dressed up as this unit's no-op.
+# Serverless refuses spark.databricks.delta.commitInfo.userMetadata
+# ([CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION]), so the commit is identified by the job run that wrote
+# it: DESCRIBE HISTORY carries `job.jobName`, and every job this unit runs is named for its own batch
+# id.
+WRITE_TARGETS = ("invoices", "invoice_lines", "credit_applications", f"quarantine_{UNIT}")
+base_versions = {t: table_version(t) for t in WRITE_TARGETS}
+print(f"target versions before this run's writes: {base_versions}")
+
+
+ATTRIBUTION = (
+    "version > the target's pre-run version AND the commit's job.jobName ends with this run's "
+    "batch id"
+)
+
+
+def writing_job(row) -> dict:
+    """The job run behind a Delta commit, as DESCRIBE HISTORY reports it."""
+    job = row["job"]
+    if job is None:
+        return {"job_name": None, "job_run_id": None}
+    return {"job_name": job["jobName"], "job_run_id": job["jobRunId"]}
+
+
+def history_metrics(target: str, operation: str) -> dict:
+    """This run's own `operation` commit on `target`, from DESCRIBE HISTORY.
+
+    A commit qualifies only if it is newer than the version the target sat at before this run
+    started *and* was written by the job run carrying this run's batch id in its name. A run performs
+    at most one MERGE and at most one DELETE per target, and a write that changed nothing produces no
+    commit at all — reported as such rather than borrowed from an older commit.
     """
-    hist = spark.sql(f"DESCRIBE HISTORY {full(target)}")
-    latest = hist.orderBy("version", ascending=False)
-    rows = latest.where(f"operation = '{operation}'").limit(1).collect()
-    if not rows:
-        return {"operation": None, "version": None}
-    row = rows[0]
+    rows = (
+        spark.sql(f"DESCRIBE HISTORY {full(target)}")
+        .where(f"operation = '{operation}' AND version > {base_versions[target]}")
+        .orderBy("version", ascending=False)
+        .collect()
+    )
+    mine = [r for r in rows if (writing_job(r)["job_name"] or "").endswith(BATCH_ID)]
+    if not mine:
+        return {
+            "operation": operation,
+            "version": None,
+            "commit_from_this_run": False,
+            "attributed_by": ATTRIBUTION,
+            "rows_inserted": 0,
+            "rows_updated": 0,
+            "rows_deleted": 0,
+            "note": "this run produced no such commit on this target: the write changed nothing",
+        }
+    row = mine[0]
     m = row["operationMetrics"] or {}
     out = {
         "operation": row["operation"],
         "version": int(row["version"]),
+        "commit_from_this_run": True,
+        "attributed_by": ATTRIBUTION,
+        "pre_run_version": base_versions[target],
+        "writing_job_run": writing_job(row),
         "rows_inserted": int(m.get("numTargetRowsInserted", 0)),
         "rows_updated": int(m.get("numTargetRowsUpdated", 0)),
         "rows_deleted": int(m.get("numTargetRowsDeleted", 0)),
@@ -1035,7 +1233,8 @@ quarantine_metrics = history_metrics(f"quarantine_{UNIT}", "MERGE")
 
 if quar_pct > HALT_PCT:
     raise AssertionError(
-        f"STOPA-QUARANTINE: quarantine rate {quar_pct:.4f}% exceeds {HALT_PCT}% of source rows — "
+        f"STOPA-QUARANTINE: quarantine rate {quar_pct:.4f}% ({quar_rejected_rows} rejected of "
+        f"{quar_source_rows} invoice drivers) exceeds {HALT_PCT}% — "
         f"halting the unit instead of loading around it. The {quarantined_rows} rejected rows are in "
         f"{QUARANTINE} (ns={NS}, _batch_id={BATCH_ID}); no invoice, line or credit application was "
         "written"
@@ -1052,45 +1251,67 @@ if quar_pct > HALT_PCT:
 
 # COMMAND ----------
 
-_probe_cols = ", ".join(
-    f"CAST(a.amount AS DECIMAL(38,2)) AS `{c}_raw`, try_cast(a.amount AS DECIMAL(14,2)) AS `{c}`"
-    if c == "total"
-    else f"CAST(1.00 AS DECIMAL(38,2)) AS `{c}_raw`, try_cast(CAST(1.00 AS DECIMAL(38,2)) AS DECIMAL(14,2)) AS `{c}`"
-    for c in MONEY_COLS
-)
-_probe_unrounded = ", ".join(
-    f"CAST(1.00 AS DECIMAL(28,10)) AS `{c}_raw`, "
-    f"try_cast(CAST(1.00 AS DECIMAL(28,10)) AS DECIMAL(28,10)) AS `{c}`"
-    for c in UNROUNDED_COLS
-)
-PROBE_SQL = f"""
-WITH amounts AS (
-  SELECT 1 AS ord, CAST(1e14 AS DECIMAL(38,2)) AS amount
-  UNION ALL
-  SELECT 2 AS ord, CAST(12.34 AS DECIMAL(38,2)) AS amount
-),
-probe AS (
-  SELECT a.ord, {_probe_cols}, {_probe_unrounded},
-         try_cast(CAST(1.00 AS DECIMAL(38,2)) AS DECIMAL(14,2)) AS `overage_amount`
-  FROM amounts a
-)
-SELECT CAST(p.`total_raw` AS STRING) AS raw_value,
-       CAST(p.`total` AS STRING) AS cast_value,
-       CASE WHEN {overflow_pred("p.")} THEN 'NUMERIC_OVERFLOW' ELSE NULL END AS reason
-FROM probe p
-ORDER BY p.ord
-"""
+def probe_case(column: str, raw_expr: str) -> dict:
+    """Push one synthetic amount into one money column and ask the load's own predicate about it.
+
+    Every other column is held at an in-range 1.00, so the answer is attributable to the column
+    under probe. `raw_expr` is the *pre-cast* value: the cast is applied here exactly as the load
+    applies it, which is the point — the guard has to reach its verdict from the raw column.
+    """
+    money = ", ".join(
+        (
+            f"{raw_expr} AS `{c}_raw`, try_cast({raw_expr} AS DECIMAL(14,2)) AS `{c}`"
+            if c == column
+            else f"CAST(1.00 AS DECIMAL(38,2)) AS `{c}_raw`, "
+            f"try_cast(CAST(1.00 AS DECIMAL(38,2)) AS DECIMAL(14,2)) AS `{c}`"
+        )
+        for c in MONEY_COLS
+    )
+    unrounded = ", ".join(
+        (
+            f"{raw_expr} AS `{c}_raw`, try_cast({raw_expr} AS DECIMAL(28,10)) AS `{c}`"
+            if c == column
+            else f"CAST(1.00 AS DECIMAL(28,10)) AS `{c}_raw`, "
+            f"try_cast(CAST(1.00 AS DECIMAL(28,10)) AS DECIMAL(28,10)) AS `{c}`"
+        )
+        for c in UNROUNDED_COLS
+    )
+    row = spark.sql(
+        f"""
+        WITH probe AS (SELECT {money}, {unrounded})
+        SELECT CAST(p.`{column}_raw` AS STRING) AS raw_value,
+               CAST(p.`{column}` AS STRING) AS cast_value,
+               CASE WHEN {overflow_pred("p.")} THEN 'NUMERIC_OVERFLOW' ELSE NULL END AS reason
+        FROM probe p
+        """
+    ).collect()[0]
+    return {
+        "column": column,
+        "pre_cast_expression": raw_expr,
+        "raw_value": row[0],
+        "value_after_cast": row[1],
+        "quarantine_reason": row[2],
+    }
+
+
+BIG = "CAST(1e14 AS DECIMAL(38,2))"
 overflow_probe = {
-    "description": "an invoice total beyond DECIMAL(14,2) and an in-range control, both pushed "
-    "through the pinned-type cast and the same generated overflow predicate the load uses",
+    "description": "synthetic amounts beyond DECIMAL(14,2) — the invoice total, the rating overage "
+    "that reaches the guard before any narrowing cast, and a derived total nulled by a narrowing "
+    "cast while its inputs survived — plus an in-range control, each pushed through the pinned-type "
+    "cast and the same generated overflow predicate the load applies",
     "is_probe_of_target_expression_not_source_finding": True,
     "cases": [
-        {"raw_value": r[0], "value_after_cast": r[1], "quarantine_reason": r[2]}
-        for r in spark.sql(PROBE_SQL).collect()
+        probe_case("total", BIG),
+        probe_case("overage_amount", BIG),
+        probe_case("total", "CAST(NULL AS DECIMAL(38,2))"),
+        probe_case("total", "CAST(12.34 AS DECIMAL(38,2))"),
     ],
 }
+_expected_probe = ["NUMERIC_OVERFLOW", "NUMERIC_OVERFLOW", "NUMERIC_OVERFLOW", None]
+overflow_probe["expected_reasons"] = _expected_probe
 print(json.dumps(overflow_probe, indent=1))
-if [c["quarantine_reason"] for c in overflow_probe["cases"]] != ["NUMERIC_OVERFLOW", None]:
+if [c["quarantine_reason"] for c in overflow_probe["cases"]] != _expected_probe:
     raise AssertionError(
         f"the NUMERIC_OVERFLOW guard did not behave as declared on the probe: {overflow_probe}"
     )
@@ -1121,9 +1342,9 @@ WITH lines AS (
   FROM v_loaded l
   UNION ALL
   SELECT l.`invoice_id`, l.`tenant_id`, 2, 'usage', 'usage overage',
-         CAST(round(l.`overage_amount`, 2) AS DECIMAL(28,10)),
+         CAST(round(l.`overage_amount_raw`, 2) AS DECIMAL(28,10)),
          CAST(0 AS DECIMAL(14,2)), CAST(0 AS DECIMAL(14,2)),
-         CAST(round(l.`overage_amount`, 2) AS DECIMAL(28,10))
+         CAST(round(l.`overage_amount_raw`, 2) AS DECIMAL(28,10))
   FROM v_loaded l
   UNION ALL
   SELECT l.`invoice_id`, l.`tenant_id`, 3, 'tax', 'regional tax',
@@ -1460,6 +1681,53 @@ if lines_outside_scope_before != lines_outside_scope_after:
         f"{lines_outside_scope_before} -> {lines_outside_scope_after}"
     )
 
+# COMMAND ----------
+
+# MAGIC %md ### The credit applications this run's invoices no longer produce
+# MAGIC
+# MAGIC The credit sequence is recomputed from bronze on every run, and an upsert alone would leave
+# MAGIC behind an application this unit wrote earlier that the new sequence does not produce — a note
+# MAGIC that has left `CREDIT_NOTES`, a note whose visible balance is now zero, a corrected input that
+# MAGIC shortens the sequence. `CREDIT_STATE_SQL` counts every application belonging to *other*
+# MAGIC invoices as `applied_by_other_invoices`, so such a row would keep eating a real balance for
+# MAGIC every later invoice, permanently.
+# MAGIC
+# MAGIC So the applications get the same treatment the invoice lines get: one static `DELETE`, scoped
+# MAGIC to `ns` and to the invoices this run issues, removing only the rows the recomputed sequence no
+# MAGIC longer emits. Applications belonging to invoices outside this run are out of scope by
+# MAGIC construction, and the invariant is measured on both sides of the statement. On an unchanged
+# MAGIC rerun the scope is empty, so the rerun stays a no-op.
+
+# COMMAND ----------
+
+CREDIT_RECONCILE_SCOPE = f"""
+`ns` = {NS_LIT}
+  AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued)
+  AND `id` NOT IN (SELECT `id` FROM v_credit_apps_src)
+"""
+stale_credit_apps = spark.sql(
+    f"SELECT count(*) FROM {full('credit_applications')} WHERE {CREDIT_RECONCILE_SCOPE}"
+).collect()[0][0]
+credit_apps_outside_scope_before = spark.sql(
+    f"""
+    SELECT count(*) FROM {full('credit_applications')}
+    WHERE `ns` = {NS_LIT} AND `invoice_id` NOT IN (SELECT `invoice_id` FROM v_issued)
+    """
+).collect()[0][0]
+spark.sql(f"DELETE FROM {full('credit_applications')} WHERE {CREDIT_RECONCILE_SCOPE}")
+credit_reconcile_delete_metrics = history_metrics("credit_applications", "DELETE")
+credit_apps_outside_scope_after = spark.sql(
+    f"""
+    SELECT count(*) FROM {full('credit_applications')}
+    WHERE `ns` = {NS_LIT} AND `invoice_id` NOT IN (SELECT `invoice_id` FROM v_issued)
+    """
+).collect()[0][0]
+if credit_apps_outside_scope_before != credit_apps_outside_scope_after:
+    raise AssertionError(
+        "the scoped credit-application reconciliation touched applications outside its scope: "
+        f"{credit_apps_outside_scope_before} -> {credit_apps_outside_scope_after}"
+    )
+
 metrics = {
     "invoices": merge_target(TABLES["invoices"], "v_invoices_src"),
     "invoice_lines": merge_target(TABLES["invoice_lines"], "v_lines_src"),
@@ -1467,6 +1735,17 @@ metrics = {
     f"quarantine_{UNIT}": quarantine_metrics,
 }
 print(json.dumps(metrics, indent=1))
+
+# Nothing this run's invoices do not produce may survive in their own applications, or the next
+# run's available balance is wrong: the end state is asserted, not assumed.
+_left_over = spark.sql(
+    f"SELECT count(*) FROM {full('credit_applications')} WHERE {CREDIT_RECONCILE_SCOPE}"
+).collect()[0][0]
+if _left_over:
+    raise AssertionError(
+        f"{_left_over} credit applications for this run's invoices survive that the recomputed "
+        "sequence does not produce — they would reduce every later invoice's available credit"
+    )
 
 # COMMAND ----------
 
@@ -1809,6 +2088,24 @@ anomalies["ANOM-DYNAMIC-SQL"] = {
     "lines_outside_the_scope_after": int(lines_outside_scope_after),
 }
 
+credit_reconciliation = {
+    "why": "an application this unit wrote earlier that the recomputed sequence no longer produces "
+    "would be counted as applied_by_other_invoices forever, so every later invoice would under-apply "
+    "a real balance",
+    "target_statement": "DELETE FROM "
+    + full("credit_applications")
+    + " WHERE "
+    + " ".join(CREDIT_RECONCILE_SCOPE.split()),
+    "target_behaviour": "one static statement scoped to ns and to this run's invoices, removing only "
+    "rows the recomputed sequence does not re-emit; applications of invoices outside the run are out "
+    "of scope by construction and the count outside the scope is measured on both sides",
+    "rows_matched_by_the_scoped_delete": int(stale_credit_apps),
+    "delete_commit_metrics": credit_reconcile_delete_metrics,
+    "applications_outside_the_scope_before": int(credit_apps_outside_scope_before),
+    "applications_outside_the_scope_after": int(credit_apps_outside_scope_after),
+    "applications_left_unreconciled": int(_left_over),
+}
+
 # COMMAND ----------
 
 # MAGIC %md ### Swallowed exceptions
@@ -1823,7 +2120,7 @@ swallowed = spark.sql(
     """
     SELECT count(*) FILTER (WHERE `fee_subscription_id` IS NULL) AS no_covering_subscription_with_plan,
            count(*) FILTER (WHERE `plan_fee_raw` IS NULL) AS null_plan_fee,
-           count(*) FILTER (WHERE `overage_amount` IS NULL) AS null_overage,
+           count(*) FILTER (WHERE `overage_amount_raw` IS NULL) AS null_overage,
            count(*) FILTER (WHERE `tax_computed_raw` IS NULL) AS null_tax,
            count(*) FILTER (WHERE `rating_subscription_id` IS NULL) AS no_rating_subscription,
            count(*) FILTER (WHERE NOT (`rating_subscription_id` <=> `fee_subscription_id`))
@@ -2040,6 +2337,12 @@ summary = {
     "quarantine": {
         "accounting": accounting,
         "rows": quarantined_rows,
+        "source_rows_rejected": quarantine_source_rows,
+        "merge_identities_with_multiple_source_rows": _dup_identities,
+        "identity_collapse_probe": quarantine_identity_probe,
+        "rate_basis": QUAR_BASIS,
+        "rate_source_rows": quar_source_rows,
+        "rate_rejected_rows": quar_rejected_rows,
         "rate_pct": round(quar_pct, 4),
         "halt_threshold_pct": HALT_PCT,
         "by_source_table_and_reason": quar_by_reason,
@@ -2082,6 +2385,7 @@ summary = {
         "delete_commit_metrics": rebuild_delete_metrics,
         "lines_outside_scope_before": int(lines_outside_scope_before),
         "lines_outside_scope_after": int(lines_outside_scope_after),
+        "credit_applications": credit_reconciliation,
         "reissue_update_columns": {
             name: TABLES[name].get("reissue_update_columns", [])
             + TABLES[name].get("explicit_state_columns", [])

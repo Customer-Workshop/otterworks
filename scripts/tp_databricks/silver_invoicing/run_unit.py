@@ -348,6 +348,32 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
             """
         )
     ]
+    # The quarantined driver identities, read from the quarantine table itself rather than inferred
+    # from whatever the burn comparison happens to miss: the burn check excludes exactly these
+    # tenants and nothing else, so a genuinely absent application cannot hide behind the exclusion.
+    quarantined_driver_tenants = sorted(
+        {
+            str(r[0])
+            for r in dbx.sql(
+                f"""
+                SELECT split(source_key, '\\\\|')[0]
+                FROM {CATALOG}.{SCHEMA}.quarantine_{UNIT}
+                WHERE ns = {ns_lit}
+                  AND source_table = 'OW_BILLING.TENANTS+SUBSCRIPTIONS+PLANS+USAGE_EVENTS+CREDIT_NOTES'
+                """
+            )
+        }
+    )
+    quarantine_duplicate_identities = int(
+        dbx.sql(
+            f"""
+            SELECT count(*) FROM (
+              SELECT 1 FROM {CATALOG}.{SCHEMA}.quarantine_{UNIT} WHERE ns = {ns_lit}
+              GROUP BY ns, source_table, source_key, quarantine_reason HAVING count(*) > 1
+            )
+            """
+        )[0][0]
+    )
     quarantine_shape = int(
         dbx.sql(
             f"""
@@ -420,6 +446,8 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
         "burn_rows": burn_rows,
         "column_types": types,
         "quarantine": quarantine,
+        "quarantined_driver_tenants": quarantined_driver_tenants,
+        "quarantine_duplicate_merge_identities": quarantine_duplicate_identities,
         "quarantine_rows_missing_required_fields": quarantine_shape,
         "status_desc": status_desc,
         "d01_probe": {
@@ -473,17 +501,30 @@ def compare_invoices(oracle: dict[str, dict], target_rows: list[dict]) -> dict[s
     }
 
 
-def compare_burn(oracle_burn: list[dict], target_burn: list[dict]) -> dict[str, Any]:
-    """The sequential burn-down, note by note, against the sequence Oracle would perform."""
+def compare_burn(
+    oracle_burn: list[dict], target_burn: list[dict], quarantined_tenants: list[str]
+) -> dict[str, Any]:
+    """The sequential burn-down, note by note, against the sequence Oracle would perform.
+
+    The two `(tenant_id, credit_note_id)` key sets are compared explicitly: a missing application
+    and an extra one under a different key would otherwise cancel out in a row-count difference and
+    a substituted row would pass. The only permitted absence is a tenant this run quarantined --
+    it issues nothing, so its notes are never visited -- and that exclusion comes from the
+    quarantine table's own driver identities, not from whatever the comparison happens to miss.
+    """
+    excluded = set(quarantined_tenants)
     tgt = {(r["tenant_id"], r["credit_note_id"]): r for r in target_burn}
+    src_by_key = {(r["tenant_id"], r["credit_note_id"]): r for r in oracle_burn}
+    expected_keys = {k for k in src_by_key if k[0] not in excluded}
+    missing = sorted(expected_keys - set(tgt))
+    extra = sorted(set(tgt) - expected_keys)
+    excluded_keys = sorted(set(src_by_key) - expected_keys)
+
     per_col = {c: 0 for c in BURN_COLS}
     mismatches: list[dict[str, Any]] = []
     compared = 0
-    for src in oracle_burn:
-        key = (src["tenant_id"], src["credit_note_id"])
-        row = tgt.get(key)
-        if row is None:
-            continue  # a quarantined tenant issues nothing, so its notes are never visited
+    for key in sorted(expected_keys & set(tgt)):
+        src, row = src_by_key[key], tgt[key]
         compared += 1
         for col, cls in BURN_COLS.items():
             exp, act = norm(src.get(col), cls), norm(row.get(col), cls)
@@ -496,8 +537,16 @@ def compare_burn(oracle_burn: list[dict], target_burn: list[dict]) -> dict[str, 
                     )
     return {
         "source_rows": len(oracle_burn),
+        "source_rows_expected_in_target": len(expected_keys),
         "rows_compared": compared,
-        "rows_in_target_not_in_source": len(tgt) - compared,
+        "target_rows": len(tgt),
+        "keys_in_source_not_in_target": ["|".join(k) for k in missing[:25]],
+        "keys_in_source_not_in_target_count": len(missing),
+        "keys_in_target_not_in_source": ["|".join(k) for k in extra[:25]],
+        "keys_in_target_not_in_source_count": len(extra),
+        "keys_excluded_as_quarantined": ["|".join(k) for k in excluded_keys[:25]],
+        "keys_excluded_as_quarantined_count": len(excluded_keys),
+        "quarantined_tenants_excluded": sorted(excluded),
         "rows_differing": len({m["credit_note_id"] for m in mismatches}),
         "per_column_mismatches": per_col,
         "mismatch_sample": mismatches,
@@ -754,6 +803,7 @@ def build_report(
     expected_rows: dict[str, int],
     pinned_sha: str,
     all_runs: list[dict],
+    stale_proof: dict[str, Any],
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     src = oracle["source_counts"]
@@ -788,11 +838,106 @@ def build_report(
                 source_rows=a["source_rows"],
                 loaded_rows=a["loaded_rows"],
                 quarantined_rows=a["quarantined_rows"],
-                quarantine_pct=quar_pct,
+                quarantine_pct_for_this_table=a["rate_pct"],
+                quarantine_pct_against_the_halt_threshold=quar_pct,
+                quarantine_rate_basis=run2["quarantine"]["rate_basis"],
                 quarantine_by_source_table_and_reason=quar_by,
                 halt_threshold_pct=SPEC["quarantine_halt_threshold_pct"],
             )
         )
+
+    checks.append(
+        check(
+            "ACC-QUAR-halt-basis",
+            {
+                "rate_pct": round(
+                    100.0 * acc["invoices"]["quarantined_rows"] / acc["invoices"]["source_rows"], 4
+                )
+                if acc["invoices"]["source_rows"]
+                else 0.0,
+                "within_threshold": True,
+            },
+            {
+                "rate_pct": quar_pct,
+                "within_threshold": quar_pct <= SPEC["quarantine_halt_threshold_pct"],
+            },
+            "the 5% halt measured on one declared population: rejected invoice drivers over invoice "
+            "drivers. A physical quarantine row is not the unit of work \u2014 one rejected driver "
+            "takes its five preview lines and its credit applications with it \u2014 so counting "
+            "physical rows against the line population would dilute the threshold about six-fold",
+            basis=run2["quarantine"]["rate_basis"],
+            rejected_rows=run2["quarantine"]["rate_rejected_rows"],
+            source_rows=run2["quarantine"]["rate_source_rows"],
+            physical_quarantine_rows=quar_rows,
+            rejected_source_rows_collapsed_into_them=run2["quarantine"]["source_rows_rejected"],
+            halt_threshold_pct=SPEC["quarantine_halt_threshold_pct"],
+        )
+    )
+
+    checks.append(
+        check(
+            "ACC-QUAR-merge-identity",
+            {"duplicate_merge_identities_in_the_target": 0, "probe_rows": [1, 1]},
+            {
+                "duplicate_merge_identities_in_the_target": snap[
+                    "quarantine_duplicate_merge_identities"
+                ],
+                "probe_rows": [
+                    c["merged_rows"]
+                    for c in run2["quarantine"]["identity_collapse_probe"]["cases"]
+                ],
+            },
+            "the quarantine rows are collapsed to one record per (ns, source_table, source_key, "
+            "quarantine_reason) before the MERGE, so a rerun cannot hit a many-to-many match on "
+            "KEY_DUPLICATE or multi-row KEY_NULL; the collapse is measured with a synthetic case "
+            "through the same grouping the load applies",
+            identities_carrying_more_than_one_source_row=run2["quarantine"][
+                "merge_identities_with_multiple_source_rows"
+            ],
+            rejected_source_rows=run2["quarantine"]["source_rows_rejected"],
+            physical_quarantine_rows=quar_rows,
+            probe=run2["quarantine"]["identity_collapse_probe"],
+        )
+    )
+
+    _stale = stale_proof.get("reconciliation", {})
+    checks.append(
+        check(
+            "ACC-CREDIT-RECONCILE",
+            {
+                "planted_stale_application_survived": 0,
+                "applications_left_unreconciled": 0,
+                "real_applications_lost": 0,
+                "applications_outside_the_scope_changed": 0,
+            },
+            {
+                "planted_stale_application_survived": stale_proof.get(
+                    "planted_row_present_after_the_run", 0
+                ),
+                "applications_left_unreconciled": _stale.get("applications_left_unreconciled", 0),
+                "real_applications_lost": max(
+                    0,
+                    stale_proof.get("applications_before_the_run", 0)
+                    - stale_proof.get("planted_row_present_before_the_run", 0)
+                    - stale_proof.get("applications_after_the_run", 0),
+                ),
+                "applications_outside_the_scope_changed": abs(
+                    _stale.get("applications_outside_the_scope_before", 0)
+                    - _stale.get("applications_outside_the_scope_after", 0)
+                ),
+            },
+            "the credit applications this run's invoices no longer produce are removed by one static "
+            "DELETE scoped to ns and to those invoices, proven by a targeted case: one synthetic "
+            "stale application planted on the target for an issued invoice under a note the sequence "
+            "does not visit, then the unit run again. Without it the row would be counted as "
+            "applied_by_other_invoices forever and every later invoice would under-apply a real "
+            "balance",
+            proof=stale_proof,
+            statement=_stale.get("target_statement"),
+            delete_commit_metrics=_stale.get("delete_commit_metrics"),
+            quarantined_rows=quar_rows,
+        )
+    )
 
     checks.append(
         check(
@@ -834,7 +979,7 @@ def build_report(
     checks.append(
         check(
             "ROWS-credit_applications",
-            {"rows": burn["rows_compared"] + burn["rows_in_target_not_in_source"]},
+            {"rows": burn["target_rows"]},
             {"rows": snap["counts"]["credit_applications"]},
             f"{CATALOG}.{SCHEMA}.credit_applications COUNT(*) WHERE ns = '{ns}' vs the notes live "
             "Oracle's own ordered cursor visits for the same invoices",
@@ -1037,10 +1182,19 @@ def build_report(
     )
     counts_same = run1["target_counts"] == run2["target_counts"]
     sums_same = run1["checksums"] == run2["checksums"]
+    attributed = all(
+        m.get("attributed_by", "").startswith("version > the target's pre-run version")
+        for m in idem_metrics.values()
+    )
     checks.append(
         check(
             "ACC-IDEM",
-            {"second_run_rows_changed": 0, "row_counts_identical": True, "checksums_identical": True},
+            {
+                "second_run_rows_changed": 0,
+                "row_counts_identical": True,
+                "checksums_identical": True,
+                "metrics_attributed_to_this_run": True,
+            },
             {
                 "second_run_rows_changed": sum(
                     m["rows_inserted"] + m["rows_updated"] + m["rows_deleted"]
@@ -1048,12 +1202,17 @@ def build_report(
                 ),
                 "row_counts_identical": counts_same,
                 "checksums_identical": sums_same,
+                "metrics_attributed_to_this_run": attributed,
             },
-            "Delta MERGE operationMetrics read from the second identical run's own MERGE commit in "
-            "DESCRIBE HISTORY (the latest MERGE, so a managed OPTIMIZE commit landing after it "
-            "cannot be mistaken for the write), plus the order-independent parity checksums of all "
-            "three targets",
-            passed=idem_zero and counts_same and sums_same,
+            "Delta MERGE operationMetrics read from the commits the second identical run itself "
+            "produced: each target's version is captured before the writes and the qualifying commit "
+            "must come from the job run named for this run's batch id, so neither a managed OPTIMIZE "
+            "commit nor another session writing the shared ns=demo slice can be mistaken for this "
+            "unit's write. A write that changed nothing produces no commit and is reported as such "
+            "rather than borrowed from an older one. Plus the order-independent parity checksums of "
+            "all three targets",
+            passed=idem_zero and counts_same and sums_same and attributed,
+            metrics_attribution=next(iter(idem_metrics.values()))["attributed_by"],
             run1_merge_metrics=run1["merge_metrics"],
             run2_merge_metrics=idem_metrics,
             run1_checksums=run1["checksums"],
@@ -1149,15 +1308,25 @@ def build_report(
     checks.append(
         check(
             "ACC-CREDIT-BURN",
-            {"rows_differing": 0, "order_by": SPEC["invoicing_constants"]["credit_order_by"]},
+            {
+                "rows_differing": 0,
+                "keys_in_source_not_in_target": [],
+                "keys_in_target_not_in_source": [],
+                "order_by": SPEC["invoicing_constants"]["credit_order_by"],
+            },
             {
                 "rows_differing": burn["rows_differing"],
+                "keys_in_source_not_in_target": burn["keys_in_source_not_in_target"],
+                "keys_in_target_not_in_source": burn["keys_in_target_not_in_source"],
                 "order_by": SPEC["invoicing_constants"]["credit_order_by"],
             },
             "the burn-down note by note against the same ordered sequence evaluated by live Oracle "
             "(ORDER BY issued_on, id, the counter decremented by each note's pre-update balance), "
             f"recomputed from {CATALOG}.{SCHEMA}.credit_applications",
             rows_compared=burn["rows_compared"],
+            source_rows_expected_in_target=burn["source_rows_expected_in_target"],
+            keys_excluded_as_quarantined=burn["keys_excluded_as_quarantined"],
+            quarantined_tenants_excluded=burn["quarantined_tenants_excluded"],
             per_column_mismatches=burn["per_column_mismatches"],
             mismatch_sample=burn["mismatch_sample"],
             notes_debited_by_more_than_their_own_balance=burn_anom[
@@ -1235,12 +1404,20 @@ def build_report(
     checks.append(
         check(
             "QUAR-NUMERIC_OVERFLOW-REACHABLE",
-            {"reasons": ["NUMERIC_OVERFLOW", None]},
-            {"reasons": [c["quarantine_reason"] for c in probe_cases]},
-            "a synthetic invoice total beyond DECIMAL(14,2) and an in-range control, pushed through "
-            "the pinned-type cast and the same generated overflow predicate the load applies, "
-            "evaluated by the job run. A probe of the target expression: it is not a finding about "
-            "the source and it writes nothing",
+            {
+                "reasons": ["NUMERIC_OVERFLOW", "NUMERIC_OVERFLOW", "NUMERIC_OVERFLOW", None],
+                "columns_probed": ["total", "overage_amount", "total", "total"],
+            },
+            {
+                "reasons": [c["quarantine_reason"] for c in probe_cases],
+                "columns_probed": [c["column"] for c in probe_cases],
+            },
+            "synthetic amounts beyond DECIMAL(14,2) in the invoice total and in the rating overage "
+            "(the money column most likely to overflow, now carried pre-cast so the guard reaches it "
+            "before any narrowing), a derived total nulled by its cast while its inputs survived, and "
+            "an in-range control \u2014 each pushed through the pinned-type cast and the same "
+            "generated overflow predicate the load applies, evaluated by the job run. A probe of the "
+            "target expression: it is not a finding about the source and it writes nothing",
             cases=probe_cases,
             predicate_reads="the pre-cast *_raw columns, so the cast cannot null or truncate the "
             "value before the guard sees it",
@@ -1367,7 +1544,30 @@ def build_report(
         " tenants here, and both are carried on the invoice row.",
         f"The ns = '{ns}' slice of the shared workspace is visible to other sessions holding the "
         "same PAT. This recon is re-runnable and every number is recomputed from the Delta targets "
-        "after the second run, but it cannot prove that no other session wrote between the two runs.",
+        "after the second run, but it cannot prove that no other session wrote between the two runs. "
+        "The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run "
+        "produced (version > the target's pre-run version, and the commit's job.jobName is the job "
+        "run named for this run's batch id \u2014 serverless rejects "
+        "spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which "
+        "excludes a foreign commit from the proof but not a foreign write from the row counts taken "
+        "afterwards.",
+        "Divergence — cross-table atomicity: sp_issue_invoice is one Oracle transaction over the "
+        "header, its lines and the credit burn-down, while this port makes three independent Delta "
+        "commits plus a scoped DELETE. Between the invoices commit and the invoice_lines commit a "
+        "reader can therefore see a header without its lines, and between the lines commit and the "
+        "credit_applications commit a header and lines without the applications that reduced them — "
+        "a window of one commit each, on the order of seconds, closed by the next run because the "
+        "retry re-derives the identical rows and converges on the same end state (ACC-IDEM, proven "
+        "by the second-run metrics). Staged publication behind a batch marker is an estate-wide "
+        "target-architecture decision for every silver and gold unit rather than something this unit "
+        "invents for itself, so it is recorded here and carried centrally into the wave plan as a "
+        "pre-cutover design item; it is not implemented in this unit.",
+        "The stale credit-application removal path is proven by a targeted case "
+        f"({stale_proof.get('status')}: one synthetic application planted on the target for an "
+        "issued invoice under a note the recomputed sequence does not visit, then the unit run "
+        "again), not by this population — a run over unchanged bronze produces the same applications "
+        "every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured "
+        "before/after counts.",
     ]
 
     return {
@@ -1448,6 +1648,94 @@ def build_report(
     }
 
 
+def stale_credit_removal_proof(dbx: Dbx, ns: str, batch_id: str) -> tuple[dict[str, Any], dict]:
+    """A measured case for the credit-application reconciliation, not an argument that it works.
+
+    This population never leaves a stale application behind: the recomputed sequence produces the
+    same rows every time, which is what ACC-IDEM requires. So the case is manufactured on the target
+    side only — one synthetic application is planted for an invoice this run issues, under a
+    credit_note_id the sequence does not produce — and the unit is run again. A correct
+    reconciliation removes exactly that row and leaves every real application, in this ns and in
+    others, untouched. Nothing in the source is mutated and no other unit's table is touched.
+    """
+    ns_lit = sql_str(ns)
+    tbl = f"{CATALOG}.{SCHEMA}.credit_applications"
+    anchor = dbx.sql(
+        f"""
+        SELECT invoice_id, tenant_id FROM {tbl}
+        WHERE ns = {ns_lit} ORDER BY invoice_id LIMIT 1
+        """
+    )
+    if not anchor:
+        return (
+            {
+                "status": "unreachable",
+                "why": "no credit application exists in this ns to anchor the case to, so the "
+                "removal path is declared unverified rather than claimed",
+            },
+            {},
+        )
+    invoice_id, tenant_id = str(anchor[0][0]), str(anchor[0][1])
+    probe_id = f"stale-credit-probe-{batch_id}"
+    probe_note = f"stale-credit-note-{batch_id}"
+
+    def counts() -> tuple[int, int, int]:
+        rows = dbx.sql(
+            f"""
+            SELECT (SELECT count(*) FROM {tbl} WHERE ns = {ns_lit}),
+                   (SELECT count(*) FROM {tbl} WHERE ns = {ns_lit}
+                     AND id = {sql_str(probe_id)}),
+                   (SELECT count(*) FROM {tbl} WHERE ns <> {ns_lit})
+            """
+        )[0]
+        return int(rows[0]), int(rows[1]), int(rows[2])
+
+    dbx.sql(
+        f"""
+        INSERT INTO {tbl}
+          (id, invoice_id, tenant_id, credit_note_id, seq_no, issued_on, bronze_remaining_amount,
+           applied_by_other_invoices, remaining_before, credit_running_before, applied_amount,
+           remaining_after, credit_running_after, skipped_by_exit_when,
+           ns, _origin, _batch_id, _loaded_at)
+        VALUES ({sql_str(probe_id)}, {sql_str(invoice_id)}, {sql_str(tenant_id)},
+                {sql_str(probe_note)}, 99, TIMESTAMP '2026-01-01 00:00:00',
+                CAST(10.00 AS DECIMAL(14,2)), CAST(0.00 AS DECIMAL(14,2)),
+                CAST(10.00 AS DECIMAL(14,2)), CAST(10.00 AS DECIMAL(14,2)),
+                CAST(10.00 AS DECIMAL(14,2)), CAST(0.00 AS DECIMAL(14,2)),
+                CAST(0.00 AS DECIMAL(14,2)), false,
+                {ns_lit}, 'target-issue', {sql_str(batch_id)}, current_timestamp())
+        """
+    )
+    total_before, probe_before, other_ns_before = counts()
+    run = run_notebook(dbx, ns, batch_id)
+    total_after, probe_after, other_ns_after = counts()
+    if probe_after:
+        dbx.sql(f"DELETE FROM {tbl} WHERE ns = {ns_lit} AND id = {sql_str(probe_id)}")
+    proof = {
+        "status": "measured",
+        "planted_row": {
+            "id": probe_id,
+            "invoice_id": invoice_id,
+            "credit_note_id": probe_note,
+            "applied_amount": "10.00",
+            "why_stale": "the recomputed sequence for this invoice does not visit this note, so the "
+                         "row is exactly the shape of an application left behind by a note that has "
+                         "gone, a balance now zero, or a corrected input",
+        },
+        "applications_before_the_run": total_before,
+        "applications_after_the_run": total_after,
+        "planted_row_present_before_the_run": probe_before,
+        "planted_row_present_after_the_run": probe_after,
+        "real_applications_kept": total_after,
+        "applications_in_other_namespaces_before": other_ns_before,
+        "applications_in_other_namespaces_after": other_ns_after,
+        "reconciliation": run["rebuild"]["credit_applications"],
+        "batch_id": run["batch_id"],
+        "run_id": run["run_id"],
+    }
+    return proof, run
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     ns = argv[argv.index("--ns") + 1] if "--ns" in argv else "demo"
@@ -1486,6 +1774,9 @@ def main(argv: list[str] | None = None) -> int:
             f"{SPEC['quarantine_halt_threshold_pct']}%: halting the unit"
         )
 
+    stale_proof, run3 = stale_credit_removal_proof(dbx, ns, f"{stamp}c")
+    print(f"[run c] stale credit-application removal: {stale_proof['status']}")
+
     snap = target_snapshot(dbx, ns)
     issued_oracle = {
         tid: inv
@@ -1493,7 +1784,9 @@ def main(argv: list[str] | None = None) -> int:
         if inv["plan_fee"] is not None and inv["overage_amount"] is not None
     }
     parity = compare_invoices(issued_oracle, snap["invoice_rows"])
-    burn = compare_burn(oracle["credit_burn"], snap["burn_rows"])
+    burn = compare_burn(
+        oracle["credit_burn"], snap["burn_rows"], snap["quarantined_driver_tenants"]
+    )
     migrated_ids = {r["id"] for r in snap["invoice_rows"] if r["_origin"] == "source-migrated"}
     migrated = compare_migrated(
         [r for r in oracle["existing_invoices"] if r["id"] in migrated_ids], snap["invoice_rows"]
@@ -1513,7 +1806,7 @@ def main(argv: list[str] | None = None) -> int:
 
     report = build_report(
         ns, oracle, run1, run2, snap, parity, burn, migrated, migrated_lines, expected_rows,
-        pinned_sha, [run1, run2],
+        pinned_sha, [r for r in (run1, run2, run3) if r], stale_proof,
     )
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")

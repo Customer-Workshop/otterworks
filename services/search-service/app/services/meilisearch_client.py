@@ -257,8 +257,14 @@ class MeiliSearchService:
             result = index.search(prefix, {
                 "limit": size,
                 "attributesToRetrieve": ["title", "name"],
+                "showRankingScore": True,
             })
-            for hit in result["hits"]:
+            hits = sorted(
+                result["hits"],
+                key=lambda hit: hit.get("_rankingScore", 0.0),
+                reverse=True,
+            )
+            for hit in hits:
                 text = hit.get("title") or hit.get("name", "")
                 if text and text not in seen:
                     suggestions.append(text)

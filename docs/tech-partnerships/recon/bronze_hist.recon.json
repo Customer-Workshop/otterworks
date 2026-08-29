@@ -2,14 +2,14 @@
   "kind": "recon-report",
   "unit": "bronze_hist",
   "namespace": "demo",
-  "generated_at": "2026-08-29T00:38:30Z",
+  "generated_at": "2026-08-29T00:54:00Z",
   "run_mode": "live",
   "source": {
     "kind": "oracle",
     "service": "FREEPDB1",
     "schema": "OW_BILLING",
     "scope": "full history, not a recent window",
-    "provenance": "History rows were written by the estate's own CUSTOMER_MASTER and SUBSCRIPTIONS capture triggers during account maintenance (balance and status updates, closures, plan changes, subscription removals) on this Oracle instance. Nothing in the history tables was inserted directly."
+    "provenance": "The history measured here was GENERATED IN THIS SESSION, not found in the source: both _HIST tables were empty on the Oracle fixture this ran against, and the rows were produced minutes before measurement by running scripts/tp_databricks/bronze_hist_source_activity.py, which issues ordinary UPDATE and DELETE statements against CUSTOMER_MASTER and SUBSCRIPTIONS. No row was inserted into a _HIST table directly -- every history row was written by the estate's own capture triggers -- but this is generated history, not migrated history."
   },
   "target": {
     "catalog": "ow_tp",
@@ -24,7 +24,8 @@
     "source_rows": 478,
     "loaded_rows": 478,
     "quarantined_rows": 0,
-    "quarantine_rate_pct": 0.0
+    "quarantine_rate_pct": 0.0,
+    "provenance": "The history measured here was GENERATED IN THIS SESSION, not found in the source: both _HIST tables were empty on the Oracle fixture this ran against, and the rows were produced minutes before measurement by running scripts/tp_databricks/bronze_hist_source_activity.py, which issues ordinary UPDATE and DELETE statements against CUSTOMER_MASTER and SUBSCRIPTIONS. No row was inserted into a _HIST table directly -- every history row was written by the estate's own capture triggers -- but this is generated history, not migrated history."
   },
   "tables": {
     "customer_master_hist": {
@@ -37,7 +38,7 @@
         "DEL": 40
       },
       "rerun_merge_metrics": {
-        "version": 6,
+        "version": 9,
         "operation": "MERGE",
         "rows_inserted": 0,
         "rows_updated": 0,
@@ -54,7 +55,7 @@
         "DEL": 8
       },
       "rerun_merge_metrics": {
-        "version": 6,
+        "version": 9,
         "operation": "MERGE",
         "rows_inserted": 0,
         "rows_updated": 0,
@@ -396,7 +397,7 @@
     {
       "id": "IDEMPOTENCY-RERUN",
       "expected": "0 rows inserted, updated or deleted on the second run",
-      "actual": "{\"customer_master_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}, \"subscriptions_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}}",
+      "actual": "{\"customer_master_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 9}, \"subscriptions_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 9}}",
       "source_of_truth": "Delta operationMetrics of the MERGE in the rerun",
       "result": "pass"
     },
@@ -412,7 +413,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "rerun job run 567229785239328 merged into unchanged targets: {\"customer_master_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}, \"subscriptions_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}}"
+    "evidence": "rerun job run 156315202791044 merged into unchanged targets: {\"customer_master_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 9}, \"subscriptions_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 9}}"
   },
   "planted_anomaly_detections": {
     "expected_set": [
@@ -430,6 +431,7 @@
     ]
   },
   "unverified_paths": [
+    "Parity here is measured against history generated in this session, not against the customer's real history. The history measured here was GENERATED IN THIS SESSION, not found in the source: both _HIST tables were empty on the Oracle fixture this ran against, and the rows were produced minutes before measurement by running scripts/tp_databricks/bronze_hist_source_activity.py, which issues ordinary UPDATE and DELETE statements against CUSTOMER_MASTER and SUBSCRIPTIONS. No row was inserted into a _HIST table directly -- every history row was written by the estate's own capture triggers -- but this is generated history, not migrated history. A real estate's _HIST volume, age range and value distribution are unknown until that source is read, so these counts say the pipeline is correct on the rows it was given, not that it has seen production shapes.",
     "Unity Catalog column masks over the PII columns are not applied by this unit: the masking function is a shared, parent-owned object. Values are landed in cleartext as agreed, so the cleartext restriction is unproven until those masks exist.",
     "ENC_INVALID, NUMERIC_OVERFLOW, KEY_NULL and KEY_DUPLICATE are implemented and their accounting is checked, but the live source presented no row that triggers them, so only BAD_DATE has been exercised end to end (against the shipped expression, not against a stored row).",
     "Comparison is against live Oracle read directly over the fixture connection rather than through Lakehouse Federation; the federated catalog was not available to this unit.",

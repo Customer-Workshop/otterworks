@@ -60,9 +60,13 @@ def target_type(data_type: str, precision: int | None, scale: int | None, length
         return "TIMESTAMP"
     if data_type == "NUMBER":
         if precision is None:
-            # An unbounded NUMBER never reaches this unit's tables; if the
-            # source ever grows one, the load must stop rather than guess.
-            return "DECIMAL(38,0)" if not scale else f"DECIMAL(38,{scale})"
+            # An unbounded NUMBER has no scale to pin, and every guess is
+            # lossy: DECIMAL(38,0) rounds the fraction away where try_cast
+            # still succeeds, so the row would load silently wrong rather
+            # than quarantine. Stop and have the type declared centrally.
+            raise SystemExit(
+                "unbounded Oracle NUMBER has no pinned target type: stop and extend the dictionary"
+            )
         return f"DECIMAL({precision},{scale or 0})"
     raise SystemExit(f"no pinned target type for Oracle type {data_type!r}: stop and extend the dictionary")
 

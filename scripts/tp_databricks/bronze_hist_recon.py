@@ -47,6 +47,15 @@ HIST_TABLES = ("customer_master_hist", "subscriptions_hist")
 NOTEBOOK = REPO_ROOT / "pipelines" / "ow_tp" / UNIT / f"{UNIT}_load.py"
 QUARANTINE = f"{CATALOG}.{SCHEMA}.quarantine_{UNIT}"
 
+HISTORY_PROVENANCE = (
+    "The history measured here was GENERATED IN THIS SESSION, not found in the source: both _HIST "
+    "tables were empty on the Oracle fixture this ran against, and the rows were produced minutes "
+    "before measurement by running scripts/tp_databricks/bronze_hist_source_activity.py, which "
+    "issues ordinary UPDATE and DELETE statements against CUSTOMER_MASTER and SUBSCRIPTIONS. No row "
+    "was inserted into a _HIST table directly -- every history row was written by the estate's own "
+    "capture triggers -- but this is generated history, not migrated history."
+)
+
 # Values Oracle stores in HIST_DT that no format in the dictionary can parse.
 # The load must yield NULL for each and quarantine the row as BAD_DATE (D-06);
 # the check exercises the shipped expression itself so the rule cannot rot in a
@@ -448,6 +457,12 @@ def main() -> int:
           "notebook control flow, exercised on the measured run", passed=True)
 
     unverified.append(
+        "Parity here is measured against history generated in this session, not against the "
+        "customer's real history. " + HISTORY_PROVENANCE + " A real estate's _HIST volume, age "
+        "range and value distribution are unknown until that source is read, so these counts say "
+        "the pipeline is correct on the rows it was given, not that it has seen production shapes."
+    )
+    unverified.append(
         "Unity Catalog column masks over the PII columns are not applied by this unit: the masking "
         "function is a shared, parent-owned object. Values are landed in cleartext as agreed, so the "
         "cleartext restriction is unproven until those masks exist."
@@ -478,14 +493,8 @@ def main() -> int:
             "service": args.service,
             "schema": args.user.upper(),
             "scope": "full history, not a recent window",
-            # Stated because it bounds what these numbers prove: the source
-            # instance this ran against holds the history its own capture
-            # triggers recorded for the account maintenance it has seen, which
-            # is a fraction of a long-lived production estate's history.
-            "provenance": "History rows were written by the estate's own CUSTOMER_MASTER and "
-                          "SUBSCRIPTIONS capture triggers during account maintenance (balance and "
-                          "status updates, closures, plan changes, subscription removals) on this "
-                          "Oracle instance. Nothing in the history tables was inserted directly.",
+            # Stated exactly, because it bounds what every number below proves.
+            "provenance": HISTORY_PROVENANCE,
         },
         "target": {
             "catalog": CATALOG,
@@ -497,6 +506,9 @@ def main() -> int:
             "loaded_rows": sum(t["loaded_rows"] for t in summary.values()),
             "quarantined_rows": quarantine_total,
             "quarantine_rate_pct": round(100 * quarantine_total / source_total, 4) if source_total else 0.0,
+            # Repeated next to the counts on purpose: a reader who only looks
+            # at the totals must not take these for migrated history.
+            "provenance": HISTORY_PROVENANCE,
         },
         "tables": summary,
         "checks": checks,

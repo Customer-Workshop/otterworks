@@ -16,18 +16,27 @@ value is produced by the triggers exactly as it is in the source system.
 Activity is deterministic for a given --ns and --rounds, so the source
 population a recon run measures can be reproduced.
 
-    uv run --with oracledb==2.5.1 python3 \
-        scripts/tp_databricks/bronze_hist_source_activity.py --ns demo
+History produced this way is GENERATED history, not migrated history: a recon
+measured against it shows the pipeline is correct on the rows it was given, not
+that it has seen a real estate's volume or value distribution. Say so wherever
+those numbers are reported.
 
-Local fixture only. It is never pointed at a customer estate.
+    uv run --with oracledb==2.5.1 python3 \\
+        scripts/tp_databricks/bronze_hist_source_activity.py --ns demo --i-understand-this-mutates-the-source
+
+This writes destructively -- it updates and deletes base-table rows -- so it
+refuses to run unless the target resolves to a loopback address and the opt-in
+flag is passed. Local fixture only; never point it at a customer estate.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import ipaddress
 import os
 import random
+import socket
 import sys
 
 import oracledb
@@ -38,6 +47,28 @@ MONS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 # Reserved for the stored-procedure parity harness; activity here stays clear of
 # them so recorded transcripts keep matching.
 STATIC_TENANTS = tuple(f"00000000-0000-0000-0000-00000000000{n}" for n in range(1, 10))
+
+
+def require_local_fixture(host: str) -> None:
+    """Refuse to mutate anything that is not the local fixture.
+
+    The destructive statements below are only ever appropriate against a
+    disposable estate, and a default of `localhost` is not a control when
+    DB_HOST can point anywhere. Resolution, not the spelling of the hostname,
+    decides: every address the name resolves to must be loopback.
+    """
+    try:
+        addresses = {info[4][0] for info in socket.getaddrinfo(host, None)}
+    except socket.gaierror as exc:
+        raise SystemExit(f"refusing to run: cannot resolve --host {host!r} to verify it is local ({exc})")
+    remote = sorted(a for a in addresses if not ipaddress.ip_address(a).is_loopback)
+    if remote:
+        raise SystemExit(
+            f"refusing to run against --host {host!r}: it resolves to {', '.join(remote)}, which is not "
+            "loopback. This script issues committed UPDATEs and DELETEs against CUSTOMER_MASTER, "
+            "SUBSCRIPTIONS and ENTITY_ATTR_VALUE to make the capture triggers write history. Against a "
+            "real estate that is data loss, and a real estate already has history to migrate."
+        )
 
 
 def ns_seed(ns: str) -> int:
@@ -148,7 +179,30 @@ def main() -> int:
     ap.add_argument("--user", default=os.environ.get("DB_USER", "ow_billing"))
     ap.add_argument("--password", default=os.environ.get("DB_PASSWORD", "ow_billing"))
     ap.add_argument("--service", default=os.environ.get("DB_SERVICE", "FREEPDB1"))
+    ap.add_argument(
+        "--i-understand-this-mutates-the-source",
+        dest="opt_in",
+        action="store_true",
+        help="required: acknowledge that this commits UPDATEs and DELETEs against the base tables",
+    )
     args = ap.parse_args()
+
+    if not args.opt_in:
+        raise SystemExit(
+            "refusing to run without --i-understand-this-mutates-the-source: this script commits "
+            "UPDATEs and DELETEs against CUSTOMER_MASTER, SUBSCRIPTIONS and ENTITY_ATTR_VALUE so the "
+            "capture triggers write history. It is for a disposable local fixture only."
+        )
+    require_local_fixture(args.host)
+
+    print(
+        f"[activity] about to MUTATE the source estate at {args.host}:{args.port}/{args.service}: "
+        f"{args.rounds} update pass(es) over {args.customer_updates} customers, "
+        f"{args.customer_closures} account closures (customer_master and entity_attr_value rows "
+        f"DELETED), {args.plan_changes} plan changes, {args.suspensions} suspensions and "
+        f"{args.subscription_removals} subscription DELETEs. The resulting history is generated, "
+        "not migrated."
+    )
 
     rng = random.Random(ns_seed(args.ns))
     dsn = f"{args.host}:{args.port}/{args.service}"

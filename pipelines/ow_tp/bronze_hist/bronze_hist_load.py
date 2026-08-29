@@ -375,7 +375,13 @@ def load_table(table: str, columns: list[dict], manifest: dict) -> dict:
     """)
     merge_metrics = merge_operation_metrics(TARGETS[table])
 
-    quarantine_uid = f_md5_uuid(f"concat_ws('|', '{NS}', '{table}', coalesce(`{key}`, sha2(raw_payload, 256)))")
+    # The payload hash is part of the key, not a fallback for a missing one:
+    # KEY_DUPLICATE rows share a non-null natural key by definition, so keying
+    # on the key alone would collapse them into one quarantine row and leave a
+    # rerun's MERGE matching several source rows to the same target row.
+    quarantine_uid = f_md5_uuid(
+        f"concat_ws('|', '{NS}', '{table}', coalesce(`{key}`, '<nokey>'), sha2(raw_payload, 256))"
+    )
     spark.sql(f"""
         MERGE INTO {QUARANTINE} t
         USING (

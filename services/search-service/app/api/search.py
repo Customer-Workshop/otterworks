@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+
+import redis as redis_lib
 import structlog
 from flask import Blueprint, current_app, jsonify, request
 
@@ -11,6 +14,26 @@ from app.services.meilisearch_client import MeiliSearchService, get_search_analy
 logger = structlog.get_logger()
 
 search_bp = Blueprint("search", __name__)
+
+_redis_client: redis_lib.Redis | None = None
+
+
+def _get_redis() -> redis_lib.Redis:
+    """Return a shared Redis client (lazy-initialised)."""
+    global _redis_client
+    if _redis_client is None:
+        host = os.getenv("REDIS_HOST", "localhost")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        _redis_client = redis_lib.Redis(host=host, port=port, decode_responses=True, socket_timeout=1)
+    return _redis_client
+
+
+def _chaos_active(key: str) -> bool:
+    """Return True if the given chaos flag is set in Redis."""
+    try:
+        return bool(_get_redis().exists(key))
+    except Exception:
+        return False
 
 
 def _get_service() -> MeiliSearchService:
@@ -66,6 +89,15 @@ def suggest() -> tuple:
     prefix = request.args.get("q", "")
     if not prefix or len(prefix) < 2:
         return jsonify({"suggestions": [], "query": prefix}), 200
+
+    # CHAOS: deliberately failing path for the search-suggest-500 incident lab
+    # (scripts/bug-catalog.yaml). When the flag is set, reproduce the original
+    # regression: a KeyError from looking up _rankingScore on entries that
+    # don't carry it, crashing the handler with a 500.
+    if _chaos_active("chaos:search-service:suggest_500"):
+        raw_suggestions: list[dict] = [{}]
+        ranked = sorted(raw_suggestions, key=lambda s: s["_rankingScore"], reverse=True)
+        return jsonify({"suggestions": ranked, "query": prefix}), 200
 
     try:
         service = _get_service()

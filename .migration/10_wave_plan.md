@@ -61,6 +61,12 @@ The estate's one genuine **write-target collision**: `sp_suspend_overdue` mutate
 any wave discovers a second write-target collision, fan-out halts for that wave rather than being
 resolved locally.
 
+The collision is resolved by **column ownership, not row ownership** (D-30): dunning may update only
+the columns its source statement names (`status_cd`, `suspended_on`) on rows `silver_plans` and
+ingest created, matched on the declared key plus `ns`, with no insert, no delete, no DDL, and the
+owning unit's provenance columns left intact. It records which rows it touched and their prior
+values. Wave 5 reads those columns rather than re-deriving suspension state.
+
 ## Wave 5 — `gold_finance` + recon rollup
 
 The finance report is the only consumer we can actually see, so it is the closest thing to a
@@ -118,6 +124,14 @@ start, and a systematic failure halts the whole wave rather than being patched p
   ever wants retraction, the answer is a period-scoped or full-refresh reconciliation decided
   estate-wide; no unit invents one, because a unit-level sweep would delete rows the source still
   considers issued.
+
+  Wave 3 forced the boundary of that rule to be stated (D-31): the rule is about rows the *source*
+  published. A unit whose input population is a declared job parameter may narrow that parameter, and
+  the rows its own earlier run generated under the wider input are its own debris rather than
+  publications — no source row ever corresponded to them. Such rows may be removed by the unit that
+  produced them, scoped to `ns`, an `_origin` it owns and an explicit id list, with the removed ids
+  and a zero count of foreign rows touched published in recon. Nothing else may be deleted, and the
+  estate-level retraction question above stays open and unchanged.
 
 ## Unresolved, and deliberately so
 

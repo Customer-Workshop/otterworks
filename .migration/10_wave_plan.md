@@ -125,6 +125,14 @@ start, and a systematic failure halts the whole wave rather than being patched p
   estate-wide; no unit invents one, because a unit-level sweep would delete rows the source still
   considers issued.
 
+  Wave 3 forced the boundary of that rule to be stated (D-31): the rule is about rows the *source*
+  published. A unit whose input population is a declared job parameter may narrow that parameter, and
+  the rows its own earlier run generated under the wider input are its own debris rather than
+  publications — no source row ever corresponded to them. Such rows may be removed by the unit that
+  produced them, scoped to `ns`, an `_origin` it owns and an explicit id list, with the removed ids
+  and a zero count of foreign rows touched published in recon. Nothing else may be deleted, and the
+  estate-level retraction question above stays open and unchanged.
+
 ## Unresolved, and deliberately so
 
 - **STOP E** — cutover authorization and how long the Oracle source stays readable through

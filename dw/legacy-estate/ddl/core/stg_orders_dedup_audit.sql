@@ -1,4 +1,4 @@
--- Deliberately dead scanner target: no live job writes or reads this table.
+-- Row-count audit for the order dedupe step (2019 data-quality review).
 CREATE TABLE IF NOT EXISTS core.stg_orders_dedup_audit (
     audit_id       BIGINT       NOT NULL ENCODE az64,
     run_ts         TIMESTAMP    ENCODE az64,

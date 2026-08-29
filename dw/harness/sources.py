@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 import duckdb
@@ -33,8 +35,26 @@ class Source(Protocol):
     def profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
         ...
 
+    def snapshot(
+        self, table: str, columns: Sequence[Column]
+    ) -> Iterator["_SnapshotReader"]:
+        ...
+
     def close(self) -> None:
         ...
+
+
+@dataclass
+class _SnapshotReader:
+    source: Any
+    table: str
+    columns: Sequence[Column]
+
+    def rows(self, order_by: str | None = None) -> Iterator[tuple[str, ...]]:
+        return self.source._rows(self.table, self.columns, order_by)
+
+    def profile(self) -> Sequence[Any]:
+        return self.source._profile(self.table, self.columns)
 
 
 class PostgresSource:
@@ -59,11 +79,12 @@ class PostgresSource:
                 Column(name, type_name, scale)
                 for name, type_name, scale in cursor.fetchall()
             ]
+        self.connection.rollback()
         if not result:
             raise ValueError(f"{table}: no columns found")
         return result
 
-    def rows(
+    def _rows(
         self,
         table: str,
         columns: Sequence[Column],
@@ -79,16 +100,47 @@ class PostgresSource:
                 yield tuple(row)
         finally:
             cursor.close()
-            self.connection.rollback()
 
-    def profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
+    def _profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
         with self.connection.cursor() as cursor:
             cursor.execute(profile_select(table, columns))
             result = cursor.fetchone()
-        self.connection.rollback()
         if result is None:
             raise ValueError(f"{table}: profile query returned no row")
         return result
+
+    def rows(
+        self,
+        table: str,
+        columns: Sequence[Column],
+        order_by: str | None = None,
+    ) -> Iterator[tuple[str, ...]]:
+        with self.snapshot(table, columns) as reader:
+            yield from reader.rows(order_by)
+
+    def profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
+        with self.snapshot(table, columns) as reader:
+            return reader.profile()
+
+    @contextmanager
+    def snapshot(
+        self, table: str, columns: Sequence[Column]
+    ) -> Iterator[_SnapshotReader]:
+        self.connection.rollback()
+        self.connection.set_session(
+            isolation_level="REPEATABLE READ",
+            readonly=True,
+            autocommit=False,
+        )
+        try:
+            yield _SnapshotReader(self, table, columns)
+        finally:
+            self.connection.rollback()
+            self.connection.set_session(
+                isolation_level="READ COMMITTED",
+                readonly=False,
+                autocommit=False,
+            )
 
     def close(self) -> None:
         self.connection.close()
@@ -116,7 +168,7 @@ class DuckDBSource:
             raise ValueError(f"{table}: no columns found")
         return columns
 
-    def rows(
+    def _rows(
         self,
         table: str,
         columns: Sequence[Column],
@@ -129,11 +181,34 @@ class DuckDBSource:
             for row in batch:
                 yield tuple(row)
 
-    def profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
+    def _profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
         result = self.connection.execute(profile_select(table, columns)).fetchone()
         if result is None:
             raise ValueError(f"{table}: profile query returned no row")
         return result
+
+    def rows(
+        self,
+        table: str,
+        columns: Sequence[Column],
+        order_by: str | None = None,
+    ) -> Iterator[tuple[str, ...]]:
+        with self.snapshot(table, columns) as reader:
+            yield from reader.rows(order_by)
+
+    def profile(self, table: str, columns: Sequence[Column]) -> Sequence[Any]:
+        with self.snapshot(table, columns) as reader:
+            return reader.profile()
+
+    @contextmanager
+    def snapshot(
+        self, table: str, columns: Sequence[Column]
+    ) -> Iterator[_SnapshotReader]:
+        self.connection.execute("BEGIN TRANSACTION")
+        try:
+            yield _SnapshotReader(self, table, columns)
+        finally:
+            self.connection.execute("ROLLBACK")
 
     def close(self) -> None:
         self.connection.close()

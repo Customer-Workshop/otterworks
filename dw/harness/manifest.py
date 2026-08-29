@@ -22,7 +22,7 @@ from typing import Iterable, Iterator, Sequence
 
 from digest import NULL_SENTINEL, column_digests, fold_ordered, row_string
 
-MANIFEST_FORMAT = 3
+MANIFEST_FORMAT = 4
 NUMERIC_TYPES = {"numeric", "decimal", "integer", "bigint", "int", "smallint",
                  "int4", "int8", "int2", "double", "float", "real"}
 
@@ -104,8 +104,14 @@ def normalise(column: Column) -> str:
         expr = f"CAST(DATE_TRUNC('second', {name}) AS VARCHAR)"
     elif base == "date":
         expr = f"CAST({name} AS VARCHAR)"
-    elif base == "boolean" or base == "bool":
-        expr = f"CASE WHEN {name} THEN 'true' ELSE 'false' END"
+    elif base in {"boolean", "bool"}:
+        # The NULL arm is explicit so COALESCE below still sees a NULL: mapping
+        # an unknown flag to 'false' would make the digest blind to the
+        # difference between "no" and "not recorded".
+        expr = (
+            f"CASE WHEN {name} IS NULL THEN NULL "
+            f"WHEN {name} THEN 'true' ELSE 'false' END"
+        )
     elif base in {"numeric", "decimal"} and column.scale is not None:
         expr = f"CAST(ROUND({name}, {column.scale}) AS VARCHAR)"
     else:
@@ -125,6 +131,23 @@ def normalised_select(table: str, columns: Sequence[Column],
     return sql
 
 
+def bound(column: Column, function: str) -> str:
+    """Normalised MIN/MAX expression.
+
+    Numeric bounds are taken on the *native* column and normalised afterwards;
+    taking them on the text projection would order lexicographically, so a
+    profile would report 100 as smaller than 9 and quietly disagree with itself
+    across engines.
+    """
+    name = f'"{column.name}"'
+    if column.is_numeric:
+        aggregate = f"{function}({name})"
+        if column.scale is not None:
+            aggregate = f"ROUND({aggregate}, {column.scale})"
+        return f"COALESCE(CAST({aggregate} AS VARCHAR), '{NULL_SENTINEL}')"
+    return f"{function}({normalise(column)})"
+
+
 def profile_select(table: str, columns: Sequence[Column],
                    where: str | None = None) -> str:
     """Portable per-column profile: non-null, distinct, min, max, numeric sum."""
@@ -134,8 +157,8 @@ def profile_select(table: str, columns: Sequence[Column],
         norm = normalise(column)
         parts.append(f"COUNT({name})")
         parts.append(f"COUNT(DISTINCT {norm})")
-        parts.append(f"MIN({norm})")
-        parts.append(f"MAX({norm})")
+        parts.append(bound(column, "MIN"))
+        parts.append(bound(column, "MAX"))
         parts.append(
             f"CAST(SUM({name}) AS VARCHAR)" if column.is_numeric else "NULL"
         )

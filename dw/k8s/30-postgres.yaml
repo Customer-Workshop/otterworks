@@ -19,8 +19,12 @@ spec:
         app.kubernetes.io/component: database
     spec:
       terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: postgres
+          securityContext:
+            allowPrivilegeEscalation: false
           image: postgres:15
           imagePullPolicy: IfNotPresent
           ports:

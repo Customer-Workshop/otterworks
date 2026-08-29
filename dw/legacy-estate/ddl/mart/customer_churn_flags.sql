@@ -1,4 +1,4 @@
--- Deliberately dead mart asset: not scheduled or consumed by the live graph.
+-- Churn flags for the lifecycle email campaign.
 CREATE TABLE IF NOT EXISTS mart.customer_churn_flags (
     customer_id       BIGINT       NOT NULL ENCODE az64,
     last_order_date   DATE         ENCODE az64,

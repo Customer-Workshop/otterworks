@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 1317572785123533240,
+      "digest": 114052360597222626910302356074024088074,
       "distinct": 1097,
       "max": "2025-12-31",
       "min": "2022-12-31",
@@ -11,17 +11,17 @@
       "type": "date"
     },
     {
-      "digest": 1812461713435309083,
+      "digest": 230754104082113817586081154199611426057,
       "distinct": 31,
-      "max": "617",
-      "min": "1180",
+      "max": "1927",
+      "min": "617",
       "name": "sessions",
       "non_null": 1097,
       "sum": "2000000",
       "type": "bigint"
     },
     {
-      "digest": 14584245016163250368,
+      "digest": 48768787645528825525566705227258235964,
       "distinct": 69,
       "max": "642",
       "min": "209",
@@ -31,7 +31,7 @@
       "type": "bigint"
     },
     {
-      "digest": 6935974023103490103,
+      "digest": 159688059033737100455258814996992178653,
       "distinct": 45,
       "max": "325",
       "min": "102",
@@ -41,7 +41,7 @@
       "type": "bigint"
     },
     {
-      "digest": 9623386662577083828,
+      "digest": 236721613933112543930774958899661139362,
       "distinct": 45,
       "max": "324",
       "min": "102",
@@ -51,7 +51,7 @@
       "type": "bigint"
     },
     {
-      "digest": 13789065328126620285,
+      "digest": 115401943598235642235476892990683257695,
       "distinct": 42,
       "max": "323",
       "min": "101",
@@ -62,10 +62,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "56ef898a1d4e2c8dfb412d4ce1ac7ba8e6e349357b196ed1215df9ba16b54e7d",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 1097,
-  "row_digest": 6523207280946223538,
+  "row_digest": 214526649303632765722300827502236680686,
   "table": "mart.session_funnel_daily"
 }

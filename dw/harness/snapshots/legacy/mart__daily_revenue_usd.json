@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 3342765491917587823,
+      "digest": 139348499186308009691984979891201422319,
       "distinct": 1096,
       "max": "2025-12-31",
       "min": "2023-01-01",
@@ -11,7 +11,7 @@
       "type": "date"
     },
     {
-      "digest": 214528808560537292,
+      "digest": 319313596254471448985287063234208050566,
       "distinct": 4,
       "max": "WEB",
       "min": "CALL_CENTER",
@@ -21,7 +21,7 @@
       "type": "character varying"
     },
     {
-      "digest": 408738114629960032,
+      "digest": 234303266990349046293224964400013721958,
       "distinct": 4,
       "max": "USD",
       "min": "CAD",
@@ -31,9 +31,9 @@
       "type": "character"
     },
     {
-      "digest": 11769831054243464371,
+      "digest": 157576154063763295047098446231766370753,
       "distinct": 136,
-      "max": "99",
+      "max": "166",
       "min": "1",
       "name": "order_count",
       "non_null": 9831,
@@ -41,17 +41,17 @@
       "type": "bigint"
     },
     {
-      "digest": 14034197565974651958,
+      "digest": 296227254651554740064103993191236133144,
       "distinct": 9826,
-      "max": "998.62",
-      "min": "10008.10",
+      "max": "192825.89",
+      "min": "13.93",
       "name": "revenue_native",
       "non_null": 9831,
       "sum": "451970981.20",
       "type": "numeric"
     },
     {
-      "digest": 12282465567920792133,
+      "digest": 226167779295156243526013324643703816999,
       "distinct": 1201,
       "max": "1.279970",
       "min": "0.740030",
@@ -61,10 +61,10 @@
       "type": "numeric"
     },
     {
-      "digest": 9695030249503090605,
+      "digest": 204482468960198177936326114536887840867,
       "distinct": 9826,
-      "max": "9955.45",
-      "min": "10006.66",
+      "max": "192825.89",
+      "min": "10.44",
       "name": "revenue_usd",
       "non_null": 9831,
       "sum": "457044830.79",
@@ -72,10 +72,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "a798e394897e6db3d02af6c5d3876bb5d9fbf8cefcb4d1ee838ee8862081ede9",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 9831,
-  "row_digest": 842857548647950468,
+  "row_digest": 28137969409716574837708515510378326286,
   "table": "mart.daily_revenue_usd"
 }

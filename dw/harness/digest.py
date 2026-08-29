@@ -18,9 +18,13 @@ asserted here for the values that reach Python):
   * everything else     -> the string as stored
 
 Two digests are produced:
-  * an *unordered* digest -- XOR-fold of per-row hashes. Order-independent by
-    construction, so it compares the multiset of rows and cannot be fooled by a
-    different but equivalent physical ordering.
+  * an *unordered* digest -- a commutative sum of per-row hashes (two moments,
+    both modulo 2**64). Order- and partition-independent by construction, so it
+    compares the multiset of rows and cannot be fooled by a different but
+    equivalent physical ordering, while staying sensitive to multiplicity: an
+    XOR fold cancels any row occurring an even number of times, which in an
+    estate that deliberately contains duplicate deliveries would let two
+    different datasets digest identically.
   * an *ordered* digest -- a running hash over rows in a caller-specified key
     order. Only used for assets where sequence is itself a business rule (SCD2
     version chains, running balances); for those the gate compares sequences,
@@ -45,20 +49,37 @@ def value_hash(text: str) -> int:
     )
 
 
-def fold_unordered(rows: Iterable[str]) -> tuple[int, int]:
-    """XOR-fold row strings. Returns (row_count, digest).
+def pack(first: int, second: int) -> int:
+    """Pack the two accumulator moments into one manifest digest value."""
+    return ((first & DIGEST_MASK) << DIGEST_BITS) | (second & DIGEST_MASK)
 
-    XOR is used rather than a sum so the result is independent of both order and
-    of any partitioning the engine chose, and so a duplicated row pair cannot
-    silently cancel a *different* pair (a pair of identical rows cancels, which
-    is why the gate always compares row_count alongside the digest).
+
+def unpack(digest: int) -> tuple[int, int]:
+    return (digest >> DIGEST_BITS) & DIGEST_MASK, digest & DIGEST_MASK
+
+
+def accumulate(state: tuple[int, int], text: str) -> tuple[int, int]:
+    """Add one row/value hash to a running unordered accumulator.
+
+    Both moments are modular sums, so the accumulator is commutative and
+    associative (safe to compute per partition and combine) and every
+    occurrence contributes: duplicates change the digest instead of cancelling.
+    The second moment means two different multisets must collide in both sums at
+    once to be mistaken for each other.
     """
-    digest = 0
+    first, second = state
+    h = value_hash(text)
+    return ((first + h) & DIGEST_MASK, (second + h * h) & DIGEST_MASK)
+
+
+def fold_unordered(rows: Iterable[str]) -> tuple[int, int]:
+    """Fold row strings order-independently. Returns (row_count, digest)."""
+    state = (0, 0)
     count = 0
     for row in rows:
-        digest ^= value_hash(row)
+        state = accumulate(state, row)
         count += 1
-    return count, digest & DIGEST_MASK
+    return count, pack(*state)
 
 
 def fold_ordered(rows: Iterable[str]) -> tuple[int, int]:
@@ -75,11 +96,14 @@ def fold_ordered(rows: Iterable[str]) -> tuple[int, int]:
 def combine_unordered(parts: Iterable[tuple[int, int]]) -> tuple[int, int]:
     """Combine per-partition (count, digest) pairs from a distributed fold."""
     count = 0
-    digest = 0
+    first = 0
+    second = 0
     for part_count, part_digest in parts:
+        part_first, part_second = unpack(part_digest)
         count += part_count
-        digest ^= part_digest
-    return count, digest & DIGEST_MASK
+        first = (first + part_first) & DIGEST_MASK
+        second = (second + part_second) & DIGEST_MASK
+    return count, pack(first, second)
 
 
 def row_string(values: Sequence[str]) -> str:
@@ -98,8 +122,8 @@ def column_digests(
     localise a failure to the column that diverged, which is what turns a red
     gate into a diagnosis instead of a mystery.
     """
-    digests = [0] * column_count
-    row_digest = 0
+    column_states = [(0, 0)] * column_count
+    row_state = (0, 0)
     count = 0
     for values in rows:
         if len(values) != column_count:
@@ -110,7 +134,9 @@ def column_digests(
             NULL_SENTINEL if value is None else value for value in values
         ]
         for idx, text in enumerate(normalised):
-            digests[idx] ^= value_hash(f"{idx}{FIELD_SEP}{text}")
-        row_digest ^= value_hash(row_string(normalised))
+            column_states[idx] = accumulate(
+                column_states[idx], f"{idx}{FIELD_SEP}{text}"
+            )
+        row_state = accumulate(row_state, row_string(normalised))
         count += 1
-    return count, row_digest & DIGEST_MASK, [d & DIGEST_MASK for d in digests]
+    return count, pack(*row_state), [pack(*s) for s in column_states]

@@ -1,0 +1,16 @@
+bundle:
+  name: otterworks-dw-migration
+
+include:
+  - resources/*.job.yml
+
+sync:
+  include:
+    - src/**
+
+targets:
+  development:
+    default: true
+    mode: development
+    workspace:
+      root_path: "~/.bundle/${bundle.name}/${bundle.target}"

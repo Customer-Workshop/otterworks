@@ -1,9 +1,9 @@
 {
   "columns": [
     {
-      "digest": 7103220749786337752,
+      "digest": 34215832161885578200511273410833275902,
       "distinct": 1080002,
-      "max": "999999",
+      "max": "1200000",
       "min": "1",
       "name": "order_item_id",
       "non_null": 1080002,
@@ -11,9 +11,9 @@
       "type": "bigint"
     },
     {
-      "digest": 5069463946095284749,
+      "digest": 100400829241241250281462992389262121353,
       "distinct": 400000,
-      "max": "99999",
+      "max": "400000",
       "min": "1",
       "name": "order_id",
       "non_null": 1080002,
@@ -21,9 +21,9 @@
       "type": "bigint"
     },
     {
-      "digest": 13423646208008799509,
+      "digest": 220774702119754191826977529750239555,
       "distinct": 60000,
-      "max": "9999",
+      "max": "60000",
       "min": "1",
       "name": "customer_id",
       "non_null": 1080002,
@@ -31,7 +31,7 @@
       "type": "bigint"
     },
     {
-      "digest": 3232320862837354302,
+      "digest": 295528681650617560770586446705999760874,
       "distinct": 1096,
       "max": "2025-12-31",
       "min": "2023-01-01",
@@ -41,7 +41,7 @@
       "type": "date"
     },
     {
-      "digest": 13593660533775534458,
+      "digest": 136416405700428857673053477063532867354,
       "distinct": 4,
       "max": "WEB",
       "min": "CALL_CENTER",
@@ -51,9 +51,9 @@
       "type": "character varying"
     },
     {
-      "digest": 2729837682249567283,
+      "digest": 182197162631857413453662947563819340317,
       "distinct": 8000,
-      "max": "999",
+      "max": "8000",
       "min": "1",
       "name": "product_id",
       "non_null": 1080002,
@@ -61,7 +61,7 @@
       "type": "bigint"
     },
     {
-      "digest": 13620462226147466800,
+      "digest": 94124028113992346127811112212350332472,
       "distinct": 8000,
       "max": "Product 999",
       "min": "Product 1",
@@ -71,7 +71,7 @@
       "type": "character varying"
     },
     {
-      "digest": 14210771936300364002,
+      "digest": 196595471543270556949047692625443298998,
       "distinct": 6,
       "max": "Outdoors",
       "min": "Apparel",
@@ -81,7 +81,7 @@
       "type": "character varying"
     },
     {
-      "digest": 7283697896364383708,
+      "digest": 337950594117855949526782556447034373354,
       "distinct": 24,
       "max": "Subcat 9",
       "min": "Subcat 0",
@@ -91,7 +91,7 @@
       "type": "character varying"
     },
     {
-      "digest": 6958531993354403885,
+      "digest": 123001337412020208828393934220911162809,
       "distinct": 40,
       "max": "Brand 9",
       "min": "Brand 0",
@@ -101,7 +101,7 @@
       "type": "character varying"
     },
     {
-      "digest": 9173139482610170309,
+      "digest": 23768705531259226237727822800748220989,
       "distinct": 5,
       "max": "5",
       "min": "1",
@@ -111,19 +111,19 @@
       "type": "integer"
     },
     {
-      "digest": 15833587609059267831,
+      "digest": 57908031404524176897787089242772831399,
       "distinct": 7322,
-      "max": "99.98",
-      "min": "100.18",
+      "max": "355.18",
+      "min": "7.35",
       "name": "unit_price",
       "non_null": 1080002,
       "sum": "195549815.50",
       "type": "numeric"
     },
     {
-      "digest": 6671233160588066643,
+      "digest": 27984492128899796652397244823435348103,
       "distinct": 11805,
-      "max": "99.99",
+      "max": "195.31",
       "min": "0.00",
       "name": "item_discount",
       "non_null": 1080002,
@@ -131,37 +131,37 @@
       "type": "numeric"
     },
     {
-      "digest": 5146885934718031960,
+      "digest": 155317795880174608561960882732998447878,
       "distinct": 48864,
-      "max": "999.96",
-      "min": "100.01",
+      "max": "1774.30",
+      "min": "6.59",
       "name": "line_amount",
       "non_null": 1080002,
       "sum": "565147801.07",
       "type": "numeric"
     },
     {
-      "digest": 11703445694675546493,
+      "digest": 7957887060103711633631315723237147035,
       "distinct": 13760,
-      "max": "99.95",
-      "min": "100.00",
+      "max": "1224.55",
+      "min": "5.11",
       "name": "cost_amount",
       "non_null": 1080002,
       "sum": "412631712.81",
       "type": "numeric"
     },
     {
-      "digest": 13913084106908718603,
+      "digest": 23873254939013470686222102900430056689,
       "distinct": 29200,
-      "max": "99.98",
-      "min": "10.00",
+      "max": "550.65",
+      "min": "1.48",
       "name": "margin_amount",
       "non_null": 1080002,
       "sum": "152516088.26",
       "type": "numeric"
     },
     {
-      "digest": 7553505570642865566,
+      "digest": 155038870821894727789548281541485134758,
       "distinct": 4,
       "max": "USD",
       "min": "CAD",
@@ -171,7 +171,7 @@
       "type": "character"
     },
     {
-      "digest": 0,
+      "digest": 75970085091312322371853980121232375098,
       "distinct": 2,
       "max": "true",
       "min": "false",
@@ -181,7 +181,7 @@
       "type": "boolean"
     },
     {
-      "digest": 0,
+      "digest": 171074163889416000962592418629723901794,
       "distinct": 1,
       "max": "2026-01-01 03:35:00",
       "min": "2026-01-01 03:35:00",
@@ -192,10 +192,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "cf5ff5cd16d535d913c7bd55b24a1e1168eed697d8113d4191936b2c8c1ba09a",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 1080002,
-  "row_digest": 4881384827643097060,
+  "row_digest": 108429464876051065459704828507315892024,
   "table": "core.fct_order_items"
 }

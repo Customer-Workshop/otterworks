@@ -6,6 +6,7 @@ import argparse
 import os
 from pathlib import Path
 
+from assets import fingerprint_for
 from manifest import build
 from sources import DuckDBSource, PostgresSource, Source
 
@@ -60,19 +61,21 @@ def main() -> int:
         for table in args.tables:
             columns = source.columns(table)
             ordered_key = args.ordered_key or ORDERED_KEYS.get(table)
-            manifest = build(
-                table=table,
-                engine=args.engine,
-                columns=columns,
-                rows=source.rows(table, columns),
-                profile_row=source.profile(table, columns),
-                ordered_rows=(
-                    source.rows(table, columns, order_by=ordered_key)
-                    if ordered_key
-                    else None
-                ),
-                ordered_key=ordered_key,
-            )
+            with source.snapshot(table, columns) as reader:
+                manifest = build(
+                    table=table,
+                    engine=args.engine,
+                    columns=columns,
+                    rows=reader.rows(),
+                    profile_row=reader.profile(),
+                    ordered_rows=(
+                        reader.rows(order_by=ordered_key)
+                        if ordered_key
+                        else None
+                    ),
+                    ordered_key=ordered_key,
+                    fingerprint=fingerprint_for(table),
+                )
             path = manifest.write(_manifest_path(args.out, table))
             print(path)
     finally:

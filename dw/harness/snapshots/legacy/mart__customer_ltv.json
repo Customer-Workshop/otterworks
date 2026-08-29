@@ -1,9 +1,9 @@
 {
   "columns": [
     {
-      "digest": 11049407653569682278,
+      "digest": 131342895679869802091498188366237766494,
       "distinct": 60000,
-      "max": "9999",
+      "max": "60000",
       "min": "1",
       "name": "customer_id",
       "non_null": 60000,
@@ -11,7 +11,7 @@
       "type": "bigint"
     },
     {
-      "digest": 18074361559024903772,
+      "digest": 173870343535700166520373801341389084608,
       "distinct": 3,
       "max": "SMB",
       "min": "CONSUMER",
@@ -21,7 +21,7 @@
       "type": "character varying"
     },
     {
-      "digest": 9401838192545413225,
+      "digest": 259026444104157579657204387084496321665,
       "distinct": 439,
       "max": "2024-03-14",
       "min": "2023-01-01",
@@ -31,7 +31,7 @@
       "type": "date"
     },
     {
-      "digest": 11944440009803389628,
+      "digest": 295880937717882669556259044594146000926,
       "distinct": 516,
       "max": "2025-12-31",
       "min": "2024-05-23",
@@ -41,7 +41,7 @@
       "type": "date"
     },
     {
-      "digest": 13735324917426475523,
+      "digest": 95086067996994258422454558729469299797,
       "distinct": 3,
       "max": "8",
       "min": "6",
@@ -51,19 +51,19 @@
       "type": "bigint"
     },
     {
-      "digest": 5198841792467949170,
+      "digest": 331182895162610789545009517255715251702,
       "distinct": 57211,
-      "max": "9999.97",
-      "min": "10000.03",
+      "max": "16096.94",
+      "min": "1172.12",
       "name": "lifetime_revenue",
       "non_null": 60000,
       "sum": "485988866.21",
       "type": "numeric"
     },
     {
-      "digest": 10119456498030114720,
+      "digest": 336956854024544021947874907059705273114,
       "distinct": 45287,
-      "max": "999.99",
+      "max": "2243.24",
       "min": "0.00",
       "name": "lifetime_discount",
       "non_null": 60000,
@@ -71,10 +71,10 @@
       "type": "numeric"
     },
     {
-      "digest": 15352997224207349717,
+      "digest": 225158218089601461588190821037368196381,
       "distinct": 58160,
-      "max": "9999.84",
-      "min": "10000.03",
+      "max": "15627.02",
+      "min": "1031.48",
       "name": "lifetime_net",
       "non_null": 60000,
       "sum": "451970981.20",
@@ -82,10 +82,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "d4d78c8b7fa1b2d92309c409398a29aa014bb51f377ed8ac18158e04d206c1a1",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 60000,
-  "row_digest": 180488616113752497,
+  "row_digest": 22333053364902514537047996460671898999,
   "table": "mart.customer_ltv"
 }

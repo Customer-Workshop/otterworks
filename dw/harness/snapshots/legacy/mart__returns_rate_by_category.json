@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 11413085360235607093,
+      "digest": 318326387622675200741973102869853677611,
       "distinct": 6,
       "max": "Outdoors",
       "min": "Apparel",
@@ -11,7 +11,7 @@
       "type": "character varying"
     },
     {
-      "digest": 2899108572349477226,
+      "digest": 171329211567420975464082823217220580758,
       "distinct": 6,
       "max": "181198",
       "min": "178806",
@@ -21,7 +21,7 @@
       "type": "bigint"
     },
     {
-      "digest": 8277827055494529700,
+      "digest": 152783277159830409764753038932432535828,
       "distinct": 6,
       "max": "4532",
       "min": "4462",
@@ -31,7 +31,7 @@
       "type": "bigint"
     },
     {
-      "digest": 10754882897000066915,
+      "digest": 147739758285174250094454033573205313963,
       "distinct": 6,
       "max": "2412828.15",
       "min": "2260331.80",
@@ -41,7 +41,7 @@
       "type": "numeric"
     },
     {
-      "digest": 6654437628518869479,
+      "digest": 136133969847520829357112111874569066913,
       "distinct": 2,
       "max": "0.0251",
       "min": "0.0250",
@@ -52,10 +52,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "b861552a21e8f19fcfc5b49bb8f9fe37bec7b67be149db0669fe88c07b1ed056",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 6,
-  "row_digest": 11862823337792659932,
+  "row_digest": 48308068981549119238709242187447003954,
   "table": "mart.returns_rate_by_category"
 }

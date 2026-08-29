@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 0,
+      "digest": 332280316306008891847085698213028885540,
       "distinct": 1096,
       "max": "2025-12-31",
       "min": "2023-01-01",
@@ -11,7 +11,7 @@
       "type": "date"
     },
     {
-      "digest": 0,
+      "digest": 164713096014668523231975007301506979096,
       "distinct": 4,
       "max": "USD",
       "min": "CAD",
@@ -21,7 +21,7 @@
       "type": "character"
     },
     {
-      "digest": 3128433504929583318,
+      "digest": 48721740375379001797240833852737204164,
       "distinct": 1201,
       "max": "1.279970",
       "min": "0.740030",
@@ -31,7 +31,7 @@
       "type": "numeric"
     },
     {
-      "digest": 0,
+      "digest": 290474534567363139280874816830138932256,
       "distinct": 1,
       "max": "SOURCE",
       "min": "SOURCE",
@@ -41,7 +41,7 @@
       "type": "character varying"
     },
     {
-      "digest": 0,
+      "digest": 117150885305521278793617238163323589120,
       "distinct": 1,
       "max": "2026-01-01 03:50:00",
       "min": "2026-01-01 03:50:00",
@@ -52,10 +52,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "7313fa16c0593b6ca316a3c8eea432254b28684fb8e31edf1d29d1db816571d1",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 4384,
-  "row_digest": 7596855054843454011,
+  "row_digest": 30823754995968264366576511790965101341,
   "table": "core.fx_rates_daily"
 }

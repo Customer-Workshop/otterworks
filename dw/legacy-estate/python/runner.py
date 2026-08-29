@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import psycopg2
+from psycopg2 import sql
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "dw/legacy-estate/ddl/compat"))
@@ -22,13 +23,13 @@ DEFAULT_DSN = (
 TABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--script", type=Path, required=True)
     parser.add_argument("--table", required=True)
     parser.add_argument("--expect-count", type=int)
     parser.add_argument("--dsn", default=os.environ.get("DW_POSTGRES_DSN", DEFAULT_DSN))
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if not TABLE_NAME.fullmatch(args.table):
         parser.error("--table must be schema-qualified")
 
@@ -38,7 +39,11 @@ def main() -> int:
     with psycopg2.connect(args.dsn) as connection:
         with connection.cursor() as cursor:
             cursor.execute(translated)
-            cursor.execute(f"SELECT COUNT(*) FROM {args.table}")
+            cursor.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                sql.SQL("SELECT COUNT(*) FROM {}").format(
+                    sql.Identifier(*args.table.split("."))
+                )
+            )
             count = cursor.fetchone()[0]
     logging.info("%s row_count=%s", args.table, count)
     if args.expect_count is not None and count != args.expect_count:

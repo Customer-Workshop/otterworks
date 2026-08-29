@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 0,
+      "digest": 94758402618432542833072105448434152468,
       "distinct": 48,
       "max": "2025-12-01",
       "min": "2022-01-01",
@@ -11,7 +11,7 @@
       "type": "date"
     },
     {
-      "digest": 0,
+      "digest": 297819742837035212066176715885900948480,
       "distinct": 36,
       "max": "2025-12-01",
       "min": "2023-01-01",
@@ -21,7 +21,7 @@
       "type": "date"
     },
     {
-      "digest": 0,
+      "digest": 244575132419193432770971821359702432908,
       "distinct": 21,
       "max": "1343",
       "min": "1150",
@@ -31,7 +31,7 @@
       "type": "bigint"
     },
     {
-      "digest": 13584134931490647050,
+      "digest": 157823001999088559325000114962815250346,
       "distinct": 204,
       "max": "655",
       "min": "400",
@@ -41,7 +41,7 @@
       "type": "bigint"
     },
     {
-      "digest": 17592354957542436827,
+      "digest": 259127868229493573519696112787188899011,
       "distinct": 767,
       "max": "0.4947",
       "min": "0.3464",
@@ -52,10 +52,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "5570de30aca1c535022bae8d5010b1b7afbc156c5367feac183e390f16e1422e",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 1728,
-  "row_digest": 6708821834667810449,
+  "row_digest": 230834282888691282899721343560462997519,
   "table": "mart.cohort_retention_monthly"
 }

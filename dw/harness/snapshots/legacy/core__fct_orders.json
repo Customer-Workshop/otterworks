@@ -1,9 +1,9 @@
 {
   "columns": [
     {
-      "digest": 7046270256621105603,
+      "digest": 118724379084693954853167654293956076043,
       "distinct": 400000,
-      "max": "99999",
+      "max": "400000",
       "min": "1",
       "name": "order_id",
       "non_null": 400000,
@@ -11,9 +11,9 @@
       "type": "bigint"
     },
     {
-      "digest": 14386124633453023073,
+      "digest": 179030455324069866738313730315743949655,
       "distinct": 60000,
-      "max": "9999",
+      "max": "60000",
       "min": "1",
       "name": "customer_id",
       "non_null": 400000,
@@ -21,7 +21,7 @@
       "type": "bigint"
     },
     {
-      "digest": 7829895915249938611,
+      "digest": 50895235579347908201407448511608301197,
       "distinct": 400000,
       "max": "2025-12-31 23:55:36",
       "min": "2023-01-01 00:00:21",
@@ -31,7 +31,7 @@
       "type": "timestamp without time zone"
     },
     {
-      "digest": 2378389183974044747,
+      "digest": 205414543010686709770647122601247440655,
       "distinct": 1096,
       "max": "2025-12-31",
       "min": "2023-01-01",
@@ -41,7 +41,7 @@
       "type": "date"
     },
     {
-      "digest": 5358511051518388026,
+      "digest": 190143979135167858536187970896729819352,
       "distinct": 4,
       "max": "WEB",
       "min": "CALL_CENTER",
@@ -51,9 +51,9 @@
       "type": "character varying"
     },
     {
-      "digest": 13570726964812145384,
+      "digest": 299044540549304084257772543897187204186,
       "distinct": 73,
-      "max": "98",
+      "max": "180",
       "min": "0",
       "name": "store_id",
       "non_null": 400000,
@@ -61,7 +61,7 @@
       "type": "integer"
     },
     {
-      "digest": 7354693972662505151,
+      "digest": 294514451417678110524001640898510625971,
       "distinct": 4,
       "max": "USD",
       "min": "CAD",
@@ -71,7 +71,7 @@
       "type": "character"
     },
     {
-      "digest": 0,
+      "digest": 45314175335779879429424488341649618586,
       "distinct": 3,
       "max": "PENDING",
       "min": "CANCELLED",
@@ -81,19 +81,19 @@
       "type": "character varying"
     },
     {
-      "digest": 4342640056470031455,
+      "digest": 18179938650367620586926618314155136301,
       "distinct": 185051,
-      "max": "999.99",
-      "min": "100.00",
+      "max": "2414.99",
+      "min": "15.00",
       "name": "gross_amount",
       "non_null": 400000,
       "sum": "485988866.21",
       "type": "numeric"
     },
     {
-      "digest": 3373956565356612928,
+      "digest": 174488519594707463191342957934141549910,
       "distinct": 31129,
-      "max": "99.99",
+      "max": "338.09",
       "min": "0.00",
       "name": "discount_amount",
       "non_null": 400000,
@@ -101,37 +101,37 @@
       "type": "numeric"
     },
     {
-      "digest": 18166237836592154628,
+      "digest": 66697409180719323001363609436022403656,
       "distinct": 1800,
-      "max": "9.99",
-      "min": "10.00",
+      "max": "19.99",
+      "min": "2.00",
       "name": "shipping_amount",
       "non_null": 400000,
       "sum": "4397883.77",
       "type": "numeric"
     },
     {
-      "digest": 4203017950088072938,
+      "digest": 306472253799856923180746077771413484530,
       "distinct": 19801,
-      "max": "99.99",
-      "min": "10.00",
+      "max": "199.24",
+      "min": "1.24",
       "name": "tax_amount",
       "non_null": 400000,
       "sum": "40094086.46",
       "type": "numeric"
     },
     {
-      "digest": 8116477856133729526,
+      "digest": 164210018420765491592556864283506678858,
       "distinct": 200587,
-      "max": "999.99",
-      "min": "1000.00",
+      "max": "2633.86",
+      "min": "16.47",
       "name": "net_amount",
       "non_null": 400000,
       "sum": "496462951.43",
       "type": "numeric"
     },
     {
-      "digest": 14508132204611400943,
+      "digest": 65892558605311179454209125132500775697,
       "distinct": 41,
       "max": "PROMO9",
       "min": "\\N",
@@ -141,7 +141,7 @@
       "type": "character varying"
     },
     {
-      "digest": 17001508029318314743,
+      "digest": 119957813536576493952347853560654033757,
       "distinct": 1096,
       "max": "orders_2025-12-31.csv",
       "min": "orders_2023-01-01.csv",
@@ -151,7 +151,7 @@
       "type": "character varying"
     },
     {
-      "digest": 0,
+      "digest": 92511490978700138422747771899797948928,
       "distinct": 1,
       "max": "2026-01-01 03:30:00",
       "min": "2026-01-01 03:30:00",
@@ -162,10 +162,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "6920eab0437989d4bc43eebf04810069add7c23a153d1cca4922d078e7307db7",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 400000,
-  "row_digest": 16657048269270587278,
+  "row_digest": 43319283669666309270419712362934635496,
   "table": "core.fct_orders"
 }

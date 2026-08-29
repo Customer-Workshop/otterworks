@@ -1,9 +1,9 @@
 {
   "columns": [
     {
-      "digest": 5119575390267809762,
+      "digest": 334120933719342313141009258521081140086,
       "distinct": 2000000,
-      "max": "999999",
+      "max": "2000000",
       "min": "1",
       "name": "event_id",
       "non_null": 2000000,
@@ -11,9 +11,9 @@
       "type": "bigint"
     },
     {
-      "digest": 8110465729995638361,
+      "digest": 305317631138720109311006683804964896011,
       "distinct": 285715,
-      "max": "99999",
+      "max": "285715",
       "min": "1",
       "name": "session_id",
       "non_null": 2000000,
@@ -21,17 +21,17 @@
       "type": "bigint"
     },
     {
-      "digest": 10916763021832214669,
+      "digest": 285708157320737544630181166974437369691,
       "distinct": 48001,
-      "max": "\\N",
-      "min": "10",
+      "max": "60000",
+      "min": "2",
       "name": "customer_id",
       "non_null": 1599999,
       "sum": "48001801513",
       "type": "bigint"
     },
     {
-      "digest": 9201550532077358733,
+      "digest": 27687538854266410916116908110925748785,
       "distinct": 2000000,
       "max": "2025-12-31 23:59:06",
       "min": "2023-01-01 00:00:07",
@@ -41,7 +41,7 @@
       "type": "timestamp without time zone"
     },
     {
-      "digest": 12594488148432380666,
+      "digest": 182484766026608691656735848235727816130,
       "distinct": 2000000,
       "max": "2025-12-31 15:59:06",
       "min": "2022-12-31 16:00:07",
@@ -51,7 +51,7 @@
       "type": "timestamp without time zone"
     },
     {
-      "digest": 12787818848051396591,
+      "digest": 295462059387726961351328552858122301211,
       "distinct": 1097,
       "max": "2025-12-31",
       "min": "2022-12-31",
@@ -61,7 +61,7 @@
       "type": "date"
     },
     {
-      "digest": 12622211092037945863,
+      "digest": 97666428924079614860019953556333402245,
       "distinct": 5,
       "max": "search",
       "min": "add_to_cart",
@@ -71,7 +71,7 @@
       "type": "character varying"
     },
     {
-      "digest": 13004285451696232158,
+      "digest": 62019357959105138638575527865156943310,
       "distinct": 8000,
       "max": "/p/999",
       "min": "/p/1",
@@ -81,7 +81,7 @@
       "type": "character varying"
     },
     {
-      "digest": 4089283184135794016,
+      "digest": 26974611429844462032534821173157652096,
       "distinct": 3,
       "max": "tablet",
       "min": "desktop",
@@ -91,7 +91,7 @@
       "type": "character varying"
     },
     {
-      "digest": 11150099795414751049,
+      "digest": 145437150284540014046129252511734737997,
       "distinct": 5,
       "max": "paid_search",
       "min": "affiliate",
@@ -101,7 +101,7 @@
       "type": "character varying"
     },
     {
-      "digest": 15377725106631859460,
+      "digest": 13963508686438937838282577684042176740,
       "distinct": 7,
       "max": "7",
       "min": "1",
@@ -111,7 +111,7 @@
       "type": "integer"
     },
     {
-      "digest": 0,
+      "digest": 283055658611349276959347149327086435934,
       "distinct": 2,
       "max": "7",
       "min": "2",
@@ -121,7 +121,7 @@
       "type": "integer"
     },
     {
-      "digest": 0,
+      "digest": 308205041072631648835906346451882916608,
       "distinct": 2,
       "max": "true",
       "min": "false",
@@ -131,7 +131,7 @@
       "type": "boolean"
     },
     {
-      "digest": 0,
+      "digest": 127336189591910778200421037582098550912,
       "distinct": 1,
       "max": "2026-01-01 03:40:00",
       "min": "2026-01-01 03:40:00",
@@ -142,10 +142,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "cefb5a92d79274f645ed2ff9d62728605ab98d9430e31c8f09e61bea2fa73ec2",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 2000000,
-  "row_digest": 8231736876743774278,
+  "row_digest": 5111305180859204956756050465497457666,
   "table": "core.fct_web_events"
 }

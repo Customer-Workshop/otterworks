@@ -1,9 +1,9 @@
 {
   "columns": [
     {
-      "digest": 3907616188807055236,
+      "digest": 149840838069333421414844361525483610976,
       "distinct": 73,
-      "max": "98",
+      "max": "180",
       "min": "0",
       "name": "store_id",
       "non_null": 73,
@@ -11,7 +11,7 @@
       "type": "integer"
     },
     {
-      "digest": 7445102472041248730,
+      "digest": 79657397941751726820367576689305844430,
       "distinct": 73,
       "max": "Store 98",
       "min": "Digital",
@@ -21,7 +21,7 @@
       "type": "character varying"
     },
     {
-      "digest": 12943800246639454515,
+      "digest": 325304107395996852369354689323251264753,
       "distinct": 2,
       "max": "RETAIL",
       "min": "DIGITAL",
@@ -32,10 +32,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "99b31a82563bc54852da6442cda187820c83449b3dfee041782d9ddd7a3e411d",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 73,
-  "row_digest": 911001512967694324,
+  "row_digest": 136328985989974552047358401213525146628,
   "table": "core.dim_store"
 }

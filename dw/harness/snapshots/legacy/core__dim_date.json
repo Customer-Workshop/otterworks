@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 5466346220470084694,
+      "digest": 237274555257416312351542953035917155366,
       "distinct": 1826,
       "max": "2026-12-31",
       "min": "2022-01-01",
@@ -11,7 +11,7 @@
       "type": "date"
     },
     {
-      "digest": 3595919805224981022,
+      "digest": 57735688346282182031747714495219992282,
       "distinct": 5,
       "max": "2026",
       "min": "2022",
@@ -21,9 +21,9 @@
       "type": "integer"
     },
     {
-      "digest": 17275807159029277373,
+      "digest": 130845720114311486085676457516139665451,
       "distinct": 12,
-      "max": "9",
+      "max": "12",
       "min": "1",
       "name": "calendar_month",
       "non_null": 1826,
@@ -31,7 +31,7 @@
       "type": "integer"
     },
     {
-      "digest": 9013778168153654148,
+      "digest": 155186232592272922503094736634601309814,
       "distinct": 12,
       "max": "September",
       "min": "April    ",
@@ -41,9 +41,9 @@
       "type": "character varying"
     },
     {
-      "digest": 3999274758404179245,
+      "digest": 191103128275845796425967587031358467383,
       "distinct": 31,
-      "max": "9",
+      "max": "31",
       "min": "1",
       "name": "calendar_day",
       "non_null": 1826,
@@ -51,7 +51,7 @@
       "type": "integer"
     },
     {
-      "digest": 18149680367548308094,
+      "digest": 261843991738456702377379975501650748256,
       "distinct": 7,
       "max": "6",
       "min": "0",
@@ -61,7 +61,7 @@
       "type": "integer"
     },
     {
-      "digest": 5194134196595560819,
+      "digest": 11049111070797598237246892731973556563,
       "distinct": 7,
       "max": "Wednesday",
       "min": "Friday   ",
@@ -71,9 +71,9 @@
       "type": "character varying"
     },
     {
-      "digest": 8574759245172468428,
+      "digest": 217140110601450017518391985432315590176,
       "distinct": 53,
-      "max": "9",
+      "max": "53",
       "min": "1",
       "name": "week_of_year",
       "non_null": 1826,
@@ -81,7 +81,7 @@
       "type": "integer"
     },
     {
-      "digest": 15366547137775636672,
+      "digest": 191173452515441461061500002251389163964,
       "distinct": 4,
       "max": "4",
       "min": "1",
@@ -91,7 +91,7 @@
       "type": "integer"
     },
     {
-      "digest": 15148649169786769529,
+      "digest": 119008786868589656362301121450732095973,
       "distinct": 6,
       "max": "2026",
       "min": "2021",
@@ -101,7 +101,7 @@
       "type": "integer"
     },
     {
-      "digest": 3624354999459037992,
+      "digest": 194501727920994263050824735551945904150,
       "distinct": 4,
       "max": "4",
       "min": "1",
@@ -111,7 +111,7 @@
       "type": "integer"
     },
     {
-      "digest": 0,
+      "digest": 19969246683751007566992747779938899058,
       "distinct": 2,
       "max": "true",
       "min": "false",
@@ -122,10 +122,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "e4e3a6c8cfe6034458366f0c9394433336f75d40a2517c8825cd8294e0addc9f",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 1826,
-  "row_digest": 6341679686999628338,
+  "row_digest": 204856602533410397834653930733236433544,
   "table": "core.dim_date"
 }

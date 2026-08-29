@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 11413085360235607093,
+      "digest": 318326387622675200741973102869853677611,
       "distinct": 6,
       "max": "Outdoors",
       "min": "Apparel",
@@ -11,7 +11,7 @@
       "type": "character varying"
     },
     {
-      "digest": 0,
+      "digest": 222891090553488561690716319448290363096,
       "distinct": 1,
       "max": "5",
       "min": "5",
@@ -21,7 +21,7 @@
       "type": "integer"
     },
     {
-      "digest": 5459360074507953088,
+      "digest": 260851802514360563998321601780457857934,
       "distinct": 6,
       "max": "Product 6106, Product 2236, Product 3136, Product 5416, Product 6316",
       "min": "Product 2341, Product 6211, Product 2131, Product 3241, Product 5311",
@@ -31,7 +31,7 @@
       "type": "character varying"
     },
     {
-      "digest": 8141144777775949901,
+      "digest": 229771301631860915914826510923011450775,
       "distinct": 6,
       "max": "1141465.83",
       "min": "1126607.77",
@@ -42,10 +42,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "54e3f4bffb8f39790fc5f5c8a795f3bd6aea1e50e4b10df915d7190878b53c2d",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 6,
-  "row_digest": 7693661310088345511,
+  "row_digest": 221717399761555760208597478172896132661,
   "table": "mart.top_products_by_category"
 }

@@ -1,7 +1,7 @@
 {
   "columns": [
     {
-      "digest": 0,
+      "digest": 332280316306008891847085698213028885540,
       "distinct": 1096,
       "max": "2025-12-31",
       "min": "2023-01-01",
@@ -11,7 +11,7 @@
       "type": "date"
     },
     {
-      "digest": 0,
+      "digest": 12340491074270208785801682997119155112,
       "distinct": 4,
       "max": "WEB",
       "min": "CALL_CENTER",
@@ -21,40 +21,40 @@
       "type": "character varying"
     },
     {
-      "digest": 2560617386597774150,
+      "digest": 318115282424109566409941875960561940798,
       "distinct": 78,
-      "max": "89",
-      "min": "122",
+      "max": "166",
+      "min": "57",
       "name": "order_count",
       "non_null": 4384,
       "sum": "400000",
       "type": "bigint"
     },
     {
-      "digest": 3632249781347690887,
+      "digest": 35760927900066637072871893236024675913,
       "distinct": 4382,
-      "max": "99990.82",
-      "min": "100018.95",
+      "max": "208341.56",
+      "min": "52585.43",
       "name": "gross_revenue",
       "non_null": 4384,
       "sum": "485988866.21",
       "type": "numeric"
     },
     {
-      "digest": 14217463972608689753,
+      "digest": 268039238660987526418912108000721007009,
       "distinct": 4373,
-      "max": "9952.26",
-      "min": "10003.64",
+      "max": "16684.60",
+      "min": "2714.65",
       "name": "discount_total",
       "non_null": 4384,
       "sum": "34017885.01",
       "type": "numeric"
     },
     {
-      "digest": 9906059470617889061,
+      "digest": 149537358633864270885101180187305747631,
       "distinct": 4382,
-      "max": "99930.96",
-      "min": "100007.07",
+      "max": "192825.89",
+      "min": "48322.48",
       "name": "net_revenue",
       "non_null": 4384,
       "sum": "451970981.20",
@@ -62,10 +62,10 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "8bfdda16b9aec2eb9ee2190785606449ffb9d1bb18929cdd9dd7aac28cf4f4e5",
+  "manifest_format": 4,
   "ordered": null,
   "row_count": 4384,
-  "row_digest": 18403295723057148883,
+  "row_digest": 264260326857143405280623649306505364965,
   "table": "mart.daily_revenue_by_channel"
 }

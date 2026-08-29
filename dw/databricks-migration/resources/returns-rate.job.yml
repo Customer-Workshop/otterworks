@@ -1,0 +1,40 @@
+resources:
+  jobs:
+    returns-rate-by-category:
+      name: otterworks-returns-rate-by-category
+      max_concurrent_runs: 1
+      job_clusters:
+        - job_cluster_key: migration-cluster
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: i3.xlarge
+            num_workers: 1
+      tasks:
+        - task_key: extract-source
+          job_cluster_key: migration-cluster
+          spark_python_task:
+            python_file: ../src/extract_legacy.py
+            parameters:
+              - --table
+              - core.fct_order_items
+          libraries:
+            - pypi:
+                package: psycopg2-binary
+        - task_key: extract-returns
+          job_cluster_key: migration-cluster
+          depends_on:
+            - task_key: extract-source
+          spark_python_task:
+            python_file: ../src/extract_legacy.py
+            parameters:
+              - --table
+              - core.fct_returns
+          libraries:
+            - pypi:
+                package: psycopg2-binary
+        - task_key: convert-returns-rate
+          job_cluster_key: migration-cluster
+          depends_on:
+            - task_key: extract-returns
+          spark_python_task:
+            python_file: ../src/notebooks/returns_rate_by_category.py

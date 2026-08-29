@@ -1,9 +1,9 @@
 {
   "columns": [
     {
-      "digest": 11049407653569682278,
+      "digest": 131342895679869802091498188366237766494,
       "distinct": 60000,
-      "max": "9999",
+      "max": "60000",
       "min": "1",
       "name": "customer_sk",
       "non_null": 60000,
@@ -11,9 +11,9 @@
       "type": "bigint"
     },
     {
-      "digest": 13844340625670112384,
+      "digest": 331765487107487096204066842952949524270,
       "distinct": 60000,
-      "max": "9999",
+      "max": "60000",
       "min": "1",
       "name": "customer_id",
       "non_null": 60000,
@@ -21,7 +21,7 @@
       "type": "bigint"
     },
     {
-      "digest": 9708633163672677200,
+      "digest": 117907739706107018521809543503939496714,
       "distinct": 60000,
       "max": "Customer 9999",
       "min": "Customer 1",
@@ -31,7 +31,7 @@
       "type": "character varying"
     },
     {
-      "digest": 16182718191350906292,
+      "digest": 116645754376391406727224279255260068914,
       "distinct": 60000,
       "max": "user9@example.com",
       "min": "user10000@example.com",
@@ -41,7 +41,7 @@
       "type": "character varying"
     },
     {
-      "digest": 4135408567796726916,
+      "digest": 212275928518031263641251251627451799162,
       "distinct": 5,
       "max": "US",
       "min": "CA",
@@ -51,7 +51,7 @@
       "type": "character"
     },
     {
-      "digest": 8647507035375494471,
+      "digest": 228455895398692036964162481780675243413,
       "distinct": 8,
       "max": "Toronto",
       "min": "Austin",
@@ -61,7 +61,7 @@
       "type": "character varying"
     },
     {
-      "digest": 16828504706500847239,
+      "digest": 90653033305574220482881173795480313617,
       "distinct": 3,
       "max": "SMB",
       "min": "CONSUMER",
@@ -71,7 +71,7 @@
       "type": "character varying"
     },
     {
-      "digest": 7377277282269565382,
+      "digest": 43556206929846758641430772396628975024,
       "distinct": 2,
       "max": "true",
       "min": "false",
@@ -81,7 +81,7 @@
       "type": "boolean"
     },
     {
-      "digest": 953373957797979039,
+      "digest": 327241872667641035472698088995352084113,
       "distinct": 60000,
       "max": "ffffe60f2bc426f99d33d35197b57032",
       "min": "000040bca5d4803f32e064691db3e255",
@@ -91,7 +91,7 @@
       "type": "character varying"
     },
     {
-      "digest": 0,
+      "digest": 205886876139996534399582145299237032800,
       "distinct": 1,
       "max": "2026-01-01 03:15:00",
       "min": "2026-01-01 03:15:00",
@@ -101,7 +101,7 @@
       "type": "timestamp without time zone"
     },
     {
-      "digest": 0,
+      "digest": 92105010209163364662743861314382999648,
       "distinct": 1,
       "max": "9999-12-31 00:00:00",
       "min": "9999-12-31 00:00:00",
@@ -111,7 +111,7 @@
       "type": "timestamp without time zone"
     },
     {
-      "digest": 0,
+      "digest": 324934868884468292324192264806947543392,
       "distinct": 1,
       "max": "true",
       "min": "true",
@@ -122,13 +122,13 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": null,
-  "manifest_format": 3,
+  "fingerprint": "8b4eae4a8844a7716ed05f8d023ecc46fe424535ea8f12b94fb9fd2f53e6a616",
+  "manifest_format": 4,
   "ordered": {
     "digest": 271574239099219996,
     "key": "customer_id, effective_from, customer_sk"
   },
   "row_count": 60000,
-  "row_digest": 2345115796908232516,
+  "row_digest": 303019271684494278479470583713709773988,
   "table": "core.dim_customer_scd2"
 }

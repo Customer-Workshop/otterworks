@@ -1,0 +1,1107 @@
+{
+ "checks": [
+  {
+   "actual": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "expected": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "id": "SRC-SHA",
+   "result": "pass",
+   "source_of_truth": "procs/oracle/transcripts/ORACLE_SOURCE_SHA vs the checked-out services/legacy-billing/db/oracle tree, digested by the recipe in procs/harness/oracle_record.py"
+  },
+  {
+   "actual": {
+    "loaded_plus_quarantined": 69
+   },
+   "expected": {
+    "loaded_plus_quarantined": 69
+   },
+   "halt_threshold_pct": 5,
+   "id": "ACC-QUAR-silver_rating",
+   "loaded_rows": 69,
+   "quarantine_by_reason": {},
+   "quarantine_pct": 0.0,
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "live Oracle OW_BILLING.TENANTS COUNT(*) \u2014 one rating driver per tenant per period, the population sp_finalize_rating is called for",
+   "source_rows": 69
+  },
+  {
+   "actual": {
+    "rows": 72
+   },
+   "expected": {
+    "rows": 72
+   },
+   "id": "ROWS-rating_periods",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_periods COUNT(*) WHERE ns = 'demo' (recomputed from Delta) vs live Oracle: the rated period for every non-quarantined tenant plus the source's own RATING_PERIODS rows for the other periods"
+  },
+  {
+   "actual": {
+    "rows": 72
+   },
+   "expected": {
+    "rows": 72
+   },
+   "id": "ROWS-rating_results",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results COUNT(*) WHERE ns = 'demo' (recomputed from Delta); sp_finalize_rating writes exactly one result per period"
+  },
+  {
+   "actual": {
+    "rows_differing": 0,
+    "rows_in_target_not_in_source": []
+   },
+   "expected": {
+    "rows_differing": 0,
+    "rows_in_target_not_in_source": []
+   },
+   "id": "ACC-RATING-PARITY",
+   "mismatch_sample": [],
+   "per_column_mismatches": {
+    "billable_units": 0,
+    "computed_rollover_units": 0,
+    "first_tier_units": 0,
+    "overage_amount": 0,
+    "quota_units": 0,
+    "rollover_units": 0,
+    "second_tier_units": 0,
+    "subscription_id": 0,
+    "suspension_prorated": 0,
+    "used_units": 0
+   },
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows_compared": 69,
+   "source_of_truth": "every rated row compared column by column against the rating live Oracle computes for the same population (compute_rating/sp_finalize_rating re-expressed as one read-only SQL statement and evaluated by Oracle)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.subscription_id",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.subscription_id vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "string"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.used_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.used_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.quota_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.quota_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.rollover_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.rollover_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.computed_rollover_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.computed_rollover_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.first_tier_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.first_tier_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.second_tier_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.second_tier_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.billable_units",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.billable_units vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(38,0)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.overage_amount",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.overage_amount vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "mismatches": 0
+   },
+   "expected": {
+    "mismatches": 0
+   },
+   "id": "PARITY-COL-rating_results.suspension_prorated",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "source_of_truth": "ow_tp.silver.rating_results.suspension_prorated vs the same column computed by live Oracle, over 69 rated tenants",
+   "target_type": "boolean"
+  },
+  {
+   "actual": {
+    "rows_differing": 0
+   },
+   "columns_differing": [],
+   "expected": {
+    "rows_differing": 0
+   },
+   "id": "ACC-MIGRATED-PARITY",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows_compared": 3,
+   "source_of_truth": "the source's own RATING_RESULTS rows for periods this run does not finalize, compared column by column with the rows carried into ow_tp.silver.rating_results",
+   "source_rows": 3
+  },
+  {
+   "actual": {
+    "sum": "21313.69"
+   },
+   "expected": {
+    "sum": "21313.69"
+   },
+   "id": "ACC-MONEY-overage_amount",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 69,
+   "source_of_truth": "SUM(overage_amount) as live Oracle computes it for the rated period vs SUM recomputed from ow_tp.silver.rating_results (DECIMAL(14,2), never DOUBLE)",
+   "target_type": "decimal(14,2)"
+  },
+  {
+   "actual": {
+    "sum": "0.00"
+   },
+   "expected": {
+    "sum": "0.00"
+   },
+   "id": "ACC-MONEY-overage_amount-migrated",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "rows": 3,
+   "source_of_truth": "SUM(overage_amount) over live Oracle OW_BILLING.RATING_RESULTS for the periods this run does not finalize vs SUM recomputed from ow_tp.silver.rating_results"
+  },
+  {
+   "actual": {
+    "float_columns": {},
+    "money_columns": {
+     "rating_results.overage_amount": "decimal(14,2)"
+    }
+   },
+   "all_column_types": {
+    "quarantine_silver_rating._batch_id": "string",
+    "quarantine_silver_rating._quarantined_at": "timestamp",
+    "quarantine_silver_rating.detail": "string",
+    "quarantine_silver_rating.dictionary_ref": "string",
+    "quarantine_silver_rating.ns": "string",
+    "quarantine_silver_rating.quarantine_reason": "string",
+    "quarantine_silver_rating.raw_source_payload": "string",
+    "quarantine_silver_rating.source_key": "string",
+    "quarantine_silver_rating.source_table": "string",
+    "rating_periods._batch_id": "string",
+    "rating_periods._loaded_at": "timestamp",
+    "rating_periods._origin": "string",
+    "rating_periods.id": "string",
+    "rating_periods.ns": "string",
+    "rating_periods.period_end": "date",
+    "rating_periods.period_start": "date",
+    "rating_periods.tenant_id": "string",
+    "rating_results._batch_id": "string",
+    "rating_results._loaded_at": "timestamp",
+    "rating_results._origin": "string",
+    "rating_results.billable_units": "decimal(38,0)",
+    "rating_results.computed_rollover_units": "decimal(38,0)",
+    "rating_results.created_at": "timestamp",
+    "rating_results.first_tier_units": "decimal(38,0)",
+    "rating_results.id": "string",
+    "rating_results.ns": "string",
+    "rating_results.overage_amount": "decimal(14,2)",
+    "rating_results.overage_rate": "decimal(12,6)",
+    "rating_results.period_id": "string",
+    "rating_results.quota_units": "decimal(38,0)",
+    "rating_results.rollover_units": "decimal(38,0)",
+    "rating_results.second_tier_units": "decimal(38,0)",
+    "rating_results.subscription_id": "string",
+    "rating_results.suspension_prorated": "boolean",
+    "rating_results.used_units": "decimal(38,0)"
+   },
+   "expected": {
+    "float_columns": {},
+    "money_columns": {
+     "rating_results.overage_amount": "decimal(14,2)"
+    }
+   },
+   "id": "ACC-MONEY-TYPES",
+   "result": "pass",
+   "source_of_truth": "ow_tp.information_schema.columns for the unit's three targets (D-23/T6: money is DECIMAL(14,2) end to end and no DOUBLE appears anywhere in the unit)"
+  },
+  {
+   "actual": {
+    "wrapped_greatest_null_0": null,
+    "wrapped_least_null_5": null
+   },
+   "expected": {
+    "wrapped_greatest_null_0": null,
+    "wrapped_least_null_5": null
+   },
+   "id": "ACC-NULL-PROP",
+   "result": "pass",
+   "source_of_truth": "D-01 probed on the warehouse: Spark's own least/greatest ignore NULL (least(NULL,5) = 5, greatest(NULL,0) = 0), the wrapper the pipeline uses propagates it as Oracle does",
+   "spark_builtin": {
+    "spark_greatest_null_0": "0",
+    "spark_least_null_5": "5",
+    "wrapped_greatest_null_0": null,
+    "wrapped_least_null_5": null
+   }
+  },
+  {
+   "actual": {
+    "keys": [
+     "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+     "d0a28620-e069-c023-6976-04338ccc3014",
+     "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+     "93503474-dde4-608b-cda9-1a7dbeedb1df",
+     "4b4f0b74-da71-a31a-eedd-a492d6164bca",
+     "1b886a8c-7ca6-751b-6c6f-d9435d323eb1",
+     "aec4140a-d0fb-c8f8-28aa-df4bfaf1f450",
+     "5db329d0-ac7e-84f6-bba9-ef9ff7520506",
+     "5dc02199-0345-1f48-ab13-8eeefeba5910",
+     "eb242c74-95e0-f4a6-c5a4-880f938f7ec7"
+    ]
+   },
+   "expected": {
+    "keys": [
+     "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+     "d0a28620-e069-c023-6976-04338ccc3014",
+     "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+     "93503474-dde4-608b-cda9-1a7dbeedb1df",
+     "4b4f0b74-da71-a31a-eedd-a492d6164bca",
+     "1b886a8c-7ca6-751b-6c6f-d9435d323eb1",
+     "aec4140a-d0fb-c8f8-28aa-df4bfaf1f450",
+     "5db329d0-ac7e-84f6-bba9-ef9ff7520506",
+     "5dc02199-0345-1f48-ab13-8eeefeba5910",
+     "eb242c74-95e0-f4a6-c5a4-880f938f7ec7"
+    ]
+   },
+   "id": "ACC-MERGE-KEY",
+   "result": "pass",
+   "result_id_sample": [
+    {
+     "actual": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+     "expected": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a"
+    },
+    {
+     "actual": "69cf3f79-36c2-d64b-0445-e13857750c72",
+     "expected": "69cf3f79-36c2-d64b-0445-e13857750c72"
+    },
+    {
+     "actual": "63fe6f65-7ca2-2aba-1bd0-fd0c35df1f75",
+     "expected": "63fe6f65-7ca2-2aba-1bd0-fd0c35df1f75"
+    },
+    {
+     "actual": "4c5e7931-abd4-a1b6-e27d-7958b3bd4b6b",
+     "expected": "4c5e7931-abd4-a1b6-e27d-7958b3bd4b6b"
+    },
+    {
+     "actual": "4caac2a0-56c6-00a8-f01e-0ddfa1158cd5",
+     "expected": "4caac2a0-56c6-00a8-f01e-0ddfa1158cd5"
+    },
+    {
+     "actual": "c48db607-65ef-deeb-5de7-4ecad6863def",
+     "expected": "c48db607-65ef-deeb-5de7-4ecad6863def"
+    },
+    {
+     "actual": "2ffb91cb-0f21-4dee-b9a1-3a3d9d4c2fb3",
+     "expected": "2ffb91cb-0f21-4dee-b9a1-3a3d9d4c2fb3"
+    },
+    {
+     "actual": "d6ca7e9c-92f7-ba0e-6153-ca1b56703564",
+     "expected": "d6ca7e9c-92f7-ba0e-6153-ca1b56703564"
+    },
+    {
+     "actual": "93bc5279-d68f-6ccc-0dce-28b3f5eddaae",
+     "expected": "93bc5279-d68f-6ccc-0dce-28b3f5eddaae"
+    },
+    {
+     "actual": "d5ce1777-813d-fd21-f576-9e1abd10234c",
+     "expected": "d5ce1777-813d-fd21-f576-9e1abd10234c"
+    }
+   ],
+   "source_of_truth": "pkg_ow_util.f_md5_uuid called in live Oracle for a 10-tenant sample vs the MERGE keys in ow_tp.silver.rating_periods (D-14)"
+  },
+  {
+   "actual": {
+    "ns_of_every_row": "demo",
+    "rows_without_ns": 0
+   },
+   "expected": {
+    "ns_of_every_row": "demo",
+    "rows_without_ns": 0
+   },
+   "id": "ACC-NS",
+   "result": "pass",
+   "rows_in_other_namespaces": 0,
+   "source_of_truth": "every row in the unit's three targets carries ns = 'demo'; rows in other namespaces are untouched by this run",
+   "volume_path": "/Volumes/ow_tp/bronze/landing/demo/silver_rating/_runs/"
+  },
+  {
+   "actual": {
+    "rows_missing_required_fields": 0
+   },
+   "by_reason": [],
+   "closed_reason_set": [
+    "FK_ORPHAN",
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "CODE_UNKNOWN",
+    "NUMERIC_OVERFLOW"
+   ],
+   "expected": {
+    "rows_missing_required_fields": 0
+   },
+   "id": "ACC-QUARANTINE-SHAPE",
+   "result": "pass",
+   "rows": 0,
+   "source_of_truth": "ow_tp.silver.quarantine_silver_rating: every row carries quarantine_reason, ns, source_table and the raw source payload"
+  },
+  {
+   "actual": {
+    "row_counts_identical": true,
+    "second_run_rows_changed": 0
+   },
+   "expected": {
+    "row_counts_identical": true,
+    "second_run_rows_changed": 0
+   },
+   "id": "ACC-IDEM",
+   "result": "pass",
+   "run1": {
+    "quarantine_silver_rating": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 1
+    },
+    "rating_periods": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 72,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 1
+    },
+    "rating_results": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 72,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 1
+    }
+   },
+   "run2": {
+    "quarantine_silver_rating": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 2
+    },
+    "rating_periods": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 2
+    },
+    "rating_results": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 2
+    }
+   },
+   "source_of_truth": "Delta MERGE operationMetrics from DESCRIBE HISTORY after the second identical run"
+  },
+  {
+   "actual": {
+    "billable_units": "160",
+    "rollover_units": "0",
+    "used_units": "260"
+   },
+   "entrypoint": "pkg_rating.fn_usage_rating",
+   "expected": {
+    "billable_units": "160",
+    "rollover_units": "0",
+    "used_units": "260"
+   },
+   "id": "TRANSCRIPT-RATING-001",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-001.json (pkg_rating.fn_usage_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "billable_units": "billable_units",
+    "rollover_units": "computed_rollover_units",
+    "used_units": "used_units"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000007"
+  },
+  {
+   "actual": {
+    "overage_amount": "0.00",
+    "rollover_units": "200"
+   },
+   "entrypoint": "pkg_rating.fn_usage_rating",
+   "expected": {
+    "overage_amount": "0.00",
+    "rollover_units": "200"
+   },
+   "id": "TRANSCRIPT-RATING-002",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-002.json (pkg_rating.fn_usage_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "overage_amount": "overage_amount",
+    "rollover_units": "computed_rollover_units"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  {
+   "actual": {
+    "billable_units": "100",
+    "overage_amount": "4.37"
+   },
+   "entrypoint": "pkg_rating.fn_usage_rating",
+   "expected": {
+    "billable_units": "100",
+    "overage_amount": "4.37"
+   },
+   "id": "TRANSCRIPT-RATING-003",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-003.json (pkg_rating.fn_usage_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "billable_units": "billable_units",
+    "overage_amount": "overage_amount"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000002"
+  },
+  {
+   "actual": {
+    "first_tier_units": "101",
+    "overage_amount": "5.56"
+   },
+   "entrypoint": "pkg_rating.fn_usage_rating",
+   "expected": {
+    "first_tier_units": "101",
+    "overage_amount": "5.56"
+   },
+   "id": "TRANSCRIPT-RATING-004",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-004.json (pkg_rating.fn_usage_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "first_tier_units": "first_tier_units",
+    "overage_amount": "overage_amount"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000006"
+  },
+  {
+   "actual": {
+    "first_tier_units": "101",
+    "second_tier_units": "1"
+   },
+   "entrypoint": "pkg_rating.fn_usage_rating",
+   "expected": {
+    "first_tier_units": "101",
+    "second_tier_units": "1"
+   },
+   "id": "TRANSCRIPT-RATING-005",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-005.json (pkg_rating.fn_usage_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "first_tier_units": "first_tier_units",
+    "second_tier_units": "second_tier_units"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000008"
+  },
+  {
+   "actual": {
+    "first_tier_units": "101",
+    "overage_amount": "5.02",
+    "second_tier_units": "100"
+   },
+   "entrypoint": "pkg_rating.fn_usage_rating",
+   "expected": {
+    "first_tier_units": "101",
+    "overage_amount": "5.02",
+    "second_tier_units": "100"
+   },
+   "id": "TRANSCRIPT-RATING-006",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-006.json (pkg_rating.fn_usage_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "first_tier_units": "first_tier_units",
+    "overage_amount": "overage_amount",
+    "second_tier_units": "second_tier_units"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000003"
+  },
+  {
+   "actual": {
+    "kinds": [
+     "api",
+     "storage"
+    ],
+    "units": [
+     "20",
+     "30"
+    ]
+   },
+   "entrypoint": "pkg_rating.fn_usage_summary",
+   "expected": {
+    "kinds": [
+     "api",
+     "storage"
+    ],
+    "units": [
+     "20",
+     "30"
+    ]
+   },
+   "id": "TRANSCRIPT-RATING-007",
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-007.json (pkg_rating.fn_usage_summary), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_object": "ported fn_usage_summary projection over ow_tp.bronze.usage_events, emitted by the job run (the source entrypoint returns a cursor, so the unit's three declared target objects do not persist it)",
+   "tenant_id": "00000000-0000-0000-0000-000000000004"
+  },
+  {
+   "actual": {
+    "billable_units": "0",
+    "overage_amount": "0.00",
+    "quota_units": "100",
+    "rollover_units": "0",
+    "used_units": "260"
+   },
+   "entrypoint": "pkg_rating.sp_finalize_rating",
+   "expected": {
+    "billable_units": "0",
+    "overage_amount": "0.00",
+    "quota_units": "100",
+    "rollover_units": "0",
+    "used_units": "260"
+   },
+   "id": "TRANSCRIPT-RATING-008",
+   "note": "rollover_units here is the persisted GREATEST(quota_units - used_units, 0) of D-09; the value compute_rating banked for the same tenant is the transcript RATING-002 figure and is kept in computed_rollover_units",
+   "probe_rating_result": [
+    {
+     "billable_units": 0,
+     "overage_amount": "0.00",
+     "quota_units": 100,
+     "rollover_units": 0,
+     "used_units": 260
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "pinned Oracle transcript procs/oracle/transcripts/rating/RATING-008.json (pkg_rating.sp_finalize_rating), oracle_source_sha 0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "target_columns": {
+    "billable_units": "billable_units",
+    "overage_amount": "overage_amount",
+    "quota_units": "quota_units",
+    "rollover_units": "rollover_units",
+    "used_units": "used_units"
+   },
+   "tenant_id": "00000000-0000-0000-0000-000000000001"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "absolute_unit_delta": "1519",
+    "persisted_higher_than_computed": 4,
+    "persisted_lower_than_computed": 1,
+    "rows_compared": 69,
+    "rows_where_persisted_differs_from_computed": 69,
+    "target_behaviour": "both values are persisted as explicit columns; the source formula is written verbatim to rollover_units and is not reconciled with the computed value"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-ROLLOVER-PERSIST",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': silver.rating_results.rollover_units (persisted GREATEST(quota-used,0), D-09) compared row by row with computed_rollover_units (three-month banked, double-capped)"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "rows_compared_under_reordering": 69,
+    "rows_differing_under_reordering": 0,
+    "source_globals_read_outside_the_computing_procedure": [
+     "g_used_units",
+     "g_quota_units",
+     "g_rollover_units",
+     "g_billable_units",
+     "g_first_tier",
+     "g_second_tier",
+     "g_overage_amount"
+    ],
+    "source_package_globals": [
+     "g_tenant_id",
+     "g_period_start",
+     "g_period_end",
+     "g_used_units",
+     "g_quota_units",
+     "g_rollover_units",
+     "g_billable_units",
+     "g_first_tier",
+     "g_second_tier",
+     "g_overage_amount"
+    ],
+    "target_behaviour": "no cross-row or cross-call state: every value pkg_rating carried in a global is a column of the row it belongs to (used_units, quota_units, computed_rollover_units, billable_units, first_tier_units, second_tier_units, overage_amount), so a second call cannot see the first's state"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-PKG-GLOBAL-STATE",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': the source's package globals are enumerated from the rating package and mapped one by one onto explicit target columns; the target's order-independence is then measured by recomputing the population under a different row order and comparing money and units row by row"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "events_in_window_string_compare": 814,
+    "events_in_window_timestamp_compare": 786,
+    "target_behaviour": "the string comparison is kept, so the same boundary-day events are rated as in the source",
+    "units_included_only_by_string_compare": "10151"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-STRING-DATE-COMPARE",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': usage events in the period counted twice over ow_tp.bronze.usage_events: once with the source's date_format(occurred_at,'yyyyMMdd') string comparison (D-07), once with a timestamp comparison"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "max_candidate_rows_for_one_tenant": 1,
+    "source_construct": "SELECT ... FROM (SELECT ... ORDER BY s.starts_on DESC) WHERE ROWNUM <= 1, on a non-unique starts_on, in both compute_rating and sp_finalize_rating",
+    "target_resolution": "row_number() OVER (PARTITION BY tenant_id ORDER BY starts_on DESC, id DESC) = 1 (D-08). For tenants with tied starts_on the source is nondeterministic and the target is not: target and a given source run may legitimately differ there.",
+    "tenants_with_more_than_one_covering_subscription": 0,
+    "tenants_with_tied_starts_on": 0
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-ROWNUM-1",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': the covering-subscription lookup is materialised as a window over all candidate rows, so the number of rows the source's ROWNUM <= 1 discards is measured per tenant instead of assumed"
+  },
+  {
+   "actual": {
+    "detected": true
+   },
+   "evidence": {
+    "live_exposure": {
+     "tenant_periods_with_null_overage_amount": 0,
+     "tenant_periods_with_unknown_usage_kind": 0,
+     "tenant_periods_without_covering_plan": 0,
+     "tenant_periods_without_covering_subscription": 0
+    },
+    "source_swallowed_paths": [
+     "compute_rating: WHEN NO_DATA_FOUND THEN NULL around the covering-subscription lookup \u2014 v_sub_id/v_plan_id stay NULL and rating continues",
+     "compute_rating: WHEN NO_DATA_FOUND THEN NULL around the plan lookup \u2014 v_included/v_rate stay NULL, so quota and overage become NULL and billable silently becomes 0",
+     "sp_finalize_rating: WHEN NO_DATA_FOUND THEN v_sub_id := NULL, then INSERT into NOT NULL subscription_id raises ORA-01400 and the tenant's finalize aborts mid-batch",
+     "pkg_ow_util.log_msg: WHEN OTHERS THEN ROLLBACK \u2014 the autonomous-transaction audit write is discarded silently (D-20, out of parity scope)",
+     "pkg_ow_util.f_str2dt: WHEN OTHERS THEN RETURN NULL \u2014 unparseable dates become NULL (not reached by this unit: rating reads DATE and TIMESTAMP columns only)"
+    ],
+    "target_behaviour": "quarantine with FK_ORPHAN (D-19 cause NO_COVERING_PLAN) or CODE_UNKNOWN (D-16), counted toward the 5% halt; no partial rating row is ever written"
+   },
+   "expected": {
+    "detected": true
+   },
+   "id": "ANOMALY-ANOM-SWALLOWED-EXCEPTION",
+   "result": "pass",
+   "source_of_truth": "detector run by the job over ns = 'demo': every source path that swallows a failure in the rating lineage is enumerated and its live exposure counted over this run's population; the target routes each one to quarantine or a halt, and a quarantined tenant-period produces no rating row at all"
+  }
+ ],
+ "failed_checks": [],
+ "generated_at": "2026-08-29T03:34:46Z",
+ "idempotency_rerun": {
+  "evidence": "run 1 = serverless run 239088809706914 (batch 20260829032948a), run 2 = serverless run 187034085035899 (batch 20260829032948b), identical parameters (ns=demo, period 2026-02-01..2026-02-28). Second-run Delta MERGE metrics: {\"quarantine_silver_rating\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 2}, \"rating_periods\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 2}, \"rating_results\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 2}}. Row counts after each run: {\"run1\": {\"rating_periods\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}, \"rating_results\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}}, \"run2\": {\"rating_periods\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}, \"rating_results\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}}}",
+  "performed": true,
+  "result": "pass"
+ },
+ "kind": "recon-report",
+ "namespace": "demo",
+ "planted_anomaly_detections": {
+  "actual_set": [
+   "ANOM-ROLLOVER-PERSIST",
+   "ANOM-PKG-GLOBAL-STATE",
+   "ANOM-STRING-DATE-COMPARE",
+   "ANOM-ROWNUM-1",
+   "ANOM-SWALLOWED-EXCEPTION"
+  ],
+  "detail": {
+   "ANOM-PKG-GLOBAL-STATE": {
+    "detected": true,
+    "detector": "the source's package globals are enumerated from the rating package and mapped one by one onto explicit target columns; the target's order-independence is then measured by recomputing the population under a different row order and comparing money and units row by row",
+    "rows_compared_under_reordering": 69,
+    "rows_differing_under_reordering": 0,
+    "source_globals_read_outside_the_computing_procedure": [
+     "g_used_units",
+     "g_quota_units",
+     "g_rollover_units",
+     "g_billable_units",
+     "g_first_tier",
+     "g_second_tier",
+     "g_overage_amount"
+    ],
+    "source_package_globals": [
+     "g_tenant_id",
+     "g_period_start",
+     "g_period_end",
+     "g_used_units",
+     "g_quota_units",
+     "g_rollover_units",
+     "g_billable_units",
+     "g_first_tier",
+     "g_second_tier",
+     "g_overage_amount"
+    ],
+    "target_behaviour": "no cross-row or cross-call state: every value pkg_rating carried in a global is a column of the row it belongs to (used_units, quota_units, computed_rollover_units, billable_units, first_tier_units, second_tier_units, overage_amount), so a second call cannot see the first's state"
+   },
+   "ANOM-ROLLOVER-PERSIST": {
+    "absolute_unit_delta": "1519",
+    "detected": true,
+    "detector": "silver.rating_results.rollover_units (persisted GREATEST(quota-used,0), D-09) compared row by row with computed_rollover_units (three-month banked, double-capped)",
+    "persisted_higher_than_computed": 4,
+    "persisted_lower_than_computed": 1,
+    "rows_compared": 69,
+    "rows_where_persisted_differs_from_computed": 69,
+    "target_behaviour": "both values are persisted as explicit columns; the source formula is written verbatim to rollover_units and is not reconciled with the computed value"
+   },
+   "ANOM-ROWNUM-1": {
+    "detected": true,
+    "detector": "the covering-subscription lookup is materialised as a window over all candidate rows, so the number of rows the source's ROWNUM <= 1 discards is measured per tenant instead of assumed",
+    "max_candidate_rows_for_one_tenant": 1,
+    "source_construct": "SELECT ... FROM (SELECT ... ORDER BY s.starts_on DESC) WHERE ROWNUM <= 1, on a non-unique starts_on, in both compute_rating and sp_finalize_rating",
+    "target_resolution": "row_number() OVER (PARTITION BY tenant_id ORDER BY starts_on DESC, id DESC) = 1 (D-08). For tenants with tied starts_on the source is nondeterministic and the target is not: target and a given source run may legitimately differ there.",
+    "tenants_with_more_than_one_covering_subscription": 0,
+    "tenants_with_tied_starts_on": 0
+   },
+   "ANOM-STRING-DATE-COMPARE": {
+    "detected": true,
+    "detector": "usage events in the period counted twice over ow_tp.bronze.usage_events: once with the source's date_format(occurred_at,'yyyyMMdd') string comparison (D-07), once with a timestamp comparison",
+    "events_in_window_string_compare": 814,
+    "events_in_window_timestamp_compare": 786,
+    "target_behaviour": "the string comparison is kept, so the same boundary-day events are rated as in the source",
+    "units_included_only_by_string_compare": "10151"
+   },
+   "ANOM-SWALLOWED-EXCEPTION": {
+    "detected": true,
+    "detector": "every source path that swallows a failure in the rating lineage is enumerated and its live exposure counted over this run's population; the target routes each one to quarantine or a halt, and a quarantined tenant-period produces no rating row at all",
+    "live_exposure": {
+     "tenant_periods_with_null_overage_amount": 0,
+     "tenant_periods_with_unknown_usage_kind": 0,
+     "tenant_periods_without_covering_plan": 0,
+     "tenant_periods_without_covering_subscription": 0
+    },
+    "source_swallowed_paths": [
+     "compute_rating: WHEN NO_DATA_FOUND THEN NULL around the covering-subscription lookup \u2014 v_sub_id/v_plan_id stay NULL and rating continues",
+     "compute_rating: WHEN NO_DATA_FOUND THEN NULL around the plan lookup \u2014 v_included/v_rate stay NULL, so quota and overage become NULL and billable silently becomes 0",
+     "sp_finalize_rating: WHEN NO_DATA_FOUND THEN v_sub_id := NULL, then INSERT into NOT NULL subscription_id raises ORA-01400 and the tenant's finalize aborts mid-batch",
+     "pkg_ow_util.log_msg: WHEN OTHERS THEN ROLLBACK \u2014 the autonomous-transaction audit write is discarded silently (D-20, out of parity scope)",
+     "pkg_ow_util.f_str2dt: WHEN OTHERS THEN RETURN NULL \u2014 unparseable dates become NULL (not reached by this unit: rating reads DATE and TIMESTAMP columns only)"
+    ],
+    "target_behaviour": "quarantine with FK_ORPHAN (D-19 cause NO_COVERING_PLAN) or CODE_UNKNOWN (D-16), counted toward the 5% halt; no partial rating row is ever written"
+   }
+  },
+  "expected_set": [
+   "ANOM-ROLLOVER-PERSIST",
+   "ANOM-PKG-GLOBAL-STATE",
+   "ANOM-STRING-DATE-COMPARE",
+   "ANOM-ROWNUM-1",
+   "ANOM-SWALLOWED-EXCEPTION"
+  ],
+  "missing": [],
+  "unexpected": []
+ },
+ "provenance": {
+  "baseline": {
+   "note": "procs/transcripts/ (Postgres) is a cross-check set and is not the baseline",
+   "pinned_sha_file": "procs/oracle/transcripts/ORACLE_SOURCE_SHA",
+   "transcripts": [
+    "RATING-001.json",
+    "RATING-002.json",
+    "RATING-003.json",
+    "RATING-004.json",
+    "RATING-005.json",
+    "RATING-006.json",
+    "RATING-007.json",
+    "RATING-008.json"
+   ]
+  },
+  "job_runs": [
+   {
+    "batch_id": "20260829032948a",
+    "run_id": 239088809706914,
+    "run_page_path": "/?o=7474651138173478#job/669488533232284/run/239088809706914"
+   },
+   {
+    "batch_id": "20260829032948b",
+    "run_id": 187034085035899,
+    "run_page_path": "/?o=7474651138173478#job/1102111380028751/run/187034085035899"
+   }
+  ],
+  "period": {
+   "end": "2026-02-28",
+   "start": "2026-02-01"
+  },
+  "seeded_scale": {
+   "manifest": "testdata/legacy/manifests/demo.json",
+   "seed": {
+    "generated_at": "2026-08-01T00:00:00Z",
+    "generator_version": "1",
+    "namespace": "demo",
+    "planted_anomalies": [
+     {
+      "count": 31,
+      "kind": "malformed_csv_lists",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.RELATED_ACCT_IDS"
+     },
+     {
+      "count": 50,
+      "kind": "dirty_dates",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.SIGNUP_DT"
+     },
+     {
+      "count": 37,
+      "kind": "orphaned_rows",
+      "target": "oracle.OW_BILLING.INVOICE_LINE"
+     }
+    ],
+    "seed": 714559852,
+    "seed_legacy_params": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     }
+    },
+    "targets": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "checksum": "4f92feef2ad58dbab30e289957931928",
+      "rows": 25000
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "rows": 8333
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "rows": 18750
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "checksum": "88a66751f0b08b476b492105a2efc537",
+      "rows": 150000
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "rows": 60
+     }
+    }
+   }
+  },
+  "source": {
+   "counts": {
+    "customer_master": 25000,
+    "invoice_line": 150000,
+    "plans": 3,
+    "rating_periods": 3,
+    "rating_results": 3,
+    "subscriptions": 69,
+    "tenants": 69,
+    "usage_events": 814
+   },
+   "db_name": "FREEPDB1",
+   "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "oracle_version": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.3.0.0",
+   "package": "services/legacy-billing/db/oracle/packages/03_pkg_rating.sql",
+   "read_only": true,
+   "schema": "OW_BILLING",
+   "system": "Oracle OW_BILLING (live)"
+  },
+  "target": {
+   "bronze_inputs_read_only": [
+    "ow_tp.bronze.tenants",
+    "ow_tp.bronze.subscriptions",
+    "ow_tp.bronze.plans",
+    "ow_tp.bronze.usage_events",
+    "ow_tp.bronze.codes",
+    "ow_tp.bronze.rating_periods",
+    "ow_tp.bronze.rating_results"
+   ],
+   "catalog": "ow_tp",
+   "column_types": {
+    "quarantine_silver_rating._batch_id": "string",
+    "quarantine_silver_rating._quarantined_at": "timestamp",
+    "quarantine_silver_rating.detail": "string",
+    "quarantine_silver_rating.dictionary_ref": "string",
+    "quarantine_silver_rating.ns": "string",
+    "quarantine_silver_rating.quarantine_reason": "string",
+    "quarantine_silver_rating.raw_source_payload": "string",
+    "quarantine_silver_rating.source_key": "string",
+    "quarantine_silver_rating.source_table": "string",
+    "rating_periods._batch_id": "string",
+    "rating_periods._loaded_at": "timestamp",
+    "rating_periods._origin": "string",
+    "rating_periods.id": "string",
+    "rating_periods.ns": "string",
+    "rating_periods.period_end": "date",
+    "rating_periods.period_start": "date",
+    "rating_periods.tenant_id": "string",
+    "rating_results._batch_id": "string",
+    "rating_results._loaded_at": "timestamp",
+    "rating_results._origin": "string",
+    "rating_results.billable_units": "decimal(38,0)",
+    "rating_results.computed_rollover_units": "decimal(38,0)",
+    "rating_results.created_at": "timestamp",
+    "rating_results.first_tier_units": "decimal(38,0)",
+    "rating_results.id": "string",
+    "rating_results.ns": "string",
+    "rating_results.overage_amount": "decimal(14,2)",
+    "rating_results.overage_rate": "decimal(12,6)",
+    "rating_results.period_id": "string",
+    "rating_results.quota_units": "decimal(38,0)",
+    "rating_results.rollover_units": "decimal(38,0)",
+    "rating_results.second_tier_units": "decimal(38,0)",
+    "rating_results.subscription_id": "string",
+    "rating_results.suspension_prorated": "boolean",
+    "rating_results.used_units": "decimal(38,0)"
+   },
+   "compute": "serverless job compute for the notebook runs; pre-existing Serverless Starter Warehouse (565cd2fd713738c4) for the recon SQL. No cluster or warehouse was created.",
+   "money": {
+    "billable_units_total": "307952",
+    "overage_amount_total": "21313.69",
+    "overage_amount_total_source_migrated": "0.00",
+    "overage_amount_total_target_finalize": "21313.69",
+    "rollover_units_total_persisted": "1619",
+    "source_migrated_rows": 3,
+    "target_finalize_rows": 69,
+    "used_units_total": "336293"
+   },
+   "row_counts": {
+    "quarantine_silver_rating": 0,
+    "rating_periods": 72,
+    "rating_results": 72
+   },
+   "schema": "silver",
+   "tables": [
+    "ow_tp.silver.rating_periods",
+    "ow_tp.silver.rating_results",
+    "ow_tp.silver.quarantine_silver_rating"
+   ]
+  }
+ },
+ "recon_result": "green",
+ "run_mode": "live",
+ "unit": "silver_rating",
+ "unverified_paths": [
+  "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable (wave 1 established this), so no single query joins source to target. Each side is measured independently \u2014 Oracle by a read-only session, the target by the SQL warehouse \u2014 and compared row by row here.",
+  "The Oracle side of the parity comparison is compute_rating/sp_finalize_rating re-expressed as one read-only SQL statement evaluated by Oracle, not the PL/SQL package executed. The package itself is not run against the source (that would write RATING_PERIODS/RATING_RESULTS rows and mutate the estate); the eight pinned transcripts are what tie the re-expression to the real engine.",
+  "ANOM-ROWNUM-1: no tenant in ns = 'demo' has two covering subscriptions with the same starts_on (measured: 0 tied, 0 with more than one candidate), so the source's nondeterministic tie is not exercised. The target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is therefore implemented but unverified against a tie.",
+  "Quarantine is empty on this population: FK_ORPHAN (D-19 NO_COVERING_PLAN), CODE_UNKNOWN (D-16), KEY_NULL, KEY_DUPLICATE and NUMERIC_OVERFLOW are all implemented and their live exposure measured as zero, so the quarantine write path itself is exercised by no row here \u2014 implemented and unverified, not proven.",
+  "D-05/T4 (two-digit years resolving into the current century) is not reached by this unit: rating reads DATE and TIMESTAMP columns only, so pkg_ow_util.f_str2dt and its swallowed WHEN OTHERS are never called on this path.",
+  "compute_rating ends with a pkg_ow_util.log_msg autonomous-transaction audit write. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so the rating run's audit rows are not produced here and no audit parity is claimed.",
+  "Suspension proration is exercised by one tenant in this population (the only subscription with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. Proration at other suspension dates is implemented and unverified.",
+  "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove no other session wrote between the two runs."
+ ],
+ "values_recomputed_from_target": true
+}

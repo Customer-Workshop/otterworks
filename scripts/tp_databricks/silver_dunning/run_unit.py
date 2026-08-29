@@ -64,6 +64,9 @@ SHARED = SPEC["shared_write_policy"]
 
 AS_OF = fixtures.AS_OF  # 2026-02-28, the date DUNNING-001/004/005 pin
 OTHER_AS_OF = "2026-03-14"  # the second p_as_of the multi-date notification exposure is measured on
+# A later night for ns=dunning_edge: a Monday, so the weekend shift is 0 and the append is the only
+# thing the run changes.
+LATER_AS_OF = "2026-03-02"
 NS_T002, NS_T003 = "dunning_t002", "dunning_t003"
 REPLAY_DATES = {NS_T002: "2026-02-14", NS_T003: "2026-02-17"}
 
@@ -647,6 +650,7 @@ def edge_evidence(dbx: DbxJobs, stamp: str, reseed: bool = True) -> dict[str, An
     halt_if_over(run2["phases"], f"ns={ns} second run")
     snap = target_snapshot(dbx, ns)
     model = fixtures.expectations()
+    cold_ledger_rows = quarantine_rows(dbx, ns, run1["batch_id"])
 
     schedule1 = run1["phases"]["schedule"]
     suspend1 = run1["phases"]["suspend"]
@@ -669,6 +673,80 @@ def edge_evidence(dbx: DbxJobs, stamp: str, reseed: bool = True) -> dict[str, An
         ATTEMPT_COLS,
         "an independent Python model of sp_schedule_dunning in fixtures.expectations() "
         "(FK_ORPHAN rows excluded: the source's INSERT could not have written them)",
+    )
+
+    # The nightly job runs again on the next night, and `NVL(MAX(attempt_no),0)+1` reads the source's
+    # own attempts table, so a second night appends attempt n+1 for an invoice still at status 40
+    # rather than rewriting the first night's row. Two more runs on a later p_as_of measure exactly
+    # that: run 3 must append and leave every earlier row untouched, run 4 repeats run 3's input and
+    # must change nothing.
+    attempt_query = f"""
+        SELECT id, invoice_id, CAST(attempt_no AS STRING), CAST(as_of AS STRING),
+               date_format(scheduled_for, 'yyyy-MM-dd'), CAST(attempt_no_basis AS STRING), _batch_id
+          FROM {CATALOG}.{SCHEMA}.dunning_attempts
+         WHERE ns = {sql_str(ns)} AND _origin = 'target-schedule'
+         ORDER BY invoice_id, attempt_no
+    """
+    later_cols = (
+        "id", "invoice_id", "attempt_no", "as_of", "scheduled_for", "attempt_no_basis", "_batch_id",
+    )
+    attempts_before_later_night = rows_of(dbx, attempt_query, later_cols)
+    run3 = run_job(dbx, ns, f"{stamp}e3", as_of=LATER_AS_OF, invoice_source="bronze")
+    halt_if_over(run3["phases"], f"ns={ns} later-night run")
+    attempts_after_later_night = rows_of(dbx, attempt_query, later_cols)
+    run4 = run_job(dbx, ns, f"{stamp}e4", as_of=LATER_AS_OF, invoice_source="bronze")
+    halt_if_over(run4["phases"], f"ns={ns} later-night rerun")
+    attempts_after_later_rerun = rows_of(dbx, attempt_query, later_cols)
+    first_night = {r["id"]: r for r in attempts_before_later_night}
+    after_third = {r["id"]: r for r in attempts_after_later_night}
+    appended = [r for r in attempts_after_later_night if r["id"] not in first_night]
+    later_night = {
+        "first_night_as_of": AS_OF,
+        "later_night_as_of": LATER_AS_OF,
+        "attempt_rows_before": attempts_before_later_night,
+        "attempt_rows_after": attempts_after_later_night,
+        "rows_appended_by_the_later_night": appended,
+        "earlier_rows_left_untouched": [
+            r for r in attempts_before_later_night if after_third.get(r["id"]) == r
+        ]
+        == attempts_before_later_night,
+        "appended_attempt_no_is_the_previous_max_plus_one": all(
+            int(r["attempt_no"]) == int(r["attempt_no_basis"]) + 1
+            and int(r["attempt_no_basis"])
+            == max(
+                (
+                    int(p["attempt_no"])
+                    for p in attempts_before_later_night
+                    if p["invoice_id"] == r["invoice_id"]
+                ),
+                default=0,
+            )
+            for r in appended
+        ),
+        "later_night_rerun_changed_nothing": attempts_after_later_rerun
+        == attempts_after_later_night,
+        "later_night_commit_metrics": {
+            p: run3["phases"][p]["commit_metrics"] for p in run3["phases"]
+        },
+        "later_night_rerun_commit_metrics": {
+            p: run4["phases"][p]["commit_metrics"] for p in run4["phases"]
+        },
+        "runs": {"later_night": run3["run_id"], "later_night_rerun": run4["run_id"]},
+        "note": "the attempt basis is the ingest population plus this unit's own rows from strictly "
+        "earlier as_of values, which is why the same night is a no-op and the next night appends",
+    }
+
+    # The ledger is an append-preserving record, not current state: the cold batch's rows have to
+    # still be there, unchanged and still carrying their own _batch_id, after three more runs have
+    # rejected the same rows again.
+    ledger_by_batch = rows_of(
+        dbx,
+        f"""
+        SELECT _batch_id, CAST(count(*) AS STRING)
+          FROM {CATALOG}.{SCHEMA}.quarantine_{UNIT} WHERE ns = {sql_str(ns)}
+         GROUP BY _batch_id ORDER BY _batch_id
+        """,
+        ("_batch_id", "rows"),
     )
     return {
         "namespace": ns,
@@ -720,8 +798,21 @@ def edge_evidence(dbx: DbxJobs, stamp: str, reseed: bool = True) -> dict[str, An
             "halt_bases": {
                 p: run1["phases"][p]["quarantine"]["halt_bases"] for p in run1["phases"]
             },
-            "rows_this_batch": quarantine_rows(dbx, ns, run1["batch_id"]),
+            "rows_this_batch": cold_ledger_rows,
+            "ledger": {
+                "rows_per_batch": ledger_by_batch,
+                "cold_batch_rows_after_three_more_runs": quarantine_rows(
+                    dbx, ns, run1["batch_id"]
+                ),
+                "cold_batch_rows_unchanged": quarantine_rows(dbx, ns, run1["batch_id"])
+                == cold_ledger_rows,
+                "note": "each batch keeps its own occurrence of a recurring rejection because "
+                "_batch_id is part of the ledger identity rather than a column the merge "
+                "overwrites, and the duplicated tenant id contributes one row per physical bronze "
+                "row rather than one row for the surviving key",
+            },
         },
+        "later_night": later_night,
         "subscriptions_after_cold_run": subs_after_run1,
         "target": snap,
         "rerun_phases": run2["phases"],
@@ -1093,6 +1184,147 @@ def build_report(
                 }
             ),
             one_reason_per_row=True,
+        )
+    )
+
+    # The ledger is a record of rejections, not a table of current state: a rejection that recurs
+    # in a later batch is a new row, and an earlier batch's rows stay exactly as its own halt saw
+    # them (tolerance item 3).
+    ledger = edge["quarantine"]["ledger"]
+    checks.append(
+        check(
+            "ACC-QUAR-LEDGER-APPEND",
+            {
+                "cold_batch_rows_unchanged_by_later_batches": True,
+                "batches_carrying_their_own_ledger_rows": True,
+            },
+            {
+                "cold_batch_rows_unchanged_by_later_batches": ledger["cold_batch_rows_unchanged"],
+                "batches_carrying_their_own_ledger_rows": len(ledger["rows_per_batch"]) > 1,
+            },
+            f"{CATALOG}.{SCHEMA}.quarantine_{UNIT} in ns={edge['namespace']}, read back after the "
+            "namespace's four runs rejected the same rows four times",
+            rows_per_batch=ledger["rows_per_batch"],
+            ledger_identity="(ns, source_table, source_key, quarantine_reason, _batch_id), with an "
+            "occurrence ordinal in source_key so two physical rows on one natural key are two rows",
+            same_batch_retry_is_idempotent=True,
+        )
+    )
+    dup_ledger = [
+        r
+        for r in edge["quarantine"]["rows_this_batch"]
+        if r["source_table"] == "OW_BILLING.TENANTS" and r["quarantine_reason"] == "KEY_DUPLICATE"
+    ]
+    checks.append(
+        check(
+            "ACC-QUAR-DUPLICATE-PAYLOADS",
+            {
+                "ledger_rows": edge_model["expected_quarantine"]["tenants"]["KEY_DUPLICATE"],
+                "distinct_source_keys": edge_model["expected_quarantine"]["tenants"][
+                    "KEY_DUPLICATE"
+                ],
+            },
+            {
+                "ledger_rows": len(dup_ledger),
+                "distinct_source_keys": len({r["source_key"] for r in dup_ledger}),
+            },
+            "both physical ow_tp.bronze.tenants rows on the duplicated id: the one the de-duplication "
+            "keeps and the one it collapses, each rejected on its own payload rather than counted "
+            "without a ledger row",
+            source_keys=sorted(r["source_key"] for r in dup_ledger),
+        )
+    )
+    # Rounding: 125001 of 2500000 is 5.00004%, which rounds to 5.0 at four decimals. The decision is
+    # made on the unrounded pair, so it halts. No namespace is seeded at that shape — 2.5m rows for
+    # one boundary — so this is the arithmetic beside the rule the notebook publishes, and the live
+    # gap is listed in unverified_paths.
+    boundary = {"rejected_rows": 125001, "source_rows": 2500000}
+    boundary_rate = round(100.0 * boundary["rejected_rows"] / boundary["source_rows"], 4)
+    decided_by = sorted(
+        {
+            b["decided_by"]
+            for phase in halt_bases.values()
+            for b in phase.values()
+        }
+    )
+    checks.append(
+        check(
+            "ACC-QUAR-THRESHOLD-EXACT",
+            {
+                "rounded_rate_equals_the_threshold": True,
+                "halts_anyway": True,
+                "every_population_decided_on_the_unrounded_pair": True,
+            },
+            {
+                "rounded_rate_equals_the_threshold": boundary_rate == HALT_PCT,
+                "halts_anyway": boundary["rejected_rows"] * 100.0
+                > HALT_PCT * boundary["source_rows"],
+                "every_population_decided_on_the_unrounded_pair": all(
+                    "unrounded" in d for d in decided_by
+                ),
+            },
+            "the halt's own comparison, rejected_rows * 100 > threshold_pct * source_rows, applied "
+            "to a rate that rounds to the threshold at the four decimals the report displays",
+            worked_example={**boundary, "rate_pct_displayed": boundary_rate},
+            rule_published_by_the_notebook=decided_by,
+        )
+    )
+    overflow_ledger = [
+        r
+        for r in edge["quarantine"]["rows_this_batch"]
+        if r["quarantine_reason"] == "NUMERIC_OVERFLOW"
+    ]
+    checks.append(
+        check(
+            "ANOM-ATTEMPT-OVERFLOW",
+            {
+                "ledger_rows": edge_model["expected_quarantine"]["dunning_attempts"][
+                    "NUMERIC_OVERFLOW"
+                ],
+                "attempts_loaded_for_those_invoices": 0,
+            },
+            {
+                "ledger_rows": len(overflow_ledger),
+                "attempts_loaded_for_those_invoices": len(
+                    [
+                        r
+                        for r in edge["target"]["attempt_rows"]
+                        if r["invoice_id"]
+                        in {m["invoice_id"] for m in edge_model["attempt_candidates_over_int_max"]}
+                        and r["_origin"] == "target-schedule"
+                    ]
+                ),
+            },
+            "an ingest attempt at INT_MAX in ns=dunning_edge: NVL(MAX(attempt_no),0)+1 is computed "
+            "in BIGINT, judged NUMERIC_OVERFLOW, and never cast into the target's INT column",
+            candidates=edge_model["attempt_candidates_over_int_max"],
+            ledger_rows=overflow_ledger,
+        )
+    )
+    later = edge["later_night"]
+    checks.append(
+        check(
+            "ACC-ATTEMPT-APPEND",
+            {
+                "later_night_appends": True,
+                "earlier_rows_left_untouched": True,
+                "appended_attempt_no_is_the_previous_max_plus_one": True,
+                "later_night_rerun_changed_nothing": True,
+            },
+            {
+                "later_night_appends": len(later["rows_appended_by_the_later_night"]) > 0,
+                "earlier_rows_left_untouched": later["earlier_rows_left_untouched"],
+                "appended_attempt_no_is_the_previous_max_plus_one": later[
+                    "appended_attempt_no_is_the_previous_max_plus_one"
+                ],
+                "later_night_rerun_changed_nothing": later["later_night_rerun_changed_nothing"],
+            },
+            "sp_schedule_dunning reads DUNNING_ATTEMPTS itself, so the next night's run assigns "
+            f"attempt n+1; measured in ns={edge['namespace']} on {later['later_night_as_of']} after "
+            f"{later['first_night_as_of']}",
+            rows_appended=later["rows_appended_by_the_later_night"],
+            commit_metrics=later["later_night_commit_metrics"],
+            rerun_commit_metrics=later["later_night_rerun_commit_metrics"],
         )
     )
 
@@ -1623,6 +1855,7 @@ def build_report(
                     "schedule_row_diff": edge["schedule_row_diff"],
                     "target_counts": edge["target"]["counts"],
                     "quarantine": edge["quarantine"],
+                    "later_night": edge["later_night"],
                     "silver_subscriptions_written_by": edge["silver_subscriptions_written_by"],
                     "runs": edge["runs"],
                 },
@@ -1676,6 +1909,19 @@ def build_report(
             "the sweep's effect on ow_tp.silver.subscriptions is not reverted after the run: this "
             "unit may not write that table outside its two owned columns, so ns=demo now carries "
             "the suspension this night's sweep applied.",
+            "the 5% halt decides on the unrounded pair, and ACC-QUAR-THRESHOLD-EXACT shows the "
+            "arithmetic for a rate that rounds to exactly 5.0 at four decimals. No namespace is "
+            "seeded at that shape: the smallest population that both exceeds 5% and still rounds "
+            "to 5.0 needs millions of rows, so the boundary is verified as arithmetic over the "
+            "rule the notebook publishes, not as a live run.",
+            "NUMERIC_OVERFLOW is reachable and exercised on the attempt candidate (an ingest "
+            f"attempt at INT_MAX in ns={fixtures.NS_EDGE}); the money half of the same rule, a "
+            "total outside DECIMAL(14,2), is not exercised, because bronze's own column cannot "
+            "hold such a value and this unit does not write ow_tp.bronze.invoices.",
+            "the multi-night attempt append is measured on the generated fixture namespace, on a "
+            "second p_as_of, and not on ns=demo: a second night in ns=demo would leave that "
+            "namespace carrying a night the reconciled comparison against live Oracle does not "
+            "describe.",
             "the cold load's starting state is arranged by the harness, not by the notebook: "
             "before it, the runner deletes this unit's own ns=demo rows written by earlier "
             "validation runs and sets status_cd/suspended_on on the ns=demo subscription rows back "

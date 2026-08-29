@@ -10,8 +10,10 @@ activity, and no row of it exists in `OW_BILLING`: every row carries `_source_ta
   `fn_overdue_accounts`' strict `<`), an invoice issued exactly on `TRUNC(p_as_of) - 14` (the
   inclusive edge of the sweep), subscriptions left alone at `20` and at `30` beside one that is
   suspended, a tenant already carrying a suspension notification on the same `p_as_of` (the source's
-  `NOT EXISTS` suppression) and one carrying it on a different date (the multi-date exposure), plus
-  every reachable quarantine reason — with enough clean rows that no population crosses the 5% halt.
+  `NOT EXISTS` suppression) and one carrying it on a different date (the multi-date exposure), an
+  invoice whose existing attempt sits at `INT_MAX` so the attempt derived from it does not fit the
+  target's `INT` (`NUMERIC_OVERFLOW`), plus every reachable quarantine reason — with enough clean
+  rows that no population crosses the 5% halt.
 * `dunning_halt` — an attempt population that is deliberately over the halt threshold, run once to
   show the halt fires and that the rejected rows are already in the ledger when it does.
 * `dunning_t002` / `dunning_t003` — replays of `ns=demo`'s own migrated ingest rows under a different
@@ -60,6 +62,11 @@ UNMAPPED_KIND_CD = 88
 # unit's own accounting rejects. The duplicate is an ingest defect on TENANTS, so it is placed on a
 # tenant outside the subscription population rather than by changing another unit's notebook.
 DUP_TENANT = "edge-t-50"
+# The tenant whose invoice already carries an attempt at INT_MAX, so the attempt this run derives
+# from it is one past the target's INT and is judged NUMERIC_OVERFLOW. Any filler tenant does; this
+# one's invoice is issued on p_as_of so the overflow is the only path the row exercises.
+INT_MAX = 2147483647
+INT_MAX_TENANT = "edge-t-11"
 ABSENT_TENANT = "edge-t-absent"
 ABSENT_INVOICE = "edge-i-absent"
 EDGE_PLAN = "edge-plan-dun"
@@ -156,6 +163,11 @@ def _edge_invoices() -> list[dict[str, Any]]:
         # issued exactly on TRUNC(p_as_of) - 14: the sweep's compare is <=, so this is inside it
         {"id": "edge-i-08", "tenant_id": "edge-t-01", "issued": "2026-02-14", "total": "800.00",
          "status_cd": OVERDUE_CD},
+        # the INT_MAX invoice: its ingest attempt already sits at 2147483647, so NVL(MAX)+1 does not
+        # fit the target's INT and the candidate is NUMERIC_OVERFLOW. Issued on p_as_of so it stays
+        # out of the sweep's cut and exercises nothing but the overflow judgement.
+        {"id": "edge-i-09", "tenant_id": INT_MAX_TENANT, "issued": AS_OF, "total": "900.00",
+         "status_cd": OVERDUE_CD},
     ]
     filler_tenants = [f"edge-t-{i:02d}" for i in FILLER_TENANTS]
     rows += [
@@ -200,6 +212,13 @@ def _edge_attempts() -> list[dict[str, Any]]:
         {"id": "edge-a-badstatus", "tenant_id": "edge-t-09", "invoice_id": "edge-i-101",
          "attempt_no": 1, "scheduled_for": "2026-01-23 00:00:00",
          "status_cd": UNMAPPED_ATTEMPT_CD},
+        # a loadable ingest attempt already at INT_MAX: this row itself fits, and the attempt the
+        # schedule would derive from it (2147483648) does not, which is the only way
+        # NUMERIC_OVERFLOW is reachable at all. The candidate is computed in BIGINT, judged, and
+        # rejected — it is never cast into the target's INT column.
+        {"id": "edge-a-intmax", "tenant_id": INT_MAX_TENANT, "invoice_id": "edge-i-09",
+         "attempt_no": INT_MAX, "scheduled_for": "2026-01-24 00:00:00",
+         "status_cd": ATTEMPT_SENT_CD},
     ]
     invoices = [f"edge-i-{i}" for i in FILLER_INVOICES][2 : 2 + FILLER_ATTEMPTS]
     filler_tenants = [f"edge-t-{i:02d}" for i in FILLER_TENANTS]
@@ -368,8 +387,16 @@ def expectations() -> dict[str, Any]:
 
     # sp_schedule_dunning: one attempt per overdue invoice, id = f_md5_uuid(invoice || attempt_no).
     schedule = []
+    overflowed = []
     for i in overdue:
         attempt_no = basis.get(i["id"], 0) + 1
+        if attempt_no > INT_MAX:
+            # NVL(MAX(attempt_no),0)+1 is outside the target's INT: the candidate is rejected
+            # NUMERIC_OVERFLOW and no attempt is loaded for this invoice.
+            overflowed.append(
+                {"invoice_id": i["id"], "attempt_no_basis": basis[i["id"]], "candidate": attempt_no}
+            )
+            continue
         schedule.append(
             {
                 "id": md5_uuid(f"{i['id']}{attempt_no}"),
@@ -416,6 +443,7 @@ def expectations() -> dict[str, Any]:
         "scheduled_for": scheduled_for.isoformat(),
         "fn_overdue_accounts": fn_rows,
         "schedule": schedule,
+        "attempt_candidates_over_int_max": overflowed,
         "invoices_in_the_schedule_driver": len(overdue),
         "invoices_overdue_by_the_function": len(fn_rows),
         "same_calendar_day_invoices": len(overdue) - len(fn_rows),
@@ -454,8 +482,11 @@ def expectations() -> dict[str, Any]:
                 "KEY_DUPLICATE": 2,
                 "FK_ORPHAN": 2,
                 "CODE_UNKNOWN": 1,
+                "NUMERIC_OVERFLOW": len(overflowed),
             },
-            "tenants": {"KEY_DUPLICATE": 1, "CODE_UNKNOWN": 1},
+            # both physical rows of the duplicated tenant id: the one the de-duplication keeps and
+            # the one it collapses, each with its own ledger row and payload
+            "tenants": {"KEY_DUPLICATE": 2, "CODE_UNKNOWN": 1},
             "notifications": {"FK_ORPHAN": 1, "CODE_UNKNOWN": 1},
             "subscriptions_swept": {},
         },

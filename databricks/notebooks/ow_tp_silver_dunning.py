@@ -84,8 +84,13 @@
 # MAGIC * **`ORDER BY i.issued_at, i.id`** is the snapshot's order and `overdue_seq` carries it.
 # MAGIC * **Attempt numbering** is `NVL(MAX(attempt_no),0)+1` per invoice, read in the source per loop
 # MAGIC   iteration with no lock. Here it is one set-wise `max()` over the **ingest** attempt population
-# MAGIC   (`ow_tp.bronze.dunning_attempts`), which makes the ids a function of `(ns, as_of, ingest
-# MAGIC   state)` and a rerun a true no-op. Two consequences are measured rather than asserted away:
+# MAGIC   (`ow_tp.bronze.dunning_attempts`) **plus this unit's own rows from strictly earlier `as_of`
+# MAGIC   values**, computed in `BIGINT` so a candidate past `INT` is quarantined rather than wrapped.
+# MAGIC   The two halves say different things: excluding this run's own `as_of` makes the ids a function
+# MAGIC   of `(ns, as_of, ingest state)`, so a rerun of the same night recomputes the same ids and is a
+# MAGIC   true no-op; including earlier nights makes the next night append attempt `n+1`, the way a
+# MAGIC   later source night does, instead of merging over the night before it. Two consequences are
+# MAGIC   measured rather than asserted away:
 # MAGIC   every attempt this run schedules is collision-exposed in the source (a concurrent run reads
 # MAGIC   the same `MAX` and computes the same `f_md5_uuid(invoice_id || attempt_no)`), and a source
 # MAGIC   rerun on the same `p_as_of` *appends* another attempt per overdue invoice rather than raising.
@@ -767,29 +772,67 @@ def reason_case(rules: list[tuple[str, str]]) -> str:
 
 
 def persist_quarantine(view: str, source_table: str, population: str) -> int:
-    """Write the rejects, then return how many there were. Nothing evaluates the halt before this."""
+    """Write the rejects, then return how many there were. Nothing evaluates the halt before this.
+
+    The ledger identity is `(ns, source_table, source_key, quarantine_reason, _batch_id)`, and
+    `source_key` carries an occurrence ordinal. Both halves matter:
+
+    * `_batch_id` is part of the identity, not a column the merge overwrites. A rejection that
+      recurs on a later night becomes that night's own ledger row, so an earlier batch keeps the
+      rows its own halt was evaluated on — tolerance item 3 wants the ledger scoped to a run's
+      batch, which is only true if a later run cannot re-stamp an earlier run's row.
+    * The ordinal makes the key unique inside one batch even when two *physical* rejected rows
+      carry the same natural key and reason (two identical duplicate ingest rows, for instance).
+      Every physical payload gets its own ledger row; without it the MERGE would either match
+      several source rows to one target row and fail, or keep one payload and drop the rest while
+      the accounting still counted them.
+
+    A retry of the same batch is idempotent — same ns, key, reason and batch match, and the payload
+    columns are refreshed — while a later batch appends.
+    """
     n = int(scalar(f"SELECT count(*) FROM {view} WHERE `quarantine_reason` IS NOT NULL"))
     if n:
         spark.sql(
             f"""
+            CREATE OR REPLACE TEMP VIEW v_quarantine_batch AS
+            SELECT `quarantine_reason`, `raw_source_payload`, `detail`, `dictionary_ref`,
+                   CASE WHEN `occurrence` = 1 THEN `source_key`
+                        ELSE concat_ws('|#', `source_key`, CAST(`occurrence` AS STRING)) END
+                     AS `ledger_key`
+              FROM (
+                SELECT `quarantine_reason`, `source_key`, `raw_source_payload`, `detail`,
+                       `dictionary_ref`,
+                       row_number() OVER (PARTITION BY `source_key`, `quarantine_reason`
+                                          ORDER BY `raw_source_payload`, `detail`) AS `occurrence`
+                  FROM {view} WHERE `quarantine_reason` IS NOT NULL
+              )
+            """
+        )
+        prepared = int(scalar("SELECT count(*) FROM v_quarantine_batch"))
+        if prepared != n:
+            raise AssertionError(
+                f"quarantine ledger for {population} prepared {prepared} of {n} rejected rows"
+            )
+        spark.sql(
+            f"""
             MERGE INTO {QUARANTINE} t
-            USING (SELECT * FROM {view} WHERE `quarantine_reason` IS NOT NULL) s
+            USING v_quarantine_batch s
               ON t.`ns` = {NS_LIT} AND t.`source_table` = {lit(source_table)}
-             AND t.`source_key` <=> s.`source_key`
+             AND t.`source_key` <=> s.`ledger_key`
              AND t.`quarantine_reason` = s.`quarantine_reason`
+             AND t.`_batch_id` = {BATCH_LIT}
             WHEN MATCHED THEN UPDATE SET
               t.`raw_source_payload` = s.`raw_source_payload`,
               t.`detail` = s.`detail`,
               t.`dictionary_ref` = s.`dictionary_ref`,
               t.`population` = {lit(population)},
               t.`phase` = {lit(PHASE)},
-              t.`_batch_id` = {BATCH_LIT},
               t.`_quarantined_at` = current_timestamp()
             WHEN NOT MATCHED THEN INSERT (
               `quarantine_reason`, `ns`, `source_table`, `source_key`, `raw_source_payload`,
               `detail`, `dictionary_ref`, `population`, `phase`, `_batch_id`, `_quarantined_at`
             ) VALUES (
-              s.`quarantine_reason`, {NS_LIT}, {lit(source_table)}, s.`source_key`,
+              s.`quarantine_reason`, {NS_LIT}, {lit(source_table)}, s.`ledger_key`,
               s.`raw_source_payload`, s.`detail`, s.`dictionary_ref`, {lit(population)},
               {lit(PHASE)}, {BATCH_LIT}, current_timestamp()
             )
@@ -798,12 +841,52 @@ def persist_quarantine(view: str, source_table: str, population: str) -> int:
     return n
 
 
-def declare_population(name: str, source_rows: int, loaded_rows: int, quarantined_rows: int) -> None:
+def quarantine_persisted(source_table: str, population: str) -> int:
+    """How many ledger rows this batch actually holds, read back from the Delta table.
+
+    The halt is evaluated on the accounting numbers; this is the proof those numbers are rows on
+    disk and not just rows a view counted.
+    """
+    return int(
+        scalar(
+            f"""
+            SELECT count(*) FROM {QUARANTINE}
+             WHERE `ns` = {NS_LIT} AND `source_table` = {lit(source_table)}
+               AND `population` = {lit(population)} AND `_batch_id` = {BATCH_LIT}
+            """
+        )
+    )
+
+
+def declare_population(
+    name: str,
+    source_rows: int,
+    loaded_rows: int,
+    quarantined_rows: int,
+    ledger_source_table: str | None = None,
+) -> None:
+    """Declare a population, and prove its rejected count is on disk before the halt reads it.
+
+    `quarantined_rows` is the number the 5% is evaluated on, so every one of those rows has to be a
+    ledger row this batch actually wrote: a reject that is counted but not persisted is a reject the
+    reviewer cannot see, and it was how the tenant duplicates used to be handled.
+    """
+    persisted = (
+        quarantine_persisted(ledger_source_table, name) if ledger_source_table is not None else None
+    )
+    if persisted is not None:
+        if persisted != int(quarantined_rows):
+            raise AssertionError(
+                f"{name}: {quarantined_rows} rejected rows are counted but {QUARANTINE} holds "
+                f"{persisted} for batch {BATCH_ID} — the halt would read a number the ledger does "
+                "not carry"
+            )
     accounting[name] = {
         "basis": HALT_BASES[name],
         "source_rows": int(source_rows),
         "loaded_rows": int(loaded_rows),
         "quarantined_rows": int(quarantined_rows),
+        "quarantine_ledger_rows_this_batch": persisted,
     }
 
 
@@ -813,20 +896,29 @@ def evaluate_halt() -> dict:
     for name, acc in accounting.items():
         if acc["loaded_rows"] + acc["quarantined_rows"] != acc["source_rows"]:
             raise AssertionError(f"quarantine accounting broken for {name}: {acc}")
-        rate = (
-            round(100.0 * acc["quarantined_rows"] / acc["source_rows"], 4)
-            if acc["source_rows"]
-            else 0.0
+        # The decision is integer arithmetic on the pair, and the percentage is for reading. A
+        # population at 5.000001% rounds to 5.0 at four decimals, and a halt that decided on the
+        # rounded number would not fire on a breach it had already measured.
+        over_threshold = acc["quarantined_rows"] * 100.0 > HALT_PCT * acc["source_rows"]
+        exact = (
+            100.0 * acc["quarantined_rows"] / acc["source_rows"] if acc["source_rows"] else 0.0
         )
+        rate = round(exact, 4)
         acc["rate_pct"] = rate
         bases[name] = {
             "basis": acc["basis"],
             "source_rows": acc["source_rows"],
             "loaded_rows": acc["loaded_rows"],
             "rejected_rows": acc["quarantined_rows"],
+            "quarantine_ledger_rows_this_batch": acc["quarantine_ledger_rows_this_batch"],
             "rate_pct": rate,
+            "rate_pct_unrounded": repr(exact),
             "threshold_pct": HALT_PCT,
-            "over_threshold": rate > HALT_PCT,
+            "decided_by": (
+                "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; "
+                "rate_pct is the rounded figure for reading and is not what the halt compares"
+            ),
+            "over_threshold": over_threshold,
         }
     over = {n: b for n, b in bases.items() if b["over_threshold"]}
     print(json.dumps(bases, indent=1))
@@ -863,20 +955,43 @@ if PHASE == "schedule":
           FROM {bronze('dunning_attempts')} WHERE `ns` = {NS_LIT}
         """
     )
+    # `NVL(MAX(attempt_no),0)+1` reads the source's own DUNNING_ATTEMPTS, which holds both the
+    # migrated rows and every attempt earlier nights scheduled, so on night two an invoice gets
+    # attempt 2. The basis here is that same population: the ingest rows plus this unit's own target
+    # rows from **earlier** `as_of` values. Excluding this run's own `as_of` is what keeps a restart
+    # of one night idempotent — the ids are then a function of `(ns, as_of, ingest state, earlier
+    # nights)`, a rerun recomputes the same ids and changes nothing, and a genuinely later night
+    # appends a new attempt instead of merging over the previous night's row. The `as_of` filter is
+    # also why the lazy re-evaluation of this view after the MERGE is harmless: the rows this run
+    # writes carry this run's `as_of` and can never enter its own basis.
+    spark.sql(
+        f"""
+        CREATE OR REPLACE TEMP VIEW v_prior_night_attempts AS
+        SELECT `invoice_id`, `attempt_no` FROM {full('dunning_attempts')}
+         WHERE `ns` = {NS_LIT} AND `as_of` < to_date({AS_OF_LIT})
+        """
+    )
     spark.sql(
         """
         CREATE OR REPLACE TEMP VIEW v_attempt_basis AS
-        SELECT `invoice_id`, coalesce(max(`attempt_no`), 0) AS `basis`
-          FROM v_ingest_attempts GROUP BY `invoice_id`
+        SELECT `invoice_id`, coalesce(max(`attempt_no`), 0) AS `basis` FROM (
+          SELECT `invoice_id`, CAST(`attempt_no` AS BIGINT) AS `attempt_no` FROM v_ingest_attempts
+          UNION ALL
+          SELECT `invoice_id`, CAST(`attempt_no` AS BIGINT) AS `attempt_no`
+            FROM v_prior_night_attempts
+        ) GROUP BY `invoice_id`
         """
     )
 
-    ATTEMPT_NO = "coalesce(b.`basis`, 0) + 1"
+    # BIGINT, and cast to the target's INT only once the row has passed judgement: computing the
+    # candidate in INT would overflow before NUMERIC_OVERFLOW could reject it, so the reason code
+    # would be unreachable exactly where it is needed.
+    ATTEMPT_NO = "CAST(coalesce(b.`basis`, 0) AS BIGINT) + 1"
     spark.sql(
         f"""
         CREATE OR REPLACE TEMP VIEW v_attempts_scheduled AS
         SELECT {f_md5_uuid(f"concat(s.`invoice_id`, CAST({ATTEMPT_NO} AS STRING))")} AS `id`,
-               s.`tenant_id`, s.`invoice_id`, CAST({ATTEMPT_NO} AS INT) AS `attempt_no`,
+               s.`tenant_id`, s.`invoice_id`, {ATTEMPT_NO} AS `attempt_no`,
                CAST(date_add(to_date({AS_OF_LIT}), {AS_OF_SHIFT}) AS TIMESTAMP) AS `scheduled_for`,
                {int(K['attempt_scheduled_status_cd'])} AS `status_cd`,
                CAST(coalesce(b.`basis`, 0) AS INT) AS `attempt_no_basis`,
@@ -891,7 +1006,8 @@ if PHASE == "schedule":
     spark.sql(
         f"""
         CREATE OR REPLACE TEMP VIEW v_attempts_migrated AS
-        SELECT a.`id`, a.`tenant_id`, a.`invoice_id`, a.`attempt_no`, a.`scheduled_for`, a.`status_cd`,
+        SELECT a.`id`, a.`tenant_id`, a.`invoice_id`, CAST(a.`attempt_no` AS BIGINT) AS `attempt_no`,
+               a.`scheduled_for`, a.`status_cd`,
                CAST(NULL AS INT) AS `attempt_no_basis`,
                CAST(NULL AS STRING) AS `source_day_of_week`,
                CAST(NULL AS INT) AS `weekend_shift_days`,
@@ -917,9 +1033,12 @@ if PHASE == "schedule":
     #                    invoice or tenant row is absent is a row the source's INSERT could not have
     #                    written: it raises ORA-02291 and WHEN OTHERS THEN NULL hides it.
     #  * CODE_UNKNOWN  — status_cd with no CODES('DUN_STATUS') row.
-    #  * NUMERIC_OVERFLOW — a value that does not fit the declared target type. Reachable code path,
-    #                    measured every run; unreachable from bronze's own INT/DECIMAL(14,2) columns,
-    #                    which is why it is expected at zero and reported rather than assumed.
+    #  * NUMERIC_OVERFLOW — a value that does not fit the declared target type. The attempt candidate
+    #                    is `NVL(MAX(attempt_no),0)+1`, computed in BIGINT above, so an invoice whose
+    #                    highest attempt is already INT_MAX produces a candidate outside the target's
+    #                    INT and is rejected here before anything casts it: that path is exercised in
+    #                    ns=dunning_edge. The money half of the rule cannot fire from bronze's own
+    #                    DECIMAL(14,2) column and is measured rather than assumed.
     spark.sql(
         f"""
         CREATE OR REPLACE TEMP VIEW v_attempts_judged AS
@@ -968,7 +1087,14 @@ if PHASE == "schedule":
                  CASE WHEN `invoice_missing` THEN 'fk_da_invoice: no invoice row' END,
                  CASE WHEN `tenant_row_missing` THEN
                    'fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it' END,
-                 CASE WHEN `status_unknown` THEN concat('no CODES(DUN_STATUS) row for ', CAST(`status_cd` AS STRING)) END
+                 CASE WHEN `status_unknown` THEN concat('no CODES(DUN_STATUS) row for ', CAST(`status_cd` AS STRING)) END,
+                 CASE WHEN `attempt_no` > 2147483647 OR `attempt_no` < -2147483648 THEN
+                   concat('attempt candidate ', CAST(`attempt_no` AS STRING),
+                          ' (NVL(MAX(attempt_no),0)+1 in BIGINT) is outside the INT the target column ',
+                          'declares, so it is rejected before any cast') END,
+                 CASE WHEN abs(coalesce(`invoice_total`, 0)) > 999999999999.99 THEN
+                   concat('invoice total ', CAST(`invoice_total` AS STRING),
+                          ' is outside DECIMAL(14,2)') END
                ) AS `detail`,
                'D-14, D-16, D-18, D-23, T12' AS `dictionary_ref`,
                *
@@ -990,6 +1116,7 @@ if PHASE == "schedule":
         attempt_source_rows,
         int(scalar("SELECT count(*) FROM v_attempts_load")),
         attempt_rejects,
+        ledger_source_table="OW_BILLING.DUNNING_ATTEMPTS",
     )
     HALT_RESULT = evaluate_halt()
 
@@ -1004,7 +1131,9 @@ if PHASE == "schedule":
         "AND `code_val` = s.`status_cd`)"
     )
     select_load = f"""
-        SELECT s.`id`, s.`tenant_id`, s.`invoice_id`, s.`attempt_no`, s.`scheduled_for`,
+        SELECT s.`id`, s.`tenant_id`, s.`invoice_id`,
+               -- judged in BIGINT above; every surviving row is inside INT by NUMERIC_OVERFLOW
+               CAST(s.`attempt_no` AS INT) AS `attempt_no`, s.`scheduled_for`,
                s.`status_cd`, {status_desc} AS `status`, to_date({AS_OF_LIT}) AS `as_of`,
                s.`attempt_no_basis`, s.`source_day_of_week`, s.`weekend_shift_days`,
                s.`unshifted_scheduled_for`, s.`invoice_total`, s.`invoice_issued_at`,
@@ -1267,6 +1396,30 @@ if PHASE == "suspend":
         """
     )
     tenant_rejects = persist_quarantine("v_tenants_ledger", "OW_BILLING.TENANTS", "tenants")
+    # The outer join collapses a repeated tenant id to one row, and that row is rejected as
+    # KEY_DUPLICATE above. The physical rows it collapsed are rejects too — they are counted in the
+    # tenants accounting below — so each one gets its own ledger row carrying its own payload,
+    # keyed by its ordinal. Counting a reject the ledger does not hold would put the halt on a
+    # number no reviewer can read back out of the table.
+    spark.sql(
+        """
+        CREATE OR REPLACE TEMP VIEW v_tenant_collapsed_ledger AS
+        SELECT 'KEY_DUPLICATE' AS `quarantine_reason`,
+               concat_ws('|', `id`, CAST(`id_seq` AS STRING)) AS `source_key`,
+               to_json(struct(`id`, `name`, `tax_exempt_yn`, `status_cd`, `id_seq`, `id_rows`))
+                 AS `raw_source_payload`,
+               concat('tenant id repeats ', CAST(`id_rows` AS STRING),
+                      ' times in ow_tp.bronze.tenants, impossible under the source primary key; ',
+                      'this is the physical row at ordinal ', CAST(`id_seq` AS STRING),
+                      ', collapsed before the sweep join and rejected on its own payload')
+                 AS `detail`,
+               'D-16, D-30' AS `dictionary_ref`
+          FROM v_tenants_raw WHERE `id_rows` > 1 AND `id_seq` > 1
+        """
+    )
+    tenant_collapsed_rejects = persist_quarantine(
+        "v_tenant_collapsed_ledger", "OW_BILLING.TENANTS", "tenants"
+    )
     tenant_source_rows = int(scalar(f"SELECT count(*) FROM {bronze('tenants')} WHERE `ns` = {NS_LIT}"))
     spark.sql(
         """
@@ -1276,11 +1429,17 @@ if PHASE == "suspend":
     )
     tenant_loaded = int(scalar("SELECT count(*) FROM v_tenants_load"))
     tenant_dupes_collapsed = tenant_source_rows - int(scalar("SELECT count(*) FROM v_tenants_judged"))
+    if tenant_collapsed_rejects != tenant_dupes_collapsed:
+        raise AssertionError(
+            f"{tenant_dupes_collapsed} bronze tenant rows are collapsed by the id de-duplication but "
+            f"{tenant_collapsed_rejects} were written to the ledger"
+        )
     declare_population(
         "tenants",
         tenant_source_rows,
         tenant_loaded,
-        tenant_rejects + tenant_dupes_collapsed,
+        tenant_rejects + tenant_collapsed_rejects,
+        ledger_source_table="OW_BILLING.TENANTS",
     )
 
 # COMMAND ----------
@@ -1380,7 +1539,13 @@ if PHASE == "suspend":
         ).collect()
     }
 
-    declare_population("subscriptions_swept", sub_matched, len(before_rows), sub_rejects)
+    declare_population(
+        "subscriptions_swept",
+        sub_matched,
+        len(before_rows),
+        sub_rejects,
+        ledger_source_table="OW_BILLING.SUBSCRIPTIONS",
+    )
 
     # The three subscription counts this unit's own tenant rows carry are **state** counts over the
     # end state this run leaves, not counts of what this run changed: a rerun updates nothing, so a

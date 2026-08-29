@@ -29,7 +29,7 @@
     "NUMERIC_OVERFLOW"
   ],
   "quarantine_reason_notes": {
-    "NUMERIC_OVERFLOW": "a reachable guard, evaluated on every attempt row (attempt_no outside INT, |invoice_total| beyond DECIMAL(14,2)) and reported every run. No value in ow_tp.bronze.dunning_attempts or ow_tp.silver.invoices can reach it, because both columns are already INT and DECIMAL(14,2) there, so its population is expected at zero and the recon report says so in plain words rather than claiming a detection."
+    "NUMERIC_OVERFLOW": "a reachable guard, evaluated on every attempt row (attempt_no outside INT, |invoice_total| beyond DECIMAL(14,2)) and reported every run. The attempt half does fire: the scheduled attempt_no is NVL(MAX(attempt_no),0)+1, computed in BIGINT so the candidate can be judged before anything casts it, and an invoice whose highest existing attempt is INT_MAX yields a candidate outside the target's INT — exercised in ns=dunning_edge. The money half cannot be reached from ow_tp.bronze.dunning_attempts or ow_tp.silver.invoices, whose columns are already INT and DECIMAL(14,2), so it is reported as measured rather than presented as a detection."
   },
   "quarantine_reasons_declared_unreachable": {
     "BAD_DATE": "no VARCHAR2 date reaches this unit: DUNNING_ATTEMPTS.scheduled_for is a DATE and NOTIFICATIONS.sent_at a TIMESTAMP, both already typed in bronze",
@@ -44,7 +44,17 @@
     "notifications": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run — numerator and denominator on that one population",
     "subscriptions_swept": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) — numerator and denominator on that one population"
   },
-  "quarantine_halt_basis_note": "each declared population is evaluated against the threshold with its own paired numerator and denominator, and the unit halts if any one of them exceeds it: tolerance item 5 forbids diluting a population, not evaluating all of them. Phase 1 evaluates dunning_attempts, phase 2 evaluates tenants, notifications and subscriptions_swept; a halt in phase 1 stops phase 2 through the task dependency, and quarantine rows are persisted before either evaluation (tolerance item 6).",
+  "quarantine_halt_basis_note": "each declared population is evaluated against the threshold with its own paired numerator and denominator, and the unit halts if any one of them exceeds it: tolerance item 5 forbids diluting a population, not evaluating all of them. Phase 1 evaluates dunning_attempts, phase 2 evaluates tenants, notifications and subscriptions_swept; a halt in phase 1 stops phase 2 through the task dependency, and quarantine rows are persisted before either evaluation (tolerance item 6). The comparison is rejected_rows * 100 > threshold_pct * source_rows on the unrounded pair; rate_pct is rounded to four decimals for reading only, so a population at 5.00004% halts although it displays as 5.0.",
+  "quarantine_ledger_identity": {
+    "key": [
+      "ns",
+      "source_table",
+      "source_key",
+      "quarantine_reason",
+      "_batch_id"
+    ],
+    "note": "_batch_id is part of the identity rather than a column the MERGE overwrites, so a rejection that recurs on a later night becomes that night's own ledger row and an earlier batch keeps the rows its own halt was evaluated on (tolerance item 3). source_key carries an occurrence ordinal, so two physical rejected rows sharing a natural key and reason are two ledger rows with their own payloads rather than one row standing for both — including bronze tenant rows the id de-duplication collapses before the sweep join, which are rejected individually rather than only counted. A retry of the same batch matches on the same identity and refreshes the payload columns, so it is idempotent."
+  },
   "dunning_constants": {
     "overdue_status_cd": 40,
     "active_tenant_status_cd": 10,
@@ -83,7 +93,7 @@
     "days_overdue_expr": "datediff(trunc(as_of), trunc(issued_at)) — Oracle TRUNC(p_as_of) - TRUNC(CAST(i.issued_at AS DATE)), an integer day count on truncated dates",
     "attempt_id_input": "invoice_id || TO_CHAR(attempt_no)",
     "notification_id_input": "tenant_id || 'suspension' || TO_CHAR(TRUNC(p_as_of), 'YYYY-MM-DD')",
-    "attempt_no_expr": "coalesce(max(attempt_no), 0) + 1 per invoice_id (NVL(MAX(attempt_no),0)+1), evaluated set-wise over the ingest attempt population only",
+    "attempt_no_expr": "coalesce(max(attempt_no), 0) + 1 per invoice_id (NVL(MAX(attempt_no),0)+1), evaluated set-wise in BIGINT over the ingest attempt population plus this unit's own target rows from strictly earlier as_of values. The earlier-as_of half is what makes the next night append attempt n+1 instead of merging over the previous night's row; excluding this run's own as_of is what makes a rerun of the same night recompute the same ids and change nothing (DIV-RERUN-APPENDS). A candidate outside the target's INT is quarantined NUMERIC_OVERFLOW before any cast.",
     "suspended_on_expr": "TRUNC(p_as_of) — the truncated date, not the run timestamp"
   },
   "job": {
@@ -104,7 +114,7 @@
     "bronze": "ow_tp.bronze.invoices, used only by a declared generated-fixture namespace. Seeding fixture invoices into ow_tp.silver.invoices would mean writing another unit's silver target, which this unit is forbidden even in a scratch namespace, so the fixture's invoices are generated in bronze and the notebook reads them there. The only difference is the FROM clause; the recon report declares it as an unverified path for that namespace."
   },
   "fixture_namespaces": {
-    "dunning_edge": "generated fixture, declared as generated: exercises the populations the demo seed leaves at zero (a missing tenant row kept by the outer join, an UNKNOWN tenant status, a same-calendar-day invoice, subscriptions left at 20 and at 30, a tenant already carrying a suspension notification on another date, and each reachable quarantine reason) with enough clean rows that no population crosses the 5% halt. No row of it is customer history and it never writes ns=demo or ns=plans_edge (wave 3's fixture namespace).",
+    "dunning_edge": "generated fixture, declared as generated: exercises the populations the demo seed leaves at zero (a missing tenant row kept by the outer join, an UNKNOWN tenant status, a same-calendar-day invoice, subscriptions left at 20 and at 30, a tenant already carrying a suspension notification on another date, an existing attempt at INT_MAX so the attempt derived from it overflows the target's INT, and each reachable quarantine reason) with enough clean rows that no population crosses the 5% halt. No row of it is customer history and it never writes ns=demo or ns=plans_edge (wave 3's fixture namespace).",
     "dunning_halt": "generated fixture whose attempt population is deliberately more than 5% rejects, used once to show the halt actually fires and that the rejected rows are already persisted when it does."
   },
   "contract_inaccuracies_reported_upstream": [
@@ -152,8 +162,8 @@
     {
       "id": "DIV-RERUN-APPENDS",
       "acceptance_check": "ACC-IDEM",
-      "source": "sp_schedule_dunning re-run on the same p_as_of reads NVL(MAX(attempt_no),0)+1 from a DUNNING_ATTEMPTS table its own previous run already grew, so it appends another attempt per overdue invoice on every run",
-      "target": "attempt numbering is pinned set-wise to the ingest attempt population (ow_tp.bronze.dunning_attempts), so the ids are a function of (ns, as_of, ingest state) and a rerun is a true no-op",
+      "source": "sp_schedule_dunning re-run on the same p_as_of reads NVL(MAX(attempt_no),0)+1 from a DUNNING_ATTEMPTS table its own previous run already grew, so it appends another attempt per overdue invoice on every run. Two *concurrent* runs are the other half of it: the SELECT takes no lock, both read the same MAX, both build the same f_md5_uuid(invoice_id || attempt_no) id, and the loser's ORA-00001 is swallowed by WHEN OTHERS THEN NULL while g_scheduled_cnt already claims the row.",
+      "target": "attempt numbering is pinned set-wise to the ingest attempt population (ow_tp.bronze.dunning_attempts) plus this unit's own rows from earlier as_of values, so the ids are a function of (ns, as_of, ingest state): a rerun of the same night is a true no-op, and a genuinely later night appends attempt n+1 the way a later source night would",
       "dictionary_ref": "D-27",
       "measured": "attempts a source rerun would append, per run"
     },

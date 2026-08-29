@@ -1,0 +1,1431 @@
+{
+  "CUSTOMER_MASTER": [
+    {
+      "name": "CUST_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": false,
+      "position": 1
+    },
+    {
+      "name": "CUST_SEQ_NO",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 2,
+      "precision": 12,
+      "scale": 0
+    },
+    {
+      "name": "TENANT_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": true,
+      "position": 3
+    },
+    {
+      "name": "CUST_NO",
+      "type": "VARCHAR2",
+      "length": 20,
+      "nullable": true,
+      "position": 4
+    },
+    {
+      "name": "CUST_NAME",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 5
+    },
+    {
+      "name": "CUST_NAME_UPPER",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 6
+    },
+    {
+      "name": "LEGAL_NAME",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 7
+    },
+    {
+      "name": "DBA_NAME",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 8
+    },
+    {
+      "name": "ADDR_LINE_1",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 9
+    },
+    {
+      "name": "ADDR_LINE_2",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 10
+    },
+    {
+      "name": "ADDR_LINE_3",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 11
+    },
+    {
+      "name": "ADDR_LINE_4",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 12
+    },
+    {
+      "name": "ADDR_LINE_5",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 13
+    },
+    {
+      "name": "ADDR_LINE_6",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 14
+    },
+    {
+      "name": "CITY",
+      "type": "VARCHAR2",
+      "length": 80,
+      "nullable": true,
+      "position": 15
+    },
+    {
+      "name": "STATE_CD",
+      "type": "VARCHAR2",
+      "length": 4,
+      "nullable": true,
+      "position": 16
+    },
+    {
+      "name": "ZIP",
+      "type": "VARCHAR2",
+      "length": 12,
+      "nullable": true,
+      "position": 17
+    },
+    {
+      "name": "ZIP4",
+      "type": "VARCHAR2",
+      "length": 6,
+      "nullable": true,
+      "position": 18
+    },
+    {
+      "name": "COUNTRY_CD",
+      "type": "VARCHAR2",
+      "length": 4,
+      "nullable": true,
+      "position": 19
+    },
+    {
+      "name": "MAIL_ADDR_LINE_1",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 20
+    },
+    {
+      "name": "MAIL_ADDR_LINE_2",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 21
+    },
+    {
+      "name": "MAIL_ADDR_LINE_3",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 22
+    },
+    {
+      "name": "MAIL_ADDR_LINE_4",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 23
+    },
+    {
+      "name": "MAIL_ADDR_LINE_5",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 24
+    },
+    {
+      "name": "MAIL_ADDR_LINE_6",
+      "type": "VARCHAR2",
+      "length": 120,
+      "nullable": true,
+      "position": 25
+    },
+    {
+      "name": "MAIL_CITY",
+      "type": "VARCHAR2",
+      "length": 80,
+      "nullable": true,
+      "position": 26
+    },
+    {
+      "name": "MAIL_STATE_CD",
+      "type": "VARCHAR2",
+      "length": 4,
+      "nullable": true,
+      "position": 27
+    },
+    {
+      "name": "MAIL_ZIP",
+      "type": "VARCHAR2",
+      "length": 12,
+      "nullable": true,
+      "position": 28
+    },
+    {
+      "name": "PHONE1",
+      "type": "VARCHAR2",
+      "length": 25,
+      "nullable": true,
+      "position": 29
+    },
+    {
+      "name": "PHONE2",
+      "type": "VARCHAR2",
+      "length": 25,
+      "nullable": true,
+      "position": 30
+    },
+    {
+      "name": "PHONE3",
+      "type": "VARCHAR2",
+      "length": 25,
+      "nullable": true,
+      "position": 31
+    },
+    {
+      "name": "PHONE4",
+      "type": "VARCHAR2",
+      "length": 25,
+      "nullable": true,
+      "position": 32
+    },
+    {
+      "name": "PHONE1_TYPE_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 33,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "PHONE2_TYPE_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 34,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "PHONE3_TYPE_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 35,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "PHONE4_TYPE_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 36,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "FAX",
+      "type": "VARCHAR2",
+      "length": 25,
+      "nullable": true,
+      "position": 37
+    },
+    {
+      "name": "EMAIL_1",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 38
+    },
+    {
+      "name": "EMAIL_2",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 39
+    },
+    {
+      "name": "EMAIL_3",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 40
+    },
+    {
+      "name": "SIGNUP_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 41
+    },
+    {
+      "name": "LAST_ACTIVITY_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 42
+    },
+    {
+      "name": "LAST_INVOICE_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 43
+    },
+    {
+      "name": "LAST_PAYMENT_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 44
+    },
+    {
+      "name": "TERMINATE_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 45
+    },
+    {
+      "name": "STATUS_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 46,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "SUB_STATUS_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 47,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "CUST_TYPE_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 48,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "SEGMENT_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 49,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "REGION_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 50,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "TERRITORY_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 51,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "CHANNEL_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 52,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "RATE_CLASS_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 53,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "TAX_EXEMPT_YN",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 54
+    },
+    {
+      "name": "CREDIT_HOLD_YN",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 55
+    },
+    {
+      "name": "DUNNING_EXEMPT_YN",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 56
+    },
+    {
+      "name": "VIP_YN",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 57
+    },
+    {
+      "name": "CUR_BAL_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 58,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "PAST_DUE_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 59,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "YTD_BILLED_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 60,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "LTD_BILLED_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 61,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "YTD_PAID_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 62,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "CREDIT_LIMIT_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 63,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "RELATED_ACCT_IDS",
+      "type": "VARCHAR2",
+      "length": 2000,
+      "nullable": true,
+      "position": 64
+    },
+    {
+      "name": "CHILD_ACCT_IDS",
+      "type": "VARCHAR2",
+      "length": 2000,
+      "nullable": true,
+      "position": 65
+    },
+    {
+      "name": "PROMO_CODES_CSV",
+      "type": "VARCHAR2",
+      "length": 1000,
+      "nullable": true,
+      "position": 66
+    },
+    {
+      "name": "CONTACT_NOTES",
+      "type": "VARCHAR2",
+      "length": 4000,
+      "nullable": true,
+      "position": 67
+    },
+    {
+      "name": "LEGACY_SYS_KEY",
+      "type": "VARCHAR2",
+      "length": 50,
+      "nullable": true,
+      "position": 68
+    },
+    {
+      "name": "MAINFRAME_ACCT_NO",
+      "type": "VARCHAR2",
+      "length": 30,
+      "nullable": true,
+      "position": 69
+    },
+    {
+      "name": "CONVERSION_BATCH_NO",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 70,
+      "precision": 8,
+      "scale": 0
+    },
+    {
+      "name": "FLAG_01",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 71
+    },
+    {
+      "name": "FLAG_02",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 72
+    },
+    {
+      "name": "FLAG_03",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 73
+    },
+    {
+      "name": "FLAG_04",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 74
+    },
+    {
+      "name": "FLAG_05",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 75
+    },
+    {
+      "name": "FLAG_06",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 76
+    },
+    {
+      "name": "FLAG_07",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 77
+    },
+    {
+      "name": "FLAG_08",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 78
+    },
+    {
+      "name": "FLAG_09",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 79
+    },
+    {
+      "name": "FLAG_10",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 80
+    },
+    {
+      "name": "FLAG_11",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 81
+    },
+    {
+      "name": "FLAG_12",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 82
+    },
+    {
+      "name": "FLAG_13",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 83
+    },
+    {
+      "name": "FLAG_14",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 84
+    },
+    {
+      "name": "FLAG_15",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 85
+    },
+    {
+      "name": "FLAG_16",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 86
+    },
+    {
+      "name": "FLAG_17",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 87
+    },
+    {
+      "name": "FLAG_18",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 88
+    },
+    {
+      "name": "FLAG_19",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 89
+    },
+    {
+      "name": "FLAG_20",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 90
+    },
+    {
+      "name": "UDF_01",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 91
+    },
+    {
+      "name": "UDF_02",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 92
+    },
+    {
+      "name": "UDF_03",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 93
+    },
+    {
+      "name": "UDF_04",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 94
+    },
+    {
+      "name": "UDF_05",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 95
+    },
+    {
+      "name": "UDF_06",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 96
+    },
+    {
+      "name": "UDF_07",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 97
+    },
+    {
+      "name": "UDF_08",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 98
+    },
+    {
+      "name": "UDF_09",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 99
+    },
+    {
+      "name": "UDF_10",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 100
+    },
+    {
+      "name": "UDF_11",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 101
+    },
+    {
+      "name": "UDF_12",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 102
+    },
+    {
+      "name": "UDF_13",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 103
+    },
+    {
+      "name": "UDF_14",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 104
+    },
+    {
+      "name": "UDF_15",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 105
+    },
+    {
+      "name": "UDF_16",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 106
+    },
+    {
+      "name": "UDF_17",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 107
+    },
+    {
+      "name": "UDF_18",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 108
+    },
+    {
+      "name": "UDF_19",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 109
+    },
+    {
+      "name": "UDF_20",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 110
+    },
+    {
+      "name": "UDF_21",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 111
+    },
+    {
+      "name": "UDF_22",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 112
+    },
+    {
+      "name": "UDF_23",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 113
+    },
+    {
+      "name": "UDF_24",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 114
+    },
+    {
+      "name": "UDF_25",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 115
+    },
+    {
+      "name": "UDF_26",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 116
+    },
+    {
+      "name": "UDF_27",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 117
+    },
+    {
+      "name": "UDF_28",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 118
+    },
+    {
+      "name": "UDF_29",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 119
+    },
+    {
+      "name": "UDF_30",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 120
+    },
+    {
+      "name": "UDF_31",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 121
+    },
+    {
+      "name": "UDF_32",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 122
+    },
+    {
+      "name": "UDF_33",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 123
+    },
+    {
+      "name": "UDF_34",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 124
+    },
+    {
+      "name": "UDF_35",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 125
+    },
+    {
+      "name": "UDF_36",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 126
+    },
+    {
+      "name": "UDF_37",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 127
+    },
+    {
+      "name": "UDF_38",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 128
+    },
+    {
+      "name": "UDF_39",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 129
+    },
+    {
+      "name": "UDF_40",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": true,
+      "position": 130
+    },
+    {
+      "name": "UDF_AMT_01",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 131,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_02",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 132,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_03",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 133,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_04",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 134,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_05",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 135,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_06",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 136,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_07",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 137,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_08",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 138,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_09",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 139,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_AMT_10",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 140,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "UDF_DT_01",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 141
+    },
+    {
+      "name": "UDF_DT_02",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 142
+    },
+    {
+      "name": "UDF_DT_03",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 143
+    },
+    {
+      "name": "UDF_DT_04",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 144
+    },
+    {
+      "name": "UDF_DT_05",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 145
+    },
+    {
+      "name": "UDF_DT_06",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 146
+    },
+    {
+      "name": "UDF_DT_07",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 147
+    },
+    {
+      "name": "UDF_DT_08",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 148
+    },
+    {
+      "name": "UDF_DT_09",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 149
+    },
+    {
+      "name": "UDF_DT_10",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 150
+    },
+    {
+      "name": "CREATED_BY",
+      "type": "VARCHAR2",
+      "length": 30,
+      "nullable": true,
+      "position": 151
+    },
+    {
+      "name": "CREATED_DT",
+      "type": "DATE",
+      "length": 7,
+      "nullable": true,
+      "position": 152
+    },
+    {
+      "name": "UPDATED_BY",
+      "type": "VARCHAR2",
+      "length": 30,
+      "nullable": true,
+      "position": 153
+    },
+    {
+      "name": "UPDATED_DT",
+      "type": "DATE",
+      "length": 7,
+      "nullable": true,
+      "position": 154
+    },
+    {
+      "name": "ROW_VERSION_NO",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 155,
+      "precision": 8,
+      "scale": 0
+    }
+  ],
+  "ENTITY_ATTR_VALUE": [
+    {
+      "name": "EAV_ID",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": false,
+      "position": 1,
+      "precision": 14,
+      "scale": 0
+    },
+    {
+      "name": "ENTITY_TYPE",
+      "type": "VARCHAR2",
+      "length": 30,
+      "nullable": false,
+      "position": 2
+    },
+    {
+      "name": "ENTITY_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": false,
+      "position": 3
+    },
+    {
+      "name": "ATTR_NAME",
+      "type": "VARCHAR2",
+      "length": 100,
+      "nullable": false,
+      "position": 4
+    },
+    {
+      "name": "ATTR_VALUE",
+      "type": "VARCHAR2",
+      "length": 4000,
+      "nullable": true,
+      "position": 5
+    },
+    {
+      "name": "ATTR_TYPE",
+      "type": "VARCHAR2",
+      "length": 10,
+      "nullable": true,
+      "position": 6
+    },
+    {
+      "name": "CREATED_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 7
+    }
+  ],
+  "INVOICE_HEADER": [
+    {
+      "name": "INVOICE_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": false,
+      "position": 1
+    },
+    {
+      "name": "INVOICE_NO",
+      "type": "VARCHAR2",
+      "length": 30,
+      "nullable": true,
+      "position": 2
+    },
+    {
+      "name": "CUST_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": true,
+      "position": 3
+    },
+    {
+      "name": "TENANT_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": true,
+      "position": 4
+    },
+    {
+      "name": "INVOICE_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 5
+    },
+    {
+      "name": "DUE_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 6
+    },
+    {
+      "name": "STATUS_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 7,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "TOTAL_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 8,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "BATCH_NO",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 9,
+      "precision": 8,
+      "scale": 0
+    }
+  ],
+  "INVOICE_LINE": [
+    {
+      "name": "LINE_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": false,
+      "position": 1
+    },
+    {
+      "name": "INVOICE_NO",
+      "type": "VARCHAR2",
+      "length": 30,
+      "nullable": true,
+      "position": 2
+    },
+    {
+      "name": "INVOICE_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": true,
+      "position": 3
+    },
+    {
+      "name": "CUST_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": true,
+      "position": 4
+    },
+    {
+      "name": "CUST_NO",
+      "type": "VARCHAR2",
+      "length": 20,
+      "nullable": true,
+      "position": 5
+    },
+    {
+      "name": "CUST_NAME",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 6
+    },
+    {
+      "name": "TENANT_ID",
+      "type": "VARCHAR2",
+      "length": 36,
+      "nullable": true,
+      "position": 7
+    },
+    {
+      "name": "LINE_NO",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 8,
+      "precision": 6,
+      "scale": 0
+    },
+    {
+      "name": "LINE_TYPE_CD",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 9,
+      "precision": 4,
+      "scale": 0
+    },
+    {
+      "name": "ITEM_DESC",
+      "type": "VARCHAR2",
+      "length": 400,
+      "nullable": true,
+      "position": 10
+    },
+    {
+      "name": "QTY",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 11,
+      "precision": 12,
+      "scale": 3
+    },
+    {
+      "name": "UNIT_PRICE",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 12,
+      "precision": 14,
+      "scale": 4
+    },
+    {
+      "name": "AMOUNT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 13,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "TAX_AMT",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 14,
+      "precision": 14,
+      "scale": 2
+    },
+    {
+      "name": "INVOICE_DT",
+      "type": "VARCHAR2",
+      "length": 9,
+      "nullable": true,
+      "position": 15
+    },
+    {
+      "name": "SERVICE_PERIOD",
+      "type": "VARCHAR2",
+      "length": 20,
+      "nullable": true,
+      "position": 16
+    },
+    {
+      "name": "POSTED_YN",
+      "type": "CHAR",
+      "length": 1,
+      "nullable": true,
+      "position": 17
+    },
+    {
+      "name": "GL_ACCT_CSV",
+      "type": "VARCHAR2",
+      "length": 200,
+      "nullable": true,
+      "position": 18
+    },
+    {
+      "name": "BATCH_NO",
+      "type": "NUMBER",
+      "length": 22,
+      "nullable": true,
+      "position": 19,
+      "precision": 8,
+      "scale": 0
+    },
+    {
+      "name": "SRC_SYSTEM",
+      "type": "VARCHAR2",
+      "length": 10,
+      "nullable": true,
+      "position": 20
+    }
+  ]
+}

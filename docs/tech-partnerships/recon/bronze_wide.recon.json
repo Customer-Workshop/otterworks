@@ -1,0 +1,1108 @@
+{
+  "kind": "recon-report",
+  "unit": "bronze_wide",
+  "namespace": "demo",
+  "generated_at": "2026-08-29T01:15:15+00:00",
+  "run_mode": "live",
+  "recon_result": "green",
+  "tolerance_version": "v1.1 (.migration/03_recon_tolerances.md, T4 corrected)",
+  "provenance": {
+    "source": {
+      "system": "OW_BILLING (Oracle)",
+      "banner": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free",
+      "service": "FREEPDB1",
+      "extracted_at": "2026-08-29T00:17:20.659288+00:00"
+    },
+    "source_of_truth": "live Oracle OW_BILLING queried directly at recon time (mode LIVE); no fixture, no cached extract",
+    "transport": "python-oracledb read of the declared columns -> Parquet in /Volumes/ow_tp/bronze/landing/demo/bronze_wide/ -> notebook load. The contract names Lakehouse Federation as the baseline path; no federated Oracle connection exists in this workspace, so the source is read live over the Oracle client instead and recon still compares against live Oracle, not against the landed copy.",
+    "target": "ow_tp.bronze.{customer_master, entity_attr_value, invoice_line, invoice_header, quarantine_bronze_wide}",
+    "load_runs": {
+      "first": "2026-08-29T01:06:48.604215+00:00",
+      "second": "2026-08-29T01:11:32.387639+00:00"
+    },
+    "compute": "serverless notebook run + Serverless Starter Warehouse (no cluster created)",
+    "source_population_at_extraction": {
+      "customer_master": 25000,
+      "entity_attr_value": 8333,
+      "invoice_line": 150000,
+      "invoice_header": 18750
+    }
+  },
+  "tables": {
+    "customer_master": {
+      "source_rows": 25000,
+      "loaded_rows": 24950,
+      "quarantined_rows": 50,
+      "quarantine_rate_pct": 0.2,
+      "columns": 155,
+      "load_reported_rows": 24950
+    },
+    "entity_attr_value": {
+      "source_rows": 8333,
+      "loaded_rows": 8333,
+      "quarantined_rows": 0,
+      "quarantine_rate_pct": 0.0,
+      "columns": 7,
+      "load_reported_rows": 8333
+    },
+    "invoice_line": {
+      "source_rows": 150000,
+      "loaded_rows": 150000,
+      "quarantined_rows": 0,
+      "quarantine_rate_pct": 0.0,
+      "columns": 20,
+      "load_reported_rows": 150000
+    },
+    "invoice_header": {
+      "source_rows": 18750,
+      "loaded_rows": 18750,
+      "quarantined_rows": 0,
+      "quarantine_rate_pct": 0.0,
+      "columns": 9,
+      "load_reported_rows": 18750
+    }
+  },
+  "quarantine": {
+    "source_rows": 202083,
+    "loaded_rows": 202033,
+    "quarantined_rows": 50,
+    "quarantine_rate_pct": 0.0247,
+    "halt_threshold_pct": 5.0,
+    "by_reason": [
+      {
+        "reason": "BAD_DATE",
+        "source_table": "OW_BILLING.CUSTOMER_MASTER",
+        "rows": 39
+      },
+      {
+        "reason": "DATE_INVALID",
+        "source_table": "OW_BILLING.CUSTOMER_MASTER",
+        "rows": 11
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "ACC-PII-MASK/cleartext-withheld",
+      "expected": "***REDACTED***",
+      "actual": "***REDACTED***",
+      "source_of_truth": "ow_tp.bronze.customer_master read by an unregistered principal",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-PII-MASK/customer_master",
+      "expected": "['addr_line_1', 'addr_line_2', 'addr_line_3', 'addr_line_4', 'addr_line_5', 'addr_line_6', 'city', 'contact_notes', 'cust_name', 'cust_name_upper', 'dba_name', 'email_1', 'email_2', 'email_3', 'fax', 'legal_name', 'mail_addr_line_1', 'mail_addr_line_2', 'mail_addr_line_3', 'mail_addr_line_4', 'mail_addr_line_5', 'mail_addr_line_6', 'mail_city', 'mail_zip', 'phone1', 'phone2', 'phone3', 'phone4', 'zip']",
+      "actual": "['addr_line_1', 'addr_line_2', 'addr_line_3', 'addr_line_4', 'addr_line_5', 'addr_line_6', 'city', 'contact_notes', 'cust_name', 'cust_name_upper', 'dba_name', 'email_1', 'email_2', 'email_3', 'fax', 'legal_name', 'mail_addr_line_1', 'mail_addr_line_2', 'mail_addr_line_3', 'mail_addr_line_4', 'mail_addr_line_5', 'mail_addr_line_6', 'mail_city', 'mail_zip', 'phone1', 'phone2', 'phone3', 'phone4', 'zip']",
+      "source_of_truth": "ow_tp.information_schema.column_masks",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-PII-MASK/invoice_line",
+      "expected": "['cust_name']",
+      "actual": "['cust_name']",
+      "source_of_truth": "ow_tp.information_schema.column_masks",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-QUAR/customer_master",
+      "expected": "25000",
+      "actual": "25000",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER vs ow_tp.bronze.customer_master + quarantine_bronze_wide",
+      "result": "pass",
+      "detail": {
+        "source_rows": 25000,
+        "loaded_rows": 24950,
+        "quarantined_rows": 50,
+        "quarantine_rate_pct": 0.2,
+        "halt_threshold_pct": 5.0
+      }
+    },
+    {
+      "id": "T2-ROWCOUNT/customer_master",
+      "expected": "24950",
+      "actual": "24950",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-WIDTH/customer_master",
+      "expected": "155",
+      "actual": "155",
+      "source_of_truth": "declared width of OW_BILLING.CUSTOMER_MASTER",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-NS/customer_master",
+      "expected": "24950",
+      "actual": "24950",
+      "source_of_truth": "ow_tp.bronze.customer_master.ns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.cur_bal_amt",
+      "expected": "39770908.4",
+      "actual": "39770908.40",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.cur_bal_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.past_due_amt",
+      "expected": "7323216.96",
+      "actual": "7323216.96",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.past_due_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.ytd_billed_amt",
+      "expected": "208098688.69",
+      "actual": "208098688.69",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.ytd_billed_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.ltd_billed_amt",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.ltd_billed_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.ytd_paid_amt",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.ytd_paid_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.credit_limit_amt",
+      "expected": "329524000",
+      "actual": "329524000.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.credit_limit_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_01",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_01",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_02",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_02",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_03",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_03",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_04",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_04",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_05",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_05",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_06",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_06",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_07",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_07",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_08",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_08",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_09",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_09",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/customer_master.udf_amt_10",
+      "expected": "0",
+      "actual": "0.00",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-MONEY-TYPE/customer_master.udf_amt_10",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T10-ROWHASH/customer_master",
+      "expected": "14382028369487557281952",
+      "actual": "14382028369487557281952",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER, full 155-column fingerprint",
+      "result": "pass",
+      "rows": 24950,
+      "construction": "md5 per declared column group, then md5 of the group hashes"
+    },
+    {
+      "id": "IDEM-STORED-HASH/customer_master",
+      "expected": "14382028369487557281952",
+      "actual": "14382028369487557281952",
+      "source_of_truth": "ow_tp.bronze.customer_master.row_hash vs the same fingerprint recomputed from target columns",
+      "result": "pass"
+    },
+    {
+      "id": "COLPARITY/customer_master",
+      "expected": "[]",
+      "actual": "[]",
+      "source_of_truth": "live OW_BILLING.CUSTOMER_MASTER, per-column checksum + non-null count",
+      "result": "pass",
+      "columns_compared": 154,
+      "columns_excluded": [
+        "CUST_SEQ_NO"
+      ],
+      "exclusion_reason": "D-15: sequence-fed surrogate, asserted on cardinality instead"
+    },
+    {
+      "id": "D-15-CARDINALITY/customer_master.cust_seq_no",
+      "expected": "24950",
+      "actual": "24950",
+      "source_of_truth": "ow_tp.bronze.customer_master (uniqueness, not value, per D-15)",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-DATES/customer_master.signup_dt",
+      "expected": "14425869900497593921971",
+      "actual": "14425869900497593921971",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.last_activity_dt",
+      "expected": "14523596842221872740444",
+      "actual": "14523596842221872740444",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.last_invoice_dt",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.last_payment_dt",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.terminate_dt",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_01",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_02",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_03",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_04",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_05",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_06",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_07",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_08",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_09",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-DATES/customer_master.udf_dt_10",
+      "expected": "17799528926238541563600",
+      "actual": "17799528926238541563600",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 50
+    },
+    {
+      "id": "ACC-QUAR/entity_attr_value",
+      "expected": "8333",
+      "actual": "8333",
+      "source_of_truth": "live OW_BILLING.ENTITY_ATTR_VALUE vs ow_tp.bronze.entity_attr_value + quarantine_bronze_wide",
+      "result": "pass",
+      "detail": {
+        "source_rows": 8333,
+        "loaded_rows": 8333,
+        "quarantined_rows": 0,
+        "quarantine_rate_pct": 0.0,
+        "halt_threshold_pct": 5.0
+      }
+    },
+    {
+      "id": "T2-ROWCOUNT/entity_attr_value",
+      "expected": "8333",
+      "actual": "8333",
+      "source_of_truth": "live OW_BILLING.ENTITY_ATTR_VALUE (same population)",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-WIDTH/entity_attr_value",
+      "expected": "7",
+      "actual": "7",
+      "source_of_truth": "declared width of OW_BILLING.ENTITY_ATTR_VALUE",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-NS/entity_attr_value",
+      "expected": "8333",
+      "actual": "8333",
+      "source_of_truth": "ow_tp.bronze.entity_attr_value.ns",
+      "result": "pass"
+    },
+    {
+      "id": "T10-ROWHASH/entity_attr_value",
+      "expected": "4857676576492386867928",
+      "actual": "4857676576492386867928",
+      "source_of_truth": "live OW_BILLING.ENTITY_ATTR_VALUE, full 7-column fingerprint",
+      "result": "pass",
+      "rows": 8333,
+      "construction": "md5 per declared column group, then md5 of the group hashes"
+    },
+    {
+      "id": "IDEM-STORED-HASH/entity_attr_value",
+      "expected": "4857676576492386867928",
+      "actual": "4857676576492386867928",
+      "source_of_truth": "ow_tp.bronze.entity_attr_value.row_hash vs the same fingerprint recomputed from target columns",
+      "result": "pass"
+    },
+    {
+      "id": "COLPARITY/entity_attr_value",
+      "expected": "[]",
+      "actual": "[]",
+      "source_of_truth": "live OW_BILLING.ENTITY_ATTR_VALUE, per-column checksum + non-null count",
+      "result": "pass",
+      "columns_compared": 7,
+      "columns_excluded": [],
+      "exclusion_reason": "D-15: sequence-fed surrogate, asserted on cardinality instead"
+    },
+    {
+      "id": "ACC-DATES/entity_attr_value.created_dt",
+      "expected": "4843408643735214007685",
+      "actual": "4843408643735214007685",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-QUAR/invoice_line",
+      "expected": "150000",
+      "actual": "150000",
+      "source_of_truth": "live OW_BILLING.INVOICE_LINE vs ow_tp.bronze.invoice_line + quarantine_bronze_wide",
+      "result": "pass",
+      "detail": {
+        "source_rows": 150000,
+        "loaded_rows": 150000,
+        "quarantined_rows": 0,
+        "quarantine_rate_pct": 0.0,
+        "halt_threshold_pct": 5.0
+      }
+    },
+    {
+      "id": "T2-ROWCOUNT/invoice_line",
+      "expected": "150000",
+      "actual": "150000",
+      "source_of_truth": "live OW_BILLING.INVOICE_LINE (same population)",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-WIDTH/invoice_line",
+      "expected": "20",
+      "actual": "20",
+      "source_of_truth": "declared width of OW_BILLING.INVOICE_LINE",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-NS/invoice_line",
+      "expected": "150000",
+      "actual": "150000",
+      "source_of_truth": "ow_tp.bronze.invoice_line.ns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/invoice_line.amount",
+      "expected": "1855870025.91",
+      "actual": "1855870025.91",
+      "source_of_truth": "live OW_BILLING.INVOICE_LINE (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-MONEY-TYPE/invoice_line.amount",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/invoice_line.tax_amt",
+      "expected": "153109280.16",
+      "actual": "153109280.16",
+      "source_of_truth": "live OW_BILLING.INVOICE_LINE (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-MONEY-TYPE/invoice_line.tax_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T10-ROWHASH/invoice_line",
+      "expected": "86599441832715203597296",
+      "actual": "86599441832715203597296",
+      "source_of_truth": "live OW_BILLING.INVOICE_LINE, full 20-column fingerprint",
+      "result": "pass",
+      "rows": 150000,
+      "construction": "md5 per declared column group, then md5 of the group hashes"
+    },
+    {
+      "id": "IDEM-STORED-HASH/invoice_line",
+      "expected": "86599441832715203597296",
+      "actual": "86599441832715203597296",
+      "source_of_truth": "ow_tp.bronze.invoice_line.row_hash vs the same fingerprint recomputed from target columns",
+      "result": "pass"
+    },
+    {
+      "id": "COLPARITY/invoice_line",
+      "expected": "[]",
+      "actual": "[]",
+      "source_of_truth": "live OW_BILLING.INVOICE_LINE, per-column checksum + non-null count",
+      "result": "pass",
+      "columns_compared": 20,
+      "columns_excluded": [],
+      "exclusion_reason": "D-15: sequence-fed surrogate, asserted on cardinality instead"
+    },
+    {
+      "id": "ACC-DATES/invoice_line.invoice_dt",
+      "expected": "86601466266002154749819",
+      "actual": "86601466266002154749819",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-QUAR/invoice_header",
+      "expected": "18750",
+      "actual": "18750",
+      "source_of_truth": "live OW_BILLING.INVOICE_HEADER vs ow_tp.bronze.invoice_header + quarantine_bronze_wide",
+      "result": "pass",
+      "detail": {
+        "source_rows": 18750,
+        "loaded_rows": 18750,
+        "quarantined_rows": 0,
+        "quarantine_rate_pct": 0.0,
+        "halt_threshold_pct": 5.0
+      }
+    },
+    {
+      "id": "T2-ROWCOUNT/invoice_header",
+      "expected": "18750",
+      "actual": "18750",
+      "source_of_truth": "live OW_BILLING.INVOICE_HEADER (same population)",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-WIDTH/invoice_header",
+      "expected": "9",
+      "actual": "9",
+      "source_of_truth": "declared width of OW_BILLING.INVOICE_HEADER",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-NS/invoice_header",
+      "expected": "18750",
+      "actual": "18750",
+      "source_of_truth": "ow_tp.bronze.invoice_header.ns",
+      "result": "pass"
+    },
+    {
+      "id": "T1-MONEY/invoice_header.total_amt",
+      "expected": "187618458.58",
+      "actual": "187618458.58",
+      "source_of_truth": "live OW_BILLING.INVOICE_HEADER (same population)",
+      "result": "pass",
+      "target_type": "decimal(14,2)",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-MONEY-TYPE/invoice_header.total_amt",
+      "expected": "decimal(14,2)",
+      "actual": "decimal(14,2)",
+      "source_of_truth": "ow_tp.information_schema.columns",
+      "result": "pass"
+    },
+    {
+      "id": "T10-ROWHASH/invoice_header",
+      "expected": "10847861921554031061391",
+      "actual": "10847861921554031061391",
+      "source_of_truth": "live OW_BILLING.INVOICE_HEADER, full 9-column fingerprint",
+      "result": "pass",
+      "rows": 18750,
+      "construction": "md5 per declared column group, then md5 of the group hashes"
+    },
+    {
+      "id": "IDEM-STORED-HASH/invoice_header",
+      "expected": "10847861921554031061391",
+      "actual": "10847861921554031061391",
+      "source_of_truth": "ow_tp.bronze.invoice_header.row_hash vs the same fingerprint recomputed from target columns",
+      "result": "pass"
+    },
+    {
+      "id": "COLPARITY/invoice_header",
+      "expected": "[]",
+      "actual": "[]",
+      "source_of_truth": "live OW_BILLING.INVOICE_HEADER, per-column checksum + non-null count",
+      "result": "pass",
+      "columns_compared": 9,
+      "columns_excluded": [],
+      "exclusion_reason": "D-15: sequence-fed surrogate, asserted on cardinality instead"
+    },
+    {
+      "id": "ACC-DATES/invoice_header.invoice_dt",
+      "expected": "10702340182163817578533",
+      "actual": "10702340182163817578533",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "ACC-DATES/invoice_header.due_dt",
+      "expected": "10819972106929161063161",
+      "actual": "10819972106929161063161",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING over the loaded population",
+      "result": "pass",
+      "quarantined_rows": 0
+    },
+    {
+      "id": "QUAR-CODES-CLOSED",
+      "expected": "[]",
+      "actual": "[]",
+      "source_of_truth": ".migration/11_quarantine_codes.md",
+      "result": "pass",
+      "codes_used": [
+        "BAD_DATE",
+        "DATE_INVALID"
+      ],
+      "breakdown": [
+        {
+          "reason": "BAD_DATE",
+          "source_table": "OW_BILLING.CUSTOMER_MASTER",
+          "rows": 39
+        },
+        {
+          "reason": "DATE_INVALID",
+          "source_table": "OW_BILLING.CUSTOMER_MASTER",
+          "rows": 11
+        }
+      ]
+    },
+    {
+      "id": "QUAR-PAYLOAD-RETAINED",
+      "expected": "0",
+      "actual": "0",
+      "source_of_truth": "ow_tp.bronze.quarantine_bronze_wide",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-QUAR/unit-total",
+      "expected": "202083",
+      "actual": "202083",
+      "source_of_truth": "live OW_BILLING vs ow_tp.bronze",
+      "result": "pass",
+      "detail": {
+        "source_rows": 202083,
+        "loaded_rows": 202033,
+        "quarantined_rows": 50,
+        "quarantine_rate_pct": 0.0247,
+        "halt_threshold_pct": 5.0
+      }
+    },
+    {
+      "id": "D-05-CENTURY/31-DEC-99",
+      "expected": "2099-12-31",
+      "actual": "2099-12-31",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": null
+    },
+    {
+      "id": "D-05-CENTURY/01-JAN-00",
+      "expected": "2000-01-01",
+      "actual": "2000-01-01",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": null
+    },
+    {
+      "id": "D-05-CENTURY/28-FEB-25",
+      "expected": "2025-02-28",
+      "actual": "2025-02-28",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": null
+    },
+    {
+      "id": "D-05-CENTURY/29-FEB-24",
+      "expected": "2024-02-29",
+      "actual": "2024-02-29",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": null
+    },
+    {
+      "id": "D-05-CENTURY/31-FEB-24",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "DATE_INVALID"
+    },
+    {
+      "id": "D-05-CENTURY/29-FEB-23",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "DATE_INVALID"
+    },
+    {
+      "id": "D-05-CENTURY/00-XXX-00",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "BAD_DATE"
+    },
+    {
+      "id": "D-05-CENTURY/99-999-99",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "BAD_DATE"
+    },
+    {
+      "id": "D-05-CENTURY/1/1/1900",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "BAD_DATE"
+    },
+    {
+      "id": "D-05-CENTURY/N/A",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "BAD_DATE"
+    },
+    {
+      "id": "D-05-CENTURY/12-13-201",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "BAD_DATE"
+    },
+    {
+      "id": "D-05-CENTURY/-   -",
+      "expected": "NULL",
+      "actual": "NULL",
+      "source_of_truth": "pkg_ow_util.f_str2dt in live OW_BILLING",
+      "result": "pass",
+      "target_reason_code": "BAD_DATE"
+    },
+    {
+      "id": "ACC-IDEM/second-run-net-change",
+      "expected": "0",
+      "actual": "0",
+      "source_of_truth": "MERGE operationMetrics from DESCRIBE HISTORY on the second identical run",
+      "result": "pass",
+      "run1": {
+        "CUSTOMER_MASTER": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 24950,
+          "numOutputRows": 24950
+        },
+        "ENTITY_ATTR_VALUE": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 8333,
+          "numOutputRows": 8333
+        },
+        "INVOICE_LINE": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 150000,
+          "numOutputRows": 150000
+        },
+        "INVOICE_HEADER": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 18750,
+          "numOutputRows": 18750
+        }
+      },
+      "run2": {
+        "CUSTOMER_MASTER": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 0,
+          "numOutputRows": 0
+        },
+        "ENTITY_ATTR_VALUE": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 0,
+          "numOutputRows": 0
+        },
+        "INVOICE_LINE": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 0,
+          "numOutputRows": 0
+        },
+        "INVOICE_HEADER": {
+          "numTargetRowsDeleted": 0,
+          "numTargetRowsUpdated": 0,
+          "numTargetRowsInserted": 0,
+          "numOutputRows": 0
+        }
+      }
+    },
+    {
+      "id": "ACC-IDEM/rowcount-stable/customer_master",
+      "expected": "24950",
+      "actual": "24950",
+      "source_of_truth": "rows reported by the first load vs rows present after the second run",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-IDEM/rowcount-stable/entity_attr_value",
+      "expected": "8333",
+      "actual": "8333",
+      "source_of_truth": "rows reported by the first load vs rows present after the second run",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-IDEM/rowcount-stable/invoice_line",
+      "expected": "150000",
+      "actual": "150000",
+      "source_of_truth": "rows reported by the first load vs rows present after the second run",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-IDEM/rowcount-stable/invoice_header",
+      "expected": "18750",
+      "actual": "18750",
+      "source_of_truth": "rows reported by the first load vs rows present after the second run",
+      "result": "pass"
+    },
+    {
+      "id": "ACC-PII-MASK/default-deny-restored",
+      "expected": "***REDACTED***",
+      "actual": "***REDACTED***",
+      "source_of_truth": "ow_tp.bronze.customer_master after the recon principal is deregistered",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "second identical run wrote nothing: inserted/updated/deleted = 0 across all five targets (MERGE operationMetrics, run at 2026-08-29T01:11:32.387639+00:00); row counts and full-width fingerprints unchanged."
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "ANOM-STRING-DATES",
+      "ANOM-GL-ACCT-CSV",
+      "ANOM-EAV-TYPELESS"
+    ],
+    "actual_set": [
+      "ANOM-STRING-DATES",
+      "ANOM-GL-ACCT-CSV",
+      "ANOM-EAV-TYPELESS"
+    ],
+    "missing": [],
+    "unexpected": [],
+    "evidence": {
+      "ANOM-STRING-DATES": {
+        "unparseable_rows_quarantined": 50,
+        "parsed_signup_dates": 24950
+      },
+      "ANOM-GL-ACCT-CSV": {
+        "invoice_line_multi_value_rows": 99805,
+        "customer_master_related_acct_ids_multi_value_rows": 14932,
+        "carried": "raw string preserved; only a token count is derived beside it"
+      },
+      "ANOM-EAV-TYPELESS": {
+        "rows": 8333,
+        "numeric_values_stored_as_text": 3116,
+        "distinct_attr_type": 1,
+        "distinct_attr_name": 7,
+        "carried": "attribute names and values verbatim; not pivoted or type-inferred"
+      },
+      "ANOM-DENORM-COPIES": {
+        "status": "coverage_gap (declared in the contract)",
+        "source_invoice_header_rows": 18750,
+        "source_invoices_rows": 3,
+        "source_invoice_line_rows": 150000,
+        "source_invoice_lines_rows": 2,
+        "note": "the denormalised reporting copies and the normalised tables disagree in the source; both are migrated as-is and the disagreement is reported, not resolved. The normalised tables belong to bronze_core and were neither read for parity nor written by this unit."
+      }
+    }
+  },
+  "unverified_paths": [
+    "ANOM-DENORM-COPIES: the contract marks it a coverage gap. The disagreement between the denormalised reporting copies and the normalised invoice tables is measured in the source and reported above, but no cross-unit parity check is run: the normalised targets belong to bronze_core and are loaded concurrently, so any comparison against them would be a reading of another unit's in-flight state, not evidence.",
+    "Lakehouse Federation is named in the golden baseline as the extraction path; no federated Oracle connection exists in this workspace, so the source is read with the Oracle client and landed to the unit's volume prefix. The federated path itself is therefore unexercised. Recon still reads live Oracle for every expected value.",
+    "Deletes and updates in the source are not exercised: the load MERGEs inserts and changed rows, and a source delete does not tombstone the target. The source was static across both runs, so only the insert and no-op paths are evidenced.",
+    "Empty input is not exercised: both runs had a fully populated source. By construction the MERGE has no delete clause and matches on (ns, natural key), so an empty input for one namespace is a no-op and cannot remove another namespace's slice \u2014 asserted from the statement, not measured.",
+    "Column-mask enforcement is evidenced for the recon principal only (withheld before registration, withheld again after removal). Enforcement against a second, separately-authenticated identity was not exercised.",
+    "ns=demo is a shared slice and other sessions hold the same credential. Every number here was recomputed by this run; re-running this script re-measures them rather than restating the values recorded above."
+  ]
+}

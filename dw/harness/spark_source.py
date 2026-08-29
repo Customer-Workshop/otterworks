@@ -91,6 +91,49 @@ def _fold_partition(
     yield count, row_digest, digests
 
 
+def _split_ordering_spec(specification: str) -> list[str]:
+    expressions: list[str] = []
+    start = 0
+    depth = 0
+    quote: str | None = None
+    index = 0
+    while index < len(specification):
+        character = specification[index]
+        if quote:
+            if character == quote:
+                if index + 1 < len(specification) and specification[index + 1] == quote:
+                    index += 1
+                else:
+                    quote = None
+        elif character in {"'", '"'}:
+            quote = character
+        elif character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth < 0:
+                raise ValueError(f"unbalanced ordering specification: {specification!r}")
+        elif character == "," and depth == 0:
+            expression = specification[start:index].strip()
+            if not expression:
+                raise ValueError(
+                    f"empty expression in ordering specification: {specification!r}"
+                )
+            expressions.append(expression)
+            start = index + 1
+        index += 1
+
+    if quote or depth:
+        raise ValueError(f"unbalanced ordering specification: {specification!r}")
+    expression = specification[start:].strip()
+    if not expression:
+        raise ValueError(
+            f"empty expression in ordering specification: {specification!r}"
+        )
+    expressions.append(expression)
+    return expressions
+
+
 def _profile(frame: DataFrame, fields: list[Any]) -> list[Any]:
     expressions: list[Any] = [F.count(F.lit(1))]
     for field in fields:
@@ -176,7 +219,10 @@ def build_manifest(
 
     ordered = None
     if ordered_key:
-        ordered_frame = frame.orderBy(F.expr(ordered_key)).select(
+        ordering = [
+            F.expr(expression) for expression in _split_ordering_spec(ordered_key)
+        ]
+        ordered_frame = frame.orderBy(*ordering).select(
             *[_normalised_column(field) for field in fields]
         )
         count, digest = fold_ordered(

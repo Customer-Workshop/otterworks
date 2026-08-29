@@ -89,6 +89,43 @@ demo	setup-ok
 -- drop --
 ```
 
+## Probe 4 — Databricks capability preflight (wave 0): 11 verified, 0 denied
+
+Authentication is not preflight. Every write/transport path the units actually use was
+probed with the real credential before any child is briefed.
+
+**Command:**
+
+```sh
+DATABRICKS_SQL_WAREHOUSE_ID=565cd2fd713738c4 make tp-preflight PLATFORM=databricks
+```
+
+**Actual output:**
+
+```text
+[VERIFIED] files-get-directory: HTTP 200
+[VERIFIED] files-put: HTTP 204
+[VERIFIED] files-get-file: HTTP 200, 24 bytes
+[VERIFIED] files-delete: HTTP 204
+[VERIFIED] uc-create-list: HTTP 200, state=SUCCEEDED; list HTTP 200
+[VERIFIED] uc-schema-delete: HTTP 200, state=SUCCEEDED
+[VERIFIED] jobs-create-list: create HTTP 200, list HTTP 200
+[VERIFIED] jobs-delete: HTTP 200
+[VERIFIED] secret-scope: create HTTP 200
+[VERIFIED] secret-scope-delete: HTTP 200
+[VERIFIED] serverless-warehouse: [{"id": "565cd2fd713738c4", "name": "Serverless Starter Warehouse", "state": "STOPPED", "enable_serverless_compute": true}]
+
+probes: 11, denied: 0
+```
+
+The manifest is written to `.tp-preflight/databricks-capabilities.json`, which is
+gitignored: it is per-run state, not code. Every child brief carries the summary above,
+in particular that the `files` scope on `/Volumes/ow_tp/bronze/landing` is **verified
+present** — a child that hits a `403 ... required scopes: files` must stop and report
+rather than invent a landing workaround. `serverless-warehouse` also confirms the pinned
+warehouse is the only one in the workspace and was `STOPPED` at probe time, so the first
+query of a run pays a cold start; that is not a capability failure.
+
 ## Access-model one-pager
 
 | Tier | Status and access model |

@@ -1,0 +1,73 @@
+{
+  "unit": "bronze_hist",
+  "source_artifact_path": "services/legacy-billing/db/oracle/schema/02_horror.sql (customer_master_hist), services/legacy-billing/db/oracle/schema/01_tables.sql (subscriptions_hist)",
+  "target_objects": [
+    "ow_tp.bronze.customer_master_hist",
+    "ow_tp.bronze.subscriptions_hist",
+    "ow_tp.bronze.quarantine_bronze_hist"
+  ],
+  "golden_baseline_location": "Live Oracle OW_BILLING via Lakehouse Federation (recon mode LIVE), compared over the full history, not a recent window.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-QUAR",
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (T2/T3, §Quarantine). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-HIST-FIRSTCLASS",
+      "description": "Both _HIST tables are migrated as first-class tables with every row, not summarised and not discarded as audit noise (STOPA-HIST, D-17). HIST_OP values UPD and DEL are preserved verbatim."
+    },
+    {
+      "id": "ACC-HIST-DT",
+      "description": "HIST_DT is a DD-MON-YY HH24:MI:SS string parsed under the same quarantine rule as every other string date (D-06); the time component is preserved, not truncated to a date."
+    },
+    {
+      "id": "ACC-HIST-NOCAPTURE",
+      "description": "The target pipeline writes no new _HIST rows and recreates no trigger-style capture (STOPA-HIST, D-17). Forward-looking change history comes from Delta history only."
+    },
+    {
+      "id": "ACC-HIST-DELETED",
+      "description": "Rows whose customer no longer exists in customer_master are loaded, because a deleted customer's last known state may exist only here. A join-based filter against the live table would silently drop them."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-HIST-DT-STRING",
+      "description": "HIST_DT stored as a DD-MON-YY HH24:MI:SS string.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-HIST-ORPHAN",
+      "description": "History rows for customers absent from customer_master (HIST_OP='DEL').",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-PRECUTOVER-HISTORY",
+      "description": "Change history for the period before the first target run.",
+      "status": "coverage_gap",
+      "reason": "Delta history begins at the first target run and cannot reconstruct pre-cutover change history; the migrated _HIST rows are the only record of it, and their own coverage is limited to what the legacy triggers happened to capture. Declared so no one later claims Delta time travel covers the legacy period."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "AL32UTF8 via federated Oracle JDBC (FREEPDB1/OW_BILLING)",
+    "byte_transparency": "Values are carried through as Unicode text without re-encoding; no transliteration, no NFC/NFD normalisation, no whitespace trimming. A trailing-space-padded CHAR column keeps its padding.",
+    "invalid_bytes": "Unconvertible bytes are not silently replaced: the row is quarantined with reason ENC_INVALID and counted in recon."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Source NULL and empty string are distinct and must stay distinct: a NULL stays NULL, a zero-length VARCHAR2 stays zero-length. Never coalesce NULL to '' or to 0 to make a comparison pass. An unexpected extra column from the source fails the unit rather than being ignored, because a schema drift no one declared is a correctness event."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "Empty in, empty out for this ns, with an explicit recon report."
+  },
+  "trigger_granularity": "per-batch"
+}

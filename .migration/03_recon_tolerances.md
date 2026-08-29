@@ -23,7 +23,7 @@ a re-version, not a footnote.
 | T1 | Money (`NUMBER(14,2)` → `DECIMAL(14,2)`) | **Exact to the cent.** Any difference fails recon. No epsilon, no relative tolerance on totals or aggregates. | **FACT** | Forbids any double/float path through rating or invoicing, including intermediate expressions and window aggregates. A `DOUBLE` anywhere on a money lineage is a PR rejection, not a tolerance question. |
 | T2 | Row counts | **Zero tolerance**, over the *same row population* (see T3 and §Quarantine). | PROPOSED | |
 | T3 | String-typed dates (`VARCHAR2(9)` in `CUSTOMER_MASTER`) | Parsed values must match exactly. Unparseable values: **quarantine the row, continue the load, count it in recon.** | **FACT** | Quarantine count is recon *output*, not a warning. See §Quarantine for how this interacts with T1/T2. |
-| T4 | Century window for 2-digit years | `00–49` → 2000s, `50–99` → 1900s, applied uniformly; any value outside the window quarantines under T3. | PROPOSED | Must be one decision for the whole estate, not per unit. |
+| T4 | Century window for 2-digit years | **Current century for every 2-digit year** (`YY` → `20YY`), applied uniformly, matching Oracle's `TO_DATE(s,'DD-MON-YY')`; a value that then yields an impossible date quarantines under T3 as `DATE_INVALID`. | PROPOSED (v1.1, corrected — see below) | Must be one decision for the whole estate, not per unit. |
 | T5 | Integer / code columns (`NUMBER(4,0)`, `NUMBER(10,0)`) | Exact. | PROPOSED | |
 | T6 | Oracle `NUMBER` without precision | Exact, after the dictionary pins an explicit target type per column. Recon may not run on a column whose target type is still undecided. | PROPOSED | Silent-wrong-answer class: an unpinned `NUMBER` becomes `DOUBLE` by default in most translation paths. |
 | T7 | Timestamps / `DATE` columns | Exact to the second, UTC-normalised, no timezone inference. Sub-second precision: source has none; target must not invent one. | PROPOSED | |
@@ -32,6 +32,16 @@ a re-version, not a footnote.
 | T10 | Unordered results / ties | Comparison is order-independent, on a declared key per unit. A unit with no stable key cannot be reconciled and must be escalated, not approximated. | PROPOSED | |
 | T11 | Aggregates (SUM/AVG/COUNT) | Exact under T1 for money; `AVG` computed as `SUM/COUNT` on `DECIMAL`, never on floats, with the rounding step named in the unit's recon query. | PROPOSED | Engine-difference in `AVG` truncation is the classic first red wave. |
 | T12 | Legacy swallowed failures (`WHEN OTHERS THEN NULL`) | The target must **not** reproduce silent swallowing. A legacy row that only exists because an error was swallowed is a defect-ledger entry, not a parity target. | PROPOSED | Recon must never credit the target for reproducing a legacy bug. |
+
+### Superseded row (amendment procedure, §Amendment)
+
+T4 v1 read: "`00–49` → 2000s, `50–99` → 1900s, applied uniformly; any value outside the
+window quarantines under T3." It is corrected here, before any wave has run under it,
+because it contradicted the source: Oracle's `TO_DATE(s,'DD-MON-YY')` maps a 2-digit year
+into the **current** century, so `pkg_plans.fn_entitlement`'s `'31-DEC-99'` open-ended
+sentinel is 2099 (dictionary D-05). Under the v1 window it would have become 1999 — an
+expired sentinel that silently drops every subscription while passing every type check. No
+re-verification scope applies: nothing has been loaded under v1.
 
 ## Quarantine interaction (T1 × T2 × T3)
 

@@ -1,0 +1,98 @@
+{
+  "unit": "silver_rating",
+  "source_artifact_path": "services/legacy-billing/db/oracle/packages/03_pkg_rating.sql",
+  "target_objects": [
+    "ow_tp.silver.rating_periods",
+    "ow_tp.silver.rating_results",
+    "ow_tp.silver.quarantine_silver_rating"
+  ],
+  "golden_baseline_location": "procs/transcripts/rating/RATING-001..008.json (8 recorded legacy transcripts, pinned by SOURCE_SHA/FIXTURE_SHA), plus federated LIVE comparison of rating_results. Pilot unit: its recon is the evidence the dictionary survives contact with real data.",
+  "acceptance_checks": [
+    {
+      "id": "ACC-MONEY",
+      "description": "Every money column is DECIMAL(14,2) end to end and reconciles exactly to the cent against the source population (T1). A DOUBLE anywhere in a money lineage rejects the PR."
+    },
+    {
+      "id": "ACC-QUAR",
+      "description": "loaded_rows + quarantined_rows == source_rows for every table in the unit, and the quarantine count is reported next to every money figure (T2/T3, §Quarantine). Quarantine above 5% of source rows halts the unit and escalates (STOPA-QUARANTINE)."
+    },
+    {
+      "id": "ACC-IDEM",
+      "description": "Rerunning the job with identical inputs produces zero net change: MERGE on the declared key plus ns, proven by a second run whose recon report shows the same row counts and checksums."
+    },
+    {
+      "id": "ACC-NS",
+      "description": "Every target row carries ns, every volume path is <ns>/<unit>/..., the job accepts ns as a parameter, and the recon report states the ns it ran under. Nothing unprefixed by ow_tp is read, written or deleted."
+    },
+    {
+      "id": "ACC-TRANSCRIPTS",
+      "description": "All 8 rating transcripts reproduce exactly on billable_units, used_units and rollover_units."
+    },
+    {
+      "id": "ACC-ROLLOVER-QUIRK",
+      "description": "sp_finalize_rating persists rollover_units as GREATEST(quota_units - used_units, 0), which is NOT the g_rollover_units it just computed (D-09). Persist the source formula verbatim; a converter that 'fixes' the inconsistency breaks parity on every row."
+    },
+    {
+      "id": "ACC-NULL-PROP",
+      "description": "Oracle LEAST/GREATEST propagate NULL, Spark's do not (D-01). Every LEAST/GREATEST is wrapped so a NULL argument yields NULL."
+    },
+    {
+      "id": "ACC-TIER-ORDER",
+      "description": "Tier break at 101 units, the double cap, the three-month rollover accumulation, and suspension proration are applied in the source's order (D-13); reordering them changes money even when each step is individually correct."
+    },
+    {
+      "id": "ACC-DATE-COMPARE",
+      "description": "Usage is summed over the source's string-date comparison semantics (D-07), which truncate; converting to timestamp comparison changes which usage events fall in the period."
+    },
+    {
+      "id": "ACC-MERGE-KEY",
+      "description": "f_md5_uuid is reused verbatim as the deterministic MERGE key (D-14) so a rerun updates rather than duplicates; the key derivation is asserted against the source's for a sample of rows."
+    },
+    {
+      "id": "ACC-PILOT-FEEDBACK",
+      "description": "Pilot exit obligation: every dictionary correction discovered here is written back into .migration/09_semantic_dictionary.md before any wave-3 child starts, and the recon report states the true quarantine rate observed on real data."
+    }
+  ],
+  "planted_anomalies": [
+    {
+      "id": "ANOM-ROLLOVER-PERSIST",
+      "description": "Persisted rollover_units differs from the computed value.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-PKG-GLOBAL-STATE",
+      "description": "Rating carries results in package globals across calls, so a second call in the same session can see the first's state.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-STRING-DATE-COMPARE",
+      "description": "Usage windowing by comparing formatted date strings.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-ROWNUM-1",
+      "description": "ROWNUM <= 1 without ORDER BY inside the rating lookup.",
+      "status": "must-detect"
+    },
+    {
+      "id": "ANOM-SWALLOWED-EXCEPTION",
+      "description": "WHEN OTHERS THEN NULL paths that hide a failure and return a partial result.",
+      "status": "must-detect"
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "AL32UTF8 via federated Oracle JDBC (FREEPDB1/OW_BILLING)",
+    "byte_transparency": "Values are carried through as Unicode text without re-encoding; no transliteration, no NFC/NFD normalisation, no whitespace trimming. A trailing-space-padded CHAR column keeps its padding.",
+    "invalid_bytes": "Unconvertible bytes are not silently replaced: the row is quarantined with reason ENC_INVALID and counted in recon."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Source NULL and empty string are distinct and must stay distinct: a NULL stays NULL, a zero-length VARCHAR2 stays zero-length. Never coalesce NULL to '' or to 0 to make a comparison pass. An unexpected extra column from the source fails the unit rather than being ignored, because a schema drift no one declared is a correctness event."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "A period with no usage events produces a zero-usage rating row exactly where the source produces one, and no row where the source produces none. The transcripts pin which of the two it is."
+  },
+  "trigger_granularity": "per-batch"
+}

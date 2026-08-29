@@ -16,7 +16,7 @@ and the shared Terraform plan must be clean at every wave boundary.
 bootstrap, the golden baselines recon compares against, and the contracts that settle the ambiguity
 classes (quarantine reason codes, trigger/batch granularity, surrogate-key exclusions).
 
-Wave 0 is serial by construction: it is the only wave whose output every other unit reads, and 22
+Wave 0 is serial by construction: it is the only wave whose output every other unit reads, and 25
 dictionary entries decided in parallel by different children is exactly the failure this run exists
 to avoid.
 

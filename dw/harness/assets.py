@@ -10,6 +10,12 @@ from fingerprints import fingerprint
 ROOT = Path(__file__).resolve().parents[2]
 ESTATE = ROOT / "dw/legacy-estate"
 SEED = ESTATE / "seed/seed.sql"
+RUNTIME_SOURCES = (
+    ESTATE / "ddl/compat/redshift_to_postgres.py",
+    ESTATE / "ddl/compat/shims.sql",
+    ROOT / "dw/harness/manifest.py",
+    ROOT / "dw/harness/digest.py",
+)
 
 
 @dataclass(frozen=True)
@@ -151,4 +157,5 @@ def fingerprint_for(table: str) -> str:
             for path in (asset.ddl, *asset.staging_ddls)
         ),
         seed_sources=(SEED,),
+        runtime_sources=RUNTIME_SOURCES,
     )

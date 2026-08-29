@@ -155,6 +155,27 @@ def test_upstream_elt_change_changes_downstream_fingerprint(
     assert before != after
 
 
+def test_each_runtime_input_changes_fingerprint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import assets
+
+    for index, source in enumerate(assets.RUNTIME_SOURCES):
+        replacement = tmp_path / f"runtime-{index}.py"
+        replacement.write_bytes(source.read_bytes())
+        sources = list(assets.RUNTIME_SOURCES)
+        sources[index] = replacement
+        monkeypatch.setattr(assets, "RUNTIME_SOURCES", tuple(sources))
+        before = assets.fingerprint_for("mart.returns_rate_by_category")
+        replacement.write_bytes(replacement.read_bytes() + b"\n# changed\n")
+        after = assets.fingerprint_for("mart.returns_rate_by_category")
+        assert before != after
+        monkeypatch.setattr(assets, "RUNTIME_SOURCES", tuple(
+            list(assets.RUNTIME_SOURCES[:index]) + [source]
+            + list(assets.RUNTIME_SOURCES[index + 1:])
+        ))
+
+
 def test_code_only_scan_does_not_count_procedure_names_as_tables(
     tmp_path: Path,
 ) -> None:
@@ -162,9 +183,15 @@ def test_code_only_scan_does_not_count_procedure_names_as_tables(
 
     estate = tmp_path / "estate"
     (estate / "ddl/core").mkdir(parents=True)
+    (estate / "elt").mkdir()
     (estate / "procs").mkdir()
+    (estate / "jobs").mkdir()
     (estate / "ddl/core/fct_orders.sql").write_text(
         "CREATE TABLE core.fct_orders (order_id BIGINT);"
+    )
+    (estate / "elt/fct_orders.sql").write_text(
+        "INSERT INTO core.fct_orders (order_id) "
+        "SELECT order_id FROM staging.stg_orders_raw;"
     )
     (estate / "procs/sp_housekeeping.sql").write_text(
         "CREATE OR REPLACE PROCEDURE core.sp_housekeeping()\n"
@@ -174,8 +201,12 @@ def test_code_only_scan_does_not_count_procedure_names_as_tables(
     (estate / "procs/sp_refresh_marts.sql").write_text(
         "CREATE OR REPLACE PROCEDURE core.sp_refresh_marts()\n"
         "LANGUAGE plpgsql AS $$ BEGIN "
+        "CALL core.sp_housekeeping(); "
         "INSERT INTO mart.daily_revenue_by_channel "
         "SELECT * FROM core.fct_orders; END; $$;"
+    )
+    (estate / "jobs/schedule.py").write_text(
+        "elt/fct_orders.sql\nCALL core.sp_refresh_marts();"
     )
     output = tmp_path / "inventory.json"
     assert (
@@ -190,6 +221,13 @@ def test_code_only_scan_does_not_count_procedure_names_as_tables(
         == 0
     )
     inventory = json.loads(output.read_text())
-    assert inventory["totals"]["tables"] == 2
+    assert inventory["totals"]["tables"] == 3
     assert "core.sp_housekeeping" not in inventory["catalog"]
     assert "core.sp_refresh_marts" not in inventory["catalog"]
+    assets = {
+        asset["path"]: asset for asset in inventory["assets"]
+    }
+    assert assets["elt/fct_orders.sql"]["scheduled"] is True
+    assert assets["ddl/core/fct_orders.sql"]["scheduled"] is False
+    assert assets["procs/sp_refresh_marts.sql"]["scheduled"] is True
+    assert assets["procs/sp_housekeeping.sql"]["scheduled"] is True

@@ -12,6 +12,8 @@ The fingerprint deliberately covers three things, not one:
   * the schema         -- the DDL of every table the asset reads;
   * the seed           -- the data generator, because recorded row digests are a
                           function of the data, not just of the code.
+It also covers the executable compatibility and manifest runtime, because
+changing either changes the recorded values or what those values mean.
 Covering only the source is the classic hole: a seed edit then silently
 re-defines "correct" while every fingerprint still matches.
 """
@@ -36,6 +38,7 @@ def fingerprint(
     asset_sources: Iterable[Path],
     schema_sources: Iterable[Path],
     seed_sources: Iterable[Path],
+    runtime_sources: Iterable[Path] = (),
 ) -> str:
     """Deterministic fingerprint over every input that can change behaviour."""
     payload = {
@@ -48,6 +51,9 @@ def fingerprint(
         ),
         "seed": sorted(
             f"{Path(p).name}:{file_digest(p)}" for p in seed_sources
+        ),
+        "runtime": sorted(
+            f"{Path(p).name}:{file_digest(p)}" for p in runtime_sources
         ),
     }
     for key in ("asset", "schema", "seed"):

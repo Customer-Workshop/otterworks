@@ -42,7 +42,11 @@ INSERT_COLUMNS = re.compile(
 )
 PROCEDURE_DECLARATION = re.compile(
     r"\bCREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\s+"
-    r"[a-z_]+\.[a-z_][a-z0-9_]*\s*\([^)]*\)",
+    r"(?P<schema>[a-z_]+)\.(?P<name>[a-z_][a-z0-9_]*)\s*\([^)]*\)",
+    re.IGNORECASE,
+)
+CALL_STATEMENT = re.compile(
+    r"\bCALL\s+(?P<schema>[a-z_]+)\.(?P<name>[a-z_][a-z0-9_]*)\s*\(",
     re.IGNORECASE,
 )
 
@@ -144,7 +148,9 @@ def column_lineage(sql: str, reads: Iterable[str]) -> dict[str, list[str]]:
 
 def scan_asset(path: Path, estate: Path) -> Asset:
     text = path.read_text(errors="replace")
-    parsed_text = PROCEDURE_DECLARATION.sub("", text)
+    parsed_text = CALL_STATEMENT.sub(
+        "", PROCEDURE_DECLARATION.sub("", text)
+    )
     kind = path.parent.name if path.parent.parent.name == "ddl" else path.parent.name
     asset = Asset(
         asset_id=str(path.relative_to(estate)),
@@ -166,21 +172,75 @@ def scan_asset(path: Path, estate: Path) -> Asset:
     # found nothing in is reported as unparsed rather than dropped, because an
     # inventory that silently omits what it could not read is the inventory that
     # makes a migration look smaller than it is.
-    if path.suffix == ".sql" and not referenced:
+    has_procedure_syntax = (
+        PROCEDURE_DECLARATION.search(text) is not None
+        or CALL_STATEMENT.search(text) is not None
+    )
+    if path.suffix == ".sql" and not referenced and not has_procedure_syntax:
         asset.parse_status = "unparsed"
     return asset
 
 
 def scheduled_assets(estate: Path) -> set[str]:
-    """Asset ids named by anything that actually schedules work."""
+    """Resolve scheduled commands to exact ELT/procedure asset identities."""
+    paths = [
+        path
+        for path in sorted(estate.rglob("*"))
+        if path.is_file()
+        and path.suffix in {".sql", ".py"}
+        and "compat" not in path.parts
+    ]
+    assets = [scan_asset(path, estate) for path in paths]
+    by_path = {asset.path: asset for asset in assets}
+    table_writers = {
+        table: asset.path
+        for asset in assets
+        if asset.kind == "elt"
+        for table in asset.writes
+    }
+    procedure_writers = {
+        f"{match.group('schema').lower()}.{match.group('name').lower()}": asset.path
+        for asset in assets
+        if (match := PROCEDURE_DECLARATION.search(
+            (estate / asset.path).read_text(errors="replace")
+        ))
+    }
     named: set[str] = set()
+    queued: list[str] = []
     for path in sorted((estate / "jobs").rglob("*")):
-        if path.is_file():
-            text = path.read_text(errors="replace")
-            named |= {m.group(0) for m in re.finditer(r"[\w/\-]+\.sql", text)}
-            named |= {
-                f"{s.lower()}.{t.lower()}" for s, t in QUALIFIED.findall(text)
-            }
+        if not path.is_file():
+            continue
+        text = path.read_text(errors="replace")
+        for match in re.finditer(r"(?:[\w.-]+/)+[\w.-]+\.sql", text):
+            candidate = match.group(0)
+            if candidate in by_path and candidate not in named:
+                named.add(candidate)
+                queued.append(candidate)
+        for match in CALL_STATEMENT.finditer(text):
+            procedure = (
+                f"{match.group('schema').lower()}.{match.group('name').lower()}"
+            )
+            candidate = procedure_writers.get(procedure)
+            if candidate and candidate not in named:
+                named.add(candidate)
+                queued.append(candidate)
+        for schema, table in QUALIFIED.findall(text):
+            candidate = table_writers.get(f"{schema.lower()}.{table.lower()}")
+            if candidate and candidate not in named:
+                named.add(candidate)
+                queued.append(candidate)
+
+    while queued:
+        path = queued.pop()
+        text = (estate / path).read_text(errors="replace")
+        for match in CALL_STATEMENT.finditer(text):
+            procedure = (
+                f"{match.group('schema').lower()}.{match.group('name').lower()}"
+            )
+            candidate = procedure_writers.get(procedure)
+            if candidate and candidate not in named:
+                named.add(candidate)
+                queued.append(candidate)
     return named
 
 
@@ -352,9 +412,7 @@ def main(argv: list[str] | None = None) -> int:
     assets = [scan_asset(p, args.estate) for p in paths]
     named = scheduled_assets(args.estate)
     for asset in assets:
-        asset.scheduled = asset.path in named or any(
-            Path(asset.path).name in n for n in named
-        ) or bool(set(asset.writes) & named)
+        asset.scheduled = asset.path in named
 
     catalog = catalog_tables(args.dsn) if args.dsn else {}
     quality = run_dq_probes(args.dsn) if args.dsn else {}

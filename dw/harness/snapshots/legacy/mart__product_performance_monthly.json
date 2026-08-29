@@ -7,6 +7,7 @@
       "min": "2023-01-01",
       "name": "revenue_month",
       "non_null": 280392,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -17,6 +18,7 @@
       "min": "1",
       "name": "product_id",
       "non_null": 280392,
+      "scale": 0,
       "sum": "1121761814",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "Product 1",
       "name": "product_name",
       "non_null": 280392,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -37,6 +40,7 @@
       "min": "Apparel",
       "name": "category",
       "non_null": 280392,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -47,6 +51,7 @@
       "min": "2",
       "name": "units_sold",
       "non_null": 280392,
+      "scale": 0,
       "sum": "3303351",
       "type": "bigint"
     },
@@ -57,6 +62,7 @@
       "min": "1",
       "name": "order_count",
       "non_null": 280392,
+      "scale": 0,
       "sum": "1080002",
       "type": "bigint"
     },
@@ -67,6 +73,7 @@
       "min": "13.78",
       "name": "revenue",
       "non_null": 280392,
+      "scale": 2,
       "sum": "565147801.07",
       "type": "numeric"
     },
@@ -77,12 +84,13 @@
       "min": "3.50",
       "name": "margin",
       "non_null": 280392,
+      "scale": 2,
       "sum": "152516088.26",
       "type": "numeric"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "f1ef99d06f8559cef0a10acc97cbd7ae4dabcc756888a7c9a41a202429e2e02e",
+  "fingerprint": "c8ce96e14e603b652034f4d0177ad09478f6593de86833b355459dbac066673f",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 280392,

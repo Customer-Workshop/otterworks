@@ -7,6 +7,7 @@
       "min": "1",
       "name": "customer_sk",
       "non_null": 60000,
+      "scale": 0,
       "sum": "1800030000",
       "type": "bigint"
     },
@@ -17,6 +18,7 @@
       "min": "1",
       "name": "customer_id",
       "non_null": 60000,
+      "scale": 0,
       "sum": "1800030000",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "Customer 1",
       "name": "customer_name",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -37,6 +40,7 @@
       "min": "user10000@example.com",
       "name": "email",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -47,6 +51,7 @@
       "min": "CA",
       "name": "country_code",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character"
     },
@@ -57,6 +62,7 @@
       "min": "Austin",
       "name": "city",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -67,6 +73,7 @@
       "min": "CONSUMER",
       "name": "segment",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -77,6 +84,7 @@
       "min": "false",
       "name": "marketing_opt_in",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "boolean"
     },
@@ -87,6 +95,7 @@
       "min": "000040bca5d4803f32e064691db3e255",
       "name": "hash_diff",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -97,6 +106,7 @@
       "min": "2026-01-01 03:15:00",
       "name": "effective_from",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     },
@@ -107,6 +117,7 @@
       "min": "9999-12-31 00:00:00",
       "name": "effective_to",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     },
@@ -117,6 +128,7 @@
       "min": "true",
       "name": "is_current",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "boolean"
     }

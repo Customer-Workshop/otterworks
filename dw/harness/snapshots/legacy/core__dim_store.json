@@ -7,6 +7,7 @@
       "min": "0",
       "name": "store_id",
       "non_null": 73,
+      "scale": 0,
       "sum": "6588",
       "type": "integer"
     },
@@ -17,6 +18,7 @@
       "min": "Digital",
       "name": "store_name",
       "non_null": 73,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -27,6 +29,7 @@
       "min": "DIGITAL",
       "name": "store_type",
       "non_null": 73,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     }

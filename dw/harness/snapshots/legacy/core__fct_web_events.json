@@ -7,6 +7,7 @@
       "min": "1",
       "name": "event_id",
       "non_null": 2000000,
+      "scale": 0,
       "sum": "2000001000000",
       "type": "bigint"
     },
@@ -17,6 +18,7 @@
       "min": "1",
       "name": "session_id",
       "non_null": 2000000,
+      "scale": 0,
       "sum": "285715285715",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "2",
       "name": "customer_id",
       "non_null": 1599999,
+      "scale": 0,
       "sum": "48001801513",
       "type": "bigint"
     },
@@ -37,6 +40,7 @@
       "min": "2023-01-01 00:00:07",
       "name": "event_ts",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     },
@@ -47,6 +51,7 @@
       "min": "2022-12-31 16:00:07",
       "name": "local_event_ts",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     },
@@ -57,6 +62,7 @@
       "min": "2022-12-31",
       "name": "local_event_date",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -67,6 +73,7 @@
       "min": "add_to_cart",
       "name": "event_type",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -77,6 +84,7 @@
       "min": "/p/1",
       "name": "page_url",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -87,6 +95,7 @@
       "min": "desktop",
       "name": "device_type",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -97,6 +106,7 @@
       "min": "affiliate",
       "name": "utm_source",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -107,6 +117,7 @@
       "min": "1",
       "name": "event_index",
       "non_null": 2000000,
+      "scale": 0,
       "sum": "7999995",
       "type": "integer"
     },
@@ -117,6 +128,7 @@
       "min": "2",
       "name": "session_event_count",
       "non_null": 2000000,
+      "scale": 0,
       "sum": "13999990",
       "type": "integer"
     },
@@ -127,6 +139,7 @@
       "min": "false",
       "name": "is_conversion",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "boolean"
     },
@@ -137,6 +150,7 @@
       "min": "2026-01-01 03:40:00",
       "name": "load_ts",
       "non_null": 2000000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     }

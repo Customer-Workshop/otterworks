@@ -7,6 +7,7 @@
       "min": "1",
       "name": "order_id",
       "non_null": 400000,
+      "scale": 0,
       "sum": "80000200000",
       "type": "bigint"
     },
@@ -17,6 +18,7 @@
       "min": "1",
       "name": "customer_id",
       "non_null": 400000,
+      "scale": 0,
       "sum": "11999847705",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "2023-01-01 00:00:21",
       "name": "order_ts",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     },
@@ -37,6 +40,7 @@
       "min": "2023-01-01",
       "name": "order_date",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -47,6 +51,7 @@
       "min": "CALL_CENTER",
       "name": "channel",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -57,6 +62,7 @@
       "min": "0",
       "name": "store_id",
       "non_null": 400000,
+      "scale": 0,
       "sum": "7366878",
       "type": "integer"
     },
@@ -67,6 +73,7 @@
       "min": "CAD",
       "name": "currency_code",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "character"
     },
@@ -77,6 +84,7 @@
       "min": "CANCELLED",
       "name": "order_status",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -87,6 +95,7 @@
       "min": "15.00",
       "name": "gross_amount",
       "non_null": 400000,
+      "scale": 2,
       "sum": "485988866.21",
       "type": "numeric"
     },
@@ -97,6 +106,7 @@
       "min": "0.00",
       "name": "discount_amount",
       "non_null": 400000,
+      "scale": 2,
       "sum": "34017885.01",
       "type": "numeric"
     },
@@ -107,6 +117,7 @@
       "min": "2.00",
       "name": "shipping_amount",
       "non_null": 400000,
+      "scale": 2,
       "sum": "4397883.77",
       "type": "numeric"
     },
@@ -117,6 +128,7 @@
       "min": "1.24",
       "name": "tax_amount",
       "non_null": 400000,
+      "scale": 2,
       "sum": "40094086.46",
       "type": "numeric"
     },
@@ -127,6 +139,7 @@
       "min": "16.47",
       "name": "net_amount",
       "non_null": 400000,
+      "scale": 2,
       "sum": "496462951.43",
       "type": "numeric"
     },
@@ -137,6 +150,7 @@
       "min": "\\N",
       "name": "promo_code",
       "non_null": 57143,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -147,6 +161,7 @@
       "min": "orders_2023-01-01.csv",
       "name": "source_file",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -157,6 +172,7 @@
       "min": "2026-01-01 03:30:00",
       "name": "load_ts",
       "non_null": 400000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     }

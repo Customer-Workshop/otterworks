@@ -7,6 +7,7 @@
       "min": "1",
       "name": "order_item_id",
       "non_null": 1080002,
+      "scale": 0,
       "sum": "648001063049",
       "type": "bigint"
     },
@@ -17,6 +18,7 @@
       "min": "1",
       "name": "order_id",
       "non_null": 1080002,
+      "scale": 0,
       "sum": "216000714348",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "1",
       "name": "customer_id",
       "non_null": 1080002,
+      "scale": 0,
       "sum": "32400006976",
       "type": "bigint"
     },
@@ -37,6 +40,7 @@
       "min": "2023-01-01",
       "name": "order_date",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -47,6 +51,7 @@
       "min": "CALL_CENTER",
       "name": "channel",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -57,6 +62,7 @@
       "min": "1",
       "name": "product_id",
       "non_null": 1080002,
+      "scale": 0,
       "sum": "4320481973",
       "type": "bigint"
     },
@@ -67,6 +73,7 @@
       "min": "Product 1",
       "name": "product_name",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -77,6 +84,7 @@
       "min": "Apparel",
       "name": "category",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -87,6 +95,7 @@
       "min": "Subcat 0",
       "name": "subcategory",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -97,6 +106,7 @@
       "min": "Brand 0",
       "name": "brand",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -107,6 +117,7 @@
       "min": "1",
       "name": "quantity",
       "non_null": 1080002,
+      "scale": 0,
       "sum": "3303351",
       "type": "integer"
     },
@@ -117,6 +128,7 @@
       "min": "7.35",
       "name": "unit_price",
       "non_null": 1080002,
+      "scale": 2,
       "sum": "195549815.50",
       "type": "numeric"
     },
@@ -127,6 +139,7 @@
       "min": "0.00",
       "name": "item_discount",
       "non_null": 1080002,
+      "scale": 2,
       "sum": "33168993.34",
       "type": "numeric"
     },
@@ -137,6 +150,7 @@
       "min": "6.59",
       "name": "line_amount",
       "non_null": 1080002,
+      "scale": 2,
       "sum": "565147801.07",
       "type": "numeric"
     },
@@ -147,6 +161,7 @@
       "min": "5.11",
       "name": "cost_amount",
       "non_null": 1080002,
+      "scale": 2,
       "sum": "412631712.81",
       "type": "numeric"
     },
@@ -157,6 +172,7 @@
       "min": "1.48",
       "name": "margin_amount",
       "non_null": 1080002,
+      "scale": 2,
       "sum": "152516088.26",
       "type": "numeric"
     },
@@ -167,6 +183,7 @@
       "min": "CAD",
       "name": "currency_code",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "character"
     },
@@ -177,6 +194,7 @@
       "min": "false",
       "name": "is_returned",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "boolean"
     },
@@ -187,12 +205,13 @@
       "min": "2026-01-01 03:35:00",
       "name": "load_ts",
       "non_null": 1080002,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "cf5ff5cd16d535d913c7bd55b24a1e1168eed697d8113d4191936b2c8c1ba09a",
+  "fingerprint": "0ff3f981fc6312718d793e58c990ea12d597523e3cf79f4f5a3154fb9e2f5be4",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 1080002,

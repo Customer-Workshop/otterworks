@@ -7,6 +7,7 @@
       "min": "1",
       "name": "customer_id",
       "non_null": 60000,
+      "scale": 0,
       "sum": "1800030000",
       "type": "bigint"
     },
@@ -17,6 +18,7 @@
       "min": "CONSUMER",
       "name": "segment",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -27,6 +29,7 @@
       "min": "2023-01-01",
       "name": "first_order_date",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -37,6 +40,7 @@
       "min": "2024-05-23",
       "name": "last_order_date",
       "non_null": 60000,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -47,6 +51,7 @@
       "min": "6",
       "name": "order_count",
       "non_null": 60000,
+      "scale": 0,
       "sum": "400000",
       "type": "bigint"
     },
@@ -57,6 +62,7 @@
       "min": "1172.12",
       "name": "lifetime_revenue",
       "non_null": 60000,
+      "scale": 2,
       "sum": "485988866.21",
       "type": "numeric"
     },
@@ -67,6 +73,7 @@
       "min": "0.00",
       "name": "lifetime_discount",
       "non_null": 60000,
+      "scale": 2,
       "sum": "34017885.01",
       "type": "numeric"
     },
@@ -77,12 +84,13 @@
       "min": "1031.48",
       "name": "lifetime_net",
       "non_null": 60000,
+      "scale": 2,
       "sum": "451970981.20",
       "type": "numeric"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "d4d78c8b7fa1b2d92309c409398a29aa014bb51f377ed8ac18158e04d206c1a1",
+  "fingerprint": "ab07c1eba46e03d76eadb511bfab066eed4274c1b8af8362aeed4d58c9c7491c",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 60000,

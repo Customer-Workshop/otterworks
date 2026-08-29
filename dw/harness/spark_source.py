@@ -157,6 +157,7 @@ def build_manifest(
             {
                 "name": column.name,
                 "type": column.type_name,
+                "scale": column.scale,
                 "digest": column_digests_result[index],
                 "non_null": int(profile_row[offset]),
                 "distinct": int(profile_row[offset + 1]),

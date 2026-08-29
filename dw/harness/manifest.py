@@ -190,6 +190,7 @@ def build(
             {
                 "name": column.name,
                 "type": column.type_name,
+                "scale": column.scale,
                 "digest": digests[idx],
                 "non_null": int(profile_row[offset]),
                 "distinct": int(profile_row[offset + 1]),

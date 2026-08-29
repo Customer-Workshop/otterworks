@@ -7,6 +7,7 @@
       "min": "2022-12-31",
       "name": "local_event_date",
       "non_null": 1097,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -17,6 +18,7 @@
       "min": "617",
       "name": "sessions",
       "non_null": 1097,
+      "scale": 0,
       "sum": "2000000",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "209",
       "name": "page_view_sessions",
       "non_null": 1097,
+      "scale": 0,
       "sum": "666668",
       "type": "bigint"
     },
@@ -37,6 +40,7 @@
       "min": "102",
       "name": "add_to_cart_sessions",
       "non_null": 1097,
+      "scale": 0,
       "sum": "333336",
       "type": "bigint"
     },
@@ -47,6 +51,7 @@
       "min": "102",
       "name": "checkout_sessions",
       "non_null": 1097,
+      "scale": 0,
       "sum": "333333",
       "type": "bigint"
     },
@@ -57,12 +62,13 @@
       "min": "101",
       "name": "purchase_sessions",
       "non_null": 1097,
+      "scale": 0,
       "sum": "333332",
       "type": "bigint"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "56ef898a1d4e2c8dfb412d4ce1ac7ba8e6e349357b196ed1215df9ba16b54e7d",
+  "fingerprint": "6afd3000b5b578ccce042ee0378bdaf855b735b75e44710047a06b74d199688a",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 1097,

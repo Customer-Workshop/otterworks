@@ -40,6 +40,11 @@ WRITE_STATEMENT = re.compile(
 INSERT_COLUMNS = re.compile(
     r"INSERT\s+INTO\s+[a-z_]+\.[a-z0-9_]+\s*\(([^)]*)\)", re.IGNORECASE
 )
+PROCEDURE_DECLARATION = re.compile(
+    r"\bCREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\s+"
+    r"[a-z_]+\.[a-z_][a-z0-9_]*\s*\([^)]*\)",
+    re.IGNORECASE,
+)
 
 # Assets that exist to *operate* the estate rather than to be migrated: the
 # data generator, the schedule definitions, and the glue that invokes scripts.
@@ -139,14 +144,17 @@ def column_lineage(sql: str, reads: Iterable[str]) -> dict[str, list[str]]:
 
 def scan_asset(path: Path, estate: Path) -> Asset:
     text = path.read_text(errors="replace")
+    parsed_text = PROCEDURE_DECLARATION.sub("", text)
     kind = path.parent.name if path.parent.parent.name == "ddl" else path.parent.name
     asset = Asset(
         asset_id=str(path.relative_to(estate)),
         path=str(path.relative_to(estate)),
         kind={"staging": "ddl", "core": "ddl", "mart": "ddl"}.get(kind, kind),
     )
-    written = [m.group(1).lower() for m in WRITE_STATEMENT.finditer(text)]
-    referenced = {f"{s.lower()}.{t.lower()}" for s, t in QUALIFIED.findall(text)}
+    written = [m.group(1).lower() for m in WRITE_STATEMENT.finditer(parsed_text)]
+    referenced = {
+        f"{s.lower()}.{t.lower()}" for s, t in QUALIFIED.findall(parsed_text)
+    }
     asset.writes = sorted(set(written))
     asset.reads = sorted(referenced - set(asset.writes))
     asset.features, asset.redshift_constructs = features_of(text)
@@ -328,13 +336,13 @@ def summarise(inventory: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--estate", type=Path, required=True)
     parser.add_argument("--dsn", help="Postgres DSN; omit for a code-only scan")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--summary", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     paths = [
         p

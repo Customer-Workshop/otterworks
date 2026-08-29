@@ -7,6 +7,7 @@
       "min": "1",
       "name": "product_id",
       "non_null": 8000,
+      "scale": 0,
       "sum": "32004000",
       "type": "bigint"
     },
@@ -17,6 +18,7 @@
       "min": "Product 1",
       "name": "product_name",
       "non_null": 8000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -27,6 +29,7 @@
       "min": "Apparel",
       "name": "category",
       "non_null": 8000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -37,6 +40,7 @@
       "min": "Subcat 0",
       "name": "subcategory",
       "non_null": 8000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -47,6 +51,7 @@
       "min": "Brand 0",
       "name": "brand",
       "non_null": 8000,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -57,6 +62,7 @@
       "min": "5.07",
       "name": "unit_cost",
       "non_null": 8000,
+      "scale": 2,
       "sum": "1000295.58",
       "type": "numeric"
     },
@@ -67,6 +73,7 @@
       "min": "7.35",
       "name": "list_price",
       "non_null": 8000,
+      "scale": 2,
       "sum": "1450430.56",
       "type": "numeric"
     },
@@ -77,6 +84,7 @@
       "min": "false",
       "name": "is_active",
       "non_null": 8000,
+      "scale": null,
       "sum": null,
       "type": "boolean"
     },
@@ -87,6 +95,7 @@
       "min": "1",
       "name": "supplier_id",
       "non_null": 8000,
+      "scale": 0,
       "sum": "483319",
       "type": "integer"
     },
@@ -97,6 +106,7 @@
       "min": "2026-01-01 03:20:00",
       "name": "load_ts",
       "non_null": 8000,
+      "scale": null,
       "sum": null,
       "type": "timestamp without time zone"
     }

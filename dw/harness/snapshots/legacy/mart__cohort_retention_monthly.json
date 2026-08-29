@@ -7,6 +7,7 @@
       "min": "2022-01-01",
       "name": "cohort_month",
       "non_null": 1728,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -17,6 +18,7 @@
       "min": "2023-01-01",
       "name": "activity_month",
       "non_null": 1728,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -27,6 +29,7 @@
       "min": "1150",
       "name": "cohort_size",
       "non_null": 1728,
+      "scale": 0,
       "sum": "2160000",
       "type": "bigint"
     },
@@ -37,6 +40,7 @@
       "min": "400",
       "name": "active_customers",
       "non_null": 1728,
+      "scale": 0,
       "sum": "923510",
       "type": "bigint"
     },
@@ -47,12 +51,13 @@
       "min": "0.3464",
       "name": "retention_pct",
       "non_null": 1728,
+      "scale": 4,
       "sum": "738.5661",
       "type": "numeric"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "5570de30aca1c535022bae8d5010b1b7afbc156c5367feac183e390f16e1422e",
+  "fingerprint": "cb58334ba068c26edd4e7356cc4e775daecd3c2eca23b5d46134ee1619ace00a",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 1728,

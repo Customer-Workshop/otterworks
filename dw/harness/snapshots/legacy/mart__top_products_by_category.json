@@ -7,6 +7,7 @@
       "min": "Apparel",
       "name": "category",
       "non_null": 6,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -17,6 +18,7 @@
       "min": "5",
       "name": "top_product_count",
       "non_null": 6,
+      "scale": 0,
       "sum": "30",
       "type": "integer"
     },
@@ -27,6 +29,7 @@
       "min": "Product 2341, Product 6211, Product 2131, Product 3241, Product 5311",
       "name": "product_names",
       "non_null": 6,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -37,12 +40,13 @@
       "min": "1126607.77",
       "name": "top_revenue",
       "non_null": 6,
+      "scale": 2,
       "sum": "6790082.84",
       "type": "numeric"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "54e3f4bffb8f39790fc5f5c8a795f3bd6aea1e50e4b10df915d7190878b53c2d",
+  "fingerprint": "4ae03cc4fafa522688464b0ba13ebd937cb9edb4629c9b65ad3330bfa05f4a93",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 6,

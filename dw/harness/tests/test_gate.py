@@ -109,3 +109,87 @@ def test_fingerprint_mismatch_blocks_and_override_is_audited(
     report = json.loads(report_path.read_text())
     assert report["status"] == "pass"
     assert reason in report["notes"][0]
+
+
+def test_schema_incompatible_columns_fail_even_when_values_match() -> None:
+    legacy = _manifest("same")
+    converted = _manifest("same")
+    legacy.columns = [{"name": "value", "type": "bigint"}]
+    converted.columns = [{"name": "value", "type": "string"}]
+    result = compare(legacy, converted)
+    assert result.status is Status.FAIL
+    assert any(
+        finding.kind == "type" and finding.column == "value"
+        for finding in result.findings
+    )
+
+
+def test_decimal_scale_change_fails_type_check() -> None:
+    legacy = _manifest("same")
+    converted = _manifest("same")
+    legacy.columns = [{"name": "value", "type": "numeric", "scale": 2}]
+    converted.columns = [{"name": "value", "type": "decimal", "scale": 4}]
+    result = compare(legacy, converted)
+    assert result.status is Status.FAIL
+    assert result.findings[0].kind == "type"
+
+
+def test_upstream_elt_change_changes_downstream_fingerprint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import assets
+    from dataclasses import replace
+
+    upstream_key = "core.fct_order_items"
+    upstream = assets.ASSETS[upstream_key]
+    replacement = tmp_path / "core_fct_order_items.sql"
+    replacement.write_text(upstream.elt.read_text())
+    monkeypatch.setitem(
+        assets.ASSETS,
+        upstream_key,
+        replace(upstream, elt=replacement),
+    )
+    before = assets.fingerprint_for("mart.returns_rate_by_category")
+    replacement.write_text(replacement.read_text() + "\n-- changed\n")
+    after = assets.fingerprint_for("mart.returns_rate_by_category")
+    assert before != after
+
+
+def test_code_only_scan_does_not_count_procedure_names_as_tables(
+    tmp_path: Path,
+) -> None:
+    from dw.discovery.scan import main as scan_main
+
+    estate = tmp_path / "estate"
+    (estate / "ddl/core").mkdir(parents=True)
+    (estate / "procs").mkdir()
+    (estate / "ddl/core/fct_orders.sql").write_text(
+        "CREATE TABLE core.fct_orders (order_id BIGINT);"
+    )
+    (estate / "procs/sp_housekeeping.sql").write_text(
+        "CREATE OR REPLACE PROCEDURE core.sp_housekeeping()\n"
+        "LANGUAGE plpgsql AS $$ BEGIN "
+        "PERFORM COUNT(*) FROM core.fct_orders; END; $$;"
+    )
+    (estate / "procs/sp_refresh_marts.sql").write_text(
+        "CREATE OR REPLACE PROCEDURE core.sp_refresh_marts()\n"
+        "LANGUAGE plpgsql AS $$ BEGIN "
+        "INSERT INTO mart.daily_revenue_by_channel "
+        "SELECT * FROM core.fct_orders; END; $$;"
+    )
+    output = tmp_path / "inventory.json"
+    assert (
+        scan_main(
+            [
+                "--estate",
+                str(estate),
+                "--out",
+                str(output),
+            ]
+        )
+        == 0
+    )
+    inventory = json.loads(output.read_text())
+    assert inventory["totals"]["tables"] == 2
+    assert "core.sp_housekeeping" not in inventory["catalog"]
+    assert "core.sp_refresh_marts" not in inventory["catalog"]

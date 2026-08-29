@@ -7,6 +7,7 @@
       "min": "2022-01-01",
       "name": "date_key",
       "non_null": 1826,
+      "scale": null,
       "sum": null,
       "type": "date"
     },
@@ -17,6 +18,7 @@
       "min": "2022",
       "name": "calendar_year",
       "non_null": 1826,
+      "scale": 0,
       "sum": "3695824",
       "type": "integer"
     },
@@ -27,6 +29,7 @@
       "min": "1",
       "name": "calendar_month",
       "non_null": 1826,
+      "scale": 0,
       "sum": "11912",
       "type": "integer"
     },
@@ -37,6 +40,7 @@
       "min": "April    ",
       "name": "month_name",
       "non_null": 1826,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -47,6 +51,7 @@
       "min": "1",
       "name": "calendar_day",
       "non_null": 1826,
+      "scale": 0,
       "sum": "28719",
       "type": "integer"
     },
@@ -57,6 +62,7 @@
       "min": "0",
       "name": "day_of_week",
       "non_null": 1826,
+      "scale": 0,
       "sum": "5476",
       "type": "integer"
     },
@@ -67,6 +73,7 @@
       "min": "Friday   ",
       "name": "day_name",
       "non_null": 1826,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -77,6 +84,7 @@
       "min": "1",
       "name": "week_of_year",
       "non_null": 1826,
+      "scale": 0,
       "sum": "48546",
       "type": "integer"
     },
@@ -87,6 +95,7 @@
       "min": "1",
       "name": "quarter_num",
       "non_null": 1826,
+      "scale": 0,
       "sum": "4581",
       "type": "integer"
     },
@@ -97,6 +106,7 @@
       "min": "2021",
       "name": "fiscal_year",
       "non_null": 1826,
+      "scale": 0,
       "sum": "3695373",
       "type": "integer"
     },
@@ -107,6 +117,7 @@
       "min": "1",
       "name": "fiscal_quarter",
       "non_null": 1826,
+      "scale": 0,
       "sum": "4559",
       "type": "integer"
     },
@@ -117,6 +128,7 @@
       "min": "false",
       "name": "is_weekend",
       "non_null": 1826,
+      "scale": null,
       "sum": null,
       "type": "boolean"
     }

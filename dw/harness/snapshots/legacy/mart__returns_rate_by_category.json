@@ -7,6 +7,7 @@
       "min": "Apparel",
       "name": "category",
       "non_null": 6,
+      "scale": null,
       "sum": null,
       "type": "character varying"
     },
@@ -17,6 +18,7 @@
       "min": "178806",
       "name": "sold_items",
       "non_null": 6,
+      "scale": 0,
       "sum": "1080002",
       "type": "bigint"
     },
@@ -27,6 +29,7 @@
       "min": "4462",
       "name": "returned_items",
       "non_null": 6,
+      "scale": 0,
       "sum": "27002",
       "type": "bigint"
     },
@@ -37,6 +40,7 @@
       "min": "2260331.80",
       "name": "refund_amount",
       "non_null": 6,
+      "scale": 2,
       "sum": "14107686.39",
       "type": "numeric"
     },
@@ -47,12 +51,13 @@
       "min": "0.0250",
       "name": "return_rate_pct",
       "non_null": 6,
+      "scale": 4,
       "sum": "0.1501",
       "type": "numeric"
     }
   ],
   "engine": "postgres",
-  "fingerprint": "b861552a21e8f19fcfc5b49bb8f9fe37bec7b67be149db0669fe88c07b1ed056",
+  "fingerprint": "0419ce36195b5a69e19547ca73ff857b4b08b31fe42f58166430cd2b91d189c2",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 6,

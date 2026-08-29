@@ -49,6 +49,13 @@ SEED_MANIFEST = ROOT / "testdata" / "legacy" / "manifests"
 
 PERIOD_START = "2026-02-01"
 PERIOD_END = "2026-02-28"
+# The period immediately before it. Every subscription in this population starts 2026-01-01 with a
+# NULL ends_on, so January is covered for all 69 tenants and rating it quarantines nothing; all the
+# usage sits in February, so January banks rollover and prices nothing. That is what makes it the
+# period to rate first when proving the bank reads what this unit itself finalized.
+PRECEDING_PERIOD_START = "2026-01-01"
+PRECEDING_PERIOD_END = "2026-01-31"
+ROLLOVER_MONTHS = 3
 
 MONEY_COLS = ("overage_amount",)
 COUNT_COLS = (
@@ -112,7 +119,12 @@ def deploy(dbx: Dbx) -> None:
 
 
 def run_notebook(
-    dbx: Dbx, ns: str, batch_id: str, plan_overrides: list[dict] | None = None
+    dbx: Dbx,
+    ns: str,
+    batch_id: str,
+    plan_overrides: list[dict] | None = None,
+    period_start: str = PERIOD_START,
+    period_end: str = PERIOD_END,
 ) -> dict[str, Any]:
     run_id = dbx.submit_notebook_run(
         run_name=f"ow_tp_silver_rating_{ns}_{batch_id}",
@@ -122,8 +134,8 @@ def run_notebook(
             "catalog": CATALOG,
             "schema": SCHEMA,
             "bronze_schema": BRONZE,
-            "period_start": PERIOD_START,
-            "period_end": PERIOD_END,
+            "period_start": period_start,
+            "period_end": period_end,
             "landing_root": LANDING_ROOT,
             "spec_path": f"{NOTEBOOK_ROOT}/silver_rating_spec.json",
             "batch_id": batch_id,
@@ -180,6 +192,32 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
         FROM {CATALOG}.{SCHEMA}.rating_results WHERE ns = {ns_lit}
         """
     )[0]
+
+    # Money per rated period, so a run that has finalized more than one period is never summed into
+    # a single figure: the parity comparison is always against one period's own total.
+    money_by_period = {
+        r[0]: {
+            "overage_amount_total": r[1],
+            "rows": int(r[2]),
+            "used_units_total": r[3],
+            "billable_units_total": r[4],
+            "rollover_units_total_persisted": r[5],
+        }
+        for r in dbx.sql(
+            f"""
+            SELECT date_format(rp.period_start, 'yyyy-MM-dd'),
+                   CAST(coalesce(sum(rr.overage_amount), 0) AS STRING),
+                   count(*),
+                   CAST(coalesce(sum(rr.used_units), 0) AS STRING),
+                   CAST(coalesce(sum(rr.billable_units), 0) AS STRING),
+                   CAST(coalesce(sum(rr.rollover_units), 0) AS STRING)
+            FROM {CATALOG}.{SCHEMA}.rating_results rr
+            JOIN {CATALOG}.{SCHEMA}.rating_periods rp ON rp.id = rr.period_id AND rp.ns = rr.ns
+            WHERE rr.ns = {ns_lit} AND rr._origin = 'target-finalize'
+            GROUP BY 1 ORDER BY 1
+            """
+        )
+    }
 
     rows = dbx.sql(
         f"""
@@ -280,6 +318,7 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
             "target_finalize_rows": int(money[6]),
             "source_migrated_rows": int(money[7]),
         },
+        "money_by_period": money_by_period,
         "result_rows": result_rows,
         "periods": periods,
         "column_types": types,
@@ -380,6 +419,221 @@ def refinalize_probe(dbx: Dbx, ns: str, snap: dict, stamp: str) -> dict[str, Any
     }
 
 
+# -- the two-period rollover bank ---------------------------------------------
+
+
+def silver_bank_rows(dbx: Dbx, ns: str, before: str) -> list[dict[str, Any]]:
+    """The bank contribution this unit finalized itself, read back from Delta.
+
+    These are the rows the source does not have: what the target adds to the three-month bank when
+    it has rated a period the source never finalized. They are handed to Oracle so the source engine
+    prices the period off the same bank, instead of the comparison being made against a Python
+    re-implementation of the rule.
+    """
+    return [
+        {"tenant_id": r[0], "period_start": r[1], "rollover_units": r[2]}
+        for r in dbx.sql(
+            f"""
+            SELECT rp.tenant_id, date_format(rp.period_start, 'yyyy-MM-dd'),
+                   CAST(rr.rollover_units AS STRING)
+            FROM {CATALOG}.{SCHEMA}.rating_results rr
+            JOIN {CATALOG}.{SCHEMA}.rating_periods rp ON rp.id = rr.period_id AND rp.ns = rr.ns
+            WHERE rr.ns = {sql_str(ns)} AND rr._origin = 'target-finalize'
+              AND rp.period_start < DATE'{before}'
+              AND rp.period_start >= add_months(DATE'{before}', -{ROLLOVER_MONTHS})
+            ORDER BY rp.tenant_id, rp.period_start
+            """
+        )
+    ]
+
+
+def drop_rated_period(dbx: Dbx, ns: str, period_start: str) -> dict[str, Any]:
+    """Undo the probe: remove the period this unit rated only to prove the bank reads it.
+
+    Both tables are this unit's own targets, and the delete is scoped to the rows this unit
+    finalized itself (`_origin = 'target-finalize'`): the source's own migrated rows for that
+    period stay exactly as bronze has them. The slice therefore ends the recon in the
+    source-equivalent state the parity comparison and the pinned transcripts are measured in.
+    """
+    ns_lit, ps = sql_str(ns), f"DATE'{period_start}'"
+    before = {
+        t: int(
+            dbx.sql(
+                f"""
+                SELECT count(*) FROM {CATALOG}.{SCHEMA}.{t} x
+                WHERE x.ns = {ns_lit} AND x._origin = 'target-finalize' AND EXISTS (
+                  SELECT 1 FROM {CATALOG}.{SCHEMA}.rating_periods rp
+                  WHERE rp.ns = {ns_lit} AND rp.period_start = {ps}
+                    AND rp.id = {'x.id' if t == 'rating_periods' else 'x.period_id'}
+                )
+                """
+            )[0][0]
+        )
+        for t in ("rating_results", "rating_periods")
+    }
+    dbx.sql(
+        f"""
+        DELETE FROM {CATALOG}.{SCHEMA}.rating_results
+        WHERE ns = {ns_lit} AND _origin = 'target-finalize' AND period_id IN (
+          SELECT id FROM {CATALOG}.{SCHEMA}.rating_periods
+          WHERE ns = {ns_lit} AND period_start = {ps}
+        )
+        """
+    )
+    dbx.sql(
+        f"""
+        DELETE FROM {CATALOG}.{SCHEMA}.rating_periods
+        WHERE ns = {ns_lit} AND _origin = 'target-finalize' AND period_start = {ps}
+          AND id NOT IN (
+            SELECT period_id FROM {CATALOG}.{SCHEMA}.rating_results WHERE ns = {ns_lit}
+          )
+        """
+    )
+    return {"period_start": period_start, "rows_removed": before}
+
+
+def bank_proof(dbx: Dbx, ns: str, stamp: str, money_before: dict[str, Any]) -> dict[str, Any]:
+    """Rate the preceding period, then the current one, and measure what the bank did.
+
+    The point being proven is that the current period is priced off the rollover this unit banked
+    for the preceding one — the money the old bronze-only bank silently missed. Oracle is asked for
+    the same period twice: once on its own bank (what the source holds today) and once with the
+    silver rows added, so both totals are the source engine's own arithmetic.
+    """
+    jan = run_notebook(
+        dbx,
+        ns,
+        f"{stamp}d",
+        period_start=PRECEDING_PERIOD_START,
+        period_end=PRECEDING_PERIOD_END,
+    )
+    if jan["drivers"]["quarantine_rate_pct"] > 5:
+        raise Halt(
+            f"quarantine rate {jan['drivers']['quarantine_rate_pct']}% on "
+            f"{PRECEDING_PERIOD_START} exceeds 5%: halting the unit"
+        )
+    oracle_preceding = oracle_truth.snapshot(PRECEDING_PERIOD_START, PRECEDING_PERIOD_END)
+    snap_preceding = target_snapshot(dbx, ns)
+    parity_preceding = compare_rating(
+        oracle_preceding["rating"], snap_preceding["result_rows"], PRECEDING_PERIOD_START
+    )
+
+    bank = silver_bank_rows(dbx, ns, PERIOD_START)
+    oracle_with_bank = oracle_truth.snapshot(PERIOD_START, PERIOD_END, silver_bank=bank)
+
+    rerated = run_notebook(dbx, ns, f"{stamp}e")
+    snap_after = target_snapshot(dbx, ns)
+    parity_with_bank = compare_rating(
+        oracle_with_bank["rating"], snap_after["result_rows"], PERIOD_START
+    )
+    noop = run_notebook(dbx, ns, f"{stamp}f")
+
+    money_after = snap_after["money_by_period"][PERIOD_START]
+    oracle_money_with_bank = sum(
+        decimal.Decimal(r["overage_amount"] or "0") for r in oracle_with_bank["rating"].values()
+    ).quantize(decimal.Decimal("0.01"))
+    removed = drop_rated_period(dbx, ns, PRECEDING_PERIOD_START)
+
+    return {
+        "performed": True,
+        "preceding_period": {"start": PRECEDING_PERIOD_START, "end": PRECEDING_PERIOD_END},
+        "current_period": {"start": PERIOD_START, "end": PERIOD_END},
+        "runs": {
+            "preceding_period": {"batch_id": jan["batch_id"], "run_id": jan["run_id"],
+                                 "drivers": jan["drivers"],
+                                 "merge_metrics": jan["merge_metrics"]},
+            "current_period_with_bank": {"batch_id": rerated["batch_id"],
+                                         "run_id": rerated["run_id"],
+                                         "merge_metrics": rerated["merge_metrics"]},
+            "current_period_rerun": {"batch_id": noop["batch_id"], "run_id": noop["run_id"],
+                                     "merge_metrics": noop["merge_metrics"]},
+        },
+        "preceding_period_parity": parity_preceding,
+        "preceding_period_money": snap_preceding["money_by_period"].get(PRECEDING_PERIOD_START),
+        "bank_read_by_the_current_run": rerated["prior_bank"],
+        "silver_bank_rows_handed_to_oracle": {
+            "rows": len(bank),
+            "sample": bank[:5],
+            "note": "read back from ow_tp.silver.rating_results (_origin = 'target-finalize') and "
+            "evaluated inside Oracle's own rating statement, which applies the same "
+            "bronze-wins-per-(tenant, period) rule",
+        },
+        "money": {
+            "current_period_before_the_preceding_period_existed": money_before,
+            "current_period_with_the_silver_bank": money_after,
+            "oracle_with_the_silver_bank": str(oracle_money_with_bank),
+            "moved_by": str(
+                decimal.Decimal(money_after["overage_amount_total"])
+                - decimal.Decimal(money_before["overage_amount_total"])
+            ),
+        },
+        "parity_with_bank": parity_with_bank,
+        "rerun_merge_metrics": noop["merge_metrics"],
+        "rerun_was_a_no_op": all(
+            m["merge_rows_inserted"] == 0
+            and m["merge_rows_updated"] == 0
+            and m["merge_rows_deleted"] == 0
+            for m in noop["merge_metrics"].values()
+        ),
+        "probe_undone": removed,
+        "all_runs": [jan, rerated, noop],
+    }
+
+
+def proration_cross_check(run: dict[str, Any]) -> dict[str, Any]:
+    """The target's suspension factor against Oracle's, on the same synthetic timestamps."""
+    probe = run.get("proration_probe", {})
+    cases = probe.get("cases", [])
+    if not cases:
+        return {"performed": False, "reason": "the job run carried no proration probe"}
+    oracle_cases = oracle_truth.proration(
+        probe["period_start"],
+        probe["period_end"],
+        [c["suspended_on"] for c in cases],
+        probe["inputs"]["billable_pre_proration"],
+        probe["inputs"]["overage_pre_proration"],
+    )
+    compared = []
+    for tgt, src in zip(cases, oracle_cases):
+        expected = {
+            "factor": src["factor_10dp"],
+            "billable_units": src["billable_prorated"],
+            "overage_amount": src["overage_prorated"],
+        }
+        actual = {
+            "factor": str(
+                decimal.Decimal(tgt["factor"]).quantize(decimal.Decimal("0.0000000001"))
+            ),
+            "billable_units": norm(tgt["billable_prorated"], "billable_units"),
+            "overage_amount": norm(tgt["overage_prorated"], "overage_amount"),
+        }
+        compared.append(
+            {
+                "label": tgt["label"],
+                "suspended_on": tgt["suspended_on"],
+                "oracle": expected,
+                "target": actual,
+                "agree": expected == actual,
+                "target_if_the_date_were_truncated": {
+                    "billable_units": tgt["billable_prorated_if_date_truncated"],
+                    "overage_amount": tgt["overage_prorated_if_date_truncated"],
+                },
+            }
+        )
+    return {
+        "performed": True,
+        "inputs": probe["inputs"],
+        "period": {"start": probe["period_start"], "end": probe["period_end"]},
+        "cases": compared,
+        "all_agree": all(c["agree"] for c in compared),
+        "midday_differs_from_truncated": (
+            compared[0]["target"]["overage_amount"]
+            != norm(compared[0]["target_if_the_date_were_truncated"]["overage_amount"],
+                    "overage_amount")
+        ),
+    }
+
+
 # -- comparisons ---------------------------------------------------------------
 
 
@@ -395,9 +649,15 @@ def norm(value: Any, col: str) -> Any:
     return value
 
 
-def compare_rating(oracle: dict[str, dict], target_rows: list[dict]) -> dict[str, Any]:
-    """Row-by-row, column-by-column comparison of the rated period against Oracle."""
-    rated = {r["tenant_id"]: r for r in target_rows if r["_origin"] == "target-finalize"}
+def compare_rating(
+    oracle: dict[str, dict], target_rows: list[dict], period_start: str = PERIOD_START
+) -> dict[str, Any]:
+    """Row-by-row, column-by-column comparison of one rated period against Oracle."""
+    rated = {
+        r["tenant_id"]: r
+        for r in target_rows
+        if r["_origin"] == "target-finalize" and r["period_start"] == period_start
+    }
     per_col = {c: 0 for c in PARITY_COLS}
     mismatches: list[dict[str, Any]] = []
     for tenant_id, src in oracle.items():
@@ -561,6 +821,8 @@ def build_report(
     pinned_sha: str,
     refinalize: dict,
     all_runs: list[dict],
+    bank: dict,
+    proration: dict,
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     src = oracle["source_counts"]
@@ -796,7 +1058,9 @@ def build_report(
                 ),
                 "row_counts_identical": run1["target_counts"] == run2["target_counts"],
             },
-            "Delta MERGE operationMetrics from DESCRIBE HISTORY after the second identical run",
+            "Delta MERGE operationMetrics read from the second identical run's own MERGE commit "
+            "in DESCRIBE HISTORY (the latest MERGE, so a managed OPTIMIZE commit landing after it "
+            "cannot be mistaken for the write)",
             passed=idem_zero and run1["target_counts"] == run2["target_counts"],
             run1=run1["merge_metrics"],
             run2=idem_metrics,
@@ -833,6 +1097,147 @@ def build_report(
                 quarantined_rows=quar_rows,
             )
         )
+    if bank["performed"]:
+        checks.append(
+            check(
+                "BANK-SILVER-PICKUP",
+                {
+                    "current_run_bank_rows_from_silver": bank["bank_read_by_the_current_run"][
+                        "bank_rows_from_silver"
+                    ],
+                    "money_moved": True,
+                },
+                {
+                    "current_run_bank_rows_from_silver": bank["bank_read_by_the_current_run"][
+                        "bank_rows_from_silver"
+                    ],
+                    "money_moved": decimal.Decimal(bank["money"]["moved_by"]) != 0,
+                },
+                f"the {PERIOD_START} run's rollover bank, read back from the job run after "
+                f"{PRECEDING_PERIOD_START} had been finalized into "
+                f"{CATALOG}.{SCHEMA}.rating_results by this same unit",
+                passed=(
+                    bank["bank_read_by_the_current_run"]["bank_rows_from_silver"] > 0
+                    and decimal.Decimal(bank["money"]["moved_by"]) != 0
+                ),
+                bank=bank["bank_read_by_the_current_run"],
+                money=bank["money"],
+                consequence="with the bank read from bronze alone the second period is priced off "
+                "a stale bank and the difference is silent",
+            )
+        )
+        bronze_first = [
+            r
+            for r in bank["bank_read_by_the_current_run"]["sample"]
+            if r["bank_rows_from_bronze"] > 0
+        ]
+        checks.append(
+            check(
+                "BANK-BRONZE-PRECEDENCE",
+                {"silver_rows_used_where_bronze_has_the_period": 0},
+                {
+                    "silver_rows_used_where_bronze_has_the_period": sum(
+                        r["bank_rows_from_silver"] for r in bronze_first
+                    )
+                },
+                "the tenants whose bank draws on bronze, measured in the job run while the same "
+                f"period existed in both {CATALOG}.{BRONZE}.rating_results and "
+                f"{CATALOG}.{SCHEMA}.rating_results: the source stays authoritative and silver "
+                "fills only the periods it alone rated",
+                passed=bool(bronze_first)
+                and sum(r["bank_rows_from_silver"] for r in bronze_first) == 0,
+                tenants=bronze_first,
+                deduplicated_per=["tenant_id", "period_start"],
+                note=f"the source's own {PRECEDING_PERIOD_START} row for these tenants is in "
+                "bronze, and the target finalized that period too, so both sides held it and "
+                "exactly one row entered the bank",
+            )
+        )
+        checks.append(
+            check(
+                "ACC-MONEY-overage_amount-WITH-SILVER-BANK",
+                {
+                    "sum": bank["money"]["oracle_with_the_silver_bank"],
+                    "rows_differing": 0,
+                },
+                {
+                    "sum": bank["money"]["current_period_with_the_silver_bank"][
+                        "overage_amount_total"
+                    ],
+                    "rows_differing": bank["parity_with_bank"]["rows_differing"],
+                },
+                "SUM(overage_amount) and the row-by-row comparison for the current period once the "
+                "preceding period was banked: live Oracle evaluating its own rating statement with "
+                "the silver bank rows supplied to it, vs the value recomputed from "
+                f"{CATALOG}.{SCHEMA}.rating_results",
+                rows_compared=bank["parity_with_bank"]["rows_compared"],
+                per_column_mismatches=bank["parity_with_bank"]["per_column_mismatches"],
+                mismatch_sample=bank["parity_with_bank"]["mismatch_sample"],
+                silver_bank_rows_handed_to_oracle=bank["silver_bank_rows_handed_to_oracle"],
+            )
+        )
+        checks.append(
+            check(
+                "BANK-PRECEDING-PERIOD-PARITY",
+                {"rows_differing": 0},
+                {"rows_differing": bank["preceding_period_parity"]["rows_differing"]},
+                f"the preceding period ({PRECEDING_PERIOD_START}..{PRECEDING_PERIOD_END}) as this "
+                "unit rated it, compared column by column against live Oracle for the same period",
+                rows_compared=bank["preceding_period_parity"]["rows_compared"],
+                per_column_mismatches=bank["preceding_period_parity"]["per_column_mismatches"],
+                money=bank["preceding_period_money"],
+                drivers=bank["runs"]["preceding_period"]["drivers"],
+                note="all usage in this population falls in the current period, so the preceding "
+                "period prices nothing and banks rollover: that is what the current period then "
+                "reads",
+            )
+        )
+        checks.append(
+            check(
+                "BANK-IDEM",
+                {"rows_changed_on_the_identical_rerun": 0},
+                {
+                    "rows_changed_on_the_identical_rerun": sum(
+                        m["merge_rows_inserted"] + m["merge_rows_updated"] + m["merge_rows_deleted"]
+                        for m in bank["rerun_merge_metrics"].values()
+                    )
+                },
+                "Delta MERGE operationMetrics from the second identical run of the current period "
+                "while both periods were finalized: reading its own history back does not make the "
+                "unit non-idempotent",
+                merge_metrics=bank["rerun_merge_metrics"],
+            )
+        )
+
+    if proration["performed"]:
+        checks.append(
+            check(
+                "PRORATION-FRACTIONAL-DAY",
+                {
+                    "cases": [c["oracle"] for c in proration["cases"]],
+                    "midday_differs_from_a_truncated_date": True,
+                },
+                {
+                    "cases": [c["target"] for c in proration["cases"]],
+                    "midday_differs_from_a_truncated_date": proration[
+                        "midday_differs_from_truncated"
+                    ],
+                },
+                "(p_period_end - v_suspended_on + 1) / (p_period_end - p_period_start + 1) with "
+                "ROUND(billable * factor) and ROUND(overage * factor, 2) after it, evaluated by live "
+                "Oracle on three synthetic suspension timestamps, against the same three timestamps "
+                "pushed through the generated expression the job applies (DECIMAL whole-second "
+                "arithmetic, never DOUBLE). A probe of both expressions on synthetic input: it is "
+                "not a finding about the source and it writes nothing",
+                cases=proration["cases"],
+                inputs=proration["inputs"],
+                period=proration["period"],
+                consequence="a suspension at midday is 13.5 days into the period, not 14, so a "
+                "to_date()-truncated subtraction moves overage_amount, which T1 holds exact to the "
+                "cent",
+            )
+        )
+
     probe = run2.get("overflow_probe", {})
     probe_cases = probe.get("cases", [])
     checks.append(
@@ -923,7 +1328,28 @@ def build_report(
         "run's audit rows are not produced here and no audit parity is claimed.",
         "Suspension proration is exercised by one tenant in this population (the only subscription "
         "with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. "
-        "Proration at other suspension dates is implemented and unverified.",
+        "Every suspended_on in the fixture sits at midnight, so the fractional-day half of Oracle's "
+        "DATE arithmetic is reached by no source row: it is measured on three labelled synthetic "
+        "timestamps (midday, midnight, one second before the next midnight) evaluated by both "
+        "engines and compared (PRORATION-FRACTIONAL-DAY). Proration on a live row carrying a time "
+        "component is therefore implemented and unverified against source data.",
+        "The two-period bank proof rates "
+        f"{PRECEDING_PERIOD_START}..{PRECEDING_PERIOD_END} into silver and then rates "
+        f"{PERIOD_START}..{PERIOD_END} again, so the bank it reads back is a period this unit "
+        "finalized rather than one the source finalized independently — the source has no such "
+        "period, which is the reason the silver side of the bank exists at all. The with-bank "
+        "reference is live Oracle evaluating its own rating statement with those silver rows "
+        "supplied to it, not a source-executed two-period run (executing the package would write "
+        "into the estate). The probe's rows are then removed from this unit's own two targets and "
+        "the current period is rated once more, so every number outside rollover_bank_proof is "
+        "measured in the source-equivalent state.",
+        "The eight pinned transcripts and the headline money parity are measured in that "
+        "source-equivalent state, where the bank holds exactly what the source's own RATING_RESULTS "
+        "holds. In the two-period state the same tenants' billable_units and overage_amount "
+        "legitimately differ, because the bank is larger by the rollover this unit banked for the "
+        "preceding period; that state carries its own measured Oracle comparison "
+        "(ACC-MONEY-overage_amount-WITH-SILVER-BANK) instead of being compared with transcripts "
+        "pinned to a different bank.",
         "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected "
         "plan supplied as a per-run notebook input (neither Oracle nor ow_tp.bronze.* is touched, and "
         "the deployed job declares no such parameter, so no operator run can rate from it), and the "
@@ -973,6 +1399,8 @@ def build_report(
         },
         "unverified_paths": unverified,
         "refinalize_proof": refinalize,
+        "rollover_bank_proof": bank,
+        "suspension_proration_proof": proration,
         "provenance": {
             "source": {
                 "system": "Oracle OW_BILLING (live)",
@@ -1063,11 +1491,32 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
 
-    # The pair the idempotency proof is made on: two identical runs after the probe is undone.
-    run1 = run_notebook(dbx, ns, f"{stamp}e")
-    print(f"[run e] {run1['run_id']} merge={json.dumps(run1['merge_metrics'])}")
-    run2 = run_notebook(dbx, ns, f"{stamp}f")
-    print(f"[run f] {run2['run_id']} merge={json.dumps(run2['merge_metrics'])}")
+    # The rollover bank: rate the preceding period, rate this one again off the bank that now holds
+    # it, prove the pickup and the money it moves, then undo the probe.
+    bank = bank_proof(dbx, ns, stamp, target_snapshot(dbx, ns)["money_by_period"][PERIOD_START])
+    print(
+        "[bank] silver_rows={rows} money {before} -> {after} (moved {moved}) "
+        "oracle_with_bank={oracle} parity_rows_differing={diff}".format(
+            rows=bank["bank_read_by_the_current_run"]["bank_rows_from_silver"],
+            before=bank["money"]["current_period_before_the_preceding_period_existed"][
+                "overage_amount_total"
+            ],
+            after=bank["money"]["current_period_with_the_silver_bank"]["overage_amount_total"],
+            moved=bank["money"]["moved_by"],
+            oracle=bank["money"]["oracle_with_the_silver_bank"],
+            diff=bank["parity_with_bank"]["rows_differing"],
+        )
+    )
+
+    # The pair the idempotency proof is made on: two identical runs after both probes are undone,
+    # back in the state whose bank is the source's own.
+    run1 = run_notebook(dbx, ns, f"{stamp}g")
+    print(f"[run g] {run1['run_id']} merge={json.dumps(run1['merge_metrics'])}")
+    run2 = run_notebook(dbx, ns, f"{stamp}h")
+    print(f"[run h] {run2['run_id']} merge={json.dumps(run2['merge_metrics'])}")
+
+    proration = proration_cross_check(run2)
+    print(f"[proration] all_agree={proration.get('all_agree')}")
 
     if run2["drivers"]["quarantine_rate_pct"] > 5:
         raise Halt(
@@ -1086,9 +1535,21 @@ def main(argv: list[str] | None = None) -> int:
             {**refinalize["run3"], "run_page_path": None},
             {**refinalize["run4_restore"], "run_page_path": None},
         ]
+    all_runs += [{**r, "run_page_path": r.get("run_page_path")} for r in bank["all_runs"]]
     all_runs += [run1, run2]
     report = build_report(
-        ns, oracle, run1, run2, snap, parity, migrated, pinned_sha, refinalize, all_runs
+        ns,
+        oracle,
+        run1,
+        run2,
+        snap,
+        parity,
+        migrated,
+        pinned_sha,
+        refinalize,
+        all_runs,
+        bank,
+        proration,
     )
 
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -1098,3 +1559,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[recon] FAILED: {report['failed_checks']}")
         return 1
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

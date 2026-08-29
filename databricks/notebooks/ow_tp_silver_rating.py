@@ -15,6 +15,14 @@
 # MAGIC   the truncating comparison the source performs — not a timestamp comparison,
 # MAGIC * **D-13** tier break at 101 units, `1.5` second-tier multiplier, the two rollover caps and
 # MAGIC   suspension proration applied strictly in the source's order,
+# MAGIC * **D-13** the subscription dates are *not* truncated: an Oracle `DATE` carries a time and
+# MAGIC   `(p_period_end - v_suspended_on + 1)` is fractional-day arithmetic, so `starts_on`,
+# MAGIC   `ends_on` and `suspended_on` travel at full precision and the proration factor is taken in
+# MAGIC   seconds, in `DECIMAL`. Truncation stays only where the source truncates: the D-07 usage
+# MAGIC   window,
+# MAGIC * **D-13** the three-month rollover bank is read from the source's rows in bronze *and* from
+# MAGIC   the periods this unit finalized itself, bronze winning per `(tenant_id, period_start)`, so
+# MAGIC   rating two consecutive periods in the target does not price the second off a stale bank,
 # MAGIC * **D-09** `rollover_units` is *persisted* as `GREATEST(quota_units - used_units, 0)`, which is
 # MAGIC   not the three-month banked value the same call computed; both are kept, the persisted column
 # MAGIC   verbatim and the computed one as an explicit column,
@@ -177,7 +185,18 @@ def yyyymmdd(expr: str) -> str:
 NS_LIT = sql_str(NS)
 PS_LIT = f"DATE'{PERIOD_START}'"
 PE_LIT = f"DATE'{PERIOD_END}'"
+# sp_finalize_rating is called with DATE parameters at midnight, and the source compares its DATE
+# columns against them at full precision. The period bounds therefore reach every comparison here as
+# midnight timestamps: a subscription that starts, ends or is suspended later on the boundary day is
+# outside the period for the source, and has to be outside it here too.
+PS_TS = f"TIMESTAMP'{PERIOD_START} 00:00:00'"
+PE_TS = f"TIMESTAMP'{PERIOD_END} 00:00:00'"
 BATCH_LIT = sql_str(BATCH_ID)
+
+# Oracle DATE arithmetic is wall-clock: DATE - DATE is a plain difference with no zone in it. The
+# session zone is pinned so a timestamp difference below is that same wall-clock difference and no
+# daylight-saving jump inside a period can move a proration factor.
+spark.conf.set("spark.sql.session.timeZone", "UTC")
 
 # COMMAND ----------
 
@@ -246,7 +265,8 @@ spark.sql(
 # MAGIC    pins `row_number() OVER (ORDER BY starts_on DESC, id DESC)` (D-08) and the recon reports the
 # MAGIC    tie exposure as an unverified path rather than pretending the source was deterministic.
 # MAGIC 2. `usage` — units summed over the string-date window (D-07).
-# MAGIC 3. `prior` — the three months of banked rollover before this period.
+# MAGIC 3. `v_prior_bank` — the three months of banked rollover before this period, read from the
+# MAGIC    source's rows in bronze **and** the periods this unit finalized itself (see below).
 # MAGIC 4. `capped` / `rated` / `tiered` / `priced` / `prorated` — the arithmetic, in order.
 # MAGIC
 # MAGIC `sp_finalize_rating` then writes the row: the period id is
@@ -256,15 +276,118 @@ spark.sql(
 
 # COMMAND ----------
 
-# Suspension proration (D-13). Oracle DATE - DATE is a day count; the division is left to the end so
-# the factor keeps full precision, and the rounding boundary is exact for every denominator a
-# calendar month can produce.
-FACTOR_NUM = f"(datediff({PE_LIT}, `suspended_on`) + 1)"
-FACTOR_DEN = f"(datediff({PE_LIT}, {PS_LIT}) + 1)"
+# Suspension proration (D-13):
+#
+#     v_factor := (p_period_end - v_suspended_on + 1) / (p_period_end - p_period_start + 1);
+#
+# An Oracle DATE carries a time component and DATE - DATE is a **fractional** day count, so a
+# suspension at midday yields a factor that a date-truncated subtraction does not: it lands on
+# billable_units and on overage_amount, which the contract holds exact to the cent. Numerator and
+# denominator are taken in whole seconds, which is the same ratio without a truncation:
+#
+#     (a/86400 + 1) / (b/86400 + 1)  ==  (a + 86400) / (b + 86400)
+#
+# and the division is left until after the multiplication, so the ratio is never pre-rounded. Every
+# operand is DECIMAL — no DOUBLE anywhere in the money lineage (D-23).
+SECONDS_PER_DAY = 86400
+
+
+def factor_num(susp: str) -> str:
+    return (
+        f"(CAST(unix_timestamp({PE_TS}) - unix_timestamp({susp}) AS DECIMAL(20,0))"
+        f" + {SECONDS_PER_DAY})"
+    )
+
+
+FACTOR_DEN = (
+    f"(CAST(unix_timestamp({PE_TS}) - unix_timestamp({PS_TS}) AS DECIMAL(20,0))"
+    f" + {SECONDS_PER_DAY})"
+)
+
+
+def prorate(value: str, susp: str, scale: int) -> str:
+    """ROUND(value * v_factor, scale) with the factor applied as an exact ratio.
+
+    The product is retained to ten fractional digits before the source's ROUND, so it agrees with
+    Oracle's 38-digit NUMBER factor unless the exact product falls within 1e-10 of a rounding
+    boundary. `PRORATION_PROBE_SQL` measures the agreement against Oracle for real inputs.
+    """
+    return (
+        f"round(CAST(CAST({value} AS DECIMAL(28,{scale})) * {factor_num(susp)} AS DECIMAL(38,10))"
+        f" / {FACTOR_DEN}, {scale})"
+    )
+
+
+# suspended_on is compared at full precision against the same midnight bounds the source uses, so a
+# suspension after midnight on the last day of the period does not prorate — there as here.
 SUSPENDED_PRED = (
     f"(`status_cd` = {SUSPENDED_CD} AND `suspended_on` IS NOT NULL "
-    f"AND `suspended_on` BETWEEN {PS_LIT} AND {PE_LIT})"
+    f"AND `suspended_on` BETWEEN {PS_TS} AND {PE_TS})"
 )
+
+# The rollover bank: `compute_rating` sums RATING_RESULTS.rollover_units over the three months before
+# the period. In the target that table has two populations, and reading only the first gets money
+# wrong on the second period of any target-run sequence:
+#
+#   * `ow_tp.bronze.rating_results` — what the source itself finalized, and authoritative wherever it
+#     exists, because those are the numbers sp_finalize_rating actually wrote;
+#   * `ow_tp.silver.rating_results` with `_origin = 'target-finalize'` — the periods this unit rated
+#     that the source has not. Rate February here and then March, and March's bank has to see
+#     February's own row; from bronze alone it would price the overage off a stale bank.
+#
+# The two are unioned and deduplicated per (tenant_id, period_start) with **bronze winning**, so the
+# source stays authoritative for every period it has finalized and silver only fills the periods it
+# alone rated. Nothing about the cap chain (D-09) changes: this decides only which rows are summed.
+#
+# The bank is the state as it stood before this run's MERGE: it reads only periods strictly earlier
+# than this one, so a re-evaluation cannot pick up the rows this run writes for the current period.
+PRIOR_BANK_SQL = f"""
+WITH bronze_bank AS (
+  SELECT rp.`tenant_id`, rp.`period_start` AS period_start,
+         coalesce(rr.`rollover_units`, CAST(0 AS DECIMAL(38,0))) AS rollover_units
+  FROM {CATALOG}.{BRONZE}.rating_results rr
+  JOIN {CATALOG}.{BRONZE}.rating_periods rp
+    ON rp.`id` = rr.`period_id` AND rp.`ns` = rr.`ns`
+  WHERE rr.`ns` = {NS_LIT}
+    AND rp.`period_start` < {PS_TS}
+    AND rp.`period_start` >= add_months({PS_TS}, -{ROLLOVER_MONTHS})
+),
+silver_bank AS (
+  SELECT rp.`tenant_id`, CAST(rp.`period_start` AS TIMESTAMP) AS period_start,
+         coalesce(rr.`rollover_units`, CAST(0 AS DECIMAL(38,0))) AS rollover_units
+  FROM {full('rating_results')} rr
+  JOIN {full('rating_periods')} rp ON rp.`id` = rr.`period_id` AND rp.`ns` = rr.`ns`
+  WHERE rr.`ns` = {NS_LIT}
+    AND rr.`_origin` = 'target-finalize'
+    AND CAST(rp.`period_start` AS TIMESTAMP) < {PS_TS}
+    AND CAST(rp.`period_start` AS TIMESTAMP) >= add_months({PS_TS}, -{ROLLOVER_MONTHS})
+),
+bank AS (
+  SELECT `tenant_id`, period_start, rollover_units, 'bronze' AS bank_origin
+  FROM bronze_bank
+  UNION ALL
+  SELECT s.`tenant_id`, s.period_start, s.rollover_units, 'silver-target-finalize'
+  FROM silver_bank s
+  WHERE NOT EXISTS (
+    SELECT 1 FROM bronze_bank b
+    WHERE b.`tenant_id` = s.`tenant_id` AND b.period_start = s.period_start
+  )
+)
+SELECT `tenant_id`,
+       sum(`rollover_units`) AS prior_units,
+       count(*) AS bank_rows,
+       count(*) FILTER (WHERE bank_origin = 'bronze') AS bank_rows_from_bronze,
+       count(*) FILTER (WHERE bank_origin = 'silver-target-finalize') AS bank_rows_from_silver,
+       coalesce(sum(CASE WHEN bank_origin = 'silver-target-finalize' THEN `rollover_units` END),
+                CAST(0 AS DECIMAL(38,0))) AS prior_units_from_silver
+FROM bank
+GROUP BY `tenant_id`
+"""
+# Not cached: serverless compute rejects PERSIST TABLE, and the view is stable anyway — it reads
+# only periods strictly before this one, so writing this period's rows cannot change it.
+prior_bank = spark.sql(PRIOR_BANK_SQL)
+prior_bank.createOrReplaceTempView("v_prior_bank")
+prior_bank_tenants = prior_bank.count()
 
 if PLAN_OVERRIDES:
     _ovr_rows = ", ".join(
@@ -291,17 +414,20 @@ tenant AS (
   FROM {CATALOG}.{BRONZE}.tenants
   WHERE `ns` = {NS_LIT}
 ),
+-- The subscription dates are carried at full precision: the source compares and subtracts DATE
+-- values that can hold a time, and truncating them here would change which subscription covers the
+-- period, which one wins the ORDER BY, and the proration factor.
 sub_cand AS (
-  SELECT s.`tenant_id`, s.`id`, s.`status_cd`, to_date(s.`suspended_on`) AS suspended_on,
-         s.`plan_id`, to_date(s.`starts_on`) AS starts_on,
+  SELECT s.`tenant_id`, s.`id`, s.`status_cd`, s.`suspended_on`,
+         s.`plan_id`, s.`starts_on`,
          row_number() OVER (PARTITION BY s.`tenant_id`
-                            ORDER BY to_date(s.`starts_on`) DESC, s.`id` DESC) AS rn,
+                            ORDER BY s.`starts_on` DESC, s.`id` DESC) AS rn,
          count(*) OVER (PARTITION BY s.`tenant_id`) AS cand_rows,
-         count(*) OVER (PARTITION BY s.`tenant_id`, to_date(s.`starts_on`)) AS tied_rows
+         count(*) OVER (PARTITION BY s.`tenant_id`, s.`starts_on`) AS tied_rows
   FROM {CATALOG}.{BRONZE}.subscriptions s
   WHERE s.`ns` = {NS_LIT}
-    AND to_date(s.`starts_on`) <= {PE_LIT}
-    AND (s.`ends_on` IS NULL OR to_date(s.`ends_on`) >= {PS_LIT})
+    AND s.`starts_on` <= {PE_TS}
+    AND (s.`ends_on` IS NULL OR s.`ends_on` >= {PS_TS})
 ),
 sub_pick AS (
   SELECT * FROM sub_cand WHERE rn = 1
@@ -315,17 +441,6 @@ usage AS (
     AND {yyyymmdd("u.`occurred_at`")} >= {yyyymmdd(PS_LIT)}
     AND {yyyymmdd("u.`occurred_at`")} <= {yyyymmdd(PE_LIT)}
   GROUP BY u.`tenant_id`
-),
-prior AS (
-  SELECT rp.`tenant_id`,
-         sum(coalesce(rr.`rollover_units`, CAST(0 AS DECIMAL(38,0)))) AS prior_units
-  FROM {CATALOG}.{BRONZE}.rating_results rr
-  JOIN {CATALOG}.{BRONZE}.rating_periods rp
-    ON rp.`id` = rr.`period_id` AND rp.`ns` = rr.`ns`
-  WHERE rr.`ns` = {NS_LIT}
-    AND to_date(rp.`period_start`) < {PS_LIT}
-    AND to_date(rp.`period_start`) >= add_months({PS_LIT}, -{ROLLOVER_MONTHS})
-  GROUP BY rp.`tenant_id`
 ),
 bad_kind AS (
   SELECT u.`tenant_id`, count(*) AS bad_usage_rows,
@@ -354,6 +469,8 @@ base AS (
          coalesce(u.used_units, CAST(0 AS DECIMAL(38,0))) AS used_units,
          coalesce(u.usage_events_in_window, 0) AS usage_events_in_window,
          coalesce(pr.prior_units, CAST(0 AS DECIMAL(38,0))) AS prior_units,
+         coalesce(pr.prior_units_from_silver, CAST(0 AS DECIMAL(38,0))) AS prior_units_from_silver,
+         coalesce(pr.bank_rows_from_silver, 0) AS bank_rows_from_silver,
          coalesce(bk.bad_usage_rows, 0) AS bad_usage_rows,
          bk.payload AS bad_usage_payload
   FROM tenant t
@@ -361,7 +478,7 @@ base AS (
   LEFT JOIN {CATALOG}.{BRONZE}.plans p ON p.`id` = s.`plan_id` AND p.`ns` = {NS_LIT}
   LEFT JOIN plan_ovr po ON po.`tenant_id` = t.tenant_id
   LEFT JOIN usage u ON u.`tenant_id` = t.tenant_id
-  LEFT JOIN prior pr ON pr.`tenant_id` = t.tenant_id
+  LEFT JOIN v_prior_bank pr ON pr.`tenant_id` = t.tenant_id
   LEFT JOIN bad_kind bk ON bk.`tenant_id` = t.tenant_id
 ),
 -- v_prior := LEAST(NVL(2 * v_included, v_prior), v_prior): the first of the two caps.
@@ -412,14 +529,10 @@ prorated AS (
   SELECT p.*,
          {SUSPENDED_PRED} AS suspension_prorated,
          CASE WHEN {SUSPENDED_PRED}
-              THEN round(CAST(CAST(`billable_pre_proration` AS DECIMAL(38,0))
-                              * CAST({FACTOR_NUM} AS DECIMAL(38,0))
-                              / CAST({FACTOR_DEN} AS DECIMAL(38,0)) AS DECIMAL(38,6)), 0)
+              THEN {prorate("`billable_pre_proration`", "`suspended_on`", 0)}
               ELSE `billable_pre_proration` END AS billable_units,
          CASE WHEN {SUSPENDED_PRED}
-              THEN round(CAST(CAST(`overage_pre_proration` AS DECIMAL(38,2))
-                              * CAST({FACTOR_NUM} AS DECIMAL(38,0))
-                              / CAST({FACTOR_DEN} AS DECIMAL(38,0)) AS DECIMAL(38,6)), 2)
+              THEN {prorate("`overage_pre_proration`", "`suspended_on`", 2)}
               ELSE `overage_pre_proration` END AS overage_amount
   FROM priced p
 )
@@ -429,6 +542,9 @@ SELECT tenant_id,
        sub_candidates,
        sub_tied_rows,
        usage_events_in_window,
+       prior_units,
+       prior_units_from_silver,
+       bank_rows_from_silver,
        bad_usage_rows,
        bad_usage_payload,
        plan_id,
@@ -609,7 +725,13 @@ print(f"drivers={source_rows_drivers} loaded={loaded_drivers} quarantined={quara
 
 
 def merge_metrics(target: str) -> dict:
-    row = spark.sql(f"DESCRIBE HISTORY {full(target)} LIMIT 1").collect()[0]
+    # Managed Delta appends its own maintenance commits (OPTIMIZE, VACUUM) to the same history, so
+    # the newest entry is not necessarily this run's write, and reading it would report a no-op the
+    # MERGE never made. Take the latest MERGE: a run performs exactly one per target.
+    hist = spark.sql(f"DESCRIBE HISTORY {full(target)}")
+    latest = hist.orderBy("version", ascending=False)
+    merges = latest.where("operation = 'MERGE'").limit(1).collect()
+    row = merges[0] if merges else latest.limit(1).collect()[0]
     m = row["operationMetrics"] or {}
     return {
         "operation": row["operation"],
@@ -690,6 +812,76 @@ print(json.dumps(overflow_probe, indent=1))
 if [c["quarantine_reason"] for c in overflow_probe["cases"]] != ["NUMERIC_OVERFLOW", None]:
     raise AssertionError(
         f"the NUMERIC_OVERFLOW guard did not behave as declared on the probe: {overflow_probe}"
+    )
+
+# COMMAND ----------
+
+# MAGIC %md ### Suspension proration probe
+# MAGIC
+# MAGIC Every `suspended_on` in this population sits at midnight, so the fractional-day half of
+# MAGIC `(p_period_end - v_suspended_on + 1)` is exercised by no row. The factor is therefore measured
+# MAGIC on synthetic timestamps through the same generated expression the load uses: a midday
+# MAGIC suspension, the same day at midnight, and one second before the next midnight. The
+# MAGIC `*_if_date_truncated` columns are what a `to_date()`-truncated subtraction would have produced,
+# MAGIC kept alongside so the difference is visible rather than asserted.
+# MAGIC
+# MAGIC This is a probe of the target expression, not a finding about the source, and it writes
+# MAGIC nothing. The recon runner evaluates the same three cases in **Oracle** and compares them
+# MAGIC (`PRORATION-FRACTIONAL-DAY`).
+
+# COMMAND ----------
+
+PRORATION_PROBE_BILLABLE = "1400"
+PRORATION_PROBE_OVERAGE = "560.00"
+_PROBE_DAY = f"CAST({PS_LIT} + INTERVAL 13 DAYS AS TIMESTAMP)"
+_PROBE_B = f"CAST({PRORATION_PROBE_BILLABLE} AS DECIMAL(38,0))"
+_PROBE_O = f"CAST({PRORATION_PROBE_OVERAGE} AS DECIMAL(38,2))"
+
+PRORATION_PROBE_SQL = f"""
+WITH cases AS (
+  SELECT 1 AS ord, 'suspended at midday' AS label,
+         {_PROBE_DAY} + INTERVAL 12 HOURS AS suspended_on
+  UNION ALL
+  SELECT 2 AS ord, 'suspended at midnight' AS label, {_PROBE_DAY} AS suspended_on
+  UNION ALL
+  SELECT 3 AS ord, 'suspended one second before the next midnight' AS label,
+         {_PROBE_DAY} + INTERVAL 86399 SECONDS AS suspended_on
+)
+SELECT label,
+       date_format(`suspended_on`, 'yyyy-MM-dd HH:mm:ss') AS suspended_on,
+       CAST(CAST({factor_num('`suspended_on`')} AS DECIMAL(38,10)) / {FACTOR_DEN} AS STRING)
+         AS factor,
+       CAST({prorate(_PROBE_B, '`suspended_on`', 0)} AS STRING) AS billable_prorated,
+       CAST({prorate(_PROBE_O, '`suspended_on`', 2)} AS STRING) AS overage_prorated,
+       CAST({prorate(_PROBE_B, 'to_date(`suspended_on`)', 0)} AS STRING)
+         AS billable_prorated_if_date_truncated,
+       CAST({prorate(_PROBE_O, 'to_date(`suspended_on`)', 2)} AS STRING)
+         AS overage_prorated_if_date_truncated
+FROM cases
+ORDER BY ord
+"""
+proration_probe = {
+    "description": "the suspension factor and its effect on billable_units and overage_amount, "
+    "measured on synthetic suspension timestamps through the same generated expression the load "
+    "uses; *_if_date_truncated is what a to_date()-truncated subtraction would have produced",
+    "is_probe_of_target_expression_not_source_finding": True,
+    "period_start": PERIOD_START,
+    "period_end": PERIOD_END,
+    "inputs": {
+        "billable_pre_proration": PRORATION_PROBE_BILLABLE,
+        "overage_pre_proration": PRORATION_PROBE_OVERAGE,
+    },
+    "cases": [r.asDict() for r in spark.sql(PRORATION_PROBE_SQL).collect()],
+}
+print(json.dumps(proration_probe, indent=1))
+_midday = proration_probe["cases"][0]
+if _midday["factor"] == proration_probe["cases"][1]["factor"] or (
+    _midday["billable_prorated"] == _midday["billable_prorated_if_date_truncated"]
+    and _midday["overage_prorated"] == _midday["overage_prorated_if_date_truncated"]
+):
+    raise AssertionError(
+        "the proration factor is not carrying the time component: a midday suspension must not "
+        f"produce the midnight factor or the date-truncated money: {proration_probe}"
     )
 
 # COMMAND ----------
@@ -1098,6 +1290,53 @@ rated_rows = [
     ).collect()
 ]
 
+# What the bank was read from, as it stood before this run's MERGE: how many tenants had banked
+# rollover at all, how many of them drew on a period only silver has finalized, and the units that
+# came from each side. This is the evidence for the bronze-wins deduplication above.
+_bank = spark.sql(
+    """
+    SELECT count(*) AS tenants_with_bank,
+           coalesce(sum(bank_rows_from_bronze), 0) AS bank_rows_from_bronze,
+           coalesce(sum(bank_rows_from_silver), 0) AS bank_rows_from_silver,
+           count(*) FILTER (WHERE bank_rows_from_silver > 0) AS tenants_drawing_on_silver,
+           CAST(coalesce(sum(prior_units), 0) AS STRING) AS prior_units_total,
+           CAST(coalesce(sum(prior_units_from_silver), 0) AS STRING) AS prior_units_from_silver_total
+    FROM v_prior_bank
+    """
+).collect()[0]
+prior_bank_evidence = {
+    "read_from": [
+        f"{CATALOG}.{BRONZE}.rating_results (the source's own finalized rows; authoritative)",
+        f"{full('rating_results')} where _origin = 'target-finalize' "
+        "(periods this unit finalized that the source has not)",
+    ],
+    "deduplicated_per": ["tenant_id", "period_start"],
+    "winner_when_both_exist": "bronze",
+    "lookback_months": ROLLOVER_MONTHS,
+    "tenants_with_bank": int(_bank["tenants_with_bank"]),
+    "tenants_drawing_on_silver": int(_bank["tenants_drawing_on_silver"]),
+    "bank_rows_from_bronze": int(_bank["bank_rows_from_bronze"]),
+    "bank_rows_from_silver": int(_bank["bank_rows_from_silver"]),
+    "prior_units_total": _bank["prior_units_total"],
+    "prior_units_from_silver_total": _bank["prior_units_from_silver_total"],
+    # Every tenant whose bank draws on bronze first (these are the ones where the deduplication
+    # decides something), then a few that draw on silver alone.
+    "sample": [
+        r.asDict()
+        for r in spark.sql(
+            """
+            SELECT `tenant_id`, bank_rows, bank_rows_from_bronze, bank_rows_from_silver,
+                   CAST(prior_units AS STRING) AS prior_units,
+                   CAST(prior_units_from_silver AS STRING) AS prior_units_from_silver
+            FROM v_prior_bank
+            ORDER BY bank_rows_from_bronze DESC, bank_rows_from_silver DESC, `tenant_id`
+            LIMIT 6
+            """
+        ).collect()
+    ],
+}
+print(json.dumps(prior_bank_evidence, indent=1))
+
 column_types = {
     f"{r[0]}.{r[1]}": r[2]
     for r in spark.sql(
@@ -1149,7 +1388,9 @@ summary = {
             "rating_periods": ["tenant_id", "period_start"],
         },
     },
+    "prior_bank": prior_bank_evidence,
     "overflow_probe": overflow_probe,
+    "proration_probe": proration_probe,
     "column_types": column_types,
     "usage_summary": usage_summary,
     "rating_rows": rated_rows,

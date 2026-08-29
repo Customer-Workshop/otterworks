@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import decimal
 import hashlib
+import json
 import os
 import pathlib
 
@@ -59,13 +60,40 @@ usg AS (
        AND TO_CHAR(u.occurred_at, 'YYYYMMDD') <= TO_CHAR(p.pe, 'YYYYMMDD')
      GROUP BY u.tenant_id
 ),
-pri AS (
-    SELECT rp.tenant_id, SUM(NVL(rr.rollover_units, 0)) AS prior_units
+-- The three-month rollover bank. The source reads it from its own RATING_RESULTS; the target
+-- reads those same rows out of bronze *plus* the periods it finalized itself, bronze winning
+-- per (tenant, period_start). :silver_bank carries that silver-only contribution as JSON so the
+-- dedup rule is evaluated here by Oracle too, instead of being asserted in Python. Passing '[]'
+-- reproduces the source's own bank exactly.
+sil AS (
+    SELECT jt.tenant_id, TO_DATE(jt.period_start, 'YYYY-MM-DD') AS period_start,
+           jt.rollover_units
+      FROM JSON_TABLE(:silver_bank, '$[*]'
+               COLUMNS (tenant_id VARCHAR2(36) PATH '$.tenant_id',
+                        period_start VARCHAR2(10) PATH '$.period_start',
+                        rollover_units NUMBER PATH '$.rollover_units')) jt
+),
+bank AS (
+    SELECT rp.tenant_id, rp.period_start, NVL(rr.rollover_units, 0) AS rollover_units
       FROM rating_results rr, rating_periods rp, prm p
      WHERE rp.id = rr.period_id
        AND rp.period_start < p.ps
        AND rp.period_start >= ADD_MONTHS(p.ps, -3)
-     GROUP BY rp.tenant_id
+    UNION ALL
+    SELECT s.tenant_id, s.period_start, s.rollover_units
+      FROM sil s, prm p
+     WHERE s.period_start < p.ps
+       AND s.period_start >= ADD_MONTHS(p.ps, -3)
+       AND NOT EXISTS (SELECT 1
+                         FROM rating_results rr2, rating_periods rp2
+                        WHERE rp2.id = rr2.period_id
+                          AND rp2.tenant_id = s.tenant_id
+                          AND rp2.period_start = s.period_start)
+),
+pri AS (
+    SELECT tenant_id, SUM(rollover_units) AS prior_units
+      FROM bank
+     GROUP BY tenant_id
 ),
 base AS (
     SELECT t.id AS tenant_id, s.id AS sub_id, s.status_cd, s.suspended_on,
@@ -140,6 +168,35 @@ SELECT id, tenant_id, TO_CHAR(period_start, 'YYYY-MM-DD') AS period_start,
        TO_CHAR(period_end, 'YYYY-MM-DD') AS period_end
   FROM rating_periods
  ORDER BY tenant_id, period_start
+"""
+
+# The suspension proration factor, evaluated by Oracle on given timestamps. This is the reference
+# for the target's fractional-day arithmetic: Oracle DATE - DATE keeps the time component, so a
+# suspension at midday is 13.5 days into the period and not 14, and both ROUNDs happen after the
+# multiplication exactly as compute_rating does them. Read-only, over dual: no source row is touched.
+PRORATION_SQL = """
+WITH prm AS (
+    SELECT TO_DATE(:ps, 'YYYY-MM-DD') AS ps, TO_DATE(:pe, 'YYYY-MM-DD') AS pe,
+           TO_NUMBER(:billable) AS billable_pre, TO_NUMBER(:overage) AS overage_pre
+      FROM dual
+),
+cases AS (
+    SELECT 1 AS ord, TO_DATE(:c1, 'YYYY-MM-DD HH24:MI:SS') AS suspended_on FROM dual
+    UNION ALL SELECT 2, TO_DATE(:c2, 'YYYY-MM-DD HH24:MI:SS') FROM dual
+    UNION ALL SELECT 3, TO_DATE(:c3, 'YYYY-MM-DD HH24:MI:SS') FROM dual
+),
+fct AS (
+    SELECT c.ord, c.suspended_on, p.billable_pre, p.overage_pre,
+           (p.pe - c.suspended_on + 1) / (p.pe - p.ps + 1) AS factor
+      FROM cases c CROSS JOIN prm p
+)
+SELECT ord,
+       TO_CHAR(suspended_on, 'YYYY-MM-DD HH24:MI:SS') AS suspended_on,
+       ROUND(factor, 10) AS factor_10dp,
+       ROUND(billable_pre * factor) AS billable_prorated,
+       ROUND(overage_pre * factor, 2) AS overage_prorated
+  FROM fct
+ ORDER BY ord
 """
 
 COUNTS_SQL = """
@@ -230,8 +287,63 @@ def _rows(cur, sql: str, **binds) -> list[tuple]:
     return cur.fetchall()
 
 
-def snapshot(period_start: str, period_end: str) -> dict:
-    """One read-only session: source counts, the rating Oracle computes, and its stored rows."""
+def proration(
+    period_start: str,
+    period_end: str,
+    suspended_on: list[str],
+    billable_pre: str,
+    overage_pre: str,
+) -> list[dict]:
+    """What Oracle computes for the same suspension timestamps the target's probe uses."""
+    if len(suspended_on) != 3:
+        raise ValueError("PRORATION_SQL is bound to exactly three cases")
+    with connect() as conn:
+        conn.autocommit = False
+        cur = conn.cursor()
+        cur.outputtypehandler = _number_handler
+        rows = _rows(
+            cur,
+            PRORATION_SQL,
+            ps=period_start,
+            pe=period_end,
+            billable=billable_pre,
+            overage=overage_pre,
+            c1=suspended_on[0],
+            c2=suspended_on[1],
+            c3=suspended_on[2],
+        )
+        conn.rollback()
+    return [
+        {
+            "suspended_on": r[1],
+            "factor_10dp": str(decimal.Decimal(r[2]).quantize(decimal.Decimal("0.0000000001"))),
+            "billable_prorated": count(r[3]),
+            "overage_prorated": money(r[4]),
+        }
+        for r in rows
+    ]
+
+
+def snapshot(
+    period_start: str, period_end: str, silver_bank: list[dict] | None = None
+) -> dict:
+    """One read-only session: source counts, the rating Oracle computes, and its stored rows.
+
+    `silver_bank` is the rollover the target holds for periods it finalized itself and the source
+    has not: `[{"tenant_id": ..., "period_start": "YYYY-MM-DD", "rollover_units": "..."}]`. It is
+    fed to the rating statement so Oracle prices the period off the same bank the target does.
+    Empty (the default) is the source's own view.
+    """
+    bank_json = json.dumps(
+        [
+            {
+                "tenant_id": r["tenant_id"],
+                "period_start": r["period_start"],
+                "rollover_units": str(r["rollover_units"]),
+            }
+            for r in (silver_bank or [])
+        ]
+    )
     with connect() as conn:
         conn.autocommit = False
         cur = conn.cursor()
@@ -256,7 +368,7 @@ def snapshot(period_start: str, period_end: str) -> dict:
         )
 
         rating = {}
-        for r in _rows(cur, RATING_SQL, ps=period_start, pe=period_end):
+        for r in _rows(cur, RATING_SQL, ps=period_start, pe=period_end, silver_bank=bank_json):
             rating[r[0]] = {
                 "tenant_id": r[0],
                 "period_id": r[1],
@@ -312,4 +424,5 @@ def snapshot(period_start: str, period_end: str) -> dict:
         "existing_periods": existing_periods,
         "sample_keys": sample_keys,
         "oracle_source_sha": oracle_source_sha(),
+        "silver_bank_supplied": json.loads(bank_json),
     }

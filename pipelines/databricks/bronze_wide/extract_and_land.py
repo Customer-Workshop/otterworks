@@ -33,7 +33,7 @@ import pyarrow.parquet as pq
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from unit_spec import TABLES, load_source_schema  # noqa: E402
+from unit_spec import TABLES, load_source_schema, require_env  # noqa: E402
 
 BATCH = 5000
 VOLUME_ROOT = "/Volumes/ow_tp/bronze/landing"
@@ -147,8 +147,8 @@ def main() -> int:
     declared = load_source_schema()
     oracledb.defaults.fetch_decimals = True
     conn = oracledb.connect(
-        user=os.environ.get("DB_USER", "ow_billing"),
-        password=os.environ.get("DB_PASSWORD", "ow_billing"),
+        user=require_env("DB_USER"),
+        password=require_env("DB_PASSWORD"),
         host=os.environ.get("DB_HOST", "localhost"),
         port=int(os.environ.get("DB_PORT", "52521")),
         service_name=os.environ.get("DB_SERVICE", "FREEPDB1"),

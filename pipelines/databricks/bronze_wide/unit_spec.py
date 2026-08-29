@@ -11,6 +11,7 @@ dropped.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 SPEC_DIR = Path(__file__).resolve().parent
@@ -61,6 +62,20 @@ PII_COLUMNS: dict[str, list[str]] = {
 NON_COMPARABLE_COLUMNS: dict[str, list[str]] = {
     "CUSTOMER_MASTER": ["CUST_SEQ_NO"],
 }
+
+
+def require_env(name: str) -> str:
+    """Read a required credential/connection value from the environment.
+
+    No default: a run against a misconfigured environment must fail rather than
+    silently fall back to a guessable account.
+    """
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(
+            f"{name} is required (OW_BILLING credentials come from the environment)"
+        )
+    return value
 
 
 def load_source_schema() -> dict[str, list[dict]]:

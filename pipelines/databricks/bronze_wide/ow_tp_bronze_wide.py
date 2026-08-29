@@ -29,6 +29,7 @@
 # COMMAND ----------
 
 import json
+import re
 from datetime import datetime, timezone
 
 from pyspark.sql import DataFrame, functions as F
@@ -39,16 +40,32 @@ dbutils.widgets.text("landing_root", "/Volumes/ow_tp/bronze/landing")
 dbutils.widgets.text("catalog", "ow_tp")
 dbutils.widgets.text("schema", "bronze")
 
-NS = dbutils.widgets.get("ns").strip()
-LANDING_ROOT = dbutils.widgets.get("landing_root").rstrip("/")
-CATALOG = dbutils.widgets.get("catalog").strip()
-SCHEMA = dbutils.widgets.get("schema").strip()
+# Job parameters are interpolated into SQL identifiers and volume paths, so each
+# is constrained to a bare identifier before use: a run may choose *which*
+# namespace/catalog/schema it loads, never what statement is executed.
+IDENTIFIER = re.compile(r"\A[A-Za-z0-9_]{1,128}\Z")
+PATH = re.compile(r"\A/[A-Za-z0-9_./-]{1,1024}\Z")
+
+
+def identifier(param: str) -> str:
+    value = dbutils.widgets.get(param).strip()
+    if not IDENTIFIER.match(value):
+        raise ValueError(
+            f"{param}={value!r} is not a bare identifier "
+            f"([A-Za-z0-9_], 1-128 chars)"
+        )
+    return value
+
+
+NS = identifier("ns")
+CATALOG = identifier("catalog")
+SCHEMA = identifier("schema")
+LANDING_ROOT = dbutils.widgets.get("landing_root").strip().rstrip("/")
+if not PATH.match(LANDING_ROOT):
+    raise ValueError(f"landing_root={LANDING_ROOT!r} is not an absolute volume path")
 UNIT = "bronze_wide"
 UNIT_ROOT = f"{LANDING_ROOT}/{NS}/{UNIT}"
 QUARANTINE_TABLE = f"{CATALOG}.{SCHEMA}.quarantine_{UNIT}"
-
-if not NS:
-    raise ValueError("ns is required; every row and every path is namespaced")
 
 # Natural MERGE key per source table (declared, stable — T10).
 NATURAL_KEY = {
@@ -240,6 +257,14 @@ def build(table: str):
                   if c["type"] == "NUMBER" and c.get("scale") == 2]
 
     df = spark.read.parquet(f"{UNIT_ROOT}/{table.lower()}")
+    # The manifest is published after every table file, so a landed row count that
+    # disagrees with it means the landing area holds a torn or interleaved extract.
+    landed_rows = df.count()
+    if landed_rows != manifest["tables"][table]["rows"]:
+        raise ValueError(
+            f"{table}: landed {landed_rows} rows but the manifest for this extract "
+            f"declares {manifest['tables'][table]['rows']}; the landing area under "
+            f"{UNIT_ROOT} is not a single complete extract — re-land before loading")
     missing = [c for c in src_cols if c not in df.columns]
     if missing or len(df.columns) != len(src_cols):
         raise ValueError(f"{table}: landed width {len(df.columns)} != declared "
@@ -293,7 +318,10 @@ def build(table: str):
     reason_col, detail_col = first_reason(findings)
     df = df.withColumn("_reason", reason_col).withColumn("_detail", detail_col)
 
-    payload = F.to_json(F.struct(*[F.col(c).cast("string").alias(c) for c in src_cols]))
+    # ignoreNullFields=false: a rejected row keeps its full declared shape, so a
+    # replay can still tell a NULL column from a column that was never there (T9).
+    payload = F.to_json(F.struct(*[F.col(c).cast("string").alias(c) for c in src_cols]),
+                        {"ignoreNullFields": "false"})
     quarantined = (df.filter(F.col("_reason").isNotNull())
                      .select(
                          f_md5_uuid(F.concat_ws("|", F.lit(NS), F.lit(table),

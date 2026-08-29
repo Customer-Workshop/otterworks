@@ -44,7 +44,9 @@ from pathlib import Path
 import oracledb
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from unit_spec import NON_COMPARABLE_COLUMNS, PII_COLUMNS, TABLES  # noqa: E402
+from unit_spec import (  # noqa: E402
+    NON_COMPARABLE_COLUMNS, PII_COLUMNS, TABLES, require_env,
+)
 
 CATALOG, SCHEMA = "ow_tp", "bronze"
 UNIT = "bronze_wide"
@@ -280,6 +282,10 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     ns = args.ns
+    # ns reaches Databricks as a SQL literal; constrain it to a bare identifier so a
+    # crafted value cannot become a statement.
+    if not re.fullmatch(r"[A-Za-z0-9_]{1,128}", ns):
+        raise SystemExit(f"--ns {ns!r} is not a bare identifier ([A-Za-z0-9_], 1-128 chars)")
 
     manifest = json.loads(Path(args.manifest).read_text())
     run1 = json.loads(re.search(r"^\{.*\}$", Path(args.run1).read_text(), re.M).group(0))
@@ -289,8 +295,8 @@ def main() -> int:
 
     oracledb.defaults.fetch_decimals = True
     conn = oracledb.connect(
-        user=os.environ.get("DB_USER", "ow_billing"),
-        password=os.environ.get("DB_PASSWORD", "ow_billing"),
+        user=require_env("DB_USER"),
+        password=require_env("DB_PASSWORD"),
         host=os.environ.get("DB_HOST", "localhost"),
         port=int(os.environ.get("DB_PORT", "52521")),
         service_name=os.environ.get("DB_SERVICE", "FREEPDB1"),
@@ -615,6 +621,10 @@ def main() -> int:
         "Column-mask enforcement is evidenced for the recon principal only (withheld "
         "before registration, withheld again after removal). Enforcement against a "
         "second, separately-authenticated identity was not exercised.",
+        "Landing publication is per-file, not one atomic swap: the notebook rejects a "
+        "torn extract by checking each landed table's row count against the manifest "
+        "published after all files, and that check is exercised by every load here, but "
+        "two extractors writing this ns's prefix at once was not simulated.",
         "ns=demo is a shared slice and other sessions hold the same credential. Every "
         "number here was recomputed by this run; re-running this script re-measures them "
         "rather than restating the values recorded above.",

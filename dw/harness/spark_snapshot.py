@@ -6,20 +6,9 @@ import argparse
 from pathlib import Path
 
 from assets import fingerprint_for
+from ordering import has_top_level_comma
 from spark_runtime import local_spark
 from spark_source import build_manifest
-
-
-def _has_top_level_comma(expression: str) -> bool:
-    depth = 0
-    for character in expression:
-        if character == "(":
-            depth += 1
-        elif character == ")":
-            depth = max(0, depth - 1)
-        elif character == "," and depth == 0:
-            return True
-    return False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     if args.ordered_key and any(
-        _has_top_level_comma(expression) for expression in args.ordered_key
+        has_top_level_comma(expression) for expression in args.ordered_key
     ):
         parser.error(
             "--ordered-key accepts one expression per flag; "

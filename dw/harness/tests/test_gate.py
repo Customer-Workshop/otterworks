@@ -176,6 +176,51 @@ def test_each_runtime_input_changes_fingerprint(
         ))
 
 
+def test_called_procedure_changes_fingerprint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import assets
+
+    procedure = tmp_path / "sp_merge_customer_scd2.sql"
+    procedure.write_text(
+        (assets.ESTATE / "procs/sp_merge_customer_scd2.sql").read_text()
+    )
+    index = assets._procedure_index()
+    index["core.sp_merge_customer_scd2"] = procedure
+    monkeypatch.setattr(assets, "_procedure_index", lambda: index)
+    before = assets.fingerprint_for("core.dim_customer_scd2")
+    procedure.write_text(procedure.read_text() + "\n-- changed\n")
+    after = assets.fingerprint_for("core.dim_customer_scd2")
+    assert before != after
+
+
+def test_transitive_called_procedure_changes_fingerprint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import assets
+
+    merge = tmp_path / "sp_merge_customer_scd2.sql"
+    merge.write_text(
+        (assets.ESTATE / "procs/sp_merge_customer_scd2.sql").read_text()
+        + "\nCALL core.sp_nested();\n"
+    )
+    nested = tmp_path / "sp_nested.sql"
+    nested.write_text(
+        "CREATE OR REPLACE PROCEDURE core.sp_nested() "
+        "LANGUAGE plpgsql AS $$ BEGIN NULL; END; $$;"
+    )
+    index = assets._procedure_index()
+    index.update({
+        "core.sp_merge_customer_scd2": merge,
+        "core.sp_nested": nested,
+    })
+    monkeypatch.setattr(assets, "_procedure_index", lambda: index)
+    before = assets.fingerprint_for("core.dim_customer_scd2")
+    nested.write_text(nested.read_text() + "\n-- changed\n")
+    after = assets.fingerprint_for("core.dim_customer_scd2")
+    assert before != after
+
+
 def test_code_only_scan_does_not_count_procedure_names_as_tables(
     tmp_path: Path,
 ) -> None:

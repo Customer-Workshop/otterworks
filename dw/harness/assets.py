@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +16,17 @@ RUNTIME_SOURCES = (
     ESTATE / "ddl/compat/shims.sql",
     ROOT / "dw/harness/manifest.py",
     ROOT / "dw/harness/digest.py",
+    ROOT / "dw/harness/sources.py",
+    ROOT / "dw/harness/spark_source.py",
+)
+CALL_STATEMENT = re.compile(
+    r"\bCALL\s+(?P<schema>[a-z_]+)\.(?P<name>[a-z_][a-z0-9_]*)\s*\(",
+    re.IGNORECASE,
+)
+PROCEDURE_DECLARATION = re.compile(
+    r"\bCREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\s+"
+    r"(?P<schema>[a-z_]+)\.(?P<name>[a-z_][a-z0-9_]*)\s*\([^)]*\)",
+    re.IGNORECASE,
 )
 
 
@@ -144,13 +156,55 @@ def _closure(table: str) -> tuple[AssetSpec, ...]:
     return tuple(result)
 
 
+def _procedure_index() -> dict[str, Path]:
+    result: dict[str, Path] = {}
+    for path in sorted((ESTATE / "procs").glob("*.sql")):
+        match = PROCEDURE_DECLARATION.search(path.read_text(errors="replace"))
+        if match:
+            result[
+                f"{match.group('schema').lower()}.{match.group('name').lower()}"
+            ] = path
+    return result
+
+
+def _procedure_closure(assets: tuple[AssetSpec, ...]) -> tuple[Path, ...]:
+    index = _procedure_index()
+    pending = [
+        match
+        for asset in assets
+        for match in CALL_STATEMENT.finditer(
+            asset.elt.read_text(errors="replace")
+        )
+    ]
+    seen: set[Path] = set()
+    result: list[Path] = []
+    while pending:
+        match = pending.pop()
+        name = f"{match.group('schema').lower()}.{match.group('name').lower()}"
+        try:
+            path = index[name]
+        except KeyError as error:
+            raise ValueError(
+                f"{match.group(0)}: no procedure declaration in estate"
+            ) from error
+        if path in seen:
+            continue
+        seen.add(path)
+        result.append(path)
+        pending.extend(
+            CALL_STATEMENT.finditer(path.read_text(errors="replace"))
+        )
+    return tuple(result)
+
+
 def fingerprint_for(table: str) -> str:
     """Return the source fingerprint for one live core or mart asset."""
     if table not in ASSETS:
         raise ValueError(f"no fingerprint input map for top-level asset {table!r}")
     assets = _closure(table)
+    procedures = _procedure_closure(assets)
     return fingerprint(
-        asset_sources=tuple(asset.elt for asset in assets),
+        asset_sources=tuple(asset.elt for asset in assets) + procedures,
         schema_sources=tuple(
             path
             for asset in assets

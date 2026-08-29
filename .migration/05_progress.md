@@ -48,3 +48,39 @@ validated by `make tp-validate-recon`.
   parent-owned decision if a gold consumer ever needs cross-table atomicity.
 - **No dictionary gaps were reported.** All four units implemented D-01..D-25 as written and none hit
   a semantic the dictionary does not cover, so no corrections are harvested from wave 1.
+
+## Wave 2 — pilot, closed
+
+Both pilot units are green and merged into the run branch, in the required order.
+
+| Unit | Status | PR | Evidence |
+|---|---|---|---|
+| `silver_rating` | `MERGED` | #1371 | 46/46 checks; money exact to the cent; second run a true no-op. Five money-path defects found in review and re-proven live: a re-rate `MERGE` overwriting the columns Oracle's `DUP_VAL_ON_INDEX` path deliberately leaves alone, a halt that discarded its own quarantine rows, an unreachable `NUMERIC_OVERFLOW` guard, a rollover bank read from bronze only (wrong money on a second consecutive period), and truncated subscription timestamps where Oracle does fractional-day arithmetic. |
+| `silver_invoicing` | `MERGED` | #1372 | 69/69 checks; 72 invoices / 347 lines / 5 credit applications, `loaded + quarantined == source` on every owned table, quarantine 0 rows (0% of 72 invoice drivers), all six `INVOICE-00x` transcripts individually reproduced. Rating recomputed inline (`ow_tp.silver.rating_*` never read: consuming it would change 2 invoices); `0.0825` preserved with unrounded tax halves (rounding them first would change 26 invoices); sequential burn-down with the source's over-application (2 notes debited beyond their balance, 71.08 of counter carried); scoped static line rebuild replacing `EXECUTE IMMEDIATE`. |
+
+### Pilot exit criteria (`10_wave_plan.md`)
+
+1. **Both green and merged, each with a rerun proving idempotency** — met; second runs change zero
+   rows, attributed to this run's own Delta commits by `job.jobRunId`.
+2. **Quarantine rate recorded per source table and under 5%** — met: zero on both units' populations.
+   That is a real result and a weak one: the quarantine *write* path for `FK_ORPHAN`, `KEY_NULL`,
+   `KEY_DUPLICATE`, `CODE_UNKNOWN` and `NUMERIC_OVERFLOW` is implemented and reachable (proven
+   synthetically, including the overage overflow) but exercised by no live row, so both units carry it
+   as an unverified path rather than a proof. The estate's real bad-date exposure remains the 0.0247%
+   `bronze_wide` measured.
+3. **Money exact to the cent with quarantine counts beside every figure** — met, and this is where T1
+   first met the estate's genuinely hostile arithmetic (half-cent tax halves, over-applied credit,
+   `DECIMAL(38,2)` pre-cast overflow guards).
+4. **Dictionary feedback harvested before wave 3 is briefed** — met: D-26 (parent row written before
+   the work that can fail), D-27 (re-issue recomputes credit from its own burnt balances; target
+   stays idempotent by design), D-28 (nothing in the estate retracts), D-29 (burnt-down balances have
+   no target column) added to `09_semantic_dictionary.md`, plus tolerance items 5–7 in
+   `03_recon_tolerances.md` fixing the quarantine-rate basis, quarantine-as-ledger scoping, and
+   run-attributed idempotency evidence.
+
+### Carried out of wave 2, unresolved by design
+
+- **Multi-table publication atomicity** and **retraction** are both in `10_wave_plan.md` as
+  estate-level decisions. Wave 3 and 4 inherit them and must not invent unit-local answers.
+- **The re-issue double burn (D-27) stays undiverged-from.** A target rerun is a no-op; the source's
+  second issue is not reproduced. Exposure measured at 13.92 across 2 invoices.

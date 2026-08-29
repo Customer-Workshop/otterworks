@@ -58,6 +58,24 @@ money mismatch even when every converted expression is correct. Therefore:
 4. **A load that quarantines every row fails loudly.** Quarantine rate above 5% of a
    unit's source rows halts the unit and escalates rather than reporting green on a small
    surviving population. (FACT (customer-confirmed 2026-08-28).)
+5. **The 5% is measured on one declared population, named in the recon report.** Numerator
+   and denominator must be the same population, and for a unit whose source rows fan out
+   into children that population is the **driver** — one procedure call per tenant-period,
+   plus each migrated source row the run carries — not the union of every physical table it
+   writes. Wave 2 found the diluted form: counting a rejected tenant as one row against its
+   invoice *and* its six lines divides the rate roughly six-fold and lets a real epidemic
+   report green. A unit that cannot state its basis in one sentence has not chosen one.
+6. **Quarantine is written before the threshold is evaluated**, so a halted run leaves the
+   operator the rejected rows to triage. Quarantine is a **ledger of rejections**, not
+   current state: rows persist across runs, and any check that excludes a rejected identity
+   (the credit-burn comparison, for instance) scopes that exclusion to *this run's* batch —
+   a rejection that no longer reproduces must not go on hiding a mismatch.
+7. **Idempotency evidence is attributed to the run that produced it.** `ns=demo` is shared
+   and managed Delta interleaves its own maintenance commits, so "the newest commit" is not
+   this run's. A no-op proof cites the target's pre-run version plus the commit's
+   `job.jobRunId` (the job *name* only where history reports no run id): the deployed job's
+   name is fixed, so name-only matching passes in a recon harness and misattributes the
+   deployed run's real writes.
 
 ## Recon economics
 

@@ -1,0 +1,1010 @@
+{
+  "checks": [
+    {
+      "actual": {
+        "loaded_plus_quarantined": 32
+      },
+      "expected": {
+        "loaded_plus_quarantined": 32
+      },
+      "id": "ACC-QUAR-codes",
+      "loaded_rows": 32,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.CODES COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 32
+    },
+    {
+      "actual": {
+        "rows": 32
+      },
+      "expected": {
+        "rows": 32
+      },
+      "id": "ROWS-codes",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.codes COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "17963328194539443268",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "17963328194539443268",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-codes",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 9
+      },
+      "expected": {
+        "loaded_plus_quarantined": 9
+      },
+      "id": "ACC-QUAR-tenants",
+      "loaded_rows": 9,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.TENANTS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 9
+    },
+    {
+      "actual": {
+        "rows": 9
+      },
+      "expected": {
+        "rows": 9
+      },
+      "id": "ROWS-tenants",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.tenants COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "5801877032103918048",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "5801877032103918048",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-tenants",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 3
+      },
+      "expected": {
+        "loaded_plus_quarantined": 3
+      },
+      "id": "ACC-QUAR-plans",
+      "loaded_rows": 3,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.PLANS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 3
+    },
+    {
+      "actual": {
+        "rows": 3
+      },
+      "expected": {
+        "rows": 3
+      },
+      "id": "ROWS-plans",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.plans COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "2321297645495821017",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "2321297645495821017",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-plans",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "sum": "697.00"
+      },
+      "expected": {
+        "sum": "697.00"
+      },
+      "id": "ACC-MONEY-plans.monthly_fee",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(monthly_fee) in live Oracle vs SUM recomputed from ow_tp.bronze.plans (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 9
+      },
+      "expected": {
+        "loaded_plus_quarantined": 9
+      },
+      "id": "ACC-QUAR-subscriptions",
+      "loaded_rows": 9,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.SUBSCRIPTIONS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 9
+    },
+    {
+      "actual": {
+        "rows": 9
+      },
+      "expected": {
+        "rows": 9
+      },
+      "id": "ROWS-subscriptions",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.subscriptions COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "5583301083157181201",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "5583301083157181201",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-subscriptions",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 10
+      },
+      "expected": {
+        "loaded_plus_quarantined": 10
+      },
+      "id": "ACC-QUAR-usage_events",
+      "loaded_rows": 10,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.USAGE_EVENTS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 10
+    },
+    {
+      "actual": {
+        "rows": 10
+      },
+      "expected": {
+        "rows": 10
+      },
+      "id": "ROWS-usage_events",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.usage_events COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "5183178818489150020",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "5183178818489150020",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-usage_events",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 3
+      },
+      "expected": {
+        "loaded_plus_quarantined": 3
+      },
+      "id": "ACC-QUAR-rating_periods",
+      "loaded_rows": 3,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.RATING_PERIODS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 3
+    },
+    {
+      "actual": {
+        "rows": 3
+      },
+      "expected": {
+        "rows": 3
+      },
+      "id": "ROWS-rating_periods",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.rating_periods COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "1774840189455291357",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "1774840189455291357",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-rating_periods",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 3
+      },
+      "expected": {
+        "loaded_plus_quarantined": 3
+      },
+      "id": "ACC-QUAR-rating_results",
+      "loaded_rows": 3,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.RATING_RESULTS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 3
+    },
+    {
+      "actual": {
+        "rows": 3
+      },
+      "expected": {
+        "rows": 3
+      },
+      "id": "ROWS-rating_results",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.rating_results COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "2322293282671901353",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "2322293282671901353",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-rating_results",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "sum": "0.00"
+      },
+      "expected": {
+        "sum": "0.00"
+      },
+      "id": "ACC-MONEY-rating_results.overage_amount",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(overage_amount) in live Oracle vs SUM recomputed from ow_tp.bronze.rating_results (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 3
+      },
+      "expected": {
+        "loaded_plus_quarantined": 3
+      },
+      "id": "ACC-QUAR-invoices",
+      "loaded_rows": 3,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.INVOICES COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 3
+    },
+    {
+      "actual": {
+        "rows": 3
+      },
+      "expected": {
+        "rows": 3
+      },
+      "id": "ROWS-invoices",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.invoices COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "1868968957933463579",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "1868968957933463579",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-invoices",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "sum": "347.00"
+      },
+      "expected": {
+        "sum": "347.00"
+      },
+      "id": "ACC-MONEY-invoices.subtotal",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(subtotal) in live Oracle vs SUM recomputed from ow_tp.bronze.invoices (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "sum": "28.62"
+      },
+      "expected": {
+        "sum": "28.62"
+      },
+      "id": "ACC-MONEY-invoices.tax",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(tax) in live Oracle vs SUM recomputed from ow_tp.bronze.invoices (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "sum": "375.62"
+      },
+      "expected": {
+        "sum": "375.62"
+      },
+      "id": "ACC-MONEY-invoices.total",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(total) in live Oracle vs SUM recomputed from ow_tp.bronze.invoices (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 2
+      },
+      "expected": {
+        "loaded_plus_quarantined": 2
+      },
+      "id": "ACC-QUAR-invoice_lines",
+      "loaded_rows": 2,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.INVOICE_LINES COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 2
+    },
+    {
+      "actual": {
+        "rows": 2
+      },
+      "expected": {
+        "rows": 2
+      },
+      "id": "ROWS-invoice_lines",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.invoice_lines COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "497803433145469528",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "497803433145469528",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-invoice_lines",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "sum": "161.29"
+      },
+      "expected": {
+        "sum": "161.29"
+      },
+      "id": "ACC-MONEY-invoice_lines.amount",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(amount) in live Oracle vs SUM recomputed from ow_tp.bronze.invoice_lines (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 5
+      },
+      "expected": {
+        "loaded_plus_quarantined": 5
+      },
+      "id": "ACC-QUAR-credit_notes",
+      "loaded_rows": 5,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.CREDIT_NOTES COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 5
+    },
+    {
+      "actual": {
+        "rows": 5
+      },
+      "expected": {
+        "rows": 5
+      },
+      "id": "ROWS-credit_notes",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.credit_notes COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "3086286280228621879",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "3086286280228621879",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-credit_notes",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "sum": "145.00"
+      },
+      "expected": {
+        "sum": "145.00"
+      },
+      "id": "ACC-MONEY-credit_notes.amount",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(amount) in live Oracle vs SUM recomputed from ow_tp.bronze.credit_notes (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "sum": "145.00"
+      },
+      "expected": {
+        "sum": "145.00"
+      },
+      "id": "ACC-MONEY-credit_notes.remaining_amount",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "SUM(remaining_amount) in live Oracle vs SUM recomputed from ow_tp.bronze.credit_notes (DECIMAL, never DOUBLE)",
+      "target_type": "decimal(14,2)"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 1
+      },
+      "expected": {
+        "loaded_plus_quarantined": 1
+      },
+      "id": "ACC-QUAR-dunning_attempts",
+      "loaded_rows": 1,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.DUNNING_ATTEMPTS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 1
+    },
+    {
+      "actual": {
+        "rows": 1
+      },
+      "expected": {
+        "rows": 1
+      },
+      "id": "ROWS-dunning_attempts",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.dunning_attempts COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "852570094852054742",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "852570094852054742",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-dunning_attempts",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 1
+      },
+      "expected": {
+        "loaded_plus_quarantined": 1
+      },
+      "id": "ACC-QUAR-notifications",
+      "loaded_rows": 1,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.NOTIFICATIONS COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 1
+    },
+    {
+      "actual": {
+        "rows": 1
+      },
+      "expected": {
+        "rows": 1
+      },
+      "id": "ROWS-notifications",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.notifications COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "row_hash_fold": "959393178136581419",
+        "rows_only_in_source": 0
+      },
+      "expected": {
+        "row_hash_fold": "959393178136581419",
+        "rows_only_in_source": 0
+      },
+      "id": "CHECKSUM-notifications",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "row_level_comparison": true,
+      "rows_only_in_target": 0,
+      "source_of_truth": "MD5 of the canonical row rendered identically by Oracle STANDARD_HASH and Databricks md5 (canon.py), folded order-independently"
+    },
+    {
+      "actual": {
+        "loaded_plus_quarantined": 0
+      },
+      "expected": {
+        "loaded_plus_quarantined": 0
+      },
+      "id": "ACC-QUAR-billing_audit_log",
+      "loaded_rows": 0,
+      "quarantine_pct": 0.0,
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "live Oracle OW_BILLING.BILLING_AUDIT_LOG COUNT(*) in the extract's read-only snapshot",
+      "source_rows": 0
+    },
+    {
+      "actual": {
+        "rows": 0
+      },
+      "expected": {
+        "rows": 0
+      },
+      "id": "ROWS-billing_audit_log",
+      "quarantined_rows": 0,
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.billing_audit_log COUNT(*) WHERE ns = 'demo' (recomputed from Delta)"
+    },
+    {
+      "actual": {
+        "float_columns": {},
+        "non_decimal_14_2_money": {}
+      },
+      "expected": {
+        "float_columns": {},
+        "non_decimal_14_2_money": {}
+      },
+      "id": "ACC-MONEY-TYPES",
+      "result": "pass",
+      "source_of_truth": "ow_tp.information_schema.columns"
+    },
+    {
+      "actual": {
+        "scale_undeclared_columns_without_a_pinned_target_type": []
+      },
+      "expected": {
+        "scale_undeclared_columns_without_a_pinned_target_type": []
+      },
+      "id": "ACC-TYPES",
+      "live_metadata_precision_null": [],
+      "pinned_type_map": {
+        "OW_BILLING.BILLING_AUDIT_LOG.LOG_ID": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(12)",
+          "target_type": "decimal(38,0)"
+        },
+        "OW_BILLING.CODES.CODE_VAL": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.DUNNING_ATTEMPTS.ATTEMPT_NO": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.DUNNING_ATTEMPTS.STATUS_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.INVOICES.STATUS_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.INVOICE_LINES.LINE_NO": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(6)",
+          "target_type": "int"
+        },
+        "OW_BILLING.NOTIFICATIONS.KIND_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.PLANS.INCLUDED_UNITS": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(10)",
+          "target_type": "decimal(38,0)"
+        },
+        "OW_BILLING.PLANS.TIER_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.RATING_RESULTS.BILLABLE_UNITS": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(10)",
+          "target_type": "decimal(38,0)"
+        },
+        "OW_BILLING.RATING_RESULTS.QUOTA_UNITS": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(10)",
+          "target_type": "decimal(38,0)"
+        },
+        "OW_BILLING.RATING_RESULTS.ROLLOVER_UNITS": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(10)",
+          "target_type": "decimal(38,0)"
+        },
+        "OW_BILLING.RATING_RESULTS.USED_UNITS": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(10)",
+          "target_type": "decimal(38,0)"
+        },
+        "OW_BILLING.SUBSCRIPTIONS.STATUS_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.TENANTS.STATUS_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.USAGE_EVENTS.KIND_CD": {
+          "declared_target_type": "INT",
+          "oracle_type": "NUMBER(4)",
+          "target_type": "int"
+        },
+        "OW_BILLING.USAGE_EVENTS.UNITS": {
+          "declared_target_type": "DECIMAL(38,0)",
+          "oracle_type": "NUMBER(10)",
+          "target_type": "decimal(38,0)"
+        }
+      },
+      "result": "pass",
+      "source_of_truth": "services/legacy-billing/db/oracle/schema/01_tables.sql parsed for NUMBER columns with no declared scale, cross-checked against ow_tp.information_schema.columns"
+    },
+    {
+      "actual": {
+        "tables_whose_state_changed": {},
+        "tables_with_net_change_on_rerun": {}
+      },
+      "expected": {
+        "tables_whose_state_changed": {},
+        "tables_with_net_change_on_rerun": {}
+      },
+      "id": "ACC-IDEM",
+      "result": "pass",
+      "source_of_truth": "MERGE row metrics of the second identical run plus counts/checksums recomputed from the targets before and after it"
+    },
+    {
+      "actual": {
+        "job_accepts_ns": true,
+        "landing_prefix": "/Volumes/ow_tp/bronze/landing/demo/bronze_core",
+        "ns": "demo",
+        "rows_without_ns": 0
+      },
+      "expected": {
+        "job_accepts_ns": true,
+        "landing_prefix": "/Volumes/ow_tp/bronze/landing/demo/bronze_core",
+        "ns": "demo",
+        "rows_without_ns": 0
+      },
+      "id": "ACC-NS",
+      "result": "pass",
+      "source_of_truth": "job run parameters and the ns column recomputed from every target table"
+    },
+    {
+      "actual": {
+        "loaded": true,
+        "parity_scope": "excluded",
+        "retention_days": "90"
+      },
+      "expected": {
+        "loaded": true,
+        "parity_scope": "excluded",
+        "retention_days": "90"
+      },
+      "id": "ACC-AUDIT",
+      "loaded_rows": 0,
+      "note": "Migrated as data only. The source log is written by an autonomous transaction whose errors are swallowed, so no parity claim is built on it (D-20, ANOM-AUDIT-SWALLOWED declared as a coverage gap).",
+      "result": "pass",
+      "source_of_truth": "ow_tp.bronze.billing_audit_log table properties and load metrics",
+      "source_rows": 0
+    },
+    {
+      "actual": {
+        "halted": false,
+        "quarantine_rate_pct": 0.0
+      },
+      "expected": {
+        "halted": false,
+        "quarantine_rate_pct_at_or_below": 5.0
+      },
+      "id": "STOPA-QUARANTINE",
+      "quarantine_by_reason": [],
+      "result": "pass",
+      "source_of_truth": "quarantine rows recomputed from ow_tp.bronze.quarantine_bronze_core against live Oracle source counts",
+      "totals": {
+        "loaded_rows": 81,
+        "quarantined_rows": 0,
+        "source_rows": 81
+      }
+    }
+  ],
+  "failed_checks": [],
+  "generated_at": "2026-08-29T00:48:54Z",
+  "idempotency_rerun": {
+    "evidence": "run 1 = job run 773449402892961 (batch 20260829004326a), run 2 = job run 313699384795316 (batch 20260829004326b) with byte-identical landing inputs. Second run MERGE metrics: {\"billing_audit_log\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"codes\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"credit_notes\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"dunning_attempts\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"invoice_lines\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"invoices\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"notifications\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"plans\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"rating_periods\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"rating_results\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"subscriptions\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"tenants\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}, \"usage_events\": {\"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"merge_rows_deleted\": 0}}. Counts and canonical-row checksums recomputed from the Delta targets before and after the second run: identical.",
+    "performed": true,
+    "result": "pass"
+  },
+  "kind": "recon-report",
+  "namespace": "demo",
+  "planted_anomaly_detections": {
+    "actual_set": [
+      "ANOM-NUMBER-UNBOUNDED"
+    ],
+    "declared_coverage_gaps": [
+      "ANOM-AUDIT-SWALLOWED"
+    ],
+    "detail": [
+      {
+        "columns": [
+          {
+            "class": "code",
+            "column": "OW_BILLING.CODES.code_val",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.TENANTS.status_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.PLANS.tier_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "count",
+            "column": "OW_BILLING.PLANS.included_units",
+            "oracle_type": "NUMBER(10)",
+            "target_type": "DECIMAL(38,0)"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.SUBSCRIPTIONS.status_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "count",
+            "column": "OW_BILLING.USAGE_EVENTS.units",
+            "oracle_type": "NUMBER(10)",
+            "target_type": "DECIMAL(38,0)"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.USAGE_EVENTS.kind_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "count",
+            "column": "OW_BILLING.RATING_RESULTS.used_units",
+            "oracle_type": "NUMBER(10)",
+            "target_type": "DECIMAL(38,0)"
+          },
+          {
+            "class": "count",
+            "column": "OW_BILLING.RATING_RESULTS.quota_units",
+            "oracle_type": "NUMBER(10)",
+            "target_type": "DECIMAL(38,0)"
+          },
+          {
+            "class": "count",
+            "column": "OW_BILLING.RATING_RESULTS.rollover_units",
+            "oracle_type": "NUMBER(10)",
+            "target_type": "DECIMAL(38,0)"
+          },
+          {
+            "class": "count",
+            "column": "OW_BILLING.RATING_RESULTS.billable_units",
+            "oracle_type": "NUMBER(10)",
+            "target_type": "DECIMAL(38,0)"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.INVOICES.status_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.INVOICE_LINES.line_no",
+            "oracle_type": "NUMBER(6)",
+            "target_type": "INT"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.DUNNING_ATTEMPTS.attempt_no",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.DUNNING_ATTEMPTS.status_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "code",
+            "column": "OW_BILLING.NOTIFICATIONS.kind_cd",
+            "oracle_type": "NUMBER(4)",
+            "target_type": "INT"
+          },
+          {
+            "class": "surrogate",
+            "column": "OW_BILLING.BILLING_AUDIT_LOG.log_id",
+            "oracle_type": "NUMBER(12)",
+            "target_type": "DECIMAL(38,0)"
+          }
+        ],
+        "detected": true,
+        "detector": "spec vs ow_tp.information_schema.columns after load",
+        "float_columns_in_unit": {},
+        "id": "ANOM-NUMBER-UNBOUNDED",
+        "money_target_types": {
+          "credit_notes.amount": "decimal(14,2)",
+          "credit_notes.remaining_amount": "decimal(14,2)",
+          "invoice_lines.amount": "decimal(14,2)",
+          "invoices.subtotal": "decimal(14,2)",
+          "invoices.tax": "decimal(14,2)",
+          "invoices.total": "decimal(14,2)",
+          "plans.monthly_fee": "decimal(14,2)",
+          "rating_results.overage_amount": "decimal(14,2)"
+        },
+        "unpinned_scale_source_columns": 17
+      }
+    ],
+    "expected_set": [
+      "ANOM-NUMBER-UNBOUNDED"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "provenance": {
+    "job_runs": [
+      {
+        "batch_id": "20260829004326a",
+        "run_id": 773449402892961,
+        "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/?o=7474651138173478#job/480793228360778/run/773449402892961"
+      },
+      {
+        "batch_id": "20260829004326b",
+        "run_id": 313699384795316,
+        "url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/?o=7474651138173478#job/924051217435778/run/313699384795316"
+      }
+    ],
+    "row_level_comparison_limit": 200000,
+    "source": {
+      "db_name": "FREEPDB1",
+      "extracted_at": "2026-08-29T00:43:18+00:00",
+      "oracle_version": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free\nVersion 23.26.3.0.0",
+      "schema": "OW_BILLING",
+      "transaction": "SET TRANSACTION READ ONLY (single snapshot for rows and aggregates)"
+    },
+    "target": "Delta tables in ow_tp.bronze, read back through the pre-existing serverless SQL warehouse 565cd2fd713738c4",
+    "transport": "Rows are extracted from the live Oracle service in a single read-only transaction and landed as text under /Volumes/ow_tp/bronze/landing/demo/bronze_core/, then loaded by job runs of the ow_tp_bronze_core notebook on serverless job compute. Lakehouse Federation to the OW_BILLING service was not reachable from the workspace, so parity is computed by comparing aggregates and canonical row hashes measured independently on each side rather than in a single federated query."
+  },
+  "recon_result": "green",
+  "run_mode": "live",
+  "unit": "bronze_core",
+  "unverified_paths": [
+    "D-05/T4 (two-digit years resolving into the current century) is not exercised by this unit: every date in the 13 core tables is a DATE or TIMESTAMP column, so no string date is parsed here. The rule is untested by this recon, not implemented and unverified.",
+    "D-08 (non-unique ROWNUM ordering) is not reached: the unit reads whole tables and never selects a subset by row number, so no tie-breaking decision is made.",
+    "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable, so no single federated query joins source to target; each side is measured independently and compared by canonical row hash. A federation-side type or NLS difference would therefore not be observed by this recon.",
+    "Source deletions are not reconciled: the load has no MERGE delete clause, so a row deleted in Oracle after a load would remain in the bronze image. 'rows_only_in_target' in each CHECKSUM-* check is what detects this, and it is reported rather than corrected.",
+    "The ns=demo slice is shared with other sessions holding the same token. These numbers were recomputed from the targets immediately after the second run; the recon is rerunnable end to end (python3 -m scripts.tp_databricks.bronze_core --ns demo) and should be rerun if the slice is rewritten."
+  ],
+  "values_recomputed_from_target": true
+}

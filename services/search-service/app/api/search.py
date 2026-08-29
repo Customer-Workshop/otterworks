@@ -90,6 +90,12 @@ def suggest() -> tuple:
     if not prefix or len(prefix) < 2:
         return jsonify({"suggestions": [], "query": prefix}), 200
 
+    # CHAOS: deliberate failure injection for incident demos (bug-catalog
+    # scenario search-suggest-500). Scoped to the tenant's own Redis.
+    if _chaos_active("chaos:search-service:suggest_500"):
+        logger.error("chaos_suggest_500_active", prefix=prefix)
+        return jsonify({"error": "Suggest failed"}), 500
+
     try:
         service = _get_service()
         suggestions = service.suggest(prefix)

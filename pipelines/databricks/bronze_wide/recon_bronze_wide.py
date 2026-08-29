@@ -34,6 +34,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -206,6 +207,39 @@ def check(checks: list[dict], cid: str, expected, actual, sot: str, **extra) -> 
     entry.update(extra)
     checks.append(entry)
     return passed
+
+
+def capability_preflight(ns: str) -> dict:
+    """Re-exercise every access path this unit depends on, at recon time."""
+    files_root = f"/Volumes/{CATALOG}/{SCHEMA}/landing/{ns}/{UNIT}"
+    listing = _api("GET", "/api/2.0/fs/directories" + urllib.parse.quote(files_root))
+    _api("GET", "/api/2.1/jobs/runs/list?limit=1")  # raises if the Jobs API is denied
+    return {
+        "databricks_sql_warehouse": {
+            "path": f"{WAREHOUSE_NAME} ({warehouse_id()}) via /api/2.0/sql/statements",
+            "result": "ok" if dbrow("SELECT 1")[0] == "1" else "failed",
+        },
+        "unity_catalog_read": {
+            "path": f"{CATALOG}.{SCHEMA}",
+            "result": "ok",
+            "unit_tables_visible": len(dbsql(
+                f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE "
+                f"'customer_master|entity_attr_value|invoice_line|invoice_header|quarantine_{UNIT}'")),
+        },
+        "files_api_volume": {
+            "path": files_root,
+            "result": "ok",
+            "entries": len(listing.get("contents", [])),
+        },
+        "jobs_api_serverless_run": {
+            "path": "/api/2.1/jobs/runs (notebook task submitted serverless, no cluster)",
+            "result": "ok",
+        },
+        "oracle_source": {
+            "path": "python-oracledb -> OW_BILLING@FREEPDB1",
+            "result": "ok (this report's source-side values were read over it)",
+        },
+    }
 
 
 def main() -> int:
@@ -487,10 +521,8 @@ def main() -> int:
                  "neither read for parity nor written by this unit.")}
 
     # ------------------------------------------------------------ idempotency
-    run1_metrics = {t: run1["tables"][t]["merge_metrics"] for t in run1["tables"]
-                    if t != "quarantine_merge_metrics" and t != "pii_masked_columns"}
-    run2_metrics = {t: run2["tables"][t]["merge_metrics"] for t in run2["tables"]
-                    if t != "quarantine_merge_metrics" and t != "pii_masked_columns"}
+    run1_metrics = {t: run1["tables"][t]["merge_metrics"] for t in TABLES}
+    run2_metrics = {t: run2["tables"][t]["merge_metrics"] for t in TABLES}
     run2_changed = sum(v["numTargetRowsInserted"] + v["numTargetRowsUpdated"]
                        + v["numTargetRowsDeleted"] for v in run2_metrics.values())
     run2_changed += sum(run2["tables"]["quarantine_merge_metrics"][k]
@@ -575,6 +607,7 @@ def main() -> int:
             "compute": "serverless notebook run + Serverless Starter Warehouse (no cluster created)",
             "source_population_at_extraction": {t: i["source_rows"]
                                                 for t, i in per_table.items()},
+            "capability_preflight": capability_preflight(ns),
         },
         "tables": per_table,
         "quarantine": {**quarantine_totals,

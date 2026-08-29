@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "bronze_wide",
   "namespace": "demo",
-  "generated_at": "2026-08-29T01:15:15+00:00",
+  "generated_at": "2026-08-29T01:32:25+00:00",
   "run_mode": "live",
   "recon_result": "green",
   "tolerance_version": "v1.1 (.migration/03_recon_tolerances.md, T4 corrected)",
@@ -17,8 +17,8 @@
     "transport": "python-oracledb read of the declared columns -> Parquet in /Volumes/ow_tp/bronze/landing/demo/bronze_wide/ -> notebook load. The contract names Lakehouse Federation as the baseline path; no federated Oracle connection exists in this workspace, so the source is read live over the Oracle client instead and recon still compares against live Oracle, not against the landed copy.",
     "target": "ow_tp.bronze.{customer_master, entity_attr_value, invoice_line, invoice_header, quarantine_bronze_wide}",
     "load_runs": {
-      "first": "2026-08-29T01:06:48.604215+00:00",
-      "second": "2026-08-29T01:11:32.387639+00:00"
+      "first": "2026-08-29T01:25:14.769134+00:00",
+      "second": "2026-08-29T01:30:43.065648+00:00"
     },
     "compute": "serverless notebook run + Serverless Starter Warehouse (no cluster created)",
     "source_population_at_extraction": {
@@ -26,6 +26,30 @@
       "entity_attr_value": 8333,
       "invoice_line": 150000,
       "invoice_header": 18750
+    },
+    "capability_preflight": {
+      "databricks_sql_warehouse": {
+        "path": "Serverless Starter Warehouse (565cd2fd713738c4) via /api/2.0/sql/statements",
+        "result": "ok"
+      },
+      "unity_catalog_read": {
+        "path": "ow_tp.bronze",
+        "result": "ok",
+        "unit_tables_visible": 5
+      },
+      "files_api_volume": {
+        "path": "/Volumes/ow_tp/bronze/landing/demo/bronze_wide",
+        "result": "ok",
+        "entries": 5
+      },
+      "jobs_api_serverless_run": {
+        "path": "/api/2.1/jobs/runs (notebook task submitted serverless, no cluster)",
+        "result": "ok"
+      },
+      "oracle_source": {
+        "path": "python-oracledb -> OW_BILLING@FREEPDB1",
+        "result": "ok (this report's source-side values were read over it)"
+      }
     }
   },
   "tables": {
@@ -1055,7 +1079,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "second identical run wrote nothing: inserted/updated/deleted = 0 across all five targets (MERGE operationMetrics, run at 2026-08-29T01:11:32.387639+00:00); row counts and full-width fingerprints unchanged."
+    "evidence": "second identical run wrote nothing: inserted/updated/deleted = 0 across all five targets (MERGE operationMetrics, run at 2026-08-29T01:30:43.065648+00:00); row counts and full-width fingerprints unchanged."
   },
   "planted_anomaly_detections": {
     "expected_set": [

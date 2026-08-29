@@ -371,16 +371,21 @@ def merge(name: str, df: DataFrame, key_cols: list[str]) -> dict:
 
 # COMMAND ----------
 
-results = {}
-quarantine_frames = []
-for table, (target, key) in {
+TARGETS = {
     "CUSTOMER_MASTER": ("customer_master", "CUST_ID"),
     "ENTITY_ATTR_VALUE": ("entity_attr_value", "EAV_ID"),
     "INVOICE_LINE": ("invoice_line", "LINE_ID"),
     "INVOICE_HEADER": ("invoice_header", "INVOICE_ID"),
-}.items():
+}
+
+# Phase 1 — classify every table and count, writing nothing. Rows are only routed
+# to a target once the whole unit is known to be under the halt threshold, so a
+# halt never leaves the unit half-loaded.
+results = {}
+staged = {}
+quarantine_frames = []
+for table in TARGETS:
     loaded, quarantined, info = build(table)
-    full = f"{CATALOG}.{SCHEMA}.{target}"
     loaded_rows = loaded.count()
     quarantined_rows = quarantined.count()
     info["loaded_rows"] = loaded_rows
@@ -388,22 +393,47 @@ for table, (target, key) in {
     if loaded_rows + quarantined_rows != info["source_rows"]:
         raise ValueError(f"{table}: {loaded_rows} + {quarantined_rows} != "
                          f"{info['source_rows']} — quarantine accounting must be exact")
-    rate = quarantined_rows / max(info["source_rows"], 1) * 100.0
-    info["quarantine_rate_pct"] = round(rate, 4)
-    if rate > 5.0:
-        raise ValueError(f"STOP/quarantine-threshold: {table} quarantined "
-                         f"{rate:.2f}% of source rows (limit 5%)")
-    info["merge_metrics"] = merge(full, loaded, ["ns", key.lower()])
+    info["quarantine_rate_pct"] = round(
+        quarantined_rows / max(info["source_rows"], 1) * 100.0, 4)
+    staged[table] = loaded
     quarantine_frames.append(quarantined.withColumn("loaded_at", F.current_timestamp()))
     results[table] = info
     print(table, json.dumps(info))
 
 # COMMAND ----------
 
+# Phase 2 — persist the rejected rows first, so a halt still leaves every raw
+# payload durably available for triage and replay.
 q = quarantine_frames[0]
 for extra in quarantine_frames[1:]:
     q = q.unionByName(extra)
 results["quarantine_merge_metrics"] = merge(QUARANTINE_TABLE, q, ["ns", "quarantine_id"])
+
+# COMMAND ----------
+
+# Phase 3 — the halt decision is unit-wide (quarantine over 5% of the unit's source
+# rows), not per table: one small noisy table must not abort an acceptable unit, and
+# a large clean one must not dilute a genuine problem away. Per-table rates stay in
+# the report either way.
+unit_source_rows = sum(results[t]["source_rows"] for t in TARGETS)
+unit_quarantined_rows = sum(results[t]["quarantined_rows"] for t in TARGETS)
+unit_rate = unit_quarantined_rows / max(unit_source_rows, 1) * 100.0
+results["unit_quarantine"] = {
+    "source_rows": unit_source_rows,
+    "quarantined_rows": unit_quarantined_rows,
+    "quarantine_rate_pct": round(unit_rate, 4),
+    "halt_threshold_pct": 5.0,
+}
+if unit_rate > 5.0:
+    raise ValueError(
+        f"STOP/quarantine-threshold: {UNIT} quarantined {unit_quarantined_rows} of "
+        f"{unit_source_rows} source rows ({unit_rate:.2f}%, limit 5%). Rejected rows "
+        f"are in {QUARANTINE_TABLE}; no target rows were written by this run."
+    )
+
+for table, (target, key) in TARGETS.items():
+    results[table]["merge_metrics"] = merge(f"{CATALOG}.{SCHEMA}.{target}",
+                                            staged[table], ["ns", key.lower()])
 
 # COMMAND ----------
 # MAGIC %md ## PII column masks (ACC-PII-MASK)

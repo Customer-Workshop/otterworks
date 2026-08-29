@@ -49,6 +49,15 @@ CALL_STATEMENT = re.compile(
     r"\bCALL\s+(?P<schema>[a-z_]+)\.(?P<name>[a-z_][a-z0-9_]*)\s*\(",
     re.IGNORECASE,
 )
+SQL_LINE_COMMENT = re.compile(r"--[^\n]*")
+SQL_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+SEQUENCE_FUNCTION = re.compile(
+    r"\b(?:currval|nextval|setval)\s*\([^)]*\)", re.IGNORECASE
+)
+SEQUENCE_DECLARATION = re.compile(
+    r"\bCREATE\s+SEQUENCE(?:\s+IF\s+NOT\s+EXISTS)?\s+"
+    r"[a-z_]+\.[a-z_][a-z0-9_]*", re.IGNORECASE
+)
 
 # Assets that exist to *operate* the estate rather than to be migrated: the
 # data generator, the schedule definitions, and the glue that invokes scripts.
@@ -146,11 +155,17 @@ def column_lineage(sql: str, reads: Iterable[str]) -> dict[str, list[str]]:
     return {column: sources for column in columns}
 
 
+def _parseable_sql(text: str) -> str:
+    text = SQL_BLOCK_COMMENT.sub("", text)
+    text = SQL_LINE_COMMENT.sub("", text)
+    text = SEQUENCE_FUNCTION.sub("", text)
+    return SEQUENCE_DECLARATION.sub("", text)
+
+
 def scan_asset(path: Path, estate: Path) -> Asset:
     text = path.read_text(errors="replace")
-    parsed_text = CALL_STATEMENT.sub(
-        "", PROCEDURE_DECLARATION.sub("", text)
-    )
+    parsed_text = _parseable_sql(text)
+    parsed_text = CALL_STATEMENT.sub("", PROCEDURE_DECLARATION.sub("", parsed_text))
     kind = path.parent.name if path.parent.parent.name == "ddl" else path.parent.name
     asset = Asset(
         asset_id=str(path.relative_to(estate)),
@@ -173,8 +188,8 @@ def scan_asset(path: Path, estate: Path) -> Asset:
     # inventory that silently omits what it could not read is the inventory that
     # makes a migration look smaller than it is.
     has_procedure_syntax = (
-        PROCEDURE_DECLARATION.search(text) is not None
-        or CALL_STATEMENT.search(text) is not None
+        PROCEDURE_DECLARATION.search(_parseable_sql(text)) is not None
+        or CALL_STATEMENT.search(_parseable_sql(text)) is not None
     )
     if path.suffix == ".sql" and not referenced and not has_procedure_syntax:
         asset.parse_status = "unparsed"
@@ -219,7 +234,7 @@ def scheduled_assets(estate: Path) -> set[str]:
     for path in sorted((estate / "jobs").rglob("*")):
         if not path.is_file():
             continue
-        text = path.read_text(errors="replace")
+        text = _parseable_sql(path.read_text(errors="replace"))
         for match in re.finditer(r"(?:[\w.-]+/)+[\w.-]+\.sql", text):
             candidate = _resolve_sql_reference(match.group(0), assets)
             if candidate and candidate not in named:
@@ -241,7 +256,7 @@ def scheduled_assets(estate: Path) -> set[str]:
 
     while queued:
         path = queued.pop()
-        text = (estate / path).read_text(errors="replace")
+        text = _parseable_sql((estate / path).read_text(errors="replace"))
         for match in CALL_STATEMENT.finditer(text):
             procedure = (
                 f"{match.group('schema').lower()}.{match.group('name').lower()}"
@@ -425,7 +440,19 @@ def main(argv: list[str] | None = None) -> int:
 
     catalog = catalog_tables(args.dsn) if args.dsn else {}
     quality = run_dq_probes(args.dsn) if args.dsn else {}
-    tables = set(catalog) | {t for a in assets for t in a.writes + a.reads}
+    procedure_names = {
+        f"{match.group('schema').lower()}.{match.group('name').lower()}"
+        for asset in assets
+        if (
+            match := PROCEDURE_DECLARATION.search(
+                (args.estate / asset.path).read_text(errors="replace")
+            )
+        )
+    }
+    tables = (
+        set(catalog)
+        | {t for a in assets for t in a.writes + a.reads}
+    ) - procedure_names
 
     assets.sort(key=lambda a: a.complexity_score, reverse=True)
     migratable = [a for a in assets if a.kind not in INFRASTRUCTURE_KINDS]

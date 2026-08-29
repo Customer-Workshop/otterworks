@@ -57,7 +57,7 @@
     }
   ],
   "engine": "postgres",
-  "fingerprint": "e18fb12648065b14dfe88ed6c4118c3fd30552112885230ac57e47cc6434c04e",
+  "fingerprint": "17bb4e29dfcf4c99261e1720cf12bb80729e786d42adb598af9897efad8f473c",
   "manifest_format": 4,
   "ordered": null,
   "row_count": 1728,

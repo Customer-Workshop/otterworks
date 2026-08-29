@@ -61,6 +61,13 @@ def _decimal_text(expression: Any, scale: int):
     )
 
 
+def _bound_text(expression: Any, scale: int | None = None):
+    text = _decimal_text(expression, scale) if scale is not None else expression.cast(
+        "string"
+    )
+    return F.coalesce(text, F.lit(NULL_SENTINEL))
+
+
 def _is_numeric(data_type: Any) -> bool:
     return isinstance(
         data_type,
@@ -98,16 +105,16 @@ def _profile(frame: DataFrame, fields: list[Any]) -> list[Any]:
         if isinstance(field.dataType, DecimalType):
             expressions.extend(
                 [
-                    _decimal_text(F.min(column), field.dataType.scale),
-                    _decimal_text(F.max(column), field.dataType.scale),
+                    _bound_text(F.min(column), field.dataType.scale),
+                    _bound_text(F.max(column), field.dataType.scale),
                     _decimal_text(F.sum(column), field.dataType.scale),
                 ]
             )
         elif _is_numeric(field.dataType):
             expressions.extend(
                 [
-                    F.min(column).cast("string"),
-                    F.max(column).cast("string"),
+                    _bound_text(F.min(column)),
+                    _bound_text(F.max(column)),
                     F.sum(column).cast("string"),
                 ]
             )

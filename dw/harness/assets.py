@@ -35,23 +35,16 @@ class AssetSpec:
     elt: Path
     ddl: Path
     upstream: tuple[str, ...] = ()
-    staging_ddls: tuple[Path, ...] = ()
-
-
-def _ddl(*paths: str) -> tuple[Path, ...]:
-    return tuple(ESTATE / "ddl" / path for path in paths)
 
 
 ASSETS: dict[str, AssetSpec] = {
     "core.dim_customer_scd2": AssetSpec(
         ESTATE / "elt/core_dim_customer_scd2.sql",
         ESTATE / "ddl/core/dim_customer_scd2.sql",
-        staging_ddls=_ddl("staging/stg_customers_raw.sql"),
     ),
     "core.dim_product": AssetSpec(
         ESTATE / "elt/core_dim_product.sql",
         ESTATE / "ddl/core/dim_product.sql",
-        staging_ddls=_ddl("staging/stg_products_raw.sql"),
     ),
     "core.dim_date": AssetSpec(
         ESTATE / "elt/core_dim_date.sql",
@@ -60,38 +53,28 @@ ASSETS: dict[str, AssetSpec] = {
     "core.dim_store": AssetSpec(
         ESTATE / "elt/core_dim_store.sql",
         ESTATE / "ddl/core/dim_store.sql",
-        staging_ddls=_ddl("staging/stg_orders_raw.sql"),
     ),
     "core.fct_orders": AssetSpec(
         ESTATE / "elt/core_fct_orders.sql",
         ESTATE / "ddl/core/fct_orders.sql",
-        staging_ddls=_ddl("staging/stg_orders_raw.sql"),
     ),
     "core.fct_order_items": AssetSpec(
         ESTATE / "elt/core_fct_order_items.sql",
         ESTATE / "ddl/core/fct_order_items.sql",
         upstream=("core.fct_orders", "core.dim_product"),
-        staging_ddls=_ddl(
-            "staging/stg_order_items_raw.sql",
-        ),
     ),
     "core.fct_web_events": AssetSpec(
         ESTATE / "elt/core_fct_web_events.sql",
         ESTATE / "ddl/core/fct_web_events.sql",
-        staging_ddls=_ddl("staging/stg_web_events_raw.sql"),
     ),
     "core.fct_returns": AssetSpec(
         ESTATE / "elt/core_fct_returns.sql",
         ESTATE / "ddl/core/fct_returns.sql",
         upstream=("core.fct_order_items",),
-        staging_ddls=_ddl(
-            "staging/stg_returns_raw.sql",
-        ),
     ),
     "core.fx_rates_daily": AssetSpec(
         ESTATE / "elt/core_fx_rates_daily.sql",
         ESTATE / "ddl/core/fx_rates_daily.sql",
-        staging_ddls=_ddl("staging/stg_fx_rates_raw.sql"),
     ),
     "mart.daily_revenue_by_channel": AssetSpec(
         ESTATE / "elt/mart_daily_revenue_by_channel.sql",
@@ -197,19 +180,44 @@ def _procedure_closure(assets: tuple[AssetSpec, ...]) -> tuple[Path, ...]:
     return tuple(result)
 
 
+STAGING_REFERENCE = re.compile(
+    r"\bstaging\.(?P<table>[a-z_][a-z0-9_]*)\b", re.IGNORECASE
+)
+
+
+def _staging_ddl_sources(
+    assets: tuple[AssetSpec, ...], procedures: tuple[Path, ...]
+) -> tuple[Path, ...]:
+    texts = [
+        asset.elt.read_text(errors="replace")
+        for asset in assets
+    ] + [path.read_text(errors="replace") for path in procedures]
+    tables = sorted({
+        match.group("table").lower()
+        for text in texts
+        for match in STAGING_REFERENCE.finditer(text)
+    })
+    result: list[Path] = []
+    for table in tables:
+        path = ESTATE / "ddl/staging" / f"{table}.sql"
+        if not path.is_file():
+            raise ValueError(
+                f"staging.{table}: no staging DDL declaration in estate"
+            )
+        result.append(path)
+    return tuple(result)
+
+
 def fingerprint_for(table: str) -> str:
     """Return the source fingerprint for one live core or mart asset."""
     if table not in ASSETS:
         raise ValueError(f"no fingerprint input map for top-level asset {table!r}")
     assets = _closure(table)
     procedures = _procedure_closure(assets)
+    staging_ddls = _staging_ddl_sources(assets, procedures)
     return fingerprint(
         asset_sources=tuple(asset.elt for asset in assets) + procedures,
-        schema_sources=tuple(
-            path
-            for asset in assets
-            for path in (asset.ddl, *asset.staging_ddls)
-        ),
+        schema_sources=tuple(asset.ddl for asset in assets) + staging_ddls,
         seed_sources=(SEED,),
         runtime_sources=RUNTIME_SOURCES,
     )

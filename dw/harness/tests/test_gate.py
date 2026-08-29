@@ -155,6 +155,37 @@ def test_upstream_elt_change_changes_downstream_fingerprint(
     assert before != after
 
 
+def test_staging_reference_adds_ddl_to_fingerprint_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import assets
+    from dataclasses import replace
+
+    replacement = tmp_path / "core_dim_product.sql"
+    replacement.write_text(
+        assets.ASSETS["core.dim_product"].elt.read_text()
+        + "\nSELECT * FROM staging.stg_returns_raw;\n"
+    )
+    monkeypatch.setitem(
+        assets.ASSETS,
+        "core.dim_product",
+        replace(assets.ASSETS["core.dim_product"], elt=replacement),
+    )
+    captured: dict[str, tuple[Path, ...]] = {}
+
+    def capture(**kwargs: object) -> str:
+        schema_sources = kwargs["schema_sources"]
+        assert isinstance(schema_sources, tuple)
+        captured["schema_sources"] = schema_sources
+        return "fingerprint"
+
+    monkeypatch.setattr(assets, "fingerprint", capture)
+    assets.fingerprint_for("core.dim_product")
+    assert (
+        assets.ESTATE / "ddl/staging/stg_returns_raw.sql"
+    ) in captured["schema_sources"]
+
+
 def test_each_runtime_input_changes_fingerprint(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -276,3 +307,23 @@ def test_code_only_scan_does_not_count_procedure_names_as_tables(
     assert assets["ddl/core/fct_orders.sql"]["scheduled"] is False
     assert assets["procs/sp_refresh_marts.sql"]["scheduled"] is True
     assert assets["procs/sp_housekeeping.sql"]["scheduled"] is True
+
+
+def test_code_only_scan_matches_estate_table_catalog(tmp_path: Path) -> None:
+    from dw.discovery.scan import main as scan_main
+
+    output = tmp_path / "inventory.json"
+    assert scan_main(
+        [
+            "--estate",
+            "dw/legacy-estate",
+            "--out",
+            str(output),
+        ]
+    ) == 0
+    inventory = json.loads(output.read_text())
+    assert inventory["totals"]["tables"] == 26
+    assert inventory["dead_tables"] == [
+        "core.stg_orders_dedup_audit",
+        "mart.customer_churn_flags",
+    ]

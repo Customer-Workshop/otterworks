@@ -6,7 +6,10 @@ Sequence, once per invocation:
 2. snapshot the source read-only: counts, the rating Oracle itself computes for the population,
    and the source's own RATING_PERIODS/RATING_RESULTS rows,
 3. deploy the notebook and its column spec under the parent-owned notebook root,
-4. run the notebook twice on serverless with identical inputs,
+4. run the notebook twice on serverless with identical inputs, then a third time with a corrected
+   plan for one tenant to exercise the re-finalize path, then restore that tenant and prove the
+   rerun is a no-op again — the perturbation is an input override passed to the run, so neither
+   Oracle nor `ow_tp.bronze.*` is touched,
 5. recompute counts, money, types and every rated row **from the Delta targets** over the SQL
    warehouse, independently of what the notebook reported,
 6. compare against Oracle row by row and against the eight pinned Oracle transcripts one by one,
@@ -108,7 +111,9 @@ def deploy(dbx: Dbx) -> None:
     )
 
 
-def run_notebook(dbx: Dbx, ns: str, batch_id: str) -> dict[str, Any]:
+def run_notebook(
+    dbx: Dbx, ns: str, batch_id: str, plan_overrides: list[dict] | None = None
+) -> dict[str, Any]:
     run_id = dbx.submit_notebook_run(
         run_name=f"ow_tp_silver_rating_{ns}_{batch_id}",
         notebook_path=f"{NOTEBOOK_ROOT}/ow_tp_silver_rating",
@@ -122,6 +127,7 @@ def run_notebook(dbx: Dbx, ns: str, batch_id: str) -> dict[str, Any]:
             "landing_root": LANDING_ROOT,
             "spec_path": f"{NOTEBOOK_ROOT}/silver_rating_spec.json",
             "batch_id": batch_id,
+            "plan_overrides": json.dumps(plan_overrides) if plan_overrides else "",
         },
     )
     run = dbx.wait_run(run_id)
@@ -285,6 +291,92 @@ def target_snapshot(dbx: Dbx, ns: str) -> dict[str, Any]:
             "spark_greatest_null_0": null_probe[2],
             "wrapped_greatest_null_0": null_probe[3],
         },
+    }
+
+
+def result_row(dbx: Dbx, ns: str, tenant_id: str) -> dict[str, Any]:
+    """One rated row, read back from Delta, for the re-finalize comparison."""
+    cols = (
+        "subscription_id", "used_units", "quota_units", "rollover_units", "billable_units",
+        "overage_amount", "computed_rollover_units", "first_tier_units", "second_tier_units",
+        "overage_rate", "created_at", "_origin",
+    )
+    row = dbx.sql(
+        f"""
+        SELECT rr.subscription_id, CAST(rr.used_units AS STRING), CAST(rr.quota_units AS STRING),
+               CAST(rr.rollover_units AS STRING), CAST(rr.billable_units AS STRING),
+               CAST(rr.overage_amount AS STRING), CAST(rr.computed_rollover_units AS STRING),
+               CAST(rr.first_tier_units AS STRING), CAST(rr.second_tier_units AS STRING),
+               CAST(rr.overage_rate AS STRING),
+               date_format(rr.created_at, 'yyyy-MM-dd HH:mm:ss'), rr._origin
+        FROM {CATALOG}.{SCHEMA}.rating_results rr
+        JOIN {CATALOG}.{SCHEMA}.rating_periods rp ON rp.id = rr.period_id AND rp.ns = rr.ns
+        WHERE rr.ns = {sql_str(ns)} AND rp.tenant_id = {sql_str(tenant_id)}
+          AND date_format(rp.period_start, 'yyyy-MM-dd') = {sql_str(PERIOD_START)}
+        """
+    )[0]
+    return dict(zip(cols, row))
+
+
+# The columns sp_finalize_rating's DUP_VAL_ON_INDEX fallback assigns, and the ones it leaves alone.
+REFINALIZE_UPDATED = ("used_units", "rollover_units", "billable_units", "overage_amount")
+REFINALIZE_HELD = ("subscription_id", "quota_units", "created_at")
+
+
+def refinalize_probe(dbx: Dbx, ns: str, snap: dict, stamp: str) -> dict[str, Any]:
+    """Re-rate one tenant on a corrected plan, then restore it.
+
+    The correction is supplied as an input override to the run, so the Oracle source and
+    `ow_tp.bronze.*` are both untouched: what changes is only what the notebook is asked to rate.
+    Run 3 re-finalizes the tenant on the corrected plan, run 4 rates it again from bronze alone,
+    which puts the row back to the value the parity comparison is made against.
+    """
+    candidates = [
+        r
+        for r in snap["result_rows"]
+        if r["_origin"] == "target-finalize"
+        and decimal.Decimal(r["used_units"]) > 0
+        and decimal.Decimal(r["rollover_units"]) > 0
+    ]
+    if not candidates:
+        return {
+            "performed": False,
+            "reason": "no rated tenant in this population has both used_units > 0 and "
+            "rollover_units > 0, so a re-rate could not be made to move the money columns "
+            "without inventing a source row",
+        }
+    tenant = sorted(
+        candidates, key=lambda r: (-decimal.Decimal(r["used_units"]), r["tenant_id"])
+    )[0]["tenant_id"]
+
+    before = result_row(dbx, ns, tenant)
+    # A quota of zero on a corrected plan moves billable, overage and the persisted rollover; the
+    # usage itself is unchanged, so used_units legitimately stays put.
+    override = [{"tenant_id": tenant, "included_units": 0, "overage_rate": "0.500000"}]
+    run3 = run_notebook(dbx, ns, f"{stamp}c", plan_overrides=override)
+    after = result_row(dbx, ns, tenant)
+    run4 = run_notebook(dbx, ns, f"{stamp}d")
+    restored = result_row(dbx, ns, tenant)
+
+    moved = [c for c in REFINALIZE_UPDATED if before[c] != after[c]]
+    held = {c: {"before": before[c], "after_rerate": after[c]} for c in REFINALIZE_HELD}
+    return {
+        "performed": True,
+        "tenant_id": tenant,
+        "plan_override": override,
+        "run3": {"batch_id": run3["batch_id"], "run_id": run3["run_id"],
+                 "merge_metrics": run3["merge_metrics"]},
+        "run4_restore": {"batch_id": run4["batch_id"], "run_id": run4["run_id"],
+                         "merge_metrics": run4["merge_metrics"]},
+        "row_before": before,
+        "row_after_rerate": after,
+        "row_after_restore": restored,
+        "columns_updated_by_the_rerate": moved,
+        "columns_held_at_first_finalize": held,
+        "held_unchanged": all(before[c] == after[c] for c in REFINALIZE_HELD),
+        "restored_to_pre_probe_values": all(
+            before[c] == restored[c] for c in before if c != "_origin"
+        ),
     }
 
 
@@ -467,6 +559,8 @@ def build_report(
     parity: dict,
     migrated: dict,
     pinned_sha: str,
+    refinalize: dict,
+    all_runs: list[dict],
 ) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     src = oracle["source_counts"]
@@ -709,6 +803,71 @@ def build_report(
         )
     )
 
+    if refinalize["performed"]:
+        checks.append(
+            check(
+                "REFINALIZE-UPDATE-SET",
+                {
+                    "columns_held_at_first_finalize_unchanged": True,
+                    "money_or_usage_columns_updated": True,
+                    "row_restored_after_the_probe": True,
+                },
+                {
+                    "columns_held_at_first_finalize_unchanged": refinalize["held_unchanged"],
+                    "money_or_usage_columns_updated": bool(
+                        refinalize["columns_updated_by_the_rerate"]
+                    ),
+                    "row_restored_after_the_probe": refinalize["restored_to_pre_probe_values"],
+                },
+                "ow_tp.silver.rating_results read back from Delta before, after and after undoing a "
+                "re-rate of one tenant on a corrected plan supplied as an input override (Oracle and "
+                "ow_tp.bronze.* untouched), against sp_finalize_rating's DUP_VAL_ON_INDEX UPDATE set",
+                tenant_id=refinalize["tenant_id"],
+                source_update_set=list(REFINALIZE_UPDATED),
+                source_columns_left_at_first_finalize=list(REFINALIZE_HELD),
+                columns_updated_by_the_rerate=refinalize["columns_updated_by_the_rerate"],
+                held_columns=refinalize["columns_held_at_first_finalize"],
+                row_before=refinalize["row_before"],
+                row_after_rerate=refinalize["row_after_rerate"],
+                row_after_restore=refinalize["row_after_restore"],
+                quarantined_rows=quar_rows,
+            )
+        )
+    probe = run2.get("overflow_probe", {})
+    probe_cases = probe.get("cases", [])
+    checks.append(
+        check(
+            "QUAR-NUMERIC_OVERFLOW-REACHABLE",
+            {"reasons": ["NUMERIC_OVERFLOW", None]},
+            {"reasons": [c["quarantine_reason"] for c in probe_cases]},
+            "a synthetic amount beyond DECIMAL(14,2) and an in-range control, pushed through the "
+            "pinned-type cast and the same generated overflow predicate the load applies, evaluated "
+            "by the job run. A probe of the target expression: it is not a finding about the source "
+            "and it writes nothing",
+            cases=probe_cases,
+            predicate_reads="the pre-cast *_raw columns, so the cast cannot null or truncate the "
+            "value before the guard sees it",
+            live_overflow_rows=drivers["quarantine_by_reason"].get("NUMERIC_OVERFLOW", 0),
+        )
+    )
+    checks.append(
+        check(
+            "QUAR-PERSISTED-BEFORE-HALT",
+            {"quarantine_merged_before_halt_decision": True},
+            {
+                "quarantine_merged_before_halt_decision": bool(
+                    run2.get("refinalize", {}).get("quarantine_persisted_before_halt_decision")
+                )
+            },
+            "the job merges the rejected rows into the quarantine table and only then compares the "
+            "rate with the 5% threshold and raises, so a halted run leaves the operator the payloads "
+            "that caused it while no rating row is written",
+            quarantine_merge_metrics=run2["merge_metrics"].get(f"quarantine_{UNIT}"),
+            halt_threshold_pct=5,
+            measured_quarantine_rate_pct=quar_pct,
+        )
+    )
+
     checks.extend(transcript_checks(snap["result_rows"], run2["usage_summary"], pinned_sha))
 
     anomalies = run2["anomaly_detections"]
@@ -765,6 +924,16 @@ def build_report(
         "Suspension proration is exercised by one tenant in this population (the only subscription "
         "with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. "
         "Proration at other suspension dates is implemented and unverified.",
+        "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected "
+        "plan supplied as an input override to the run (neither Oracle nor ow_tp.bronze.* is "
+        "touched), and the row is read back before, after and after undoing it. The source side of "
+        "that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than "
+        "executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into "
+        "the source. A source-executed re-rate is therefore unverified."
+        if refinalize["performed"]
+        else "The re-finalize update set could not be exercised on this population: "
+        + refinalize.get("reason", "no reason recorded")
+        + " The narrowed update is therefore implemented and unverified.",
         "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same "
         "PAT. This recon is re-runnable and every number is recomputed from the Delta targets after "
         "the second run, but it cannot prove no other session wrote between the two runs.",
@@ -786,7 +955,10 @@ def build_report(
             "evidence": (
                 f"run 1 = serverless run {run1['run_id']} (batch {run1['batch_id']}), "
                 f"run 2 = serverless run {run2['run_id']} (batch {run2['batch_id']}), identical "
-                f"parameters (ns={ns}, period {PERIOD_START}..{PERIOD_END}). Second-run Delta MERGE "
+                f"parameters (ns={ns}, period {PERIOD_START}..{PERIOD_END}, no plan override). "
+                f"These are the last two of {len(all_runs)} runs: the re-finalize probe and the run "
+                f"that undoes it precede them, so the pair proves the no-op on the same state every "
+                f"other number in this report is measured from. Second-run Delta MERGE "
                 f"metrics: {json.dumps(idem_metrics, sort_keys=True)}. Row counts after each run: "
                 f"{json.dumps({'run1': run1['target_counts'], 'run2': run2['target_counts']}, sort_keys=True)}"
             ),
@@ -799,6 +971,7 @@ def build_report(
             "detail": anomalies,
         },
         "unverified_paths": unverified,
+        "refinalize_proof": refinalize,
         "provenance": {
             "source": {
                 "system": "Oracle OW_BILLING (live)",
@@ -834,7 +1007,7 @@ def build_report(
                     "run_id": r["run_id"],
                     "run_page_path": r["run_page_path"],
                 }
-                for r in (run1, run2)
+                for r in all_runs
             ],
             "baseline": {
                 "transcripts": sorted(p.name for p in TRANSCRIPT_DIR.glob("RATING-*.json")),
@@ -866,10 +1039,34 @@ def main(argv: list[str] | None = None) -> int:
     dbx = Dbx()
     deploy(dbx)
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d%H%M%S")
-    run1 = run_notebook(dbx, ns, f"{stamp}a")
-    print(f"[run1] {run1['run_id']} drivers={run1['drivers']}")
-    run2 = run_notebook(dbx, ns, f"{stamp}b")
-    print(f"[run2] {run2['run_id']} merge={json.dumps(run2['merge_metrics'])}")
+    first = run_notebook(dbx, ns, f"{stamp}a")
+    print(f"[run a] {first['run_id']} drivers={first['drivers']}")
+
+    if first["drivers"]["quarantine_rate_pct"] > 5:
+        raise Halt(
+            f"quarantine rate {first['drivers']['quarantine_rate_pct']}% exceeds 5%: halting the unit"
+        )
+
+    # The re-finalize path is measured on the loaded population, then undone, so every number the
+    # report carries is measured after the tenant is back on its own plan.
+    probe_base = run_notebook(dbx, ns, f"{stamp}b")
+    print(f"[run b] {probe_base['run_id']} merge={json.dumps(probe_base['merge_metrics'])}")
+    refinalize = refinalize_probe(dbx, ns, target_snapshot(dbx, ns), stamp)
+    print(
+        "[refinalize] performed={performed} held_unchanged={held} moved={moved} "
+        "restored={restored}".format(
+            performed=refinalize["performed"],
+            held=refinalize.get("held_unchanged"),
+            moved=refinalize.get("columns_updated_by_the_rerate"),
+            restored=refinalize.get("restored_to_pre_probe_values"),
+        )
+    )
+
+    # The pair the idempotency proof is made on: two identical runs after the probe is undone.
+    run1 = run_notebook(dbx, ns, f"{stamp}e")
+    print(f"[run e] {run1['run_id']} merge={json.dumps(run1['merge_metrics'])}")
+    run2 = run_notebook(dbx, ns, f"{stamp}f")
+    print(f"[run f] {run2['run_id']} merge={json.dumps(run2['merge_metrics'])}")
 
     if run2["drivers"]["quarantine_rate_pct"] > 5:
         raise Halt(
@@ -882,7 +1079,16 @@ def main(argv: list[str] | None = None) -> int:
         [r for r in oracle["existing_results"] if r["period_start"] != PERIOD_START],
         snap["result_rows"],
     )
-    report = build_report(ns, oracle, run1, run2, snap, parity, migrated, pinned_sha)
+    all_runs = [first, probe_base]
+    if refinalize["performed"]:
+        all_runs += [
+            {**refinalize["run3"], "run_page_path": None},
+            {**refinalize["run4_restore"], "run_page_path": None},
+        ]
+    all_runs += [run1, run2]
+    report = build_report(
+        ns, oracle, run1, run2, snap, parity, migrated, pinned_sha, refinalize, all_runs
+    )
 
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, indent=1, sort_keys=True) + "\n")

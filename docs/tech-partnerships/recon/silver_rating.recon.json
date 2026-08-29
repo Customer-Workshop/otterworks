@@ -452,21 +452,21 @@
      "merge_rows_inserted": 0,
      "merge_rows_updated": 0,
      "operation": "MERGE",
-     "version": 1
+     "version": 9
     },
     "rating_periods": {
      "merge_rows_deleted": 0,
-     "merge_rows_inserted": 72,
+     "merge_rows_inserted": 0,
      "merge_rows_updated": 0,
      "operation": "MERGE",
-     "version": 1
+     "version": 7
     },
     "rating_results": {
      "merge_rows_deleted": 0,
-     "merge_rows_inserted": 72,
+     "merge_rows_inserted": 0,
      "merge_rows_updated": 0,
      "operation": "MERGE",
-     "version": 1
+     "version": 7
     }
    },
    "run2": {
@@ -475,24 +475,164 @@
      "merge_rows_inserted": 0,
      "merge_rows_updated": 0,
      "operation": "MERGE",
-     "version": 2
+     "version": 10
     },
     "rating_periods": {
      "merge_rows_deleted": 0,
      "merge_rows_inserted": 0,
      "merge_rows_updated": 0,
      "operation": "MERGE",
-     "version": 2
+     "version": 8
     },
     "rating_results": {
      "merge_rows_deleted": 0,
      "merge_rows_inserted": 0,
      "merge_rows_updated": 0,
      "operation": "MERGE",
-     "version": 2
+     "version": 8
     }
    },
    "source_of_truth": "Delta MERGE operationMetrics from DESCRIBE HISTORY after the second identical run"
+  },
+  {
+   "actual": {
+    "columns_held_at_first_finalize_unchanged": true,
+    "money_or_usage_columns_updated": true,
+    "row_restored_after_the_probe": true
+   },
+   "columns_updated_by_the_rerate": [
+    "rollover_units",
+    "billable_units",
+    "overage_amount"
+   ],
+   "expected": {
+    "columns_held_at_first_finalize_unchanged": true,
+    "money_or_usage_columns_updated": true,
+    "row_restored_after_the_probe": true
+   },
+   "held_columns": {
+    "created_at": {
+     "after_rerate": "2026-02-28 00:00:00",
+     "before": "2026-02-28 00:00:00"
+    },
+    "quota_units": {
+     "after_rerate": "2000",
+     "before": "2000"
+    },
+    "subscription_id": {
+     "after_rerate": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+     "before": "cb0567fe-4371-c52e-8cfd-32d4da750cfd"
+    }
+   },
+   "id": "REFINALIZE-UPDATE-SET",
+   "quarantined_rows": 0,
+   "result": "pass",
+   "row_after_rerate": {
+    "_origin": "target-finalize",
+    "billable_units": "1582",
+    "computed_rollover_units": "0",
+    "created_at": "2026-02-28 00:00:00",
+    "first_tier_units": "101",
+    "overage_amount": "1161.25",
+    "overage_rate": "0.500000",
+    "quota_units": "2000",
+    "rollover_units": "0",
+    "second_tier_units": "1481",
+    "subscription_id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+    "used_units": "1582"
+   },
+   "row_after_restore": {
+    "_origin": "target-finalize",
+    "billable_units": "0",
+    "computed_rollover_units": "0",
+    "created_at": "2026-02-28 00:00:00",
+    "first_tier_units": "0",
+    "overage_amount": "0.00",
+    "overage_rate": "0.020000",
+    "quota_units": "2000",
+    "rollover_units": "418",
+    "second_tier_units": "0",
+    "subscription_id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+    "used_units": "1582"
+   },
+   "row_before": {
+    "_origin": "target-finalize",
+    "billable_units": "0",
+    "computed_rollover_units": "0",
+    "created_at": "2026-02-28 00:00:00",
+    "first_tier_units": "0",
+    "overage_amount": "0.00",
+    "overage_rate": "0.020000",
+    "quota_units": "2000",
+    "rollover_units": "418",
+    "second_tier_units": "0",
+    "subscription_id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+    "used_units": "1582"
+   },
+   "source_columns_left_at_first_finalize": [
+    "subscription_id",
+    "quota_units",
+    "created_at"
+   ],
+   "source_of_truth": "ow_tp.silver.rating_results read back from Delta before, after and after undoing a re-rate of one tenant on a corrected plan supplied as an input override (Oracle and ow_tp.bronze.* untouched), against sp_finalize_rating's DUP_VAL_ON_INDEX UPDATE set",
+   "source_update_set": [
+    "used_units",
+    "rollover_units",
+    "billable_units",
+    "overage_amount"
+   ],
+   "tenant_id": "aad5c229-724a-7a23-7c56-f454994c02a3"
+  },
+  {
+   "actual": {
+    "reasons": [
+     "NUMERIC_OVERFLOW",
+     null
+    ]
+   },
+   "cases": [
+    {
+     "quarantine_reason": "NUMERIC_OVERFLOW",
+     "raw_value": "100000000000000.00",
+     "value_after_cast": null
+    },
+    {
+     "quarantine_reason": null,
+     "raw_value": "12.34",
+     "value_after_cast": "12.34"
+    }
+   ],
+   "expected": {
+    "reasons": [
+     "NUMERIC_OVERFLOW",
+     null
+    ]
+   },
+   "id": "QUAR-NUMERIC_OVERFLOW-REACHABLE",
+   "live_overflow_rows": 0,
+   "predicate_reads": "the pre-cast *_raw columns, so the cast cannot null or truncate the value before the guard sees it",
+   "result": "pass",
+   "source_of_truth": "a synthetic amount beyond DECIMAL(14,2) and an in-range control, pushed through the pinned-type cast and the same generated overflow predicate the load applies, evaluated by the job run. A probe of the target expression: it is not a finding about the source and it writes nothing"
+  },
+  {
+   "actual": {
+    "quarantine_merged_before_halt_decision": true
+   },
+   "expected": {
+    "quarantine_merged_before_halt_decision": true
+   },
+   "halt_threshold_pct": 5,
+   "id": "QUAR-PERSISTED-BEFORE-HALT",
+   "measured_quarantine_rate_pct": 0.0,
+   "quarantine_merge_metrics": {
+    "merge_rows_deleted": 0,
+    "merge_rows_inserted": 0,
+    "merge_rows_updated": 0,
+    "operation": "MERGE",
+    "version": 10
+   },
+   "result": "pass",
+   "source_of_truth": "the job merges the rejected rows into the quarantine table and only then compares the rate with the 5% threshold and raises, so a halted run leaves the operator the payloads that caused it while no rating row is written"
   },
   {
    "actual": {
@@ -800,9 +940,9 @@
   }
  ],
  "failed_checks": [],
- "generated_at": "2026-08-29T03:34:46Z",
+ "generated_at": "2026-08-29T04:10:09Z",
  "idempotency_rerun": {
-  "evidence": "run 1 = serverless run 239088809706914 (batch 20260829032948a), run 2 = serverless run 187034085035899 (batch 20260829032948b), identical parameters (ns=demo, period 2026-02-01..2026-02-28). Second-run Delta MERGE metrics: {\"quarantine_silver_rating\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 2}, \"rating_periods\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 2}, \"rating_results\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 2}}. Row counts after each run: {\"run1\": {\"rating_periods\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}, \"rating_results\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}}, \"run2\": {\"rating_periods\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}, \"rating_results\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}}}",
+  "evidence": "run 1 = serverless run 861683055844337 (batch 20260829035826e), run 2 = serverless run 843845645901006 (batch 20260829035826f), identical parameters (ns=demo, period 2026-02-01..2026-02-28, no plan override). These are the last two of 6 runs: the re-finalize probe and the run that undoes it precede them, so the pair proves the no-op on the same state every other number in this report is measured from. Second-run Delta MERGE metrics: {\"quarantine_silver_rating\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 10}, \"rating_periods\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 8}, \"rating_results\": {\"merge_rows_deleted\": 0, \"merge_rows_inserted\": 0, \"merge_rows_updated\": 0, \"operation\": \"MERGE\", \"version\": 8}}. Row counts after each run: {\"run1\": {\"rating_periods\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}, \"rating_results\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}}, \"run2\": {\"rating_periods\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}, \"rating_results\": {\"rows\": 72, \"rows_without_ns\": 0, \"source_migrated_rows\": 3, \"target_finalize_rows\": 69}}}",
   "performed": true,
   "result": "pass"
  },
@@ -918,14 +1058,34 @@
   },
   "job_runs": [
    {
-    "batch_id": "20260829032948a",
-    "run_id": 239088809706914,
-    "run_page_path": "/?o=7474651138173478#job/669488533232284/run/239088809706914"
+    "batch_id": "20260829035826a",
+    "run_id": 27772428700264,
+    "run_page_path": "/?o=7474651138173478#job/806572830940016/run/27772428700264"
    },
    {
-    "batch_id": "20260829032948b",
-    "run_id": 187034085035899,
-    "run_page_path": "/?o=7474651138173478#job/1102111380028751/run/187034085035899"
+    "batch_id": "20260829035826b",
+    "run_id": 546641991417720,
+    "run_page_path": "/?o=7474651138173478#job/391605934773844/run/546641991417720"
+   },
+   {
+    "batch_id": "20260829035826c",
+    "run_id": 224183167529262,
+    "run_page_path": null
+   },
+   {
+    "batch_id": "20260829035826d",
+    "run_id": 121659656139225,
+    "run_page_path": null
+   },
+   {
+    "batch_id": "20260829035826e",
+    "run_id": 861683055844337,
+    "run_page_path": "/?o=7474651138173478#job/780874872110676/run/861683055844337"
+   },
+   {
+    "batch_id": "20260829035826f",
+    "run_id": 843845645901006,
+    "run_page_path": "/?o=7474651138173478#job/457892391994755/run/843845645901006"
    }
   ],
   "period": {
@@ -1091,6 +1251,134 @@
   }
  },
  "recon_result": "green",
+ "refinalize_proof": {
+  "columns_held_at_first_finalize": {
+   "created_at": {
+    "after_rerate": "2026-02-28 00:00:00",
+    "before": "2026-02-28 00:00:00"
+   },
+   "quota_units": {
+    "after_rerate": "2000",
+    "before": "2000"
+   },
+   "subscription_id": {
+    "after_rerate": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+    "before": "cb0567fe-4371-c52e-8cfd-32d4da750cfd"
+   }
+  },
+  "columns_updated_by_the_rerate": [
+   "rollover_units",
+   "billable_units",
+   "overage_amount"
+  ],
+  "held_unchanged": true,
+  "performed": true,
+  "plan_override": [
+   {
+    "included_units": 0,
+    "overage_rate": "0.500000",
+    "tenant_id": "aad5c229-724a-7a23-7c56-f454994c02a3"
+   }
+  ],
+  "restored_to_pre_probe_values": true,
+  "row_after_rerate": {
+   "_origin": "target-finalize",
+   "billable_units": "1582",
+   "computed_rollover_units": "0",
+   "created_at": "2026-02-28 00:00:00",
+   "first_tier_units": "101",
+   "overage_amount": "1161.25",
+   "overage_rate": "0.500000",
+   "quota_units": "2000",
+   "rollover_units": "0",
+   "second_tier_units": "1481",
+   "subscription_id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+   "used_units": "1582"
+  },
+  "row_after_restore": {
+   "_origin": "target-finalize",
+   "billable_units": "0",
+   "computed_rollover_units": "0",
+   "created_at": "2026-02-28 00:00:00",
+   "first_tier_units": "0",
+   "overage_amount": "0.00",
+   "overage_rate": "0.020000",
+   "quota_units": "2000",
+   "rollover_units": "418",
+   "second_tier_units": "0",
+   "subscription_id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+   "used_units": "1582"
+  },
+  "row_before": {
+   "_origin": "target-finalize",
+   "billable_units": "0",
+   "computed_rollover_units": "0",
+   "created_at": "2026-02-28 00:00:00",
+   "first_tier_units": "0",
+   "overage_amount": "0.00",
+   "overage_rate": "0.020000",
+   "quota_units": "2000",
+   "rollover_units": "418",
+   "second_tier_units": "0",
+   "subscription_id": "cb0567fe-4371-c52e-8cfd-32d4da750cfd",
+   "used_units": "1582"
+  },
+  "run3": {
+   "batch_id": "20260829035826c",
+   "merge_metrics": {
+    "quarantine_silver_rating": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 7
+    },
+    "rating_periods": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 5
+    },
+    "rating_results": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 1,
+     "operation": "MERGE",
+     "version": 5
+    }
+   },
+   "run_id": 224183167529262
+  },
+  "run4_restore": {
+   "batch_id": "20260829035826d",
+   "merge_metrics": {
+    "quarantine_silver_rating": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 8
+    },
+    "rating_periods": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 0,
+     "operation": "MERGE",
+     "version": 6
+    },
+    "rating_results": {
+     "merge_rows_deleted": 0,
+     "merge_rows_inserted": 0,
+     "merge_rows_updated": 1,
+     "operation": "MERGE",
+     "version": 6
+    }
+   },
+   "run_id": 121659656139225
+  },
+  "tenant_id": "aad5c229-724a-7a23-7c56-f454994c02a3"
+ },
  "run_mode": "live",
  "unit": "silver_rating",
  "unverified_paths": [
@@ -1102,6 +1390,7 @@
   "D-05/T4 (two-digit years resolving into the current century) is not reached by this unit: rating reads DATE and TIMESTAMP columns only, so pkg_ow_util.f_str2dt and its swallowed WHEN OTHERS are never called on this path.",
   "compute_rating ends with a pkg_ow_util.log_msg autonomous-transaction audit write. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so the rating run's audit rows are not produced here and no audit parity is claimed.",
   "Suspension proration is exercised by one tenant in this population (the only subscription with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. Proration at other suspension dates is implemented and unverified.",
+  "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected plan supplied as an input override to the run (neither Oracle nor ow_tp.bronze.* is touched), and the row is read back before, after and after undoing it. The source side of that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into the source. A source-executed re-rate is therefore unverified.",
   "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove no other session wrote between the two runs."
  ],
  "values_recomputed_from_target": true

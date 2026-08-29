@@ -43,6 +43,7 @@ dbutils.widgets.text("period_end", "2026-02-28")
 dbutils.widgets.text("landing_root", "/Volumes/ow_tp/bronze/landing")
 dbutils.widgets.text("spec_path", "/Workspace/Shared/ow_tp/silver_rating_spec.json")
 dbutils.widgets.text("batch_id", "")
+dbutils.widgets.text("plan_overrides", "")
 
 NS = dbutils.widgets.get("ns").strip()
 CATALOG = dbutils.widgets.get("catalog").strip()
@@ -53,6 +54,7 @@ PERIOD_END = dbutils.widgets.get("period_end").strip()
 LANDING_ROOT = dbutils.widgets.get("landing_root").strip().rstrip("/")
 SPEC_PATH = dbutils.widgets.get("spec_path").strip()
 BATCH_ID = dbutils.widgets.get("batch_id").strip()
+PLAN_OVERRIDES_RAW = dbutils.widgets.get("plan_overrides").strip()
 
 UNIT = "silver_rating"
 
@@ -73,6 +75,24 @@ for _pname, _pval in (("period_start", PERIOD_START), ("period_end", PERIOD_END)
         raise ValueError(f"{_pname}={_pval!r} must be an ISO date (YYYY-MM-DD)")
 if PERIOD_START > PERIOD_END:
     raise ValueError(f"period_start {PERIOD_START} is after period_end {PERIOD_END}")
+
+# A period is re-rated when a plan or subscription is corrected after it was first finalized. The
+# corrected plan values are supplied here rather than read from bronze, because bronze mirrors the
+# source and this unit never writes it. Empty (the default) means: rate from bronze alone.
+PLAN_OVERRIDES: list[dict] = json.loads(PLAN_OVERRIDES_RAW) if PLAN_OVERRIDES_RAW else []
+if not isinstance(PLAN_OVERRIDES, list):
+    raise ValueError("plan_overrides must be a JSON array of {tenant_id, included_units, overage_rate}")
+for _ovr in PLAN_OVERRIDES:
+    if set(_ovr) != {"tenant_id", "included_units", "overage_rate"}:
+        raise ValueError(
+            f"plan_overrides entry {_ovr!r} must carry exactly tenant_id, included_units, overage_rate"
+        )
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", str(_ovr["tenant_id"])):
+        raise ValueError(f"plan_overrides tenant_id {_ovr['tenant_id']!r} must match ^[A-Za-z0-9_-]+$")
+    if not re.fullmatch(r"\d{1,30}", str(_ovr["included_units"])):
+        raise ValueError(f"plan_overrides included_units {_ovr['included_units']!r} must be a whole number")
+    if not re.fullmatch(r"\d{1,12}(\.\d{1,6})?", str(_ovr["overage_rate"])):
+        raise ValueError(f"plan_overrides overage_rate {_ovr['overage_rate']!r} must fit DECIMAL(12,6)")
 
 LANDING = f"{LANDING_ROOT}/{NS}/{UNIT}"
 QUARANTINE = f"{CATALOG}.{SCHEMA}.quarantine_{UNIT}"
@@ -241,8 +261,27 @@ SUSPENDED_PRED = (
     f"AND `suspended_on` BETWEEN {PS_LIT} AND {PE_LIT})"
 )
 
+if PLAN_OVERRIDES:
+    _ovr_rows = ", ".join(
+        f"({sql_str(str(o['tenant_id']))}, CAST({o['included_units']} AS DECIMAL(38,0)), "
+        f"CAST({o['overage_rate']} AS DECIMAL(12,6)))"
+        for o in PLAN_OVERRIDES
+    )
+    PLAN_OVR_SQL = (
+        f"SELECT * FROM VALUES {_ovr_rows} AS v(tenant_id, included_units, overage_rate)"
+    )
+else:
+    PLAN_OVR_SQL = (
+        "SELECT CAST(NULL AS STRING) AS tenant_id, "
+        "CAST(NULL AS DECIMAL(38,0)) AS included_units, "
+        "CAST(NULL AS DECIMAL(12,6)) AS overage_rate WHERE false"
+    )
+
 RATING_SQL = f"""
-WITH tenant AS (
+WITH plan_ovr AS (
+  {PLAN_OVR_SQL}
+),
+tenant AS (
   SELECT `id` AS tenant_id
   FROM {CATALOG}.{BRONZE}.tenants
   WHERE `ns` = {NS_LIT}
@@ -302,8 +341,11 @@ base AS (
          s.`id` AS subscription_id, s.`status_cd`, s.suspended_on, s.`plan_id`,
          coalesce(s.cand_rows, 0) AS sub_candidates,
          coalesce(s.tied_rows, 0) AS sub_tied_rows,
-         p.`included_units` AS v_included,
-         p.`overage_rate` AS v_rate,
+         -- A re-rate supplies the corrected plan values; with no override this is the bronze plan
+         -- row unchanged. coalesce here selects the input, it is not Oracle NVL semantics (D-02).
+         coalesce(po.`included_units`, CAST(p.`included_units` AS DECIMAL(38,0))) AS v_included,
+         coalesce(po.`overage_rate`, CAST(p.`overage_rate` AS DECIMAL(12,6))) AS v_rate,
+         (po.`tenant_id` IS NOT NULL) AS plan_overridden,
          coalesce(u.used_units, CAST(0 AS DECIMAL(38,0))) AS used_units,
          coalesce(u.usage_events_in_window, 0) AS usage_events_in_window,
          coalesce(pr.prior_units, CAST(0 AS DECIMAL(38,0))) AS prior_units,
@@ -312,6 +354,7 @@ base AS (
   FROM tenant t
   LEFT JOIN sub_pick s ON s.`tenant_id` = t.tenant_id
   LEFT JOIN {CATALOG}.{BRONZE}.plans p ON p.`id` = s.`plan_id` AND p.`ns` = {NS_LIT}
+  LEFT JOIN plan_ovr po ON po.`tenant_id` = t.tenant_id
   LEFT JOIN usage u ON u.`tenant_id` = t.tenant_id
   LEFT JOIN prior pr ON pr.`tenant_id` = t.tenant_id
   LEFT JOIN bad_kind bk ON bk.`tenant_id` = t.tenant_id
@@ -385,18 +428,28 @@ SELECT tenant_id,
        bad_usage_payload,
        plan_id,
        CAST(v_rate AS DECIMAL(12,6)) AS overage_rate,
-       CAST(used_units AS DECIMAL(38,0)) AS used_units,
-       CAST(quota_units AS DECIMAL(38,0)) AS quota_units,
-       CAST(computed_rollover_units AS DECIMAL(38,0)) AS computed_rollover_units,
+       -- try_cast, not cast, on every pinned money/count type: an out-of-range value has to reach
+       -- the overflow guard below as a NULL and be quarantined, not abort the run mid-population.
+       try_cast(used_units AS DECIMAL(38,0)) AS used_units,
+       try_cast(quota_units AS DECIMAL(38,0)) AS quota_units,
+       try_cast(computed_rollover_units AS DECIMAL(38,0)) AS computed_rollover_units,
        -- D-09: persisted rollover is GREATEST(quota - used, 0), not the computed value above.
-       CAST({o_greatest("`quota_units` - `used_units`", "CAST(0 AS DECIMAL(38,0))")}
+       try_cast({o_greatest("`quota_units` - `used_units`", "CAST(0 AS DECIMAL(38,0))")}
             AS DECIMAL(38,0)) AS rollover_units,
-       CAST(first_tier_units AS DECIMAL(38,0)) AS first_tier_units,
-       CAST(second_tier_units AS DECIMAL(38,0)) AS second_tier_units,
-       CAST(billable_units AS DECIMAL(38,0)) AS billable_units,
-       CAST(overage_amount AS DECIMAL(14,2)) AS overage_amount,
+       try_cast(first_tier_units AS DECIMAL(38,0)) AS first_tier_units,
+       try_cast(second_tier_units AS DECIMAL(38,0)) AS second_tier_units,
+       try_cast(billable_units AS DECIMAL(38,0)) AS billable_units,
+       try_cast(overage_amount AS DECIMAL(14,2)) AS overage_amount,
        suspension_prorated,
-       CAST({PE_LIT} AS TIMESTAMP) AS created_at
+       plan_overridden,
+       CAST({PE_LIT} AS TIMESTAMP) AS created_at,
+       -- The same values before the pinned-type cast. The overflow guard (D-23/T6) is evaluated on
+       -- these, because the cast above is what would silently null or truncate an out-of-range value.
+       used_units AS used_units_raw,
+       quota_units AS quota_units_raw,
+       {o_greatest("`quota_units` - `used_units`", "CAST(0 AS DECIMAL(38,0))")} AS rollover_units_raw,
+       billable_units AS billable_units_raw,
+       overage_amount AS overage_amount_raw
 FROM prorated
 """
 
@@ -421,7 +474,17 @@ print(f"rating drivers (tenants in ns={NS}): {spark.table('v_rating').count()}")
 # MAGIC * `CODE_UNKNOWN` — a usage event in the window carries a `kind_cd` with no `CODES` row
 # MAGIC   (`trg_usage_events_check`, D-16), so the rated units cannot be trusted.
 # MAGIC * `NUMERIC_OVERFLOW` — a computed value does not fit its pinned target type (D-23/T6). Money is
-# MAGIC   never widened or rescaled to make it fit.
+# MAGIC   never widened or rescaled to make it fit. The test reads the `*_raw` columns, which carry the
+# MAGIC   value **before** the cast to `DECIMAL(14,2)` / `DECIMAL(38,0)`, because it is that cast which
+# MAGIC   would otherwise null or truncate the value first and leave the guard unable to fire; a raw
+# MAGIC   value that survives while its cast counterpart is `NULL` is itself treated as overflow. The
+# MAGIC   live exposure is `used_units * overage_rate * 1.5` (the source's `ORA-01438` case).
+# MAGIC
+# MAGIC **Ordering: quarantine is persisted before the halt is decided.** The quarantine `MERGE` runs
+# MAGIC first, then the rate is compared with the 5% threshold and the run raises. A halted run therefore
+# MAGIC leaves the operator the rejected payloads that caused it, which is the one thing needed to triage
+# MAGIC it, while `rating_periods` and `rating_results` stay untouched — a halt must never write a
+# MAGIC business row.
 # MAGIC
 # MAGIC **Divergence, orphan period row.** `sp_finalize_rating` INSERTs the `RATING_PERIODS` row
 # MAGIC *before* it calls `compute_rating`, so a tenant whose `RATING_RESULTS` insert then raises (the
@@ -433,19 +496,37 @@ print(f"rating drivers (tenants in ns={NS}): {spark.table('v_rating').count()}")
 
 # COMMAND ----------
 
-MONEY_MAX = "999999999999.99"
+MONEY_MAX = "999999999999.99"  # largest DECIMAL(14,2)
+COUNT_MAX = "9" * 38  # largest DECIMAL(38,0)
+COUNT_COLS = ("used_units", "quota_units", "rollover_units", "billable_units")
+
+
+def overflow_pred(p: str) -> str:
+    """True when a value did not fit its pinned target type, tested before the cast (D-23/T6).
+
+    Two tests per column: the raw value against the target type's own bound, and the raw value
+    surviving while the cast one is NULL, which is how a non-ANSI cast reports an out-of-range
+    value. Either one means the number cannot be represented, so the row is rejected rather than
+    landed with a silently altered amount.
+    """
+    parts = [
+        f"abs({p}`overage_amount_raw`) > CAST({MONEY_MAX} AS DECIMAL(14,2))",
+        f"({p}`overage_amount_raw` IS NOT NULL AND {p}`overage_amount` IS NULL)",
+    ]
+    for c in COUNT_COLS:
+        parts.append(f"abs({p}`{c}_raw`) > CAST({COUNT_MAX} AS DECIMAL(38,0))")
+        parts.append(f"({p}`{c}_raw` IS NOT NULL AND {p}`{c}` IS NULL)")
+    return "(" + "\n             OR ".join(parts) + ")"
+
 
 QUAR_SQL = f"""
 WITH judged AS (
   SELECT r.*,
          CASE
            WHEN r.`tenant_id` IS NULL OR r.`period_id` IS NULL THEN 'KEY_NULL'
-           WHEN r.`subscription_id` IS NULL OR r.`quota_units` IS NULL THEN 'FK_ORPHAN'
+           WHEN r.`subscription_id` IS NULL OR r.`quota_units_raw` IS NULL THEN 'FK_ORPHAN'
            WHEN r.`bad_usage_rows` > 0 THEN 'CODE_UNKNOWN'
-           WHEN abs(coalesce(r.`overage_amount`, CAST(0 AS DECIMAL(14,2))))
-                  > CAST({MONEY_MAX} AS DECIMAL(14,2))
-             OR abs(coalesce(r.`used_units`, CAST(0 AS DECIMAL(38,0)))) > CAST(1e37 AS DECIMAL(38,0))
-             THEN 'NUMERIC_OVERFLOW'
+           WHEN {overflow_pred("r.")} THEN 'NUMERIC_OVERFLOW'
            ELSE NULL
          END AS quarantine_reason
   FROM v_rating r
@@ -510,10 +591,100 @@ if loaded_drivers + quarantined_rows != source_rows_drivers:
     )
 quar_pct = (100.0 * quarantined_rows / source_rows_drivers) if source_rows_drivers else 0.0
 print(f"drivers={source_rows_drivers} loaded={loaded_drivers} quarantined={quarantined_rows} ({quar_pct:.4f}%)")
+
+# COMMAND ----------
+
+# MAGIC %md ### The rejects are persisted, then the halt is decided
+# MAGIC
+# MAGIC The quarantine `MERGE` runs before the threshold is evaluated, so a halted run still hands the
+# MAGIC operator the rows that caused it. No business row has been written at this point, and the halt
+# MAGIC raises before any is: a halt leaves `rating_periods` and `rating_results` exactly as they were.
+
+# COMMAND ----------
+
+
+def merge_metrics(target: str) -> dict:
+    row = spark.sql(f"DESCRIBE HISTORY {full(target)} LIMIT 1").collect()[0]
+    m = row["operationMetrics"] or {}
+    return {
+        "operation": row["operation"],
+        "merge_rows_inserted": int(m.get("numTargetRowsInserted", 0)),
+        "merge_rows_updated": int(m.get("numTargetRowsUpdated", 0)),
+        "merge_rows_deleted": int(m.get("numTargetRowsDeleted", 0)),
+        "version": int(row["version"]),
+    }
+
+
+spark.sql(
+    f"""
+    MERGE INTO {QUARANTINE} t
+    USING v_quarantine s
+      ON t.`ns` = {NS_LIT} AND t.`source_table` = s.`source_table`
+     AND t.`source_key` <=> s.`source_key` AND t.`quarantine_reason` = s.`quarantine_reason`
+    WHEN MATCHED AND NOT (t.`raw_source_payload` <=> s.`raw_source_payload`) THEN UPDATE SET
+      t.`raw_source_payload` = s.`raw_source_payload`,
+      t.`detail` = s.`detail`,
+      t.`_batch_id` = s.`_batch_id`,
+      t.`_quarantined_at` = s.`_quarantined_at`
+    WHEN NOT MATCHED THEN INSERT *
+    """
+)
+quarantine_metrics = merge_metrics(f"quarantine_{UNIT}")
+
 if quar_pct > HALT_PCT:
     raise AssertionError(
         f"STOPA-QUARANTINE: quarantine rate {quar_pct:.4f}% exceeds {HALT_PCT}% of source rows — "
-        f"halting the unit instead of loading around it"
+        f"halting the unit instead of loading around it. The {quarantined_rows} rejected rows are in "
+        f"{QUARANTINE} (ns={NS}, _batch_id={BATCH_ID}); no rating row was written"
+    )
+
+# COMMAND ----------
+
+# MAGIC %md ### Overflow guard probe
+# MAGIC
+# MAGIC The population above overflows nothing, so the guard's own reachability is measured rather than
+# MAGIC assumed: a synthetic amount is pushed through the same cast and the same generated predicate.
+# MAGIC This is a probe of the target expression only — it is not a finding about the source, and it
+# MAGIC writes nothing.
+
+# COMMAND ----------
+
+PROBE_SQL = f"""
+WITH amounts AS (
+  SELECT 1 AS ord, CAST(1e14 AS DECIMAL(38,2)) AS amount
+  UNION ALL
+  SELECT 2 AS ord, CAST(12.34 AS DECIMAL(38,2)) AS amount
+),
+probe AS (
+  SELECT a.ord,
+         a.amount AS `overage_amount_raw`,
+         try_cast(a.amount AS DECIMAL(14,2)) AS `overage_amount`,
+         {", ".join(
+            f"CAST(1 AS DECIMAL(38,0)) AS `{c}_raw`, "
+            f"try_cast(CAST(1 AS DECIMAL(38,0)) AS DECIMAL(38,0)) AS `{c}`"
+            for c in COUNT_COLS
+         )}
+  FROM amounts a
+)
+SELECT CAST(p.`overage_amount_raw` AS STRING) AS raw_value,
+       CAST(p.`overage_amount` AS STRING) AS cast_value,
+       CASE WHEN {overflow_pred("p.")} THEN 'NUMERIC_OVERFLOW' ELSE NULL END AS reason
+FROM probe p
+ORDER BY p.ord
+"""
+overflow_probe = {
+    "description": "a value beyond DECIMAL(14,2) and an in-range control, both pushed through the "
+    "pinned-type cast and the same generated overflow predicate the load uses",
+    "is_probe_of_target_expression_not_source_finding": True,
+    "cases": [
+        {"raw_value": r[0], "value_after_cast": r[1], "quarantine_reason": r[2]}
+        for r in spark.sql(PROBE_SQL).collect()
+    ],
+}
+print(json.dumps(overflow_probe, indent=1))
+if [c["quarantine_reason"] for c in overflow_probe["cases"]] != ["NUMERIC_OVERFLOW", None]:
+    raise AssertionError(
+        f"the NUMERIC_OVERFLOW guard did not behave as declared on the probe: {overflow_probe}"
     )
 
 # COMMAND ----------
@@ -595,46 +766,54 @@ spark.sql(
 # MAGIC inputs updates nothing and the Delta metrics show it (ACC-IDEM). `_batch_id` and `_loaded_at`
 # MAGIC are deliberately outside the comparison: stamping them on every run would make every rerun look
 # MAGIC like a change.
+# MAGIC
+# MAGIC **Re-rating a period already finalized here updates only what the source updates.** A second
+# MAGIC `sp_finalize_rating` for the same period hits `DUP_VAL_ON_INDEX` and its fallback `UPDATE`
+# MAGIC assigns `used_units`, `rollover_units`, `billable_units`, `overage_amount` on `RATING_RESULTS`
+# MAGIC (`period_end` on `RATING_PERIODS`) and nothing else, so `subscription_id`, `quota_units` and
+# MAGIC `created_at` keep their first-finalize values even when the plan or subscription has since
+# MAGIC changed. That set is `refinalize_update_columns` in the spec, and for a row this run rates again
+# MAGIC (`_origin = 'target-finalize'` on both sides) the `UPDATE` is scoped to exactly those columns
+# MAGIC plus the explanatory columns that have no source analogue, which follow the money so the row
+# MAGIC stays internally consistent. The match predicate is scoped to the same columns: a changed quota
+# MAGIC alone is not a difference, so it neither churns the row nor dirties the idempotency proof. Rows
+# MAGIC that are not a re-rate of a row this unit finalized — migrated history, and a row changing
+# MAGIC origin — take the full payload, because there the target is mirroring the source verbatim.
 
 # COMMAND ----------
-
-
-def merge_metrics(target: str) -> dict:
-    row = spark.sql(f"DESCRIBE HISTORY {full(target)} LIMIT 1").collect()[0]
-    m = row["operationMetrics"] or {}
-    return {
-        "operation": row["operation"],
-        "merge_rows_inserted": int(m.get("numTargetRowsInserted", 0)),
-        "merge_rows_updated": int(m.get("numTargetRowsUpdated", 0)),
-        "merge_rows_deleted": int(m.get("numTargetRowsDeleted", 0)),
-        "version": int(row["version"]),
-    }
 
 
 def merge_target(tbl: dict, view: str) -> dict:
     target = tbl["target"]
     cols = [c["name"] for c in tbl["columns"]]
     payload = [c for c in cols if c not in ("id",)]
-    diff = " OR ".join(f"NOT (t.`{c}` <=> s.`{c}`)" for c in payload + ["_origin"])
-    set_clause = ",\n      ".join(
-        [f"t.`{c}` = s.`{c}`" for c in payload]
-        + [
-            "t.`_origin` = s.`_origin`",
-            f"t.`_batch_id` = {BATCH_LIT}",
-            "t.`_loaded_at` = current_timestamp()",
-        ]
-    )
+    refinalize = tbl.get("refinalize_update_columns", []) + tbl.get("explicit_state_columns", [])
+    stamps = [f"t.`_batch_id` = {BATCH_LIT}", "t.`_loaded_at` = current_timestamp()"]
+
+    def diff_of(columns: list[str]) -> str:
+        return " OR ".join(f"NOT (t.`{c}` <=> s.`{c}`)" for c in columns)
+
+    def set_of(columns: list[str], origin: bool) -> str:
+        return ",\n      ".join(
+            [f"t.`{c}` = s.`{c}`" for c in columns]
+            + (["t.`_origin` = s.`_origin`"] if origin else [])
+            + stamps
+        )
+
     insert_cols = ", ".join([f"`{c}`" for c in cols] + ["`ns`", "`_origin`", "`_batch_id`", "`_loaded_at`"])
     insert_vals = ", ".join(
         [f"s.`{c}`" for c in cols] + [NS_LIT, "s.`_origin`", BATCH_LIT, "current_timestamp()"]
     )
+    refinalized = "t.`_origin` = 'target-finalize' AND s.`_origin` = 'target-finalize'"
     spark.sql(
         f"""
         MERGE INTO {full(target)} t
         USING {view} s
           ON t.`id` = s.`id` AND t.`ns` = {NS_LIT}
-        WHEN MATCHED AND ({diff}) THEN UPDATE SET
-      {set_clause}
+        WHEN MATCHED AND {refinalized} AND ({diff_of(refinalize)}) THEN UPDATE SET
+      {set_of(refinalize, origin=False)}
+        WHEN MATCHED AND NOT ({refinalized}) AND ({diff_of(payload + ['_origin'])}) THEN UPDATE SET
+      {set_of(payload, origin=True)}
         WHEN NOT MATCHED THEN INSERT ({insert_cols}) VALUES ({insert_vals})
         """
     )
@@ -644,23 +823,8 @@ def merge_target(tbl: dict, view: str) -> dict:
 metrics = {
     "rating_periods": merge_target(TABLES["rating_periods"], "v_periods_src"),
     "rating_results": merge_target(TABLES["rating_results"], "v_results_src"),
+    f"quarantine_{UNIT}": quarantine_metrics,
 }
-
-spark.sql(
-    f"""
-    MERGE INTO {QUARANTINE} t
-    USING v_quarantine s
-      ON t.`ns` = {NS_LIT} AND t.`source_table` = s.`source_table`
-     AND t.`source_key` <=> s.`source_key` AND t.`quarantine_reason` = s.`quarantine_reason`
-    WHEN MATCHED AND NOT (t.`raw_source_payload` <=> s.`raw_source_payload`) THEN UPDATE SET
-      t.`raw_source_payload` = s.`raw_source_payload`,
-      t.`detail` = s.`detail`,
-      t.`_batch_id` = s.`_batch_id`,
-      t.`_quarantined_at` = s.`_quarantined_at`
-    WHEN NOT MATCHED THEN INSERT *
-    """
-)
-metrics[f"quarantine_{UNIT}"] = merge_metrics(f"quarantine_{UNIT}")
 print(json.dumps(metrics, indent=1))
 
 # COMMAND ----------
@@ -967,6 +1131,20 @@ summary = {
         "quarantined_rows_alongside_money": quarantined_rows,
     },
     "merge_metrics": metrics,
+    "refinalize": {
+        "quarantine_persisted_before_halt_decision": True,
+        "plan_overrides": PLAN_OVERRIDES,
+        "update_columns": {
+            name: TABLES[name].get("refinalize_update_columns", [])
+            + TABLES[name].get("explicit_state_columns", [])
+            for name in ("rating_periods", "rating_results")
+        },
+        "columns_held_at_first_finalize": {
+            "rating_results": ["subscription_id", "quota_units", "created_at"],
+            "rating_periods": ["tenant_id", "period_start"],
+        },
+    },
+    "overflow_probe": overflow_probe,
     "column_types": column_types,
     "usage_summary": usage_summary,
     "rating_rows": rated_rows,

@@ -492,7 +492,10 @@ spark.sql(f"""
 # privileges are inherited downward, so a `MODIFY` on the catalog or the schema
 # writes this table just as effectively as a grant on the table itself — all three
 # levels are inspected, not only the table.
-WRITE_PRIVILEGES = ("MODIFY", "ALL_PRIVILEGES", "WRITE_FILES")
+# Privilege names are normalised before comparison: Unity Catalog renders the
+# same privilege as `ALL_PRIVILEGES` or `ALL PRIVILEGES` depending on the surface,
+# and MANAGE lets its holder grant itself the rest.
+WRITE_PRIVILEGES = ("MODIFY", "ALL_PRIVILEGES", "WRITE_FILES", "MANAGE")
 ALLOWLIST_SECURABLES = (
     ("CATALOG", CATALOG),
     ("SCHEMA", f"{CATALOG}.{SCHEMA}"),
@@ -503,7 +506,7 @@ for securable_type, securable in ALLOWLIST_SECURABLES:
     for row in spark.sql(f"SHOW GRANTS ON {securable_type} {securable}").collect():
         grant = {k.lower(): v for k, v in row.asDict().items()}
         privilege = str(grant.get("actiontype") or grant.get("action_type") or "")
-        if privilege.upper() in WRITE_PRIVILEGES:
+        if privilege.upper().replace(" ", "_") in WRITE_PRIVILEGES:
             write_grants.append({"securable": f"{securable_type} {securable}",
                                  "principal": grant.get("principal"),
                                  "privilege": privilege})

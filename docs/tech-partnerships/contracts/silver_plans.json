@@ -7,7 +7,7 @@
     "ow_tp.silver.entitlements",
     "ow_tp.silver.quarantine_silver_plans"
   ],
-  "golden_baseline_location": "procs/transcripts/plans/PLANS-001..005.json (5 recorded legacy transcripts, pinned by SOURCE_SHA and FIXTURE_SHA in procs/transcripts/), plus federated LIVE comparison of the tables it writes.",
+  "golden_baseline_location": "procs/oracle/transcripts/plans/PLANS-001..005.json (5 immutable Oracle transcripts, pinned by procs/oracle/transcripts/ORACLE_SOURCE_SHA; see .migration/12_golden_baselines.md), plus federated LIVE comparison of the tables it writes. procs/transcripts/ is the Postgres cross-check set, not the baseline.",
   "acceptance_checks": [
     {
       "id": "ACC-MONEY",

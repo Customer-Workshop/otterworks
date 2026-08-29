@@ -8,7 +8,7 @@
     "ow_tp.silver.subscriptions",
     "ow_tp.silver.quarantine_silver_dunning"
   ],
-  "golden_baseline_location": "procs/transcripts/dunning/DUNNING-001..005.json (5 recorded legacy transcripts, pinned by SOURCE_SHA/FIXTURE_SHA), plus federated LIVE comparison. Runs alone in its own wave because of the write-target collision below.",
+  "golden_baseline_location": "procs/oracle/transcripts/dunning/DUNNING-001..005.json (5 immutable Oracle transcripts, pinned by procs/oracle/transcripts/ORACLE_SOURCE_SHA; see .migration/12_golden_baselines.md), plus federated LIVE comparison. Runs alone in its own wave because of the write-target collision below.",
   "acceptance_checks": [
     {
       "id": "ACC-QUAR",

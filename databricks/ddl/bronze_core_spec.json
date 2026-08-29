@@ -1,0 +1,699 @@
+{
+  "unit": "bronze_core",
+  "job_name": "ow_tp_bronze_core",
+  "catalog": "ow_tp",
+  "schema": "bronze",
+  "source_schema": "OW_BILLING",
+  "source_artifact": "services/legacy-billing/db/oracle/schema/01_tables.sql",
+  "quarantine_table": "quarantine_bronze_core",
+  "quarantine_reasons": [
+    "BAD_DATE",
+    "DATE_INVALID",
+    "AMT_NON_NUMERIC",
+    "RECORD_SHORT",
+    "ENC_INVALID",
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "FK_ORPHAN",
+    "CODE_UNKNOWN",
+    "NUMERIC_OVERFLOW"
+  ],
+  "class_target_types": {
+    "text": "STRING",
+    "flag": "STRING",
+    "code": "INT",
+    "count": "DECIMAL(38,0)",
+    "money": "DECIMAL(14,2)",
+    "rate": "DECIMAL(12,6)",
+    "surrogate": "DECIMAL(38,0)",
+    "date": "TIMESTAMP",
+    "ts": "TIMESTAMP"
+  },
+  "extract_formats": {
+    "date": "YYYY-MM-DD HH24:MI:SS",
+    "ts": "YYYY-MM-DD HH24:MI:SS.FF6"
+  },
+  "code_checks": [
+    {
+      "table": "usage_events",
+      "column": "kind_cd",
+      "code_type": "USAGE_KIND",
+      "reason": "CODE_UNKNOWN",
+      "source": "trg_usage_events_check"
+    }
+  ],
+  "positive_checks": [
+    {
+      "table": "usage_events",
+      "column": "units",
+      "source": "trg_usage_events_check",
+      "note": "Source trigger rejects units <= 0. No quarantine reason in the closed set covers it, so a non-zero count halts the unit for central triage instead of being folded into another code."
+    }
+  ],
+  "frozen_status": [
+    {
+      "table": "subscriptions",
+      "column": "status_cd",
+      "value": 30,
+      "source": "trg_sub_no_uncancel",
+      "note": "A cancelled subscription can never leave status 30, so the MERGE never updates status_cd away from 30 on an existing row."
+    }
+  ],
+  "tables": [
+    {
+      "target": "codes",
+      "source": "CODES",
+      "key": [
+        "code_type",
+        "code_val"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "code_type",
+          "oracle_type": "VARCHAR2(30)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "code_val",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        },
+        {
+          "name": "code_desc",
+          "oracle_type": "VARCHAR2(80)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "tenants",
+      "source": "TENANTS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "name",
+          "oracle_type": "VARCHAR2(200)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tax_exempt_yn",
+          "oracle_type": "CHAR(1)",
+          "class": "flag",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "status_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        }
+      ]
+    },
+    {
+      "target": "plans",
+      "source": "PLANS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "code",
+          "oracle_type": "VARCHAR2(50)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tier_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        },
+        {
+          "name": "monthly_fee",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        },
+        {
+          "name": "included_units",
+          "oracle_type": "NUMBER(10)",
+          "class": "count",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "overage_rate",
+          "oracle_type": "NUMBER(12,6)",
+          "class": "rate",
+          "target_type": "DECIMAL(12,6)",
+          "scale_declared": true
+        },
+        {
+          "name": "active_yn",
+          "oracle_type": "CHAR(1)",
+          "class": "flag",
+          "target_type": "STRING",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "subscriptions",
+      "source": "SUBSCRIPTIONS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "plan_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "starts_on",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "ends_on",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "status_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        },
+        {
+          "name": "suspended_on",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "usage_events",
+      "source": "USAGE_EVENTS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "occurred_at",
+          "oracle_type": "TIMESTAMP",
+          "class": "ts",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "units",
+          "oracle_type": "NUMBER(10)",
+          "class": "count",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "kind_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        }
+      ]
+    },
+    {
+      "target": "rating_periods",
+      "source": "RATING_PERIODS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "period_start",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "period_end",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "rating_results",
+      "source": "RATING_RESULTS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "period_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "subscription_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "used_units",
+          "oracle_type": "NUMBER(10)",
+          "class": "count",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "quota_units",
+          "oracle_type": "NUMBER(10)",
+          "class": "count",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "rollover_units",
+          "oracle_type": "NUMBER(10)",
+          "class": "count",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "billable_units",
+          "oracle_type": "NUMBER(10)",
+          "class": "count",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "overage_amount",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        },
+        {
+          "name": "created_at",
+          "oracle_type": "TIMESTAMP",
+          "class": "ts",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "invoices",
+      "source": "INVOICES",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "period_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "issued_at",
+          "oracle_type": "TIMESTAMP",
+          "class": "ts",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "subtotal",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        },
+        {
+          "name": "tax",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        },
+        {
+          "name": "total",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        },
+        {
+          "name": "status_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        }
+      ]
+    },
+    {
+      "target": "invoice_lines",
+      "source": "INVOICE_LINES",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "invoice_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "line_no",
+          "oracle_type": "NUMBER(6)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        },
+        {
+          "name": "line_type",
+          "oracle_type": "VARCHAR2(10)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "description",
+          "oracle_type": "VARCHAR2(400)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "amount",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "credit_notes",
+      "source": "CREDIT_NOTES",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "issued_on",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "amount",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        },
+        {
+          "name": "remaining_amount",
+          "oracle_type": "NUMBER(12,2)",
+          "class": "money",
+          "target_type": "DECIMAL(14,2)",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "dunning_attempts",
+      "source": "DUNNING_ATTEMPTS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "invoice_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "attempt_no",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        },
+        {
+          "name": "scheduled_for",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "status_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        }
+      ]
+    },
+    {
+      "target": "notifications",
+      "source": "NOTIFICATIONS",
+      "key": [
+        "id"
+      ],
+      "parity": true,
+      "columns": [
+        {
+          "name": "id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "tenant_id",
+          "oracle_type": "VARCHAR2(36)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "kind_cd",
+          "oracle_type": "NUMBER(4)",
+          "class": "code",
+          "target_type": "INT",
+          "scale_declared": false
+        },
+        {
+          "name": "sent_at",
+          "oracle_type": "TIMESTAMP",
+          "class": "ts",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        }
+      ]
+    },
+    {
+      "target": "billing_audit_log",
+      "source": "BILLING_AUDIT_LOG",
+      "key": [
+        "log_id"
+      ],
+      "parity": false,
+      "columns": [
+        {
+          "name": "log_id",
+          "oracle_type": "NUMBER(12)",
+          "class": "surrogate",
+          "target_type": "DECIMAL(38,0)",
+          "scale_declared": false
+        },
+        {
+          "name": "logged_at",
+          "oracle_type": "DATE",
+          "class": "date",
+          "target_type": "TIMESTAMP",
+          "scale_declared": true
+        },
+        {
+          "name": "module",
+          "oracle_type": "VARCHAR2(30)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        },
+        {
+          "name": "message",
+          "oracle_type": "VARCHAR2(4000)",
+          "class": "text",
+          "target_type": "STRING",
+          "scale_declared": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,440 @@
+{
+  "kind": "recon-report",
+  "unit": "bronze_hist",
+  "namespace": "demo",
+  "generated_at": "2026-08-29T00:38:30Z",
+  "run_mode": "live",
+  "source": {
+    "kind": "oracle",
+    "service": "FREEPDB1",
+    "schema": "OW_BILLING",
+    "scope": "full history, not a recent window",
+    "provenance": "History rows were written by the estate's own CUSTOMER_MASTER and SUBSCRIPTIONS capture triggers during account maintenance (balance and status updates, closures, plan changes, subscription removals) on this Oracle instance. Nothing in the history tables was inserted directly."
+  },
+  "target": {
+    "catalog": "ow_tp",
+    "tables": [
+      "ow_tp.bronze.customer_master_hist",
+      "ow_tp.bronze.subscriptions_hist",
+      "ow_tp.bronze.quarantine_bronze_hist"
+    ],
+    "landing": "/Volumes/ow_tp/bronze/landing/demo/bronze_hist/"
+  },
+  "totals": {
+    "source_rows": 478,
+    "loaded_rows": 478,
+    "quarantined_rows": 0,
+    "quarantine_rate_pct": 0.0
+  },
+  "tables": {
+    "customer_master_hist": {
+      "source_rows": 440,
+      "loaded_rows": 440,
+      "quarantined_rows": 0,
+      "quarantine_rate_pct": 0.0,
+      "hist_op_distribution": {
+        "UPD": 400,
+        "DEL": 40
+      },
+      "rerun_merge_metrics": {
+        "version": 6,
+        "operation": "MERGE",
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "rows_deleted": 0
+      }
+    },
+    "subscriptions_hist": {
+      "source_rows": 38,
+      "loaded_rows": 38,
+      "quarantined_rows": 0,
+      "quarantine_rate_pct": 0.0,
+      "hist_op_distribution": {
+        "UPD": 30,
+        "DEL": 8
+      },
+      "rerun_merge_metrics": {
+        "version": 6,
+        "operation": "MERGE",
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "rows_deleted": 0
+      }
+    }
+  },
+  "checks": [
+    {
+      "id": "ROWCOUNT-customer_master_hist",
+      "expected": 440,
+      "actual": 440,
+      "source_of_truth": "live Oracle OW_BILLING count(*) vs Delta target + quarantine (T2)",
+      "result": "pass"
+    },
+    {
+      "id": "ACCOUNTING-customer_master_hist",
+      "expected": "loaded + quarantined == source",
+      "actual": "440 + 0 == 440",
+      "source_of_truth": "recomputed from ow_tp.bronze targets",
+      "result": "pass"
+    },
+    {
+      "id": "QUARANTINE-RATE-customer_master_hist",
+      "expected": "<= 5.00%",
+      "actual": "0.00%",
+      "source_of_truth": "quarantine_bronze_hist / live Oracle source rows (STOPA-QUARANTINE)",
+      "result": "pass"
+    },
+    {
+      "id": "HISTOP-customer_master_hist",
+      "expected": {
+        "UPD": 400,
+        "DEL": 40
+      },
+      "actual": {
+        "DEL": 40,
+        "UPD": 400
+      },
+      "source_of_truth": "live Oracle HIST_OP distribution (ACC-HIST-FIRSTCLASS)",
+      "result": "pass"
+    },
+    {
+      "id": "ROWLEVEL-customer_master_hist",
+      "expected": {
+        "missing": 0,
+        "extra": 0,
+        "differing": 0,
+        "columns_compared": 158
+      },
+      "actual": {
+        "missing": 0,
+        "extra": 0,
+        "differing": 0,
+        "columns_compared": 158
+      },
+      "source_of_truth": "row-by-row, column-by-column against live Oracle (T1/T7/T8/T9)",
+      "result": "pass"
+    },
+    {
+      "id": "MONEY-customer_master_hist",
+      "expected": {
+        "sums": {
+          "cur_bal_amt": "1935768.08",
+          "past_due_amt": "291895.06",
+          "ytd_billed_amt": "13552275.44",
+          "ltd_billed_amt": "0",
+          "ytd_paid_amt": "0",
+          "credit_limit_amt": "5653000",
+          "udf_amt_01": "0",
+          "udf_amt_02": "0",
+          "udf_amt_03": "0",
+          "udf_amt_04": "0",
+          "udf_amt_05": "0",
+          "udf_amt_06": "0",
+          "udf_amt_07": "0",
+          "udf_amt_08": "0",
+          "udf_amt_09": "0",
+          "udf_amt_10": "0"
+        },
+        "quarantined_rows": 0
+      },
+      "actual": {
+        "sums": {
+          "cur_bal_amt": "1935768.08",
+          "past_due_amt": "291895.06",
+          "ytd_billed_amt": "13552275.44",
+          "ltd_billed_amt": "0",
+          "ytd_paid_amt": "0",
+          "credit_limit_amt": "5653000",
+          "udf_amt_01": "0",
+          "udf_amt_02": "0",
+          "udf_amt_03": "0",
+          "udf_amt_04": "0",
+          "udf_amt_05": "0",
+          "udf_amt_06": "0",
+          "udf_amt_07": "0",
+          "udf_amt_08": "0",
+          "udf_amt_09": "0",
+          "udf_amt_10": "0"
+        },
+        "quarantined_rows": 0
+      },
+      "source_of_truth": "sum of every DECIMAL(*,2) column, exact to the cent (T1)",
+      "result": "pass"
+    },
+    {
+      "id": "HISTDT-ROUNDTRIP-customer_master_hist",
+      "expected": {
+        "source_hist_dt_values": 440,
+        "rows_not_round_tripping": 0
+      },
+      "actual": {
+        "source_hist_dt_values": 440,
+        "rows_not_round_tripping": 0
+      },
+      "source_of_truth": "parsed hist_dt_ts reformatted to DD-MON-YY HH24:MI:SS vs the source string (T7)",
+      "result": "pass"
+    },
+    {
+      "id": "HISTDT-TIME-PRESERVED-customer_master_hist",
+      "expected": "> 0 rows with a non-midnight time",
+      "actual": "440 rows carry a non-midnight time component",
+      "source_of_truth": "ow_tp.bronze target, proving the time was not truncated to a date",
+      "result": "pass"
+    },
+    {
+      "id": "KEY-UNIQUE-customer_master_hist",
+      "expected": {
+        "rows": 440,
+        "distinct_hist_uid": 440
+      },
+      "actual": {
+        "rows": 440,
+        "distinct_hist_uid": 440
+      },
+      "source_of_truth": "f_md5_uuid(ns|table|hist_id) uniqueness in the target (D-14/D-15)",
+      "result": "pass"
+    },
+    {
+      "id": "TYPES-customer_master_hist",
+      "expected": {
+        "mistyped": {},
+        "float_columns": []
+      },
+      "actual": {
+        "mistyped": {},
+        "float_columns": []
+      },
+      "source_of_truth": "Unity Catalog information_schema vs the source data dictionary (D-23/T6)",
+      "result": "pass"
+    },
+    {
+      "id": "NOCAPTURE-customer_master_hist",
+      "expected": "only CREATE TABLE and MERGE operations",
+      "actual": "CREATE TABLE, MERGE",
+      "source_of_truth": "Delta history of the target table",
+      "result": "pass"
+    },
+    {
+      "id": "ROWCOUNT-subscriptions_hist",
+      "expected": 38,
+      "actual": 38,
+      "source_of_truth": "live Oracle OW_BILLING count(*) vs Delta target + quarantine (T2)",
+      "result": "pass"
+    },
+    {
+      "id": "ACCOUNTING-subscriptions_hist",
+      "expected": "loaded + quarantined == source",
+      "actual": "38 + 0 == 38",
+      "source_of_truth": "recomputed from ow_tp.bronze targets",
+      "result": "pass"
+    },
+    {
+      "id": "QUARANTINE-RATE-subscriptions_hist",
+      "expected": "<= 5.00%",
+      "actual": "0.00%",
+      "source_of_truth": "quarantine_bronze_hist / live Oracle source rows (STOPA-QUARANTINE)",
+      "result": "pass"
+    },
+    {
+      "id": "HISTOP-subscriptions_hist",
+      "expected": {
+        "UPD": 30,
+        "DEL": 8
+      },
+      "actual": {
+        "DEL": 8,
+        "UPD": 30
+      },
+      "source_of_truth": "live Oracle HIST_OP distribution (ACC-HIST-FIRSTCLASS)",
+      "result": "pass"
+    },
+    {
+      "id": "ROWLEVEL-subscriptions_hist",
+      "expected": {
+        "missing": 0,
+        "extra": 0,
+        "differing": 0,
+        "columns_compared": 10
+      },
+      "actual": {
+        "missing": 0,
+        "extra": 0,
+        "differing": 0,
+        "columns_compared": 10
+      },
+      "source_of_truth": "row-by-row, column-by-column against live Oracle (T1/T7/T8/T9)",
+      "result": "pass"
+    },
+    {
+      "id": "HISTDT-ROUNDTRIP-subscriptions_hist",
+      "expected": {
+        "source_hist_dt_values": 38,
+        "rows_not_round_tripping": 0
+      },
+      "actual": {
+        "source_hist_dt_values": 38,
+        "rows_not_round_tripping": 0
+      },
+      "source_of_truth": "parsed hist_dt_ts reformatted to DD-MON-YY HH24:MI:SS vs the source string (T7)",
+      "result": "pass"
+    },
+    {
+      "id": "HISTDT-TIME-PRESERVED-subscriptions_hist",
+      "expected": "> 0 rows with a non-midnight time",
+      "actual": "38 rows carry a non-midnight time component",
+      "source_of_truth": "ow_tp.bronze target, proving the time was not truncated to a date",
+      "result": "pass"
+    },
+    {
+      "id": "KEY-UNIQUE-subscriptions_hist",
+      "expected": {
+        "rows": 38,
+        "distinct_hist_uid": 38
+      },
+      "actual": {
+        "rows": 38,
+        "distinct_hist_uid": 38
+      },
+      "source_of_truth": "f_md5_uuid(ns|table|hist_id) uniqueness in the target (D-14/D-15)",
+      "result": "pass"
+    },
+    {
+      "id": "TYPES-subscriptions_hist",
+      "expected": {
+        "mistyped": {},
+        "float_columns": []
+      },
+      "actual": {
+        "mistyped": {},
+        "float_columns": []
+      },
+      "source_of_truth": "Unity Catalog information_schema vs the source data dictionary (D-23/T6)",
+      "result": "pass"
+    },
+    {
+      "id": "NOCAPTURE-subscriptions_hist",
+      "expected": "only CREATE TABLE and MERGE operations",
+      "actual": "CREATE TABLE, MERGE",
+      "source_of_truth": "Delta history of the target table",
+      "result": "pass"
+    },
+    {
+      "id": "ANOM-HIST-DT-STRING",
+      "expected": "HIST_DT is VARCHAR2 in both history tables",
+      "actual": {
+        "CUSTOMER_MASTER_HIST": "VARCHAR2(20)",
+        "SUBSCRIPTIONS_HIST": "VARCHAR2(20)"
+      },
+      "source_of_truth": "live Oracle user_tab_columns",
+      "result": "pass"
+    },
+    {
+      "id": "BADDATE-RULE",
+      "expected": {
+        "unparseable_probes_rejected": [
+          "31-FEB-26 10:00:00",
+          "2026-01-15 10:00:00",
+          "15-XXX-26 10:00:00",
+          "",
+          "N/A"
+        ]
+      },
+      "actual": {
+        "unparseable_probes_rejected": [
+          "31-FEB-26 10:00:00",
+          "2026-01-15 10:00:00",
+          "15-XXX-26 10:00:00",
+          "",
+          "N/A"
+        ]
+      },
+      "source_of_truth": "the notebook's own HIST_DT expression evaluated on the warehouse (D-06)",
+      "result": "pass"
+    },
+    {
+      "id": "CENTURY-D05",
+      "expected": "2099-12-31T23:59:59",
+      "actual": "2099-12-31T23:59:59",
+      "source_of_truth": "'31-DEC-99 23:59:59' through the shipped parse (D-05/T4)",
+      "result": "pass"
+    },
+    {
+      "id": "PARSE-ORDINARY",
+      "expected": "2026-03-05T07:08:09",
+      "actual": "2026-03-05T07:08:09",
+      "source_of_truth": "'05-MAR-26 07:08:09' through the shipped parse (T7)",
+      "result": "pass"
+    },
+    {
+      "id": "ANOM-HIST-ORPHAN",
+      "expected": 80,
+      "actual": 80,
+      "source_of_truth": "live Oracle anti-join vs hist_customer_absent in the target (ACC-HIST-DELETED)",
+      "result": "pass"
+    },
+    {
+      "id": "ORPHAN-ROWS-RETAINED",
+      "expected": "> 0 DEL rows retained, none dropped",
+      "actual": "40 DEL rows present, 80 flagged as absent from customer_master",
+      "source_of_truth": "ow_tp.bronze.customer_master_hist",
+      "result": "pass"
+    },
+    {
+      "id": "ANOM-PRECUTOVER-HISTORY",
+      "expected": "declared coverage gap: Delta history cannot reconstruct pre-cutover change history",
+      "actual": "Delta history for this unit begins at 2026-08-29T00:23:30.000Z; earlier change history exists only as the migrated _HIST rows, themselves limited to what the estate's capture recorded",
+      "source_of_truth": "DESCRIBE HISTORY on the target table",
+      "result": "pass"
+    },
+    {
+      "id": "NS-TAGGED",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "rows in this unit's targets not carrying ns='demo' (ACC-NS)",
+      "result": "pass"
+    },
+    {
+      "id": "IDEMPOTENCY-RERUN",
+      "expected": "0 rows inserted, updated or deleted on the second run",
+      "actual": "{\"customer_master_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}, \"subscriptions_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}}",
+      "source_of_truth": "Delta operationMetrics of the MERGE in the rerun",
+      "result": "pass"
+    },
+    {
+      "id": "EMPTY-INPUT-SEMANTICS",
+      "expected": "an empty source produces an empty ns slice and a report, never a skipped run",
+      "actual": "source presented 478 rows this run; the load writes per-table results unconditionally and reports zero rather than exiting early",
+      "source_of_truth": "notebook control flow, exercised on the measured run",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "rerun job run 567229785239328 merged into unchanged targets: {\"customer_master_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}, \"subscriptions_hist\": {\"operation\": \"MERGE\", \"rows_deleted\": 0, \"rows_inserted\": 0, \"rows_updated\": 0, \"version\": 6}}"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "ANOM-HIST-DT-STRING",
+      "ANOM-HIST-ORPHAN"
+    ],
+    "actual_set": [
+      "ANOM-HIST-DT-STRING",
+      "ANOM-HIST-ORPHAN"
+    ],
+    "missing": [],
+    "unexpected": [],
+    "coverage_gaps": [
+      "ANOM-PRECUTOVER-HISTORY"
+    ]
+  },
+  "unverified_paths": [
+    "Unity Catalog column masks over the PII columns are not applied by this unit: the masking function is a shared, parent-owned object. Values are landed in cleartext as agreed, so the cleartext restriction is unproven until those masks exist.",
+    "ENC_INVALID, NUMERIC_OVERFLOW, KEY_NULL and KEY_DUPLICATE are implemented and their accounting is checked, but the live source presented no row that triggers them, so only BAD_DATE has been exercised end to end (against the shipped expression, not against a stored row).",
+    "Comparison is against live Oracle read directly over the fixture connection rather than through Lakehouse Federation; the federated catalog was not available to this unit.",
+    "The workspace ns=demo slice is shared with concurrent sessions. This report is re-runnable and was measured in one pass ending at the generated_at timestamp."
+  ],
+  "recon_result": "green",
+  "failed_checks": []
+}

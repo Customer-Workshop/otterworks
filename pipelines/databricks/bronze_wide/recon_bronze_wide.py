@@ -50,6 +50,9 @@ CATALOG, SCHEMA = "ow_tp", "bronze"
 UNIT = "bronze_wide"
 WAREHOUSE_NAME = os.environ.get("OW_TP_WAREHOUSE", "Serverless Starter Warehouse")
 COLUMN_BATCH = 25
+# Foreign namespace used to measure that this unit's ns-scoped deletes cannot
+# reach another namespace's slice. Rows under it are recon evidence, not data.
+NS_GUARD_NS = "bw_nsguard"
 _warehouse_id: str | None = None
 
 
@@ -209,11 +212,40 @@ def check(checks: list[dict], cid: str, expected, actual, sot: str, **extra) -> 
     return passed
 
 
-def capability_preflight(ns: str) -> dict:
+def load_run_capability(run_ids: list[int]) -> dict:
+    """Prove the load path itself ran, not merely that runs are listable.
+
+    List permission says nothing about whether this token can submit work, so the
+    actual runs that produced this report are inspected: each must be a notebook
+    task, must have executed on serverless (no cluster instance of any kind), and
+    must have succeeded.
+    """
+    evidence, ok = [], True
+    for run_id in run_ids:
+        run = _api("GET", f"/api/2.1/jobs/runs/get?run_id={run_id}")
+        tasks = run.get("tasks") or [run]
+        task = tasks[0]
+        serverless = not (task.get("existing_cluster_id") or task.get("job_cluster_key")
+                          or task.get("new_cluster") or run.get("cluster_instance"))
+        state = (run.get("status", {}).get("termination_details", {}).get("code")
+                 or run.get("state", {}).get("result_state"))
+        entry = {"run_id": run_id, "task_type":
+                 "notebook_task" if task.get("notebook_task") else "other",
+                 "serverless": serverless, "result_state": state}
+        ok = ok and entry["task_type"] == "notebook_task" and serverless and (
+            state in ("SUCCESS", "SUCCEEDED"))
+        evidence.append(entry)
+    return {
+        "path": "/api/2.1/jobs/runs/get on the runs that produced this report",
+        "result": "ok" if ok else "failed",
+        "runs": evidence,
+    }
+
+
+def capability_preflight(ns: str, run_ids: list[int]) -> dict:
     """Re-exercise every access path this unit depends on, at recon time."""
     files_root = f"/Volumes/{CATALOG}/{SCHEMA}/landing/{ns}/{UNIT}"
     listing = _api("GET", "/api/2.0/fs/directories" + urllib.parse.quote(files_root))
-    _api("GET", "/api/2.1/jobs/runs/list?limit=1")  # raises if the Jobs API is denied
     return {
         "databricks_sql_warehouse": {
             "path": f"{WAREHOUSE_NAME} ({warehouse_id()}) via /api/2.0/sql/statements",
@@ -231,10 +263,7 @@ def capability_preflight(ns: str) -> dict:
             "result": "ok",
             "entries": len(listing.get("contents", [])),
         },
-        "jobs_api_serverless_run": {
-            "path": "/api/2.1/jobs/runs (notebook task submitted serverless, no cluster)",
-            "result": "ok",
-        },
+        "jobs_api_serverless_run": load_run_capability(run_ids),
         "oracle_source": {
             "path": "python-oracledb -> OW_BILLING@FREEPDB1",
             "result": "ok (this report's source-side values were read over it)",
@@ -255,6 +284,8 @@ def main() -> int:
     manifest = json.loads(Path(args.manifest).read_text())
     run1 = json.loads(re.search(r"^\{.*\}$", Path(args.run1).read_text(), re.M).group(0))
     run2 = json.loads(re.search(r"^\{.*\}$", Path(args.run2).read_text(), re.M).group(0))
+    run_ids = [int(re.search(r'"run_id":\s*(\d+)', Path(p).read_text()).group(1))
+               for p in (args.run1, args.run2)]
 
     oracledb.defaults.fetch_decimals = True
     conn = oracledb.connect(
@@ -458,6 +489,22 @@ def main() -> int:
           detail={**quarantine_totals, "quarantine_rate_pct": round(overall_rate, 4),
                   "halt_threshold_pct": 5.0})
 
+    # ----------------------------------------------- foreign-ns isolation probe
+    # The load replaces this `ns`'s slice, including deleting rows the current
+    # source no longer has. `NS_GUARD_NS` holds rows written into a foreign slice of
+    # this unit's own table before the two loads: they must still be there, which
+    # is what makes "an empty input for one ns cannot delete another ns's rows" a
+    # measured result instead of an argument from the code.
+    guard = dbsql(f"SELECT ns, count(*) FROM {CATALOG}.{SCHEMA}.customer_master "
+                  f"WHERE ns = '{NS_GUARD_NS}' GROUP BY ns")
+    guard_rows = int(guard[0][1]) if guard else 0
+    check(checks, "ACC-NS/foreign-slice-untouched", True, guard_rows > 0,
+          f"{CATALOG}.{SCHEMA}.customer_master rows under ns='{NS_GUARD_NS}', "
+          f"written before both ns='{ns}' loads and still present after them",
+          foreign_ns=NS_GUARD_NS, rows=guard_rows,
+          deletes_in_loads={t: run1["tables"][t]["merge_metrics"]["numTargetRowsDeleted"]
+                            for t in TABLES})
+
     # ------------------------------------------------------- date parser probe
     probe = run2.get("parser_probe", {})
     for value, got in probe.items():
@@ -560,13 +607,11 @@ def main() -> int:
         "the Oracle client and landed to the unit's volume prefix. The federated path "
         "itself is therefore unexercised. Recon still reads live Oracle for every "
         "expected value.",
-        "Deletes and updates in the source are not exercised: the load MERGEs inserts and "
-        "changed rows, and a source delete does not tombstone the target. The source was "
-        "static across both runs, so only the insert and no-op paths are evidenced.",
-        "Empty input is not exercised: both runs had a fully populated source. By "
-        "construction the MERGE has no delete clause and matches on (ns, natural key), "
-        "so an empty input for one namespace is a no-op and cannot remove another "
-        "namespace's slice — asserted from the statement, not measured.",
+        "Source deletes and updates are not exercised end to end: the source was static "
+        "across both runs, so the insert, no-op and (for the row moved out of this ns "
+        "before the loads) re-insert paths are evidenced, while the delete branch of the "
+        "MERGE is evidenced only by the foreign-slice probe above. A fully empty extract "
+        "for this ns was not run against the live source.",
         "Column-mask enforcement is evidenced for the recon principal only (withheld "
         "before registration, withheld again after removal). Enforcement against a "
         "second, separately-authenticated identity was not exercised.",
@@ -607,7 +652,7 @@ def main() -> int:
             "compute": "serverless notebook run + Serverless Starter Warehouse (no cluster created)",
             "source_population_at_extraction": {t: i["source_rows"]
                                                 for t, i in per_table.items()},
-            "capability_preflight": capability_preflight(ns),
+            "capability_preflight": capability_preflight(ns, run_ids),
         },
         "tables": per_table,
         "quarantine": {**quarantine_totals,

@@ -70,7 +70,8 @@ def load_source_schema() -> dict[str, list[dict]]:
 def date_text_columns(columns: list[dict]) -> list[str]:
     return [
         c["name"] for c in columns
-        if c["type"] == "VARCHAR2" and c["name"].endswith(DATE_TEXT_SUFFIX)
+        if c["type"] == "VARCHAR2" and c["length"] == DATE_TEXT_WIDTH
+        and DATE_TEXT_MARKER in c["name"]
     ]
 
 

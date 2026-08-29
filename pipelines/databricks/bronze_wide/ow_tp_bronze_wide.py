@@ -343,11 +343,14 @@ def build(table: str):
 
 
 def merge(name: str, df: DataFrame, key_cols: list[str]) -> dict:
-    """Insert new rows, update changed ones, never delete.
+    """Make this run's population the state of this `ns`'s slice of the table.
 
-    There is deliberately no `WHEN NOT MATCHED BY SOURCE` clause: the MERGE only
-    ever touches keys present in this run's input, so an empty input for one `ns`
-    is a no-op and cannot remove another namespace's slice.
+    Insert new rows, update changed ones, and delete rows of *this* `ns` that the
+    current source population no longer contains — that is the contract's
+    `write-empty-result` semantic (empty in, empty out for this ns) and it is what
+    keeps a row from sitting in both the target and the quarantine table after it
+    flips validity. The `NOT MATCHED BY SOURCE` clause is guarded by
+    `t.ns = '{NS}'`, so another namespace's slice is never in range.
     """
     if not spark.catalog.tableExists(name):
         df.limit(0).write.format("delta").saveAsTable(name)
@@ -361,6 +364,7 @@ def merge(name: str, df: DataFrame, key_cols: list[str]) -> dict:
         USING {view} s ON {on}
         WHEN MATCHED AND t.row_hash <> s.row_hash THEN UPDATE SET {update}
         WHEN NOT MATCHED THEN INSERT *
+        WHEN NOT MATCHED BY SOURCE AND t.ns = '{NS}' THEN DELETE
     """)
     metrics = (spark.sql(f"DESCRIBE HISTORY {name} LIMIT 1")
                     .select("operationMetrics").collect()[0][0])

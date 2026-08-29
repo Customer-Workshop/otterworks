@@ -99,7 +99,8 @@
       "source-migrated",
       "target-change"
     ],
-    "rule": "the MERGE's UPDATE branch fires only when the matched target row's _origin is one this unit owns, so a row another wave has taken over keeps its status, suspended_on and every other field; the rows skipped for that reason are counted and published rather than overwritten. No DELETE, no INSERT OVERWRITE and no table-wide statement is issued against a shared table (D-28), and no cross-unit locking or publication protocol is invented here."
+    "rule": "the MERGE's UPDATE branch fires only when the matched target row's _origin is one this unit owns, so a row another wave has taken over keeps its status, suspended_on and every other field; the rows skipped for that reason are counted and published rather than overwritten. No INSERT OVERWRITE and no table-wide statement is issued against a shared table, and no DELETE other than the id-scoped removal of rows this unit itself produced under a narrower declared input, which publishes the removed ids, their prior values and a measured count of rows touched that this unit did not produce (D-31; D-28 stands unchanged for source-published rows). No cross-unit locking or publication protocol is invented here.",
+    "what_the_origin_gate_does_not_protect": "wave 4's declared write. D-30 makes it a column-scoped MERGE ... WHEN MATCHED THEN UPDATE of status_cd/suspended_on on rows this unit and ingest created, preserving the owning unit's _origin/_batch_id, so its updates sit on rows whose _origin this unit owns and the gate does not skip them: a later silver_plans rerun would reassert the source's close-out semantics over dunning's columns. Reconciling that is D-30's column-ownership rule, implemented by wave 4, not here."
   },
   "tables": [
     {

@@ -1643,15 +1643,22 @@ if [c["quarantine_reason"] for c in overflow_probe["cases"]] != _expected_probe:
 # MAGIC %md ## The three MERGEs
 # MAGIC
 # MAGIC `MERGE` on each table's declared key plus `ns` (D-14/ACC-IDEM), payloads compared null-safely so
-# MAGIC a second identical run rewrites nothing. Rows this unit did not produce are never touched: there
-# MAGIC is no `DELETE`, no `INSERT OVERWRITE` and no table-wide statement anywhere in this notebook
-# MAGIC (D-28), which is what lets wave 4 write `SUBSCRIPTIONS` beside it.
+# MAGIC a second identical run rewrites nothing. Rows this unit did not produce are never touched: this
+# MAGIC notebook issues no `INSERT OVERWRITE`, no table-wide statement, and no `DELETE` other than the
+# MAGIC id-scoped removal of rows this unit itself generated under a declared input it no longer accepts
+# MAGIC (D-31), whose count of foreign rows touched is published and is zero. That is what lets wave 4
+# MAGIC write `SUBSCRIPTIONS` beside it.
 # MAGIC
-# MAGIC `SUBSCRIPTIONS` goes further, because wave 4 updates the same identities this unit inserts: the
-# MAGIC `UPDATE` branch is gated on the target row's `_origin` being one this unit owns. A row wave 4 has
-# MAGIC taken over keeps its status, `suspended_on` and every other field — this run does not reassert
-# MAGIC its own view over it — and the rows skipped for that reason are counted and published rather
-# MAGIC than silently overwritten. Which wave wins such a row is not this unit's to decide (D-28).
+# MAGIC `SUBSCRIPTIONS`'s `UPDATE` branch is additionally gated on the target row's `_origin` being one
+# MAGIC this unit owns, and it is worth being exact about what that does and does not protect. It fires
+# MAGIC only on rows carrying a *foreign* `_origin`: such a row keeps its status, `suspended_on` and
+# MAGIC every other field, and is counted rather than overwritten. It does **not** protect wave 4's
+# MAGIC declared write, which is a column-scoped `MERGE ... WHEN MATCHED THEN UPDATE` of
+# MAGIC `status_cd`/`suspended_on` on rows *this unit and ingest created*, preserving the owning unit's
+# MAGIC `_origin`/`_batch_id` (D-30). Those updates therefore land on rows whose `_origin` this unit owns,
+# MAGIC the gate does not skip them, and a later rerun of this unit would reassert the source's close-out
+# MAGIC semantics over dunning's columns. Reconciling that is D-30's column-ownership rule, which wave 4
+# MAGIC implements; no cross-unit protocol is invented here.
 
 # COMMAND ----------
 
@@ -1723,21 +1730,51 @@ def retract_own_generated_rows() -> dict:
     transcript-pinned policy does) leaves behind subscriptions this unit inserted under a wider
     input. They are this run's own product, carry this unit's own `target-change` origin, and are
     removed by an id-scoped `DELETE` — never a table-wide one, and never a row another writer owns
-    or a row this unit did not produce (D-28).
+    or a row derived from a source row. D-31 permits exactly this and only this; D-28's rule that a
+    source-published row survives its driver is untouched by it.
     """
     keep = spark.sql(
         "SELECT `id` FROM v_subs_src WHERE `_origin` = 'target-change'"
     ).collect()
-    stale = [
-        r[0]
-        for r in spark.sql(
-            f"""
-            SELECT `id` FROM {full('subscriptions')}
-            WHERE `ns` = {NS_LIT} AND `_origin` = 'target-change'
-              {"AND `id` NOT IN (" + ", ".join(sql_str(k[0]) for k in keep) + ")" if keep else ""}
-            """
-        ).collect()
+    # The candidate rows, with the values they carried before removal: D-31 publishes those, the
+    # ids, and a foreign-rows-touched count.
+    candidates = spark.sql(
+        f"""
+        SELECT t.`id`, t.`tenant_id`, t.`plan_id`,
+               CAST(t.`starts_on` AS STRING), CAST(t.`ends_on` AS STRING), t.`status_cd`,
+               t.`_origin`, t.`_batch_id`,
+               EXISTS (SELECT 1 FROM {CATALOG}.{BRONZE}.subscriptions b
+                        WHERE b.`ns` = {NS_LIT} AND b.`id` = t.`id`) AS derived_from_a_source_row
+        FROM {full('subscriptions')} t
+        WHERE t.`ns` = {NS_LIT} AND t.`_origin` = 'target-change'
+          {"AND t.`id` NOT IN (" + ", ".join(sql_str(k[0]) for k in keep) + ")" if keep else ""}
+        """
+    ).collect()
+    # Measured, not asserted: a candidate carrying a foreign origin or standing for a source row is
+    # outside D-31's carve-out, and the removal stops rather than widening itself.
+    foreign = [
+        r[0] for r in candidates if r[6] not in OWNED_ORIGINS or r[8]
     ]
+    if foreign:
+        raise AssertionError(
+            f"{len(foreign)} candidate row(s) are not this unit's own synthetic product "
+            f"({foreign[:5]}): D-31 permits removing only rows this unit generated under an input "
+            "it no longer accepts, and D-28 stands for everything else"
+        )
+    prior = [
+        {
+            "id": r[0],
+            "tenant_id": r[1],
+            "plan_id": r[2],
+            "starts_on": r[3],
+            "ends_on": r[4],
+            "status_cd": None if r[5] is None else int(r[5]),
+            "_origin": r[6],
+            "_batch_id": r[7],
+        }
+        for r in candidates
+    ]
+    stale = [r["id"] for r in prior]
     for chunk in (stale[i : i + 200] for i in range(0, len(stale), 200)):
         spark.sql(
             f"""
@@ -1748,9 +1785,13 @@ def retract_own_generated_rows() -> dict:
         )
     return {
         "rows_retracted": len(stale),
-        "ids": sorted(stale)[:25],
-        "scope": "ns + _origin this unit owns + an explicit id list, never table-wide",
-        "rows_this_unit_did_not_produce_that_were_touched": 0,
+        "ids": sorted(stale),
+        "prior_values": sorted(prior, key=lambda r: r["id"]),
+        "scope": "ns + _origin this unit owns + an explicit id list read from the target, "
+        "never table-wide (D-31)",
+        "rows_this_unit_did_not_produce_that_were_touched": len(foreign),
+        "basis": "each candidate was checked, before removal, for a foreign _origin and for a "
+        "bronze SUBSCRIPTIONS row of the same id; either one stops the removal",
     }
 
 
@@ -1782,10 +1823,24 @@ shared_writer = {
         """
     ).collect()[0][0],
     "table_wide_statements_issued": 0,
-    "note": "a matched row whose _origin is not one of this unit's is left exactly as its writer "
-    "left it: this run does not reassert its close-out or its status over it. That deferral is "
-    "counted rather than resolved, because which wave wins a shared row is carried centrally "
-    "(D-28) and this unit invents no cross-unit protocol.",
+    "insert_overwrite_statements_issued": 0,
+    "delete_statements_issued": (
+        "only the id-scoped removal of rows this unit itself generated under a declared input it "
+        "no longer accepts (D-31); see retraction_of_this_units_own_generated_rows"
+    ),
+    "what_the_origin_gate_protects": "rows carrying an _origin this unit does not own: they are "
+    "left exactly as their writer left them and counted, and this run reasserts neither its "
+    "close-out nor its status over them.",
+    "what_the_origin_gate_does_not_protect": "wave 4's declared write. D-30 makes it a "
+    "column-scoped MERGE ... WHEN MATCHED THEN UPDATE of status_cd/suspended_on on rows this unit "
+    "and ingest created, preserving the owning unit's _origin/_batch_id — so after wave 4 runs, "
+    "its updates sit on rows whose _origin this unit *does* own, the gate does not skip them, and "
+    "a later rerun of this unit would reassert the source's close-out semantics over dunning's "
+    "columns. Reconciling the two is D-30's column-ownership rule, which wave 4 implements; this "
+    "unit invents no cross-unit protocol for it.",
+    "foreign_origin_rows_exercised_by": "construction only: no other writer has run against this "
+    "table yet, so the gate's skip path is measured at "
+    f"{subs_rows_owned_by_another_writer} rows on this run.",
 }
 print(json.dumps(shared_writer, indent=1))
 

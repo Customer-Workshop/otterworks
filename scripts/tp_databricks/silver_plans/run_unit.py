@@ -1223,6 +1223,42 @@ def build_report(
         )
     )
 
+    # D-31's scope, measured rather than asserted: the only DELETE this unit issues.
+    retr = run1["retraction_of_this_units_own_generated_rows"]
+    checks.append(
+        check(
+            "RETRACTION-SCOPE-D31",
+            {
+                "rows_touched_that_this_unit_did_not_produce": 0,
+                "table_wide_or_insert_overwrite_statements": 0,
+            },
+            {
+                "rows_touched_that_this_unit_did_not_produce": retr[
+                    "rows_this_unit_did_not_produce_that_were_touched"
+                ],
+                "table_wide_or_insert_overwrite_statements": (
+                    run2["shared_writer"]["table_wide_statements_issued"]
+                    + run2["shared_writer"]["insert_overwrite_statements_issued"]
+                ),
+            },
+            "the target's own rows, read back before and after the id-scoped DELETE this unit "
+            "issues for the subscriptions it generated under an input it no longer accepts",
+            rows_retracted=retr["rows_retracted"],
+            removed_ids=retr["ids"],
+            prior_values=retr["prior_values"],
+            scope=retr["scope"],
+            basis=retr["basis"],
+            note="D-31 permits removing only rows this unit itself generated under a job input it "
+            "no longer accepts, scoped to ns, an _origin it owns and an explicit id list read from "
+            "the target; every candidate is checked for a foreign _origin and for a bronze "
+            "SUBSCRIPTIONS row of the same id before anything is deleted, and either one aborts "
+            "the run. D-28 stands unchanged for rows the source published: nothing whose driver "
+            "left the accepted population is removed here. The population this revision inherited "
+            "from the earlier, wider request policy was removed by the run that introduced the "
+            "narrower policy, so a later run finds nothing left to remove and reports zero.",
+        )
+    )
+
     # ACC-MONEY: exact money, both totals recomputed from the target and from Oracle's own rows.
     o_plan_money = sum(
         decimal.Decimal(p["monthly_fee"]) for p in oracle["all_plans"] if p["monthly_fee"]
@@ -1813,8 +1849,10 @@ def build_report(
                 ),
                 # The earlier revision applied the whole derived population here. Narrowing the
                 # policy leaves this unit's own generated subscriptions behind, so the run retracts
-                # them by id — its own rows, its own origin, never table-wide, never another
-                # writer's (D-28).
+                # them by id — its own rows, its own origin, an explicit id list read from the
+                # target, never table-wide and never a row another writer owns or a source row
+                # stands behind. That carve-out is D-31; D-28's rule that a source-published row
+                # survives its driver is untouched.
                 "rows_this_unit_had_generated_here_and_has_now_retracted": run1[
                     "retraction_of_this_units_own_generated_rows"
                 ],
@@ -1923,10 +1961,31 @@ def build_report(
             "pkg_ow_util.log_msg writes BILLING_AUDIT_LOG in an autonomous transaction. Out of this "
             "unit's parity scope per D-20; it belongs to bronze_hist and is not reproduced.",
             "ow_tp.silver.subscriptions is also written by wave 4 (sp_suspend_overdue). This unit "
-            "only MERGEs the identities it produces, issues no DELETE, INSERT OVERWRITE or "
-            "table-wide statement, and introduces no cross-unit locking or publication protocol "
-            "(D-28): a second writer's rows would be left untouched, which is asserted by "
-            "construction and not exercised here.",
+            "MERGEs only the identities it produces and introduces no cross-unit locking or "
+            "publication protocol; it issues no INSERT OVERWRITE and no table-wide statement, and "
+            "no DELETE other than the id-scoped removal of rows this unit itself produced under a "
+            "narrower declared input, whose count of rows touched that this unit did not produce "
+            "is measured at "
+            + str(
+                run1["retraction_of_this_units_own_generated_rows"][
+                    "rows_this_unit_did_not_produce_that_were_touched"
+                ]
+            )
+            + " (D-31; D-28 unchanged for source-published rows). What the _origin gate protects "
+            "is narrower than it reads: it fires only on rows carrying an _origin this unit does "
+            "not own, which no writer has yet created, so that skip path is asserted by "
+            "construction in ns="
+            + ns
+            + " and exercised only by construction. It does NOT protect wave 4's declared write: "
+            "D-30 makes that a column-scoped MERGE ... WHEN MATCHED THEN UPDATE of "
+            "status_cd/suspended_on on rows this unit and ingest created, preserving the owning "
+            "unit's _origin/_batch_id, so dunning's updates land on rows whose _origin this unit "
+            "owns, the gate does not skip them, and a later silver_plans rerun would reassert the "
+            "source's close-out semantics over dunning's columns. Reconciling the two is D-30's "
+            "column-ownership rule, which wave 4 implements; nothing here anticipates it.",
+            "The interleaved run (wave 4's writer, then a silver_plans rerun) is not exercised: "
+            "wave 4 does not exist yet, so no run has produced a foreign-origin row or a "
+            "dunning-updated row to rerun over.",
         ],
     }
 

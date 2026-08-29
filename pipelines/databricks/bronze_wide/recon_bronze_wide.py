@@ -621,6 +621,13 @@ def main() -> int:
         "Column-mask enforcement is evidenced for the recon principal only (withheld "
         "before registration, withheld again after removal). Enforcement against a "
         "second, separately-authenticated identity was not exercised.",
+        "Target publication is per-table: Delta offers no transaction spanning the five "
+        "targets, so a failure between two MERGEs would leave the unit's tables on "
+        "different source populations until the next run converges them. Everything "
+        "fallible (classification, counting, accounting, the halt decision, quarantine "
+        "persistence, mask attachment) happens before the first target write, and the "
+        "convergence property is evidenced by the no-op second run, but a mid-publication "
+        "failure was not injected against the live workspace.",
         "Landing publication is per-file, not one atomic swap: the notebook rejects a "
         "torn extract by checking each landed table's row count against the manifest "
         "published after all files, and that check is exercised by every load here, but "

@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "bronze_wide",
   "namespace": "demo",
-  "generated_at": "2026-08-29T02:33:34+00:00",
+  "generated_at": "2026-08-29T02:50:10+00:00",
   "run_mode": "live",
   "recon_result": "green",
   "tolerance_version": "v1.1 (.migration/03_recon_tolerances.md, T4 corrected)",
@@ -17,8 +17,8 @@
     "transport": "python-oracledb read of the declared columns -> Parquet in /Volumes/ow_tp/bronze/landing/demo/bronze_wide/ -> notebook load. The contract names Lakehouse Federation as the baseline path; no federated Oracle connection exists in this workspace, so the source is read live over the Oracle client instead and recon still compares against live Oracle, not against the landed copy.",
     "target": "ow_tp.bronze.{customer_master, entity_attr_value, invoice_line, invoice_header, quarantine_bronze_wide}",
     "load_runs": {
-      "first": "2026-08-29T02:25:01.230237+00:00",
-      "second": "2026-08-29T02:31:11.668931+00:00"
+      "first": "2026-08-29T02:42:14.652524+00:00",
+      "second": "2026-08-29T02:47:56.705139+00:00"
     },
     "compute": "serverless notebook run + Serverless Starter Warehouse (no cluster created)",
     "source_population_at_extraction": {
@@ -47,13 +47,13 @@
         "result": "ok",
         "runs": [
           {
-            "run_id": 843417076662190,
+            "run_id": 537105890805660,
             "task_type": "notebook_task",
             "serverless": true,
             "result_state": "SUCCESS"
           },
           {
-            "run_id": 704663942889851,
+            "run_id": 367675625056983,
             "task_type": "notebook_task",
             "serverless": true,
             "result_state": "SUCCESS"
@@ -1108,7 +1108,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "second identical run wrote nothing: inserted/updated/deleted = 0 across all five targets (MERGE operationMetrics, run at 2026-08-29T02:31:11.668931+00:00); row counts and full-width fingerprints unchanged."
+    "evidence": "second identical run wrote nothing: inserted/updated/deleted = 0 across all five targets (MERGE operationMetrics, run at 2026-08-29T02:47:56.705139+00:00); row counts and full-width fingerprints unchanged."
   },
   "planted_anomaly_detections": {
     "expected_set": [
@@ -1155,6 +1155,7 @@
     "Lakehouse Federation is named in the golden baseline as the extraction path; no federated Oracle connection exists in this workspace, so the source is read with the Oracle client and landed to the unit's volume prefix. The federated path itself is therefore unexercised. Recon still reads live Oracle for every expected value.",
     "Source deletes and updates are not exercised end to end: the source was static across both runs, so the insert, no-op and (for the row moved out of this ns before the loads) re-insert paths are evidenced, while the delete branch of the MERGE is evidenced only by the foreign-slice probe above. A fully empty extract for this ns was not run against the live source.",
     "Column-mask enforcement is evidenced for the recon principal only (withheld before registration, withheld again after removal). Enforcement against a second, separately-authenticated identity was not exercised.",
+    "Target publication is per-table: Delta offers no transaction spanning the five targets, so a failure between two MERGEs would leave the unit's tables on different source populations until the next run converges them. Everything fallible (classification, counting, accounting, the halt decision, quarantine persistence, mask attachment) happens before the first target write, and the convergence property is evidenced by the no-op second run, but a mid-publication failure was not injected against the live workspace.",
     "Landing publication is per-file, not one atomic swap: the notebook rejects a torn extract by checking each landed table's row count against the manifest published after all files, and that check is exercised by every load here, but two extractors writing this ns's prefix at once was not simulated.",
     "ns=demo is a shared slice and other sessions hold the same credential. Every number here was recomputed by this run; re-running this script re-measures them rather than restating the values recorded above."
   ]

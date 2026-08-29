@@ -488,20 +488,31 @@ spark.sql(f"""
 """)
 # The reader table is the mask's allow-list, so write access to it is equivalent to
 # cleartext access: it stays owner-only, and the load fails loudly rather than
-# publishing PII under a mask anything else can add itself to.
+# publishing PII under a mask anything else can add itself to. Unity Catalog
+# privileges are inherited downward, so a `MODIFY` on the catalog or the schema
+# writes this table just as effectively as a grant on the table itself — all three
+# levels are inspected, not only the table.
 WRITE_PRIVILEGES = ("MODIFY", "ALL_PRIVILEGES", "WRITE_FILES")
+ALLOWLIST_SECURABLES = (
+    ("CATALOG", CATALOG),
+    ("SCHEMA", f"{CATALOG}.{SCHEMA}"),
+    ("TABLE", PII_READER_TABLE),
+)
 write_grants = []
-for row in spark.sql(f"SHOW GRANTS ON TABLE {PII_READER_TABLE}").collect():
-    grant = {k.lower(): v for k, v in row.asDict().items()}
-    privilege = str(grant.get("actiontype") or grant.get("action_type") or "")
-    if privilege.upper() in WRITE_PRIVILEGES:
-        write_grants.append({"principal": grant.get("principal"),
-                             "privilege": privilege})
+for securable_type, securable in ALLOWLIST_SECURABLES:
+    for row in spark.sql(f"SHOW GRANTS ON {securable_type} {securable}").collect():
+        grant = {k.lower(): v for k, v in row.asDict().items()}
+        privilege = str(grant.get("actiontype") or grant.get("action_type") or "")
+        if privilege.upper() in WRITE_PRIVILEGES:
+            write_grants.append({"securable": f"{securable_type} {securable}",
+                                 "principal": grant.get("principal"),
+                                 "privilege": privilege})
 if write_grants:
     raise ValueError(
-        f"{PII_READER_TABLE} is the PII mask allow-list and must stay owner-only; "
-        f"write privileges are granted to {write_grants} — revoke them before loading")
-results["pii_reader_table_write_grants"] = write_grants
+        f"{PII_READER_TABLE} is the PII mask allow-list and must stay reachable only by "
+        f"its owner, directly or by inheritance; write privileges are granted at "
+        f"{write_grants} — revoke them before loading")
+results["pii_allowlist_write_grants"] = write_grants
 spark.sql(f"""
     CREATE OR REPLACE FUNCTION {MASK_FUNCTION}(v STRING)
     RETURNS STRING

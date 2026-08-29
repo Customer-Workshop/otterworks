@@ -206,7 +206,7 @@ def test_code_only_scan_does_not_count_procedure_names_as_tables(
         "SELECT * FROM core.fct_orders; END; $$;"
     )
     (estate / "jobs/schedule.py").write_text(
-        "elt/fct_orders.sql\nCALL core.sp_refresh_marts();"
+        "dw/legacy-estate/elt/fct_orders.sql\nCALL core.sp_refresh_marts();"
     )
     output = tmp_path / "inventory.json"
     assert (

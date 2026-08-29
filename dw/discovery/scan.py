@@ -191,7 +191,6 @@ def scheduled_assets(estate: Path) -> set[str]:
         and "compat" not in path.parts
     ]
     assets = [scan_asset(path, estate) for path in paths]
-    by_path = {asset.path: asset for asset in assets}
     table_writers = {
         table: asset.path
         for asset in assets
@@ -213,9 +212,15 @@ def scheduled_assets(estate: Path) -> set[str]:
         text = path.read_text(errors="replace")
         for match in re.finditer(r"(?:[\w.-]+/)+[\w.-]+\.sql", text):
             candidate = match.group(0)
-            if candidate in by_path and candidate not in named:
-                named.add(candidate)
-                queued.append(candidate)
+            matches = [
+                asset.path
+                for asset in assets
+                if candidate == asset.path
+                or candidate.endswith(f"/{asset.path}")
+            ]
+            if len(matches) == 1 and matches[0] not in named:
+                named.add(matches[0])
+                queued.append(matches[0])
         for match in CALL_STATEMENT.finditer(text):
             procedure = (
                 f"{match.group('schema').lower()}.{match.group('name').lower()}"

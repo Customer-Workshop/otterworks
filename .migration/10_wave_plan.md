@@ -95,6 +95,30 @@ in parallel instead of once. The mitigation is wave 0, not narrower fan-out — 
 per-unit contracts, and the capability manifest are all landed and approved before any of the four
 start, and a systematic failure halts the whole wave rather than being patched per unit.
 
+## Carried centrally — cross-unit target-architecture items
+
+- **Multi-table publication atomicity (opened by wave 2, `silver_invoicing`).** `sp_issue_invoice`
+  issues a header, its lines, and the credit burn-down inside one Oracle transaction. The target
+  writes each Delta table in its own commit (plus the scoped line-rebuild delete), so a failure
+  between commits leaves a state the source can never produce: a visible invoice header with no
+  lines, or lines without their credit applications. Every unit's rerun converges to the correct end
+  state, so this is a *visibility* window, not permanent corruption — but it is a real divergence and
+  it applies to every silver and gold unit, so no single unit invents its own protocol for it.
+  Resolution options (batch marker with readers switched atomically vs. explicit run state that
+  consumers filter on) are a pre-cutover design decision, and gold's finance report is the consumer
+  that makes it matter. Decided before cutover, not per unit.
+
+- **Retraction of publications the current drivers no longer produce (opened by wave 2,
+  `silver_invoicing`).** `sp_issue_invoice` issues and re-issues but never unpublishes, so an invoice
+  of an earlier period stands after its tenant loses its subscription, is deleted from bronze, or
+  would now fail the preview. The port keeps that behaviour — every reconciliation is scoped to the
+  invoices the run issues — so this is *declared parity, not a target divergence*, and it is recorded
+  separately from the atomicity item above for that reason. `PARITY-NO-RETRACTION` measures the
+  surviving population (invoices, tenants, lines, applications, money) on every run. If the business
+  ever wants retraction, the answer is a period-scoped or full-refresh reconciliation decided
+  estate-wide; no unit invents one, because a unit-level sweep would delete rows the source still
+  considers issued.
+
 ## Unresolved, and deliberately so
 
 - **STOP E** — cutover authorization and how long the Oracle source stays readable through

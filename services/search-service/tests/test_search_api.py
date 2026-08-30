@@ -98,6 +98,34 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert len(data["suggestions"]) >= 1
 
+    def test_suggest_with_ranking_enrichment(self, client, mock_meilisearch_client, monkeypatch):
+        """Suggest returns 200 when the ranking-score enrichment path is active."""
+        monkeypatch.setattr("app.api.search._chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"id": "doc-1", "title": "test one", "type": "document"},
+                {"id": "doc-2", "title": "test two", "type": "document"},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["query"] == "te"
+        assert isinstance(data["suggestions"], list)
+
+    def test_suggest_ranking_enrichment_empty_index(self, client, mock_meilisearch_client, monkeypatch):
+        """Suggest returns 200 with an empty list when the index has no hits."""
+        monkeypatch.setattr("app.api.search._chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {"estimatedTotalHits": 0, "hits": []}
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
+
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""
         response = client.get("/api/v1/search/suggest?q=")

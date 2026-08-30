@@ -135,3 +135,56 @@ Five defects found in review and re-proven live, all of which would have passed 
   wave 4's writer exists.
 - **`sp_change_plan` was never executed against Oracle** (it mutates `SUBSCRIPTIONS`): the parity side
   is Oracle's own evaluation of a read-only re-expression, and stays in `unverified_paths`.
+
+## Wave 4 — `silver_dunning`, closed
+
+| Unit | Status | PR | Evidence |
+|---|---|---|---|
+| `silver_dunning` | `MERGED` | #1374 | 42/42 checks, `run_mode: live`, `oracle_source_sha 0d326cad…f0d55`, seed `NS=demo SCALE=demo`. One job, two tasks over one overdue snapshot (`schedule_dunning` writes it, `suspend_overdue` verifies its sha256/`ns`/`as_of`/`batch_id`/row count and sweeps exactly it). `loaded + quarantined == source` on all four declared populations (`dunning_attempts`, `tenants`, `notifications`, `subscriptions_swept`), each with its own numerator/denominator and its own 5% evaluation; money exact to the cent (`322.58` overdue total). Measured, not assumed: `as_of` day-of-week `SAT` with a 2-day weekend shift from the source's English `DY` abbreviations, 2 candidate tenants → 1 swept / 1 skipped non-active, 1 subscription suspended with `suspended_on = 2026-02-28`, 1 notification a different `as_of` would add vs. 0 on a same-`as_of` rerun, and the unlocked-`MAX` collision exposure. All five `DUNNING-00x` transcripts reproduced individually; halt fires live in `ns=dunning_halt` with the ledger already written; append/no-op/refusal evidence in `ns=dunning_edge` only — nothing wrote a second `as_of` into `ns=demo` or into `ns=plans_edge`. |
+
+Six defects found in review and re-proven live:
+
+1. **Attempt numbering read the bronze ingest population only**, so every later night recomputed
+   `attempt_no = 1` and the deterministic `f_md5_uuid(invoice_id || attempt_no)` id merged over the
+   previous night's row — dunning escalation would have been frozen at first notice forever while the
+   run reported green. The basis is now the ingest population plus this unit's own rows at
+   `as_of <` this run's `as_of`, which appends `n+1` on a later night and keeps a same-night rerun a
+   true no-op.
+2. **Quarantine ledger identity omitted `_batch_id`**, so a later batch overwrote an earlier batch's
+   record of the same rejection; and **duplicate physical rejects could collapse** into one ledger row.
+   Identity is batch-scoped now and repeated rejects carry occurrence ordinals, with every rejected
+   payload persisted.
+3. **The 5% halt compared the *rounded* rate**, so 5.004% displayed and passed as 5.0. Both
+   `rate_pct_unrounded` and `rate_pct` are kept, the comparison is exact, and the boundary case is
+   proven.
+4. **An `INT_MAX` attempt basis was cast to `INT` before judgment**, bypassing the overflow
+   quarantine — the candidate is judged in BIGINT before any cast.
+5. **An out-of-order backfill would have overwritten a later night's attempt.** Decided at parent
+   level rather than by the unit: the run is **refused** (`STOPA-DUNNING-BACKFILL`) before the overdue
+   snapshot is persisted and before any `MERGE`, naming the requested `as_of` and the later ones
+   already present. `05_pkg_dunning.sql:43-44` puts no `p_as_of` predicate on the `MAX`, so Oracle run
+   out of order appends by execution order — and a rerun of the *later* night would then append again
+   on unchanged input, so matching the source literally trades one silent wrong answer for another.
+   Recorded as `DIV-BACKFILL-REFUSED`; proven live (later night writes → earlier night refused with no
+   target Delta version moved and no snapshot written → later-night rerun still a no-op).
+
+### Carried out of wave 4
+
+- **This port cannot backfill an earlier night without an operator decision.** `JOB_NIGHTLY_DUNNING`
+  only ever moves forward, so the nightly path is unaffected, but an operator re-running an earlier
+  `as_of` must choose renumber-by-date or append-by-execution-order explicitly.
+- **D-30 held under a real writer.** The shared write on `ow_tp.silver.subscriptions` is one
+  matched-only `MERGE` on `(id, ns)` touching `status_cd`/`suspended_on`: 0 inserts, 0 deletes, 0 DDL,
+  0 rows with a changed non-owned column, with each updated row's prior status recorded. The
+  interleaving noted out of wave 3 — a later `silver_plans` rerun reasserting the source's close-out
+  over dunning's columns — is still declared-unexercised and belongs to a pre-cutover run-order
+  decision, not to either unit.
+- **The contract's `ANOM-NOTIFICATION-SIDE-EFFECT` description is wrong and was left untouched.** The
+  source's INSERT carries a `NOT EXISTS (tenant, kind 3, sent_at = TRUNC(p_as_of))` guard, so a
+  same-`as_of` legacy rerun does *not* duplicate; a different `as_of` does add a second notification
+  for an already-suspended tenant. The report says so; `docs/tech-partnerships/contracts/silver_dunning.json`
+  is unchanged.
+- **Neither procedure was executed against Oracle** (they mutate `DUNNING_ATTEMPTS`, `TENANTS`,
+  `SUBSCRIPTIONS`, `NOTIFICATIONS`): expected end state is Oracle's own evaluation of read-only
+  re-expressions of the same predicates, so control flow that lives only in PL/SQL is modelled, not
+  observed. Stays in `unverified_paths`, with the concurrent-collision reproduction.

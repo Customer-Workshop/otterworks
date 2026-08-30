@@ -254,3 +254,36 @@ reconciled, not averaged, not filtered. That closes the wave-1 question of which
 - **Wave 1's generated pipe-bearing bronze rows in an abandoned `ns` cannot be removed by this unit** —
   bronze is read-only to gold. Its own gold slices were cleaned; the bronze rows stay in
   `unverified_paths` for the ingest owner.
+
+## Estate-wide reconciliation rollup (parent-owned)
+
+Run from the merged run branch with wave 5 in place, over every `*.recon.json` in the tree:
+`docs/tech-partnerships/recon/estate_rollup.json`.
+
+```
+bronze_core        live   green  checks=52   unverified=6
+bronze_hist        live   green  checks=31   unverified=5
+bronze_wide        live   green  checks=111  unverified=7
+bronze_custbill    live   green  checks=10   unverified=3
+silver_rating      live   green  checks=46   unverified=12
+silver_invoicing   live   green  checks=69   unverified=14
+silver_plans       live   pass   checks=38   unverified=9
+silver_dunning     live   pass   checks=42   unverified=11
+gold_finance       live   pass   checks=62   unverified=7
+9 unit reports; problems: 0   (461 checks, 74 unverified paths, all run_mode=live)
+```
+
+All nine required units are named to the rollup explicitly (`--require-units`), so a unit with no
+report is a reported problem rather than a pass by omission — the failure mode that a bare directory
+scan cannot distinguish from success. Every unit's `unverified_paths` is carried forward unmerged and
+unsummarised (74 in total): the estate is green on what it measured, and the list of what it did not
+measure is part of the result, not a footnote to it.
+
+The two estate-level gaps that no unit can close, both carried into STOP E:
+
+- **The consumer population is unmapped** (STOP A: no audit observation window). `V$SQL`, ASH and
+  `UNIFIED_AUDIT_TRAIL` are readable now, but nothing was sampled, so no evidence about real readers
+  exists and none will be collected before cutover.
+- **`_HIST` volume and shape are unknown.** `bronze_hist` is green against 478 history rows it
+  generated on its own fixture, because the loader leaves both `_HIST` tables empty. The pipeline is
+  proven; the migration is not sized.

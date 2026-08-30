@@ -1,0 +1,1105 @@
+{
+  "all_green": true,
+  "all_live": true,
+  "kind": "recon-rollup",
+  "problems": [],
+  "required_units": [
+    "bronze_core",
+    "bronze_wide",
+    "bronze_hist",
+    "bronze_custbill",
+    "silver_rating",
+    "silver_invoicing",
+    "silver_plans",
+    "silver_dunning",
+    "gold_finance"
+  ],
+  "required_units_missing": [],
+  "unit_count": 9,
+  "units": [
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-NUMBER-UNBOUNDED"
+        ],
+        "declared_coverage_gaps": [
+          "ANOM-AUDIT-SWALLOWED"
+        ],
+        "detail": [
+          {
+            "columns": [
+              {
+                "class": "code",
+                "column": "OW_BILLING.CODES.code_val",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.TENANTS.status_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.PLANS.tier_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "count",
+                "column": "OW_BILLING.PLANS.included_units",
+                "oracle_type": "NUMBER(10)",
+                "target_type": "DECIMAL(38,0)"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.SUBSCRIPTIONS.status_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "count",
+                "column": "OW_BILLING.USAGE_EVENTS.units",
+                "oracle_type": "NUMBER(10)",
+                "target_type": "DECIMAL(38,0)"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.USAGE_EVENTS.kind_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "count",
+                "column": "OW_BILLING.RATING_RESULTS.used_units",
+                "oracle_type": "NUMBER(10)",
+                "target_type": "DECIMAL(38,0)"
+              },
+              {
+                "class": "count",
+                "column": "OW_BILLING.RATING_RESULTS.quota_units",
+                "oracle_type": "NUMBER(10)",
+                "target_type": "DECIMAL(38,0)"
+              },
+              {
+                "class": "count",
+                "column": "OW_BILLING.RATING_RESULTS.rollover_units",
+                "oracle_type": "NUMBER(10)",
+                "target_type": "DECIMAL(38,0)"
+              },
+              {
+                "class": "count",
+                "column": "OW_BILLING.RATING_RESULTS.billable_units",
+                "oracle_type": "NUMBER(10)",
+                "target_type": "DECIMAL(38,0)"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.INVOICES.status_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.INVOICE_LINES.line_no",
+                "oracle_type": "NUMBER(6)",
+                "target_type": "INT"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.DUNNING_ATTEMPTS.attempt_no",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.DUNNING_ATTEMPTS.status_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "code",
+                "column": "OW_BILLING.NOTIFICATIONS.kind_cd",
+                "oracle_type": "NUMBER(4)",
+                "target_type": "INT"
+              },
+              {
+                "class": "surrogate",
+                "column": "OW_BILLING.BILLING_AUDIT_LOG.log_id",
+                "oracle_type": "NUMBER(12)",
+                "target_type": "DECIMAL(38,0)"
+              }
+            ],
+            "detected": true,
+            "detector": "spec vs ow_tp.information_schema.columns after load",
+            "float_columns_in_unit": {},
+            "id": "ANOM-NUMBER-UNBOUNDED",
+            "money_target_types": {
+              "credit_notes.amount": "decimal(14,2)",
+              "credit_notes.remaining_amount": "decimal(14,2)",
+              "invoice_lines.amount": "decimal(14,2)",
+              "invoices.subtotal": "decimal(14,2)",
+              "invoices.tax": "decimal(14,2)",
+              "invoices.total": "decimal(14,2)",
+              "plans.monthly_fee": "decimal(14,2)",
+              "rating_results.overage_amount": "decimal(14,2)"
+            },
+            "unpinned_scale_source_columns": 17
+          }
+        ],
+        "expected_set": [
+          "ANOM-NUMBER-UNBOUNDED"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 52,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [],
+      "recon_result": "green",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/bronze_core.recon.json",
+      "run_mode": "live",
+      "unit": "bronze_core",
+      "unverified_paths": [
+        "D-05/T4 (two-digit years resolving into the current century) is not exercised by this unit: every date in the 13 core tables is a DATE or TIMESTAMP column, so no string date is parsed here. The rule is untested by this recon, not implemented and unverified.",
+        "D-08 (non-unique ROWNUM ordering) is not reached: the unit reads whole tables and never selects a subset by row number, so no tie-breaking decision is made.",
+        "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable, so no single federated query joins source to target; each side is measured independently and compared by canonical row hash. A federation-side type or NLS difference would therefore not be observed by this recon.",
+        "Source deletions are not reconciled: the load has no MERGE delete clause, so a row deleted in Oracle after a load would remain in the bronze image. 'rows_only_in_target' in each CHECKSUM-* check is what detects this, and it is reported rather than corrected.",
+        "The money-bearing core tables are still at their base population: invoices, invoice_lines, rating_periods, rating_results, credit_notes, dunning_attempts and notifications are rows the rating and invoicing packages write, and that batch chain has not been run for the tenants added by the SCALE=demo load. T1 money parity is therefore exact but over a handful of invoices; the high-cardinality objects of this estate (CUSTOMER_MASTER, ENTITY_ATTR_VALUE, INVOICE_HEADER, INVOICE_LINE, and with them the VARCHAR2 signup-date rejects and the orphaned invoice lines) are targets of bronze_wide, not of this unit.",
+        "The ns=demo slice is shared with other sessions holding the same token. These numbers were recomputed from the targets immediately after the second run; the recon is rerunnable end to end (python3 -m scripts.tp_databricks.bronze_core --ns demo) and should be rerun if the slice is rewritten."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-HIST-DT-STRING",
+          "ANOM-HIST-ORPHAN"
+        ],
+        "coverage_gaps": [
+          "ANOM-PRECUTOVER-HISTORY"
+        ],
+        "expected_set": [
+          "ANOM-HIST-DT-STRING",
+          "ANOM-HIST-ORPHAN"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 31,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [],
+      "recon_result": "green",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/bronze_hist.recon.json",
+      "run_mode": "live",
+      "unit": "bronze_hist",
+      "unverified_paths": [
+        "Parity here is measured against history generated in this session, not against the customer's real history. The history measured here was GENERATED IN THIS SESSION, not found in the source: both _HIST tables were empty on the Oracle fixture this ran against, and the rows were produced minutes before measurement by running scripts/tp_databricks/bronze_hist_source_activity.py, which issues ordinary UPDATE and DELETE statements against CUSTOMER_MASTER and SUBSCRIPTIONS. No row was inserted into a _HIST table directly -- every history row was written by the estate's own capture triggers -- but this is generated history, not migrated history. A real estate's _HIST volume, age range and value distribution are unknown until that source is read, so these counts say the pipeline is correct on the rows it was given, not that it has seen production shapes.",
+        "Unity Catalog column masks over the PII columns are not applied by this unit: the masking function is a shared, parent-owned object. Values are landed in cleartext as agreed, so the cleartext restriction is unproven until those masks exist.",
+        "ENC_INVALID, NUMERIC_OVERFLOW, KEY_NULL and KEY_DUPLICATE are implemented and their accounting is checked, but the live source presented no row that triggers them, so only BAD_DATE has been exercised end to end (against the shipped expression, not against a stored row).",
+        "Comparison is against live Oracle read directly over the fixture connection rather than through Lakehouse Federation; the federated catalog was not available to this unit.",
+        "The workspace ns=demo slice is shared with concurrent sessions. This report is re-runnable and was measured in one pass ending at the generated_at timestamp."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-STRING-DATES",
+          "ANOM-GL-ACCT-CSV",
+          "ANOM-EAV-TYPELESS"
+        ],
+        "evidence": {
+          "ANOM-DENORM-COPIES": {
+            "note": "the denormalised reporting copies and the normalised tables disagree in the source; both are migrated as-is and the disagreement is reported, not resolved. The normalised tables belong to bronze_core and were neither read for parity nor written by this unit.",
+            "source_invoice_header_rows": 18750,
+            "source_invoice_line_rows": 150000,
+            "source_invoice_lines_rows": 2,
+            "source_invoices_rows": 3,
+            "status": "coverage_gap (declared in the contract)"
+          },
+          "ANOM-EAV-TYPELESS": {
+            "carried": "attribute names and values verbatim; not pivoted or type-inferred",
+            "distinct_attr_name": 7,
+            "distinct_attr_type": 1,
+            "numeric_values_stored_as_text": 3116,
+            "rows": 8333
+          },
+          "ANOM-GL-ACCT-CSV": {
+            "carried": "raw string preserved; only a token count is derived beside it",
+            "customer_master_related_acct_ids_multi_value_rows": 14932,
+            "invoice_line_multi_value_rows": 99805
+          },
+          "ANOM-STRING-DATES": {
+            "parsed_signup_dates": 24950,
+            "unparseable_rows_quarantined": 50
+          }
+        },
+        "expected_set": [
+          "ANOM-STRING-DATES",
+          "ANOM-GL-ACCT-CSV",
+          "ANOM-EAV-TYPELESS"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 111,
+      "checks_failed": [],
+      "declared_failed_checks": null,
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [],
+      "recon_result": "green",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/bronze_wide.recon.json",
+      "run_mode": "live",
+      "unit": "bronze_wide",
+      "unverified_paths": [
+        "ANOM-DENORM-COPIES: the contract marks it a coverage gap. The disagreement between the denormalised reporting copies and the normalised invoice tables is measured in the source and reported above, but no cross-unit parity check is run: the normalised targets belong to bronze_core and are loaded concurrently, so any comparison against them would be a reading of another unit's in-flight state, not evidence.",
+        "Lakehouse Federation is named in the golden baseline as the extraction path; no federated Oracle connection exists in this workspace, so the source is read with the Oracle client and landed to the unit's volume prefix. The federated path itself is therefore unexercised. Recon still reads live Oracle for every expected value.",
+        "Source deletes and updates are not exercised end to end: the source was static across both runs, so the insert, no-op and (for the row moved out of this ns before the loads) re-insert paths are evidenced, while the delete branch of the MERGE is evidenced only by the foreign-slice probe above. A fully empty extract for this ns was not run against the live source.",
+        "Column-mask enforcement is evidenced for the recon principal only (withheld before registration, withheld again after removal). Enforcement against a second, separately-authenticated identity was not exercised.",
+        "Target publication is per-table: Delta offers no transaction spanning the five targets, so a failure between two MERGEs would leave the unit's tables on different source populations until the next run converges them. Everything fallible (classification, counting, accounting, the halt decision, quarantine persistence, mask attachment) happens before the first target write, and the convergence property is evidenced by the no-op second run, but a mid-publication failure was not injected against the live workspace.",
+        "Landing publication is per-file, not one atomic swap: the notebook rejects a torn extract by checking each landed table's row count against the manifest published after all files, and that check is exercised by every load here, but two extractors writing this ns's prefix at once was not simulated.",
+        "ns=demo is a shared slice and other sessions hold the same credential. Every number here was recomputed by this run; re-running this script re-measures them rather than restating the values recorded above."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-PERL-ROUNDING"
+        ],
+        "coverage_gaps_not_detectable": [
+          "ANOM-UNMAPPED-CONSUMERS"
+        ],
+        "detail": {
+          "detected": true,
+          "how": "the same population summed once in IEEE-754 doubles in the source's own row order and once in exact decimal, differenced in cents. The target carries the exact figure; the float figure is evidence and never a tolerance",
+          "where": "measured on both populations: on the live namespace the float accumulation and the exact decimal sum agree once rounded to cents (the float artifacts are there \u2014 see legacy_vs_target.float_vs_decimal_cent_difference_by_group), and on the declared generated namespace fin_rounding the difference is visible at the printed cent"
+        },
+        "expected_set": [
+          "ANOM-PERL-ROUNDING"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 62,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [],
+      "recon_result": "pass",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/gold_finance.recon.json",
+      "run_mode": "live",
+      "unit": "gold_finance",
+      "unverified_paths": [
+        "The Databricks Workflows job ow_tp_gold_finance itself was not created or triggered: the job is declared in infrastructure/terraform-databricks/jobs_gold_finance.tf and the parent applies that stack (terraform apply is out of scope for this unit). Every run in this report is a serverless notebook run of the same notebook with the same parameters the job task passes, submitted through jobs/runs/submit, so the notebook path and parameter contract are exercised and the job resource's own creation is not. The job carries no schedule and no trigger: like every unit job in this estate it is declared untriggered and its invocation is parent-owned orchestration (STOP C/E), so nothing here observes a landed CUSTBILL batch starting this report.",
+        "No consumer of ow_tp.gold.finance_monthly or ow_tp.gold.finance_report_export was identified or observed: the consumer population is declared UNMAPPED (D4-1) and no audit observation window was run (D4-2). 'The finance report is the only consumer' is artifact-derived and is not evidence.",
+        "sendmail delivery, the /tmp/finance_report.lock lockfile and the hostname/$ROOT branch are deliberate non-reproductions (databricks/ddl/gold_finance_spec.json). Nothing here proves what the source's mail step would have delivered on a box where sendmail existed.",
+        "Unity Catalog column masks over the bronze/silver PII columns are parent-owned. This unit proves PII is absent from its own targets and exports; it neither created nor asserted those masks.",
+        "The legacy parser was run under scripts/tp-run-deterministic.sh, whose libfaketime preload intermittently fails to attach in a child process (roughly 1 run in 30 measured here) and silently corrupts a field group. The parse is therefore verified against an independent copybook CBCUST01 re-slice of the same bytes and retried on disagreement; the attempt counts are reported. The underlying wrapper flakiness is not fixed by this unit.",
+        "Oracle is provenance here, not an input: this unit reads no OW_BILLING object. The banner and the pinned oracle_source_sha say which estate the migration was scoped against; they do not prove the CUSTBILL drop files were produced from that instance.",
+        "an earlier revision of this harness landed pipe-bearing generated CUSTBILL records into ns=fin_round while emulating the source's field shifting; that emulation was withdrawn, and bronze is read-only to this unit, so those rows cannot be removed from ow_tp.bronze.custbill_records. The rounding fixture therefore runs in the clean namespace fin_rounding and the earlier namespace is abandoned: its rows are generated fixture data in a scratch namespace, they are counted in the estate-wide figure of DELIMITER-IN-FIXED-WIDTH, and its slice of this unit's own targets is emptied by the same ns-scoped cleanup below (COLD-CLEAN-ISOLATION/fin_round), so no owned target publishes a report for it"
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-SWALLOWED-INSERT",
+          "ANOM-LOCALE-DAY",
+          "ANOM-SHARED-WRITE",
+          "ANOM-NOTIFICATION-SIDE-EFFECT"
+        ],
+        "detection_basis": {
+          "ANOM-LOCALE-DAY": "as_of 2026-02-28 is SAT and 2 attempts moved +2 days; the day-number origin is proved against pinned dates and the locale path is shown not to match",
+          "ANOM-NOTIFICATION-SIDE-EFFECT": "the source's NOT EXISTS reproduced; a same-p_as_of rerun adds 0 and p_as_of=2026-03-14 would add 1",
+          "ANOM-SHARED-WRITE": "1 ow_tp.silver.subscriptions row(s) updated on two columns, with per-row prior status and a before/after hash of every other column",
+          "ANOM-SWALLOWED-INSERT": "measured in ns=dunning_edge (generated fixture): {'CODE_UNKNOWN': 1, 'FK_ORPHAN': 2, 'KEY_DUPLICATE': 2, 'NUMERIC_OVERFLOW': 1} attempt rows the source's WHEN OTHERS THEN NULL would have hidden, by cause. In ns=demo the population is 0 orphans and 0 collisions, and a zero there is not a detection, which is why the fixture namespace exists"
+        },
+        "expected_set": [
+          "ANOM-SWALLOWED-INSERT",
+          "ANOM-LOCALE-DAY",
+          "ANOM-SHARED-WRITE",
+          "ANOM-NOTIFICATION-SIDE-EFFECT"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 42,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [
+        {
+          "at": "quarantine.halt_bases.schedule.dunning_attempts",
+          "over_threshold": false,
+          "population": "dunning_attempts",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": "0.0"
+        },
+        {
+          "at": "quarantine.halt_bases.suspend.notifications",
+          "over_threshold": false,
+          "population": "notifications",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": "0.0"
+        },
+        {
+          "at": "quarantine.halt_bases.suspend.subscriptions_swept",
+          "over_threshold": false,
+          "population": "subscriptions_swept",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": "0.0"
+        },
+        {
+          "at": "quarantine.halt_bases.suspend.tenants",
+          "over_threshold": false,
+          "population": "tenants",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": "0.0"
+        },
+        {
+          "at": "accounting.dunning_attempts",
+          "over_threshold": null,
+          "population": "dunning_attempts",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "accounting.notifications",
+          "over_threshold": null,
+          "population": "notifications",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "accounting.subscriptions_swept",
+          "over_threshold": null,
+          "population": "subscriptions_swept",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "accounting.tenants",
+          "over_threshold": null,
+          "population": "tenants",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        }
+      ],
+      "recon_result": "pass",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/silver_dunning.recon.json",
+      "run_mode": "live",
+      "unit": "silver_dunning",
+      "unverified_paths": [
+        "sp_schedule_dunning and sp_suspend_overdue are never executed on the source: they mutate DUNNING_ATTEMPTS, TENANTS, SUBSCRIPTIONS and NOTIFICATIONS, so their expected end state is re-expressed as read-only SELECTs over the same predicates and evaluated by Oracle. A behaviour that lives only in PL/SQL control flow rather than in those predicates is therefore modelled, not observed.",
+        "the concurrent-run collision on the unlocked NVL(MAX(attempt_no),0)+1 is measured as an exposed population, not reproduced: reproducing it would need two interleaved Oracle sessions writing the source.",
+        "pkg_ow_util.log_msg's autonomous BILLING_AUDIT_LOG write is out of parity scope (D-20) and is not compared; g_scheduled_cnt is carried as an explicit run-level count, so the source's understated log line is described rather than reproduced.",
+        "trg_subscriptions_hist is retired (D-17): no SUBSCRIPTIONS_HIST equivalent is written or compared, and Delta history covers the change from the first target run forward.",
+        "ns=dunning_edge and ns=dunning_halt are generated fixtures. Oracle holds no copy of them, so their declared side is an independent Python model of 05_pkg_dunning.sql rather than live Oracle, and their invoices are read from ow_tp.bronze.invoices because seeding ow_tp.silver.invoices would mean writing silver_invoicing's target.",
+        "ns=dunning_t002 and ns=dunning_t003 replay ns=demo's bronze ingest rows on the transcripts' own p_as_of; their invoice population is the bronze one, which for these three invoices is the same population ns=demo's silver slice carries, but it is a different table and is declared as such.",
+        "the sweep's effect on ow_tp.silver.subscriptions is not reverted after the run: this unit may not write that table outside its two owned columns, so ns=demo now carries the suspension this night's sweep applied.",
+        "the 5% halt decides on the unrounded pair, and ACC-QUAR-THRESHOLD-EXACT shows the arithmetic for a rate that rounds to exactly 5.0 at four decimals. No namespace is seeded at that shape: the smallest population that both exceeds 5% and still rounds to 5.0 needs millions of rows, so the boundary is verified as arithmetic over the rule the notebook publishes, not as a live run.",
+        "NUMERIC_OVERFLOW is reachable and exercised on the attempt candidate (an ingest attempt at INT_MAX in ns=dunning_edge); the money half of the same rule, a total outside DECIMAL(14,2), is not exercised, because bronze's own column cannot hold such a value and this unit does not write ow_tp.bronze.invoices.",
+        "the multi-night attempt append is measured on the generated fixture namespace, on a second p_as_of, and not on ns=demo: a second night in ns=demo would leave that namespace carrying a night the reconciled comparison against live Oracle does not describe.",
+        "the cold load's starting state is arranged by the harness, not by the notebook: before it, the runner deletes this unit's own ns=demo rows written by earlier validation runs and sets status_cd/suspended_on on the ns=demo subscription rows back to the values OW_BILLING.SUBSCRIPTIONS carries. reconciled_namespace_setup publishes both counts. The notebook itself issues no DELETE and writes no other column of that table, so 'a cold load' means 'cold after that declared setup', not 'a namespace no run of this unit had ever touched'."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-GLOBAL-DEPENDENCY",
+          "ANOM-HARDCODED-TAX",
+          "ANOM-HALF-CENT-TAX",
+          "ANOM-CREDIT-OVERAPPLY",
+          "ANOM-DYNAMIC-SQL"
+        ],
+        "detail": {
+          "ANOM-CREDIT-OVERAPPLY": {
+            "application_rows": 5,
+            "counter_carried_beyond_a_note_balance": "71.08",
+            "credit_already_applied_by_this_units_other_invoices": "0.00",
+            "credit_applied_total": "131.08",
+            "detected": true,
+            "detector": "the burn-down is materialised one visited note at a time, with the running counter and both balances on every row, so the order and the over-application are measured rows rather than a claim; the re-issue exposure is then evaluated on those same rows",
+            "invoices_applying_credit": 3,
+            "note_balance_after_total": "13.92",
+            "note_balance_before_total": "145.00",
+            "notes_debited_by_more_than_their_own_balance": 2,
+            "notes_the_loop_never_reached": 0,
+            "order_determinism": "the source's ORDER BY issued_on, id is total because CREDIT_NOTES.id is the primary key, so the target orders by (issued_on, credit_note_id) and invents no tie-break; the sequence is deterministic on both sides",
+            "reissue_exposure": {
+              "credit_granted_by_the_first_issue_of_those_invoices": "106.08",
+              "credit_that_would_be_burned_again": "13.92",
+              "description": "a second sp_issue_invoice for the same period recomputes g_credit from the balances the first issue already reduced and burns them again, so across the two issues the tenant's notes are consumed by more than the credit the invoice finally grants",
+              "invoices_that_would_burn_credit_again": 2
+            },
+            "source_construct": "FOR r IN (... ORDER BY issued_on, id) LOOP EXIT WHEN v_credit <= 0; UPDATE credit_notes SET remaining_amount = GREATEST(remaining_amount - v_credit, 0) WHERE id = r.id; v_credit := GREATEST(v_credit - r.remaining_amount, 0); END LOOP (04_pkg_invoicing.sql:182-190)",
+            "target_behaviour": "the sequence is recomputed from bronze minus what this unit's *other* invoices applied, so it sees its own earlier applications across periods but a rerun of the same period re-derives the identical rows instead of burning the notes a second time; the divergence from the source's re-issue double-burn is declared in the recon report"
+          },
+          "ANOM-DYNAMIC-SQL": {
+            "delete_commit_metrics": {
+              "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (72731003087577, 653038391170132); where DESCRIBE HISTORY reports no job run id, the fallback is the commit's job.jobName ending with this run's batch id",
+              "attribution_rule_matched": "job_run_id",
+              "commit_from_this_run": true,
+              "operation": "DELETE",
+              "pre_run_version": 28,
+              "rows_deleted": 0,
+              "rows_inserted": 0,
+              "rows_updated": 0,
+              "version": 29,
+              "writing_job_run": {
+                "job_name": "ow_tp_silver_invoicing_demo_20260829092404b",
+                "job_run_id": "72731003087577"
+              }
+            },
+            "detected": true,
+            "detector": "the source's issue path is read for EXECUTE IMMEDIATE and the statement it assembles is named with its bind; the target's replacement is the static DELETE below, whose own scope is measured on every run (rows matched, and rows outside the scope counted before and after to prove they were untouched)",
+            "lines_outside_the_scope_after": 2,
+            "lines_outside_the_scope_before": 2,
+            "rows_matched_by_the_scoped_delete": 0,
+            "source_constructs": [
+              "pkg_invoicing.sp_issue_invoice: EXECUTE IMMEDIATE 'DELETE FROM invoice_lines WHERE invoice_id = :1' USING v_invoice_id (04_pkg_invoicing.sql:149-150) \u2014 statement text built in the issue path, bound to a runtime invoice id",
+              "pkg_ow_util.f_code_desc: EXECUTE IMMEDIATE of a SELECT against CODES assembled into v_sql (01_pkg_util.sql:36-46) \u2014 reached from this unit only through the code lookups, which the target expresses as joins to ow_tp.bronze.codes"
+            ],
+            "target_behaviour": "one static statement, scoped to ns and to this run's invoices, with no string built from a row value anywhere in the write path; the rebuild's end state is the same as the source's delete-and-reinsert",
+            "target_statement": "DELETE FROM ow_tp.silver.invoice_lines WHERE `ns` = 'demo' AND `invoice_id` IN (SELECT `invoice_id` FROM v_issued) AND `id` NOT IN (SELECT `id` FROM v_lines_issued)"
+          },
+          "ANOM-GLOBAL-DEPENDENCY": {
+            "absolute_overage_delta": "14.78",
+            "absolute_rollover_unit_delta": "1519",
+            "detected": true,
+            "detector": "the package globals pkg_invoicing declares and the one it reads out of pkg_rating are enumerated from the source and mapped onto explicit columns of the invoice row; the money consequence is then measured by repricing every invoice in this run from the persisted D-09 rollover instead of the value the inline call computed",
+            "global_read_across_the_package_boundary": "g_overage := pkg_rating.g_overage_amount, set by pkg_rating.compute_rating and read by pkg_invoicing.compute_preview (04_pkg_invoicing.sql:48-49) \u2014 no table between the two",
+            "invoices_whose_overage_would_change_if_the_table_were_consumed": 2,
+            "rating_input": "recomputed inline from ow_tp.bronze.{tenants,subscriptions,plans,usage_events}; ow_tp.bronze.rating_results is read only as compute_rating's three-month rollover bank of earlier periods; ow_tp.silver.rating_* is not read",
+            "rows_compared": 69,
+            "rows_where_persisted_rollover_differs_from_in_call_value": 5,
+            "source_package_globals": [
+              "g_plan_code",
+              "g_plan_fee",
+              "g_overage",
+              "g_tax",
+              "g_credit"
+            ],
+            "target_behaviour": "no cross-call state: every value the two packages passed through a global is a column of the invoice row it belongs to, and the rating values on the row are the in-call values"
+          },
+          "ANOM-HALF-CENT-TAX": {
+            "absolute_tax_delta": "0.26",
+            "detected": true,
+            "detector": "each invoice's tax is computed both ways over this run's own population \u2014 the source's two unrounded halves each rounded on insert and summed, and the single ROUND(g_tax, 2) a tidier implementation would have written \u2014 and the rows that differ are counted with their money delta",
+            "invoices_changed_if_the_halves_were_rounded_first": 26,
+            "invoices_priced": 69,
+            "invoices_whose_half_is_not_a_whole_cent": 62,
+            "max_tax_delta": "0.01",
+            "sample": [
+              {
+                "tax_computed": "12.6530250000",
+                "tax_half": "6.3265125000",
+                "tax_half_rounded": "6.33",
+                "tax_if_rounded_once": "12.65",
+                "tax_two_unrounded_halves": "12.66",
+                "tenant_id": "00000000-0000-0000-0000-000000000002",
+                "total": "166.03"
+              },
+              {
+                "tax_computed": "4.5078000000",
+                "tax_half": "2.2539000000",
+                "tax_half_rounded": "2.25",
+                "tax_if_rounded_once": "4.51",
+                "tax_two_unrounded_halves": "4.50",
+                "tenant_id": "00000000-0000-0000-0000-000000000008",
+                "total": "59.14"
+              },
+              {
+                "tax_computed": "40.9686750000",
+                "tax_half": "20.4843375000",
+                "tax_half_rounded": "20.48",
+                "tax_if_rounded_once": "40.97",
+                "tax_two_unrounded_halves": "40.96",
+                "tenant_id": "14c97a8c-d41e-67c4-ef80-0ab6b63a0f7e",
+                "total": "537.55"
+              },
+              {
+                "tax_computed": "38.7057000000",
+                "tax_half": "19.3528500000",
+                "tax_half_rounded": "19.35",
+                "tax_if_rounded_once": "38.71",
+                "tax_two_unrounded_halves": "38.70",
+                "tenant_id": "18d73981-1b10-9666-d46e-bcef13a6dd76",
+                "total": "507.86"
+              },
+              {
+                "tax_computed": "24.7508250000",
+                "tax_half": "12.3754125000",
+                "tax_half_rounded": "12.38",
+                "tax_if_rounded_once": "24.75",
+                "tax_two_unrounded_halves": "24.76",
+                "tenant_id": "3c74f709-9c14-0338-188f-66ace530f3e3",
+                "total": "324.77"
+              },
+              {
+                "tax_computed": "17.7523500000",
+                "tax_half": "8.8761750000",
+                "tax_half_rounded": "8.88",
+                "tax_if_rounded_once": "17.75",
+                "tax_two_unrounded_halves": "17.76",
+                "tenant_id": "4dc2f443-4974-af80-c214-78aa82b2c812",
+                "total": "232.94"
+              }
+            ],
+            "source_construct": "SELECT 3, 'tax', 'regional tax', g_tax / 2, ... UNION ALL SELECT 4, 'tax', 'local tax', g_tax / 2, ... (04_pkg_invoicing.sql:93-95), each accumulated as ROUND(v_amount, 2) into v_tax",
+            "target_behaviour": "tax_computed and tax_half are carried as DECIMAL(28,10), the halves are rounded only where the source's NUMBER(12,2) column rounds them, and the header tax is the sum of the two rounded halves"
+          },
+          "ANOM-HARDCODED-TAX": {
+            "detected": true,
+            "detector": "the rate the invoices were priced with is compared against the source constant and against the schema: every column in ow_tp.bronze and ow_tp.silver whose name could carry a tax rate is counted, so the claim that the rate has no data provenance is measured rather than asserted",
+            "distinct_rates_applied_this_run": 1,
+            "invoices_priced": 69,
+            "rate_applied": "0.082500",
+            "rate_carrying_columns_in_bronze_or_silver": 1,
+            "source_constant": "TAX_RATE CONSTANT NUMBER := 0.0825 (04_pkg_invoicing.sql:26), commented 'hardcoded 2011 combined rate'",
+            "target_behaviour": "the constant is pinned in databricks/ddl/silver_invoicing_spec.json, asserted equal to 0.0825 at load time, and written onto every invoice as tax_rate so a future rate change is a visible column change and not a silent reprice",
+            "tax_exempt_invoices": 6
+          }
+        },
+        "expected_set": [
+          "ANOM-GLOBAL-DEPENDENCY",
+          "ANOM-HARDCODED-TAX",
+          "ANOM-HALF-CENT-TAX",
+          "ANOM-CREDIT-OVERAPPLY",
+          "ANOM-DYNAMIC-SQL"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 69,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [
+        {
+          "at": "quarantine",
+          "over_threshold": null,
+          "population": "quarantine",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "quarantine.accounting.credit_applications",
+          "over_threshold": null,
+          "population": "credit_applications",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "quarantine.accounting.invoice_lines",
+          "over_threshold": null,
+          "population": "invoice_lines",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "quarantine.accounting.invoices",
+          "over_threshold": null,
+          "population": "invoices",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        }
+      ],
+      "recon_result": "green",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/silver_invoicing.recon.json",
+      "run_mode": "live",
+      "unit": "silver_invoicing",
+      "unverified_paths": [
+        "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable (wave 1 established this), so no single query joins source to target. Each side is measured independently \u2014 Oracle by a read-only session, the target by the SQL warehouse \u2014 and compared row by row here.",
+        "The Oracle side of the parity comparison is compute_preview/fn_invoice_preview/sp_issue_invoice, with the pkg_rating.compute_rating call they depend on, re-expressed as read-only SQL evaluated by Oracle \u2014 not the PL/SQL package executed. Executing it would write INVOICES/INVOICE_LINES rows and burn CREDIT_NOTES down, mutating the estate; the six pinned transcripts are what tie the re-expression to the real engine.",
+        "The source's re-issue burns credit twice: sp_issue_invoice recomputes g_credit from the balances its own first issue already reduced, so across two issues the notes are consumed by more than the credit the invoice finally grants. This port re-derives the same rows instead, so a rerun is a no-op (ACC-IDEM). The exposure is measured (13.92 of credit across 2 invoices) but the double burn itself is deliberately not reproduced: it is a divergence, declared here rather than hidden.",
+        "Divergence \u2014 orphan invoice header on a failed issue: sp_issue_invoice INSERTs the INVOICES row before the line loop, so a tenant whose plan or usage line then raises (the D-19 NO_COVERING_PLAN case: NULL into INVOICE_LINES.description/.amount, both NOT NULL) leaves a zeroed header with no lines behind in the source. This port quarantines that tenant and writes no invoice at all, preferring a reject over a header whose money never landed. It becomes an invoices row-count delta of one row per affected tenant (source higher) as soon as quarantine is non-empty.",
+        "CREDIT_NOTES is a bronze target, so this unit never writes the burnt-down balances back: the burn-down is recorded in ow_tp.silver.credit_applications, one row per (invoice, note visited), carrying remaining_before/applied_amount/remaining_after. The source's in-place UPDATE of CREDIT_NOTES.remaining_amount therefore has no target column, and the balances in ow_tp.bronze.credit_notes stay as the bronze units loaded them.",
+        "Quarantine reasons with zero live exposure on this population: ['FK_ORPHAN', 'KEY_NULL', 'KEY_DUPLICATE', 'CODE_UNKNOWN', 'NUMERIC_OVERFLOW']. Each is implemented and its exposure measured as zero, so the write path for those reasons is exercised by no row here \u2014 implemented and unverified, not proven. NUMERIC_OVERFLOW's guard is additionally probed on a synthetic value (QUAR-NUMERIC_OVERFLOW-REACHABLE).",
+        "D-05/T4 (two-digit years resolving into the current century), D-06/BAD_DATE, D-25/ENC_INVALID and RECORD_SHORT/AMT_NON_NUMERIC are not reachable from this unit: invoicing reads typed DATE/TIMESTAMP/NUMBER columns out of bronze, so pkg_ow_util.f_str2dt and the delimited-record paths those codes describe are never called here. They belong to the bronze units that parse the flat files.",
+        "sp_issue_invoice ends with a pkg_ow_util.log_msg autonomous-transaction audit write whose WHEN OTHERS THEN ROLLBACK discards failures silently. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so no audit row is produced here and no audit parity is claimed.",
+        "ANOM-ROWNUM-1 (the rating unit's nondeterministic ROWNUM <= 1 subscription pick) is inside the inline rating this unit recomputes. No tenant in this population has two covering subscriptions with the same starts_on, so the tie is not exercised; the target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is implemented and unverified against a tie. The two picks compute_preview and compute_rating make disagree on 0 tenants here, and both are carried on the invoice row.",
+        "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove that no other session wrote between the two runs. The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run produced (version > the target's pre-run version, and the commit's job.jobRunId is one of this run's own run ids \u2014 serverless rejects spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which excludes a foreign commit from the proof but not a foreign write from the row counts taken afterwards. The job-name fallback (batch id as the name suffix) is not exercised here: DESCRIBE HISTORY reported a job run id for every commit of this run (job_run_id), so the fallback is implemented and unverified.",
+        "Divergence \u2014 cross-table atomicity: sp_issue_invoice is one Oracle transaction over the header, its lines and the credit burn-down, while this port makes three independent Delta commits plus a scoped DELETE. Between the invoices commit and the invoice_lines commit a reader can therefore see a header without its lines, and between the lines commit and the credit_applications commit a header and lines without the applications that reduced them \u2014 a window of one commit each, on the order of seconds, closed by the next run because the retry re-derives the identical rows and converges on the same end state (ACC-IDEM, proven by the second-run metrics). Staged publication behind a batch marker is an estate-wide target-architecture decision for every silver and gold unit rather than something this unit invents for itself, so it is recorded here and carried centrally into the wave plan as a pre-cutover design item; it is not implemented in this unit.",
+        "The stale credit-application removal path is proven by a targeted case (measured: one synthetic application planted on the target for an issued invoice under a note the recomputed sequence does not visit, then the unit run again), not by this population \u2014 a run over unchanged bronze produces the same applications every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured before/after counts.",
+        "Parity \u2014 no retraction: the source never unpublishes an invoice, so a publication whose driver has left the accepted population survives in the target too (PARITY-NO-RETRACTION). On this population that set is empty (0 invoices, 0 lines, 0 applications): every tenant bronze carries is still driven this run and quarantine is empty, so the behaviour is declared and measured at zero rather than demonstrated on an instance.",
+        "The batch-scoped exclusion the credit-burn check uses is measured but not stressed here: quarantine is empty on this population, so the run's own rejection set and the set the quarantine ledger retains are both empty and the difference between the scoped and unscoped reads is zero (ACC-CREDIT-BURN-exclusion-scope). The scoping is what stops a rejection that no longer reproduces from exempting its tenant forever; that case is unexercised by this population."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-DYNAMIC-SQL",
+          "ANOM-PKG-GLOBAL-STATE",
+          "ANOM-ROWBYROW-CLOSEOUT",
+          "ANOM-ROWNUM-TIEBREAK",
+          "ANOM-SENTINEL-DATE",
+          "ANOM-SWALLOWED-EXCEPTION"
+        ],
+        "detail_by_namespace": {
+          "demo": {
+            "ANOM-DYNAMIC-SQL": {
+              "detected": true,
+              "detector": "the statement is read from the source and re-expressed as the static write in v_subs_src; nothing in this notebook assembles SQL from source data",
+              "new_subscriptions_written_by_the_static_equivalent": 2,
+              "source_construct": "v_sql := 'INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, status_cd) VALUES (:1, :2, :3, :4, 10)'; EXECUTE IMMEDIATE v_sql USING ... (02_pkg_plans.sql:100-104) \u2014 dynamic SQL for a perfectly static INSERT",
+              "target_behaviour": "static INSERT through the subscriptions MERGE, keyed by f_md5_uuid(tenant || plan || TO_CHAR(effective_on,'YYYY-MM-DD')) plus ns (D-20, D-14)"
+            },
+            "ANOM-PKG-GLOBAL-STATE": {
+              "detected": true,
+              "detector": "the walk is reconstructed in the declared tenant order and the value the swallowed exception leaves behind is carried as stale_global_plan_code with stale_global_mismatch beside it",
+              "entitlement_rows_carrying_a_mismatch": 0,
+              "global_iteration_order_pinned_to": [
+                "tenant_id"
+              ],
+              "note": "a tenant with no covering subscription has no entitlement row at all (the contract's write-empty-result shape), so the mismatch population is measured over every tenant in ns rather than over the rows the table holds",
+              "source_construct": "g_last_tenant_id := p_tenant_id is assigned before the SELECT ... INTO g_last_plan_code, whose WHEN OTHERS THEN NULL swallows NO_DATA_FOUND, and nothing ever invalidates the pair (02_pkg_plans.sql:39-50)",
+              "target_behaviour": "no package-global equivalent is built (D-10): global_lookup_matched, global_lookup_plan_code, stale_global_plan_code and stale_global_mismatch are columns on the entitlement row",
+              "tenants_that_would_hit_the_mismatch": 0
+            },
+            "ANOM-ROWBYROW-CLOSEOUT": {
+              "cancelled_preserved": 0,
+              "cancelled_visited": 0,
+              "detected": true,
+              "detector": "the loop is re-expressed set-wise with the order pinned and published as closeout_seq; each row's new state is a function of its own old state only, so the pinned order changes no value here \u2014 the order-dependence is in the source's shape",
+              "open_subscriptions_left_overlapping_by_the_strict_less_than": 0,
+              "open_subscriptions_starting_exactly_on_the_effective_date": 0,
+              "source_construct": "FOR r IN c_open_subs LOOP UPDATE subscriptions SET ends_on = p_effective_on - 1, status_cd = DECODE(r.status_cd, 30, 30, 10) WHERE CURRENT OF c_open_subs (02_pkg_plans.sql:90-95), over a FOR UPDATE cursor with no ORDER BY",
+              "subscriptions_closed": 2,
+              "suspended_to_active_flips": 0,
+              "target_behaviour": "pinned close-out order ['tenant_id', 'starts_on', 'id']; ends_on = effective_on - INTERVAL 1 DAY with any time component carried (D-07/T7); status 30 stays 30 (trg_sub_no_uncancel, D-16) and status 20 becomes 10, which is reproduced, not corrected"
+            },
+            "ANOM-ROWNUM-TIEBREAK": {
+              "detected": true,
+              "detector": "both picks are pinned to row_number() OVER (PARTITION BY tenant_id ORDER BY starts_on DESC, id DESC) = 1 (D-08) and the candidate and tie counts are carried on every entitlement row",
+              "rows_with_more_than_one_candidate": 0,
+              "rows_with_tied_starts_on": 0,
+              "source_construct": "AND ROWNUM = 1 with no ORDER BY in the global lookup (02_pkg_plans.sql:47), and ROWNUM <= 1 after ORDER BY s.starts_on DESC in the returned cursor (02_pkg_plans.sql:67-68) \u2014 neither is total, so a tie is decided by the plan",
+              "target_behaviour": "deterministic pick; the tie population is measured and the path is listed in the recon report's unverified paths rather than claimed as parity",
+              "tie_break_pinned_to": [
+                "starts_on DESC",
+                "id DESC"
+              ]
+            },
+            "ANOM-SENTINEL-DATE": {
+              "detected": true,
+              "detector": "the sentinel is pinned to DATE'2099-12-31' from the spec and both predicates are evaluated per row; the runtime's own parse of '31-DEC-99' is probed beside it and reported as measured, since a two-digit-year pivot belongs to the engine and not to the source text",
+              "pinned_literal": "2099-12-31",
+              "source_construct": "fn_entitlement's package-global lookup: NVL(s.ends_on, TO_DATE('31-DEC-99','DD-MON-YY')) >= p_on (02_pkg_plans.sql:46)",
+              "spark_parse_of_the_literal": "2099-12-31",
+              "subscriptions_with_a_null_ends_on": 69,
+              "target_behaviour": "the 2099 literal is used for the sentinel predicate and the cursor keeps its own (ends_on IS NULL OR ends_on >= p_on) form; the two predicates are two columns",
+              "tenants_covered_by_the_cursor_predicate": 69,
+              "tenants_covered_by_the_sentinel_predicate": 69,
+              "tenants_where_the_two_predicates_disagree": 0
+            },
+            "ANOM-SWALLOWED-EXCEPTION": {
+              "detected": true,
+              "detector": "the lookup's own outcome is a column (global_lookup_matched), so a swallowed failure is visible rather than silent (T12)",
+              "lookups_that_found_nothing": 0,
+              "source_construct": "EXCEPTION WHEN OTHERS THEN NULL around the global lookup (02_pkg_plans.sql:48-49): NO_DATA_FOUND, and anything else, is discarded and the function returns as if the lookup had succeeded",
+              "target_behaviour": "nothing is swallowed: a lookup that finds nothing is false in global_lookup_matched, and a request or subscription that cannot be loaded is quarantined with a closed reason rather than skipped",
+              "tenants_whose_lookup_would_raise_NO_DATA_FOUND": 0
+            }
+          },
+          "plans_edge": {
+            "ANOM-DYNAMIC-SQL": {
+              "detected": true,
+              "detector": "the statement is read from the source and re-expressed as the static write in v_subs_src; nothing in this notebook assembles SQL from source data",
+              "new_subscriptions_written_by_the_static_equivalent": 4,
+              "source_construct": "v_sql := 'INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, status_cd) VALUES (:1, :2, :3, :4, 10)'; EXECUTE IMMEDIATE v_sql USING ... (02_pkg_plans.sql:100-104) \u2014 dynamic SQL for a perfectly static INSERT",
+              "target_behaviour": "static INSERT through the subscriptions MERGE, keyed by f_md5_uuid(tenant || plan || TO_CHAR(effective_on,'YYYY-MM-DD')) plus ns (D-20, D-14)"
+            },
+            "ANOM-PKG-GLOBAL-STATE": {
+              "detected": true,
+              "detector": "the walk is reconstructed in the declared tenant order and the value the swallowed exception leaves behind is carried as stale_global_plan_code with stale_global_mismatch beside it",
+              "entitlement_rows_carrying_a_mismatch": 0,
+              "global_iteration_order_pinned_to": [
+                "tenant_id"
+              ],
+              "note": "a tenant with no covering subscription has no entitlement row at all (the contract's write-empty-result shape), so the mismatch population is measured over every tenant in ns rather than over the rows the table holds",
+              "source_construct": "g_last_tenant_id := p_tenant_id is assigned before the SELECT ... INTO g_last_plan_code, whose WHEN OTHERS THEN NULL swallows NO_DATA_FOUND, and nothing ever invalidates the pair (02_pkg_plans.sql:39-50)",
+              "target_behaviour": "no package-global equivalent is built (D-10): global_lookup_matched, global_lookup_plan_code, stale_global_plan_code and stale_global_mismatch are columns on the entitlement row",
+              "tenants_that_would_hit_the_mismatch": 3
+            },
+            "ANOM-ROWBYROW-CLOSEOUT": {
+              "cancelled_preserved": 1,
+              "cancelled_visited": 1,
+              "detected": true,
+              "detector": "the loop is re-expressed set-wise with the order pinned and published as closeout_seq; each row's new state is a function of its own old state only, so the pinned order changes no value here \u2014 the order-dependence is in the source's shape",
+              "open_subscriptions_left_overlapping_by_the_strict_less_than": 2,
+              "open_subscriptions_starting_exactly_on_the_effective_date": 2,
+              "source_construct": "FOR r IN c_open_subs LOOP UPDATE subscriptions SET ends_on = p_effective_on - 1, status_cd = DECODE(r.status_cd, 30, 30, 10) WHERE CURRENT OF c_open_subs (02_pkg_plans.sql:90-95), over a FOR UPDATE cursor with no ORDER BY",
+              "subscriptions_closed": 5,
+              "suspended_to_active_flips": 1,
+              "target_behaviour": "pinned close-out order ['tenant_id', 'starts_on', 'id']; ends_on = effective_on - INTERVAL 1 DAY with any time component carried (D-07/T7); status 30 stays 30 (trg_sub_no_uncancel, D-16) and status 20 becomes 10, which is reproduced, not corrected"
+            },
+            "ANOM-ROWNUM-TIEBREAK": {
+              "detected": true,
+              "detector": "both picks are pinned to row_number() OVER (PARTITION BY tenant_id ORDER BY starts_on DESC, id DESC) = 1 (D-08) and the candidate and tie counts are carried on every entitlement row",
+              "rows_with_more_than_one_candidate": 1,
+              "rows_with_tied_starts_on": 1,
+              "source_construct": "AND ROWNUM = 1 with no ORDER BY in the global lookup (02_pkg_plans.sql:47), and ROWNUM <= 1 after ORDER BY s.starts_on DESC in the returned cursor (02_pkg_plans.sql:67-68) \u2014 neither is total, so a tie is decided by the plan",
+              "target_behaviour": "deterministic pick; the tie population is measured and the path is listed in the recon report's unverified paths rather than claimed as parity",
+              "tie_break_pinned_to": [
+                "starts_on DESC",
+                "id DESC"
+              ]
+            },
+            "ANOM-SENTINEL-DATE": {
+              "detected": true,
+              "detector": "the sentinel is pinned to DATE'2099-12-31' from the spec and both predicates are evaluated per row; the runtime's own parse of '31-DEC-99' is probed beside it and reported as measured, since a two-digit-year pivot belongs to the engine and not to the source text",
+              "pinned_literal": "2099-12-31",
+              "source_construct": "fn_entitlement's package-global lookup: NVL(s.ends_on, TO_DATE('31-DEC-99','DD-MON-YY')) >= p_on (02_pkg_plans.sql:46)",
+              "spark_parse_of_the_literal": "2099-12-31",
+              "subscriptions_with_a_null_ends_on": 74,
+              "target_behaviour": "the 2099 literal is used for the sentinel predicate and the cursor keeps its own (ends_on IS NULL OR ends_on >= p_on) form; the two predicates are two columns",
+              "tenants_covered_by_the_cursor_predicate": 71,
+              "tenants_covered_by_the_sentinel_predicate": 71,
+              "tenants_where_the_two_predicates_disagree": 0
+            },
+            "ANOM-SWALLOWED-EXCEPTION": {
+              "detected": true,
+              "detector": "the lookup's own outcome is a column (global_lookup_matched), so a swallowed failure is visible rather than silent (T12)",
+              "lookups_that_found_nothing": 0,
+              "source_construct": "EXCEPTION WHEN OTHERS THEN NULL around the global lookup (02_pkg_plans.sql:48-49): NO_DATA_FOUND, and anything else, is discarded and the function returns as if the lookup had succeeded",
+              "target_behaviour": "nothing is swallowed: a lookup that finds nothing is false in global_lookup_matched, and a request or subscription that cannot be loaded is quarantined with a closed reason rather than skipped",
+              "tenants_whose_lookup_would_raise_NO_DATA_FOUND": 3
+            }
+          }
+        },
+        "expected_set": [
+          "ANOM-SENTINEL-DATE",
+          "ANOM-ROWNUM-TIEBREAK",
+          "ANOM-ROWBYROW-CLOSEOUT",
+          "ANOM-PKG-GLOBAL-STATE",
+          "ANOM-DYNAMIC-SQL",
+          "ANOM-SWALLOWED-EXCEPTION"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 38,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [
+        {
+          "at": "quarantine.halt_bases.entitlements",
+          "over_threshold": false,
+          "population": "entitlements",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "quarantine.halt_bases.plans",
+          "over_threshold": false,
+          "population": "plans",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "quarantine.halt_bases.subscriptions",
+          "over_threshold": false,
+          "population": "subscriptions",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "accounting.entitlements",
+          "over_threshold": null,
+          "population": "entitlements",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "accounting.plans",
+          "over_threshold": null,
+          "population": "plans",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        },
+        {
+          "at": "accounting.subscriptions",
+          "over_threshold": null,
+          "population": "subscriptions",
+          "rate_pct": 0.0,
+          "rate_pct_unrounded": null
+        }
+      ],
+      "recon_result": "pass",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/silver_plans.recon.json",
+      "run_mode": "live",
+      "unit": "silver_plans",
+      "unverified_paths": [
+        "The paths the ns=demo seed leaves at zero are exercised in ns=plans_edge instead, on generated data declared as generated: {\"unknown_tier_plans\": 2, \"rows_with_tied_starts_on\": 1, \"rows_whose_plan_is_absent_from_the_source\": 1, \"rows_on_a_plan_present_in_the_source_but_rejected_by_this_run\": 1, \"open_subscriptions_left_overlapping_by_the_strict_less_than\": 2, \"cancelled_subscriptions_visited\": 1, \"suspended_to_active_flips\": 1, \"tenants_carrying_a_stale_predecessor_plan_code\": 2, \"new_ids_already_present_in_the_source\": 1}. They are not claimed as ns=demo findings and not claimed as Oracle activity.",
+        "pkg_plans.sp_change_plan was NOT executed against the source: it mutates SUBSCRIPTIONS. Its close-out loop and its INSERT are re-expressed as read-only SELECTs and evaluated by Oracle, so the parity side is Oracle's own evaluation of the re-expression rather than the procedure's own effect. Transcripts PLANS-004/005 pin the end state the procedure produces, and both reproduce.",
+        "ROWNUM = 1 in the package-global lookup has no ORDER BY at all, and ROWNUM <= 1 in the returned cursor orders only by starts_on DESC. Neither is a total order, so under a tie the source's own answer is decided by its plan and cannot be derived from the text. Both are pinned to ['starts_on DESC', 'id DESC'] here. Ties were measured at 0 on the ns=demo seed and at 1 in ns=plans_edge, where the pinned tie-break is shown to pick deterministically; what stays unverified is only *which* of the tied rows the source itself would return, which no read of the package can settle.",
+        "The row-by-row close-out (ANOM-ROWBYROW-CLOSEOUT) is re-expressed set-wise with the order pinned to ['tenant_id', 'starts_on', 'id']. Each row's new state depends only on its own old state, so no pinned order changes a value on either namespace's data: the source's order-dependence is in its shape, and a data shape that makes two orders disagree does not exist under a single request per tenant.",
+        "Populations still measured at zero rather than demonstrated: close-out dates carrying a time component (both namespaces' starts_on/ends_on are midnight, so D-07/T7's time carry is exercised by the expression and not by a row), and rows where fn_entitlement's two date predicates disagree (the sentinel predicate and the cursor predicate differ only for a row with ends_on in the future beyond 2099, which neither namespace contains).",
+        "NUMERIC_OVERFLOW is unreachable from this bronze slice, whose money columns are already DECIMAL(14,2). Reachability is shown by pushing synthetic pre-cast values through the load's own wider raw column, try_cast and guard: [{\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(1e14 AS DECIMAL(38,6))\", \"raw_value\": \"100000000000000.000000\", \"value_after_cast\": null, \"quarantine_reason\": \"NUMERIC_OVERFLOW\"}, {\"column\": \"overage_rate\", \"pre_cast_expression\": \"CAST(1e7 AS DECIMAL(38,6))\", \"raw_value\": \"10000000.000000\", \"value_after_cast\": null, \"quarantine_reason\": \"NUMERIC_OVERFLOW\"}, {\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(NULL AS DECIMAL(38,6))\", \"raw_value\": null, \"value_after_cast\": null, \"quarantine_reason\": null}, {\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(49.00 AS DECIMAL(38,6))\", \"raw_value\": \"49.000000\", \"value_after_cast\": \"49.00\", \"quarantine_reason\": null}]",
+        "pkg_ow_util.log_msg writes BILLING_AUDIT_LOG in an autonomous transaction. Out of this unit's parity scope per D-20; it belongs to bronze_hist and is not reproduced.",
+        "ow_tp.silver.subscriptions is also written by wave 4 (sp_suspend_overdue). This unit MERGEs only the identities it produces and introduces no cross-unit locking or publication protocol; it issues no INSERT OVERWRITE and no table-wide statement, and no DELETE other than the id-scoped removal of rows this unit itself produced under a narrower declared input, whose count of rows touched that this unit did not produce is measured at 0 (D-31; D-28 unchanged for source-published rows). What the _origin gate protects is narrower than it reads: it fires only on rows carrying an _origin this unit does not own, which no writer has yet created, so that skip path is asserted by construction in ns=demo and exercised only by construction. It does NOT protect wave 4's declared write: D-30 makes that a column-scoped MERGE ... WHEN MATCHED THEN UPDATE of status_cd/suspended_on on rows this unit and ingest created, preserving the owning unit's _origin/_batch_id, so dunning's updates land on rows whose _origin this unit owns, the gate does not skip them, and a later silver_plans rerun would reassert the source's close-out semantics over dunning's columns. Reconciling the two is D-30's column-ownership rule, which wave 4 implements; nothing here anticipates it.",
+        "The interleaved run (wave 4's writer, then a silver_plans rerun) is not exercised: wave 4 does not exist yet, so no run has produced a foreign-origin row or a dunning-updated row to rerun over."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-ROLLOVER-PERSIST",
+          "ANOM-PKG-GLOBAL-STATE",
+          "ANOM-STRING-DATE-COMPARE",
+          "ANOM-ROWNUM-1",
+          "ANOM-SWALLOWED-EXCEPTION"
+        ],
+        "detail": {
+          "ANOM-PKG-GLOBAL-STATE": {
+            "detected": true,
+            "detector": "the source's package globals are enumerated from the rating package and mapped one by one onto explicit target columns; the target's order-independence is then measured by recomputing the population under a different row order and comparing money and units row by row",
+            "rows_compared_under_reordering": 69,
+            "rows_differing_under_reordering": 0,
+            "source_globals_read_outside_the_computing_procedure": [
+              "g_used_units",
+              "g_quota_units",
+              "g_rollover_units",
+              "g_billable_units",
+              "g_first_tier",
+              "g_second_tier",
+              "g_overage_amount"
+            ],
+            "source_package_globals": [
+              "g_tenant_id",
+              "g_period_start",
+              "g_period_end",
+              "g_used_units",
+              "g_quota_units",
+              "g_rollover_units",
+              "g_billable_units",
+              "g_first_tier",
+              "g_second_tier",
+              "g_overage_amount"
+            ],
+            "target_behaviour": "no cross-row or cross-call state: every value pkg_rating carried in a global is a column of the row it belongs to (used_units, quota_units, computed_rollover_units, billable_units, first_tier_units, second_tier_units, overage_amount), so a second call cannot see the first's state"
+          },
+          "ANOM-ROLLOVER-PERSIST": {
+            "absolute_unit_delta": "1519",
+            "detected": true,
+            "detector": "silver.rating_results.rollover_units (persisted GREATEST(quota-used,0), D-09) compared row by row with computed_rollover_units (three-month banked, double-capped)",
+            "persisted_higher_than_computed": 4,
+            "persisted_lower_than_computed": 1,
+            "rows_compared": 69,
+            "rows_where_persisted_differs_from_computed": 69,
+            "target_behaviour": "both values are persisted as explicit columns; the source formula is written verbatim to rollover_units and is not reconciled with the computed value"
+          },
+          "ANOM-ROWNUM-1": {
+            "detected": true,
+            "detector": "the covering-subscription lookup is materialised as a window over all candidate rows, so the number of rows the source's ROWNUM <= 1 discards is measured per tenant instead of assumed",
+            "max_candidate_rows_for_one_tenant": 1,
+            "source_construct": "SELECT ... FROM (SELECT ... ORDER BY s.starts_on DESC) WHERE ROWNUM <= 1, on a non-unique starts_on, in both compute_rating and sp_finalize_rating",
+            "target_resolution": "row_number() OVER (PARTITION BY tenant_id ORDER BY starts_on DESC, id DESC) = 1 (D-08). For tenants with tied starts_on the source is nondeterministic and the target is not: target and a given source run may legitimately differ there.",
+            "tenants_with_more_than_one_covering_subscription": 0,
+            "tenants_with_tied_starts_on": 0
+          },
+          "ANOM-STRING-DATE-COMPARE": {
+            "detected": true,
+            "detector": "usage events in the period counted twice over ow_tp.bronze.usage_events: once with the source's date_format(occurred_at,'yyyyMMdd') string comparison (D-07), once with a timestamp comparison",
+            "events_in_window_string_compare": 814,
+            "events_in_window_timestamp_compare": 786,
+            "target_behaviour": "the string comparison is kept, so the same boundary-day events are rated as in the source",
+            "units_included_only_by_string_compare": "10151"
+          },
+          "ANOM-SWALLOWED-EXCEPTION": {
+            "detected": true,
+            "detector": "every source path that swallows a failure in the rating lineage is enumerated and its live exposure counted over this run's population; the target routes each one to quarantine or a halt, and a quarantined tenant-period produces no rating row at all",
+            "live_exposure": {
+              "tenant_periods_with_null_overage_amount": 0,
+              "tenant_periods_with_unknown_usage_kind": 0,
+              "tenant_periods_without_covering_plan": 0,
+              "tenant_periods_without_covering_subscription": 0
+            },
+            "source_swallowed_paths": [
+              "compute_rating: WHEN NO_DATA_FOUND THEN NULL around the covering-subscription lookup \u2014 v_sub_id/v_plan_id stay NULL and rating continues",
+              "compute_rating: WHEN NO_DATA_FOUND THEN NULL around the plan lookup \u2014 v_included/v_rate stay NULL, so quota and overage become NULL and billable silently becomes 0",
+              "sp_finalize_rating: WHEN NO_DATA_FOUND THEN v_sub_id := NULL, then INSERT into NOT NULL subscription_id raises ORA-01400 and the tenant's finalize aborts mid-batch",
+              "pkg_ow_util.log_msg: WHEN OTHERS THEN ROLLBACK \u2014 the autonomous-transaction audit write is discarded silently (D-20, out of parity scope)",
+              "pkg_ow_util.f_str2dt: WHEN OTHERS THEN RETURN NULL \u2014 unparseable dates become NULL (not reached by this unit: rating reads DATE and TIMESTAMP columns only)"
+            ],
+            "target_behaviour": "quarantine with FK_ORPHAN (D-19 cause NO_COVERING_PLAN) or CODE_UNKNOWN (D-16), counted toward the 5% halt; no partial rating row is ever written"
+          }
+        },
+        "expected_set": [
+          "ANOM-ROLLOVER-PERSIST",
+          "ANOM-PKG-GLOBAL-STATE",
+          "ANOM-STRING-DATE-COMPARE",
+          "ANOM-ROWNUM-1",
+          "ANOM-SWALLOWED-EXCEPTION"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 46,
+      "checks_failed": [],
+      "declared_failed_checks": [],
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [],
+      "recon_result": "green",
+      "report": "/home/ubuntu/repos/otterworks/docs/tech-partnerships/recon/silver_rating.recon.json",
+      "run_mode": "live",
+      "unit": "silver_rating",
+      "unverified_paths": [
+        "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable (wave 1 established this), so no single query joins source to target. Each side is measured independently \u2014 Oracle by a read-only session, the target by the SQL warehouse \u2014 and compared row by row here.",
+        "The Oracle side of the parity comparison is compute_rating/sp_finalize_rating re-expressed as one read-only SQL statement evaluated by Oracle, not the PL/SQL package executed. The package itself is not run against the source (that would write RATING_PERIODS/RATING_RESULTS rows and mutate the estate); the eight pinned transcripts are what tie the re-expression to the real engine.",
+        "ANOM-ROWNUM-1: no tenant in ns = 'demo' has two covering subscriptions with the same starts_on (measured: 0 tied, 0 with more than one candidate), so the source's nondeterministic tie is not exercised. The target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is therefore implemented but unverified against a tie.",
+        "Quarantine is empty on this population: FK_ORPHAN (D-19 NO_COVERING_PLAN), CODE_UNKNOWN (D-16), KEY_NULL, KEY_DUPLICATE and NUMERIC_OVERFLOW are all implemented and their live exposure measured as zero, so the quarantine write path itself is exercised by no row here \u2014 implemented and unverified, not proven.",
+        "Divergence \u2014 orphan RATING_PERIODS row on a failed finalize: sp_finalize_rating INSERTs the RATING_PERIODS row before it calls compute_rating, so a tenant whose RATING_RESULTS insert then raises (the D-19 NO_COVERING_PLAN case, NULL quota_units/subscription_id into NOT NULL columns) leaves an orphan period row with no result behind in the source. This port quarantines that tenant and writes neither a period nor a result row, preferring a quarantined reject over a period row whose money never landed. That is a real behavioural difference, invisible on this population only because quarantine is 0 rows: it becomes a rating_periods row-count parity delta of one row per affected tenant (source higher) as soon as quarantine is non-empty.",
+        "D-05/T4 (two-digit years resolving into the current century) is not reached by this unit: rating reads DATE and TIMESTAMP columns only, so pkg_ow_util.f_str2dt and its swallowed WHEN OTHERS are never called on this path.",
+        "compute_rating ends with a pkg_ow_util.log_msg autonomous-transaction audit write. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so the rating run's audit rows are not produced here and no audit parity is claimed.",
+        "Suspension proration is exercised by one tenant in this population (the only subscription with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. Every suspended_on in the fixture sits at midnight, so the fractional-day half of Oracle's DATE arithmetic is reached by no source row: it is measured on three labelled synthetic timestamps (midday, midnight, one second before the next midnight) evaluated by both engines and compared (PRORATION-FRACTIONAL-DAY). Proration on a live row carrying a time component is therefore implemented and unverified against source data.",
+        "The two-period bank proof rates 2026-01-01..2026-01-31 into silver and then rates 2026-02-01..2026-02-28 again, so the bank it reads back is a period this unit finalized rather than one the source finalized independently \u2014 the source has no such period, which is the reason the silver side of the bank exists at all. The with-bank reference is live Oracle evaluating its own rating statement with those silver rows supplied to it, not a source-executed two-period run (executing the package would write into the estate). The probe's rows are then removed from this unit's own two targets and the current period is rated once more, so every number outside rollover_bank_proof is measured in the source-equivalent state.",
+        "The eight pinned transcripts and the headline money parity are measured in that source-equivalent state, where the bank holds exactly what the source's own RATING_RESULTS holds. In the two-period state the same tenants' billable_units and overage_amount legitimately differ, because the bank is larger by the rollover this unit banked for the preceding period; that state carries its own measured Oracle comparison (ACC-MONEY-overage_amount-WITH-SILVER-BANK) instead of being compared with transcripts pinned to a different bank.",
+        "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected plan supplied as a per-run notebook input (neither Oracle nor ow_tp.bronze.* is touched, and the deployed job declares no such parameter, so no operator run can rate from it), and the row is read back before, after and after undoing it. The source side of that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into the source. A source-executed re-rate is therefore unverified.",
+        "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove no other session wrote between the two runs."
+      ]
+    },
+    {
+      "anomaly_detections": {
+        "actual_set": [
+          "ANOM-IMPLIED-DECIMAL",
+          "ANOM-INVALID-DATE",
+          "ANOM-NONNUMERIC-AMT",
+          "ANOM-SHORT-RECORD",
+          "ANOM-TRAILER-MISMATCH"
+        ],
+        "expected_set": [
+          "ANOM-IMPLIED-DECIMAL",
+          "ANOM-INVALID-DATE",
+          "ANOM-NONNUMERIC-AMT",
+          "ANOM-SHORT-RECORD",
+          "ANOM-TRAILER-MISMATCH"
+        ],
+        "missing": [],
+        "unexpected": []
+      },
+      "checks": 10,
+      "checks_failed": [],
+      "declared_failed_checks": null,
+      "idempotency": "pass",
+      "namespace": "demo",
+      "quarantine_rates": [],
+      "recon_result": "green",
+      "report": "/home/ubuntu/repos/otterworks/pipelines/databricks/bronze_custbill/bronze_custbill.recon.json",
+      "run_mode": "live",
+      "unit": "bronze_custbill",
+      "unverified_paths": [
+        "Databricks Workflows job ow_tp_bronze_custbill was not triggered: the job is declared in infrastructure/terraform-databricks/jobs_bronze_custbill.tf and the parent applies the stack, so the notebook's statements were executed against the same serverless SQL warehouse instead of through a job run.",
+        "The legacy ingest poll (sftp_ingest_poll.ksh) was run without libfaketime: ksh segfaults under the LD_PRELOAD, so only TZ=UTC/LC_ALL=C were pinned for that step. It contributes no value to the parsed output, only archive-copy timestamps. The parse step that produces the golden baseline ran with the frozen clock.",
+        "Unity Catalog column masks over cust_id/cust_name are parent-owned (PII lands in cleartext here by design) and were not created or asserted by this unit."
+      ]
+    }
+  ],
+  "unverified_paths_by_unit": {
+    "bronze_core": [
+      "D-05/T4 (two-digit years resolving into the current century) is not exercised by this unit: every date in the 13 core tables is a DATE or TIMESTAMP column, so no string date is parsed here. The rule is untested by this recon, not implemented and unverified.",
+      "D-08 (non-unique ROWNUM ordering) is not reached: the unit reads whole tables and never selects a subset by row number, so no tie-breaking decision is made.",
+      "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable, so no single federated query joins source to target; each side is measured independently and compared by canonical row hash. A federation-side type or NLS difference would therefore not be observed by this recon.",
+      "Source deletions are not reconciled: the load has no MERGE delete clause, so a row deleted in Oracle after a load would remain in the bronze image. 'rows_only_in_target' in each CHECKSUM-* check is what detects this, and it is reported rather than corrected.",
+      "The money-bearing core tables are still at their base population: invoices, invoice_lines, rating_periods, rating_results, credit_notes, dunning_attempts and notifications are rows the rating and invoicing packages write, and that batch chain has not been run for the tenants added by the SCALE=demo load. T1 money parity is therefore exact but over a handful of invoices; the high-cardinality objects of this estate (CUSTOMER_MASTER, ENTITY_ATTR_VALUE, INVOICE_HEADER, INVOICE_LINE, and with them the VARCHAR2 signup-date rejects and the orphaned invoice lines) are targets of bronze_wide, not of this unit.",
+      "The ns=demo slice is shared with other sessions holding the same token. These numbers were recomputed from the targets immediately after the second run; the recon is rerunnable end to end (python3 -m scripts.tp_databricks.bronze_core --ns demo) and should be rerun if the slice is rewritten."
+    ],
+    "bronze_custbill": [
+      "Databricks Workflows job ow_tp_bronze_custbill was not triggered: the job is declared in infrastructure/terraform-databricks/jobs_bronze_custbill.tf and the parent applies the stack, so the notebook's statements were executed against the same serverless SQL warehouse instead of through a job run.",
+      "The legacy ingest poll (sftp_ingest_poll.ksh) was run without libfaketime: ksh segfaults under the LD_PRELOAD, so only TZ=UTC/LC_ALL=C were pinned for that step. It contributes no value to the parsed output, only archive-copy timestamps. The parse step that produces the golden baseline ran with the frozen clock.",
+      "Unity Catalog column masks over cust_id/cust_name are parent-owned (PII lands in cleartext here by design) and were not created or asserted by this unit."
+    ],
+    "bronze_hist": [
+      "Parity here is measured against history generated in this session, not against the customer's real history. The history measured here was GENERATED IN THIS SESSION, not found in the source: both _HIST tables were empty on the Oracle fixture this ran against, and the rows were produced minutes before measurement by running scripts/tp_databricks/bronze_hist_source_activity.py, which issues ordinary UPDATE and DELETE statements against CUSTOMER_MASTER and SUBSCRIPTIONS. No row was inserted into a _HIST table directly -- every history row was written by the estate's own capture triggers -- but this is generated history, not migrated history. A real estate's _HIST volume, age range and value distribution are unknown until that source is read, so these counts say the pipeline is correct on the rows it was given, not that it has seen production shapes.",
+      "Unity Catalog column masks over the PII columns are not applied by this unit: the masking function is a shared, parent-owned object. Values are landed in cleartext as agreed, so the cleartext restriction is unproven until those masks exist.",
+      "ENC_INVALID, NUMERIC_OVERFLOW, KEY_NULL and KEY_DUPLICATE are implemented and their accounting is checked, but the live source presented no row that triggers them, so only BAD_DATE has been exercised end to end (against the shipped expression, not against a stored row).",
+      "Comparison is against live Oracle read directly over the fixture connection rather than through Lakehouse Federation; the federated catalog was not available to this unit.",
+      "The workspace ns=demo slice is shared with concurrent sessions. This report is re-runnable and was measured in one pass ending at the generated_at timestamp."
+    ],
+    "bronze_wide": [
+      "ANOM-DENORM-COPIES: the contract marks it a coverage gap. The disagreement between the denormalised reporting copies and the normalised invoice tables is measured in the source and reported above, but no cross-unit parity check is run: the normalised targets belong to bronze_core and are loaded concurrently, so any comparison against them would be a reading of another unit's in-flight state, not evidence.",
+      "Lakehouse Federation is named in the golden baseline as the extraction path; no federated Oracle connection exists in this workspace, so the source is read with the Oracle client and landed to the unit's volume prefix. The federated path itself is therefore unexercised. Recon still reads live Oracle for every expected value.",
+      "Source deletes and updates are not exercised end to end: the source was static across both runs, so the insert, no-op and (for the row moved out of this ns before the loads) re-insert paths are evidenced, while the delete branch of the MERGE is evidenced only by the foreign-slice probe above. A fully empty extract for this ns was not run against the live source.",
+      "Column-mask enforcement is evidenced for the recon principal only (withheld before registration, withheld again after removal). Enforcement against a second, separately-authenticated identity was not exercised.",
+      "Target publication is per-table: Delta offers no transaction spanning the five targets, so a failure between two MERGEs would leave the unit's tables on different source populations until the next run converges them. Everything fallible (classification, counting, accounting, the halt decision, quarantine persistence, mask attachment) happens before the first target write, and the convergence property is evidenced by the no-op second run, but a mid-publication failure was not injected against the live workspace.",
+      "Landing publication is per-file, not one atomic swap: the notebook rejects a torn extract by checking each landed table's row count against the manifest published after all files, and that check is exercised by every load here, but two extractors writing this ns's prefix at once was not simulated.",
+      "ns=demo is a shared slice and other sessions hold the same credential. Every number here was recomputed by this run; re-running this script re-measures them rather than restating the values recorded above."
+    ],
+    "gold_finance": [
+      "The Databricks Workflows job ow_tp_gold_finance itself was not created or triggered: the job is declared in infrastructure/terraform-databricks/jobs_gold_finance.tf and the parent applies that stack (terraform apply is out of scope for this unit). Every run in this report is a serverless notebook run of the same notebook with the same parameters the job task passes, submitted through jobs/runs/submit, so the notebook path and parameter contract are exercised and the job resource's own creation is not. The job carries no schedule and no trigger: like every unit job in this estate it is declared untriggered and its invocation is parent-owned orchestration (STOP C/E), so nothing here observes a landed CUSTBILL batch starting this report.",
+      "No consumer of ow_tp.gold.finance_monthly or ow_tp.gold.finance_report_export was identified or observed: the consumer population is declared UNMAPPED (D4-1) and no audit observation window was run (D4-2). 'The finance report is the only consumer' is artifact-derived and is not evidence.",
+      "sendmail delivery, the /tmp/finance_report.lock lockfile and the hostname/$ROOT branch are deliberate non-reproductions (databricks/ddl/gold_finance_spec.json). Nothing here proves what the source's mail step would have delivered on a box where sendmail existed.",
+      "Unity Catalog column masks over the bronze/silver PII columns are parent-owned. This unit proves PII is absent from its own targets and exports; it neither created nor asserted those masks.",
+      "The legacy parser was run under scripts/tp-run-deterministic.sh, whose libfaketime preload intermittently fails to attach in a child process (roughly 1 run in 30 measured here) and silently corrupts a field group. The parse is therefore verified against an independent copybook CBCUST01 re-slice of the same bytes and retried on disagreement; the attempt counts are reported. The underlying wrapper flakiness is not fixed by this unit.",
+      "Oracle is provenance here, not an input: this unit reads no OW_BILLING object. The banner and the pinned oracle_source_sha say which estate the migration was scoped against; they do not prove the CUSTBILL drop files were produced from that instance.",
+      "an earlier revision of this harness landed pipe-bearing generated CUSTBILL records into ns=fin_round while emulating the source's field shifting; that emulation was withdrawn, and bronze is read-only to this unit, so those rows cannot be removed from ow_tp.bronze.custbill_records. The rounding fixture therefore runs in the clean namespace fin_rounding and the earlier namespace is abandoned: its rows are generated fixture data in a scratch namespace, they are counted in the estate-wide figure of DELIMITER-IN-FIXED-WIDTH, and its slice of this unit's own targets is emptied by the same ns-scoped cleanup below (COLD-CLEAN-ISOLATION/fin_round), so no owned target publishes a report for it"
+    ],
+    "silver_dunning": [
+      "sp_schedule_dunning and sp_suspend_overdue are never executed on the source: they mutate DUNNING_ATTEMPTS, TENANTS, SUBSCRIPTIONS and NOTIFICATIONS, so their expected end state is re-expressed as read-only SELECTs over the same predicates and evaluated by Oracle. A behaviour that lives only in PL/SQL control flow rather than in those predicates is therefore modelled, not observed.",
+      "the concurrent-run collision on the unlocked NVL(MAX(attempt_no),0)+1 is measured as an exposed population, not reproduced: reproducing it would need two interleaved Oracle sessions writing the source.",
+      "pkg_ow_util.log_msg's autonomous BILLING_AUDIT_LOG write is out of parity scope (D-20) and is not compared; g_scheduled_cnt is carried as an explicit run-level count, so the source's understated log line is described rather than reproduced.",
+      "trg_subscriptions_hist is retired (D-17): no SUBSCRIPTIONS_HIST equivalent is written or compared, and Delta history covers the change from the first target run forward.",
+      "ns=dunning_edge and ns=dunning_halt are generated fixtures. Oracle holds no copy of them, so their declared side is an independent Python model of 05_pkg_dunning.sql rather than live Oracle, and their invoices are read from ow_tp.bronze.invoices because seeding ow_tp.silver.invoices would mean writing silver_invoicing's target.",
+      "ns=dunning_t002 and ns=dunning_t003 replay ns=demo's bronze ingest rows on the transcripts' own p_as_of; their invoice population is the bronze one, which for these three invoices is the same population ns=demo's silver slice carries, but it is a different table and is declared as such.",
+      "the sweep's effect on ow_tp.silver.subscriptions is not reverted after the run: this unit may not write that table outside its two owned columns, so ns=demo now carries the suspension this night's sweep applied.",
+      "the 5% halt decides on the unrounded pair, and ACC-QUAR-THRESHOLD-EXACT shows the arithmetic for a rate that rounds to exactly 5.0 at four decimals. No namespace is seeded at that shape: the smallest population that both exceeds 5% and still rounds to 5.0 needs millions of rows, so the boundary is verified as arithmetic over the rule the notebook publishes, not as a live run.",
+      "NUMERIC_OVERFLOW is reachable and exercised on the attempt candidate (an ingest attempt at INT_MAX in ns=dunning_edge); the money half of the same rule, a total outside DECIMAL(14,2), is not exercised, because bronze's own column cannot hold such a value and this unit does not write ow_tp.bronze.invoices.",
+      "the multi-night attempt append is measured on the generated fixture namespace, on a second p_as_of, and not on ns=demo: a second night in ns=demo would leave that namespace carrying a night the reconciled comparison against live Oracle does not describe.",
+      "the cold load's starting state is arranged by the harness, not by the notebook: before it, the runner deletes this unit's own ns=demo rows written by earlier validation runs and sets status_cd/suspended_on on the ns=demo subscription rows back to the values OW_BILLING.SUBSCRIPTIONS carries. reconciled_namespace_setup publishes both counts. The notebook itself issues no DELETE and writes no other column of that table, so 'a cold load' means 'cold after that declared setup', not 'a namespace no run of this unit had ever touched'."
+    ],
+    "silver_invoicing": [
+      "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable (wave 1 established this), so no single query joins source to target. Each side is measured independently \u2014 Oracle by a read-only session, the target by the SQL warehouse \u2014 and compared row by row here.",
+      "The Oracle side of the parity comparison is compute_preview/fn_invoice_preview/sp_issue_invoice, with the pkg_rating.compute_rating call they depend on, re-expressed as read-only SQL evaluated by Oracle \u2014 not the PL/SQL package executed. Executing it would write INVOICES/INVOICE_LINES rows and burn CREDIT_NOTES down, mutating the estate; the six pinned transcripts are what tie the re-expression to the real engine.",
+      "The source's re-issue burns credit twice: sp_issue_invoice recomputes g_credit from the balances its own first issue already reduced, so across two issues the notes are consumed by more than the credit the invoice finally grants. This port re-derives the same rows instead, so a rerun is a no-op (ACC-IDEM). The exposure is measured (13.92 of credit across 2 invoices) but the double burn itself is deliberately not reproduced: it is a divergence, declared here rather than hidden.",
+      "Divergence \u2014 orphan invoice header on a failed issue: sp_issue_invoice INSERTs the INVOICES row before the line loop, so a tenant whose plan or usage line then raises (the D-19 NO_COVERING_PLAN case: NULL into INVOICE_LINES.description/.amount, both NOT NULL) leaves a zeroed header with no lines behind in the source. This port quarantines that tenant and writes no invoice at all, preferring a reject over a header whose money never landed. It becomes an invoices row-count delta of one row per affected tenant (source higher) as soon as quarantine is non-empty.",
+      "CREDIT_NOTES is a bronze target, so this unit never writes the burnt-down balances back: the burn-down is recorded in ow_tp.silver.credit_applications, one row per (invoice, note visited), carrying remaining_before/applied_amount/remaining_after. The source's in-place UPDATE of CREDIT_NOTES.remaining_amount therefore has no target column, and the balances in ow_tp.bronze.credit_notes stay as the bronze units loaded them.",
+      "Quarantine reasons with zero live exposure on this population: ['FK_ORPHAN', 'KEY_NULL', 'KEY_DUPLICATE', 'CODE_UNKNOWN', 'NUMERIC_OVERFLOW']. Each is implemented and its exposure measured as zero, so the write path for those reasons is exercised by no row here \u2014 implemented and unverified, not proven. NUMERIC_OVERFLOW's guard is additionally probed on a synthetic value (QUAR-NUMERIC_OVERFLOW-REACHABLE).",
+      "D-05/T4 (two-digit years resolving into the current century), D-06/BAD_DATE, D-25/ENC_INVALID and RECORD_SHORT/AMT_NON_NUMERIC are not reachable from this unit: invoicing reads typed DATE/TIMESTAMP/NUMBER columns out of bronze, so pkg_ow_util.f_str2dt and the delimited-record paths those codes describe are never called here. They belong to the bronze units that parse the flat files.",
+      "sp_issue_invoice ends with a pkg_ow_util.log_msg autonomous-transaction audit write whose WHEN OTHERS THEN ROLLBACK discards failures silently. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so no audit row is produced here and no audit parity is claimed.",
+      "ANOM-ROWNUM-1 (the rating unit's nondeterministic ROWNUM <= 1 subscription pick) is inside the inline rating this unit recomputes. No tenant in this population has two covering subscriptions with the same starts_on, so the tie is not exercised; the target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is implemented and unverified against a tie. The two picks compute_preview and compute_rating make disagree on 0 tenants here, and both are carried on the invoice row.",
+      "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove that no other session wrote between the two runs. The MERGE/DELETE metrics behind the idempotency proof are attributed to commits this run produced (version > the target's pre-run version, and the commit's job.jobRunId is one of this run's own run ids \u2014 serverless rejects spark.databricks.delta.commitInfo.userMetadata, so the writing job run is the stamp), which excludes a foreign commit from the proof but not a foreign write from the row counts taken afterwards. The job-name fallback (batch id as the name suffix) is not exercised here: DESCRIBE HISTORY reported a job run id for every commit of this run (job_run_id), so the fallback is implemented and unverified.",
+      "Divergence \u2014 cross-table atomicity: sp_issue_invoice is one Oracle transaction over the header, its lines and the credit burn-down, while this port makes three independent Delta commits plus a scoped DELETE. Between the invoices commit and the invoice_lines commit a reader can therefore see a header without its lines, and between the lines commit and the credit_applications commit a header and lines without the applications that reduced them \u2014 a window of one commit each, on the order of seconds, closed by the next run because the retry re-derives the identical rows and converges on the same end state (ACC-IDEM, proven by the second-run metrics). Staged publication behind a batch marker is an estate-wide target-architecture decision for every silver and gold unit rather than something this unit invents for itself, so it is recorded here and carried centrally into the wave plan as a pre-cutover design item; it is not implemented in this unit.",
+      "The stale credit-application removal path is proven by a targeted case (measured: one synthetic application planted on the target for an issued invoice under a note the recomputed sequence does not visit, then the unit run again), not by this population \u2014 a run over unchanged bronze produces the same applications every time, so no row here is naturally stale. ACC-CREDIT-RECONCILE carries the measured before/after counts.",
+      "Parity \u2014 no retraction: the source never unpublishes an invoice, so a publication whose driver has left the accepted population survives in the target too (PARITY-NO-RETRACTION). On this population that set is empty (0 invoices, 0 lines, 0 applications): every tenant bronze carries is still driven this run and quarantine is empty, so the behaviour is declared and measured at zero rather than demonstrated on an instance.",
+      "The batch-scoped exclusion the credit-burn check uses is measured but not stressed here: quarantine is empty on this population, so the run's own rejection set and the set the quarantine ledger retains are both empty and the difference between the scoped and unscoped reads is zero (ACC-CREDIT-BURN-exclusion-scope). The scoping is what stops a rejection that no longer reproduces from exempting its tenant forever; that case is unexercised by this population."
+    ],
+    "silver_plans": [
+      "The paths the ns=demo seed leaves at zero are exercised in ns=plans_edge instead, on generated data declared as generated: {\"unknown_tier_plans\": 2, \"rows_with_tied_starts_on\": 1, \"rows_whose_plan_is_absent_from_the_source\": 1, \"rows_on_a_plan_present_in_the_source_but_rejected_by_this_run\": 1, \"open_subscriptions_left_overlapping_by_the_strict_less_than\": 2, \"cancelled_subscriptions_visited\": 1, \"suspended_to_active_flips\": 1, \"tenants_carrying_a_stale_predecessor_plan_code\": 2, \"new_ids_already_present_in_the_source\": 1}. They are not claimed as ns=demo findings and not claimed as Oracle activity.",
+      "pkg_plans.sp_change_plan was NOT executed against the source: it mutates SUBSCRIPTIONS. Its close-out loop and its INSERT are re-expressed as read-only SELECTs and evaluated by Oracle, so the parity side is Oracle's own evaluation of the re-expression rather than the procedure's own effect. Transcripts PLANS-004/005 pin the end state the procedure produces, and both reproduce.",
+      "ROWNUM = 1 in the package-global lookup has no ORDER BY at all, and ROWNUM <= 1 in the returned cursor orders only by starts_on DESC. Neither is a total order, so under a tie the source's own answer is decided by its plan and cannot be derived from the text. Both are pinned to ['starts_on DESC', 'id DESC'] here. Ties were measured at 0 on the ns=demo seed and at 1 in ns=plans_edge, where the pinned tie-break is shown to pick deterministically; what stays unverified is only *which* of the tied rows the source itself would return, which no read of the package can settle.",
+      "The row-by-row close-out (ANOM-ROWBYROW-CLOSEOUT) is re-expressed set-wise with the order pinned to ['tenant_id', 'starts_on', 'id']. Each row's new state depends only on its own old state, so no pinned order changes a value on either namespace's data: the source's order-dependence is in its shape, and a data shape that makes two orders disagree does not exist under a single request per tenant.",
+      "Populations still measured at zero rather than demonstrated: close-out dates carrying a time component (both namespaces' starts_on/ends_on are midnight, so D-07/T7's time carry is exercised by the expression and not by a row), and rows where fn_entitlement's two date predicates disagree (the sentinel predicate and the cursor predicate differ only for a row with ends_on in the future beyond 2099, which neither namespace contains).",
+      "NUMERIC_OVERFLOW is unreachable from this bronze slice, whose money columns are already DECIMAL(14,2). Reachability is shown by pushing synthetic pre-cast values through the load's own wider raw column, try_cast and guard: [{\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(1e14 AS DECIMAL(38,6))\", \"raw_value\": \"100000000000000.000000\", \"value_after_cast\": null, \"quarantine_reason\": \"NUMERIC_OVERFLOW\"}, {\"column\": \"overage_rate\", \"pre_cast_expression\": \"CAST(1e7 AS DECIMAL(38,6))\", \"raw_value\": \"10000000.000000\", \"value_after_cast\": null, \"quarantine_reason\": \"NUMERIC_OVERFLOW\"}, {\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(NULL AS DECIMAL(38,6))\", \"raw_value\": null, \"value_after_cast\": null, \"quarantine_reason\": null}, {\"column\": \"monthly_fee\", \"pre_cast_expression\": \"CAST(49.00 AS DECIMAL(38,6))\", \"raw_value\": \"49.000000\", \"value_after_cast\": \"49.00\", \"quarantine_reason\": null}]",
+      "pkg_ow_util.log_msg writes BILLING_AUDIT_LOG in an autonomous transaction. Out of this unit's parity scope per D-20; it belongs to bronze_hist and is not reproduced.",
+      "ow_tp.silver.subscriptions is also written by wave 4 (sp_suspend_overdue). This unit MERGEs only the identities it produces and introduces no cross-unit locking or publication protocol; it issues no INSERT OVERWRITE and no table-wide statement, and no DELETE other than the id-scoped removal of rows this unit itself produced under a narrower declared input, whose count of rows touched that this unit did not produce is measured at 0 (D-31; D-28 unchanged for source-published rows). What the _origin gate protects is narrower than it reads: it fires only on rows carrying an _origin this unit does not own, which no writer has yet created, so that skip path is asserted by construction in ns=demo and exercised only by construction. It does NOT protect wave 4's declared write: D-30 makes that a column-scoped MERGE ... WHEN MATCHED THEN UPDATE of status_cd/suspended_on on rows this unit and ingest created, preserving the owning unit's _origin/_batch_id, so dunning's updates land on rows whose _origin this unit owns, the gate does not skip them, and a later silver_plans rerun would reassert the source's close-out semantics over dunning's columns. Reconciling the two is D-30's column-ownership rule, which wave 4 implements; nothing here anticipates it.",
+      "The interleaved run (wave 4's writer, then a silver_plans rerun) is not exercised: wave 4 does not exist yet, so no run has produced a foreign-origin row or a dunning-updated row to rerun over."
+    ],
+    "silver_rating": [
+      "Lakehouse Federation from the workspace to the OW_BILLING service is not reachable (wave 1 established this), so no single query joins source to target. Each side is measured independently \u2014 Oracle by a read-only session, the target by the SQL warehouse \u2014 and compared row by row here.",
+      "The Oracle side of the parity comparison is compute_rating/sp_finalize_rating re-expressed as one read-only SQL statement evaluated by Oracle, not the PL/SQL package executed. The package itself is not run against the source (that would write RATING_PERIODS/RATING_RESULTS rows and mutate the estate); the eight pinned transcripts are what tie the re-expression to the real engine.",
+      "ANOM-ROWNUM-1: no tenant in ns = 'demo' has two covering subscriptions with the same starts_on (measured: 0 tied, 0 with more than one candidate), so the source's nondeterministic tie is not exercised. The target's ORDER BY starts_on DESC, id DESC tie-break (D-08) is therefore implemented but unverified against a tie.",
+      "Quarantine is empty on this population: FK_ORPHAN (D-19 NO_COVERING_PLAN), CODE_UNKNOWN (D-16), KEY_NULL, KEY_DUPLICATE and NUMERIC_OVERFLOW are all implemented and their live exposure measured as zero, so the quarantine write path itself is exercised by no row here \u2014 implemented and unverified, not proven.",
+      "Divergence \u2014 orphan RATING_PERIODS row on a failed finalize: sp_finalize_rating INSERTs the RATING_PERIODS row before it calls compute_rating, so a tenant whose RATING_RESULTS insert then raises (the D-19 NO_COVERING_PLAN case, NULL quota_units/subscription_id into NOT NULL columns) leaves an orphan period row with no result behind in the source. This port quarantines that tenant and writes neither a period nor a result row, preferring a quarantined reject over a period row whose money never landed. That is a real behavioural difference, invisible on this population only because quarantine is 0 rows: it becomes a rating_periods row-count parity delta of one row per affected tenant (source higher) as soon as quarantine is non-empty.",
+      "D-05/T4 (two-digit years resolving into the current century) is not reached by this unit: rating reads DATE and TIMESTAMP columns only, so pkg_ow_util.f_str2dt and its swallowed WHEN OTHERS are never called on this path.",
+      "compute_rating ends with a pkg_ow_util.log_msg autonomous-transaction audit write. That audit trail is bronze_hist's target (BILLING_AUDIT_LOG), not this unit's, so the rating run's audit rows are not produced here and no audit parity is claimed.",
+      "Suspension proration is exercised by one tenant in this population (the only subscription with status_cd = 20 and a suspended_on inside the period), pinned by transcript RATING-003. Every suspended_on in the fixture sits at midnight, so the fractional-day half of Oracle's DATE arithmetic is reached by no source row: it is measured on three labelled synthetic timestamps (midday, midnight, one second before the next midnight) evaluated by both engines and compared (PRORATION-FRACTIONAL-DAY). Proration on a live row carrying a time component is therefore implemented and unverified against source data.",
+      "The two-period bank proof rates 2026-01-01..2026-01-31 into silver and then rates 2026-02-01..2026-02-28 again, so the bank it reads back is a period this unit finalized rather than one the source finalized independently \u2014 the source has no such period, which is the reason the silver side of the bank exists at all. The with-bank reference is live Oracle evaluating its own rating statement with those silver rows supplied to it, not a source-executed two-period run (executing the package would write into the estate). The probe's rows are then removed from this unit's own two targets and the current period is rated once more, so every number outside rollover_bank_proof is measured in the source-equivalent state.",
+      "The eight pinned transcripts and the headline money parity are measured in that source-equivalent state, where the bank holds exactly what the source's own RATING_RESULTS holds. In the two-period state the same tenants' billable_units and overage_amount legitimately differ, because the bank is larger by the rollover this unit banked for the preceding period; that state carries its own measured Oracle comparison (ACC-MONEY-overage_amount-WITH-SILVER-BANK) instead of being compared with transcripts pinned to a different bank.",
+      "The re-finalize update set is proven on the target: one tenant is re-rated on a corrected plan supplied as a per-run notebook input (neither Oracle nor ow_tp.bronze.* is touched, and the deployed job declares no such parameter, so no operator run can rate from it), and the row is read back before, after and after undoing it. The source side of that behaviour is read from sp_finalize_rating's DUP_VAL_ON_INDEX handler rather than executed, because running the package would write RATING_PERIODS/RATING_RESULTS rows into the source. A source-executed re-rate is therefore unverified.",
+      "The ns = 'demo' slice of the shared workspace is visible to other sessions holding the same PAT. This recon is re-runnable and every number is recomputed from the Delta targets after the second run, but it cannot prove no other session wrote between the two runs."
+    ]
+  }
+}

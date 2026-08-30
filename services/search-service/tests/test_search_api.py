@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import app.api.search as search_module
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -139,8 +141,6 @@ class TestSuggestEndpoint:
 
     def test_suggest_chaos_flag_returns_500(self, client, monkeypatch):
         """Injected suggest_500 chaos scenario deliberately fails the endpoint."""
-        import app.api.search as search_module
-
         monkeypatch.setattr(
             search_module, "_chaos_active",
             lambda key: key == "chaos:search-service:suggest_500",

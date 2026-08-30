@@ -1,0 +1,4326 @@
+{
+ "accounting": {
+  "dunning_attempts": {
+   "basis": "attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \u2014 numerator and denominator on that one population",
+   "loaded_rows": 3,
+   "quarantine_ledger_rows_this_batch": 0,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 3
+  },
+  "notifications": {
+   "basis": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run \u2014 numerator and denominator on that one population",
+   "loaded_rows": 1,
+   "quarantine_ledger_rows_this_batch": null,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 1
+  },
+  "subscriptions_swept": {
+   "basis": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) \u2014 numerator and denominator on that one population",
+   "loaded_rows": 0,
+   "quarantine_ledger_rows_this_batch": 0,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 0
+  },
+  "tenants": {
+   "basis": "tenants: every OW_BILLING.TENANTS row in ns \u2014 numerator and denominator on that one population",
+   "loaded_rows": 69,
+   "quarantine_ledger_rows_this_batch": 0,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "source_rows": 69
+  }
+ },
+ "checks": [
+  {
+   "actual": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "expected": {
+    "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55"
+   },
+   "id": "SRC-SHA",
+   "oracle_banner": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free",
+   "result": "pass",
+   "seeded_scale": {
+    "generated_at": "2026-08-01T00:00:00Z",
+    "generator_version": "1",
+    "manifest": "testdata/legacy/manifests/demo.json",
+    "namespace": "demo",
+    "planted_anomalies": [
+     {
+      "count": 31,
+      "kind": "malformed_csv_lists",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.RELATED_ACCT_IDS"
+     },
+     {
+      "count": 50,
+      "kind": "dirty_dates",
+      "target": "oracle.OW_BILLING.CUSTOMER_MASTER.SIGNUP_DT"
+     },
+     {
+      "count": 37,
+      "kind": "orphaned_rows",
+      "target": "oracle.OW_BILLING.INVOICE_LINE"
+     }
+    ],
+    "seed": 714559852,
+    "seed_legacy_params": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "batch_no": 85559852,
+      "scale": "demo"
+     }
+    },
+    "targets": {
+     "oracle.OW_BILLING.CUSTOMER_MASTER": {
+      "checksum": "4f92feef2ad58dbab30e289957931928",
+      "rows": 25000
+     },
+     "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+      "rows": 8333
+     },
+     "oracle.OW_BILLING.INVOICE_HEADER": {
+      "rows": 18750
+     },
+     "oracle.OW_BILLING.INVOICE_LINE": {
+      "checksum": "88a66751f0b08b476b492105a2efc537",
+      "rows": 150000
+     },
+     "oracle.OW_BILLING.TENANTS": {
+      "rows": 60
+     }
+    }
+   },
+   "source_of_truth": "procs/oracle/transcripts/ORACLE_SOURCE_SHA vs sha256 over services/legacy-billing/db/oracle/**/*.sql in the checked-out tree"
+  },
+  {
+   "actual": {
+    "dunning_attempts": 1,
+    "invoices_overdue": 2,
+    "notifications": 1,
+    "tenants": 69
+   },
+   "expected": {
+    "dunning_attempts": 1,
+    "invoices_overdue": 2,
+    "notifications": 1,
+    "tenants": 69
+   },
+   "id": "SRC-COUNTS",
+   "note": "the attempts and notifications figures are the ingest populations: each phase's declared population adds the rows the source's own statements write in the run, so this run's scheduled attempts and written notifications are subtracted back out",
+   "result": "pass",
+   "source_of_truth": "live OW_BILLING counts vs the populations the two phases declared"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 3
+   },
+   "basis": "attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \u2014 numerator and denominator on that one population",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 3
+   },
+   "id": "ACC-QUAR-DUNNING_ATTEMPTS",
+   "loaded_rows": 3,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "the dunning_attempts population, recomputed from Delta after this run's writes"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 69
+   },
+   "basis": "tenants: every OW_BILLING.TENANTS row in ns \u2014 numerator and denominator on that one population",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 69
+   },
+   "id": "ACC-QUAR-TENANTS",
+   "loaded_rows": 69,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "the tenants population, recomputed from Delta after this run's writes"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 0
+   },
+   "basis": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) \u2014 numerator and denominator on that one population",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 0
+   },
+   "id": "ACC-QUAR-SUBSCRIPTIONS_SWEPT",
+   "loaded_rows": 0,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "the subscriptions_swept population, recomputed from Delta after this run's writes"
+  },
+  {
+   "actual": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 1
+   },
+   "basis": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run \u2014 numerator and denominator on that one population",
+   "expected": {
+    "identity": "loaded + quarantined == source",
+    "source_rows": 1
+   },
+   "id": "ACC-QUAR-NOTIFICATIONS",
+   "loaded_rows": 1,
+   "quarantined_rows": 0,
+   "rate_pct": 0.0,
+   "result": "pass",
+   "source_of_truth": "the notifications population, recomputed from Delta after this run's writes"
+  },
+  {
+   "actual": {
+    "populations_evaluated": [
+     "dunning_attempts",
+     "notifications",
+     "subscriptions_swept",
+     "tenants"
+    ],
+    "populations_over_threshold": [],
+    "threshold_pct": 5.0
+   },
+   "closed_reason_set": [
+    "KEY_NULL",
+    "KEY_DUPLICATE",
+    "FK_ORPHAN",
+    "CODE_UNKNOWN",
+    "NUMERIC_OVERFLOW"
+   ],
+   "expected": {
+    "populations_evaluated": [
+     "dunning_attempts",
+     "notifications",
+     "subscriptions_swept",
+     "tenants"
+    ],
+    "populations_over_threshold": [],
+    "threshold_pct": 5.0
+   },
+   "halt_bases": {
+    "schedule": {
+     "dunning_attempts": {
+      "basis": "attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \u2014 numerator and denominator on that one population",
+      "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+      "loaded_rows": 3,
+      "over_threshold": false,
+      "quarantine_ledger_rows_this_batch": 0,
+      "rate_pct": 0.0,
+      "rate_pct_unrounded": "0.0",
+      "rejected_rows": 0,
+      "source_rows": 3,
+      "threshold_pct": 5.0
+     }
+    },
+    "suspend": {
+     "notifications": {
+      "basis": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run \u2014 numerator and denominator on that one population",
+      "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+      "loaded_rows": 1,
+      "over_threshold": false,
+      "quarantine_ledger_rows_this_batch": null,
+      "rate_pct": 0.0,
+      "rate_pct_unrounded": "0.0",
+      "rejected_rows": 0,
+      "source_rows": 1,
+      "threshold_pct": 5.0
+     },
+     "subscriptions_swept": {
+      "basis": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) \u2014 numerator and denominator on that one population",
+      "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+      "loaded_rows": 0,
+      "over_threshold": false,
+      "quarantine_ledger_rows_this_batch": 0,
+      "rate_pct": 0.0,
+      "rate_pct_unrounded": "0.0",
+      "rejected_rows": 0,
+      "source_rows": 0,
+      "threshold_pct": 5.0
+     },
+     "tenants": {
+      "basis": "tenants: every OW_BILLING.TENANTS row in ns \u2014 numerator and denominator on that one population",
+      "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+      "loaded_rows": 69,
+      "over_threshold": false,
+      "quarantine_ledger_rows_this_batch": 0,
+      "rate_pct": 0.0,
+      "rate_pct_unrounded": "0.0",
+      "rejected_rows": 0,
+      "source_rows": 69,
+      "threshold_pct": 5.0
+     }
+    }
+   },
+   "halt_demonstrated_on": "dunning_halt",
+   "halt_fired": true,
+   "halt_rejects_already_persisted": 3,
+   "id": "ACC-QUAR-HALT-BASIS",
+   "persisted_before_threshold_evaluated": true,
+   "phase_2_result_state_when_phase_1_halted": "UPSTREAM_FAILED",
+   "result": "pass",
+   "source_of_truth": "each declared population, numerator and denominator on that one population, evaluated independently, and any one of them over the threshold raises"
+  },
+  {
+   "actual": {
+    "reasons_outside_the_closed_set": []
+   },
+   "expected": {
+    "reasons_outside_the_closed_set": []
+   },
+   "id": "ACC-QUAR-CLOSED-SET",
+   "one_reason_per_row": true,
+   "reasons_seen": [
+    "CODE_UNKNOWN",
+    "FK_ORPHAN",
+    "KEY_DUPLICATE",
+    "NUMERIC_OVERFLOW"
+   ],
+   "result": "pass",
+   "source_of_truth": ".migration/11_quarantine_codes.md's closed set, checked over every ledger row this session wrote in any namespace"
+  },
+  {
+   "actual": {
+    "batches_carrying_their_own_ledger_rows": true,
+    "cold_batch_rows_unchanged_by_later_batches": true
+   },
+   "expected": {
+    "batches_carrying_their_own_ledger_rows": true,
+    "cold_batch_rows_unchanged_by_later_batches": true
+   },
+   "id": "ACC-QUAR-LEDGER-APPEND",
+   "ledger_identity": "(ns, source_table, source_key, quarantine_reason, _batch_id), with an occurrence ordinal in source_key so two physical rows on one natural key are two rows",
+   "result": "pass",
+   "rows_per_batch": [
+    {
+     "_batch_id": "20260829225949e1",
+     "rows": "11"
+    },
+    {
+     "_batch_id": "20260829225949e2",
+     "rows": "11"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "rows": "11"
+    },
+    {
+     "_batch_id": "20260829225949e4",
+     "rows": "11"
+    },
+    {
+     "_batch_id": "20260829225949e6",
+     "rows": "11"
+    }
+   ],
+   "same_batch_retry_is_idempotent": true,
+   "source_of_truth": "ow_tp.silver.quarantine_silver_dunning in ns=dunning_edge, read back after the namespace's four runs rejected the same rows four times"
+  },
+  {
+   "actual": {
+    "distinct_source_keys": 2,
+    "ledger_rows": 2
+   },
+   "expected": {
+    "distinct_source_keys": 2,
+    "ledger_rows": 2
+   },
+   "id": "ACC-QUAR-DUPLICATE-PAYLOADS",
+   "result": "pass",
+   "source_keys": [
+    "edge-t-50",
+    "edge-t-50|2"
+   ],
+   "source_of_truth": "both physical ow_tp.bronze.tenants rows on the duplicated id: the one the de-duplication keeps and the one it collapses, each rejected on its own payload rather than counted without a ledger row"
+  },
+  {
+   "actual": {
+    "every_population_decided_on_the_unrounded_pair": true,
+    "halts_anyway": true,
+    "rounded_rate_equals_the_threshold": true
+   },
+   "expected": {
+    "every_population_decided_on_the_unrounded_pair": true,
+    "halts_anyway": true,
+    "rounded_rate_equals_the_threshold": true
+   },
+   "id": "ACC-QUAR-THRESHOLD-EXACT",
+   "result": "pass",
+   "rule_published_by_the_notebook": [
+    "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares"
+   ],
+   "source_of_truth": "the halt's own comparison, rejected_rows * 100 > threshold_pct * source_rows, applied to a rate that rounds to the threshold at the four decimals the report displays",
+   "worked_example": {
+    "rate_pct_displayed": 5.0,
+    "rejected_rows": 125001,
+    "source_rows": 2500000
+   }
+  },
+  {
+   "actual": {
+    "attempts_loaded_for_those_invoices": 0,
+    "ledger_rows": 1
+   },
+   "candidates": [
+    {
+     "attempt_no_basis": 2147483647,
+     "candidate": 2147483648,
+     "invoice_id": "edge-i-09"
+    }
+   ],
+   "expected": {
+    "attempts_loaded_for_those_invoices": 0,
+    "ledger_rows": 1
+   },
+   "id": "ANOM-ATTEMPT-OVERFLOW",
+   "ledger_rows": [
+    {
+     "detail": "attempt candidate 2147483648 (NVL(MAX(attempt_no),0)+1 in BIGINT) is outside the INT the target column declares, so it is rejected before any cast",
+     "phase": "schedule",
+     "population": "dunning_attempts",
+     "quarantine_reason": "NUMERIC_OVERFLOW",
+     "source_key": "edge-i-09|2147483648|target-schedule|ff4ea7ae-c8b1-1c2b-970a-5678e1ce37a3",
+     "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "an ingest attempt at INT_MAX in ns=dunning_edge: NVL(MAX(attempt_no),0)+1 is computed in BIGINT, judged NUMERIC_OVERFLOW, and never cast into the target's INT column"
+  },
+  {
+   "actual": {
+    "appended_attempt_no_is_the_previous_max_plus_one": true,
+    "earlier_rows_left_untouched": true,
+    "later_night_appends": true,
+    "later_night_rerun_changed_nothing": true
+   },
+   "commit_metrics": {
+    "schedule": {
+     "ow_tp.silver.dunning_attempts": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 738832954150765); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 88,
+      "rows_deleted": 0,
+      "rows_inserted": 7,
+      "rows_updated": 122,
+      "version": 89,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+       "job_run_id": "991602491236430"
+      }
+     },
+     "ow_tp.silver.quarantine_silver_dunning": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 738832954150765); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 139,
+      "rows_deleted": 0,
+      "rows_inserted": 6,
+      "rows_updated": 0,
+      "version": 140,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+       "job_run_id": "991602491236430"
+      }
+     }
+    },
+    "suspend": {
+     "ow_tp.silver.notifications": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 87,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 62,
+      "version": 88,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+       "job_run_id": "991602491236430"
+      }
+     },
+     "ow_tp.silver.quarantine_silver_dunning": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 140,
+      "rows_deleted": 0,
+      "rows_inserted": 2,
+      "rows_updated": 0,
+      "version": 143,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+       "job_run_id": "991602491236430"
+      }
+     },
+     "ow_tp.silver.subscriptions": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "commit_from_this_run": false,
+      "newer_commits_by_other_runs": [],
+      "note": "this run produced no such commit on this target: the write changed nothing",
+      "operation": "MERGE",
+      "pre_run_version": 60,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": null
+     },
+     "ow_tp.silver.tenants": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 87,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 78,
+      "version": 88,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+       "job_run_id": "991602491236430"
+      }
+     }
+    }
+   },
+   "expected": {
+    "appended_attempt_no_is_the_previous_max_plus_one": true,
+    "earlier_rows_left_untouched": true,
+    "later_night_appends": true,
+    "later_night_rerun_changed_nothing": true
+   },
+   "id": "ACC-ATTEMPT-APPEND",
+   "rerun_commit_metrics": {
+    "schedule": {
+     "ow_tp.silver.dunning_attempts": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 558497861348420); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 90,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 91,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+       "job_run_id": "714620097333854"
+      }
+     },
+     "ow_tp.silver.quarantine_silver_dunning": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 558497861348420); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 143,
+      "rows_deleted": 0,
+      "rows_inserted": 6,
+      "rows_updated": 0,
+      "version": 144,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+       "job_run_id": "714620097333854"
+      }
+     }
+    },
+    "suspend": {
+     "ow_tp.silver.notifications": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 89,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 90,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+       "job_run_id": "714620097333854"
+      }
+     },
+     "ow_tp.silver.quarantine_silver_dunning": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 144,
+      "rows_deleted": 0,
+      "rows_inserted": 2,
+      "rows_updated": 0,
+      "version": 147,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+       "job_run_id": "714620097333854"
+      }
+     },
+     "ow_tp.silver.subscriptions": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "commit_from_this_run": false,
+      "newer_commits_by_other_runs": [],
+      "note": "this run produced no such commit on this target: the write changed nothing",
+      "operation": "MERGE",
+      "pre_run_version": 60,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": null
+     },
+     "ow_tp.silver.tenants": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 88,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 89,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+       "job_run_id": "714620097333854"
+      }
+     }
+    }
+   },
+   "result": "pass",
+   "rows_appended": [
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "3",
+     "attempt_no_basis": "2",
+     "id": "8271c7b2-2d1d-7132-dfdd-bd157cfb5969",
+     "invoice_id": "edge-i-01",
+     "scheduled_for": "2026-03-02"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "2",
+     "attempt_no_basis": "1",
+     "id": "376ace1b-0a05-c856-f43c-d23e1996b22f",
+     "invoice_id": "edge-i-02",
+     "scheduled_for": "2026-03-02"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "2",
+     "attempt_no_basis": "1",
+     "id": "d7a70ae1-d8d4-28de-8fb8-1c6ee404284b",
+     "invoice_id": "edge-i-03",
+     "scheduled_for": "2026-03-02"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "2",
+     "attempt_no_basis": "1",
+     "id": "3ecd9fec-1ae9-1d67-9c82-d65609cdc2d2",
+     "invoice_id": "edge-i-04",
+     "scheduled_for": "2026-03-02"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "2",
+     "attempt_no_basis": "1",
+     "id": "9a2d9092-71fa-4f47-324c-dd4b44696d48",
+     "invoice_id": "edge-i-05",
+     "scheduled_for": "2026-03-02"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "2",
+     "attempt_no_basis": "1",
+     "id": "b38f7094-3038-5220-cb1a-8638e9de807b",
+     "invoice_id": "edge-i-06",
+     "scheduled_for": "2026-03-02"
+    },
+    {
+     "_batch_id": "20260829225949e3",
+     "as_of": "2026-03-02",
+     "attempt_no": "2",
+     "attempt_no_basis": "1",
+     "id": "ba3abaf0-346a-b93f-4841-3b61e289e478",
+     "invoice_id": "edge-i-08",
+     "scheduled_for": "2026-03-02"
+    }
+   ],
+   "source_of_truth": "sp_schedule_dunning reads DUNNING_ATTEMPTS itself, so the next night's run assigns attempt n+1; measured in ns=dunning_edge on 2026-03-02 after 2026-02-28"
+  },
+  {
+   "actual": {
+    "attempt_rows_unchanged": true,
+    "halt_raised": true,
+    "later_night_rerun_after_the_refusal_changed_nothing": true,
+    "no_target_version_changed": true,
+    "overdue_snapshot_written": false,
+    "quarantine_rows_for_this_batch": 0,
+    "schedule_task_result_state": "FAILED"
+   },
+   "divergence": {
+    "acceptance_check": "ACC-IDEM",
+    "dictionary_ref": "D-27",
+    "id": "DIV-BACKFILL-REFUSED",
+    "measured": "live in the declared generated namespace ns=dunning_edge: a later night runs and writes, the earlier night is then refused by the halt with no target version change and no snapshot written, and a rerun of the later night is still a true no-op",
+    "source": "05_pkg_dunning.sql:43-44 is SELECT NVL(MAX(attempt_no),0)+1 INTO v_attempt FROM dunning_attempts WHERE invoice_id = inv.id, with no p_as_of predicate at all: the MAX is over the whole live table, so attempt numbering is a function of execution order rather than of the date. sp_schedule_dunning run for an earlier p_as_of after a later one has already run therefore appends max(all attempts)+1 rather than renumbering by date, and a later rerun of the *later* p_as_of then sees the higher MAX and appends yet another attempt although its input has not changed. JOB_NIGHTLY_DUNNING only ever moves forward, so this is reachable only by an operator running the procedure out of order.",
+    "target": "forward-only nightly numbering. The basis is the ingest attempt population plus this unit's rows at as_of < this run's as_of, and a run whose as_of is behind an as_of already present in ow_tp.silver.dunning_attempts for the namespace is refused with STOPA-DUNNING-BACKFILL before any write of the run happens \u2014 before the overdue snapshot is persisted and before any MERGE. Stated plainly, and this is the consequence of the choice: this port cannot backfill an earlier night without an operator decision. Renumbering by date would rewrite the attempt a later night wrote, and appending by execution order would break the same-input no-op the forward-only basis guarantees (D-27); the unit refuses rather than choosing one of them silently."
+   },
+   "expected": {
+    "attempt_rows_unchanged": true,
+    "halt_raised": true,
+    "later_night_rerun_after_the_refusal_changed_nothing": true,
+    "no_target_version_changed": true,
+    "overdue_snapshot_written": false,
+    "quarantine_rows_for_this_batch": 0,
+    "schedule_task_result_state": "FAILED"
+   },
+   "halt_message": "AssertionError: STOPA-DUNNING-BACKFILL: ow_tp.silver.dunning_attempts already holds attempts for ns=dunning_edge at strictly later as_of values ['2026-03-02'], and this run was asked for as_of=2026-02-28. Nothing has been written by this run: no overdue snapshot, no MERGE on any target. Attempt numbering here is forward-only (basis = ingest attempts plus this unit's rows at as_of < this run's as_of), so a backfill behind an already-run night would recompute an attempt_no a later night already used and its f_md5_uuid(invoice_id || attempt_no) id would MERGE over that night's row. The source does not decide it either: 05_pkg_dunning.sql:43-44 selects NVL(MAX(attempt_no),0)+1 with no p_as_of predicate, so Oracle would append by execution order rather than renumber by date, and a rerun of the later night would then append again on unchanged input. Choosing between renumber-by-date and append-by-execution-order is an operator decision; escalate rather than backfilling.",
+   "id": "ACC-BACKFILL-REFUSED",
+   "later_night_rerun": {
+    "attempt_rows_unchanged": true,
+    "commit_metrics": {
+     "schedule": {
+      "ow_tp.silver.dunning_attempts": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (1122213552054609, 583131359467378); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 91,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": 92,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e6",
+        "job_run_id": "1122213552054609"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (1122213552054609, 583131359467378); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 147,
+       "rows_deleted": 0,
+       "rows_inserted": 6,
+       "rows_updated": 0,
+       "version": 148,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e6",
+        "job_run_id": "1122213552054609"
+       }
+      }
+     },
+     "suspend": {
+      "ow_tp.silver.notifications": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (1122213552054609, 283126742924626); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 90,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": 91,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e6",
+        "job_run_id": "1122213552054609"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (1122213552054609, 283126742924626); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 148,
+       "rows_deleted": 0,
+       "rows_inserted": 2,
+       "rows_updated": 0,
+       "version": 151,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e6",
+        "job_run_id": "1122213552054609"
+       }
+      },
+      "ow_tp.silver.subscriptions": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (1122213552054609, 283126742924626); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 60,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      },
+      "ow_tp.silver.tenants": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (1122213552054609, 283126742924626); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 89,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": 90,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e6",
+        "job_run_id": "1122213552054609"
+       }
+      }
+     }
+    },
+    "run_id": 1122213552054609
+   },
+   "result": "pass",
+   "source_of_truth": "DIV-BACKFILL-REFUSED, measured in ns=dunning_edge: with 2026-03-02 already written, a run asked for the earlier 2026-02-28 raises STOPA-DUNNING-BACKFILL before the overdue snapshot is persisted and before any MERGE, so no target Delta version moves and no ledger row is written, and a rerun of the later night afterwards is still a true no-op. The source would not decide it: 05_pkg_dunning.sql:43-44 has no p_as_of predicate on the MAX, so Oracle appends by execution order rather than renumbering by date, and this port cannot backfill an earlier night without an operator decision",
+   "target_versions_after": {
+    "ow_tp.silver.dunning_attempts": 91,
+    "ow_tp.silver.notifications": 90,
+    "ow_tp.silver.quarantine_silver_dunning": 147,
+    "ow_tp.silver.subscriptions": 60,
+    "ow_tp.silver.tenants": 89
+   },
+   "target_versions_before": {
+    "ow_tp.silver.dunning_attempts": 91,
+    "ow_tp.silver.notifications": 90,
+    "ow_tp.silver.quarantine_silver_dunning": 147,
+    "ow_tp.silver.subscriptions": 60,
+    "ow_tp.silver.tenants": 89
+   }
+  },
+  {
+   "actual": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "columns_compared": [
+    "attempt_no",
+    "invoice_id",
+    "scheduled_for",
+    "status_cd",
+    "tenant_id"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "id": "PARITY-DUNNING_ATTEMPTS",
+   "result": "pass",
+   "rows_compared": 3,
+   "source_of_truth": "OW_BILLING.DUNNING_ATTEMPTS plus the attempts sp_schedule_dunning would insert on 2026-02-28, re-expressed read-only, vs ow_tp.silver.dunning_attempts from Delta"
+  },
+  {
+   "actual": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "columns_compared": [
+    "kind_cd",
+    "sent_at",
+    "tenant_id"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "id": "PARITY-NOTIFICATIONS",
+   "result": "pass",
+   "rows_compared": 2,
+   "source_of_truth": "OW_BILLING.NOTIFICATIONS plus the suspension notifications sp_suspend_overdue's NOT EXISTS would let through, vs ow_tp.silver.notifications from Delta"
+  },
+  {
+   "actual": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "columns_compared": [
+    "status_cd"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "id": "PARITY-TENANTS",
+   "result": "pass",
+   "rows_compared": 69,
+   "source_of_truth": "OW_BILLING.TENANTS with sp_suspend_overdue's UPDATE ... SET status_cd = 20 applied to the swept tenants, vs ow_tp.silver.tenants from Delta"
+  },
+  {
+   "actual": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "columns_compared": [
+    "status_cd",
+    "suspended_on"
+   ],
+   "differences": [],
+   "expected": {
+    "rows_differing": 0,
+    "rows_only_in_source": [],
+    "rows_only_in_target": []
+   },
+   "id": "PARITY-SUBSCRIPTIONS_SWEPT",
+   "result": "pass",
+   "rows_compared": 1,
+   "source_of_truth": "the SUBSCRIPTIONS rows sp_suspend_overdue's UPDATE would change, vs the two columns this unit wrote on ow_tp.silver.subscriptions, read from Delta"
+  },
+  {
+   "actual": {
+    "overdue_total": "322.58",
+    "quarantined_rows_on_the_attempt_population": 0
+   },
+   "expected": {
+    "overdue_total": "322.58",
+    "quarantined_rows_on_the_attempt_population": 0
+   },
+   "id": "MONEY-OVERDUE-TOTAL",
+   "result": "pass",
+   "source_of_truth": "SUM(INVOICES.total) over the status_cd = 40 population vs the overdue snapshot's own sum, both to the cent",
+   "source_rows_with_a_null_total": 0
+  },
+  {
+   "actual": {
+    "quarantined_rows_on_the_swept_population": 0
+   },
+   "attempt_invoice_total_all_rows": "483.87",
+   "attempt_invoice_total_scheduled_this_as_of": "322.58",
+   "expected": {
+    "quarantined_rows_on_the_swept_population": 0
+   },
+   "id": "MONEY-SWEEP-TOTAL",
+   "overdue_total_inside_the_14_day_cutoff": "322.58",
+   "result": "pass",
+   "source_of_truth": "the money the sweep's own population carries, published beside its quarantine count"
+  },
+  {
+   "actual": {
+    "phase_2_reread_the_invoice_table": false,
+    "snapshot_batch_ids_agree": true,
+    "suspend_depends_on_schedule": true,
+    "tasks": [
+     "schedule_dunning",
+     "suspend_overdue"
+    ]
+   },
+   "expected": {
+    "phase_2_reread_the_invoice_table": false,
+    "snapshot_batch_ids_agree": true,
+    "suspend_depends_on_schedule": true,
+    "tasks": [
+     "schedule_dunning",
+     "suspend_overdue"
+    ]
+   },
+   "id": "ACC-TWO-ENTRYPOINTS",
+   "phase_2_population_source": "the persisted snapshot only: the notebook does not create v_invoices in the suspend phase, so ow_tp.silver.invoices is not readable there",
+   "result": "pass",
+   "snapshot_path": "/Volumes/ow_tp/bronze/landing/demo/silver_dunning/snapshots/20260829225949a/overdue_snapshot.json",
+   "snapshot_rows": 2,
+   "snapshot_sha256": "62204524754e46dd1a5f8833db5b7bfc777ce01f1498cc55c01b50e6341a1287",
+   "source_of_truth": "JOB_NIGHTLY_DUNNING's single job action vs the submitted run's task graph and the snapshot manifest both tasks agree on",
+   "terraform_job": {
+    "batch_id": "{{job.run_id}} \u2014 one batch id for both tasks, which is how phase 2 finds the snapshot phase 1 wrote",
+    "compute": "serverless (no job_clusters, no instance pools, no warehouse created)",
+    "max_concurrent_runs": 1,
+    "name": "ow_tp_silver_dunning",
+    "parameters": [
+     "ns",
+     "as_of",
+     "catalog",
+     "schema",
+     "bronze_schema",
+     "landing_root",
+     "spec_path",
+     "invoice_source"
+    ],
+    "tasks": [
+     {
+      "depends_on": [],
+      "phase": "schedule",
+      "source": "pkg_dunning.sp_schedule_dunning",
+      "task_key": "schedule_dunning"
+     },
+     {
+      "depends_on": [
+       "schedule_dunning"
+      ],
+      "phase": "suspend",
+      "source": "pkg_dunning.sp_suspend_overdue",
+      "task_key": "suspend_overdue"
+     }
+    ],
+    "terraform_file": "infrastructure/terraform-databricks/jobs_silver_dunning.tf"
+   }
+  },
+  {
+   "actual": {
+    "as_of_day_of_week_english": "SAT",
+    "day_abbreviations": [
+     "SUN",
+     "MON",
+     "TUE",
+     "WED",
+     "THU",
+     "FRI",
+     "SAT"
+    ],
+    "weekend_shift_days": 2
+   },
+   "attempts_by_source_day_of_week": {
+    "SAT": 2,
+    "migrated": 1
+   },
+   "attempts_by_weekend_shift_days": {
+    "2": 2
+   },
+   "attempts_moved_by_the_shift": 2,
+   "day_number_origin_probe": {
+    "2026-02-14": {
+     "date_format_EEE": "Sat",
+     "dayofweek": 7,
+     "english_abbr": "SAT",
+     "expected": "SAT"
+    },
+    "2026-02-15": {
+     "date_format_EEE": "Sun",
+     "dayofweek": 1,
+     "english_abbr": "SUN",
+     "expected": "SUN"
+    },
+    "2026-02-16": {
+     "date_format_EEE": "Mon",
+     "dayofweek": 2,
+     "english_abbr": "MON",
+     "expected": "MON"
+    },
+    "2026-02-17": {
+     "date_format_EEE": "Tue",
+     "dayofweek": 3,
+     "english_abbr": "TUE",
+     "expected": "TUE"
+    },
+    "2026-02-28": {
+     "date_format_EEE": "Sat",
+     "dayofweek": 7,
+     "english_abbr": "SAT",
+     "expected": "SAT"
+    },
+    "2026-03-01": {
+     "date_format_EEE": "Sun",
+     "dayofweek": 1,
+     "english_abbr": "SUN",
+     "expected": "SUN"
+    }
+   },
+   "expected": {
+    "as_of_day_of_week_english": "SAT",
+    "day_abbreviations": [
+     "SUN",
+     "MON",
+     "TUE",
+     "WED",
+     "THU",
+     "FRI",
+     "SAT"
+    ],
+    "weekend_shift_days": 2
+   },
+   "id": "ACC-WEEKEND-SHIFT",
+   "locale_path_rejected": "date_format(dt,'EEE') is evaluated in the probe only to show it never equals the source's uppercase abbreviation; no behaviour depends on it",
+   "replay_dates": {
+    "dunning_t002": {
+     "as_of": "2026-02-14",
+     "attempts_moved": 2,
+     "day_of_week": "SAT",
+     "shift_days": 2
+    },
+    "dunning_t003": {
+     "as_of": "2026-02-17",
+     "attempts_moved": 0,
+     "day_of_week": "TUE",
+     "shift_days": 0
+    }
+   },
+   "result": "pass",
+   "source_of_truth": "TO_CHAR(TRUNC(p_as_of),'DY','NLS_DATE_LANGUAGE=ENGLISH') for 2026-02-28 vs the abbreviation the notebook derived from dayofweek() after proving its origin day"
+  },
+  {
+   "actual": {
+    "swallowed_in_target": 0
+   },
+   "attempts_the_source_handler_would_have_hidden_in_the_edge_namespace": {
+    "by_reason": {
+     "CODE_UNKNOWN": 1,
+     "FK_ORPHAN": 2,
+     "KEY_DUPLICATE": 2,
+     "NUMERIC_OVERFLOW": 1
+    },
+    "declared_as": "generated fixture",
+    "namespace": "dunning_edge"
+   },
+   "divergence": {
+    "acceptance_check": "ACC-NO-SWALLOW",
+    "id": "DIV-NO-SWALLOW",
+    "measured": "attempts the source's handler would have swallowed, by cause (FK_ORPHAN on the missing tenant row, KEY_DUPLICATE on uq_dunning_attempts), reported in the recon report",
+    "source": "WHEN OTHERS THEN NULL around the attempt INSERT in sp_schedule_dunning, with g_scheduled_cnt incremented only on success",
+    "target": "no swallow: an attempt this unit cannot write fails the unit loudly, and an attempt the source could not have written is quarantined with its closed reason code and counted"
+   },
+   "expected": {
+    "swallowed_in_target": 0
+   },
+   "exposure_in_demo": {
+    "concurrency_exposed_attempts": 2,
+    "concurrency_note": "every attempt this run scheduled is exposed: attempt_no is NVL(MAX,0)+1 read with no lock and the id is a pure function of (invoice_id, attempt_no), so a concurrent source run computes the same id and one of the two INSERTs raises ORA-00001 into WHEN OTHERS THEN NULL. The target's job is max_concurrent_runs = 1 and its MERGE makes the second writer a no-op instead of a silent loss",
+    "fk_da_invoice_orphans": 0,
+    "fk_da_tenant_orphans": 0,
+    "rerun_note": "a source rerun on the same p_as_of appends this many more attempts (MAX+1 again); this port pins attempt_no to the ingest population, so its rerun is a no-op (DIV-RERUN-APPENDS, D-27)",
+    "rerun_would_append": 2,
+    "uq_collisions": 0
+   },
+   "exposure_in_the_edge_namespace": {
+    "SAT": 7,
+    "migrated": 122
+   },
+   "id": "ACC-NO-SWALLOW",
+   "result": "pass",
+   "source_of_truth": "the target has no WHEN OTHERS handler: a write it cannot do raises, and an attempt the source could not have written is quarantined with a closed reason and counted"
+  },
+  {
+   "actual": {
+    "candidate_tenants": 2,
+    "subscriptions_suspended": 1,
+    "suspended_on": "2026-02-28",
+    "tenants_skipped_not_active": 1,
+    "tenants_swept": 1
+   },
+   "candidates_with_no_tenant_row_in_demo": 0,
+   "edge_namespace_measurements": {
+    "declared_as": "generated fixture",
+    "measured": {
+     "outer_join": {
+      "invoices_kept_with_no_tenant_row": 1,
+      "same_day_invoices": 2,
+      "tenant_status_unknown": 2
+     },
+     "subscriptions": {
+      "rows_left_at_status": {
+       "20": 1,
+       "30": 1
+      },
+      "rows_matched_by_sweep": 4,
+      "rows_updated": 2
+     },
+     "sweep": {
+      "candidate_tenants": 5,
+      "candidates_with_no_tenant_row": 1,
+      "tenants_skipped_inactive_at_ingest": 1,
+      "tenants_skipped_not_active_at_run": 2,
+      "tenants_suspended_by_a_sweep_in_this_namespace_including_earlier_runs": 2,
+      "tenants_swept": 2,
+      "tenants_total": 78
+     }
+    },
+    "modelled": {
+     "candidate_tenants": 5,
+     "candidates_with_no_tenant_row": 1,
+     "invoices_kept_with_no_tenant_row": 1,
+     "same_calendar_day_invoices": 2,
+     "subscriptions_left_at_20": 1,
+     "subscriptions_left_at_30": 1,
+     "subscriptions_matched_by_the_sweep": 4,
+     "subscriptions_suspended": 2,
+     "tenant_status_unknown": 2,
+     "tenants_skipped_inactive_at_ingest": 2,
+     "tenants_swept": 2
+    },
+    "namespace": "dunning_edge"
+   },
+   "expected": {
+    "candidate_tenants": 2,
+    "subscriptions_suspended": 1,
+    "suspended_on": "2026-02-28",
+    "tenants_skipped_not_active": 1,
+    "tenants_swept": 1
+   },
+   "id": "ACC-SUSPENSION",
+   "inclusive_14_day_cutoff_date": "2026-02-14",
+   "result": "pass",
+   "source_of_truth": "sp_suspend_overdue's DISTINCT tenant cursor, its IF v_active > 0 test and its UPDATE SUBSCRIPTIONS ... WHERE status_cd = 10, re-expressed read-only on live Oracle",
+   "source_subscriptions_left_at_20": 0,
+   "source_subscriptions_left_at_30": 0,
+   "subscriptions_left_at_20_or_30": {},
+   "tenants_skipped_because_already_suspended_at_run": 1
+  },
+  {
+   "actual": {
+    "columns_written": [
+     "status_cd",
+     "suspended_on"
+    ],
+    "ddl_statements": 0,
+    "deletes": 0,
+    "inserts": 0,
+    "rows_with_a_changed_non_owned_column": 0
+   },
+   "attribution_origins_seen": {
+    "source-migrated": 1
+   },
+   "audit_columns_added": [],
+   "audit_columns_note": "D-30 allows the updating unit its own audit columns, but adding one to ow_tp.silver.subscriptions is DDL on another unit's table, which this unit is forbidden. So no column is added and no column outside updatable_columns is written; the per-row evidence (which ids were updated, their prior status_cd, and the count) lives in the recon report and in this unit's own ow_tp.silver.tenants rows instead.",
+   "columns_not_written": [
+    "id",
+    "tenant_id",
+    "plan_id",
+    "starts_on",
+    "ends_on",
+    "status_cd_before",
+    "ends_on_before",
+    "closed_by_change",
+    "closeout_seq",
+    "change_effective_on",
+    "change_plan_id",
+    "reactivated_from_suspended",
+    "cancelled_preserved",
+    "overlaps_new_subscription",
+    "ns",
+    "_origin",
+    "_batch_id",
+    "_loaded_at"
+   ],
+   "expected": {
+    "columns_written": [
+     "status_cd",
+     "suspended_on"
+    ],
+    "ddl_statements": 0,
+    "deletes": 0,
+    "inserts": 0,
+    "rows_with_a_changed_non_owned_column": 0
+   },
+   "id": "ACC-COLLISION",
+   "match_key": [
+    "id",
+    "ns"
+   ],
+   "recognised_origins": [
+    "source-migrated",
+    "target-change"
+   ],
+   "result": "pass",
+   "rows_left_at_status": {},
+   "rows_matched": 1,
+   "rows_updated": 1,
+   "source_of_truth": "ow_tp.silver.subscriptions, wave 3's target: the rows this sweep matched, read before and after the MERGE with a hash over every column outside the D-30 list",
+   "source_side": [
+    {
+     "id": "20000000-0000-0000-0000-000000000005",
+     "status_cd_after": 20,
+     "status_cd_before": 10,
+     "suspended_on_after": "2026-02-28"
+    }
+   ],
+   "updated_rows": [
+    {
+     "_batch_id_preserved": "20260829120813a",
+     "_origin_preserved": "source-migrated",
+     "id": "20000000-0000-0000-0000-000000000005",
+     "other_columns_hash_after": "5cdc0b827c15ab054194ff568496e0d4",
+     "other_columns_hash_before": "5cdc0b827c15ab054194ff568496e0d4",
+     "other_columns_unchanged": true,
+     "status_cd_after": 20,
+     "status_cd_before": 10,
+     "suspended_on_after": "2026-02-28 00:00:00",
+     "suspended_on_before": null,
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ]
+  },
+  {
+   "actual": {
+    "notifications_a_different_as_of_would_add": 1,
+    "same_as_of_rerun_would_add": 0
+   },
+   "contract_inaccuracy": {
+    "contract_item": "ANOM-NOTIFICATION-SIDE-EFFECT",
+    "contract_says": "notification rows written as a side effect of the sweep, with no idempotency key in source, so a legacy rerun duplicates them",
+    "resolution": "the source is reproduced, not the contract's description; the contract file is not edited by this unit and the inaccuracy is reported to the parent session for a central decision",
+    "source_actually_does": "the INSERT carries WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE tenant_id = t.tenant_id AND kind_cd = 3 AND sent_at = CAST(TRUNC(p_as_of) AS TIMESTAMP)), and uq_notifications (tenant_id, kind_cd, sent_at) backs it: a legacy rerun on the same p_as_of adds nothing. What a rerun on a *different* p_as_of adds is a second notification for a tenant still at status_cd = 10 \u2014 and the sweep's own UPDATE TENANTS SET status_cd = 20 takes the tenants it just suspended out of that population."
+   },
+   "expected": {
+    "notifications_a_different_as_of_would_add": 1,
+    "same_as_of_rerun_would_add": 0
+   },
+   "id": "ANOM-NOTIFICATION-SIDE-EFFECT",
+   "multi_date_exposure": {
+    "notifications_the_other_as_of_would_add": 1,
+    "other_as_of": "2026-03-14",
+    "rows": [
+     {
+      "has_notification_on_as_of": 0,
+      "has_notification_on_other": 0,
+      "is_active": 0,
+      "other_notification_id": "b59399fa-62d2-931b-002e-30d494fac440",
+      "tenant_id": "00000000-0000-0000-0000-000000000002"
+     },
+     {
+      "has_notification_on_as_of": 0,
+      "has_notification_on_other": 0,
+      "is_active": 1,
+      "other_notification_id": "1b9b3398-2d83-46e6-96b7-21e9a0b62882",
+      "tenant_id": "00000000-0000-0000-0000-000000000005"
+     }
+    ],
+    "tenants_in_the_other_cutoff": 2
+   },
+   "other_as_of": "2026-03-14",
+   "result": "pass",
+   "source_of_truth": "the source's WHERE NOT EXISTS (tenant_id, kind_cd = 3, sent_at = CAST(TRUNC(p_as_of) AS TIMESTAMP)), evaluated on live Oracle for both p_as_of values",
+   "suppressed_by_not_exists_in_demo": 0,
+   "suppressed_by_not_exists_in_the_edge_namespace": 1,
+   "tenants_active_with_a_notice_on_another_date": 0,
+   "written_by_the_sweep": 1
+  },
+  {
+   "actual": {
+    "cold_load_rows_written_gt_0": true,
+    "rerun_rows_written": 0
+   },
+   "cold_run": {
+    "batch_id": "20260829225949a",
+    "commit_metrics": {
+     "schedule": {
+      "ow_tp.silver.dunning_attempts": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 799670550714400); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 98,
+       "rows_deleted": 0,
+       "rows_inserted": 3,
+       "rows_updated": 0,
+       "version": 99,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 799670550714400); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 157,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      }
+     },
+     "suspend": {
+      "ow_tp.silver.notifications": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 97,
+       "rows_deleted": 0,
+       "rows_inserted": 2,
+       "rows_updated": 0,
+       "version": 98,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 157,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      },
+      "ow_tp.silver.subscriptions": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 61,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 1,
+       "version": 62,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      },
+      "ow_tp.silver.tenants": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 96,
+       "rows_deleted": 0,
+       "rows_inserted": 69,
+       "rows_updated": 0,
+       "version": 97,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      }
+     }
+    },
+    "pre_run_versions": {
+     "schedule": {
+      "ow_tp.silver.dunning_attempts": 98,
+      "ow_tp.silver.notifications": 97,
+      "ow_tp.silver.quarantine_silver_dunning": 157,
+      "ow_tp.silver.subscriptions": 61,
+      "ow_tp.silver.tenants": 96
+     },
+     "suspend": {
+      "ow_tp.silver.dunning_attempts": 99,
+      "ow_tp.silver.notifications": 97,
+      "ow_tp.silver.quarantine_silver_dunning": 157,
+      "ow_tp.silver.subscriptions": 61,
+      "ow_tp.silver.tenants": 96
+     }
+    },
+    "rows_written": 75,
+    "run_id": 630403049184591
+   },
+   "divergence": {
+    "acceptance_check": "ACC-IDEM",
+    "dictionary_ref": "D-27",
+    "id": "DIV-RERUN-APPENDS",
+    "measured": "attempts a source rerun would append, per run",
+    "source": "sp_schedule_dunning re-run on the same p_as_of reads NVL(MAX(attempt_no),0)+1 from a DUNNING_ATTEMPTS table its own previous run already grew, so it appends another attempt per overdue invoice on every run. Two *concurrent* runs are the other half of it: the SELECT takes no lock, both read the same MAX, both build the same f_md5_uuid(invoice_id || attempt_no) id, and the loser's ORA-00001 is swallowed by WHEN OTHERS THEN NULL while g_scheduled_cnt already claims the row.",
+    "target": "attempt numbering is pinned set-wise to the ingest attempt population (ow_tp.bronze.dunning_attempts) plus this unit's own rows from earlier as_of values, so the ids are a function of (ns, as_of, ingest state): a rerun of the same night is a true no-op, and a genuinely later night appends attempt n+1 the way a later source night would"
+   },
+   "edge_namespace_pair": {
+    "cold": {
+     "batch_id": "20260829225949e1",
+     "commit_metrics": {
+      "schedule": {
+       "ow_tp.silver.dunning_attempts": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 785464220073788); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 86,
+        "rows_deleted": 0,
+        "rows_inserted": 129,
+        "rows_updated": 0,
+        "version": 87,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+         "job_run_id": "978805789995480"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 785464220073788); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 131,
+        "rows_deleted": 0,
+        "rows_inserted": 6,
+        "rows_updated": 0,
+        "version": 132,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+         "job_run_id": "978805789995480"
+        }
+       }
+      },
+      "suspend": {
+       "ow_tp.silver.notifications": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 85,
+        "rows_deleted": 0,
+        "rows_inserted": 63,
+        "rows_updated": 0,
+        "version": 86,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+         "job_run_id": "978805789995480"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 132,
+        "rows_deleted": 0,
+        "rows_inserted": 2,
+        "rows_updated": 0,
+        "version": 135,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+         "job_run_id": "978805789995480"
+        }
+       },
+       "ow_tp.silver.subscriptions": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 59,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 2,
+        "version": 60,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+         "job_run_id": "978805789995480"
+        }
+       },
+       "ow_tp.silver.tenants": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 85,
+        "rows_deleted": 0,
+        "rows_inserted": 78,
+        "rows_updated": 0,
+        "version": 86,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+         "job_run_id": "978805789995480"
+        }
+       }
+      }
+     },
+     "run_id": 978805789995480
+    },
+    "rerun": {
+     "batch_id": "20260829225949e2",
+     "commit_metrics": {
+      "schedule": {
+       "ow_tp.silver.dunning_attempts": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 1096826108458927); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 87,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": 88,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+         "job_run_id": "743540040370614"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 1096826108458927); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 135,
+        "rows_deleted": 0,
+        "rows_inserted": 6,
+        "rows_updated": 0,
+        "version": 136,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+         "job_run_id": "743540040370614"
+        }
+       }
+      },
+      "suspend": {
+       "ow_tp.silver.notifications": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 86,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": 87,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+         "job_run_id": "743540040370614"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 136,
+        "rows_deleted": 0,
+        "rows_inserted": 2,
+        "rows_updated": 0,
+        "version": 139,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+         "job_run_id": "743540040370614"
+        }
+       },
+       "ow_tp.silver.subscriptions": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "commit_from_this_run": false,
+        "newer_commits_by_other_runs": [],
+        "note": "this run produced no such commit on this target: the write changed nothing",
+        "operation": "MERGE",
+        "pre_run_version": 60,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": null
+       },
+       "ow_tp.silver.tenants": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 86,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": 87,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+         "job_run_id": "743540040370614"
+        }
+       }
+      }
+     },
+     "run_id": 743540040370614
+    }
+   },
+   "expected": {
+    "cold_load_rows_written_gt_0": true,
+    "rerun_rows_written": 0
+   },
+   "id": "ACC-IDEM",
+   "rerun": {
+    "batch_id": "20260829225949b",
+    "commit_metrics": {
+     "schedule": {
+      "ow_tp.silver.dunning_attempts": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 548258265834173); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 99,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": 100,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949b",
+        "job_run_id": "292464988243560"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 548258265834173); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 157,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      }
+     },
+     "suspend": {
+      "ow_tp.silver.notifications": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 98,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": 99,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949b",
+        "job_run_id": "292464988243560"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 157,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      },
+      "ow_tp.silver.subscriptions": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 62,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      },
+      "ow_tp.silver.tenants": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 97,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": 98,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949b",
+        "job_run_id": "292464988243560"
+       }
+      }
+     }
+    },
+    "pre_run_versions": {
+     "schedule": {
+      "ow_tp.silver.dunning_attempts": 99,
+      "ow_tp.silver.notifications": 98,
+      "ow_tp.silver.quarantine_silver_dunning": 157,
+      "ow_tp.silver.subscriptions": 62,
+      "ow_tp.silver.tenants": 97
+     },
+     "suspend": {
+      "ow_tp.silver.dunning_attempts": 100,
+      "ow_tp.silver.notifications": 98,
+      "ow_tp.silver.quarantine_silver_dunning": 157,
+      "ow_tp.silver.subscriptions": 62,
+      "ow_tp.silver.tenants": 97
+     }
+    },
+    "rows_written": 0,
+    "run_id": 292464988243560
+   },
+   "result": "pass",
+   "source_of_truth": "DESCRIBE HISTORY on each target, filtered to commits newer than that target's pre-run version and carrying one of the run's own job.jobRunId values"
+  },
+  {
+   "actual": {
+    "ddl_on_shared_tables": 0,
+    "deletes_issued": 0
+   },
+   "expected": {
+    "ddl_on_shared_tables": 0,
+    "deletes_issued": 0
+   },
+   "id": "ACC-NO-DELETE",
+   "note": "this unit issues no DELETE at all, on any table. D-31's carve-out covers rows a unit generated itself under a job input it no longer accepts; this unit's driver is the source's own overdue population, so no row it writes qualifies (D-28, D-31). Separately, and outside the deployed job: the validation harness under scripts/tp_databricks/silver_dunning/ does DELETE this unit's own rows in the namespace it reconciles, to make the recon report's cold load cold after earlier validation runs. That is harness setup, it is published in the report's reconciled_namespace_setup, and no notebook the job runs contains a DELETE.",
+   "result": "pass",
+   "source_of_truth": "the notebook issues no DELETE on any table and no DDL on ow_tp.silver.subscriptions; D-31's carve-out is not this unit's, because its driver is the source's own overdue population rather than a job-parameter request list"
+  },
+  {
+   "actual": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "expected": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "id": "DUNNING-001-SHA",
+   "result": "pass",
+   "source_of_truth": "DUNNING-001's pinned oracle_source_sha vs the checked-out source tree"
+  },
+  {
+   "actual": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "expected": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "id": "DUNNING-002-SHA",
+   "result": "pass",
+   "source_of_truth": "DUNNING-002's pinned oracle_source_sha vs the checked-out source tree"
+  },
+  {
+   "actual": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "expected": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "id": "DUNNING-003-SHA",
+   "result": "pass",
+   "source_of_truth": "DUNNING-003's pinned oracle_source_sha vs the checked-out source tree"
+  },
+  {
+   "actual": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "expected": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "id": "DUNNING-004-SHA",
+   "result": "pass",
+   "source_of_truth": "DUNNING-004's pinned oracle_source_sha vs the checked-out source tree"
+  },
+  {
+   "actual": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "expected": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+   "id": "DUNNING-005-SHA",
+   "result": "pass",
+   "source_of_truth": "DUNNING-005's pinned oracle_source_sha vs the checked-out source tree"
+  },
+  {
+   "actual": {
+    "days_overdue": [
+     27,
+     15
+    ],
+    "tenant_ids": [
+     "00000000-0000-0000-0000-000000000002",
+     "00000000-0000-0000-0000-000000000005"
+    ]
+   },
+   "expected": {
+    "days_overdue": [
+     27,
+     15
+    ],
+    "tenant_ids": [
+     "00000000-0000-0000-0000-000000000002",
+     "00000000-0000-0000-0000-000000000005"
+    ]
+   },
+   "id": "DUNNING-001",
+   "oracle_now": [
+    {
+     "days_overdue": 27,
+     "tenant_id": "00000000-0000-0000-0000-000000000002"
+    },
+    {
+     "days_overdue": 15,
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "the pinned transcript vs the overdue snapshot the run persisted, filtered to fn_overdue_accounts' own strictly-less-than predicate"
+  },
+  {
+   "actual": [
+    [
+     "60000000-0000-0000-0000-000000000001",
+     1,
+     "2026-02-16",
+     "scheduled"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     1,
+     "2026-02-16",
+     "sent"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     2,
+     "2026-02-16",
+     "scheduled"
+    ]
+   ],
+   "as_of": "2026-02-14",
+   "expected": [
+    [
+     "60000000-0000-0000-0000-000000000001",
+     1,
+     "2026-02-16",
+     "scheduled"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     1,
+     "2026-02-16",
+     "sent"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     2,
+     "2026-02-16",
+     "scheduled"
+    ]
+   ],
+   "id": "DUNNING-002",
+   "namespace": "dunning_t002",
+   "namespace_provenance": "copy of ns=demo's ow_tp.bronze ingest rows tagged _source_table = 'replay-of-demo', so sp_schedule_dunning can be reproduced on 2026-02-14 without writing ns=demo for a second night",
+   "oracle_now": [
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-02-16"
+    },
+    {
+     "attempt_no": 2,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "DUNNING-002's pinned schedule_rows vs ow_tp.silver.dunning_attempts in ns=dunning_t002 after the run on as_of=2026-02-14, recomputed from Delta"
+  },
+  {
+   "actual": {
+    "scheduled_for": "2026-02-16",
+    "status": "scheduled"
+   },
+   "expected": {
+    "scheduled_for": "2026-02-16",
+    "status": "scheduled"
+   },
+   "id": "DUNNING-002-BUSINESS-FIELDS",
+   "result": "pass",
+   "source_of_truth": "DUNNING-002's business_fields vs the attempts this run scheduled in ns=dunning_t002"
+  },
+  {
+   "actual": [
+    [
+     "60000000-0000-0000-0000-000000000001",
+     1,
+     "2026-02-17",
+     "scheduled"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     1,
+     "2026-02-16",
+     "sent"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     2,
+     "2026-02-17",
+     "scheduled"
+    ]
+   ],
+   "as_of": "2026-02-17",
+   "expected": [
+    [
+     "60000000-0000-0000-0000-000000000001",
+     1,
+     "2026-02-17",
+     "scheduled"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     1,
+     "2026-02-16",
+     "sent"
+    ],
+    [
+     "60000000-0000-0000-0000-000000000002",
+     2,
+     "2026-02-17",
+     "scheduled"
+    ]
+   ],
+   "id": "DUNNING-003",
+   "namespace": "dunning_t003",
+   "namespace_provenance": "copy of ns=demo's ow_tp.bronze ingest rows tagged _source_table = 'replay-of-demo', so sp_schedule_dunning can be reproduced on 2026-02-17 without writing ns=demo for a second night",
+   "oracle_now": [
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-02-17"
+    },
+    {
+     "attempt_no": 2,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-17"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "DUNNING-003's pinned schedule_rows vs ow_tp.silver.dunning_attempts in ns=dunning_t003 after the run on as_of=2026-02-17, recomputed from Delta"
+  },
+  {
+   "actual": {
+    "attempt_no": 2,
+    "scheduled_for": "2026-02-17"
+   },
+   "expected": {
+    "attempt_no": 2,
+    "scheduled_for": "2026-02-17"
+   },
+   "id": "DUNNING-003-BUSINESS-FIELDS",
+   "result": "pass",
+   "source_of_truth": "DUNNING-003's business_fields vs the attempts this run scheduled in ns=dunning_t003"
+  },
+  {
+   "actual": [
+    [
+     "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "00000000-0000-0000-0000-000000000005",
+     "suspension",
+     "2026-02-28 00:00:00"
+    ]
+   ],
+   "expected": [
+    [
+     "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "00000000-0000-0000-0000-000000000005",
+     "suspension",
+     "2026-02-28 00:00:00"
+    ]
+   ],
+   "id": "DUNNING-004",
+   "oracle_now": [
+    {
+     "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "sent_at": "2026-02-28 00:00:00",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "DUNNING-004's pinned suspension_notifications vs ow_tp.silver.notifications in ns=demo, recomputed from Delta after the sweep"
+  },
+  {
+   "actual": [
+    [
+     "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "00000000-0000-0000-0000-000000000005",
+     "suspension",
+     "2026-02-28 00:00:00"
+    ]
+   ],
+   "expected": [
+    [
+     "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "00000000-0000-0000-0000-000000000005",
+     "suspension",
+     "2026-02-28 00:00:00"
+    ]
+   ],
+   "id": "DUNNING-005",
+   "oracle_now": [
+    {
+     "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "sent_at": "2026-02-28 00:00:00",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "result": "pass",
+   "source_of_truth": "DUNNING-005's pinned suspension_notifications vs ow_tp.silver.notifications in ns=demo, recomputed from Delta after the sweep"
+  },
+  {
+   "actual": {
+    "status": "suspended",
+    "suspended_on": "2026-02-28"
+   },
+   "expected": {
+    "status": "suspended",
+    "suspended_on": "2026-02-28"
+   },
+   "id": "DUNNING-004-BUSINESS-FIELDS",
+   "result": "pass",
+   "source_of_truth": "DUNNING-004's business_fields vs the ow_tp.silver.subscriptions rows the sweep updated",
+   "subscriptions_updated": [
+    {
+     "_batch_id_preserved": "20260829120813a",
+     "_origin_preserved": "source-migrated",
+     "id": "20000000-0000-0000-0000-000000000005",
+     "other_columns_hash_after": "5cdc0b827c15ab054194ff568496e0d4",
+     "other_columns_hash_before": "5cdc0b827c15ab054194ff568496e0d4",
+     "other_columns_unchanged": true,
+     "status_cd_after": 20,
+     "status_cd_before": 10,
+     "suspended_on_after": "2026-02-28 00:00:00",
+     "suspended_on_before": null,
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ]
+  },
+  {
+   "actual": {
+    "notification_kinds": [
+     "suspension"
+    ]
+   },
+   "expected": {
+    "notification_kinds": [
+     "suspension"
+    ]
+   },
+   "id": "DUNNING-005-BUSINESS-FIELDS",
+   "result": "pass",
+   "source_of_truth": "DUNNING-005's business_fields vs the notification kinds the sweep wrote in ns=demo"
+  }
+ ],
+ "failed_checks": [],
+ "generated_at": "2026-08-29T23:50:37Z",
+ "idempotency_rerun": {
+  "evidence": "run 630403049184591 (batch 20260829225949a) inserted or updated 75 Delta-attributed rows across both phases; run 292464988243560 (batch 20260829225949b) with identical inputs wrote 0. Each commit is attributed by its target's pre-run version plus the commit's job.jobRunId, never by the newest commit or the job name alone.",
+  "performed": true,
+  "result": "pass"
+ },
+ "kind": "recon-report",
+ "measured_populations": {
+  "demo": {
+   "attempts_by_source_day_of_week": {
+    "SAT": 2,
+    "migrated": 1
+   },
+   "attempts_by_weekend_shift_days": {
+    "2": 2
+   },
+   "notifications": {
+    "later_as_of_new_candidate_tenants": 0,
+    "note": "the source's INSERT carries WHERE NOT EXISTS on (tenant_id, kind_cd = 3, sent_at = CAST(TRUNC(p_as_of) AS TIMESTAMP)), so a legacy rerun on the same p_as_of adds nothing; a run on a different p_as_of adds a second notification only for a tenant still at status_cd = 10, and the sweep's own UPDATE TENANTS SET status_cd = 20 takes the tenants it just suspended out of that population",
+    "population_rows_contributed_by_this_sweep": 1,
+    "same_as_of_rerun_would_add": 0,
+    "suppressed_by_not_exists": 0,
+    "tenants_active_with_suspension_notice_on_another_date": 0,
+    "written_by_sweep": 1,
+    "written_by_sweep_note": "written_by_sweep is the standing count for this as_of, read back from the target: it includes a row an earlier run of this unit wrote on the same as_of, so it is not this run's contribution. population_rows_contributed_by_this_sweep is this run's contribution to the declared notifications population"
+   },
+   "outer_join": {
+    "invoices_kept_with_no_tenant_row": 0,
+    "same_day_invoices_scheduled_but_not_overdue_by_fn": 0,
+    "tenant_status_unknown": 0
+   },
+   "subscriptions_shared": {
+    "attribution_origins_seen": {
+     "source-migrated": 1
+    },
+    "columns_not_written": [
+     "id",
+     "tenant_id",
+     "plan_id",
+     "starts_on",
+     "ends_on",
+     "status_cd_before",
+     "ends_on_before",
+     "closed_by_change",
+     "closeout_seq",
+     "change_effective_on",
+     "change_plan_id",
+     "reactivated_from_suspended",
+     "cancelled_preserved",
+     "overlaps_new_subscription",
+     "ns",
+     "_origin",
+     "_batch_id",
+     "_loaded_at"
+    ],
+    "columns_written": [
+     "status_cd",
+     "suspended_on"
+    ],
+    "ddl_statements": 0,
+    "deletes": 0,
+    "inserts": 0,
+    "match_key": [
+     "id",
+     "ns"
+    ],
+    "merge_metrics": {
+     "num_affected_rows": "1",
+     "num_deleted_rows": "0",
+     "num_inserted_rows": "0",
+     "num_updated_rows": "1"
+    },
+    "owned_by": "silver_plans (wave 3)",
+    "rows": [
+     {
+      "_batch_id_preserved": "20260829120813a",
+      "_origin_preserved": "source-migrated",
+      "id": "20000000-0000-0000-0000-000000000005",
+      "other_columns_hash_after": "5cdc0b827c15ab054194ff568496e0d4",
+      "other_columns_hash_before": "5cdc0b827c15ab054194ff568496e0d4",
+      "other_columns_unchanged": true,
+      "status_cd_after": 20,
+      "status_cd_before": 10,
+      "suspended_on_after": "2026-02-28 00:00:00",
+      "suspended_on_before": null,
+      "tenant_id": "00000000-0000-0000-0000-000000000005"
+     }
+    ],
+    "rows_left_at_status": {},
+    "rows_matched_by_sweep": 1,
+    "rows_updated": 1,
+    "table": "ow_tp.silver.subscriptions"
+   },
+   "swallowed_insert_exposure": {
+    "concurrency_exposed_attempts": 2,
+    "concurrency_note": "every attempt this run scheduled is exposed: attempt_no is NVL(MAX,0)+1 read with no lock and the id is a pure function of (invoice_id, attempt_no), so a concurrent source run computes the same id and one of the two INSERTs raises ORA-00001 into WHEN OTHERS THEN NULL. The target's job is max_concurrent_runs = 1 and its MERGE makes the second writer a no-op instead of a silent loss",
+    "fk_da_invoice_orphans": 0,
+    "fk_da_tenant_orphans": 0,
+    "rerun_note": "a source rerun on the same p_as_of appends this many more attempts (MAX+1 again); this port pins attempt_no to the ingest population, so its rerun is a no-op (DIV-RERUN-APPENDS, D-27)",
+    "rerun_would_append": 2,
+    "uq_collisions": 0
+   },
+   "sweep": {
+    "candidate_tenants": 2,
+    "candidates_with_no_tenant_row": 0,
+    "tenants_skipped_inactive_at_ingest": 1,
+    "tenants_skipped_not_active_at_run": 1,
+    "tenants_suspended_by_a_sweep_in_this_namespace_including_earlier_runs": 1,
+    "tenants_swept": 1,
+    "tenants_total": 69
+   }
+  },
+  "generated_namespaces": {
+   "dunning_edge": {
+    "declared_as": "generated fixture \u2014 not customer history",
+    "later_night": {
+     "appended_attempt_no_is_the_previous_max_plus_one": true,
+     "attempt_rows_after": [
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "16b58e5f-1be6-e37e-34be-1a77e4570da5",
+       "invoice_id": "edge-i-01",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "3",
+       "attempt_no_basis": "2",
+       "id": "8271c7b2-2d1d-7132-dfdd-bd157cfb5969",
+       "invoice_id": "edge-i-01",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "9a3f3b53-3aac-00f9-50ae-759b4bfabcbe",
+       "invoice_id": "edge-i-02",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "376ace1b-0a05-c856-f43c-d23e1996b22f",
+       "invoice_id": "edge-i-02",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "d17af1c4-56c5-33da-f040-fa8df12117a0",
+       "invoice_id": "edge-i-03",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "d7a70ae1-d8d4-28de-8fb8-1c6ee404284b",
+       "invoice_id": "edge-i-03",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "e4ab52de-17f9-aa35-e456-98f2081db3b5",
+       "invoice_id": "edge-i-04",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "3ecd9fec-1ae9-1d67-9c82-d65609cdc2d2",
+       "invoice_id": "edge-i-04",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "526ea5ab-4c8b-2276-7b2d-4d02ed31cbb2",
+       "invoice_id": "edge-i-05",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "9a2d9092-71fa-4f47-324c-dd4b44696d48",
+       "invoice_id": "edge-i-05",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "c357bd1b-f701-8bf0-45cb-cde4df6286b5",
+       "invoice_id": "edge-i-06",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "b38f7094-3038-5220-cb1a-8638e9de807b",
+       "invoice_id": "edge-i-06",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "9aacaf9f-3150-3ef8-ce26-52bf54fd94cc",
+       "invoice_id": "edge-i-08",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "ba3abaf0-346a-b93f-4841-3b61e289e478",
+       "invoice_id": "edge-i-08",
+       "scheduled_for": "2026-03-02"
+      }
+     ],
+     "attempt_rows_before": [
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "16b58e5f-1be6-e37e-34be-1a77e4570da5",
+       "invoice_id": "edge-i-01",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "9a3f3b53-3aac-00f9-50ae-759b4bfabcbe",
+       "invoice_id": "edge-i-02",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "d17af1c4-56c5-33da-f040-fa8df12117a0",
+       "invoice_id": "edge-i-03",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "e4ab52de-17f9-aa35-e456-98f2081db3b5",
+       "invoice_id": "edge-i-04",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "526ea5ab-4c8b-2276-7b2d-4d02ed31cbb2",
+       "invoice_id": "edge-i-05",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "c357bd1b-f701-8bf0-45cb-cde4df6286b5",
+       "invoice_id": "edge-i-06",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e1",
+       "as_of": "2026-02-28",
+       "attempt_no": "1",
+       "attempt_no_basis": "0",
+       "id": "9aacaf9f-3150-3ef8-ce26-52bf54fd94cc",
+       "invoice_id": "edge-i-08",
+       "scheduled_for": "2026-03-02"
+      }
+     ],
+     "earlier_rows_left_untouched": true,
+     "first_night_as_of": "2026-02-28",
+     "later_night_as_of": "2026-03-02",
+     "later_night_commit_metrics": {
+      "schedule": {
+       "ow_tp.silver.dunning_attempts": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 738832954150765); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 88,
+        "rows_deleted": 0,
+        "rows_inserted": 7,
+        "rows_updated": 122,
+        "version": 89,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+         "job_run_id": "991602491236430"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 738832954150765); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 139,
+        "rows_deleted": 0,
+        "rows_inserted": 6,
+        "rows_updated": 0,
+        "version": 140,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+         "job_run_id": "991602491236430"
+        }
+       }
+      },
+      "suspend": {
+       "ow_tp.silver.notifications": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 87,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 62,
+        "version": 88,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+         "job_run_id": "991602491236430"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 140,
+        "rows_deleted": 0,
+        "rows_inserted": 2,
+        "rows_updated": 0,
+        "version": 143,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+         "job_run_id": "991602491236430"
+        }
+       },
+       "ow_tp.silver.subscriptions": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "commit_from_this_run": false,
+        "newer_commits_by_other_runs": [],
+        "note": "this run produced no such commit on this target: the write changed nothing",
+        "operation": "MERGE",
+        "pre_run_version": 60,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": null
+       },
+       "ow_tp.silver.tenants": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (991602491236430, 809593552539368); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 87,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 78,
+        "version": 88,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e3",
+         "job_run_id": "991602491236430"
+        }
+       }
+      }
+     },
+     "later_night_rerun_changed_nothing": true,
+     "later_night_rerun_commit_metrics": {
+      "schedule": {
+       "ow_tp.silver.dunning_attempts": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 558497861348420); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 90,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": 91,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+         "job_run_id": "714620097333854"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 558497861348420); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 143,
+        "rows_deleted": 0,
+        "rows_inserted": 6,
+        "rows_updated": 0,
+        "version": 144,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+         "job_run_id": "714620097333854"
+        }
+       }
+      },
+      "suspend": {
+       "ow_tp.silver.notifications": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 89,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": 90,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+         "job_run_id": "714620097333854"
+        }
+       },
+       "ow_tp.silver.quarantine_silver_dunning": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 144,
+        "rows_deleted": 0,
+        "rows_inserted": 2,
+        "rows_updated": 0,
+        "version": 147,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+         "job_run_id": "714620097333854"
+        }
+       },
+       "ow_tp.silver.subscriptions": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "commit_from_this_run": false,
+        "newer_commits_by_other_runs": [],
+        "note": "this run produced no such commit on this target: the write changed nothing",
+        "operation": "MERGE",
+        "pre_run_version": 60,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": null
+       },
+       "ow_tp.silver.tenants": {
+        "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (714620097333854, 524454204692122); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+        "attribution_rule_matched": "job_run_id",
+        "commit_from_this_run": true,
+        "operation": "MERGE",
+        "pre_run_version": 88,
+        "rows_deleted": 0,
+        "rows_inserted": 0,
+        "rows_updated": 0,
+        "version": 89,
+        "writing_job_run": {
+         "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e4",
+         "job_run_id": "714620097333854"
+        }
+       }
+      }
+     },
+     "note": "the attempt basis is the ingest population plus this unit's own rows from strictly earlier as_of values, which is why the same night is a no-op and the next night appends",
+     "rows_appended_by_the_later_night": [
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "3",
+       "attempt_no_basis": "2",
+       "id": "8271c7b2-2d1d-7132-dfdd-bd157cfb5969",
+       "invoice_id": "edge-i-01",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "376ace1b-0a05-c856-f43c-d23e1996b22f",
+       "invoice_id": "edge-i-02",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "d7a70ae1-d8d4-28de-8fb8-1c6ee404284b",
+       "invoice_id": "edge-i-03",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "3ecd9fec-1ae9-1d67-9c82-d65609cdc2d2",
+       "invoice_id": "edge-i-04",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "9a2d9092-71fa-4f47-324c-dd4b44696d48",
+       "invoice_id": "edge-i-05",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "b38f7094-3038-5220-cb1a-8638e9de807b",
+       "invoice_id": "edge-i-06",
+       "scheduled_for": "2026-03-02"
+      },
+      {
+       "_batch_id": "20260829225949e3",
+       "as_of": "2026-03-02",
+       "attempt_no": "2",
+       "attempt_no_basis": "1",
+       "id": "ba3abaf0-346a-b93f-4841-3b61e289e478",
+       "invoice_id": "edge-i-08",
+       "scheduled_for": "2026-03-02"
+      }
+     ],
+     "runs": {
+      "later_night": 991602491236430,
+      "later_night_rerun": 714620097333854
+     }
+    },
+    "measured": {
+     "attempts_by_source_day_of_week": {
+      "SAT": 7,
+      "migrated": 122
+     },
+     "attempts_moved_by_weekend_shift": 7,
+     "invoices_in_the_schedule_driver": 9,
+     "invoices_kept_with_no_tenant_row": 1,
+     "notifications": {
+      "later_as_of_new_candidate_tenants": 3,
+      "note": "the source's INSERT carries WHERE NOT EXISTS on (tenant_id, kind_cd = 3, sent_at = CAST(TRUNC(p_as_of) AS TIMESTAMP)), so a legacy rerun on the same p_as_of adds nothing; a run on a different p_as_of adds a second notification only for a tenant still at status_cd = 10, and the sweep's own UPDATE TENANTS SET status_cd = 20 takes the tenants it just suspended out of that population",
+      "population_rows_contributed_by_this_sweep": 1,
+      "same_as_of_rerun_would_add": 0,
+      "suppressed_by_not_exists": 1,
+      "tenants_active_with_suspension_notice_on_another_date": 1,
+      "written_by_sweep": 1,
+      "written_by_sweep_note": "written_by_sweep is the standing count for this as_of, read back from the target: it includes a row an earlier run of this unit wrote on the same as_of, so it is not this run's contribution. population_rows_contributed_by_this_sweep is this run's contribution to the declared notifications population"
+     },
+     "same_day_invoices_scheduled_but_not_overdue_by_fn": 2,
+     "subscriptions_shared": {
+      "attribution_origins_seen": {
+       "source-migrated": 4
+      },
+      "columns_not_written": [
+       "id",
+       "tenant_id",
+       "plan_id",
+       "starts_on",
+       "ends_on",
+       "status_cd_before",
+       "ends_on_before",
+       "closed_by_change",
+       "closeout_seq",
+       "change_effective_on",
+       "change_plan_id",
+       "reactivated_from_suspended",
+       "cancelled_preserved",
+       "overlaps_new_subscription",
+       "ns",
+       "_origin",
+       "_batch_id",
+       "_loaded_at"
+      ],
+      "columns_written": [
+       "status_cd",
+       "suspended_on"
+      ],
+      "ddl_statements": 0,
+      "deletes": 0,
+      "inserts": 0,
+      "match_key": [
+       "id",
+       "ns"
+      ],
+      "merge_metrics": {
+       "num_affected_rows": "2",
+       "num_deleted_rows": "0",
+       "num_inserted_rows": "0",
+       "num_updated_rows": "2"
+      },
+      "owned_by": "silver_plans (wave 3)",
+      "rows": [
+       {
+        "_batch_id_preserved": "20260829225949p",
+        "_origin_preserved": "source-migrated",
+        "id": "edge-s-01",
+        "other_columns_hash_after": "4149864b6199b6a66d6e6e58b517512b",
+        "other_columns_hash_before": "4149864b6199b6a66d6e6e58b517512b",
+        "other_columns_unchanged": true,
+        "status_cd_after": 20,
+        "status_cd_before": 10,
+        "suspended_on_after": "2026-02-28 00:00:00",
+        "suspended_on_before": null,
+        "tenant_id": "edge-t-01"
+       },
+       {
+        "_batch_id_preserved": "20260829225949p",
+        "_origin_preserved": "source-migrated",
+        "id": "edge-s-04",
+        "other_columns_hash_after": "bf37a98f701d948afea345a88cb3c169",
+        "other_columns_hash_before": "bf37a98f701d948afea345a88cb3c169",
+        "other_columns_unchanged": true,
+        "status_cd_after": 20,
+        "status_cd_before": 10,
+        "suspended_on_after": "2026-02-28 00:00:00",
+        "suspended_on_before": null,
+        "tenant_id": "edge-t-06"
+       }
+      ],
+      "rows_left_at_status": {
+       "20": 1,
+       "30": 1
+      },
+      "rows_matched_by_sweep": 4,
+      "rows_updated": 2,
+      "table": "ow_tp.silver.subscriptions"
+     },
+     "sweep": {
+      "candidate_tenants": 5,
+      "candidates_with_no_tenant_row": 1,
+      "tenants_skipped_inactive_at_ingest": 1,
+      "tenants_skipped_not_active_at_run": 2,
+      "tenants_suspended_by_a_sweep_in_this_namespace_including_earlier_runs": 2,
+      "tenants_swept": 2,
+      "tenants_total": 78
+     },
+     "tenant_status_unknown": 2
+    },
+    "modelled": {
+     "as_of": "2026-02-28",
+     "as_of_day_of_week_english": "SAT",
+     "as_of_weekend_shift_days": 2,
+     "attempt_candidates_over_int_max": [
+      {
+       "attempt_no_basis": 2147483647,
+       "candidate": 2147483648,
+       "invoice_id": "edge-i-09"
+      }
+     ],
+     "candidate_tenants": 5,
+     "candidates_with_no_tenant_row": 1,
+     "expected_quarantine": {
+      "dunning_attempts": {
+       "CODE_UNKNOWN": 1,
+       "FK_ORPHAN": 2,
+       "KEY_DUPLICATE": 2,
+       "NUMERIC_OVERFLOW": 1
+      },
+      "notifications": {
+       "CODE_UNKNOWN": 1,
+       "FK_ORPHAN": 1
+      },
+      "subscriptions_swept": {},
+      "tenants": {
+       "CODE_UNKNOWN": 1,
+       "KEY_DUPLICATE": 2
+      }
+     },
+     "fn_overdue_accounts": [
+      {
+       "days_overdue": 27,
+       "invoice_id": "edge-i-01",
+       "tenant_id": "edge-t-01",
+       "tenant_status": "active",
+       "total": "100.00"
+      },
+      {
+       "days_overdue": 26,
+       "invoice_id": "edge-i-02",
+       "tenant_id": "edge-t-02",
+       "tenant_status": "suspended",
+       "total": "200.00"
+      },
+      {
+       "days_overdue": 25,
+       "invoice_id": "edge-i-03",
+       "tenant_id": "edge-t-03",
+       "tenant_status": "UNKNOWN",
+       "total": "300.00"
+      },
+      {
+       "days_overdue": 22,
+       "invoice_id": "edge-i-06",
+       "tenant_id": "edge-t-06",
+       "tenant_status": "active",
+       "total": "600.00"
+      },
+      {
+       "days_overdue": 21,
+       "invoice_id": "edge-i-07",
+       "tenant_id": "edge-t-absent",
+       "tenant_status": "UNKNOWN",
+       "total": "700.00"
+      },
+      {
+       "days_overdue": 14,
+       "invoice_id": "edge-i-08",
+       "tenant_id": "edge-t-01",
+       "tenant_status": "active",
+       "total": "800.00"
+      },
+      {
+       "days_overdue": 8,
+       "invoice_id": "edge-i-05",
+       "tenant_id": "edge-t-05",
+       "tenant_status": "active",
+       "total": "500.00"
+      }
+     ],
+     "invoices_in_the_schedule_driver": 9,
+     "invoices_kept_with_no_tenant_row": 1,
+     "invoices_overdue_by_the_function": 7,
+     "notification_ids": [
+      "543a6af6-4e7c-6851-7084-3e300f50926e"
+     ],
+     "notifications_suppressed_by_not_exists": 1,
+     "notifications_written": 1,
+     "provenance": "generated fixture: every row carries _source_table = 'generated-fixture', no row of it exists in OW_BILLING, and Oracle holds no copy of this namespace. The declared side of the comparison is this Python model of 05_pkg_dunning.sql, not live Oracle.",
+     "same_calendar_day_invoices": 2,
+     "schedule": [
+      {
+       "attempt_no": 2,
+       "attempt_no_basis": 1,
+       "id": "16b58e5f-1be6-e37e-34be-1a77e4570da5",
+       "invoice_id": "edge-i-01",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-01",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "9a3f3b53-3aac-00f9-50ae-759b4bfabcbe",
+       "invoice_id": "edge-i-02",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-02",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "d17af1c4-56c5-33da-f040-fa8df12117a0",
+       "invoice_id": "edge-i-03",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-03",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "c357bd1b-f701-8bf0-45cb-cde4df6286b5",
+       "invoice_id": "edge-i-06",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-06",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "1c3cb383-b0af-0845-99ef-c617a447a8cc",
+       "invoice_id": "edge-i-07",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-absent",
+       "tenant_row_missing": true,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "9aacaf9f-3150-3ef8-ce26-52bf54fd94cc",
+       "invoice_id": "edge-i-08",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-01",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "526ea5ab-4c8b-2276-7b2d-4d02ed31cbb2",
+       "invoice_id": "edge-i-05",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-05",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      },
+      {
+       "attempt_no": 1,
+       "attempt_no_basis": 0,
+       "id": "e4ab52de-17f9-aa35-e456-98f2081db3b5",
+       "invoice_id": "edge-i-04",
+       "scheduled_for": "2026-03-02",
+       "source_day_of_week": "SAT",
+       "status_cd": 10,
+       "tenant_id": "edge-t-04",
+       "tenant_row_missing": false,
+       "unshifted_scheduled_for": "2026-02-28",
+       "weekend_shift_days": 2
+      }
+     ],
+     "scheduled_for": "2026-03-02",
+     "subscriptions_left_at_20": 1,
+     "subscriptions_left_at_30": 1,
+     "subscriptions_matched_by_the_sweep": 4,
+     "subscriptions_suspended": 2,
+     "suspend_cutoff_date": "2026-02-14",
+     "suspended_on": "2026-02-28",
+     "swept_tenants": [
+      "edge-t-01",
+      "edge-t-06"
+     ],
+     "tenant_status_unknown": 2,
+     "tenants_active_with_suspension_notice_on_another_date": [
+      "edge-t-05"
+     ],
+     "tenants_skipped_inactive_at_ingest": 2,
+     "tenants_swept": 2
+    },
+    "provenance": "generated fixture: every row carries _source_table = 'generated-fixture', no row of it exists in OW_BILLING, and Oracle holds no copy of this namespace. The declared side of the comparison is this Python model of 05_pkg_dunning.sql, not live Oracle.",
+    "quarantine": {
+     "cold": {
+      "schedule": {
+       "CODE_UNKNOWN": 1,
+       "FK_ORPHAN": 2,
+       "KEY_DUPLICATE": 2,
+       "NUMERIC_OVERFLOW": 1
+      },
+      "suspend": {
+       "CODE_UNKNOWN": 3,
+       "FK_ORPHAN": 3,
+       "KEY_DUPLICATE": 4,
+       "NUMERIC_OVERFLOW": 1
+      }
+     },
+     "halt_bases": {
+      "schedule": {
+       "dunning_attempts": {
+        "basis": "attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \u2014 numerator and denominator on that one population",
+        "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+        "loaded_rows": 129,
+        "over_threshold": false,
+        "quarantine_ledger_rows_this_batch": 6,
+        "rate_pct": 4.4444,
+        "rate_pct_unrounded": "4.444444444444445",
+        "rejected_rows": 6,
+        "source_rows": 135,
+        "threshold_pct": 5.0
+       }
+      },
+      "suspend": {
+       "notifications": {
+        "basis": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run \u2014 numerator and denominator on that one population",
+        "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+        "loaded_rows": 63,
+        "over_threshold": false,
+        "quarantine_ledger_rows_this_batch": null,
+        "rate_pct": 3.0769,
+        "rate_pct_unrounded": "3.076923076923077",
+        "rejected_rows": 2,
+        "source_rows": 65,
+        "threshold_pct": 5.0
+       },
+       "subscriptions_swept": {
+        "basis": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) \u2014 numerator and denominator on that one population",
+        "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+        "loaded_rows": 2,
+        "over_threshold": false,
+        "quarantine_ledger_rows_this_batch": 0,
+        "rate_pct": 0.0,
+        "rate_pct_unrounded": "0.0",
+        "rejected_rows": 0,
+        "source_rows": 2,
+        "threshold_pct": 5.0
+       },
+       "tenants": {
+        "basis": "tenants: every OW_BILLING.TENANTS row in ns \u2014 numerator and denominator on that one population",
+        "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+        "loaded_rows": 78,
+        "over_threshold": false,
+        "quarantine_ledger_rows_this_batch": 3,
+        "rate_pct": 3.7037,
+        "rate_pct_unrounded": "3.7037037037037037",
+        "rejected_rows": 3,
+        "source_rows": 81,
+        "threshold_pct": 5.0
+       }
+      }
+     },
+     "ledger": {
+      "cold_batch_rows_after_three_more_runs": [
+       {
+        "detail": "no CODES(DUN_STATUS) row for 77",
+        "phase": "schedule",
+        "population": "dunning_attempts",
+        "quarantine_reason": "CODE_UNKNOWN",
+        "source_key": "edge-i-101|1|source-migrated|edge-a-badstatus",
+        "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+       },
+       {
+        "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+        "phase": "schedule",
+        "population": "dunning_attempts",
+        "quarantine_reason": "FK_ORPHAN",
+        "source_key": "edge-i-07|1|target-schedule|1c3cb383-b0af-0845-99ef-c617a447a8cc",
+        "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+       },
+       {
+        "detail": "fk_da_invoice: no invoice row",
+        "phase": "schedule",
+        "population": "dunning_attempts",
+        "quarantine_reason": "FK_ORPHAN",
+        "source_key": "edge-i-absent|1|source-migrated|edge-a-orphan",
+        "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+       },
+       {
+        "detail": "uq_dunning_attempts(invoice_id, attempt_no) collision",
+        "phase": "schedule",
+        "population": "dunning_attempts",
+        "quarantine_reason": "KEY_DUPLICATE",
+        "source_key": "edge-i-100|1|source-migrated|edge-a-dup-a",
+        "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+       },
+       {
+        "detail": "uq_dunning_attempts(invoice_id, attempt_no) collision",
+        "phase": "schedule",
+        "population": "dunning_attempts",
+        "quarantine_reason": "KEY_DUPLICATE",
+        "source_key": "edge-i-100|1|source-migrated|edge-a-dup-b",
+        "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+       },
+       {
+        "detail": "attempt candidate 2147483648 (NVL(MAX(attempt_no),0)+1 in BIGINT) is outside the INT the target column declares, so it is rejected before any cast",
+        "phase": "schedule",
+        "population": "dunning_attempts",
+        "quarantine_reason": "NUMERIC_OVERFLOW",
+        "source_key": "edge-i-09|2147483648|target-schedule|ff4ea7ae-c8b1-1c2b-970a-5678e1ce37a3",
+        "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+       },
+       {
+        "detail": "no CODES(NOTIF_KIND) row for 88",
+        "phase": "suspend",
+        "population": "notifications",
+        "quarantine_reason": "CODE_UNKNOWN",
+        "source_key": "edge-n-badkind",
+        "source_table": "OW_BILLING.NOTIFICATIONS"
+       },
+       {
+        "detail": "fk_notif_tenant: no tenant row",
+        "phase": "suspend",
+        "population": "notifications",
+        "quarantine_reason": "FK_ORPHAN",
+        "source_key": "edge-n-orphan",
+        "source_table": "OW_BILLING.NOTIFICATIONS"
+       },
+       {
+        "detail": "no CODES(TENANT_STATUS) row for 99",
+        "phase": "suspend",
+        "population": "tenants",
+        "quarantine_reason": "CODE_UNKNOWN",
+        "source_key": "edge-t-03",
+        "source_table": "OW_BILLING.TENANTS"
+       },
+       {
+        "detail": "tenant id repeats 2 times in ow_tp.bronze.tenants, impossible under the source primary key",
+        "phase": "suspend",
+        "population": "tenants",
+        "quarantine_reason": "KEY_DUPLICATE",
+        "source_key": "edge-t-50",
+        "source_table": "OW_BILLING.TENANTS"
+       },
+       {
+        "detail": "tenant id repeats 2 times in ow_tp.bronze.tenants, impossible under the source primary key; this is the physical row at ordinal 2, collapsed before the sweep join and rejected on its own payload",
+        "phase": "suspend",
+        "population": "tenants",
+        "quarantine_reason": "KEY_DUPLICATE",
+        "source_key": "edge-t-50|2",
+        "source_table": "OW_BILLING.TENANTS"
+       }
+      ],
+      "cold_batch_rows_unchanged": true,
+      "note": "each batch keeps its own occurrence of a recurring rejection because _batch_id is part of the ledger identity rather than a column the merge overwrites, and the duplicated tenant id contributes one row per physical bronze row rather than one row for the surviving key",
+      "rows_per_batch": [
+       {
+        "_batch_id": "20260829225949e1",
+        "rows": "11"
+       },
+       {
+        "_batch_id": "20260829225949e2",
+        "rows": "11"
+       },
+       {
+        "_batch_id": "20260829225949e3",
+        "rows": "11"
+       },
+       {
+        "_batch_id": "20260829225949e4",
+        "rows": "11"
+       },
+       {
+        "_batch_id": "20260829225949e6",
+        "rows": "11"
+       }
+      ]
+     },
+     "rows_this_batch": [
+      {
+       "detail": "no CODES(DUN_STATUS) row for 77",
+       "phase": "schedule",
+       "population": "dunning_attempts",
+       "quarantine_reason": "CODE_UNKNOWN",
+       "source_key": "edge-i-101|1|source-migrated|edge-a-badstatus",
+       "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+      },
+      {
+       "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+       "phase": "schedule",
+       "population": "dunning_attempts",
+       "quarantine_reason": "FK_ORPHAN",
+       "source_key": "edge-i-07|1|target-schedule|1c3cb383-b0af-0845-99ef-c617a447a8cc",
+       "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+      },
+      {
+       "detail": "fk_da_invoice: no invoice row",
+       "phase": "schedule",
+       "population": "dunning_attempts",
+       "quarantine_reason": "FK_ORPHAN",
+       "source_key": "edge-i-absent|1|source-migrated|edge-a-orphan",
+       "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+      },
+      {
+       "detail": "uq_dunning_attempts(invoice_id, attempt_no) collision",
+       "phase": "schedule",
+       "population": "dunning_attempts",
+       "quarantine_reason": "KEY_DUPLICATE",
+       "source_key": "edge-i-100|1|source-migrated|edge-a-dup-a",
+       "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+      },
+      {
+       "detail": "uq_dunning_attempts(invoice_id, attempt_no) collision",
+       "phase": "schedule",
+       "population": "dunning_attempts",
+       "quarantine_reason": "KEY_DUPLICATE",
+       "source_key": "edge-i-100|1|source-migrated|edge-a-dup-b",
+       "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+      },
+      {
+       "detail": "attempt candidate 2147483648 (NVL(MAX(attempt_no),0)+1 in BIGINT) is outside the INT the target column declares, so it is rejected before any cast",
+       "phase": "schedule",
+       "population": "dunning_attempts",
+       "quarantine_reason": "NUMERIC_OVERFLOW",
+       "source_key": "edge-i-09|2147483648|target-schedule|ff4ea7ae-c8b1-1c2b-970a-5678e1ce37a3",
+       "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+      },
+      {
+       "detail": "no CODES(NOTIF_KIND) row for 88",
+       "phase": "suspend",
+       "population": "notifications",
+       "quarantine_reason": "CODE_UNKNOWN",
+       "source_key": "edge-n-badkind",
+       "source_table": "OW_BILLING.NOTIFICATIONS"
+      },
+      {
+       "detail": "fk_notif_tenant: no tenant row",
+       "phase": "suspend",
+       "population": "notifications",
+       "quarantine_reason": "FK_ORPHAN",
+       "source_key": "edge-n-orphan",
+       "source_table": "OW_BILLING.NOTIFICATIONS"
+      },
+      {
+       "detail": "no CODES(TENANT_STATUS) row for 99",
+       "phase": "suspend",
+       "population": "tenants",
+       "quarantine_reason": "CODE_UNKNOWN",
+       "source_key": "edge-t-03",
+       "source_table": "OW_BILLING.TENANTS"
+      },
+      {
+       "detail": "tenant id repeats 2 times in ow_tp.bronze.tenants, impossible under the source primary key",
+       "phase": "suspend",
+       "population": "tenants",
+       "quarantine_reason": "KEY_DUPLICATE",
+       "source_key": "edge-t-50",
+       "source_table": "OW_BILLING.TENANTS"
+      },
+      {
+       "detail": "tenant id repeats 2 times in ow_tp.bronze.tenants, impossible under the source primary key; this is the physical row at ordinal 2, collapsed before the sweep join and rejected on its own payload",
+       "phase": "suspend",
+       "population": "tenants",
+       "quarantine_reason": "KEY_DUPLICATE",
+       "source_key": "edge-t-50|2",
+       "source_table": "OW_BILLING.TENANTS"
+      }
+     ]
+    },
+    "runs": {
+     "cold": {
+      "batch_id": "20260829225949e1",
+      "commit_metrics": {
+       "schedule": {
+        "ow_tp.silver.dunning_attempts": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 785464220073788); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 86,
+         "rows_deleted": 0,
+         "rows_inserted": 129,
+         "rows_updated": 0,
+         "version": 87,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+          "job_run_id": "978805789995480"
+         }
+        },
+        "ow_tp.silver.quarantine_silver_dunning": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 785464220073788); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 131,
+         "rows_deleted": 0,
+         "rows_inserted": 6,
+         "rows_updated": 0,
+         "version": 132,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+          "job_run_id": "978805789995480"
+         }
+        }
+       },
+       "suspend": {
+        "ow_tp.silver.notifications": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 85,
+         "rows_deleted": 0,
+         "rows_inserted": 63,
+         "rows_updated": 0,
+         "version": 86,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+          "job_run_id": "978805789995480"
+         }
+        },
+        "ow_tp.silver.quarantine_silver_dunning": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 132,
+         "rows_deleted": 0,
+         "rows_inserted": 2,
+         "rows_updated": 0,
+         "version": 135,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+          "job_run_id": "978805789995480"
+         }
+        },
+        "ow_tp.silver.subscriptions": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 59,
+         "rows_deleted": 0,
+         "rows_inserted": 0,
+         "rows_updated": 2,
+         "version": 60,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+          "job_run_id": "978805789995480"
+         }
+        },
+        "ow_tp.silver.tenants": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (978805789995480, 33990257949566); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 85,
+         "rows_deleted": 0,
+         "rows_inserted": 78,
+         "rows_updated": 0,
+         "version": 86,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e1",
+          "job_run_id": "978805789995480"
+         }
+        }
+       }
+      },
+      "run_id": 978805789995480
+     },
+     "rerun": {
+      "batch_id": "20260829225949e2",
+      "commit_metrics": {
+       "schedule": {
+        "ow_tp.silver.dunning_attempts": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 1096826108458927); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 87,
+         "rows_deleted": 0,
+         "rows_inserted": 0,
+         "rows_updated": 0,
+         "version": 88,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+          "job_run_id": "743540040370614"
+         }
+        },
+        "ow_tp.silver.quarantine_silver_dunning": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 1096826108458927); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 135,
+         "rows_deleted": 0,
+         "rows_inserted": 6,
+         "rows_updated": 0,
+         "version": 136,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+          "job_run_id": "743540040370614"
+         }
+        }
+       },
+       "suspend": {
+        "ow_tp.silver.notifications": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 86,
+         "rows_deleted": 0,
+         "rows_inserted": 0,
+         "rows_updated": 0,
+         "version": 87,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+          "job_run_id": "743540040370614"
+         }
+        },
+        "ow_tp.silver.quarantine_silver_dunning": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 136,
+         "rows_deleted": 0,
+         "rows_inserted": 2,
+         "rows_updated": 0,
+         "version": 139,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+          "job_run_id": "743540040370614"
+         }
+        },
+        "ow_tp.silver.subscriptions": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "commit_from_this_run": false,
+         "newer_commits_by_other_runs": [],
+         "note": "this run produced no such commit on this target: the write changed nothing",
+         "operation": "MERGE",
+         "pre_run_version": 60,
+         "rows_deleted": 0,
+         "rows_inserted": 0,
+         "rows_updated": 0,
+         "version": null
+        },
+        "ow_tp.silver.tenants": {
+         "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (743540040370614, 501345221858141); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+         "attribution_rule_matched": "job_run_id",
+         "commit_from_this_run": true,
+         "operation": "MERGE",
+         "pre_run_version": 86,
+         "rows_deleted": 0,
+         "rows_inserted": 0,
+         "rows_updated": 0,
+         "version": 87,
+         "writing_job_run": {
+          "job_name": "ow_tp_silver_dunning_dunning_edge_20260829225949e2",
+          "job_run_id": "743540040370614"
+         }
+        }
+       }
+      },
+      "run_id": 743540040370614
+     }
+    },
+    "schedule_row_diff": {
+     "columns_compared": [
+      "attempt_no",
+      "invoice_id",
+      "scheduled_for",
+      "status_cd",
+      "tenant_id"
+     ],
+     "differences": [],
+     "rows_compared": 7,
+     "rows_differing": 0,
+     "rows_only_in_source": [],
+     "rows_only_in_target": [],
+     "source_of_truth": "an independent Python model of sp_schedule_dunning in fixtures.expectations() (FK_ORPHAN rows excluded: the source's INSERT could not have written them)"
+    },
+    "silver_subscriptions_written_by": {
+     "reason": "this unit may not INSERT into ow_tp.silver.subscriptions, not even in a scratch namespace, so the table's own writer produced the namespace's rows",
+     "run": {
+      "batch_id": "20260829225949p",
+      "ns": "dunning_edge",
+      "result_state": "SUCCESS",
+      "run_id": 1024285367763954
+     },
+     "unit": "silver_plans (wave 3, merged, unchanged)"
+    },
+    "target_counts": {
+     "dunning_attempts": 129,
+     "notifications": 63,
+     "subscriptions": 25,
+     "tenants": 78
+    }
+   },
+   "dunning_halt": {
+    "attempt_rows_loaded": 0,
+    "batch_id": "20260829225949h1",
+    "declared_as": "generated fixture",
+    "halt_message": "AssertionError: STOPA-QUARANTINE: quarantine rate exceeds 5.0% on ['dunning_attempts'] \u2014 {\"dunning_attempts\": {\"basis\": \"attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \\u2014 numerator and denominator on that one population\", \"source_rows\": 10, \"loaded_rows\": 7, \"rejected_rows\": 3, \"quarantine_ledger_rows_this_batch\": 3, \"rate_pct\": 30.0, \"rate_pct_unrounded\": \"30.0\", \"threshold_pct\": 5.0, \"decided_by\": \"rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares\", \"over_threshold\": true}}. Rejected rows are already persisted in ow_tp.silver.quarantine_silver_dunning for batch 20260829225949h1; escalate rather than reporting green on the surviving population.",
+    "halt_raised": true,
+    "namespace": "dunning_halt",
+    "note": "the rejects are in the ledger for this batch although the phase raised, and phase 2 never ran: the task dependency is what stops it",
+    "quarantine_rows": [
+     {
+      "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+      "phase": "schedule",
+      "population": "dunning_attempts",
+      "quarantine_reason": "FK_ORPHAN",
+      "source_key": "halt-i-08|1|target-schedule|12368af9-a982-d65c-197b-511c70c435d4",
+      "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+     },
+     {
+      "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+      "phase": "schedule",
+      "population": "dunning_attempts",
+      "quarantine_reason": "FK_ORPHAN",
+      "source_key": "halt-i-09|1|target-schedule|052957a6-1f45-bdee-f20a-5686a5fe7d13",
+      "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+     },
+     {
+      "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+      "phase": "schedule",
+      "population": "dunning_attempts",
+      "quarantine_reason": "FK_ORPHAN",
+      "source_key": "halt-i-10|1|target-schedule|ff90d234-1e41-997e-706f-f32c2b350bf4",
+      "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+     }
+    ],
+    "quarantine_rows_persisted_before_the_halt": 3,
+    "run_id": 1013140448033381,
+    "schedule_task_result_state": "FAILED",
+    "seed": {
+     "bronze_rows": {
+      "invoices": 10,
+      "tenants": 4
+     },
+     "namespace": "dunning_halt",
+     "provenance": "generated fixture, declared as generated: every bronze row carries _source_table = 'generated-fixture' and no row of it exists in OW_BILLING",
+     "reseeded": true,
+     "statements": 14
+    },
+    "suspend_task_result_state": "UPSTREAM_FAILED"
+   },
+   "dunning_t002": {
+    "as_of": "2026-02-14",
+    "declared_as": "replay of ns=demo's bronze ingest rows",
+    "provenance": "copy of ns=demo's ow_tp.bronze ingest rows tagged _source_table = 'replay-of-demo', so sp_schedule_dunning can be reproduced on 2026-02-14 without writing ns=demo for a second night",
+    "run_id": 846396211831056,
+    "target_counts": {
+     "dunning_attempts": 3,
+     "notifications": 1,
+     "subscriptions": 0,
+     "tenants": 69
+    }
+   },
+   "dunning_t003": {
+    "as_of": "2026-02-17",
+    "declared_as": "replay of ns=demo's bronze ingest rows",
+    "provenance": "copy of ns=demo's ow_tp.bronze ingest rows tagged _source_table = 'replay-of-demo', so sp_schedule_dunning can be reproduced on 2026-02-17 without writing ns=demo for a second night",
+    "run_id": 963031144290003,
+    "target_counts": {
+     "dunning_attempts": 3,
+     "notifications": 1,
+     "subscriptions": 0,
+     "tenants": 69
+    }
+   }
+  }
+ },
+ "money": {
+  "quarantined_rows_beside_every_figure": {
+   "dunning_attempts": 0,
+   "notifications": 0,
+   "subscriptions_swept": 0,
+   "tenants": 0
+  },
+  "source_overdue_total": "322.58",
+  "target_attempt_invoice_total": "483.87",
+  "target_overdue_total_snapshot": "322.58"
+ },
+ "namespace": "demo",
+ "planted_anomaly_detections": {
+  "actual_set": [
+   "ANOM-SWALLOWED-INSERT",
+   "ANOM-LOCALE-DAY",
+   "ANOM-SHARED-WRITE",
+   "ANOM-NOTIFICATION-SIDE-EFFECT"
+  ],
+  "detection_basis": {
+   "ANOM-LOCALE-DAY": "as_of 2026-02-28 is SAT and 2 attempts moved +2 days; the day-number origin is proved against pinned dates and the locale path is shown not to match",
+   "ANOM-NOTIFICATION-SIDE-EFFECT": "the source's NOT EXISTS reproduced; a same-p_as_of rerun adds 0 and p_as_of=2026-03-14 would add 1",
+   "ANOM-SHARED-WRITE": "1 ow_tp.silver.subscriptions row(s) updated on two columns, with per-row prior status and a before/after hash of every other column",
+   "ANOM-SWALLOWED-INSERT": "measured in ns=dunning_edge (generated fixture): {'CODE_UNKNOWN': 1, 'FK_ORPHAN': 2, 'KEY_DUPLICATE': 2, 'NUMERIC_OVERFLOW': 1} attempt rows the source's WHEN OTHERS THEN NULL would have hidden, by cause. In ns=demo the population is 0 orphans and 0 collisions, and a zero there is not a detection, which is why the fixture namespace exists"
+  },
+  "expected_set": [
+   "ANOM-SWALLOWED-INSERT",
+   "ANOM-LOCALE-DAY",
+   "ANOM-SHARED-WRITE",
+   "ANOM-NOTIFICATION-SIDE-EFFECT"
+  ],
+  "missing": [],
+  "unexpected": []
+ },
+ "quarantine": {
+  "by_reason_this_batch": {
+   "schedule": {},
+   "suspend": {}
+  },
+  "closed_reason_set": [
+   "KEY_NULL",
+   "KEY_DUPLICATE",
+   "FK_ORPHAN",
+   "CODE_UNKNOWN",
+   "NUMERIC_OVERFLOW"
+  ],
+  "halt_bases": {
+   "schedule": {
+    "dunning_attempts": {
+     "basis": "attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \u2014 numerator and denominator on that one population",
+     "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+     "loaded_rows": 3,
+     "over_threshold": false,
+     "quarantine_ledger_rows_this_batch": 0,
+     "rate_pct": 0.0,
+     "rate_pct_unrounded": "0.0",
+     "rejected_rows": 0,
+     "source_rows": 3,
+     "threshold_pct": 5.0
+    }
+   },
+   "suspend": {
+    "notifications": {
+     "basis": "notification driver: one row per source OW_BILLING.NOTIFICATIONS row in ns, plus one row per suspension notification sp_suspend_overdue's NOT EXISTS lets through in this run \u2014 numerator and denominator on that one population",
+     "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+     "loaded_rows": 1,
+     "over_threshold": false,
+     "quarantine_ledger_rows_this_batch": null,
+     "rate_pct": 0.0,
+     "rate_pct_unrounded": "0.0",
+     "rejected_rows": 0,
+     "source_rows": 1,
+     "threshold_pct": 5.0
+    },
+    "subscriptions_swept": {
+     "basis": "shared-table driver: one row per ow_tp.silver.subscriptions row in ns that sp_suspend_overdue's UPDATE matches in this run (tenant swept, subscription at status_cd = 10) \u2014 numerator and denominator on that one population",
+     "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+     "loaded_rows": 0,
+     "over_threshold": false,
+     "quarantine_ledger_rows_this_batch": 0,
+     "rate_pct": 0.0,
+     "rate_pct_unrounded": "0.0",
+     "rejected_rows": 0,
+     "source_rows": 0,
+     "threshold_pct": 5.0
+    },
+    "tenants": {
+     "basis": "tenants: every OW_BILLING.TENANTS row in ns \u2014 numerator and denominator on that one population",
+     "decided_by": "rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares",
+     "loaded_rows": 69,
+     "over_threshold": false,
+     "quarantine_ledger_rows_this_batch": 0,
+     "rate_pct": 0.0,
+     "rate_pct_unrounded": "0.0",
+     "rejected_rows": 0,
+     "source_rows": 69,
+     "threshold_pct": 5.0
+    }
+   }
+  },
+  "halt_demonstration": {
+   "attempt_rows_loaded": 0,
+   "batch_id": "20260829225949h1",
+   "declared_as": "generated fixture",
+   "halt_message": "AssertionError: STOPA-QUARANTINE: quarantine rate exceeds 5.0% on ['dunning_attempts'] \u2014 {\"dunning_attempts\": {\"basis\": \"attempt driver: one row per source OW_BILLING.DUNNING_ATTEMPTS row in ns, plus one row per status_cd = 40 invoice sp_schedule_dunning's cursor visits in this run \\u2014 numerator and denominator on that one population\", \"source_rows\": 10, \"loaded_rows\": 7, \"rejected_rows\": 3, \"quarantine_ledger_rows_this_batch\": 3, \"rate_pct\": 30.0, \"rate_pct_unrounded\": \"30.0\", \"threshold_pct\": 5.0, \"decided_by\": \"rejected_rows * 100 > threshold_pct * source_rows, on the unrounded pair; rate_pct is the rounded figure for reading and is not what the halt compares\", \"over_threshold\": true}}. Rejected rows are already persisted in ow_tp.silver.quarantine_silver_dunning for batch 20260829225949h1; escalate rather than reporting green on the surviving population.",
+   "halt_raised": true,
+   "namespace": "dunning_halt",
+   "note": "the rejects are in the ledger for this batch although the phase raised, and phase 2 never ran: the task dependency is what stops it",
+   "quarantine_rows": [
+    {
+     "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+     "phase": "schedule",
+     "population": "dunning_attempts",
+     "quarantine_reason": "FK_ORPHAN",
+     "source_key": "halt-i-08|1|target-schedule|12368af9-a982-d65c-197b-511c70c435d4",
+     "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+    },
+    {
+     "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+     "phase": "schedule",
+     "population": "dunning_attempts",
+     "quarantine_reason": "FK_ORPHAN",
+     "source_key": "halt-i-09|1|target-schedule|052957a6-1f45-bdee-f20a-5686a5fe7d13",
+     "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+    },
+    {
+     "detail": "fk_da_tenant: no tenant row, so the source INSERT raises ORA-02291 and WHEN OTHERS THEN NULL hides it",
+     "phase": "schedule",
+     "population": "dunning_attempts",
+     "quarantine_reason": "FK_ORPHAN",
+     "source_key": "halt-i-10|1|target-schedule|ff90d234-1e41-997e-706f-f32c2b350bf4",
+     "source_table": "OW_BILLING.DUNNING_ATTEMPTS"
+    }
+   ],
+   "quarantine_rows_persisted_before_the_halt": 3,
+   "run_id": 1013140448033381,
+   "schedule_task_result_state": "FAILED",
+   "seed": {
+    "bronze_rows": {
+     "invoices": 10,
+     "tenants": 4
+    },
+    "namespace": "dunning_halt",
+    "provenance": "generated fixture, declared as generated: every bronze row carries _source_table = 'generated-fixture' and no row of it exists in OW_BILLING",
+    "reseeded": true,
+    "statements": 14
+   },
+   "suspend_task_result_state": "UPSTREAM_FAILED"
+  },
+  "persisted_before_threshold_evaluated": true,
+  "table": "ow_tp.silver.quarantine_silver_dunning",
+  "threshold_pct": 5.0
+ },
+ "recon_result": "pass",
+ "reconciled_namespace_setup": {
+  "columns_touched_on_ow_tp_silver_subscriptions": [
+   "status_cd",
+   "suspended_on"
+  ],
+  "declared_as": "harness setup before the cold load, performed by the runner and not by the notebook, which issues no DELETE and no UPDATE outside its two owned shared columns",
+  "namespace": "demo",
+  "rows_removed_from_this_units_own_targets": {
+   "ow_tp.silver.dunning_attempts": 3,
+   "ow_tp.silver.notifications": 2,
+   "ow_tp.silver.quarantine_silver_dunning": 0,
+   "ow_tp.silver.tenants": 69
+  },
+  "shared_subscription_rows_restored_to_the_source_status": [
+   "20000000-0000-0000-0000-000000000005"
+  ]
+ },
+ "run_mode": "live",
+ "runs": {
+  "cold": {
+   "batch_id": "20260829225949a",
+   "phases": {
+    "schedule": {
+     "as_of_day_of_week_english": "SAT",
+     "as_of_weekend_shift_days": 2,
+     "commit_metrics": {
+      "ow_tp.silver.dunning_attempts": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 799670550714400); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 98,
+       "rows_deleted": 0,
+       "rows_inserted": 3,
+       "rows_updated": 0,
+       "version": 99,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 799670550714400); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 157,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      }
+     },
+     "merge_metrics": {
+      "num_affected_rows": "3",
+      "num_deleted_rows": "0",
+      "num_inserted_rows": "3",
+      "num_updated_rows": "0"
+     },
+     "money": {
+      "overdue_total_snapshot": "322.58",
+      "quarantined_rows": 0,
+      "scheduled_attempt_invoice_total": "322.58"
+     },
+     "outer_join": {
+      "invoices_kept_with_no_tenant_row": 0,
+      "same_day_invoices_scheduled_but_not_overdue_by_fn": 0,
+      "tenant_status_unknown": 0
+     },
+     "overdue_snapshot_rows": 2,
+     "scheduled_count": 2,
+     "swallowed_insert_exposure": {
+      "concurrency_exposed_attempts": 2,
+      "concurrency_note": "every attempt this run scheduled is exposed: attempt_no is NVL(MAX,0)+1 read with no lock and the id is a pure function of (invoice_id, attempt_no), so a concurrent source run computes the same id and one of the two INSERTs raises ORA-00001 into WHEN OTHERS THEN NULL. The target's job is max_concurrent_runs = 1 and its MERGE makes the second writer a no-op instead of a silent loss",
+      "fk_da_invoice_orphans": 0,
+      "fk_da_tenant_orphans": 0,
+      "rerun_note": "a source rerun on the same p_as_of appends this many more attempts (MAX+1 again); this port pins attempt_no to the ingest population, so its rerun is a no-op (DIV-RERUN-APPENDS, D-27)",
+      "rerun_would_append": 2,
+      "uq_collisions": 0
+     }
+    },
+    "suspend": {
+     "commit_metrics": {
+      "ow_tp.silver.notifications": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 97,
+       "rows_deleted": 0,
+       "rows_inserted": 2,
+       "rows_updated": 0,
+       "version": 98,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      },
+      "ow_tp.silver.quarantine_silver_dunning": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "commit_from_this_run": false,
+       "newer_commits_by_other_runs": [],
+       "note": "this run produced no such commit on this target: the write changed nothing",
+       "operation": "MERGE",
+       "pre_run_version": 157,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 0,
+       "version": null
+      },
+      "ow_tp.silver.subscriptions": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 61,
+       "rows_deleted": 0,
+       "rows_inserted": 0,
+       "rows_updated": 1,
+       "version": 62,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      },
+      "ow_tp.silver.tenants": {
+       "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (630403049184591, 274241087003968); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+       "attribution_rule_matched": "job_run_id",
+       "commit_from_this_run": true,
+       "operation": "MERGE",
+       "pre_run_version": 96,
+       "rows_deleted": 0,
+       "rows_inserted": 69,
+       "rows_updated": 0,
+       "version": 97,
+       "writing_job_run": {
+        "job_name": "ow_tp_silver_dunning_demo_20260829225949a",
+        "job_run_id": "630403049184591"
+       }
+      }
+     },
+     "merge_metrics": {
+      "notifications": {
+       "num_affected_rows": "2",
+       "num_deleted_rows": "0",
+       "num_inserted_rows": "2",
+       "num_updated_rows": "0"
+      },
+      "tenants": {
+       "num_affected_rows": "69",
+       "num_deleted_rows": "0",
+       "num_inserted_rows": "69",
+       "num_updated_rows": "0"
+      }
+     },
+     "money": {
+      "overdue_total_in_cutoff": "322.58",
+      "quarantined_rows": 0
+     },
+     "notifications": {
+      "later_as_of_new_candidate_tenants": 0,
+      "note": "the source's INSERT carries WHERE NOT EXISTS on (tenant_id, kind_cd = 3, sent_at = CAST(TRUNC(p_as_of) AS TIMESTAMP)), so a legacy rerun on the same p_as_of adds nothing; a run on a different p_as_of adds a second notification only for a tenant still at status_cd = 10, and the sweep's own UPDATE TENANTS SET status_cd = 20 takes the tenants it just suspended out of that population",
+      "population_rows_contributed_by_this_sweep": 1,
+      "same_as_of_rerun_would_add": 0,
+      "suppressed_by_not_exists": 0,
+      "tenants_active_with_suspension_notice_on_another_date": 0,
+      "written_by_sweep": 1,
+      "written_by_sweep_note": "written_by_sweep is the standing count for this as_of, read back from the target: it includes a row an earlier run of this unit wrote on the same as_of, so it is not this run's contribution. population_rows_contributed_by_this_sweep is this run's contribution to the declared notifications population"
+     },
+     "subscriptions_shared": {
+      "attribution_origins_seen": {
+       "source-migrated": 1
+      },
+      "columns_not_written": [
+       "id",
+       "tenant_id",
+       "plan_id",
+       "starts_on",
+       "ends_on",
+       "status_cd_before",
+       "ends_on_before",
+       "closed_by_change",
+       "closeout_seq",
+       "change_effective_on",
+       "change_plan_id",
+       "reactivated_from_suspended",
+       "cancelled_preserved",
+       "overlaps_new_subscription",
+       "ns",
+       "_origin",
+       "_batch_id",
+       "_loaded_at"
+      ],
+      "columns_written": [
+       "status_cd",
+       "suspended_on"
+      ],
+      "ddl_statements": 0,
+      "deletes": 0,
+      "inserts": 0,
+      "match_key": [
+       "id",
+       "ns"
+      ],
+      "merge_metrics": {
+       "num_affected_rows": "1",
+       "num_deleted_rows": "0",
+       "num_inserted_rows": "0",
+       "num_updated_rows": "1"
+      },
+      "owned_by": "silver_plans (wave 3)",
+      "rows": [
+       {
+        "_batch_id_preserved": "20260829120813a",
+        "_origin_preserved": "source-migrated",
+        "id": "20000000-0000-0000-0000-000000000005",
+        "other_columns_hash_after": "5cdc0b827c15ab054194ff568496e0d4",
+        "other_columns_hash_before": "5cdc0b827c15ab054194ff568496e0d4",
+        "other_columns_unchanged": true,
+        "status_cd_after": 20,
+        "status_cd_before": 10,
+        "suspended_on_after": "2026-02-28 00:00:00",
+        "suspended_on_before": null,
+        "tenant_id": "00000000-0000-0000-0000-000000000005"
+       }
+      ],
+      "rows_left_at_status": {},
+      "rows_matched_by_sweep": 1,
+      "rows_updated": 1,
+      "table": "ow_tp.silver.subscriptions"
+     },
+     "sweep": {
+      "candidate_tenants": 2,
+      "candidates_with_no_tenant_row": 0,
+      "tenants_skipped_inactive_at_ingest": 1,
+      "tenants_skipped_not_active_at_run": 1,
+      "tenants_suspended_by_a_sweep_in_this_namespace_including_earlier_runs": 1,
+      "tenants_swept": 1,
+      "tenants_total": 69
+     }
+    }
+   },
+   "run_id": 630403049184591,
+   "run_page_path": "/?o=7474651138173478#job/430047193973925/run/630403049184591",
+   "tasks": {
+    "schedule_dunning": {
+     "life_cycle_state": "TERMINATED",
+     "result_state": "SUCCESS",
+     "state_message": "",
+     "task_run_id": 799670550714400
+    },
+    "suspend_overdue": {
+     "life_cycle_state": "TERMINATED",
+     "result_state": "SUCCESS",
+     "state_message": "",
+     "task_run_id": 274241087003968
+    }
+   }
+  },
+  "one_snapshot": {
+   "manifest": {
+    "as_of": "2026-02-28",
+    "batch_id": "20260829225949a",
+    "invoice_source": "ow_tp.silver.invoices",
+    "money_total_overdue": "322.58",
+    "note": "one snapshot per run, written by phase 'schedule' and read by phase 'suspend' (ACC-TWO-ENTRYPOINTS); phase 2 never re-queries the invoice table for its population",
+    "ns": "demo",
+    "rows": 2,
+    "sha256": "62204524754e46dd1a5f8833db5b7bfc777ce01f1498cc55c01b50e6341a1287",
+    "unit": "silver_dunning",
+    "written_at": "2026-08-29T23:44:58.975896+00:00",
+    "written_by_run_ids": [
+     "630403049184591",
+     "799670550714400"
+    ]
+   },
+   "path": "/Volumes/ow_tp/bronze/landing/demo/silver_dunning/snapshots/20260829225949a/overdue_snapshot.json"
+  },
+  "rerun": {
+   "batch_id": "20260829225949b",
+   "commit_metrics": {
+    "schedule": {
+     "ow_tp.silver.dunning_attempts": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 548258265834173); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 99,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 100,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_demo_20260829225949b",
+       "job_run_id": "292464988243560"
+      }
+     },
+     "ow_tp.silver.quarantine_silver_dunning": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 548258265834173); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "commit_from_this_run": false,
+      "newer_commits_by_other_runs": [],
+      "note": "this run produced no such commit on this target: the write changed nothing",
+      "operation": "MERGE",
+      "pre_run_version": 157,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": null
+     }
+    },
+    "suspend": {
+     "ow_tp.silver.notifications": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 98,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 99,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_demo_20260829225949b",
+       "job_run_id": "292464988243560"
+      }
+     },
+     "ow_tp.silver.quarantine_silver_dunning": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "commit_from_this_run": false,
+      "newer_commits_by_other_runs": [],
+      "note": "this run produced no such commit on this target: the write changed nothing",
+      "operation": "MERGE",
+      "pre_run_version": 157,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": null
+     },
+     "ow_tp.silver.subscriptions": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "commit_from_this_run": false,
+      "newer_commits_by_other_runs": [],
+      "note": "this run produced no such commit on this target: the write changed nothing",
+      "operation": "MERGE",
+      "pre_run_version": 62,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": null
+     },
+     "ow_tp.silver.tenants": {
+      "attributed_by": "version > the target's pre-run version AND the commit's job.jobRunId is one of this run's own run ids (292464988243560, 1017207406043705); where DESCRIBE HISTORY reports no job run id at all, the fallback is the commit's job.jobName ending with this run's batch id",
+      "attribution_rule_matched": "job_run_id",
+      "commit_from_this_run": true,
+      "operation": "MERGE",
+      "pre_run_version": 97,
+      "rows_deleted": 0,
+      "rows_inserted": 0,
+      "rows_updated": 0,
+      "version": 98,
+      "writing_job_run": {
+       "job_name": "ow_tp_silver_dunning_demo_20260829225949b",
+       "job_run_id": "292464988243560"
+      }
+     }
+    }
+   },
+   "merge_metrics": {
+    "schedule": {
+     "num_affected_rows": "0",
+     "num_deleted_rows": "0",
+     "num_inserted_rows": "0",
+     "num_updated_rows": "0"
+    },
+    "suspend": {
+     "notifications": {
+      "num_affected_rows": "0",
+      "num_deleted_rows": "0",
+      "num_inserted_rows": "0",
+      "num_updated_rows": "0"
+     },
+     "tenants": {
+      "num_affected_rows": "0",
+      "num_deleted_rows": "0",
+      "num_inserted_rows": "0",
+      "num_updated_rows": "0"
+     }
+    }
+   },
+   "run_id": 292464988243560,
+   "tasks": {
+    "schedule_dunning": {
+     "life_cycle_state": "TERMINATED",
+     "result_state": "SUCCESS",
+     "state_message": "",
+     "task_run_id": 548258265834173
+    },
+    "suspend_overdue": {
+     "life_cycle_state": "TERMINATED",
+     "result_state": "SUCCESS",
+     "state_message": "",
+     "task_run_id": 1017207406043705
+    }
+   }
+  }
+ },
+ "shared_write_evidence": {
+  "attribution_origins_seen": {
+   "source-migrated": 1
+  },
+  "columns_not_written": [
+   "id",
+   "tenant_id",
+   "plan_id",
+   "starts_on",
+   "ends_on",
+   "status_cd_before",
+   "ends_on_before",
+   "closed_by_change",
+   "closeout_seq",
+   "change_effective_on",
+   "change_plan_id",
+   "reactivated_from_suspended",
+   "cancelled_preserved",
+   "overlaps_new_subscription",
+   "ns",
+   "_origin",
+   "_batch_id",
+   "_loaded_at"
+  ],
+  "columns_written": [
+   "status_cd",
+   "suspended_on"
+  ],
+  "ddl_statements": 0,
+  "deletes": 0,
+  "inserts": 0,
+  "match_key": [
+   "id",
+   "ns"
+  ],
+  "merge_metrics": {
+   "num_affected_rows": "1",
+   "num_deleted_rows": "0",
+   "num_inserted_rows": "0",
+   "num_updated_rows": "1"
+  },
+  "owned_by": "silver_plans (wave 3)",
+  "rows": [
+   {
+    "_batch_id_preserved": "20260829120813a",
+    "_origin_preserved": "source-migrated",
+    "id": "20000000-0000-0000-0000-000000000005",
+    "other_columns_hash_after": "5cdc0b827c15ab054194ff568496e0d4",
+    "other_columns_hash_before": "5cdc0b827c15ab054194ff568496e0d4",
+    "other_columns_unchanged": true,
+    "status_cd_after": 20,
+    "status_cd_before": 10,
+    "suspended_on_after": "2026-02-28 00:00:00",
+    "suspended_on_before": null,
+    "tenant_id": "00000000-0000-0000-0000-000000000005"
+   }
+  ],
+  "rows_left_at_status": {},
+  "rows_matched_by_sweep": 1,
+  "rows_updated": 1,
+  "table": "ow_tp.silver.subscriptions"
+ },
+ "source_provenance": {
+  "note": "the two procedures mutate the source, so their expected end state is re-expressed as read-only SELECTs and evaluated by Oracle in a transaction that is rolled back; fn_overdue_accounts is a function and is called directly",
+  "oracle_banner": "Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free",
+  "oracle_source_sha": "0d326cad54d94cd64e8abb53585b37436eaad2193fdc15ba3596fbb8db3f0d55",
+  "pinned_sha_file": "procs/oracle/transcripts/ORACLE_SOURCE_SHA",
+  "procedures_called": [
+   "pkg_dunning.fn_overdue_accounts"
+  ],
+  "procedures_never_called": [
+   "pkg_dunning.sp_schedule_dunning",
+   "pkg_dunning.sp_suspend_overdue"
+  ],
+  "seed_command": "make oracle-billing-seed NS=demo SCALE=demo",
+  "seeded_scale": {
+   "generated_at": "2026-08-01T00:00:00Z",
+   "generator_version": "1",
+   "manifest": "testdata/legacy/manifests/demo.json",
+   "namespace": "demo",
+   "planted_anomalies": [
+    {
+     "count": 31,
+     "kind": "malformed_csv_lists",
+     "target": "oracle.OW_BILLING.CUSTOMER_MASTER.RELATED_ACCT_IDS"
+    },
+    {
+     "count": 50,
+     "kind": "dirty_dates",
+     "target": "oracle.OW_BILLING.CUSTOMER_MASTER.SIGNUP_DT"
+    },
+    {
+     "count": 37,
+     "kind": "orphaned_rows",
+     "target": "oracle.OW_BILLING.INVOICE_LINE"
+    }
+   ],
+   "seed": 714559852,
+   "seed_legacy_params": {
+    "oracle.OW_BILLING.CUSTOMER_MASTER": {
+     "batch_no": 85559852,
+     "scale": "demo"
+    },
+    "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+     "batch_no": 85559852,
+     "scale": "demo"
+    },
+    "oracle.OW_BILLING.INVOICE_HEADER": {
+     "batch_no": 85559852,
+     "scale": "demo"
+    },
+    "oracle.OW_BILLING.INVOICE_LINE": {
+     "batch_no": 85559852,
+     "scale": "demo"
+    },
+    "oracle.OW_BILLING.TENANTS": {
+     "batch_no": 85559852,
+     "scale": "demo"
+    }
+   },
+   "targets": {
+    "oracle.OW_BILLING.CUSTOMER_MASTER": {
+     "checksum": "4f92feef2ad58dbab30e289957931928",
+     "rows": 25000
+    },
+    "oracle.OW_BILLING.ENTITY_ATTR_VALUE": {
+     "rows": 8333
+    },
+    "oracle.OW_BILLING.INVOICE_HEADER": {
+     "rows": 18750
+    },
+    "oracle.OW_BILLING.INVOICE_LINE": {
+     "checksum": "88a66751f0b08b476b492105a2efc537",
+     "rows": 150000
+    },
+    "oracle.OW_BILLING.TENANTS": {
+     "rows": 60
+    }
+   }
+  },
+  "source_counts": {
+   "codes": 32,
+   "dunning_attempts": 1,
+   "invoices": 3,
+   "invoices_overdue": 2,
+   "notifications": 1,
+   "notifications_kind_3": 0,
+   "subscriptions": 69,
+   "tenants": 69
+  },
+  "source_populations": {
+   "attempts_with_unknown_status_cd": 0,
+   "overdue_by_fn": 2,
+   "overdue_invoices": 2,
+   "overdue_invoices_with_no_tenant_row": 0,
+   "overdue_invoices_with_unknown_tenant_status": 0,
+   "overdue_total": "322.58",
+   "overdue_total_null_rows": 0,
+   "same_calendar_day_invoices": 0,
+   "subscriptions_at_10": 68,
+   "subscriptions_at_20": 1,
+   "subscriptions_at_30": 0,
+   "tenants_at_10": 68,
+   "tenants_at_20": 1,
+   "tenants_with_unknown_status": 0
+  }
+ },
+ "target_counts": {
+  "dunning_attempts": 3,
+  "notifications": 2,
+  "subscriptions": 71,
+  "tenants": 69
+ },
+ "unit": "silver_dunning",
+ "unverified_paths": [
+  "sp_schedule_dunning and sp_suspend_overdue are never executed on the source: they mutate DUNNING_ATTEMPTS, TENANTS, SUBSCRIPTIONS and NOTIFICATIONS, so their expected end state is re-expressed as read-only SELECTs over the same predicates and evaluated by Oracle. A behaviour that lives only in PL/SQL control flow rather than in those predicates is therefore modelled, not observed.",
+  "the concurrent-run collision on the unlocked NVL(MAX(attempt_no),0)+1 is measured as an exposed population, not reproduced: reproducing it would need two interleaved Oracle sessions writing the source.",
+  "pkg_ow_util.log_msg's autonomous BILLING_AUDIT_LOG write is out of parity scope (D-20) and is not compared; g_scheduled_cnt is carried as an explicit run-level count, so the source's understated log line is described rather than reproduced.",
+  "trg_subscriptions_hist is retired (D-17): no SUBSCRIPTIONS_HIST equivalent is written or compared, and Delta history covers the change from the first target run forward.",
+  "ns=dunning_edge and ns=dunning_halt are generated fixtures. Oracle holds no copy of them, so their declared side is an independent Python model of 05_pkg_dunning.sql rather than live Oracle, and their invoices are read from ow_tp.bronze.invoices because seeding ow_tp.silver.invoices would mean writing silver_invoicing's target.",
+  "ns=dunning_t002 and ns=dunning_t003 replay ns=demo's bronze ingest rows on the transcripts' own p_as_of; their invoice population is the bronze one, which for these three invoices is the same population ns=demo's silver slice carries, but it is a different table and is declared as such.",
+  "the sweep's effect on ow_tp.silver.subscriptions is not reverted after the run: this unit may not write that table outside its two owned columns, so ns=demo now carries the suspension this night's sweep applied.",
+  "the 5% halt decides on the unrounded pair, and ACC-QUAR-THRESHOLD-EXACT shows the arithmetic for a rate that rounds to exactly 5.0 at four decimals. No namespace is seeded at that shape: the smallest population that both exceeds 5% and still rounds to 5.0 needs millions of rows, so the boundary is verified as arithmetic over the rule the notebook publishes, not as a live run.",
+  "NUMERIC_OVERFLOW is reachable and exercised on the attempt candidate (an ingest attempt at INT_MAX in ns=dunning_edge); the money half of the same rule, a total outside DECIMAL(14,2), is not exercised, because bronze's own column cannot hold such a value and this unit does not write ow_tp.bronze.invoices.",
+  "the multi-night attempt append is measured on the generated fixture namespace, on a second p_as_of, and not on ns=demo: a second night in ns=demo would leave that namespace carrying a night the reconciled comparison against live Oracle does not describe.",
+  "the cold load's starting state is arranged by the harness, not by the notebook: before it, the runner deletes this unit's own ns=demo rows written by earlier validation runs and sets status_cd/suspended_on on the ns=demo subscription rows back to the values OW_BILLING.SUBSCRIPTIONS carries. reconciled_namespace_setup publishes both counts. The notebook itself issues no DELETE and writes no other column of that table, so 'a cold load' means 'cold after that declared setup', not 'a namespace no run of this unit had ever touched'."
+ ],
+ "values_recomputed_from_target": true
+}

@@ -213,6 +213,17 @@ def is_shrink_ns(ns: str) -> bool:
     return ns.startswith(f"{NS_SHRINK_PREFIX}_")
 
 
+def is_own_scratch_ns(ns: str) -> bool:
+    """Whether `ns` is one of this unit's own generated scratch namespaces, current or abandoned.
+
+    `NS_SHRINK_PREFIX` on its own is the un-stamped namespace an earlier revision of the harness used,
+    and `fin_round` the rounding fixture's earlier namespace: both are this unit's own scratch, so its
+    own rows in them may be removed ns- and origin-scoped (D-31). A namespace this unit never named is
+    not covered, whatever it looks like.
+    """
+    return ns in (*NAMESPACES, NS_SHRINK_PREFIX, "fin_round") or is_shrink_ns(ns)
+
+
 def shrink_batch(batch: int) -> dict[str, bytes]:
     """One of `fin_shrink`'s three additive CUSTBILL batches."""
     return _drop("FINSHRINK", f"{batch:03d}", _shrink_details(batch))

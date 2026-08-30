@@ -306,6 +306,19 @@ def deploy(dbx: Dbx) -> dict[str, str]:
     return {"notebook": NOTEBOOK_WS, "spec": SPEC_WS}
 
 
+def table_exists(dbx: Dbx) -> dict[str, bool]:
+    """Which owned targets exist, read from `information_schema` rather than from a failed query."""
+    present = {
+        str(r[0])
+        for r in rows(
+            dbx,
+            "SELECT table_name FROM "
+            f"{CATALOG}.information_schema.tables WHERE table_schema = 'gold'",
+        )
+    }
+    return {t: t.rsplit(".", 1)[1] in present for t in OWNED_TABLES}
+
+
 def pre_versions(dbx: Dbx) -> dict[str, int | None]:
     """Each owned target's current Delta version, or None if the table does not exist yet."""
     out: dict[str, int | None] = {}
@@ -318,25 +331,32 @@ def pre_versions(dbx: Dbx) -> dict[str, int | None]:
     return out
 
 
-def fingerprint(dbx: Dbx, predicate: str) -> dict[str, object]:
+def fingerprint(
+    dbx: Dbx, predicate: str, tables: tuple[str, ...] = OWNED_TABLES
+) -> dict[str, object]:
     """Row count plus a content checksum of the rows matching `predicate` in each owned target.
 
     The three targets are shared by every namespace, so a cleanup this unit performs has to leave the
     rows it does not own not merely as numerous but identical. The checksum is an order-independent
     sum of `xxhash64` over each row's full JSON rendering, so a changed value in a surviving row moves
-    it exactly as a removed row does.
+    it exactly as a removed row does. The hashes are summed in `DECIMAL(38,0)`: summing them as
+    `BIGINT` overflows under ANSI mode at a few dozen rows, and an overflow that is caught and
+    reported as "table does not exist" is a fingerprint that proves nothing.
+
+    A table that does not exist is reported as such, and only that: any other failure is raised.
     """
     out: dict[str, object] = {}
-    for table in OWNED_TABLES:
-        try:
-            value = one(
-                dbx,
-                "SELECT count(*), coalesce(sum(xxhash64(to_json(struct(*)))), 0) "
-                f"FROM {table} WHERE {predicate}",
-            )
-        except DbxError:
+    existing = table_exists(dbx)
+    for table in tables:
+        if not existing[table]:
             out[table] = "table does not exist"
             continue
+        value = one(
+            dbx,
+            "SELECT count(*), "
+            "coalesce(sum(cast(xxhash64(to_json(struct(*))) AS DECIMAL(38, 0))), 0) "
+            f"FROM {table} WHERE {predicate}",
+        )
         out[table] = {
             "rows": 0 if not value else int(value[0]),
             "content_checksum": "0" if not value else str(value[1]),
@@ -351,14 +371,33 @@ def other_namespace_fingerprint(dbx: Dbx, ns: str) -> dict[str, object]:
     )
 
 
-def cold_clean(dbx: Dbx, recon: Recon, ns: str) -> dict[str, object]:
+def protected_rows(before: dict[str, object]) -> int:
+    """How many rows a cleanup's protection proof actually covered — 0 means it proved nothing."""
+    return sum(
+        int(v["rows"]) for v in before.values() if isinstance(v, dict)  # type: ignore[index]
+    )
+
+
+def cold_clean(
+    dbx: Dbx, recon: Recon, ns: str, live_ns: str | None = None
+) -> dict[str, object]:
     """Empty `ns`'s slice of this unit's own targets, and prove nothing else moved.
 
     The targets are shared across namespaces, so this is a `DELETE ... WHERE ns = <this ns> AND
     _origin IN (<this unit's origins>)` and never a `DROP TABLE`: dropping them would take every
     other namespace's published report and quarantine history with it. The proof is a row count and a
     content checksum of everything outside that predicate, before and after.
+
+    A cleanup that runs before any target exists compares an absent table to an absent table, which
+    is true and worthless. `live_ns` names the published namespace whose rows this cleanup has to
+    leave alone, and its own fingerprint is checked separately and reported with its row count, so a
+    reader can tell which cleanups carried real rows and which ran against nothing.
     """
+    live_before = (
+        fingerprint(dbx, f"ns = {sql_str(live_ns)} AND _origin IN ({OWNED_ORIGINS_LIT})")
+        if live_ns is not None and live_ns != ns
+        else None
+    )
     removed: dict[str, str] = {}
     before = other_namespace_fingerprint(dbx, ns)
     existing = pre_versions(dbx)
@@ -391,6 +430,29 @@ def cold_clean(dbx: Dbx, recon: Recon, ns: str) -> dict[str, object]:
             f"the cold-load cleanup for ns={ns} changed rows it does not own: {before} before, "
             f"{after} after. This unit may only remove its own rows in its own namespace."
         )
+    live_after = (
+        fingerprint(dbx, f"ns = {sql_str(live_ns)} AND _origin IN ({OWNED_ORIGINS_LIT})")
+        if live_before is not None
+        else None
+    )
+    if live_before is not None and live_after is not None:
+        covered = protected_rows(live_before)
+        recon.check(
+            f"COLD-CLEAN-ISOLATION/{ns}/live-namespace-{live_ns}-untouched",
+            live_before,
+            live_after,
+            f"row count and content checksum of ns={live_ns}'s own published rows in the three owned "
+            f"targets, before and after the ns-scoped cleanup of the scratch namespace {ns}. This "
+            f"cleanup runs after {live_ns} is published, so the protected population is "
+            f"{covered} real row(s) rather than an absent table: it is the cleanup path's counterpart "
+            "to the shrink sequence's batch-2 fingerprint",
+            result="pass" if covered > 0 and live_after == live_before else "fail",
+        )
+        if live_after != live_before:
+            raise RuntimeError(
+                f"the cleanup of ns={ns} changed ns={live_ns}'s published rows: {live_before} "
+                f"before, {live_after} after"
+            )
     return {
         "statement": (
             "ns- and origin-scoped DELETE on this unit's own three targets — no DROP TABLE, so no "
@@ -402,9 +464,30 @@ def cold_clean(dbx: Dbx, recon: Recon, ns: str) -> dict[str, object]:
         "rows_this_unit_may_not_touch_unchanged": {
             "check": f"COLD-CLEAN-ISOLATION/{ns}",
             "predicate": f"ns <> '{ns}' OR _origin NOT IN ({OWNED_ORIGINS_LIT})",
+            "rows_covered_by_this_proof": protected_rows(before),
+            "proves": (
+                "nothing: the three targets did not exist when this cleanup ran, so the fingerprint "
+                "compares an absent table to an absent table"
+                if not any(isinstance(v, dict) for v in before.values())
+                else f"{protected_rows(before)} row(s) outside this ns are byte-identical across the "
+                "cleanup"
+            ),
             "before": before,
             "after": after,
         },
+        **(
+            {}
+            if live_after is None or live_before is None
+            else {
+                "live_namespace_rows_untouched": {
+                    "check": f"COLD-CLEAN-ISOLATION/{ns}/live-namespace-{live_ns}-untouched",
+                    "predicate": f"ns = '{live_ns}' AND _origin IN ({OWNED_ORIGINS_LIT})",
+                    "rows_covered_by_this_proof": protected_rows(live_before),
+                    "before": live_before,
+                    "after": live_after,
+                }
+            }
+        ),
     }
 
 
@@ -1100,6 +1183,7 @@ def run_namespace(
     cold: bool,
     expect_halt: bool = False,
     tables_that_must_receive_rows: tuple[str, ...] = (MONTHLY, EXPORT),
+    live_ns: str | None = None,
 ) -> dict[str, object]:
     """Cold load then identical rerun for one namespace, with every figure recomputed after.
 
@@ -1113,7 +1197,7 @@ def run_namespace(
     stamp = time.strftime("%Y%m%d%H%M%S")
     evidence: dict[str, object] = {"namespace": ns, "role": label}
     if cold:
-        evidence["cold_load_prepared_by"] = cold_clean(dbx, recon, ns)
+        evidence["cold_load_prepared_by"] = cold_clean(dbx, recon, ns, live_ns)
 
     pre_run1 = pre_versions(dbx)
     run1 = run_notebook(dbx, ns, f"r1{stamp}", f"{ns}-cold", expect_failure=expect_halt)
@@ -1339,7 +1423,7 @@ def run_namespace(
 # --------------------------------------------------------------------------------------------------
 # Fixtures
 # --------------------------------------------------------------------------------------------------
-def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
+def fixture_namespaces(dbx: Dbx, recon: Recon, live_ns: str) -> dict[str, object]:
     """The declared generated namespaces, each existing because a measured zero is not a detection."""
     out: dict[str, object] = {
         "why": (
@@ -1372,11 +1456,13 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
             "superseded by " + ns + "; this unit's own rows for it are deleted, its bronze rows "
             "cannot be (bronze is read-only to this unit)"
         ),
-        "cleanup": cold_clean(dbx, recon, "fin_round"),
+        "cleanup": cold_clean(dbx, recon, "fin_round", live_ns),
     }
     seed = seed_bronze(dbx, ns, drops)
     legacy_run = legacy_for_drops(ns, drops)
-    evidence = run_namespace(dbx, recon, ns, "declared generated scratch namespace", cold=True)
+    evidence = run_namespace(
+        dbx, recon, ns, "declared generated scratch namespace", cold=True, live_ns=live_ns
+    )
     export = evidence["target"]["finance_report_export"]  # type: ignore[index]
     expectations = fixtures.expectations(ns)
     model = legacy_run["model"]
@@ -1485,7 +1571,13 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
     legacy_run = legacy_for_drops(ns, drops)
     expectations = fixtures.expectations(ns)
     evidence = run_namespace(
-        dbx, recon, ns, "declared generated scratch namespace", cold=True, expect_halt=True
+        dbx,
+        recon,
+        ns,
+        "declared generated scratch namespace",
+        cold=True,
+        expect_halt=True,
+        live_ns=live_ns,
     )
     halt = evidence["halt"]  # type: ignore[index]
     quarantine_rows = sum(int(q["rows"]) for q in halt["quarantine_rows_persisted_before_the_halt"])  # type: ignore[index]
@@ -1536,6 +1628,7 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
         # An empty input publishes the header row and nothing else, so finance_monthly is expected to
         # receive no row at all here: that is the empty-report shape, not a missed insert.
         tables_that_must_receive_rows=(EXPORT,),
+        live_ns=live_ns,
     )
     export = evidence["target"]["finance_report_export"]  # type: ignore[index]
     recon.check(
@@ -1569,10 +1662,13 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
 
     # The shrink namespace — the scoped delete in both directions: a group that legitimately
     # disappears, and an empty population that may not retract a published report.
-    shrink = shrink_namespace(dbx, recon)
+    shrink = shrink_namespace(dbx, recon, live_ns)
     namespaces[str(shrink["namespace"])] = shrink
 
     out["namespaces"] = namespaces
+    out["abandoned_scratch_cleanup"] = abandoned_scratch_cleanup(
+        dbx, recon, live_ns, list(namespaces)
+    )
     return out
 
 
@@ -1644,7 +1740,7 @@ FROM {SOURCE} WHERE ns = {lit}
     return evidence
 
 
-def shrink_namespace(dbx: Dbx, recon: Recon) -> dict[str, object]:
+def shrink_namespace(dbx: Dbx, recon: Recon, live_ns: str) -> dict[str, object]:
     """Both directions of the scoped `WHEN NOT MATCHED BY SOURCE ... THEN DELETE`, measured.
 
     Three additive CUSTBILL batches into one declared generated namespace. Batch 2 takes one published
@@ -1659,7 +1755,7 @@ def shrink_namespace(dbx: Dbx, recon: Recon) -> dict[str, object]:
     # those leftovers instead of the delete.
     ns = fixtures.shrink_ns(stamp)
     expectations = fixtures.expectations(ns)
-    cleanup = cold_clean(dbx, recon, ns)
+    cleanup = cold_clean(dbx, recon, ns, live_ns)
     keep_key = str(expectations["keep_group"])
     vanish_key = str(expectations["vanishing_group"])
     batches: list[dict[str, object]] = []
@@ -1761,13 +1857,15 @@ def shrink_namespace(dbx: Dbx, recon: Recon) -> dict[str, object]:
     )
     batches.append(second)
 
-    published_before_third = fingerprint(
-        dbx, f"ns = {sql_str(ns)} AND _origin IN ({OWNED_ORIGINS_LIT})"
-    )
+    # The published pair only: the quarantine ledger is *expected* to grow across the refused run,
+    # because the notebook persists rejects before it evaluates the halt and the guard (T-item 3), and
+    # a fingerprint that folded that growth in would fail on correct behaviour.
+    own_published = f"ns = {sql_str(ns)} AND _origin IN ({OWNED_ORIGINS_LIT})"
+    published_before_third = fingerprint(dbx, own_published, (MONTHLY, EXPORT))
+    quarantine_before_third = fingerprint(dbx, own_published, (QUARANTINE,))
     third = run_batch(3, expect_failure=True)
-    published_after_third = fingerprint(
-        dbx, f"ns = {sql_str(ns)} AND _origin IN ({OWNED_ORIGINS_LIT})"
-    )
+    published_after_third = fingerprint(dbx, own_published, (MONTHLY, EXPORT))
+    quarantine_after_third = fingerprint(dbx, own_published, (QUARANTINE,))
     error = str(third["run"]["error"] or "")  # type: ignore[index]
     recon.check(
         f"STOPA-RETRACTION/{ns}/empty-population-refuses-to-un-publish",
@@ -1789,8 +1887,12 @@ def shrink_namespace(dbx: Dbx, recon: Recon) -> dict[str, object]:
         },
         f"the third generated batch overflows the last published group too, so the published "
         f"population for ns={ns} is empty while the targets still hold its rows. The notebook refuses "
-        "before either publishing MERGE, names the rows it would have deleted and exits non-zero; the "
-        "published rows are byte-identical across the failed run (row count plus content checksum)",
+        "before either publishing MERGE, names the rows it would have deleted and exits non-zero; "
+        f"{MONTHLY} and {EXPORT} are byte-identical across the failed run (row count plus content "
+        f"checksum of this ns's own rows). {QUARANTINE} is deliberately outside that fingerprint and "
+        "reported beside it: the notebook persists rejects before evaluating the halt and the guard, "
+        "so the ledger grows across a refused run, and it is the published pair, not the ledger, that "
+        "may not move",
     )
     batches.append(third)
 
@@ -1811,8 +1913,89 @@ def shrink_namespace(dbx: Dbx, recon: Recon) -> dict[str, object]:
         ),
         "expectations_derived_independently": expectations,
         "cold_load_prepared_by": cleanup,
+        "the_refused_batch_moved_nothing_it_published": {
+            "published_targets": [MONTHLY, EXPORT],
+            "before": published_before_third,
+            "after": published_after_third,
+            "quarantine_before": quarantine_before_third,
+            "quarantine_after": quarantine_after_third,
+            "why_quarantine_moves": (
+                "the quarantine ledger is the one owned target the refused run does change: rejects "
+                "are persisted before the halt and the retraction guard are evaluated, so the ledger "
+                "records the batch that was refused. The two published targets are byte-identical "
+                "across it"
+            ),
+        },
         "error_from_the_refused_batch": error[:900],
         "batches": batches,
+    }
+
+
+def abandoned_scratch_cleanup(
+    dbx: Dbx, recon: Recon, live_ns: str, declared: list[str]
+) -> dict[str, object]:
+    """Remove this unit's own rows left in shared gold targets by an earlier revision's scratch ns.
+
+    An earlier revision used one un-stamped shrink namespace, so its rows outlive the namespace this
+    run declares. They are this unit's own rows under an `_origin` it owns in a scratch namespace of
+    its own — D-31's carve-out exactly — so unlike the `fin_round` bronze rows they can be removed,
+    ns- and origin-scoped, and the report should not show generated rows in a namespace it does not
+    declare. Anything that survives is declared with its reason.
+    """
+    known = {live_ns, *declared}
+    present = sorted(
+        {
+            str(r[1])
+            for r in rows(
+                dbx,
+                f"""
+SELECT '{MONTHLY}', ns FROM {MONTHLY} GROUP BY ns
+UNION ALL SELECT '{EXPORT}', ns FROM {EXPORT} GROUP BY ns
+UNION ALL SELECT '{QUARANTINE}', ns FROM {QUARANTINE} GROUP BY ns
+""",
+            )
+        }
+    )
+    stale = [n for n in present if n not in known and fixtures.is_own_scratch_ns(n)]
+    foreign = [n for n in present if n not in known and not fixtures.is_own_scratch_ns(n)]
+    cleaned = {n: cold_clean(dbx, recon, n, live_ns) for n in stale}
+    survivors = [
+        {"table": str(r[0]), "ns": str(r[1]), "rows": int(r[2])}
+        for r in rows(
+            dbx,
+            f"""
+SELECT '{MONTHLY}', ns, count(*) FROM {MONTHLY} GROUP BY ns
+UNION ALL SELECT '{EXPORT}', ns, count(*) FROM {EXPORT} GROUP BY ns
+UNION ALL SELECT '{QUARANTINE}', ns, count(*) FROM {QUARANTINE} GROUP BY ns
+ORDER BY 1, 2
+""",
+        )
+        if str(r[1]) in stale
+    ]
+    recon.check(
+        "SCRATCH-CLEANUP/undeclared-generated-rows-in-the-owned-targets",
+        {"namespaces": [], "rows": []},
+        {"namespaces": sorted({str(s["ns"]) for s in survivors}), "rows": survivors},
+        "every namespace holding rows in the three owned targets, minus the live namespace and the "
+        "generated namespaces this run declares: rows an earlier revision's scratch namespace left "
+        f"behind are removed here by DELETE ... WHERE ns = <that ns> AND _origin IN "
+        f"({OWNED_ORIGINS_LIT}), which is the D-31 carve-out (this unit's own rows, its own origin, "
+        f"its own scratch namespace) and never a row another writer owns. ns={live_ns} is proven "
+        "unchanged across each of these deletes by its own COLD-CLEAN-ISOLATION check",
+    )
+    return {
+        "why": (
+            "an earlier revision of this harness used a single un-stamped shrink namespace, so its "
+            "rows in the shared gold targets are not covered by the namespaces this run declares. "
+            "They are generated fixture rows this unit wrote under an _origin it owns, so it removes "
+            "them; the equivalent bronze rows stay where the merged bronze writer put them, because "
+            f"{SOURCE} is read-only to this unit"
+        ),
+        "predicate": f"ns = <stale scratch ns> AND _origin IN ({OWNED_ORIGINS_LIT})",
+        "namespaces_removed": stale,
+        "namespaces_left_alone_because_this_unit_does_not_own_them": foreign,
+        "rows_surviving_after_the_cleanup": survivors,
+        "per_namespace": cleaned,
     }
 
 
@@ -2162,7 +2345,7 @@ def main(argv: list[str] | None = None) -> int:
             "must-detect populations absent from the live seed are unmeasured on this report"
         )
     else:
-        fixture_evidence = fixture_namespaces(dbx, recon)
+        fixture_evidence = fixture_namespaces(dbx, recon, args.ns)
         isolation = fixture_isolation(
             dbx,
             recon,

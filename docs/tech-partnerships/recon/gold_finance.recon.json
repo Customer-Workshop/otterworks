@@ -3,7 +3,7 @@
   "unit": "gold_finance",
   "wave": 5,
   "namespace": "demo",
-  "generated_at": "2026-08-30T03:48:49Z",
+  "generated_at": "2026-08-30T04:55:48Z",
   "run_mode": "live",
   "platform": "databricks",
   "source_artifacts": [
@@ -18,7 +18,7 @@
   ],
   "code": {
     "branch": "migrate/ow_billing/wave5-gold_finance",
-    "commit": "8e8c40d820980a9c3ab6b74e1f38b2088f8910e6",
+    "commit": "23a53336ecff9d9d454af17b706742758f2e58b7",
     "notebook_sha256": "d6fb2e20601e2da583eed8b2ff9c938c26e4def9b93749cccb2f6f5ac6d617f6",
     "spec_sha256": "29534f6f1275830785393206e52002dce5876a01d8f240fe8a9b7293337cf187",
     "deployed": {
@@ -334,22 +334,42 @@
       "rows_this_unit_may_not_touch_unchanged": {
         "check": "COLD-CLEAN-ISOLATION/demo",
         "predicate": "ns <> 'demo' OR _origin NOT IN ('gold_finance')",
+        "rows_covered_by_this_proof": 320,
+        "proves": "320 row(s) outside this ns are byte-identical across the cleanup",
         "before": {
-          "ow_tp.gold.finance_monthly": "table does not exist",
-          "ow_tp.gold.finance_report_export": "table does not exist",
-          "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+          "ow_tp.gold.finance_monthly": {
+            "rows": 5,
+            "content_checksum": "-4737071432241062286"
+          },
+          "ow_tp.gold.finance_report_export": {
+            "rows": 7,
+            "content_checksum": "468100317260753258"
+          },
+          "ow_tp.gold.quarantine_gold_finance": {
+            "rows": 308,
+            "content_checksum": "155321150750292677229"
+          }
         },
         "after": {
-          "ow_tp.gold.finance_monthly": "table does not exist",
-          "ow_tp.gold.finance_report_export": "table does not exist",
-          "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+          "ow_tp.gold.finance_monthly": {
+            "rows": 5,
+            "content_checksum": "-4737071432241062286"
+          },
+          "ow_tp.gold.finance_report_export": {
+            "rows": 7,
+            "content_checksum": "468100317260753258"
+          },
+          "ow_tp.gold.quarantine_gold_finance": {
+            "rows": 308,
+            "content_checksum": "155321150750292677229"
+          }
         }
       }
     },
     "run_1": {
       "run": {
-        "run_id": 43088615709662,
-        "batch_id": "r120260830033235",
+        "run_id": 152329999975333,
+        "batch_id": "r120260830043918",
         "label": "demo-cold",
         "state": "SUCCESS",
         "params": {
@@ -359,35 +379,35 @@
           "bronze_schema": "bronze",
           "export_root": "/Volumes/ow_tp/gold/exports",
           "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-          "batch_id": "r120260830033235",
+          "batch_id": "r120260830043918",
           "report_stamp": "20260830"
         },
-        "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/demo/gold_finance/_runs/r120260830033235.json\", \"batch_id\": \"r120260830033235\"}",
+        "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/demo/gold_finance/_runs/r120260830043918.json\", \"batch_id\": \"r120260830043918\"}",
         "error": null,
         "logs_tail": ""
       },
       "pre_run_delta_versions": {
-        "ow_tp.gold.finance_monthly": 58,
-        "ow_tp.gold.finance_report_export": 57,
-        "ow_tp.gold.quarantine_gold_finance": 64
+        "ow_tp.gold.finance_monthly": 109,
+        "ow_tp.gold.finance_report_export": 111,
+        "ow_tp.gold.quarantine_gold_finance": 121
       },
       "delta_commits_attributed_to_this_run": {
         "ow_tp.gold.finance_monthly": [
           {
-            "version": 59,
+            "version": 110,
             "operation": "MERGE",
-            "job_run_id": "43088615709662",
-            "job_id": "838935790195460",
+            "job_run_id": "152329999975333",
+            "job_id": "1119029079177329",
             "rows_inserted": 66,
             "rows_updated": 0,
             "rows_deleted": 0,
             "rows_written": 66
           },
           {
-            "version": 60,
+            "version": 111,
             "operation": "OPTIMIZE",
-            "job_run_id": "43088615709662",
-            "job_id": "838935790195460",
+            "job_run_id": "152329999975333",
+            "job_id": "1119029079177329",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
@@ -396,20 +416,20 @@
         ],
         "ow_tp.gold.finance_report_export": [
           {
-            "version": 58,
+            "version": 112,
             "operation": "MERGE",
-            "job_run_id": "43088615709662",
-            "job_id": "838935790195460",
+            "job_run_id": "152329999975333",
+            "job_id": "1119029079177329",
             "rows_inserted": 8,
             "rows_updated": 0,
             "rows_deleted": 0,
             "rows_written": 8
           },
           {
-            "version": 59,
+            "version": 113,
             "operation": "OPTIMIZE",
-            "job_run_id": "43088615709662",
-            "job_id": "838935790195460",
+            "job_run_id": "152329999975333",
+            "job_id": "1119029079177329",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
@@ -418,10 +438,10 @@
         ],
         "ow_tp.gold.quarantine_gold_finance": [
           {
-            "version": 65,
+            "version": 122,
             "operation": "MERGE",
-            "job_run_id": "43088615709662",
-            "job_id": "838935790195460",
+            "job_run_id": "152329999975333",
+            "job_id": "1119029079177329",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
@@ -433,8 +453,8 @@
     },
     "run_2": {
       "run": {
-        "run_id": 381726426590666,
-        "batch_id": "r220260830033235",
+        "run_id": 869779587447155,
+        "batch_id": "r220260830043918",
         "label": "demo-rerun",
         "state": "SUCCESS",
         "params": {
@@ -444,25 +464,25 @@
           "bronze_schema": "bronze",
           "export_root": "/Volumes/ow_tp/gold/exports",
           "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-          "batch_id": "r220260830033235",
+          "batch_id": "r220260830043918",
           "report_stamp": "20260830"
         },
-        "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/demo/gold_finance/_runs/r220260830033235.json\", \"batch_id\": \"r220260830033235\"}",
+        "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/demo/gold_finance/_runs/r220260830043918.json\", \"batch_id\": \"r220260830043918\"}",
         "error": null,
         "logs_tail": ""
       },
       "pre_run_delta_versions": {
-        "ow_tp.gold.finance_monthly": 60,
-        "ow_tp.gold.finance_report_export": 59,
-        "ow_tp.gold.quarantine_gold_finance": 65
+        "ow_tp.gold.finance_monthly": 111,
+        "ow_tp.gold.finance_report_export": 113,
+        "ow_tp.gold.quarantine_gold_finance": 122
       },
       "delta_commits_attributed_to_this_run": {
         "ow_tp.gold.finance_monthly": [
           {
-            "version": 61,
+            "version": 112,
             "operation": "MERGE",
-            "job_run_id": "381726426590666",
-            "job_id": "763500973656087",
+            "job_run_id": "869779587447155",
+            "job_id": "84530561651179",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
@@ -471,10 +491,10 @@
         ],
         "ow_tp.gold.finance_report_export": [
           {
-            "version": 60,
+            "version": 114,
             "operation": "MERGE",
-            "job_run_id": "381726426590666",
-            "job_id": "763500973656087",
+            "job_run_id": "869779587447155",
+            "job_id": "84530561651179",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
@@ -483,10 +503,10 @@
         ],
         "ow_tp.gold.quarantine_gold_finance": [
           {
-            "version": 66,
+            "version": 123,
             "operation": "MERGE",
-            "job_run_id": "381726426590666",
-            "job_id": "763500973656087",
+            "job_run_id": "869779587447155",
+            "job_id": "84530561651179",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0,
@@ -1543,7 +1563,7 @@
       "run_1": {
         "unit": "gold_finance",
         "ns": "demo",
-        "batch_id": "r120260830033235",
+        "batch_id": "r120260830043918",
         "report_stamp": "20260830",
         "source_population": "ow_tp.bronze.custbill_records",
         "source_quarantine_ledger": "ow_tp.bronze.quarantine_bronze_custbill",
@@ -1587,21 +1607,21 @@
         },
         "merge_metrics": {
           "finance_monthly": {
-            "version": 60,
+            "version": 111,
             "operation": "OPTIMIZE",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0
           },
           "finance_report_export": {
-            "version": 59,
+            "version": 113,
             "operation": "OPTIMIZE",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0
           },
           "quarantine_gold_finance": {
-            "version": 65,
+            "version": 122,
             "operation": "MERGE",
             "rows_inserted": 0,
             "rows_updated": 0,
@@ -1810,7 +1830,7 @@
       "run_2": {
         "unit": "gold_finance",
         "ns": "demo",
-        "batch_id": "r220260830033235",
+        "batch_id": "r220260830043918",
         "report_stamp": "20260830",
         "source_population": "ow_tp.bronze.custbill_records",
         "source_quarantine_ledger": "ow_tp.bronze.quarantine_bronze_custbill",
@@ -1854,21 +1874,21 @@
         },
         "merge_metrics": {
           "finance_monthly": {
-            "version": 61,
+            "version": 112,
             "operation": "MERGE",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0
           },
           "finance_report_export": {
-            "version": 60,
+            "version": 114,
             "operation": "MERGE",
             "rows_inserted": 0,
             "rows_updated": 0,
             "rows_deleted": 0
           },
           "quarantine_gold_finance": {
-            "version": 66,
+            "version": 123,
             "operation": "MERGE",
             "rows_inserted": 0,
             "rows_updated": 0,
@@ -2677,8 +2697,8 @@
   "population_disagreement_custbill_vs_normalised": {
     "custbill_stream": {
       "table": "ow_tp.bronze.custbill_records",
-      "rows": 12013,
-      "money_total": "7030001610032.01",
+      "rows": 27634,
+      "money_total": "13090001715490.80",
       "read_by_gold": true
     },
     "normalised_invoices": {
@@ -2688,8 +2708,8 @@
       "namespaces": "demo",
       "read_by_gold": false
     },
-    "difference_in_money": "7030001577391.26",
-    "difference_in_rows": 11941,
+    "difference_in_money": "13090001682850.05",
+    "difference_in_rows": 27562,
     "statement": "ow_tp.gold.finance_monthly and ow_tp.gold.finance_report_export are computed from ow_tp.bronze.custbill_records, the denormalised CUSTBILL stream the Perl report reads. ow_tp.silver.invoices is a different population from a different source artifact and is not read by this unit. A finance consumer reading gold is reading the CUSTBILL stream, so a consumer expecting normalised invoice totals sees a different number here by design. The two figures are published side by side and are not reconciled, averaged, or filtered to agree: both are what the source holds (ANOM-DENORM-COPIES)."
   },
   "declared_generated_namespaces": {
@@ -2708,15 +2728,68 @@
           "rows_this_unit_may_not_touch_unchanged": {
             "check": "COLD-CLEAN-ISOLATION/fin_round",
             "predicate": "ns <> 'fin_round' OR _origin NOT IN ('gold_finance')",
+            "rows_covered_by_this_proof": 394,
+            "proves": "394 row(s) outside this ns are byte-identical across the cleanup",
             "before": {
-              "ow_tp.gold.finance_monthly": "table does not exist",
-              "ow_tp.gold.finance_report_export": "table does not exist",
-              "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+              "ow_tp.gold.finance_monthly": {
+                "rows": 71,
+                "content_checksum": "-54457648553362150230"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 15,
+                "content_checksum": "11723147422204747047"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 308,
+                "content_checksum": "155321150750292677229"
+              }
             },
             "after": {
-              "ow_tp.gold.finance_monthly": "table does not exist",
-              "ow_tp.gold.finance_report_export": "table does not exist",
-              "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+              "ow_tp.gold.finance_monthly": {
+                "rows": 71,
+                "content_checksum": "-54457648553362150230"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 15,
+                "content_checksum": "11723147422204747047"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 308,
+                "content_checksum": "155321150750292677229"
+              }
+            }
+          },
+          "live_namespace_rows_untouched": {
+            "check": "COLD-CLEAN-ISOLATION/fin_round/live-namespace-demo-untouched",
+            "predicate": "ns = 'demo' AND _origin IN ('gold_finance')",
+            "rows_covered_by_this_proof": 74,
+            "before": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 66,
+                "content_checksum": "-49720577121121087944"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 8,
+                "content_checksum": "11255047104943993789"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 0,
+                "content_checksum": "0"
+              }
+            },
+            "after": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 66,
+                "content_checksum": "-49720577121121087944"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 8,
+                "content_checksum": "11255047104943993789"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 0,
+                "content_checksum": "0"
+              }
             }
           }
         }
@@ -2861,22 +2934,75 @@
             "rows_this_unit_may_not_touch_unchanged": {
               "check": "COLD-CLEAN-ISOLATION/fin_rounding",
               "predicate": "ns <> 'fin_rounding' OR _origin NOT IN ('gold_finance')",
+              "rows_covered_by_this_proof": 386,
+              "proves": "386 row(s) outside this ns are byte-identical across the cleanup",
               "before": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 67,
+                  "content_checksum": "-58388545723663553146"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 11,
+                  "content_checksum": "9761454894985343245"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "155321150750292677229"
+                }
               },
               "after": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 67,
+                  "content_checksum": "-58388545723663553146"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 11,
+                  "content_checksum": "9761454894985343245"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "155321150750292677229"
+                }
+              }
+            },
+            "live_namespace_rows_untouched": {
+              "check": "COLD-CLEAN-ISOLATION/fin_rounding/live-namespace-demo-untouched",
+              "predicate": "ns = 'demo' AND _origin IN ('gold_finance')",
+              "rows_covered_by_this_proof": 74,
+              "before": {
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 66,
+                  "content_checksum": "-49720577121121087944"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 8,
+                  "content_checksum": "11255047104943993789"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 0,
+                  "content_checksum": "0"
+                }
+              },
+              "after": {
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 66,
+                  "content_checksum": "-49720577121121087944"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 8,
+                  "content_checksum": "11255047104943993789"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 0,
+                  "content_checksum": "0"
+                }
               }
             }
           },
           "run_1": {
             "run": {
-              "run_id": 503794157540168,
-              "batch_id": "r120260830033629",
+              "run_id": 425865018123000,
+              "batch_id": "r120260830044247",
               "label": "fin_rounding-cold",
               "state": "SUCCESS",
               "params": {
@@ -2886,25 +3012,25 @@
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "r120260830033629",
+                "batch_id": "r120260830044247",
                 "report_stamp": "20260830"
               },
-              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_rounding/gold_finance/_runs/r120260830033629.json\", \"batch_id\": \"r120260830033629\"}",
+              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_rounding/gold_finance/_runs/r120260830044247.json\", \"batch_id\": \"r120260830044247\"}",
               "error": null,
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 63,
-              "ow_tp.gold.finance_report_export": 62,
-              "ow_tp.gold.quarantine_gold_finance": 68
+              "ow_tp.gold.finance_monthly": 114,
+              "ow_tp.gold.finance_report_export": 116,
+              "ow_tp.gold.quarantine_gold_finance": 125
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [
                 {
-                  "version": 64,
+                  "version": 115,
                   "operation": "MERGE",
-                  "job_run_id": "503794157540168",
-                  "job_id": "835563978509292",
+                  "job_run_id": "425865018123000",
+                  "job_id": "914603320308244",
                   "rows_inserted": 4,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -2913,20 +3039,20 @@
               ],
               "ow_tp.gold.finance_report_export": [
                 {
-                  "version": 63,
+                  "version": 117,
                   "operation": "MERGE",
-                  "job_run_id": "503794157540168",
-                  "job_id": "835563978509292",
+                  "job_run_id": "425865018123000",
+                  "job_id": "914603320308244",
                   "rows_inserted": 4,
                   "rows_updated": 0,
                   "rows_deleted": 0,
                   "rows_written": 4
                 },
                 {
-                  "version": 64,
+                  "version": 118,
                   "operation": "OPTIMIZE",
-                  "job_run_id": "503794157540168",
-                  "job_id": "835563978509292",
+                  "job_run_id": "425865018123000",
+                  "job_id": "914603320308244",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -2935,10 +3061,10 @@
               ],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 69,
+                  "version": 126,
                   "operation": "MERGE",
-                  "job_run_id": "503794157540168",
-                  "job_id": "835563978509292",
+                  "job_run_id": "425865018123000",
+                  "job_id": "914603320308244",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -2950,8 +3076,8 @@
           },
           "run_2": {
             "run": {
-              "run_id": 191682055488024,
-              "batch_id": "r220260830033629",
+              "run_id": 584821974170156,
+              "batch_id": "r220260830044247",
               "label": "fin_rounding-rerun",
               "state": "SUCCESS",
               "params": {
@@ -2961,25 +3087,25 @@
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "r220260830033629",
+                "batch_id": "r220260830044247",
                 "report_stamp": "20260830"
               },
-              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_rounding/gold_finance/_runs/r220260830033629.json\", \"batch_id\": \"r220260830033629\"}",
+              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_rounding/gold_finance/_runs/r220260830044247.json\", \"batch_id\": \"r220260830044247\"}",
               "error": null,
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 64,
-              "ow_tp.gold.finance_report_export": 64,
-              "ow_tp.gold.quarantine_gold_finance": 69
+              "ow_tp.gold.finance_monthly": 115,
+              "ow_tp.gold.finance_report_export": 118,
+              "ow_tp.gold.quarantine_gold_finance": 126
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [
                 {
-                  "version": 65,
+                  "version": 116,
                   "operation": "MERGE",
-                  "job_run_id": "191682055488024",
-                  "job_id": "43436254036880",
+                  "job_run_id": "584821974170156",
+                  "job_id": "1034414083856224",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -2988,10 +3114,10 @@
               ],
               "ow_tp.gold.finance_report_export": [
                 {
-                  "version": 65,
+                  "version": 119,
                   "operation": "MERGE",
-                  "job_run_id": "191682055488024",
-                  "job_id": "43436254036880",
+                  "job_run_id": "584821974170156",
+                  "job_id": "1034414083856224",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3000,10 +3126,10 @@
               ],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 70,
+                  "version": 127,
                   "operation": "MERGE",
-                  "job_run_id": "191682055488024",
-                  "job_id": "43436254036880",
+                  "job_run_id": "584821974170156",
+                  "job_id": "1034414083856224",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3280,7 +3406,7 @@
             "run_1": {
               "unit": "gold_finance",
               "ns": "fin_rounding",
-              "batch_id": "r120260830033629",
+              "batch_id": "r120260830044247",
               "report_stamp": "20260830",
               "source_population": "ow_tp.bronze.custbill_records",
               "source_quarantine_ledger": "ow_tp.bronze.quarantine_bronze_custbill",
@@ -3324,21 +3450,21 @@
               },
               "merge_metrics": {
                 "finance_monthly": {
-                  "version": 64,
+                  "version": 115,
                   "operation": "MERGE",
                   "rows_inserted": 4,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "finance_report_export": {
-                  "version": 64,
+                  "version": 118,
                   "operation": "OPTIMIZE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "quarantine_gold_finance": {
-                  "version": 69,
+                  "version": 126,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
@@ -3393,7 +3519,7 @@
             "run_2": {
               "unit": "gold_finance",
               "ns": "fin_rounding",
-              "batch_id": "r220260830033629",
+              "batch_id": "r220260830044247",
               "report_stamp": "20260830",
               "source_population": "ow_tp.bronze.custbill_records",
               "source_quarantine_ledger": "ow_tp.bronze.quarantine_bronze_custbill",
@@ -3437,21 +3563,21 @@
               },
               "merge_metrics": {
                 "finance_monthly": {
-                  "version": 65,
+                  "version": 116,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "finance_report_export": {
-                  "version": 65,
+                  "version": 119,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "quarantine_gold_finance": {
-                  "version": 70,
+                  "version": 127,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
@@ -3630,22 +3756,75 @@
             "rows_this_unit_may_not_touch_unchanged": {
               "check": "COLD-CLEAN-ISOLATION/fin_halt",
               "predicate": "ns <> 'fin_halt' OR _origin NOT IN ('gold_finance')",
+              "rows_covered_by_this_proof": 293,
+              "proves": "293 row(s) outside this ns are byte-identical across the cleanup",
               "before": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "12777865434703402113"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 207,
+                  "content_checksum": "194208572896101564187"
+                }
               },
               "after": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "12777865434703402113"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 207,
+                  "content_checksum": "194208572896101564187"
+                }
+              }
+            },
+            "live_namespace_rows_untouched": {
+              "check": "COLD-CLEAN-ISOLATION/fin_halt/live-namespace-demo-untouched",
+              "predicate": "ns = 'demo' AND _origin IN ('gold_finance')",
+              "rows_covered_by_this_proof": 74,
+              "before": {
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 66,
+                  "content_checksum": "-49720577121121087944"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 8,
+                  "content_checksum": "11255047104943993789"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 0,
+                  "content_checksum": "0"
+                }
+              },
+              "after": {
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 66,
+                  "content_checksum": "-49720577121121087944"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 8,
+                  "content_checksum": "11255047104943993789"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 0,
+                  "content_checksum": "0"
+                }
               }
             }
           },
           "run_1": {
             "run": {
-              "run_id": 341584750286591,
-              "batch_id": "r120260830033928",
+              "run_id": 1046108864110404,
+              "batch_id": "r120260830044557",
               "label": "fin_halt-cold",
               "state": "RUN_EXECUTION_ERROR",
               "params": {
@@ -3655,7 +3834,7 @@
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "r120260830033928",
+                "batch_id": "r120260830044557",
                 "report_stamp": "20260830"
               },
               "notebook_exit": null,
@@ -3663,29 +3842,29 @@
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 66,
-              "ow_tp.gold.finance_report_export": 66,
-              "ow_tp.gold.quarantine_gold_finance": 71
+              "ow_tp.gold.finance_monthly": 117,
+              "ow_tp.gold.finance_report_export": 120,
+              "ow_tp.gold.quarantine_gold_finance": 128
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [],
               "ow_tp.gold.finance_report_export": [],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 72,
+                  "version": 129,
                   "operation": "MERGE",
-                  "job_run_id": "341584750286591",
-                  "job_id": "469687710524749",
+                  "job_run_id": "1046108864110404",
+                  "job_id": "850497399867666",
                   "rows_inserted": 101,
                   "rows_updated": 0,
                   "rows_deleted": 0,
                   "rows_written": 101
                 },
                 {
-                  "version": 73,
+                  "version": 130,
                   "operation": "MERGE",
-                  "job_run_id": "341584750286591",
-                  "job_id": "469687710524749",
+                  "job_run_id": "1046108864110404",
+                  "job_id": "850497399867666",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3745,22 +3924,75 @@
             "rows_this_unit_may_not_touch_unchanged": {
               "check": "COLD-CLEAN-ISOLATION/fin_empty",
               "predicate": "ns <> 'fin_empty' OR _origin NOT IN ('gold_finance')",
+              "rows_covered_by_this_proof": 393,
+              "proves": "393 row(s) outside this ns are byte-identical across the cleanup",
               "before": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 14,
+                  "content_checksum": "20457838047433857215"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               },
               "after": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 14,
+                  "content_checksum": "20457838047433857215"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
+              }
+            },
+            "live_namespace_rows_untouched": {
+              "check": "COLD-CLEAN-ISOLATION/fin_empty/live-namespace-demo-untouched",
+              "predicate": "ns = 'demo' AND _origin IN ('gold_finance')",
+              "rows_covered_by_this_proof": 74,
+              "before": {
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 66,
+                  "content_checksum": "-49720577121121087944"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 8,
+                  "content_checksum": "11255047104943993789"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 0,
+                  "content_checksum": "0"
+                }
+              },
+              "after": {
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 66,
+                  "content_checksum": "-49720577121121087944"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 8,
+                  "content_checksum": "11255047104943993789"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 0,
+                  "content_checksum": "0"
+                }
               }
             }
           },
           "run_1": {
             "run": {
-              "run_id": 889146144518928,
-              "batch_id": "r120260830034055",
+              "run_id": 859615542929332,
+              "batch_id": "r120260830044733",
               "label": "fin_empty-cold",
               "state": "SUCCESS",
               "params": {
@@ -3770,25 +4002,25 @@
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "r120260830034055",
+                "batch_id": "r120260830044733",
                 "report_stamp": "20260830"
               },
-              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_empty/gold_finance/_runs/r120260830034055.json\", \"batch_id\": \"r120260830034055\"}",
+              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_empty/gold_finance/_runs/r120260830044733.json\", \"batch_id\": \"r120260830044733\"}",
               "error": null,
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 67,
-              "ow_tp.gold.finance_report_export": 67,
-              "ow_tp.gold.quarantine_gold_finance": 74
+              "ow_tp.gold.finance_monthly": 118,
+              "ow_tp.gold.finance_report_export": 121,
+              "ow_tp.gold.quarantine_gold_finance": 131
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [
                 {
-                  "version": 68,
+                  "version": 119,
                   "operation": "MERGE",
-                  "job_run_id": "889146144518928",
-                  "job_id": "677467282394380",
+                  "job_run_id": "859615542929332",
+                  "job_id": "1044522969913716",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3797,10 +4029,10 @@
               ],
               "ow_tp.gold.finance_report_export": [
                 {
-                  "version": 68,
+                  "version": 122,
                   "operation": "MERGE",
-                  "job_run_id": "889146144518928",
-                  "job_id": "677467282394380",
+                  "job_run_id": "859615542929332",
+                  "job_id": "1044522969913716",
                   "rows_inserted": 1,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3809,10 +4041,10 @@
               ],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 75,
+                  "version": 132,
                   "operation": "MERGE",
-                  "job_run_id": "889146144518928",
-                  "job_id": "677467282394380",
+                  "job_run_id": "859615542929332",
+                  "job_id": "1044522969913716",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3824,8 +4056,8 @@
           },
           "run_2": {
             "run": {
-              "run_id": 26933048575762,
-              "batch_id": "r220260830034055",
+              "run_id": 27806086392666,
+              "batch_id": "r220260830044733",
               "label": "fin_empty-rerun",
               "state": "SUCCESS",
               "params": {
@@ -3835,25 +4067,25 @@
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "r220260830034055",
+                "batch_id": "r220260830044733",
                 "report_stamp": "20260830"
               },
-              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_empty/gold_finance/_runs/r220260830034055.json\", \"batch_id\": \"r220260830034055\"}",
+              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_empty/gold_finance/_runs/r220260830044733.json\", \"batch_id\": \"r220260830044733\"}",
               "error": null,
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 68,
-              "ow_tp.gold.finance_report_export": 68,
-              "ow_tp.gold.quarantine_gold_finance": 75
+              "ow_tp.gold.finance_monthly": 119,
+              "ow_tp.gold.finance_report_export": 122,
+              "ow_tp.gold.quarantine_gold_finance": 132
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [
                 {
-                  "version": 69,
+                  "version": 120,
                   "operation": "MERGE",
-                  "job_run_id": "26933048575762",
-                  "job_id": "1013018866736812",
+                  "job_run_id": "27806086392666",
+                  "job_id": "1041511390938143",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3862,10 +4094,10 @@
               ],
               "ow_tp.gold.finance_report_export": [
                 {
-                  "version": 69,
+                  "version": 123,
                   "operation": "MERGE",
-                  "job_run_id": "26933048575762",
-                  "job_id": "1013018866736812",
+                  "job_run_id": "27806086392666",
+                  "job_id": "1041511390938143",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -3874,10 +4106,10 @@
               ],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 76,
+                  "version": 133,
                   "operation": "MERGE",
-                  "job_run_id": "26933048575762",
-                  "job_id": "1013018866736812",
+                  "job_run_id": "27806086392666",
+                  "job_id": "1041511390938143",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4030,7 +4262,7 @@
             "run_1": {
               "unit": "gold_finance",
               "ns": "fin_empty",
-              "batch_id": "r120260830034055",
+              "batch_id": "r120260830044733",
               "report_stamp": "20260830",
               "source_population": "ow_tp.bronze.custbill_records",
               "source_quarantine_ledger": "ow_tp.bronze.quarantine_bronze_custbill",
@@ -4074,21 +4306,21 @@
               },
               "merge_metrics": {
                 "finance_monthly": {
-                  "version": 68,
+                  "version": 119,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "finance_report_export": {
-                  "version": 68,
+                  "version": 122,
                   "operation": "MERGE",
                   "rows_inserted": 1,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "quarantine_gold_finance": {
-                  "version": 75,
+                  "version": 132,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
@@ -4109,7 +4341,7 @@
             "run_2": {
               "unit": "gold_finance",
               "ns": "fin_empty",
-              "batch_id": "r220260830034055",
+              "batch_id": "r220260830044733",
               "report_stamp": "20260830",
               "source_population": "ow_tp.bronze.custbill_records",
               "source_quarantine_ledger": "ow_tp.bronze.quarantine_bronze_custbill",
@@ -4153,21 +4385,21 @@
               },
               "merge_metrics": {
                 "finance_monthly": {
-                  "version": 69,
+                  "version": 120,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "finance_report_export": {
-                  "version": 69,
+                  "version": 123,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0
                 },
                 "quarantine_gold_finance": {
-                  "version": 76,
+                  "version": 133,
                   "operation": "MERGE",
                   "rows_inserted": 0,
                   "rows_updated": 0,
@@ -4205,8 +4437,8 @@
           }
         }
       },
-      "fin_shrink_20260830034345": {
-        "namespace": "fin_shrink_20260830034345",
+      "fin_shrink_20260830045015": {
+        "namespace": "fin_shrink_20260830045015",
         "declared": "generated fixture data",
         "named_per_run_because": "ow_tp.bronze.custbill_records is read-only to this unit, so the additive batch sequence below only measures the delete in a namespace no earlier run landed rows into. Earlier runs' shrink namespaces are abandoned generated scratch: this unit's own rows for them are removed by the ns-scoped cleanup, and their bronze rows stay where wave 1's writer put them",
         "purpose": "the scoped WHEN NOT MATCHED BY SOURCE DELETE in both directions: a group that genuinely leaves a still-non-empty population is removed (rows_deleted > 0), and an empty population over already-published rows is refused by the retraction guard instead of silently retracting the report",
@@ -4249,35 +4481,127 @@
         },
         "cold_load_prepared_by": {
           "statement": "ns- and origin-scoped DELETE on this unit's own three targets \u2014 no DROP TABLE, so no other namespace's report or quarantine history is removed, and run 1 below is still a real cold load of this ns with the final code",
-          "predicate": "ns = 'fin_shrink_20260830034345' AND _origin IN ('gold_finance')",
+          "predicate": "ns = 'fin_shrink_20260830045015' AND _origin IN ('gold_finance')",
           "per_table": {
-            "ow_tp.gold.finance_monthly": "deleted 0 row(s) for ns=fin_shrink_20260830034345",
-            "ow_tp.gold.finance_report_export": "deleted 0 row(s) for ns=fin_shrink_20260830034345",
-            "ow_tp.gold.quarantine_gold_finance": "deleted 0 row(s) for ns=fin_shrink_20260830034345"
+            "ow_tp.gold.finance_monthly": "deleted 0 row(s) for ns=fin_shrink_20260830045015",
+            "ow_tp.gold.finance_report_export": "deleted 0 row(s) for ns=fin_shrink_20260830045015",
+            "ow_tp.gold.quarantine_gold_finance": "deleted 0 row(s) for ns=fin_shrink_20260830045015"
           },
           "rows_this_unit_may_not_touch_unchanged": {
-            "check": "COLD-CLEAN-ISOLATION/fin_shrink_20260830034345",
-            "predicate": "ns <> 'fin_shrink_20260830034345' OR _origin NOT IN ('gold_finance')",
+            "check": "COLD-CLEAN-ISOLATION/fin_shrink_20260830045015",
+            "predicate": "ns <> 'fin_shrink_20260830045015' OR _origin NOT IN ('gold_finance')",
+            "rows_covered_by_this_proof": 394,
+            "proves": "394 row(s) outside this ns are byte-identical across the cleanup",
             "before": {
-              "ow_tp.gold.finance_monthly": "table does not exist",
-              "ow_tp.gold.finance_report_export": "table does not exist",
-              "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+              "ow_tp.gold.finance_monthly": {
+                "rows": 71,
+                "content_checksum": "-46569764240592329561"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 15,
+                "content_checksum": "24228341872464354085"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 308,
+                "content_checksum": "192443250781834715620"
+              }
             },
             "after": {
-              "ow_tp.gold.finance_monthly": "table does not exist",
-              "ow_tp.gold.finance_report_export": "table does not exist",
-              "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+              "ow_tp.gold.finance_monthly": {
+                "rows": 71,
+                "content_checksum": "-46569764240592329561"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 15,
+                "content_checksum": "24228341872464354085"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 308,
+                "content_checksum": "192443250781834715620"
+              }
+            }
+          },
+          "live_namespace_rows_untouched": {
+            "check": "COLD-CLEAN-ISOLATION/fin_shrink_20260830045015/live-namespace-demo-untouched",
+            "predicate": "ns = 'demo' AND _origin IN ('gold_finance')",
+            "rows_covered_by_this_proof": 74,
+            "before": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 66,
+                "content_checksum": "-49720577121121087944"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 8,
+                "content_checksum": "11255047104943993789"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 0,
+                "content_checksum": "0"
+              }
+            },
+            "after": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 66,
+                "content_checksum": "-49720577121121087944"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 8,
+                "content_checksum": "11255047104943993789"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 0,
+                "content_checksum": "0"
+              }
             }
           }
         },
-        "error_from_the_refused_batch": "RuntimeError: STOPA-RETRACTION: the published population of ow_tp.bronze.custbill_records for ns=fin_shrink_20260830034345 is empty (5207 source rows, 207 quarantined, 5000 blank-customer skips, 0 contributing), but ow_tp.gold.finance_monthly already holds 1 published row(s) and ow_tp.gold.finance_report_export 1 data row(s) for this ns. Publishing would delete all of them and leave a header-only report, which the legacy chain never does: it writes a new dated file and retracts nothing. Nothing was published or removed. Check the ns parameter and whether the CUSTBILL ingest for this ns completed; a namespace that has genuinely gone empty must be retracted deliberately, not by a run of this unit.",
+        "the_refused_batch_moved_nothing_it_published": {
+          "published_targets": [
+            "ow_tp.gold.finance_monthly",
+            "ow_tp.gold.finance_report_export"
+          ],
+          "before": {
+            "ow_tp.gold.finance_monthly": {
+              "rows": 1,
+              "content_checksum": "-4768482649461760698"
+            },
+            "ow_tp.gold.finance_report_export": {
+              "rows": 2,
+              "content_checksum": "6299993853550577638"
+            }
+          },
+          "after": {
+            "ow_tp.gold.finance_monthly": {
+              "rows": 1,
+              "content_checksum": "-4768482649461760698"
+            },
+            "ow_tp.gold.finance_report_export": {
+              "rows": 2,
+              "content_checksum": "6299993853550577638"
+            }
+          },
+          "quarantine_before": {
+            "ow_tp.gold.quarantine_gold_finance": {
+              "rows": 101,
+              "content_checksum": "20676970204520775715"
+            }
+          },
+          "quarantine_after": {
+            "ow_tp.gold.quarantine_gold_finance": {
+              "rows": 207,
+              "content_checksum": "2559582683215452857"
+            }
+          },
+          "why_quarantine_moves": "the quarantine ledger is the one owned target the refused run does change: rejects are persisted before the halt and the retraction guard are evaluated, so the ledger records the batch that was refused. The two published targets are byte-identical across it"
+        },
+        "error_from_the_refused_batch": "RuntimeError: STOPA-RETRACTION: the published population of ow_tp.bronze.custbill_records for ns=fin_shrink_20260830045015 is empty (5207 source rows, 207 quarantined, 5000 blank-customer skips, 0 contributing), but ow_tp.gold.finance_monthly already holds 1 published row(s) and ow_tp.gold.finance_report_export 1 data row(s) for this ns. Publishing would delete all of them and leave a header-only report, which the legacy chain never does: it writes a new dated file and retracts nothing. Nothing was published or removed. Check the ns parameter and whether the CUSTBILL ingest for this ns completed; a namespace that has genuinely gone empty must be retracted deliberately, not by a run of this unit.",
         "batches": [
           {
             "batch": 1,
             "seed": {
-              "namespace": "fin_shrink_20260830034345",
+              "namespace": "fin_shrink_20260830045015",
               "declared": "generated fixture data, not customer data and not a migration of any source row",
-              "landing_prefix": "/Volumes/ow_tp/bronze/landing/fin_shrink_20260830034345/custbill",
+              "landing_prefix": "/Volumes/ow_tp/bronze/landing/fin_shrink_20260830045015/custbill",
               "files_landed": [
                 "CUSTBILL_FINSHRINK_001.dat",
                 "CUSTBILL_FINSHRINK_001.dat.sha256"
@@ -4294,36 +4618,36 @@
               "bill_amt_total": "10000035154.94"
             },
             "run": {
-              "run_id": 878298578134829,
-              "batch_id": "b120260830034345",
-              "label": "fin_shrink_20260830034345-batch1",
+              "run_id": 407427823205299,
+              "batch_id": "b120260830045015",
+              "label": "fin_shrink_20260830045015-batch1",
               "state": "SUCCESS",
               "params": {
-                "ns": "fin_shrink_20260830034345",
+                "ns": "fin_shrink_20260830045015",
                 "catalog": "ow_tp",
                 "schema": "gold",
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "b120260830034345",
+                "batch_id": "b120260830045015",
                 "report_stamp": "20260830"
               },
-              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_shrink_20260830034345/gold_finance/_runs/b120260830034345.json\", \"batch_id\": \"b120260830034345\"}",
+              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_shrink_20260830045015/gold_finance/_runs/b120260830045015.json\", \"batch_id\": \"b120260830045015\"}",
               "error": null,
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 70,
-              "ow_tp.gold.finance_report_export": 70,
-              "ow_tp.gold.quarantine_gold_finance": 77
+              "ow_tp.gold.finance_monthly": 121,
+              "ow_tp.gold.finance_report_export": 124,
+              "ow_tp.gold.quarantine_gold_finance": 134
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [
                 {
-                  "version": 71,
+                  "version": 122,
                   "operation": "MERGE",
-                  "job_run_id": "878298578134829",
-                  "job_id": "626234179905496",
+                  "job_run_id": "407427823205299",
+                  "job_id": "867462828939010",
                   "rows_inserted": 2,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4332,10 +4656,10 @@
               ],
               "ow_tp.gold.finance_report_export": [
                 {
-                  "version": 71,
+                  "version": 125,
                   "operation": "MERGE",
-                  "job_run_id": "878298578134829",
-                  "job_id": "626234179905496",
+                  "job_run_id": "407427823205299",
+                  "job_id": "867462828939010",
                   "rows_inserted": 3,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4344,10 +4668,10 @@
               ],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 78,
+                  "version": 135,
                   "operation": "MERGE",
-                  "job_run_id": "878298578134829",
-                  "job_id": "626234179905496",
+                  "job_run_id": "407427823205299",
+                  "job_id": "867462828939010",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4401,23 +4725,41 @@
             },
             "rows_this_unit_may_not_touch": {
               "before": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "24228341872464354085"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               },
               "after": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "24228341872464354085"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               }
             }
           },
           {
             "batch": 2,
             "seed": {
-              "namespace": "fin_shrink_20260830034345",
+              "namespace": "fin_shrink_20260830045015",
               "declared": "generated fixture data, not customer data and not a migration of any source row",
-              "landing_prefix": "/Volumes/ow_tp/bronze/landing/fin_shrink_20260830034345/custbill",
+              "landing_prefix": "/Volumes/ow_tp/bronze/landing/fin_shrink_20260830045015/custbill",
               "files_landed": [
                 "CUSTBILL_FINSHRINK_002.dat",
                 "CUSTBILL_FINSHRINK_002.dat.sha256"
@@ -4434,46 +4776,46 @@
               "bill_amt_total": "1010000035153.94"
             },
             "run": {
-              "run_id": 120723584810302,
-              "batch_id": "b220260830034345",
-              "label": "fin_shrink_20260830034345-batch2",
+              "run_id": 79477428209454,
+              "batch_id": "b220260830045015",
+              "label": "fin_shrink_20260830045015-batch2",
               "state": "SUCCESS",
               "params": {
-                "ns": "fin_shrink_20260830034345",
+                "ns": "fin_shrink_20260830045015",
                 "catalog": "ow_tp",
                 "schema": "gold",
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "b220260830034345",
+                "batch_id": "b220260830045015",
                 "report_stamp": "20260830"
               },
-              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_shrink_20260830034345/gold_finance/_runs/b220260830034345.json\", \"batch_id\": \"b220260830034345\"}",
+              "notebook_exit": "{\"run_summary\": \"/Volumes/ow_tp/gold/exports/fin_shrink_20260830045015/gold_finance/_runs/b220260830045015.json\", \"batch_id\": \"b220260830045015\"}",
               "error": null,
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 71,
-              "ow_tp.gold.finance_report_export": 71,
-              "ow_tp.gold.quarantine_gold_finance": 78
+              "ow_tp.gold.finance_monthly": 122,
+              "ow_tp.gold.finance_report_export": 125,
+              "ow_tp.gold.quarantine_gold_finance": 135
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [
                 {
-                  "version": 72,
+                  "version": 123,
                   "operation": "MERGE",
-                  "job_run_id": "120723584810302",
-                  "job_id": "661761951986305",
+                  "job_run_id": "79477428209454",
+                  "job_id": "866188547158637",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 1,
                   "rows_written": 0
                 },
                 {
-                  "version": 73,
+                  "version": 124,
                   "operation": "OPTIMIZE",
-                  "job_run_id": "120723584810302",
-                  "job_id": "661761951986305",
+                  "job_run_id": "79477428209454",
+                  "job_id": "866188547158637",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4482,20 +4824,20 @@
               ],
               "ow_tp.gold.finance_report_export": [
                 {
-                  "version": 72,
+                  "version": 126,
                   "operation": "MERGE",
-                  "job_run_id": "120723584810302",
-                  "job_id": "661761951986305",
+                  "job_run_id": "79477428209454",
+                  "job_id": "866188547158637",
                   "rows_inserted": 0,
                   "rows_updated": 1,
                   "rows_deleted": 1,
                   "rows_written": 1
                 },
                 {
-                  "version": 73,
+                  "version": 127,
                   "operation": "OPTIMIZE",
-                  "job_run_id": "120723584810302",
-                  "job_id": "661761951986305",
+                  "job_run_id": "79477428209454",
+                  "job_id": "866188547158637",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4504,10 +4846,10 @@
               ],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 79,
+                  "version": 136,
                   "operation": "MERGE",
-                  "job_run_id": "120723584810302",
-                  "job_id": "661761951986305",
+                  "job_run_id": "79477428209454",
+                  "job_id": "866188547158637",
                   "rows_inserted": 101,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4571,23 +4913,41 @@
             },
             "rows_this_unit_may_not_touch": {
               "before": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "24228341872464354085"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               },
               "after": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "24228341872464354085"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               }
             }
           },
           {
             "batch": 3,
             "seed": {
-              "namespace": "fin_shrink_20260830034345",
+              "namespace": "fin_shrink_20260830045015",
               "declared": "generated fixture data, not customer data and not a migration of any source row",
-              "landing_prefix": "/Volumes/ow_tp/bronze/landing/fin_shrink_20260830034345/custbill",
+              "landing_prefix": "/Volumes/ow_tp/bronze/landing/fin_shrink_20260830045015/custbill",
               "files_landed": [
                 "CUSTBILL_FINSHRINK_003.dat",
                 "CUSTBILL_FINSHRINK_003.dat.sha256"
@@ -4604,48 +4964,48 @@
               "bill_amt_total": "2020000035152.93"
             },
             "run": {
-              "run_id": 715960717113518,
-              "batch_id": "b320260830034345",
-              "label": "fin_shrink_20260830034345-batch3",
+              "run_id": 743258850421207,
+              "batch_id": "b320260830045015",
+              "label": "fin_shrink_20260830045015-batch3",
               "state": "RUN_EXECUTION_ERROR",
               "params": {
-                "ns": "fin_shrink_20260830034345",
+                "ns": "fin_shrink_20260830045015",
                 "catalog": "ow_tp",
                 "schema": "gold",
                 "bronze_schema": "bronze",
                 "export_root": "/Volumes/ow_tp/gold/exports",
                 "spec_path": "/Shared/ow_tp/gold_finance_spec.json",
-                "batch_id": "b320260830034345",
+                "batch_id": "b320260830045015",
                 "report_stamp": "20260830"
               },
               "notebook_exit": null,
-              "error": "RuntimeError: STOPA-RETRACTION: the published population of ow_tp.bronze.custbill_records for ns=fin_shrink_20260830034345 is empty (5207 source rows, 207 quarantined, 5000 blank-customer skips, 0 contributing), but ow_tp.gold.finance_monthly already holds 1 published row(s) and ow_tp.gold.finance_report_export 1 data row(s) for this ns. Publishing would delete all of them and leave a header-only report, which the legacy chain never does: it writes a new dated file and retracts nothing. Nothing was published or removed. Check the ns parameter and whether the CUSTBILL ingest for this ns completed; a namespace that has genuinely gone empty must be retracted deliberately, not by a run of this unit.",
+              "error": "RuntimeError: STOPA-RETRACTION: the published population of ow_tp.bronze.custbill_records for ns=fin_shrink_20260830045015 is empty (5207 source rows, 207 quarantined, 5000 blank-customer skips, 0 contributing), but ow_tp.gold.finance_monthly already holds 1 published row(s) and ow_tp.gold.finance_report_export 1 data row(s) for this ns. Publishing would delete all of them and leave a header-only report, which the legacy chain never does: it writes a new dated file and retracts nothing. Nothing was published or removed. Check the ns parameter and whether the CUSTBILL ingest for this ns completed; a namespace that has genuinely gone empty must be retracted deliberately, not by a run of this unit.",
               "logs_tail": ""
             },
             "pre_run_delta_versions": {
-              "ow_tp.gold.finance_monthly": 73,
-              "ow_tp.gold.finance_report_export": 73,
-              "ow_tp.gold.quarantine_gold_finance": 79
+              "ow_tp.gold.finance_monthly": 124,
+              "ow_tp.gold.finance_report_export": 127,
+              "ow_tp.gold.quarantine_gold_finance": 136
             },
             "delta_commits_attributed_to_this_run": {
               "ow_tp.gold.finance_monthly": [],
               "ow_tp.gold.finance_report_export": [],
               "ow_tp.gold.quarantine_gold_finance": [
                 {
-                  "version": 80,
+                  "version": 137,
                   "operation": "MERGE",
-                  "job_run_id": "715960717113518",
-                  "job_id": "1028810618017662",
+                  "job_run_id": "743258850421207",
+                  "job_id": "1070609005407525",
                   "rows_inserted": 106,
                   "rows_updated": 0,
                   "rows_deleted": 0,
                   "rows_written": 106
                 },
                 {
-                  "version": 81,
+                  "version": 138,
                   "operation": "MERGE",
-                  "job_run_id": "715960717113518",
-                  "job_id": "1028810618017662",
+                  "job_run_id": "743258850421207",
+                  "job_id": "1070609005407525",
                   "rows_inserted": 0,
                   "rows_updated": 0,
                   "rows_deleted": 0,
@@ -4714,18 +5074,123 @@
             },
             "rows_this_unit_may_not_touch": {
               "before": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "24228341872464354085"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               },
               "after": {
-                "ow_tp.gold.finance_monthly": "table does not exist",
-                "ow_tp.gold.finance_report_export": "table does not exist",
-                "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+                "ow_tp.gold.finance_monthly": {
+                  "rows": 71,
+                  "content_checksum": "-46569764240592329561"
+                },
+                "ow_tp.gold.finance_report_export": {
+                  "rows": 15,
+                  "content_checksum": "24228341872464354085"
+                },
+                "ow_tp.gold.quarantine_gold_finance": {
+                  "rows": 308,
+                  "content_checksum": "192443250781834715620"
+                }
               }
             }
           }
         ]
+      }
+    },
+    "abandoned_scratch_cleanup": {
+      "why": "an earlier revision of this harness used a single un-stamped shrink namespace, so its rows in the shared gold targets are not covered by the namespaces this run declares. They are generated fixture rows this unit wrote under an _origin it owns, so it removes them; the equivalent bronze rows stay where the merged bronze writer put them, because ow_tp.bronze.custbill_records is read-only to this unit",
+      "predicate": "ns = <stale scratch ns> AND _origin IN ('gold_finance')",
+      "namespaces_removed": [
+        "fin_shrink_20260830043245"
+      ],
+      "namespaces_left_alone_because_this_unit_does_not_own_them": [],
+      "rows_surviving_after_the_cleanup": [],
+      "per_namespace": {
+        "fin_shrink_20260830043245": {
+          "statement": "ns- and origin-scoped DELETE on this unit's own three targets \u2014 no DROP TABLE, so no other namespace's report or quarantine history is removed, and run 1 below is still a real cold load of this ns with the final code",
+          "predicate": "ns = 'fin_shrink_20260830043245' AND _origin IN ('gold_finance')",
+          "per_table": {
+            "ow_tp.gold.finance_monthly": "deleted 1 row(s) for ns=fin_shrink_20260830043245",
+            "ow_tp.gold.finance_report_export": "deleted 2 row(s) for ns=fin_shrink_20260830043245",
+            "ow_tp.gold.quarantine_gold_finance": "deleted 207 row(s) for ns=fin_shrink_20260830043245"
+          },
+          "rows_this_unit_may_not_touch_unchanged": {
+            "check": "COLD-CLEAN-ISOLATION/fin_shrink_20260830043245",
+            "predicate": "ns <> 'fin_shrink_20260830043245' OR _origin NOT IN ('gold_finance')",
+            "rows_covered_by_this_proof": 394,
+            "proves": "394 row(s) outside this ns are byte-identical across the cleanup",
+            "before": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 71,
+                "content_checksum": "-42670278287511625057"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 15,
+                "content_checksum": "24341955323243127165"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 308,
+                "content_checksum": "794260568948604290"
+              }
+            },
+            "after": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 71,
+                "content_checksum": "-42670278287511625057"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 15,
+                "content_checksum": "24341955323243127165"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 308,
+                "content_checksum": "794260568948604290"
+              }
+            }
+          },
+          "live_namespace_rows_untouched": {
+            "check": "COLD-CLEAN-ISOLATION/fin_shrink_20260830043245/live-namespace-demo-untouched",
+            "predicate": "ns = 'demo' AND _origin IN ('gold_finance')",
+            "rows_covered_by_this_proof": 74,
+            "before": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 66,
+                "content_checksum": "-49720577121121087944"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 8,
+                "content_checksum": "11255047104943993789"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 0,
+                "content_checksum": "0"
+              }
+            },
+            "after": {
+              "ow_tp.gold.finance_monthly": {
+                "rows": 66,
+                "content_checksum": "-49720577121121087944"
+              },
+              "ow_tp.gold.finance_report_export": {
+                "rows": 8,
+                "content_checksum": "11255047104943993789"
+              },
+              "ow_tp.gold.quarantine_gold_finance": {
+                "rows": 0,
+                "content_checksum": "0"
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -4796,7 +5261,7 @@
     },
     "rows_in_every_namespace_of_the_table": {
       "either": 2,
-      "out_of": 6806
+      "out_of": 22427
     },
     "what_the_source_would_do": "the parsed line carries an extra delimiter, so every field after it shifts and the report's composite key splits back into fields the record does not hold: a 'U|D' currency prints currency 'U' and label UNKNOWN(D), and a pipe in REC-TYPE leaves a trailing field the split discards",
     "what_this_unit_does": "reads the CBCUST01 positions out of ow_tp.bronze.custbill_records, so currency, rec_type and the record_type label carry the bytes the copybook holds. Perl's field shifting is not reproduced: emulating it would publish a currency and a record type no record has",
@@ -4808,7 +5273,7 @@
       "fin_rounding",
       "fin_halt",
       "fin_empty",
-      "fin_shrink_20260830034345"
+      "fin_shrink_20260830045015"
     ],
     "live_namespace": "demo",
     "rows_per_namespace_in_every_owned_target": [
@@ -4824,7 +5289,7 @@
       },
       {
         "table": "ow_tp.gold.finance_monthly",
-        "ns": "fin_shrink_20260830034345",
+        "ns": "fin_shrink_20260830045015",
         "rows": 1
       },
       {
@@ -4844,12 +5309,7 @@
       },
       {
         "table": "ow_tp.gold.finance_report_export",
-        "ns": "fin_shrink",
-        "rows": 1
-      },
-      {
-        "table": "ow_tp.gold.finance_report_export",
-        "ns": "fin_shrink_20260830034345",
+        "ns": "fin_shrink_20260830045015",
         "rows": 2
       },
       {
@@ -4859,12 +5319,7 @@
       },
       {
         "table": "ow_tp.gold.quarantine_gold_finance",
-        "ns": "fin_shrink",
-        "rows": 207
-      },
-      {
-        "table": "ow_tp.gold.quarantine_gold_finance",
-        "ns": "fin_shrink_20260830034345",
+        "ns": "fin_shrink_20260830045015",
         "rows": 207
       }
     ],
@@ -4906,14 +5361,32 @@
     {
       "id": "COLD-CLEAN-ISOLATION/demo",
       "expected": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 5,
+          "content_checksum": "-4737071432241062286"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 7,
+          "content_checksum": "468100317260753258"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "155321150750292677229"
+        }
       },
       "actual": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 5,
+          "content_checksum": "-4737071432241062286"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 7,
+          "content_checksum": "468100317260753258"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "155321150750292677229"
+        }
       },
       "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=demo (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'demo' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
       "result": "pass"
@@ -5130,31 +5603,133 @@
     {
       "id": "COLD-CLEAN-ISOLATION/fin_round",
       "expected": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-54457648553362150230"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "11723147422204747047"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "155321150750292677229"
+        }
       },
       "actual": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-54457648553362150230"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "11723147422204747047"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "155321150750292677229"
+        }
       },
       "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_round (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_round' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
       "result": "pass"
     },
     {
-      "id": "COLD-CLEAN-ISOLATION/fin_rounding",
+      "id": "COLD-CLEAN-ISOLATION/fin_round/live-namespace-demo-untouched",
       "expected": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
       },
       "actual": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "source_of_truth": "row count and content checksum of ns=demo's own published rows in the three owned targets, before and after the ns-scoped cleanup of the scratch namespace fin_round. This cleanup runs after demo is published, so the protected population is 74 real row(s) rather than an absent table: it is the cleanup path's counterpart to the shrink sequence's batch-2 fingerprint",
+      "result": "pass"
+    },
+    {
+      "id": "COLD-CLEAN-ISOLATION/fin_rounding",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 67,
+          "content_checksum": "-58388545723663553146"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 11,
+          "content_checksum": "9761454894985343245"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "155321150750292677229"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 67,
+          "content_checksum": "-58388545723663553146"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 11,
+          "content_checksum": "9761454894985343245"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "155321150750292677229"
+        }
       },
       "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_rounding (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_rounding' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
+      "result": "pass"
+    },
+    {
+      "id": "COLD-CLEAN-ISOLATION/fin_rounding/live-namespace-demo-untouched",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "source_of_truth": "row count and content checksum of ns=demo's own published rows in the three owned targets, before and after the ns-scoped cleanup of the scratch namespace fin_rounding. This cleanup runs after demo is published, so the protected population is 74 real row(s) rather than an absent table: it is the cleanup path's counterpart to the shrink sequence's batch-2 fingerprint",
       "result": "pass"
     },
     {
@@ -5386,16 +5961,67 @@
     {
       "id": "COLD-CLEAN-ISOLATION/fin_halt",
       "expected": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-46569764240592329561"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "12777865434703402113"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 207,
+          "content_checksum": "194208572896101564187"
+        }
       },
       "actual": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-46569764240592329561"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "12777865434703402113"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 207,
+          "content_checksum": "194208572896101564187"
+        }
       },
       "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_halt (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_halt' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
+      "result": "pass"
+    },
+    {
+      "id": "COLD-CLEAN-ISOLATION/fin_halt/live-namespace-demo-untouched",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "source_of_truth": "row count and content checksum of ns=demo's own published rows in the three owned targets, before and after the ns-scoped cleanup of the scratch namespace fin_halt. This cleanup runs after demo is published, so the protected population is 74 real row(s) rather than an absent table: it is the cleanup path's counterpart to the shrink sequence's batch-2 fingerprint",
       "result": "pass"
     },
     {
@@ -5422,16 +6048,67 @@
     {
       "id": "COLD-CLEAN-ISOLATION/fin_empty",
       "expected": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-46569764240592329561"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 14,
+          "content_checksum": "20457838047433857215"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "192443250781834715620"
+        }
       },
       "actual": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-46569764240592329561"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 14,
+          "content_checksum": "20457838047433857215"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "192443250781834715620"
+        }
       },
       "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_empty (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_empty' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
+      "result": "pass"
+    },
+    {
+      "id": "COLD-CLEAN-ISOLATION/fin_empty/live-namespace-demo-untouched",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "source_of_truth": "row count and content checksum of ns=demo's own published rows in the three owned targets, before and after the ns-scoped cleanup of the scratch namespace fin_empty. This cleanup runs after demo is published, so the protected population is 74 real row(s) rather than an absent table: it is the cleanup path's counterpart to the shrink sequence's batch-2 fingerprint",
       "result": "pass"
     },
     {
@@ -5586,22 +6263,73 @@
       "result": "pass"
     },
     {
-      "id": "COLD-CLEAN-ISOLATION/fin_shrink_20260830034345",
+      "id": "COLD-CLEAN-ISOLATION/fin_shrink_20260830045015",
       "expected": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-46569764240592329561"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "24228341872464354085"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "192443250781834715620"
+        }
       },
       "actual": {
-        "ow_tp.gold.finance_monthly": "table does not exist",
-        "ow_tp.gold.finance_report_export": "table does not exist",
-        "ow_tp.gold.quarantine_gold_finance": "table does not exist"
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-46569764240592329561"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "24228341872464354085"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "192443250781834715620"
+        }
       },
-      "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_shrink_20260830034345 (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_shrink_20260830034345' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
+      "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_shrink_20260830045015 (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_shrink_20260830045015' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
       "result": "pass"
     },
     {
-      "id": "SCOPED-DELETE/fin_shrink_20260830034345/batch-1-publishes-both-groups",
+      "id": "COLD-CLEAN-ISOLATION/fin_shrink_20260830045015/live-namespace-demo-untouched",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "source_of_truth": "row count and content checksum of ns=demo's own published rows in the three owned targets, before and after the ns-scoped cleanup of the scratch namespace fin_shrink_20260830045015. This cleanup runs after demo is published, so the protected population is 74 real row(s) rather than an absent table: it is the cleanup path's counterpart to the shrink sequence's batch-2 fingerprint",
+      "result": "pass"
+    },
+    {
+      "id": "SCOPED-DELETE/fin_shrink_20260830045015/batch-1-publishes-both-groups",
       "expected": {
         "published_groups": [
           "AAA|01",
@@ -5616,11 +6344,11 @@
         ],
         "rows_deleted": 0
       },
-      "source_of_truth": "ow_tp.gold.finance_report_export for ns=fin_shrink_20260830034345 after the first generated batch: the starting state the next batch has to change",
+      "source_of_truth": "ow_tp.gold.finance_report_export for ns=fin_shrink_20260830045015 after the first generated batch: the starting state the next batch has to change",
       "result": "pass"
     },
     {
-      "id": "SCOPED-DELETE/fin_shrink_20260830034345/group-disappears-and-is-removed",
+      "id": "SCOPED-DELETE/fin_shrink_20260830045015/group-disappears-and-is-removed",
       "expected": {
         "published_groups": [
           "AAA|01"
@@ -5643,7 +6371,7 @@
       "result": "pass"
     },
     {
-      "id": "STOPA-RETRACTION/fin_shrink_20260830034345/empty-population-refuses-to-un-publish",
+      "id": "STOPA-RETRACTION/fin_shrink_20260830045015/empty-population-refuses-to-un-publish",
       "expected": {
         "run_failed": true,
         "error_names_the_guard": true,
@@ -5658,7 +6386,86 @@
         "ow_tp.gold.finance_monthly rows deleted": 0,
         "ow_tp.gold.finance_report_export rows deleted": 0
       },
-      "source_of_truth": "the third generated batch overflows the last published group too, so the published population for ns=fin_shrink_20260830034345 is empty while the targets still hold its rows. The notebook refuses before either publishing MERGE, names the rows it would have deleted and exits non-zero; the published rows are byte-identical across the failed run (row count plus content checksum)",
+      "source_of_truth": "the third generated batch overflows the last published group too, so the published population for ns=fin_shrink_20260830045015 is empty while the targets still hold its rows. The notebook refuses before either publishing MERGE, names the rows it would have deleted and exits non-zero; ow_tp.gold.finance_monthly and ow_tp.gold.finance_report_export are byte-identical across the failed run (row count plus content checksum of this ns's own rows). ow_tp.gold.quarantine_gold_finance is deliberately outside that fingerprint and reported beside it: the notebook persists rejects before evaluating the halt and the guard, so the ledger grows across a refused run, and it is the published pair, not the ledger, that may not move",
+      "result": "pass"
+    },
+    {
+      "id": "COLD-CLEAN-ISOLATION/fin_shrink_20260830043245",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-42670278287511625057"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "24341955323243127165"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "794260568948604290"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 71,
+          "content_checksum": "-42670278287511625057"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 15,
+          "content_checksum": "24341955323243127165"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 308,
+          "content_checksum": "794260568948604290"
+        }
+      },
+      "source_of_truth": "row count and content checksum of every row in the three owned targets that this unit may not touch for ns=fin_shrink_20260830043245 (another namespace's row, or a row written under an origin this unit does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a DELETE ... WHERE ns = 'fin_shrink_20260830043245' AND _origin IN ('gold_finance'), never a DROP TABLE: the DDL stands and no other namespace's published report or quarantine ledger row is removed",
+      "result": "pass"
+    },
+    {
+      "id": "COLD-CLEAN-ISOLATION/fin_shrink_20260830043245/live-namespace-demo-untouched",
+      "expected": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "actual": {
+        "ow_tp.gold.finance_monthly": {
+          "rows": 66,
+          "content_checksum": "-49720577121121087944"
+        },
+        "ow_tp.gold.finance_report_export": {
+          "rows": 8,
+          "content_checksum": "11255047104943993789"
+        },
+        "ow_tp.gold.quarantine_gold_finance": {
+          "rows": 0,
+          "content_checksum": "0"
+        }
+      },
+      "source_of_truth": "row count and content checksum of ns=demo's own published rows in the three owned targets, before and after the ns-scoped cleanup of the scratch namespace fin_shrink_20260830043245. This cleanup runs after demo is published, so the protected population is 74 real row(s) rather than an absent table: it is the cleanup path's counterpart to the shrink sequence's batch-2 fingerprint",
+      "result": "pass"
+    },
+    {
+      "id": "SCRATCH-CLEANUP/undeclared-generated-rows-in-the-owned-targets",
+      "expected": {
+        "namespaces": [],
+        "rows": []
+      },
+      "actual": {
+        "namespaces": [],
+        "rows": []
+      },
+      "source_of_truth": "every namespace holding rows in the three owned targets, minus the live namespace and the generated namespaces this run declares: rows an earlier revision's scratch namespace left behind are removed here by DELETE ... WHERE ns = <that ns> AND _origin IN ('gold_finance'), which is the D-31 carve-out (this unit's own rows, its own origin, its own scratch namespace) and never a row another writer owns. ns=demo is proven unchanged across each of these deletes by its own COLD-CLEAN-ISOLATION check",
       "result": "pass"
     },
     {
@@ -5690,7 +6497,7 @@
       "result": "pass"
     }
   ],
-  "checks_passed": 54,
+  "checks_passed": 62,
   "checks_failed": 0,
   "failed_checks": [],
   "recon_result": "pass",

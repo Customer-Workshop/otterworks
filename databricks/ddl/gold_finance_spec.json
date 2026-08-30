@@ -1,0 +1,171 @@
+{
+  "unit": "gold_finance",
+  "source_artifact": "etl/legacy-extra/jobs/finance_excel_report.pl",
+  "source_input_artifact": "etl/legacy-extra/jobs/parse_custbill_fixedwidth.sh",
+  "source_population": {
+    "table": "ow_tp.bronze.custbill_records",
+    "why": "the report reads $ROOT/parsed/CUSTBILL*.psv, the denormalised CUSTBILL stream this migration landed as bronze_custbill. It is not the normalised ow_tp.silver.invoices, and the two populations disagree in this estate (.migration/05_progress.md, ANOM-DENORM-COPIES).",
+    "quarantine_ledger_read": "ow_tp.bronze.quarantine_bronze_custbill",
+    "access": "read-only: this unit issues no INSERT, UPDATE, DELETE or DDL against any bronze or silver table",
+    "columns_expected": [
+      "ns",
+      "record_uid",
+      "source_file",
+      "record_seq",
+      "source_file_sha256",
+      "cust_id",
+      "cust_name",
+      "bill_date",
+      "bill_date_raw",
+      "bill_amt",
+      "bill_amt_raw",
+      "currency",
+      "rec_type",
+      "null_fields",
+      "raw_overflow",
+      "overflow_flag",
+      "record_bytes",
+      "raw_record",
+      "payload_hash",
+      "ingested_at"
+    ],
+    "columns_read": [
+      "ns",
+      "record_uid",
+      "source_file",
+      "record_seq",
+      "bill_date",
+      "bill_amt",
+      "currency",
+      "rec_type",
+      "cust_id"
+    ],
+    "schema_drift_policy": "malformed_record_policy.extra_delimited_fields = fail in docs/tech-partnerships/contracts/gold_finance.json: an undeclared column on the source is a correctness event, not something to ignore, so the run fails if the source's column set is not columns_expected. cust_id is read only as the boolean the source's `next if ($cust eq \"\")` tests; cust_name is never read."
+  },
+  "record_type_map": {
+    "01": "INVOICE",
+    "02": "CREDIT"
+  },
+  "unknown_record_type_template": "UNKNOWN(<rec_type>)",
+  "csv_header": "Currency,RecordType,RecordCount,TotalAmount",
+  "money": {
+    "type": "DECIMAL(14,2)",
+    "max_abs": "999999999999.99",
+    "text_format": "%.2f",
+    "float_accumulation": "the legacy report accumulates in Perl doubles and rounds once at print. The target accumulates in DECIMAL(14,2). The float figure is measured as evidence in the recon report and is never a target column or a tolerance (T1, ACC-MONEY, ANOM-PERL-ROUNDING)."
+  },
+  "group_key": {
+    "expression": "concat(coalesce(currency, ''), '|', rec_type)",
+    "source": "$key = \"$ccy|$rt\" in finance_excel_report.pl",
+    "order": "byte-wise ascending on the composite key (sort keys %tot under LC_ALL=C), not ORDER BY currency, rec_type"
+  },
+  "period": {
+    "column": "period_month",
+    "expression": "date_format(bill_date, 'yyyy-MM')",
+    "declared_divergence": "the legacy report applies no month predicate: it reads every CUSTBILL*.psv in the directory and stamps only the output file name with today's date. finance_monthly is keyed on a period derived from each record's own BILL-DATE plus ns; summing every period row reproduces the legacy report's unfiltered cumulative total."
+  },
+  "quarantine_reasons": [
+    "KEY_NULL",
+    "NUMERIC_OVERFLOW"
+  ],
+  "quarantine_halt_threshold_pct": 5,
+  "declared_population_for_the_halt": "one row per ow_tp.bronze.custbill_records row in this ns — the records this report reads. Numerator and denominator are that same population.",
+  "quarantine_payload_policy": "ACC-NO-PII overrides the raw-payload retention rule of .migration/11_quarantine_codes.md for this unit: a CUSTBILL record carries CUST-NAME, so the gold quarantine table keeps the record identity (source_file, record_seq, record_uid) and the non-PII fields only. The raw payload remains replayable from ow_tp.bronze.custbill_records / ow_tp.bronze.quarantine_bronze_custbill, where it already lives under the parent-owned masks.",
+  "upstream_quarantine_reasons_measured_not_reachable_here": {
+    "RECORD_SHORT": "a short record never reaches gold: bronze_custbill quarantines it (the legacy parser pads it into empty fields instead)",
+    "AMT_NON_NUMERIC": "a non-numeric BILL-AMT never reaches gold: bronze_custbill quarantines it (the legacy parser numifies it to 0 via awk $4+0)",
+    "DATE_INVALID": "an impossible BILL-DATE never reaches gold: bronze_custbill quarantines it",
+    "ENC_INVALID": "an undecodable byte never reaches gold: bronze_custbill quarantines it"
+  },
+  "skipped_population": {
+    "name": "blank_customer_skip",
+    "rule": "next if ($cust eq \"\") — a blank CUST-ID skips the line silently and contributes to no group",
+    "target_behaviour": "reproduced as a skip, not a quarantine: the source publishes nothing for the row and this unit invents no reject code for it. The population is measured and reported."
+  },
+  "origins_this_unit_owns": [
+    "gold_finance"
+  ],
+  "scoped_delete": {
+    "applies_to": [
+      "ow_tp.gold.finance_monthly",
+      "ow_tp.gold.finance_report_export"
+    ],
+    "rule": "MERGE ... WHEN NOT MATCHED BY SOURCE AND t.ns = <this ns> AND t._origin IN (origins_this_unit_owns) THEN DELETE",
+    "why": "both targets are this unit's own derived rendering of the report, not source-published rows. A group the current population no longer contains is not in the legacy report's output either, so leaving it published would make gold disagree with the report it reproduces. The delete is scoped to this ns and to rows this unit wrote, it never touches another writer's row, and the rows removed per run are counted and published (D-28, D-31).",
+    "expected_rows_deleted_on_a_stable_input": 0
+  },
+  "export_path": {
+    "volume": "ow_tp.gold.exports",
+    "root": "/Volumes/ow_tp/gold/exports",
+    "layout": "<root>/<ns>/gold_finance/finance_billing_<YYYYMMDD>.csv (+ the .xls copy), and <root>/<ns>/gold_finance/_runs/<batch_id>.json for the run summary",
+    "why": "ow_tp.gold.exports is the pre-existing gold volume in this workspace; no volume is created by this unit. The <ns>/<unit>/... prefix inside it is the ACC-NS path rule."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "target_shape": "the legacy report with an empty parsed directory writes a CSV containing only the header line. The target writes the header row into ow_tp.gold.finance_report_export and a header-only CSV (and its .xls copy) to the volume, with zero rows in ow_tp.gold.finance_monthly and report_data_rows = 0 on the header row, so a consumer cannot read an absent report as 'not run yet'."
+  },
+  "deliberate_non_reproductions": [
+    {
+      "source_behaviour": "sendmail delivery of the report (open(MAIL, \"|/usr/sbin/sendmail -t\"))",
+      "not_reproduced_because": "the step is dead on the current estate — sendmail is absent, the pipe open fails and $SIG{PIPE}='IGNORE' swallows it, so the source delivers nothing. Reproducing it would add an egress path the source does not actually have, and $MAILTO addresses a person who left in 2020 on one branch.",
+      "instructed_by": "wave 5 brief"
+    },
+    {
+      "source_behaviour": "the /tmp/finance_report.lock lockfile",
+      "not_reproduced_because": "the source creates it, never cleans it up and runs anyway when it exists, so it excludes nothing. Concurrency is bounded by max_concurrent_runs = 1 on the job instead.",
+      "instructed_by": "wave 5 brief"
+    },
+    {
+      "source_behaviour": "the hostname branch selecting $ROOT and $MAILTO (otterworks-etl-prod-01 / otterworks-etl-uat / else)",
+      "not_reproduced_because": "it selects a filesystem path and a mail recipient on a specific ETL box. The target's equivalent is the ns parameter and the namespaced volume prefix.",
+      "instructed_by": "wave 5 brief"
+    },
+    {
+      "source_behaviour": "opendir(...) || die versus open(F, ...) || next — an unreadable directory kills the run, an unreadable file is skipped silently",
+      "not_reproduced_because": "an unreadable input fails this unit loudly. The number of inputs the source would have skipped is measured and reported instead of being silently absorbed.",
+      "instructed_by": "wave 5 brief"
+    }
+  ],
+  "reproduced_verbatim": [
+    "the three-way record-type mapping, including the literal UNKNOWN(<raw code>) form carrying the raw REC-TYPE bytes",
+    "grouping on \"$ccy|$rt\" with the composite key sorted byte-wise",
+    "RecordCount as an integer count of the rows in the group (%d of $cnt{$key})",
+    "TotalAmount rendered with two decimals (%.2f)",
+    "the CSV header line, the row order and the CSV content, copied byte-for-byte to a .xls sibling (system(\"cp $csv $xls\"))",
+    "the report file name stamped with the run date (finance_billing_<YYYYMMDD>), which is a naming convention and not a filter"
+  ],
+  "tables": [
+    {
+      "target": "ow_tp.gold.finance_monthly",
+      "merge_key": [
+        "ns",
+        "period_month",
+        "legacy_group_key"
+      ],
+      "money_columns": [
+        "total_amount"
+      ]
+    },
+    {
+      "target": "ow_tp.gold.finance_report_export",
+      "merge_key": [
+        "ns",
+        "line_kind",
+        "legacy_group_key"
+      ],
+      "money_columns": [
+        "total_amount"
+      ]
+    },
+    {
+      "target": "ow_tp.gold.quarantine_gold_finance",
+      "merge_key": [
+        "ns",
+        "record_uid"
+      ],
+      "money_columns": [
+        "bill_amt"
+      ]
+    }
+  ]
+}

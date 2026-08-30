@@ -556,6 +556,54 @@ print(json.dumps(PRE_VERSIONS, indent=1))
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Forward-only nightly numbering: a backfill behind an already-run night is refused
+# MAGIC
+# MAGIC This check runs before **any** write of this run — before the overdue snapshot is persisted,
+# MAGIC before any `MERGE` — because a refusal has to leave nothing behind.
+# MAGIC
+# MAGIC The attempt basis is the ingest population plus this unit's rows at `as_of <` this run's
+# MAGIC `as_of`, so an `as_of` behind one that already ran would recompute an `attempt_no` the later
+# MAGIC night already used, and `f_md5_uuid(invoice_id || attempt_no)` would `MERGE` over that night's
+# MAGIC row. The source does not settle it: `05_pkg_dunning.sql:43-44` is
+# MAGIC `SELECT NVL(MAX(attempt_no),0)+1 ... WHERE invoice_id = inv.id` with **no** `p_as_of`
+# MAGIC predicate, so Oracle run out of order appends `max(all) + 1` and its numbering is a function of
+# MAGIC execution order — a backfill appends a further attempt, and a rerun of the later night then
+# MAGIC appends again on unchanged input. `JOB_NIGHTLY_DUNNING` only ever moves forward, so neither
+# MAGIC renumber-by-date nor append-by-execution-order is a behaviour the nightly job produces; both
+# MAGIC are operator decisions, and this unit takes neither silently.
+
+# COMMAND ----------
+
+if PHASE == "schedule":
+    later_nights = [
+        str(r[0])
+        for r in spark.sql(
+            f"""
+            SELECT DISTINCT `as_of` FROM {full('dunning_attempts')}
+             WHERE `ns` = {NS_LIT} AND `as_of` > to_date({AS_OF_LIT}) ORDER BY `as_of`
+            """
+        ).collect()
+    ]
+    if later_nights:
+        raise AssertionError(
+            "STOPA-DUNNING-BACKFILL: "
+            f"{full('dunning_attempts')} already holds attempts for ns={NS} at strictly later as_of "
+            f"values {later_nights}, and this run was asked for as_of={AS_OF}. Nothing has been "
+            "written by this run: no overdue snapshot, no MERGE on any target. Attempt numbering "
+            "here is forward-only (basis = ingest attempts plus this unit's rows at as_of < this "
+            "run's as_of), so a backfill behind an already-run night would recompute an attempt_no "
+            "a later night already used and its f_md5_uuid(invoice_id || attempt_no) id would MERGE "
+            "over that night's row. The source does not decide it either: 05_pkg_dunning.sql:43-44 "
+            "selects NVL(MAX(attempt_no),0)+1 with no p_as_of predicate, so Oracle would append by "
+            "execution order rather than renumber by date, and a rerun of the later night would "
+            "then append again on unchanged input. Choosing between renumber-by-date and "
+            "append-by-execution-order is an operator decision; escalate rather than backfilling."
+        )
+    print(f"forward-only check: no attempts at an as_of later than {AS_OF} in ns={NS}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Inputs: codes, tenants as ingest left them, and the invoice population
 # MAGIC
 # MAGIC `ow_tp.bronze.tenants` is read, never written. Two ingest anomalies are handled explicitly

@@ -470,6 +470,23 @@ def quarantine_rows(dbx: DbxJobs, ns: str, batch_id: str) -> list[dict[str, Any]
     )
 
 
+def target_versions(dbx: DbxJobs) -> dict[str, int]:
+    """Each owned target's current Delta version, read from its own history."""
+    versions: dict[str, int] = {}
+    for table in list(TABLES) + ["subscriptions", f"quarantine_{UNIT}"]:
+        name = f"{CATALOG}.{SCHEMA}.{table}"
+        versions[name] = int(dbx.scalar(f"DESCRIBE HISTORY {name} LIMIT 1"))
+    return versions
+
+
+def volume_file_exists(dbx: DbxJobs, volume_path: str) -> bool:
+    try:
+        dbx.read_volume_file(volume_path)
+    except DbxError:
+        return False
+    return True
+
+
 def diff_rows(
     expected: dict[str, dict[str, Any]],
     actual: dict[str, dict[str, Any]],
@@ -736,6 +753,61 @@ def edge_evidence(dbx: DbxJobs, stamp: str, reseed: bool = True) -> dict[str, An
         "earlier as_of values, which is why the same night is a no-op and the next night appends",
     }
 
+    # Forward-only numbering, the other direction: with the later night already written, the earlier
+    # night is refused before anything is written. The source cannot decide this one —
+    # 05_pkg_dunning.sql:43-44 puts no p_as_of predicate on the MAX, so Oracle would append by
+    # execution order and its own rerun of the later night would then append again on unchanged
+    # input — so the unit halts and an operator decides (DIV-BACKFILL-REFUSED).
+    versions_before_backfill = target_versions(dbx)
+    backfill_batch = f"{stamp}e5"
+    backfill = run_job(
+        dbx, ns, backfill_batch, as_of=AS_OF, invoice_source="bronze", expect_failure=True
+    )
+    backfill_sched = backfill["tasks"].get("schedule_dunning", {})
+    backfill_error = ANSI_RE.sub(
+        "",
+        (backfill_sched.get("error") or "") + (backfill_sched.get("error_trace_tail") or ""),
+    )
+    backfill_halt_lines = [
+        ln.strip() for ln in backfill_error.splitlines() if "STOPA-DUNNING-BACKFILL" in ln
+    ]
+    attempts_after_backfill = rows_of(dbx, attempt_query, later_cols)
+    refused_backfill = {
+        "requested_as_of": AS_OF,
+        "already_written_as_of": LATER_AS_OF,
+        "run_id": backfill["run_id"],
+        "batch_id": backfill_batch,
+        "schedule_task_result_state": backfill_sched.get("result_state"),
+        "suspend_task_result_state": backfill["tasks"]
+        .get("suspend_overdue", {})
+        .get("result_state"),
+        "halt_raised": "STOPA-DUNNING-BACKFILL" in backfill_error,
+        "halt_message": (
+            backfill_halt_lines[-1][:1200] if backfill_halt_lines else backfill_error[-1200:]
+        ),
+        "target_versions_before": versions_before_backfill,
+        "target_versions_after": target_versions(dbx),
+        "no_target_version_changed": target_versions(dbx) == versions_before_backfill,
+        "overdue_snapshot_written": volume_file_exists(
+            dbx, f"{LANDING_ROOT}/{ns}/{UNIT}/snapshots/{backfill_batch}/manifest.json"
+        ),
+        "quarantine_rows_for_this_batch": len(quarantine_rows(dbx, ns, backfill_batch)),
+        "attempt_rows_unchanged": attempts_after_backfill == attempts_after_later_rerun,
+        "later_night_rerun_after_the_refusal": None,
+        "note": "the refusal happens before the overdue snapshot is persisted and before any MERGE, "
+        "so no target version moves and no ledger row is written; the source's own reading "
+        "(NVL(MAX(attempt_no),0)+1 over the whole live table, 05_pkg_dunning.sql:43-44) would "
+        "append by execution order instead, which is an operator decision and not this unit's",
+    }
+    run6 = run_job(dbx, ns, f"{stamp}e6", as_of=LATER_AS_OF, invoice_source="bronze")
+    halt_if_over(run6["phases"], f"ns={ns} later-night rerun after the refused backfill")
+    refused_backfill["later_night_rerun_after_the_refusal"] = {
+        "run_id": run6["run_id"],
+        "commit_metrics": {p: run6["phases"][p]["commit_metrics"] for p in run6["phases"]},
+        "attempt_rows_unchanged": rows_of(dbx, attempt_query, later_cols)
+        == attempts_after_later_rerun,
+    }
+
     # The ledger is an append-preserving record, not current state: the cold batch's rows have to
     # still be there, unchanged and still carrying their own _batch_id, after three more runs have
     # rejected the same rows again.
@@ -813,6 +885,7 @@ def edge_evidence(dbx: DbxJobs, stamp: str, reseed: bool = True) -> dict[str, An
             },
         },
         "later_night": later_night,
+        "refused_backfill": refused_backfill,
         "subscriptions_after_cold_run": subs_after_run1,
         "target": snap,
         "rerun_phases": run2["phases"],
@@ -1325,6 +1398,50 @@ def build_report(
             rows_appended=later["rows_appended_by_the_later_night"],
             commit_metrics=later["later_night_commit_metrics"],
             rerun_commit_metrics=later["later_night_rerun_commit_metrics"],
+        )
+    )
+    refused = edge["refused_backfill"]
+    checks.append(
+        check(
+            "ACC-BACKFILL-REFUSED",
+            {
+                "halt_raised": True,
+                "schedule_task_result_state": "FAILED",
+                "no_target_version_changed": True,
+                "overdue_snapshot_written": False,
+                "quarantine_rows_for_this_batch": 0,
+                "attempt_rows_unchanged": True,
+                "later_night_rerun_after_the_refusal_changed_nothing": True,
+            },
+            {
+                "halt_raised": refused["halt_raised"],
+                "schedule_task_result_state": refused["schedule_task_result_state"],
+                "no_target_version_changed": refused["no_target_version_changed"],
+                "overdue_snapshot_written": refused["overdue_snapshot_written"],
+                "quarantine_rows_for_this_batch": refused["quarantine_rows_for_this_batch"],
+                "attempt_rows_unchanged": refused["attempt_rows_unchanged"],
+                "later_night_rerun_after_the_refusal_changed_nothing": refused[
+                    "later_night_rerun_after_the_refusal"
+                ]["attempt_rows_unchanged"],
+            },
+            "DIV-BACKFILL-REFUSED, measured in ns="
+            f"{edge['namespace']}: with {refused['already_written_as_of']} already written, a run "
+            f"asked for the earlier {refused['requested_as_of']} raises STOPA-DUNNING-BACKFILL "
+            "before the overdue snapshot is persisted and before any MERGE, so no target Delta "
+            "version moves and no ledger row is written, and a rerun of the later night afterwards "
+            "is still a true no-op. The source would not decide it: 05_pkg_dunning.sql:43-44 has no "
+            "p_as_of predicate on the MAX, so Oracle appends by execution order rather than "
+            "renumbering by date, and this port cannot backfill an earlier night without an "
+            "operator decision",
+            halt_message=refused["halt_message"],
+            target_versions_before=refused["target_versions_before"],
+            target_versions_after=refused["target_versions_after"],
+            later_night_rerun=refused["later_night_rerun_after_the_refusal"],
+            divergence=next(
+                d
+                for d in SPEC["declared_divergences"]
+                if d["id"] == "DIV-BACKFILL-REFUSED"
+            ),
         )
     )
 

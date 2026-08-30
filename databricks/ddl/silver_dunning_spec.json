@@ -93,7 +93,7 @@
     "days_overdue_expr": "datediff(trunc(as_of), trunc(issued_at)) — Oracle TRUNC(p_as_of) - TRUNC(CAST(i.issued_at AS DATE)), an integer day count on truncated dates",
     "attempt_id_input": "invoice_id || TO_CHAR(attempt_no)",
     "notification_id_input": "tenant_id || 'suspension' || TO_CHAR(TRUNC(p_as_of), 'YYYY-MM-DD')",
-    "attempt_no_expr": "coalesce(max(attempt_no), 0) + 1 per invoice_id (NVL(MAX(attempt_no),0)+1), evaluated set-wise in BIGINT over the ingest attempt population plus this unit's own target rows from strictly earlier as_of values. The earlier-as_of half is what makes the next night append attempt n+1 instead of merging over the previous night's row; excluding this run's own as_of is what makes a rerun of the same night recompute the same ids and change nothing (DIV-RERUN-APPENDS). A candidate outside the target's INT is quarantined NUMERIC_OVERFLOW before any cast.",
+    "attempt_no_expr": "coalesce(max(attempt_no), 0) + 1 per invoice_id (NVL(MAX(attempt_no),0)+1), evaluated set-wise in BIGINT over the ingest attempt population plus this unit's own target rows from strictly earlier as_of values. The earlier-as_of half is what makes the next night append attempt n+1 instead of merging over the previous night's row; excluding this run's own as_of is what makes a rerun of the same night recompute the same ids and change nothing (DIV-RERUN-APPENDS). Because the basis is forward-only, an as_of behind a night that already ran would recompute an attempt_no that night already used, so such a run is refused before any write (STOPA-DUNNING-BACKFILL, DIV-BACKFILL-REFUSED) rather than renumbered or appended. A candidate outside the target's INT is quarantined NUMERIC_OVERFLOW before any cast.",
     "suspended_on_expr": "TRUNC(p_as_of) — the truncated date, not the run timestamp"
   },
   "job": {
@@ -166,6 +166,14 @@
       "target": "attempt numbering is pinned set-wise to the ingest attempt population (ow_tp.bronze.dunning_attempts) plus this unit's own rows from earlier as_of values, so the ids are a function of (ns, as_of, ingest state): a rerun of the same night is a true no-op, and a genuinely later night appends attempt n+1 the way a later source night would",
       "dictionary_ref": "D-27",
       "measured": "attempts a source rerun would append, per run"
+    },
+    {
+      "id": "DIV-BACKFILL-REFUSED",
+      "acceptance_check": "ACC-IDEM",
+      "source": "05_pkg_dunning.sql:43-44 is SELECT NVL(MAX(attempt_no),0)+1 INTO v_attempt FROM dunning_attempts WHERE invoice_id = inv.id, with no p_as_of predicate at all: the MAX is over the whole live table, so attempt numbering is a function of execution order rather than of the date. sp_schedule_dunning run for an earlier p_as_of after a later one has already run therefore appends max(all attempts)+1 rather than renumbering by date, and a later rerun of the *later* p_as_of then sees the higher MAX and appends yet another attempt although its input has not changed. JOB_NIGHTLY_DUNNING only ever moves forward, so this is reachable only by an operator running the procedure out of order.",
+      "target": "forward-only nightly numbering. The basis is the ingest attempt population plus this unit's rows at as_of < this run's as_of, and a run whose as_of is behind an as_of already present in ow_tp.silver.dunning_attempts for the namespace is refused with STOPA-DUNNING-BACKFILL before any write of the run happens \u2014 before the overdue snapshot is persisted and before any MERGE. Stated plainly, and this is the consequence of the choice: this port cannot backfill an earlier night without an operator decision. Renumbering by date would rewrite the attempt a later night wrote, and appending by execution order would break the same-input no-op the forward-only basis guarantees (D-27); the unit refuses rather than choosing one of them silently.",
+      "dictionary_ref": "D-27",
+      "measured": "live in the declared generated namespace ns=dunning_edge: a later night runs and writes, the earlier night is then refused by the halt with no target version change and no snapshot written, and a rerun of the later night is still a true no-op"
     },
     {
       "id": "DIV-NO-HIST",

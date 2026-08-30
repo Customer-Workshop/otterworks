@@ -98,6 +98,23 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert len(data["suggestions"]) >= 1
 
+    def test_suggest_ranking_path_never_500s(self, client, mock_meilisearch_client, monkeypatch):
+        """Ranking-score enrichment tolerates hits missing _rankingScore."""
+        import app.api.search as search_module
+
+        monkeypatch.setattr(search_module, "_chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Test Doc 1"},
+                {"title": "Test Doc 2"},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""
         response = client.get("/api/v1/search/suggest?q=")

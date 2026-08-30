@@ -114,6 +114,40 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"][:2] == ["High Score", "Low Score"]
 
+    def test_suggest_duplicate_keeps_highest_score(self, client, mock_meilisearch_client):
+        """Duplicate suggestion text across indexes is ranked by its max score."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {
+                "estimatedTotalHits": 2,
+                "hits": [
+                    {"title": "Shared Doc", "_rankingScore": 0.3},
+                    {"title": "Middle Doc", "_rankingScore": 0.5},
+                ],
+            },
+            {
+                "estimatedTotalHits": 1,
+                "hits": [
+                    {"name": "Shared Doc", "_rankingScore": 0.8},
+                ],
+            },
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=do")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Shared Doc", "Middle Doc"]
+
+    def test_suggest_chaos_flag_returns_500(self, client, monkeypatch):
+        """Injected suggest_500 chaos scenario deliberately fails the endpoint."""
+        import app.api.search as search_module
+
+        monkeypatch.setattr(
+            search_module, "_chaos_active",
+            lambda key: key == "chaos:search-service:suggest_500",
+        )
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 500
+
     def test_suggest_missing_ranking_score(self, client, mock_meilisearch_client):
         """Suggest does not error when hits lack a ranking score."""
         mock_index = mock_meilisearch_client.index.return_value

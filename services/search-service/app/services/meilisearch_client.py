@@ -249,8 +249,7 @@ class MeiliSearchService:
 
     def suggest(self, prefix: str, size: int = 10) -> list[str]:
         """Autocomplete suggestions using MeiliSearch prefix matching."""
-        ranked: list[tuple[float, str]] = []
-        seen: set[str] = set()
+        scores: dict[str, float] = {}
 
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
@@ -261,12 +260,12 @@ class MeiliSearchService:
             })
             for hit in result["hits"]:
                 text = hit.get("title") or hit.get("name", "")
-                if text and text not in seen:
-                    ranked.append((float(hit.get("_rankingScore", 0.0)), text))
-                    seen.add(text)
+                if text:
+                    score = float(hit.get("_rankingScore", 0.0))
+                    scores[text] = max(score, scores.get(text, 0.0))
 
-        ranked.sort(key=lambda item: item[0], reverse=True)
-        return [text for _, text in ranked[:size]]
+        ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+        return [text for text, _ in ranked[:size]]
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
         """Wait for a MeiliSearch task and raise on failure."""

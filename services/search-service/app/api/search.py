@@ -90,6 +90,19 @@ def suggest() -> tuple:
     if not prefix or len(prefix) < 2:
         return jsonify({"suggestions": [], "query": prefix}), 200
 
+    # CHAOS: when this flag is active the legacy ranking-score enrichment path
+    # runs. It looks up _rankingScore on raw suggestion entries that never
+    # carry the field, so the handler crashes with a 500 — this reproduces the
+    # documented search-suggest-500 incident scenario.
+    if _chaos_active("chaos:search-service:suggest_500"):
+        service = _get_service()
+        raw_suggestions = service.suggest(prefix)
+        if not raw_suggestions:
+            # Ensure the chaos failure fires even with an empty index.
+            raw_suggestions = [{}]
+        ranked = sorted(raw_suggestions, key=lambda s: s["_rankingScore"], reverse=True)  # type: ignore[index]
+        return jsonify({"suggestions": ranked, "query": prefix}), 200
+
     try:
         service = _get_service()
         suggestions = service.suggest(prefix)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -104,6 +106,48 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         data = response.get_json()
         assert data["suggestions"] == []
+
+    def test_suggest_chaos_flag_inactive(self, client, mock_meilisearch_client, monkeypatch):
+        """With the chaos flag off, suggest returns 200 with suggestions."""
+        monkeypatch.setattr("app.api.search._chaos_active", lambda key: False)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 1,
+            "hits": [{"title": "Test Doc", "_rankingScore": 0.9}],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Test Doc"]
+
+    def test_suggest_chaos_flag_active(self, app, monkeypatch):
+        """With the chaos flag on, suggest crashes with a server error."""
+        monkeypatch.setattr("app.api.search._chaos_active", lambda key: True)
+        app.config["TESTING"] = False
+        client = app.test_client()
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 500
+
+    def test_suggest_dedup_keeps_highest_score(self, meilisearch_service, mock_meilisearch_client):
+        """Duplicate text across indices keeps the highest ranking score."""
+        docs_index = MagicMock()
+        docs_index.search.return_value = {
+            "hits": [
+                {"title": "Shared", "_rankingScore": 0.3},
+                {"title": "Doc Only", "_rankingScore": 0.5},
+            ],
+        }
+        files_index = MagicMock()
+        files_index.search.return_value = {
+            "hits": [{"name": "Shared", "_rankingScore": 0.9}],
+        }
+        mock_meilisearch_client.index.side_effect = lambda name: (
+            docs_index if "documents" in name else files_index
+        )
+
+        suggestions = meilisearch_service.suggest("sh")
+        assert suggestions == ["Shared", "Doc Only"]
 
 
 class TestAdvancedSearchEndpoint:

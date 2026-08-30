@@ -188,3 +188,69 @@ Six defects found in review and re-proven live:
   `SUBSCRIPTIONS`, `NOTIFICATIONS`): expected end state is Oracle's own evaluation of read-only
   re-expressions of the same predicates, so control flow that lives only in PL/SQL is modelled, not
   observed. Stays in `unverified_paths`, with the concurrent-collision reproduction.
+
+## Wave 5 — `gold_finance`, closed
+
+Merged into the run branch as PR #1382 (62/62 live recon checks, CI 5/5, all review threads judged and
+resolved). The last unit, and the only one whose source of truth is not PL/SQL: `finance_excel_report.pl`
+plus the `CBCUST01` fixed-width parser that feeds it. The legacy report was **executed**
+(`scripts/tp-run-deterministic.sh`) and its CSV compared line-for-line against the target's export,
+so parity here is measured against the source's own output rather than against a re-expression of it.
+
+Population, which decides every figure the unit publishes: gold reads the **denormalised** CUSTBILL
+stream (`ow_tp.bronze.custbill_records`), because that is what the Perl report reads. The normalised
+`ow_tp.silver.invoices` figures are published beside it as the declared disagreement recorded out of
+wave 1 (18,750 header rows / 1.86B against 3 normalised invoices / 375.62 in the source) — not
+reconciled, not averaged, not filtered. That closes the wave-1 question of which side gold reads.
+
+### Defects found in review and fixed before merge
+
+1. **The evidence harness dropped the three shared gold tables** to stage a cold load, which erases
+   every *other* namespace's published report and quarantine history. Replaced by `ns`- and
+   `_origin`-scoped `DELETE`, with a before/after row count **and content checksum** of the rows the
+   unit may not touch.
+2. **Those isolation fingerprints then proved nothing**: the checksum summed `xxhash64` in `BIGINT`,
+   which overflows under ANSI mode, and the resulting error was swallowed by the same handler that
+   reports an absent table — so all six checks read `"table does not exist"` before *and* after.
+   Existence now comes from `information_schema`, the sum is `DECIMAL(38,0)`, any other error raises,
+   and every scratch cleanup runs **after** `ns=demo` is published and additionally fingerprints
+   demo's own rows (66 monthly + 8 export rows byte-identical across all six).
+3. **An empty population would have retracted a published report.** Both published targets carry a
+   scoped `NOT MATCHED BY SOURCE ... DELETE`, so a failed CUSTBILL ingest or a wrong `ns` parameter
+   would delete every published finance row for that namespace and overwrite the export with a
+   header-only CSV. The legacy chain never retracts a report it wrote — it writes a new dated file.
+   Refused before either publishing `MERGE` (`STOPA-RETRACTION`), naming the rows it would have
+   deleted; a genuinely empty *first* load stays legal.
+4. **The delete path had never removed a row in evidence** (all three checks read 0), so it could not
+   be distinguished from a broken one. Both directions are now exercised live on a per-run generated
+   namespace: batch 2 un-publishes one group from a still-large population, batch 3 empties it and is
+   refused.
+5. **The pipe-in-a-fixed-width-field population was asserted impossible rather than measured.** Nothing
+   in `CBCUST01` or the parser excludes the byte the report uses as its group delimiter, so a `'U|D'`
+   currency makes the legacy report print a currency and a record type no record holds. Measured live
+   (`DELIMITER-IN-FIXED-WIDTH`) and declared as a divergence: the target reads the true copybook
+   positions and does not reproduce the field shifting.
+6. **The report used a top-level `result` key**, so the estate rollup read its `recon_result` as `None`
+   — green unit, unreadable estate. Fixed in the unit; the rollup now also fails on a *named* unit with
+   no report at all (`--require-units`), because absence was previously indistinguishable from success.
+
+### Carried out of wave 5
+
+- **D-32 is the dictionary entry this wave forced.** Devin Review read the scoped delete as a D-28
+  breach; the parent review read its *absence* as publishing a total no source artifact produces. Both
+  are right about entity tables and rendering targets respectively, so the boundary is now written down
+  rather than left as a per-unit judgement: a derived-aggregate rendering target may un-publish a group
+  its current **non-empty** population no longer contains, under four stated conditions, and no unit may
+  extend that to a table publishing entities or self-declare into the carve-out.
+- **The estate has no month filter and never did.** `finance_excel_report.pl` is "monthly" by file-name
+  convention only; `period_month` comes from each record's own `BILL-DATE` and summing the periods
+  reproduces the legacy cumulative total. A consumer expecting a month-scoped report is expecting
+  something the source never produced.
+- **`ANOM-PERL-ROUNDING` is real but does not bite `ns=demo`**: the float accumulator and the
+  `DECIMAL(14,2)` total print the same cents on the demo population, so it is exercised on a declared
+  generated namespace where they differ by one cent. The float figure stays evidence; T1 is not widened.
+- **The job is declared untriggered**, like every unit job in this estate: invocation is parent-owned
+  (STOP C/E). A cron window here would also be a period predicate the source does not have.
+- **Wave 1's generated pipe-bearing bronze rows in an abandoned `ns` cannot be removed by this unit** —
+  bronze is read-only to gold. Its own gold slices were cleaned; the bronze rows stay in
+  `unverified_paths` for the ingest owner.

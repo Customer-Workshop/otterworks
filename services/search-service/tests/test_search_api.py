@@ -98,6 +98,30 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert len(data["suggestions"]) >= 1
 
+    def test_suggest_dedup_keeps_best_score(self, meilisearch_service, mock_meilisearch_client):
+        """Duplicate text across indices is ranked by its best score."""
+        docs_index = type(mock_meilisearch_client.index.return_value)()
+        files_index = type(mock_meilisearch_client.index.return_value)()
+        docs_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Report", "_rankingScore": 0.4},
+                {"title": "Alpha", "_rankingScore": 0.5},
+            ],
+        }
+        files_index.search.return_value = {
+            "estimatedTotalHits": 1,
+            "hits": [
+                {"name": "Report", "_rankingScore": 0.9},
+            ],
+        }
+        mock_meilisearch_client.index.side_effect = lambda name: (
+            docs_index if "documents" in name else files_index
+        )
+
+        suggestions = meilisearch_service.suggest("re")
+        assert suggestions == ["Report", "Alpha"]
+
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""
         response = client.get("/api/v1/search/suggest?q=")

@@ -105,6 +105,38 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == []
 
+    def test_suggest_ranking_path_missing_score(self, client, mock_meilisearch_client, monkeypatch):
+        """Ranking enrichment path returns 200 even when _rankingScore is absent."""
+        import app.api.search as search_module
+
+        monkeypatch.setattr(search_module, "_chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Test Doc 1"},
+                {"title": "Test Doc 2"},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["suggestions"]) >= 1
+
+    def test_suggest_ranking_path_empty_results(self, client, mock_meilisearch_client, monkeypatch):
+        """Ranking enrichment path returns 200 with an empty index."""
+        import app.api.search as search_module
+
+        monkeypatch.setattr(search_module, "_chaos_active", lambda key: True)
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {"estimatedTotalHits": 0, "hits": []}
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["suggestions"] == []
+
 
 class TestAdvancedSearchEndpoint:
     """Tests for POST /api/v1/search/advanced."""

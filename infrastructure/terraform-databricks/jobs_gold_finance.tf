@@ -21,10 +21,11 @@
 # CUSTBILL population, so the losing run's report would be a mix of both.
 #
 # trigger_granularity is per-batch (docs/tech-partnerships/contracts/gold_finance.json): the report
-# is produced once per landed CUSTBILL batch by the run that lands it, so there is deliberately no
-# schedule and no file-arrival trigger here. The legacy script's own "monthly" is a file-name
-# convention with no month filter behind it, and a cron window declared here would be a period
-# predicate the source does not have.
+# is produced once per landed CUSTBILL batch, by the run that lands it. This job carries no schedule
+# and no trigger of its own — every unit job in this estate is declared untriggered and orchestration
+# is parent-owned (STOP C/E), so the invocation is not this unit's to declare. A cron window here
+# would also be a period predicate the source does not have: the legacy script's own "monthly" is a
+# file-name convention with no month filter behind it.
 
 locals {
   gold_finance_unit        = "gold_finance"

@@ -32,6 +32,12 @@
 # MAGIC   `'01'` → `INVOICE`, `'02'` → `CREDIT`, anything else → the literal `UNKNOWN(<rt>)` carrying
 # MAGIC   the raw `REC-TYPE` bytes, padding included. That string form is reproduced exactly, and an
 # MAGIC   unmapped record type is a **published row**, not a reject: the source publishes it.
+# MAGIC * **A `'|'` byte inside `CURRENCY` or `REC-TYPE` is a declared divergence, not something this
+# MAGIC   notebook emulates.** Those are fixed-width copybook fields with no delimiter validation, so
+# MAGIC   such a byte shifts the source's own `split(/[|]/)` and makes it print fields the record does
+# MAGIC   not hold, while this unit reads the true fixed-width field from bronze. The population is
+# MAGIC   measured in the recon report rather than assumed impossible, and the divergence is recorded
+# MAGIC   in `gold_finance_spec.json`; the source's field shifting is not reproduced.
 # MAGIC * **`next if ($cust eq "")`** — a blank `CUST-ID` skips the line silently and contributes to
 # MAGIC   no group. Reproduced as a skip, and the skipped population is measured. It is not
 # MAGIC   quarantined: this unit invents no reject code for a row the source deliberately drops.
@@ -89,13 +95,21 @@
 # MAGIC writer's row and no source-published row (D-28, D-31), and the number of rows it removes is
 # MAGIC counted per run and published in the run summary. On a stable input it is 0.
 # MAGIC
+# MAGIC What that delete may **not** do is retract a whole namespace's report because its population
+# MAGIC arrived empty (a failed or half-run ingest, a wrong `ns` parameter): the legacy chain writes a
+# MAGIC new dated file and retracts nothing. So a run whose published population is empty while these
+# MAGIC targets already hold published rows for the ns fails closed before either publishing `MERGE`
+# MAGIC (`STOPA-RETRACTION`), naming the rows it would have removed. It protects an already-published
+# MAGIC report from an empty population; it does not protect against a population that shrinks to a
+# MAGIC smaller non-empty one, which is exactly the case where the delete is correct.
+# MAGIC
 # MAGIC ## Order of operations
 # MAGIC
 # MAGIC Quarantine is persisted **before** the 5% halt is evaluated, so a halted run leaves the
 # MAGIC operator its rejected rows; the halt is evaluated on one declared population (one row per
 # MAGIC `ow_tp.bronze.custbill_records` row in this ns), numerator and denominator on that same
-# MAGIC population; and only then is anything published. Restart safety is `MERGE` on the declared
-# MAGIC key plus `ns` in every target, so a second identical run writes nothing.
+# MAGIC population; then the retraction guard; and only then is anything published. Restart safety is
+# MAGIC `MERGE` on the declared key plus `ns` in every target, so a second identical run writes nothing.
 
 # COMMAND ----------
 
@@ -518,6 +532,48 @@ if QUARANTINE_RATE > HALT_PCT:
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## The retraction guard — an empty population may not un-publish a published report
+# MAGIC
+# MAGIC Both published `MERGE`s below carry `WHEN NOT MATCHED BY SOURCE ... THEN DELETE`, scoped to this
+# MAGIC `ns` and this unit's origins. That is right for a group the population no longer contains, and
+# MAGIC wrong in one direction: if the population for this `ns` is **empty** — a failed or half-run
+# MAGIC ingest, a wrong `ns` parameter — the same clause would delete every published `finance_monthly`
+# MAGIC row for the ns and overwrite the export with a header-only CSV. The legacy chain never retracts
+# MAGIC a report it wrote; it writes a new dated file. So a run whose published population is empty
+# MAGIC while the targets already hold published rows for this `ns` fails **before** any publishing
+# MAGIC `MERGE`, naming the rows it would have deleted (the same shape as wave 4's out-of-order backfill
+# MAGIC guard, `.migration/05_progress.md`). A genuinely empty first load — nothing published yet — is
+# MAGIC legal and still writes the explicit header-only report.
+
+# COMMAND ----------
+
+already_published = spark.sql(
+    f"""
+SELECT
+  (SELECT count(*) FROM {MONTHLY}
+    WHERE ns = {NS_LIT} AND _origin IN ({OWNED_ORIGINS_LIT}))                     AS monthly_rows,
+  (SELECT count(*) FROM {EXPORT}
+    WHERE ns = {NS_LIT} AND _origin IN ({OWNED_ORIGINS_LIT}) AND line_kind = 'data') AS export_data_rows
+"""
+).collect()[0]
+PUBLISHED_MONTHLY_ROWS = int(already_published["monthly_rows"])
+PUBLISHED_EXPORT_ROWS = int(already_published["export_data_rows"])
+if CONTRIBUTING_ROWS == 0 and (PUBLISHED_MONTHLY_ROWS or PUBLISHED_EXPORT_ROWS):
+    raise RuntimeError(
+        f"STOPA-RETRACTION: the published population of {SOURCE} for ns={NS} is empty "
+        f"({SOURCE_ROWS} source rows, {QUARANTINED_ROWS} quarantined, {BLANK_SKIPS} blank-customer "
+        f"skips, {CONTRIBUTING_ROWS} contributing), but {MONTHLY} already holds "
+        f"{PUBLISHED_MONTHLY_ROWS} published row(s) and {EXPORT} {PUBLISHED_EXPORT_ROWS} data row(s) "
+        f"for this ns. Publishing would delete all of them and leave a header-only report, which the "
+        "legacy chain never does: it writes a new dated file and retracts nothing. Nothing was "
+        "published or removed. Check the ns parameter and whether the CUSTBILL ingest for this ns "
+        "completed; a namespace that has genuinely gone empty must be retracted deliberately, not by "
+        "a run of this unit."
+    )
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## `finance_monthly` — one row per period and group
 # MAGIC
 # MAGIC The period comes from each record's own `BILL-DATE`; the legacy report filters on nothing, so
@@ -605,6 +661,9 @@ spark.sql(
 CREATE OR REPLACE TEMPORARY VIEW v_report AS
 SELECT
   legacy_group_key,
+  -- The fixed-width fields as bronze sliced them, not fields recovered from the composite key: a
+  -- '|' byte inside CURRENCY or REC-TYPE shifts the source's own split and is a declared divergence
+  -- (see the spec's delimiter_in_fixed_width_fields), measured rather than emulated.
   max(currency)                        AS currency,
   max(rec_type)                        AS rec_type,
   count(*)                             AS record_count,
@@ -794,6 +853,24 @@ summary = {
         "quarantine_rate_pct": round(QUARANTINE_RATE, 4),
         "quarantine_halt_threshold_pct": HALT_PCT,
         "halt_population": SPEC["declared_population_for_the_halt"],
+    },
+    "retraction_guard": {
+        "id": "STOPA-RETRACTION",
+        "published_rows_for_this_ns_before_this_run": {
+            MONTHLY: PUBLISHED_MONTHLY_ROWS,
+            EXPORT: PUBLISHED_EXPORT_ROWS,
+        },
+        "contributing_rows": CONTRIBUTING_ROWS,
+        "would_have_refused": CONTRIBUTING_ROWS == 0
+        and bool(PUBLISHED_MONTHLY_ROWS or PUBLISHED_EXPORT_ROWS),
+        "protects": (
+            "an already-published report for this ns against an empty population retracting it "
+            "through WHEN NOT MATCHED BY SOURCE THEN DELETE"
+        ),
+        "does_not_protect": (
+            "a population that shrinks to a smaller non-empty one: there the delete is correct and "
+            "the groups the population no longer holds stop being published"
+        ),
     },
     "measured_populations": {
         "unknown_record_type_rows": int(measured["unknown_rec_type_rows"]),

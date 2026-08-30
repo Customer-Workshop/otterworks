@@ -8,8 +8,10 @@ What it does, in order, and why each step is where it is:
    being run. Nothing downstream is trusted if the source identity is not what the run branch pinned.
 2. **Deploy the final code.** The notebook and its spec are imported into the workspace, so the run
    that produces the evidence is the code in the PR and not a variant.
-3. **Cold load, then an identical rerun.** The three owned targets are dropped first so run 1 is a
-   real cold load, and both runs are notebook runs on serverless job compute. Each target's pre-run
+3. **Cold load, then an identical rerun.** The namespace's own rows are deleted out of the three
+   owned targets first (scoped by `ns` and `_origin`, never a `DROP TABLE`, so no other namespace
+   loses its report or its quarantine history) so run 1 is a real cold load of this namespace, and
+   both runs are notebook runs on serverless job compute. Each target's pre-run
    Delta version is captured before each run, and every commit is attributed by that version plus the
    commit's own `job.jobRunId` — never by "the newest commit" or the job name.
 4. **Recompute everything from the targets.** Counts, money, ordering, populations and PII proofs are
@@ -21,7 +23,7 @@ What it does, in order, and why each step is where it is:
    for row, on the population the two share: the legacy run over the files bronze ingested, minus the
    rows bronze quarantined. The unrestricted legacy output over *all* local drop files is reported
    beside it as the source's own figure, with the difference enumerated rather than corrected.
-6. **Declared generated scratch namespaces.** `ns=fin_round` makes `ANOM-PERL-ROUNDING` visible at the
+6. **Declared generated scratch namespaces.** `ns=fin_rounding` makes `ANOM-PERL-ROUNDING` visible at the
    printed cent and carries the `UNKNOWN(<rt>)` and blank-customer populations the demo seed does not;
    `ns=fin_halt` crosses the 5% quarantine halt; `ns=fin_empty` is the empty-input case. All three are
    declared generated, none is `ns=demo`, and their drop files enter bronze through the merged
@@ -69,6 +71,10 @@ MONTHLY = f"{CATALOG}.gold.finance_monthly"
 EXPORT = f"{CATALOG}.gold.finance_report_export"
 QUARANTINE = f"{CATALOG}.gold.quarantine_{UNIT}"
 OWNED_TABLES = (MONTHLY, EXPORT, QUARANTINE)
+# The `_origin` values this unit writes, and therefore the only rows it may remove. The three
+# targets are shared across namespaces, so every cleanup here is scoped by ns and by origin.
+OWNED_ORIGINS = (UNIT,)
+OWNED_ORIGINS_LIT = ", ".join(sql_str(o) for o in OWNED_ORIGINS)
 SOURCE = f"{CATALOG}.bronze.custbill_records"
 SOURCE_QUARANTINE = f"{CATALOG}.bronze.quarantine_bronze_custbill"
 NORMALISED = f"{CATALOG}.silver.invoices"
@@ -312,6 +318,96 @@ def pre_versions(dbx: Dbx) -> dict[str, int | None]:
     return out
 
 
+def fingerprint(dbx: Dbx, predicate: str) -> dict[str, object]:
+    """Row count plus a content checksum of the rows matching `predicate` in each owned target.
+
+    The three targets are shared by every namespace, so a cleanup this unit performs has to leave the
+    rows it does not own not merely as numerous but identical. The checksum is an order-independent
+    sum of `xxhash64` over each row's full JSON rendering, so a changed value in a surviving row moves
+    it exactly as a removed row does.
+    """
+    out: dict[str, object] = {}
+    for table in OWNED_TABLES:
+        try:
+            value = one(
+                dbx,
+                "SELECT count(*), coalesce(sum(xxhash64(to_json(struct(*)))), 0) "
+                f"FROM {table} WHERE {predicate}",
+            )
+        except DbxError:
+            out[table] = "table does not exist"
+            continue
+        out[table] = {
+            "rows": 0 if not value else int(value[0]),
+            "content_checksum": "0" if not value else str(value[1]),
+        }
+    return out
+
+
+def other_namespace_fingerprint(dbx: Dbx, ns: str) -> dict[str, object]:
+    """The fingerprint of every row this unit may not touch during a run for `ns`."""
+    return fingerprint(
+        dbx, f"ns <> {sql_str(ns)} OR _origin NOT IN ({OWNED_ORIGINS_LIT})"
+    )
+
+
+def cold_clean(dbx: Dbx, recon: Recon, ns: str) -> dict[str, object]:
+    """Empty `ns`'s slice of this unit's own targets, and prove nothing else moved.
+
+    The targets are shared across namespaces, so this is a `DELETE ... WHERE ns = <this ns> AND
+    _origin IN (<this unit's origins>)` and never a `DROP TABLE`: dropping them would take every
+    other namespace's published report and quarantine history with it. The proof is a row count and a
+    content checksum of everything outside that predicate, before and after.
+    """
+    removed: dict[str, str] = {}
+    before = other_namespace_fingerprint(dbx, ns)
+    existing = pre_versions(dbx)
+    for table in OWNED_TABLES:
+        if existing[table] is None:
+            removed[table] = "table did not exist; nothing to remove"
+            continue
+        mine = one(
+            dbx,
+            f"SELECT count(*) FROM {table} WHERE ns = {sql_str(ns)} "
+            f"AND _origin IN ({OWNED_ORIGINS_LIT})",
+        )
+        dbx.sql(
+            f"DELETE FROM {table} WHERE ns = {sql_str(ns)} AND _origin IN ({OWNED_ORIGINS_LIT})"
+        )
+        removed[table] = f"deleted {0 if not mine else int(mine[0])} row(s) for ns={ns}"
+    after = other_namespace_fingerprint(dbx, ns)
+    recon.check(
+        f"COLD-CLEAN-ISOLATION/{ns}",
+        before,
+        after,
+        "row count and content checksum of every row in the three owned targets that this unit may "
+        f"not touch for ns={ns} (another namespace's row, or a row written under an origin this unit "
+        "does not own), before and after the ns-scoped cleanup that precedes run 1. The cleanup is a "
+        f"DELETE ... WHERE ns = '{ns}' AND _origin IN ({OWNED_ORIGINS_LIT}), never a DROP TABLE: the "
+        "DDL stands and no other namespace's published report or quarantine ledger row is removed",
+    )
+    if after != before:
+        raise RuntimeError(
+            f"the cold-load cleanup for ns={ns} changed rows it does not own: {before} before, "
+            f"{after} after. This unit may only remove its own rows in its own namespace."
+        )
+    return {
+        "statement": (
+            "ns- and origin-scoped DELETE on this unit's own three targets — no DROP TABLE, so no "
+            "other namespace's report or quarantine history is removed, and run 1 below is still a "
+            "real cold load of this ns with the final code"
+        ),
+        "predicate": f"ns = '{ns}' AND _origin IN ({OWNED_ORIGINS_LIT})",
+        "per_table": removed,
+        "rows_this_unit_may_not_touch_unchanged": {
+            "check": f"COLD-CLEAN-ISOLATION/{ns}",
+            "predicate": f"ns <> '{ns}' OR _origin NOT IN ({OWNED_ORIGINS_LIT})",
+            "before": before,
+            "after": after,
+        },
+    }
+
+
 def commits_since(dbx: Dbx, table: str, pre_version: int | None) -> list[dict[str, object]]:
     """Delta commits on `table` after `pre_version`, each with the job run that produced it.
 
@@ -398,7 +494,7 @@ def read_run_summary(dbx: Dbx, ns: str, batch_id: str) -> dict[str, object]:
 
 def list_volume_dir(dbx: Dbx, path: str) -> list[dict[str, object]]:
     try:
-        listing = dbx._call(  # noqa: SLF001 - the client exposes no directory listing
+        listing = dbx._call(
             "GET", "/api/2.0/fs/directories" + urllib.parse.quote(path)
         )
     except DbxError:
@@ -423,7 +519,7 @@ def bronze_pipeline():
 
 
 def put_volume_file(dbx: Dbx, volume_path: str, content: bytes) -> None:
-    dbx._call(  # noqa: SLF001 - the client's upload() only takes a local path
+    dbx._call(
         "PUT",
         f"/api/2.0/fs/files{volume_path}",
         params={"overwrite": "true"},
@@ -1007,19 +1103,17 @@ def run_namespace(
 ) -> dict[str, object]:
     """Cold load then identical rerun for one namespace, with every figure recomputed after.
 
-    `cold` drops this unit's own three targets first so run 1 is a real cold load rather than a
-    re-merge over rows a previous run left behind. Only tables this unit owns are dropped, and only
-    when the caller asks for a cold load.
+    `cold` empties this namespace's slice of this unit's own three targets first, so run 1 is a real
+    cold load rather than a re-merge over rows a previous run left behind. The targets are shared
+    across namespaces, so the cleanup is a `DELETE ... WHERE ns = <this ns> AND _origin IN (<this
+    unit's origins>)` and never a `DROP TABLE`: dropping them would take every other namespace's
+    published report and quarantine history with it, which is exactly the scoping D-28/D-31 require
+    of this unit's writes.
     """
     stamp = time.strftime("%Y%m%d%H%M%S")
     evidence: dict[str, object] = {"namespace": ns, "role": label}
     if cold:
-        for table in OWNED_TABLES:
-            dbx.sql(f"DROP TABLE IF EXISTS {table}")
-        evidence["cold_load_prepared_by"] = (
-            f"DROP TABLE IF EXISTS on {', '.join(OWNED_TABLES)} — this unit's own targets and "
-            "nothing else, so run 1 below is a real cold load of the final code"
-        )
+        evidence["cold_load_prepared_by"] = cold_clean(dbx, recon, ns)
 
     pre_run1 = pre_versions(dbx)
     run1 = run_notebook(dbx, ns, f"r1{stamp}", f"{ns}-cold", expect_failure=expect_halt)
@@ -1259,13 +1353,30 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
     }
     namespaces: dict[str, object] = {}
 
-    # fin_round — ANOM-PERL-ROUNDING visible at the printed cent, plus UNKNOWN(<rt>) and the
+    # fin_rounding — ANOM-PERL-ROUNDING visible at the printed cent, plus UNKNOWN(<rt>) and the
     # blank-customer skip, which the demo population does not exercise.
     ns = fixtures.NS_ROUND
     drops = fixtures.drops(ns)
+    recon.note(
+        "an earlier revision of this harness landed pipe-bearing generated CUSTBILL records into "
+        "ns=fin_round while emulating the source's field shifting; that emulation was withdrawn, and "
+        "bronze is read-only to this unit, so those rows cannot be removed from "
+        f"{SOURCE}. The rounding fixture therefore runs in the clean namespace {ns} and the earlier "
+        "namespace is abandoned: its rows are generated fixture data in a scratch namespace, they are "
+        "counted in the estate-wide figure of DELIMITER-IN-FIXED-WIDTH, and its slice of this unit's "
+        "own targets is emptied by the same ns-scoped cleanup below (COLD-CLEAN-ISOLATION/fin_round), "
+        "so no owned target publishes a report for it"
+    )
+    namespaces["fin_round"] = {
+        "abandoned": (
+            "superseded by " + ns + "; this unit's own rows for it are deleted, its bronze rows "
+            "cannot be (bronze is read-only to this unit)"
+        ),
+        "cleanup": cold_clean(dbx, recon, "fin_round"),
+    }
     seed = seed_bronze(dbx, ns, drops)
     legacy_run = legacy_for_drops(ns, drops)
-    evidence = run_namespace(dbx, recon, ns, "declared generated scratch namespace", cold=False)
+    evidence = run_namespace(dbx, recon, ns, "declared generated scratch namespace", cold=True)
     export = evidence["target"]["finance_report_export"]  # type: ignore[index]
     expectations = fixtures.expectations(ns)
     model = legacy_run["model"]
@@ -1301,7 +1412,11 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
         },
         f"{EXPORT} for ns={ns}: the target publishes the exact decimal sum, not the float one",
     )
-    unknown_rows = [r for r in export if str(r["record_type"]).startswith("UNKNOWN(")]  # type: ignore[index]
+    unknown_rows = [
+        r
+        for r in export  # type: ignore[union-attr]
+        if str(r["record_type"]) == expectations["unknown_record_type_label"]
+    ]
     recon.check(
         f"UNKNOWN-RECORD-TYPE/{ns}",
         {
@@ -1317,6 +1432,7 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
         f"{EXPORT} for ns={ns}: an unmapped record type is a published row carrying the raw code, "
         "exactly as the source's three-way ?: prints it",
     )
+    compare_export(recon, export, model, ns)  # type: ignore[arg-type]
     # The skipped rows' money must appear in no group, so what bronze holds minus what the target
     # published has to be exactly the blank-customer amount — no more and no less.
     published_money = sum(
@@ -1369,7 +1485,7 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
     legacy_run = legacy_for_drops(ns, drops)
     expectations = fixtures.expectations(ns)
     evidence = run_namespace(
-        dbx, recon, ns, "declared generated scratch namespace", cold=False, expect_halt=True
+        dbx, recon, ns, "declared generated scratch namespace", cold=True, expect_halt=True
     )
     halt = evidence["halt"]  # type: ignore[index]
     quarantine_rows = sum(int(q["rows"]) for q in halt["quarantine_rows_persisted_before_the_halt"])  # type: ignore[index]
@@ -1416,7 +1532,7 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
         recon,
         ns,
         "declared generated scratch namespace",
-        cold=False,
+        cold=True,
         # An empty input publishes the header row and nothing else, so finance_monthly is expected to
         # receive no row at all here: that is the empty-report shape, not a missed insert.
         tables_that_must_receive_rows=(EXPORT,),
@@ -1451,11 +1567,258 @@ def fixture_namespaces(dbx: Dbx, recon: Recon) -> dict[str, object]:
         "run": evidence,
     }
 
+    # The shrink namespace — the scoped delete in both directions: a group that legitimately
+    # disappears, and an empty population that may not retract a published report.
+    shrink = shrink_namespace(dbx, recon)
+    namespaces[str(shrink["namespace"])] = shrink
+
     out["namespaces"] = namespaces
     return out
 
 
-def fixture_isolation(dbx: Dbx, recon: Recon, live_ns: str) -> dict[str, object]:
+def delimiter_evidence(dbx: Dbx, recon: Recon, ns: str) -> dict[str, object]:
+    """The population where the target's fixed-width read and the legacy report's `split` disagree.
+
+    `CBCUST01` declares `CURRENCY` and `REC-TYPE` as plain fixed-width fields and
+    `parse_custbill_fixedwidth.sh` validates neither, so nothing in the source chain excludes the byte
+    the parsed stream and the report both use as a delimiter. On such a record the parser's line has an
+    extra `|`, every following field shifts, and the report's `($ccy, $rt) = split(/\\|/, $key)` assigns
+    a currency and a record type the record does not hold. This unit reads the copybook positions, so it
+    publishes the true field: a declared divergence, whose size is measured here rather than asserted to
+    be impossible.
+    """
+    lit = sql_str(ns)
+    counted = one(
+        dbx,
+        f"""
+SELECT count_if(currency LIKE '%|%'), count_if(rec_type LIKE '%|%'),
+       count_if(currency LIKE '%|%' OR rec_type LIKE '%|%'), count(*)
+FROM {SOURCE} WHERE ns = {lit}
+""",
+    )
+    estate = one(
+        dbx,
+        f"SELECT count_if(currency LIKE '%|%' OR rec_type LIKE '%|%'), count(*) FROM {SOURCE}",
+    )
+    diverging = int(counted[2]) if counted else 0
+    evidence: dict[str, object] = {
+        "id": "DELIMITER-IN-FIXED-WIDTH",
+        "measured_on": SOURCE,
+        "predicate": "currency LIKE '%|%' OR rec_type LIKE '%|%'",
+        "rows_in_this_namespace": {
+            "currency_contains_a_pipe": int(counted[0]) if counted else 0,
+            "rec_type_contains_a_pipe": int(counted[1]) if counted else 0,
+            "either": diverging,
+            "out_of": int(counted[3]) if counted else 0,
+        },
+        "rows_in_every_namespace_of_the_table": {
+            "either": int(estate[0]) if estate else 0,
+            "out_of": int(estate[1]) if estate else 0,
+        },
+        "what_the_source_would_do": (
+            "the parsed line carries an extra delimiter, so every field after it shifts and the "
+            "report's composite key splits back into fields the record does not hold: a 'U|D' "
+            "currency prints currency 'U' and label UNKNOWN(D), and a pipe in REC-TYPE leaves a "
+            "trailing field the split discards"
+        ),
+        "what_this_unit_does": (
+            "reads the CBCUST01 positions out of ow_tp.bronze.custbill_records, so currency, rec_type "
+            "and the record_type label carry the bytes the copybook holds. Perl's field shifting is "
+            "not reproduced: emulating it would publish a currency and a record type no record has"
+        ),
+        "declared_divergence": (
+            "on such a record the target's Currency/RecordType differ from the legacy report's. "
+            "ACC-LEGACY-TOTALS is a cent-exact row-for-row comparison, so an occurrence surfaces "
+            "there as a difference rather than being absorbed; it is recorded in "
+            "databricks/ddl/gold_finance_spec.json under delimiter_in_fixed_width_fields"
+        ),
+    }
+    recon.check(
+        "DELIMITER-IN-FIXED-WIDTH",
+        {"rows_where_the_target_and_the_legacy_report_diverge": 0},
+        {"rows_where_the_target_and_the_legacy_report_diverge": diverging},
+        f"{SOURCE} for ns={ns}, counted on the fixed-width CURRENCY and REC-TYPE values themselves. "
+        "The figure is measured, not assumed: a non-zero count is a declared divergence, not a "
+        "tolerance, and it would also show up cent-exact in ACC-LEGACY-TOTALS",
+    )
+    return evidence
+
+
+def shrink_namespace(dbx: Dbx, recon: Recon) -> dict[str, object]:
+    """Both directions of the scoped `WHEN NOT MATCHED BY SOURCE ... THEN DELETE`, measured.
+
+    Three additive CUSTBILL batches into one declared generated namespace. Batch 2 takes one published
+    group out of the published population while the population itself stays large, so the delete has
+    to remove it and the removal count is greater than zero — the case the stable-input runs can never
+    show. Batch 3 takes the last one out, so the published population is empty while the target still
+    holds published rows, and the retraction guard has to refuse before any MERGE.
+    """
+    stamp = time.strftime("%Y%m%d%H%M%S")
+    # A fresh namespace per run: bronze is read-only to this unit, so a namespace an earlier run
+    # landed batches into cannot be returned to "batch 1 only", and the sequence would then measure
+    # those leftovers instead of the delete.
+    ns = fixtures.shrink_ns(stamp)
+    expectations = fixtures.expectations(ns)
+    cleanup = cold_clean(dbx, recon, ns)
+    keep_key = str(expectations["keep_group"])
+    vanish_key = str(expectations["vanishing_group"])
+    batches: list[dict[str, object]] = []
+
+    def published_groups() -> dict[str, list[str]]:
+        return {
+            EXPORT: sorted(
+                str(r["legacy_group_key"])
+                for r in target_export(dbx, ns)
+                # The header line carries the sentinel key 'HEADER'; it is the report's own first
+                # line, not a group the population produced.
+                if r["legacy_group_key"] not in (None, "HEADER")
+            ),
+            MONTHLY: sorted(
+                str(r["legacy_group_key"]) for r in target_monthly(dbx, ns)
+            ),
+        }
+
+    def run_batch(batch: int, expect_failure: bool) -> dict[str, object]:
+        seed = seed_bronze(dbx, ns, fixtures.shrink_batch(batch))
+        untouchable_before = other_namespace_fingerprint(dbx, ns)
+        pre = pre_versions(dbx)
+        run = run_notebook(dbx, ns, f"b{batch}{stamp}", f"{ns}-batch{batch}", expect_failure)
+        commits = {t: commits_since(dbx, t, pre[t]) for t in OWNED_TABLES}
+        return {
+            "batch": batch,
+            "seed": seed,
+            "run": run,
+            "pre_run_delta_versions": pre,
+            "delta_commits_attributed_to_this_run": commits,
+            "rows_deleted": {
+                t: sum(c["rows_deleted"] for c in commits[t]) for t in OWNED_TABLES
+            },
+            "published_groups_after": published_groups(),
+            "quarantine_after": target_quarantine(dbx, ns),
+            "source_population_after": source_population(dbx, ns),
+            "rows_this_unit_may_not_touch": {
+                "before": untouchable_before,
+                "after": other_namespace_fingerprint(dbx, ns),
+            },
+        }
+
+    first = run_batch(1, expect_failure=False)
+    recon.check(
+        f"SCOPED-DELETE/{ns}/batch-1-publishes-both-groups",
+        {
+            "published_groups": sorted(
+                expectations["published_groups_after_each_batch"]["1"]  # type: ignore[index]
+            ),
+            "rows_deleted": 0,
+        },
+        {
+            "published_groups": first["published_groups_after"][EXPORT],  # type: ignore[index]
+            "rows_deleted": first["rows_deleted"][EXPORT],  # type: ignore[index]
+        },
+        f"{EXPORT} for ns={ns} after the first generated batch: the starting state the next batch has "
+        "to change",
+    )
+    batches.append(first)
+
+    second = run_batch(2, expect_failure=False)
+    recon.check(
+        f"SCOPED-DELETE/{ns}/group-disappears-and-is-removed",
+        {
+            "published_groups": sorted(
+                expectations["published_groups_after_each_batch"]["2"]  # type: ignore[index]
+            ),
+            f"{EXPORT} rows deleted": "> 0",
+            f"{MONTHLY} rows deleted": "> 0",
+            "the vanished group is still in the population": True,
+            "rows this unit may not touch, unchanged": True,
+        },
+        {
+            "published_groups": second["published_groups_after"][EXPORT],  # type: ignore[index]
+            f"{EXPORT} rows deleted": (
+                "> 0"
+                if int(second["rows_deleted"][EXPORT]) > 0  # type: ignore[index]
+                else 0
+            ),
+            f"{MONTHLY} rows deleted": (
+                "> 0"
+                if int(second["rows_deleted"][MONTHLY]) > 0  # type: ignore[index]
+                else 0
+            ),
+            "the vanished group is still in the population": any(
+                vanish_key in str(q["groups"])
+                for q in second["quarantine_after"]  # type: ignore[union-attr]
+            ),
+            "rows this unit may not touch, unchanged": (
+                second["rows_this_unit_may_not_touch"]["before"]  # type: ignore[index]
+                == second["rows_this_unit_may_not_touch"]["after"]  # type: ignore[index]
+            ),
+        },
+        f"the second generated batch pushes group {vanish_key} over the DECIMAL(14,2) ceiling, so it "
+        f"is withheld and leaves the published population while {keep_key} and the 5000 skipped rows "
+        f"keep it non-empty. Delta's own numTargetRowsDeleted on {EXPORT} and {MONTHLY} past each "
+        "table's pre-run version is the removal, and the fingerprint of every row this unit may not "
+        "touch (other namespaces, other origins) is unchanged across the run",
+    )
+    batches.append(second)
+
+    published_before_third = fingerprint(
+        dbx, f"ns = {sql_str(ns)} AND _origin IN ({OWNED_ORIGINS_LIT})"
+    )
+    third = run_batch(3, expect_failure=True)
+    published_after_third = fingerprint(
+        dbx, f"ns = {sql_str(ns)} AND _origin IN ({OWNED_ORIGINS_LIT})"
+    )
+    error = str(third["run"]["error"] or "")  # type: ignore[index]
+    recon.check(
+        f"STOPA-RETRACTION/{ns}/empty-population-refuses-to-un-publish",
+        {
+            "run_failed": True,
+            "error_names_the_guard": True,
+            "this_namespace's_published_rows_unchanged": True,
+            f"{MONTHLY} rows deleted": 0,
+            f"{EXPORT} rows deleted": 0,
+        },
+        {
+            "run_failed": bool(error),
+            "error_names_the_guard": "STOPA-RETRACTION" in error,
+            "this_namespace's_published_rows_unchanged": (
+                published_before_third == published_after_third
+            ),
+            f"{MONTHLY} rows deleted": third["rows_deleted"][MONTHLY],  # type: ignore[index]
+            f"{EXPORT} rows deleted": third["rows_deleted"][EXPORT],  # type: ignore[index]
+        },
+        f"the third generated batch overflows the last published group too, so the published "
+        f"population for ns={ns} is empty while the targets still hold its rows. The notebook refuses "
+        "before either publishing MERGE, names the rows it would have deleted and exits non-zero; the "
+        "published rows are byte-identical across the failed run (row count plus content checksum)",
+    )
+    batches.append(third)
+
+    return {
+        "namespace": ns,
+        "declared": "generated fixture data",
+        "named_per_run_because": (
+            f"{SOURCE} is read-only to this unit, so the additive batch sequence below only measures "
+            "the delete in a namespace no earlier run landed rows into. Earlier runs' shrink "
+            "namespaces are abandoned generated scratch: this unit's own rows for them are removed by "
+            "the ns-scoped cleanup, and their bronze rows stay where wave 1's writer put them"
+        ),
+        "purpose": (
+            "the scoped WHEN NOT MATCHED BY SOURCE DELETE in both directions: a group that genuinely "
+            "leaves a still-non-empty population is removed (rows_deleted > 0), and an empty "
+            "population over already-published rows is refused by the retraction guard instead of "
+            "silently retracting the report"
+        ),
+        "expectations_derived_independently": expectations,
+        "cold_load_prepared_by": cleanup,
+        "error_from_the_refused_batch": error[:900],
+        "batches": batches,
+    }
+
+
+def fixture_isolation(
+    dbx: Dbx, recon: Recon, live_ns: str, generated: list[str]
+) -> dict[str, object]:
     """Proof the generated rows stayed in their own namespaces and out of `ns=demo`."""
     generated_marker = fixtures.GENERATED_NAME
     leaked = one(
@@ -1464,7 +1827,7 @@ def fixture_isolation(dbx: Dbx, recon: Recon, live_ns: str) -> dict[str, object]
 SELECT
   (SELECT count(*) FROM {SOURCE} WHERE ns = {sql_str(live_ns)} AND cust_name = {sql_str(generated_marker)}),
   (SELECT count(*) FROM {SOURCE} WHERE ns = {sql_str(live_ns)} AND cust_id LIKE 'GEN%'),
-  (SELECT count(*) FROM {MONTHLY} WHERE ns IN ({', '.join(sql_str(n) for n in fixtures.NAMESPACES)}) AND ns = {sql_str(live_ns)})
+  (SELECT count(*) FROM {MONTHLY} WHERE ns IN ({', '.join(sql_str(n) for n in generated)}) AND ns = {sql_str(live_ns)})
 """,
     )
     by_ns = [
@@ -1493,7 +1856,7 @@ ORDER BY 1, 2
         "cust_id LIKE 'GEN%') inside the live namespace",
     )
     return {
-        "generated_namespaces": list(fixtures.NAMESPACES),
+        "generated_namespaces": generated,
         "live_namespace": live_ns,
         "rows_per_namespace_in_every_owned_target": by_ns,
         "generated_rows_found_in_the_live_namespace": int(leaked[0]) + int(leaked[1]),
@@ -1514,7 +1877,10 @@ UNVERIFIED_PATHS = [
         "applies that stack (terraform apply is out of scope for this unit). Every run in this report "
         "is a serverless notebook run of the same notebook with the same parameters the job task "
         "passes, submitted through jobs/runs/submit, so the notebook path and parameter contract are "
-        "exercised and the job resource's own creation is not."
+        "exercised and the job resource's own creation is not. The job carries no schedule and no "
+        "trigger: like every unit job in this estate it is declared untriggered and its invocation is "
+        "parent-owned orchestration (STOP C/E), so nothing here observes a landed CUSTBILL batch "
+        "starting this report."
     ),
     (
         "No consumer of ow_tp.gold.finance_monthly or ow_tp.gold.finance_report_export was identified "
@@ -1556,7 +1922,7 @@ def source_behaviours() -> dict[str, object]:
                 "measured on both populations: on the live namespace the float accumulation and the "
                 "exact decimal sum agree once rounded to cents (the float artifacts are there \u2014 see "
                 "legacy_vs_target.float_vs_decimal_cent_difference_by_group), and on the declared "
-                "generated namespace fin_round the difference is visible at the printed cent"
+                "generated namespace fin_rounding the difference is visible at the printed cent"
             ),
             "how": (
                 "the same population summed once in IEEE-754 doubles in the source's own row order and "
@@ -1566,12 +1932,12 @@ def source_behaviours() -> dict[str, object]:
         },
         "UNKNOWN-RECORD-TYPE": {
             "detected": True,
-            "where": "fin_round (every rec_type in the live namespace is 01 or 02)",
+            "where": "fin_rounding (every rec_type in the live namespace is 01 or 02)",
             "how": "the literal UNKNOWN(<raw code>) label published as a row, not quarantined",
         },
         "BLANK-CUSTOMER-SKIP": {
             "detected": True,
-            "where": "fin_round",
+            "where": "fin_rounding",
             "how": (
                 'next if ($cust eq "") reproduced as a skip, with the skipped rows\' money proven absent '
                 "from every published group"
@@ -1626,6 +1992,7 @@ def build_report(
     normalised: dict[str, object],
     deployed: dict[str, str],
     money_types: list[dict[str, str]],
+    delimiter: dict[str, object],
 ) -> dict[str, object]:
     failed = [c for c in recon.checks if c["result"] != "pass"]
     return {
@@ -1662,6 +2029,7 @@ def build_report(
             "detail": source_behaviours()["ANOM-PERL-ROUNDING"],
         },
         "source_behaviours_measured": source_behaviours(),
+        "delimiter_in_fixed_width_fields": delimiter,
         "fixture_isolation": isolation,
         "consumer_coverage": {
             "id": "ACC-CONSUMER-GAP",
@@ -1682,7 +2050,8 @@ def build_report(
                 else "fail"
             ),
             "evidence": (
-                "Run 1 is a cold load (this unit's three targets dropped first) and run 2 is the same "
+                "Run 1 is a cold load (this namespace's own rows deleted out of this unit's three "
+                "targets first, ns- and origin-scoped, no DROP TABLE) and run 2 is the same "
                 "notebook with the same parameters. Each run is attributed by each target's own pre-run "
                 "Delta version plus the job.jobRunId on every commit past it \u2014 never the newest commit "
                 "and never the job name: see live_namespace.run_1 / run_2 and the IDEMPOTENCY/* checks. "
@@ -1693,6 +2062,9 @@ def build_report(
         "checks_passed": len(recon.checks) - len(failed),
         "checks_failed": len(failed),
         "failed_checks": failed,
+        # recon_result is the authoritative verdict the estate rollup keys on, in the vocabulary the
+        # merged units emit (silver_plans, silver_dunning). `result` carries the same value.
+        "recon_result": "pass" if not failed else "fail",
         "result": "pass" if not failed else "fail",
         "unverified_paths": UNVERIFIED_PATHS + recon.unverified,
     }
@@ -1713,9 +2085,12 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="skip the live Oracle banner (recorded as an unverified path)",
     )
     parser.add_argument(
-        "--no-cold-drop",
+        "--no-cold-clean",
         action="store_true",
-        help="do not drop this unit's own targets before run 1 (then run 1 is not a cold load)",
+        help=(
+            "do not delete this namespace's own rows out of this unit's targets before run 1 "
+            "(then run 1 is a re-merge rather than a cold load)"
+        ),
     )
     return parser.parse_args(argv)
 
@@ -1730,7 +2105,7 @@ def main(argv: list[str] | None = None) -> int:
     manifest = landing_manifest(dbx, args.ns)
 
     live = run_namespace(
-        dbx, recon, args.ns, "live namespace", cold=not args.no_cold_drop
+        dbx, recon, args.ns, "live namespace", cold=not args.no_cold_clean
     )
     money_types = money_column_types(dbx)
     money_columns = [
@@ -1765,6 +2140,7 @@ def main(argv: list[str] | None = None) -> int:
             else "fail"
         ),
     )
+    delimiter = delimiter_evidence(dbx, recon, args.ns)
     legacy_side = legacy_evidence(dbx, args.ns, live["source_population"])  # type: ignore[arg-type]
     comparison = compare_export(
         recon,
@@ -1772,10 +2148,10 @@ def main(argv: list[str] | None = None) -> int:
         legacy_side["populations"]["rows_bronze_loaded"]["model"],  # type: ignore[index]
         args.ns,
     )
-    if args.no_cold_drop:
+    if args.no_cold_clean:
         recon.note(
-            "--no-cold-drop was used: run 1 for the live namespace was not preceded by a drop of "
-            "this unit's targets, so it is a re-merge rather than a cold load"
+            "--no-cold-clean was used: run 1 for the live namespace was not preceded by the "
+            "ns-scoped delete of this namespace's rows, so it is a re-merge rather than a cold load"
         )
 
     if args.skip_fixtures:
@@ -1787,7 +2163,12 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         fixture_evidence = fixture_namespaces(dbx, recon)
-        isolation = fixture_isolation(dbx, recon, args.ns)
+        isolation = fixture_isolation(
+            dbx,
+            recon,
+            args.ns,
+            [str(n) for n in fixture_evidence["namespaces"]],  # type: ignore[union-attr]
+        )
         # The fixture runs merge into the same three tables. The live namespace's rows must be
         # exactly as its own run left them: the scoped delete and every merge key are ns-scoped, and
         # this is the measurement that says so rather than the prose that claims it.
@@ -1820,6 +2201,7 @@ def main(argv: list[str] | None = None) -> int:
         normalised,
         deployed,
         money_types,
+        delimiter,
     )
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1827,4 +2209,4 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{UNIT}: {report['checks_passed']}/{len(report['checks'])} checks passed -> {out}")
     for check in report["failed_checks"]:  # type: ignore[index]
         print(f"  FAILED {check['id']}: expected {check['expected']} got {check['actual']}")
-    return 0 if report["result"] == "pass" else 1
+    return 0 if report["recon_result"] == "pass" else 1

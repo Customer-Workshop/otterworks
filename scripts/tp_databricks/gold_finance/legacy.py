@@ -270,7 +270,12 @@ def model(rows: list[dict[str, object]]) -> dict[str, object]:
     groups = []
     # `sort keys %tot` under LC_ALL=C: a byte-wise ascending sort of the composite key.
     for key in sorted(float_tot, key=lambda k: k.encode("latin-1")):
-        currency, _, rec_type = key.partition("|")
+        # `($ccy, $rt) = split(/\|/, $key)` assigns only the first two fields, so a pipe inside
+        # CURRENCY reassigns both printed columns and drops the rest of the key from the output.
+        # A key whose second field is missing leaves $rt undef, which prints '' and `UNKNOWN()`.
+        key_fields = key.split("|")
+        currency = key_fields[0]
+        rec_type = key_fields[1] if len(key_fields) > 1 else ""
         exact = exact_tot[key].quantize(CENT)
         float_text = f"{float_tot[key]:.2f}"
         groups.append(

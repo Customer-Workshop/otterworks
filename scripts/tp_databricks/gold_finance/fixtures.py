@@ -10,7 +10,7 @@ doing wave 1's own write.
 
 Two namespaces, both existing because a measured zero on the `ns=demo` seed is not a detection:
 
-* `fin_round` — `ANOM-PERL-ROUNDING` made visible at the printed cent. The `ns=demo` population's
+* `fin_rounding` — `ANOM-PERL-ROUNDING` made visible at the printed cent. The `ns=demo` population's
   float accumulation and its exact decimal sum agree once rounded to cents (the artifacts are there:
   `USD|01` accumulates to `161573.37000000002`), so on that population the anomaly is real but
   invisible in the output. This namespace's `USD|01` group is 99 records of `9999999999.99` followed
@@ -21,6 +21,20 @@ Two namespaces, both existing because a measured zero on the `ns=demo` seed is n
 * `fin_halt` — a group whose cumulative total does not fit `DECIMAL(14,2)`, so every record of it is
   withheld as `NUMERIC_OVERFLOW` and the population crosses the 5% halt. Run once, to show the halt
   fires and that the rejected rows are already in the ledger when it does.
+
+* `fin_shrink_<stamp>` — the two directions of `WHEN NOT MATCHED BY SOURCE ... THEN DELETE`, in three
+  additive batches over one namespace, freshly named per run: `ow_tp.bronze.custbill_records` is
+  read-only to this unit, so a namespace an earlier run has landed batches into can never be returned
+  to "batch 1 only" and the sequence would measure the leftovers instead of the delete. Earlier runs'
+  shrink namespaces are therefore abandoned generated scratch, and this unit's own rows for them are
+  removed by the ns-scoped cleanup; their bronze rows stay where wave 1's writer put them.
+  Batch 1 publishes two groups. Batch 2 pushes one of them over the `DECIMAL(14,2)` ceiling, so that
+  group leaves the published population while the population itself stays large: the group must stop
+  being published, and the scoped delete is the only thing that can remove it. Batch 3 does the same
+  to the remaining group, so the published population becomes empty while the target still holds
+  published rows — the case the retraction guard refuses. Its
+  blank-`CUST-ID` bulk is the denominator that keeps every batch under the 5% halt, so the halt is
+  not what these batches measure.
 
 A third namespace, `fin_empty`, needs no file at all: it is the empty-input case, and its evidence is
 that the unit still writes an explicit header-only report for it.
@@ -38,10 +52,14 @@ from __future__ import annotations
 import decimal
 import hashlib
 
-NS_ROUND = "fin_round"
+NS_ROUND = "fin_rounding"
 NS_HALT = "fin_halt"
 NS_EMPTY = "fin_empty"
+NS_SHRINK_PREFIX = "fin_shrink"
 NAMESPACES = (NS_ROUND, NS_HALT, NS_EMPTY)
+# The merged bronze unit accepts 1-32 characters of lowercase letters, digits and underscore, which
+# bounds the per-run stamp `shrink_ns()` appends.
+NS_MAX_LEN = 32
 
 ORIGIN = "generated-fixture"
 GENERATED_NAME = "GENERATED FIXTURE"
@@ -140,6 +158,104 @@ def _halt_details() -> list[str]:
     return details
 
 
+# fin_shrink. A group overflows DECIMAL(14,2) only above 999_999_999_999.99 and one record carries at
+# most 9_999_999_999.99, so 101 records at the record ceiling are the smallest group that overflows.
+SHRINK_OVERFLOW_RECORDS = 101
+SHRINK_KEEP_CURRENCY = "AAA"
+SHRINK_VANISH_CURRENCY = "QQQ"
+SHRINK_KEEP_RECORDS = 5
+SHRINK_KEEP_CENTS = 100
+# Blank-CUST-ID filler: the source skips these rows so they contribute to no group, and they are the
+# denominator that keeps each batch's quarantine rate below the 5% halt, so what the batches measure
+# is the delete and the retraction guard rather than the halt.
+SHRINK_BLANK_RECORDS = 5000
+SHRINK_BLANK_CENTS = 700
+SHRINK_DATE = "20260311"
+
+
+def _shrink_details(batch: int) -> list[str]:
+    details: list[str] = []
+    if batch == 1:
+        for i in range(SHRINK_BLANK_RECORDS):
+            details.append(_detail("", SHRINK_DATE, SHRINK_BLANK_CENTS + i % 7, "USD", "01"))
+        for i in range(SHRINK_KEEP_RECORDS):
+            details.append(
+                _detail(f"GEN7{i:06d}", SHRINK_DATE, SHRINK_KEEP_CENTS, SHRINK_KEEP_CURRENCY, "01")
+            )
+        details.append(
+            _detail("GEN7900000", SHRINK_DATE, MAX_RECORD_CENTS, SHRINK_VANISH_CURRENCY, "01")
+        )
+        return details
+    if batch == 2:
+        for i in range(SHRINK_OVERFLOW_RECORDS - 1):
+            details.append(
+                _detail(f"GEN6{i:06d}", SHRINK_DATE, MAX_RECORD_CENTS, SHRINK_VANISH_CURRENCY, "01")
+            )
+        return details
+    if batch == 3:
+        for i in range(SHRINK_OVERFLOW_RECORDS):
+            details.append(
+                _detail(f"GEN5{i:06d}", SHRINK_DATE, MAX_RECORD_CENTS, SHRINK_KEEP_CURRENCY, "01")
+            )
+        return details
+    raise ValueError(f"{batch} is not a fin_shrink batch")
+
+
+def shrink_ns(stamp: str) -> str:
+    """The shrink namespace of one run: the batch sequence only holds where nothing landed before."""
+    ns = f"{NS_SHRINK_PREFIX}_{stamp}"
+    if len(ns) > NS_MAX_LEN or not ns.replace("_", "").isalnum() or not ns.islower():
+        raise ValueError(f"{ns!r} is not a namespace the merged bronze unit accepts")
+    return ns
+
+
+def is_shrink_ns(ns: str) -> bool:
+    return ns.startswith(f"{NS_SHRINK_PREFIX}_")
+
+
+def shrink_batch(batch: int) -> dict[str, bytes]:
+    """One of `fin_shrink`'s three additive CUSTBILL batches."""
+    return _drop("FINSHRINK", f"{batch:03d}", _shrink_details(batch))
+
+
+def _shrink_expectations() -> dict[str, object]:
+    cent = decimal.Decimal("0.01")
+    keep_total = decimal.Decimal(SHRINK_KEEP_CENTS * SHRINK_KEEP_RECORDS) * cent
+    overflow_total = decimal.Decimal(MAX_RECORD_CENTS) * SHRINK_OVERFLOW_RECORDS * cent
+    rows_after = {
+        "1": SHRINK_BLANK_RECORDS + SHRINK_KEEP_RECORDS + 1,
+        "2": SHRINK_BLANK_RECORDS + SHRINK_KEEP_RECORDS + SHRINK_OVERFLOW_RECORDS,
+        "3": SHRINK_BLANK_RECORDS + SHRINK_KEEP_RECORDS + 2 * SHRINK_OVERFLOW_RECORDS,
+    }
+    quarantined_after = {
+        "1": 0,
+        "2": SHRINK_OVERFLOW_RECORDS,
+        "3": 2 * SHRINK_OVERFLOW_RECORDS + SHRINK_KEEP_RECORDS,
+    }
+    return {
+        "declared": ORIGIN,
+        "keep_group": f"{SHRINK_KEEP_CURRENCY}|01",
+        "keep_group_total_after_batch_1": str(keep_total),
+        "vanishing_group": f"{SHRINK_VANISH_CURRENCY}|01",
+        "vanishing_group_total_after_batch_1": str(decimal.Decimal(MAX_RECORD_CENTS) * cent),
+        "vanishing_group_total_after_batch_2": str(overflow_total),
+        "money_ceiling": str(decimal.Decimal(MONEY_MAX_CENTS) * cent),
+        "blank_customer_rows": SHRINK_BLANK_RECORDS,
+        "rows_in_bronze_after_each_batch": rows_after,
+        "quarantined_rows_after_each_batch": quarantined_after,
+        "quarantine_rate_pct_after_each_batch": {
+            b: round(100.0 * quarantined_after[b] / rows_after[b], 4) for b in ("1", "2", "3")
+        },
+        "published_groups_after_each_batch": {
+            "1": [f"{SHRINK_KEEP_CURRENCY}|01", f"{SHRINK_VANISH_CURRENCY}|01"],
+            "2": [f"{SHRINK_KEEP_CURRENCY}|01"],
+            "3": "nothing is published: the population is empty while rows are already published",
+        },
+        "expected_export_rows_deleted_by_batch_2": 1,
+        "expected_batch_3_outcome": "STOPA-RETRACTION, the run fails, nothing is deleted",
+    }
+
+
 def drops(ns: str) -> dict[str, bytes]:
     """The drop files (and transfer markers) for a fixture namespace."""
     if ns == NS_ROUND:
@@ -148,6 +264,10 @@ def drops(ns: str) -> dict[str, bytes]:
         return _drop("FINHALT", "001", _halt_details())
     if ns == NS_EMPTY:
         return {}
+    if is_shrink_ns(ns):
+        # A shrink namespace lands three batches in sequence, one per notebook run, so its files come
+        # from `shrink_batch()` rather than all at once.
+        return shrink_batch(1)
     raise ValueError(f"{ns} is not a gold_finance fixture namespace")
 
 
@@ -216,4 +336,6 @@ def expectations(ns: str) -> dict[str, object]:
             "expected_report_lines": 1,
             "expected_report_data_rows": 0,
         }
+    if is_shrink_ns(ns):
+        return _shrink_expectations()
     raise ValueError(f"{ns} is not a gold_finance fixture namespace")

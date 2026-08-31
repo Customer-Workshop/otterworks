@@ -21,6 +21,8 @@ import boto3
 import pandas as pd
 import psycopg2
 
+from aws_owner import resolve_expected_bucket_owner
+
 
 def main():
     print("[%s] analytics_daily.py starting..." % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -32,7 +34,7 @@ def main():
     aws_access_key = config.get("aws", "access_key")
     aws_secret_key = config.get("aws", "secret_key")
     aws_region = config.get("aws", "region")
-    aws_account_id = config.get("aws", "account_id")
+    aws_account_id = resolve_expected_bucket_owner(config, aws_access_key, aws_secret_key, aws_region)
 
     db_host = config.get("database", "host")
     db_port = config.getint("database", "port")

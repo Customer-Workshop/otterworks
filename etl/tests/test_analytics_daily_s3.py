@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Regression test for SonarCloud python:S7608 -- S3 writes must verify bucket ownership.
 # Parses analytics_daily.py so the check needs no AWS credentials or ETL runtime deps.
 
@@ -17,9 +16,12 @@ S3_WRITE_METHODS = {"put_object", "copy_object", "delete_object", "upload_part"}
 
 def s3_write_calls(tree):
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            if node.func.attr in S3_WRITE_METHODS:
-                yield node
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in S3_WRITE_METHODS
+        ):
+            yield node
 
 
 class ExpectedBucketOwnerTest(unittest.TestCase):
@@ -35,7 +37,7 @@ class ExpectedBucketOwnerTest(unittest.TestCase):
             self.assertIn(
                 "ExpectedBucketOwner",
                 kwargs,
-                "%s at line %d must pass ExpectedBucketOwner" % (call.func.attr, call.lineno),
+                f"{call.func.attr} at line {call.lineno} must pass ExpectedBucketOwner",
             )
 
     def test_expected_bucket_owner_comes_from_config(self):
@@ -44,7 +46,7 @@ class ExpectedBucketOwnerTest(unittest.TestCase):
             self.assertIsInstance(
                 owner,
                 ast.Name,
-                "ExpectedBucketOwner at line %d must be a configured value, not a literal" % call.lineno,
+                f"ExpectedBucketOwner at line {call.lineno} must be a configured value, not a literal",
             )
             self.assertEqual("aws_account_id", owner.id)
 

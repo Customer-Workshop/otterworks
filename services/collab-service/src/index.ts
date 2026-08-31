@@ -14,6 +14,7 @@ import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
+import { authorizeDocumentAccess, extractDocumentName } from './services/document-access';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -163,8 +164,55 @@ httpServer.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit('connection', ws, request);
+  void (async () => {
+    const documentName = extractDocumentName(request.url || '');
+    if (!documentName) {
+      logger.warn('y-websocket_connection_rejected: missing document name');
+      if (!socket.destroyed) {
+        socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+      }
+      socket.destroy();
+      return;
+    }
+
+    let allowed: boolean;
+    try {
+      allowed = await authorizeDocumentAccess(
+        documentName,
+        token,
+        {
+          documentServiceUrl: config.documentService.url,
+          timeoutMs: config.documentService.timeoutMs,
+        },
+        logger,
+      );
+    } catch (err) {
+      logger.warn({ err, documentName }, 'y-websocket_document_access_check_failed');
+      allowed = false;
+    }
+
+    if (!allowed) {
+      logger.warn(
+        { documentName },
+        'y-websocket_connection_rejected: unauthorized document access',
+      );
+      if (!socket.destroyed) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      }
+      socket.destroy();
+      return;
+    }
+
+    if (socket.destroyed) {
+      return;
+    }
+
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  })().catch((err) => {
+    logger.warn({ err }, 'y-websocket_upgrade_failed');
+    socket.destroy();
   });
 });
 

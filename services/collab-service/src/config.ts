@@ -11,6 +11,10 @@ export interface Config {
     secret: string;
     issuer: string;
   };
+  documentService: {
+    url: string;
+    timeoutMs: number;
+  };
   cors: {
     origins: string[];
   };
@@ -42,6 +46,10 @@ export function loadConfig(): Config {
     jwt: {
       secret: process.env.JWT_SECRET || 'otterworks-dev-secret',
       issuer: process.env.JWT_ISSUER || 'otterworks-auth-service',
+    },
+    documentService: {
+      url: process.env.DOCUMENT_SERVICE_URL || 'http://localhost:8083',
+      timeoutMs: parseInt(process.env.DOCUMENT_SERVICE_TIMEOUT_MS || '5000', 10),
     },
     cors: {
       origins: (

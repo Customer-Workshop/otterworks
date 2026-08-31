@@ -1,0 +1,6 @@
+{
+  "version": "0-placeholder",
+  "status": "PLACEHOLDER — authored at playbook 2 (mongo_model) from the census, not here.",
+  "note": "The harness refuses unversioned inputs, so this file carries a version from the moment it exists. It is deliberately NOT loadable as a mapping spec: 'collections' is empty, which recon.config.load_mapping_spec rejects with 'mapping spec has no collections'. That failure is the intended behavior — no recon run can accidentally pass against a placeholder.",
+  "collections": []
+}

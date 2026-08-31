@@ -1,6 +1,7 @@
 import pino from 'pino';
 import {
   authorizeDocumentAccess,
+  documentIdFromRoomName,
   extractDocumentName,
 } from '../services/document-access';
 
@@ -18,11 +19,24 @@ describe('extractDocumentName', () => {
   });
 });
 
+describe('documentIdFromRoomName', () => {
+  it.each([
+    [
+      'document-123e4567-e89b-12d3-a456-426614174000',
+      '123e4567-e89b-12d3-a456-426614174000',
+    ],
+    ['123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174000'],
+  ])('normalizes %s to %s', (roomName, expected) => {
+    expect(documentIdFromRoomName(roomName)).toBe(expected);
+  });
+});
+
 describe('authorizeDocumentAccess', () => {
   const options = {
     documentServiceUrl: 'http://document-service:8083',
     timeoutMs: 5000,
   };
+  const documentId = '123e4567-e89b-12d3-a456-426614174000';
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -32,11 +46,11 @@ describe('authorizeDocumentAccess', () => {
     fetchMock.mockResolvedValue({ ok: true } as Response);
 
     await expect(
-      authorizeDocumentAccess('doc-1', 'token-123', options, logger),
+      authorizeDocumentAccess(documentId, 'token-123', options, logger),
     ).resolves.toBe(true);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://document-service:8083/api/v1/documents/doc-1',
+      `http://document-service:8083/api/v1/documents/${documentId}`,
       expect.objectContaining({
         headers: { Authorization: 'Bearer token-123' },
         signal: expect.any(AbortSignal),
@@ -50,7 +64,7 @@ describe('authorizeDocumentAccess', () => {
       fetchMock.mockResolvedValue({ ok: false, status } as Response);
 
       await expect(
-        authorizeDocumentAccess('doc-1', 'token-123', options, logger),
+        authorizeDocumentAccess(documentId, 'token-123', options, logger),
       ).resolves.toBe(false);
     },
   );
@@ -59,7 +73,7 @@ describe('authorizeDocumentAccess', () => {
     fetchMock.mockRejectedValue(new Error('network error'));
 
     await expect(
-      authorizeDocumentAccess('doc-1', 'token-123', options, logger),
+      authorizeDocumentAccess(documentId, 'token-123', options, logger),
     ).resolves.toBe(false);
   });
 });

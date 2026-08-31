@@ -1,5 +1,9 @@
 import type { Logger } from 'pino';
 
+export function documentIdFromRoomName(roomName: string): string {
+  return roomName.startsWith('document-') ? roomName.slice('document-'.length) : roomName;
+}
+
 export function extractDocumentName(requestUrl: string): string | null {
   const path = requestUrl.startsWith('/') ? requestUrl.slice(1) : requestUrl;
   const encodedDocumentName = path.split('?')[0];

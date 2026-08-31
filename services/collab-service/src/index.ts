@@ -14,7 +14,11 @@ import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
-import { authorizeDocumentAccess, extractDocumentName } from './services/document-access';
+import {
+  authorizeDocumentAccess,
+  documentIdFromRoomName,
+  extractDocumentName,
+} from './services/document-access';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -178,7 +182,7 @@ httpServer.on('upgrade', (request, socket, head) => {
     let allowed: boolean;
     try {
       allowed = await authorizeDocumentAccess(
-        documentName,
+        documentIdFromRoomName(documentName),
         token,
         {
           documentServiceUrl: config.documentService.url,

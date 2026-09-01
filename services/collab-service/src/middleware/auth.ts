@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import type { NextFunction, Request, Response } from 'express';
 import type { Socket } from 'socket.io';
 import type { ExtendedError } from 'socket.io/dist/namespace';
 import type { Logger } from 'pino';
@@ -12,6 +13,12 @@ export interface AuthenticatedUser {
 
 export interface AuthenticatedSocket extends Socket {
   user?: AuthenticatedUser;
+  token?: string;
+}
+
+export interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+  token?: string;
 }
 
 interface JwtPayload {
@@ -45,6 +52,7 @@ export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
         displayName: decoded.name || decoded.display_name || 'Anonymous',
         roles: decoded.roles || [],
       };
+      (socket as AuthenticatedSocket).token = token;
 
       logger.debug(
         { socketId: socket.id, userId: decoded.sub },
@@ -57,6 +65,44 @@ export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
         'connection_rejected: invalid token',
       );
       next(new Error('Invalid or expired token'));
+    }
+  };
+}
+
+export function extractTokenFromSocket(socket: Socket): string | undefined {
+  return (socket as AuthenticatedSocket).token;
+}
+
+export function createHttpAuthMiddleware(jwtSecret: string, logger: Logger) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    const authorization = req.headers.authorization;
+    const token =
+      typeof authorization === 'string'
+        ? authorization.match(/^Bearer\s+(.+)$/)?.[1]
+        : undefined;
+
+    if (!token) {
+      logger.warn('http_request_rejected: no token provided');
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+      req.user = {
+        userId: decoded.sub,
+        email: decoded.email || '',
+        displayName: decoded.name || decoded.display_name || 'Anonymous',
+        roles: decoded.roles || [],
+      };
+      req.token = token;
+      next();
+    } catch (err) {
+      logger.warn(
+        { error: (err as Error).message },
+        'http_request_rejected: invalid token',
+      );
+      res.status(401).json({ error: 'Authentication required' });
     }
   };
 }

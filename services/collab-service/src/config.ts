@@ -11,6 +11,11 @@ export interface Config {
     secret: string;
     issuer: string;
   };
+  documentService: {
+    url: string;
+    authCacheTtlMs: number;
+    requestTimeoutMs: number;
+  };
   cors: {
     origins: string[];
   };
@@ -42,6 +47,11 @@ export function loadConfig(): Config {
     jwt: {
       secret: process.env.JWT_SECRET || 'otterworks-dev-secret',
       issuer: process.env.JWT_ISSUER || 'otterworks-auth-service',
+    },
+    documentService: {
+      url: process.env.DOCUMENT_SERVICE_URL || 'http://document-service:8083',
+      authCacheTtlMs: parseInt(process.env.DOC_AUTH_CACHE_TTL_MS || '30000', 10),
+      requestTimeoutMs: parseInt(process.env.DOC_AUTH_TIMEOUT_MS || '3000', 10),
     },
     cors: {
       origins: (

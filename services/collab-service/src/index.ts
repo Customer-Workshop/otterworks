@@ -8,12 +8,14 @@ import helmet from 'helmet';
 import pino from 'pino';
 import { loadConfig } from './config';
 import { MetricsCollector } from './metrics';
-import { createAuthMiddleware } from './middleware/auth';
+import { createAuthMiddleware, createHttpAuthMiddleware } from './middleware/auth';
+import type { AuthenticatedRequest } from './middleware/auth';
 import { RedisAdapter } from './services/redis-adapter';
 import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
+import { DocumentServiceAuthorizer } from './services/document-authorization';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -32,6 +34,12 @@ const logger = pino({
 const app = express();
 const httpServer = createServer(app);
 const metrics = new MetricsCollector();
+const documentAuthorizer = new DocumentServiceAuthorizer(
+  config.documentService.url,
+  logger,
+  config.documentService.authCacheTtlMs,
+  config.documentService.requestTimeoutMs,
+);
 
 // Middleware
 app.use(helmet());
@@ -69,17 +77,41 @@ app.get('/metrics', async (_req, res) => {
 });
 
 // Presence endpoint
-app.get('/api/v1/collab/documents/:id/presence', (req, res) => {
-  const documentId = req.params.id;
-  const presence = presenceHandler.getDocumentPresence(documentId);
-  res.json(presence);
-});
+app.get(
+  '/api/v1/collab/documents/:id/presence',
+  createHttpAuthMiddleware(config.jwt.secret, logger),
+  async (req: AuthenticatedRequest, res) => {
+    const documentId = req.params.id;
+    if (!(await documentAuthorizer.canAccessDocument(documentId, req.token))) {
+      res.status(404).json({ error: 'Document not found' });
+      return;
+    }
+    const presence = presenceHandler.getDocumentPresence(documentId);
+    res.json(presence);
+  },
+);
 
 // Active documents listing
-app.get('/api/v1/collab/documents', (_req, res) => {
-  const activeDocuments = presenceHandler.getActiveDocuments();
-  res.json({ documents: activeDocuments, count: activeDocuments.length });
-});
+app.get(
+  '/api/v1/collab/documents',
+  createHttpAuthMiddleware(config.jwt.secret, logger),
+  async (req: AuthenticatedRequest, res) => {
+    const activeDocuments = presenceHandler.getActiveDocuments();
+    const authorizedDocuments = await Promise.all(
+      activeDocuments.map(async (document) => ({
+        document,
+        allowed: await documentAuthorizer.canAccessDocument(
+          document.documentId,
+          req.token,
+        ),
+      })),
+    );
+    const visibleDocuments = authorizedDocuments
+      .filter(({ allowed }) => allowed)
+      .map(({ document }) => document);
+    res.json({ documents: visibleDocuments, count: visibleDocuments.length });
+  },
+);
 
 // Socket.IO server
 const io = new SocketIOServer(httpServer, {
@@ -123,6 +155,7 @@ const collabManager = setupCollaborationHandlers(
   presenceHandler,
   metrics,
   logger,
+  documentAuthorizer,
   config.persistence.intervalMs,
   config.persistence.snapshotIntervalMs,
 );
@@ -163,9 +196,35 @@ httpServer.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit('connection', ws, request);
-  });
+  void (async () => {
+    let room: string;
+    try {
+      room = decodeURIComponent(url.pathname.replace(/^\//, ''));
+    } catch (err) {
+      logger.warn({ err }, 'y-websocket_connection_rejected: invalid room');
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    const roomMatch = room.match(/^document-(.+)$/);
+    if (
+      !roomMatch ||
+      !(await documentAuthorizer.canAccessDocument(roomMatch[1], token))
+    ) {
+      logger.warn(
+        { room, socketAddress: request.socket.remoteAddress },
+        'y-websocket_connection_rejected: document access denied',
+      );
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  })();
 });
 
 // Start presence cleanup with document eviction callback

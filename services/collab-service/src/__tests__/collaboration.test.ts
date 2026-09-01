@@ -50,6 +50,10 @@ const mockLogger = {
   level: 'info',
 } as never;
 
+const documentAuthorizer = {
+  canAccessDocument: jest.fn().mockResolvedValue(true),
+};
+
 describe('CollaborationManager', () => {
   let io: SocketIOServer;
   let httpServer: ReturnType<typeof createServer>;
@@ -79,6 +83,7 @@ describe('CollaborationManager', () => {
       presenceHandler,
       metrics,
       logger: mockLogger,
+      documentAuthorizer,
       persistIntervalMs: 600000, // long interval so it doesn't fire during tests
       snapshotIntervalMs: 600000,
     });
@@ -99,6 +104,7 @@ describe('CollaborationManager', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    documentAuthorizer.canAccessDocument.mockResolvedValue(true);
   });
 
   function connectClient(userId: string, displayName: string): Promise<ClientSocket> {
@@ -266,6 +272,97 @@ describe('CollaborationManager', () => {
 
       client1.disconnect();
       client2.disconnect();
+    });
+  });
+
+  describe('Document authorization', () => {
+    it('denies joining an unauthorized document before creating state', async () => {
+      documentAuthorizer.canAccessDocument.mockResolvedValue(false);
+      const client = await connectClient('user-denied-join', 'Denied User');
+      let syncReceived = false;
+      client.on('sync-document', () => {
+        syncReceived = true;
+      });
+
+      const response = await new Promise<{ success: boolean; error?: string }>(
+        (resolve) => {
+          client.emit(
+            'join-document',
+            { documentId: 'doc-denied-join' },
+            (ack: { success: boolean; error?: string }) => resolve(ack),
+          );
+        },
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(response).toEqual({
+        success: false,
+        error: 'Not authorized for this document',
+      });
+      expect(syncReceived).toBe(false);
+      expect(manager.getDocument('doc-denied-join')).toBeUndefined();
+      client.disconnect();
+    });
+
+    it('does not broadcast updates from an unauthorized client', async () => {
+      const authorizedClient = await connectClient(
+        'user-authorized-update',
+        'Authorized',
+      );
+      const deniedClient = await connectClient('user-denied-update', 'Denied');
+
+      await new Promise<void>((resolve) => {
+        documentAuthorizer.canAccessDocument.mockResolvedValue(true);
+        authorizedClient.emit('join-document', { documentId: 'doc-denied-update' }, () =>
+          resolve(),
+        );
+      });
+      await new Promise<void>((resolve) => {
+        deniedClient.emit('join-document', { documentId: 'doc-denied-update' }, () =>
+          resolve(),
+        );
+      });
+      documentAuthorizer.canAccessDocument.mockResolvedValue(false);
+
+      let updateReceived = false;
+      authorizedClient.on('document-update', () => {
+        updateReceived = true;
+      });
+      deniedClient.emit('document-update', {
+        documentId: 'doc-denied-update',
+        update: { text: 'unauthorized-update' },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(updateReceived).toBe(false);
+      authorizedClient.disconnect();
+      deniedClient.disconnect();
+    });
+
+    it('denies history requests without returning document history', async () => {
+      documentAuthorizer.canAccessDocument.mockResolvedValue(false);
+      const client = await connectClient('user-denied-history', 'Denied User');
+      let historyReceived = false;
+      client.on('document-history', () => {
+        historyReceived = true;
+      });
+
+      const deniedEvent = new Promise<{ documentId: string; error: string }>(
+        (resolve) => {
+          client.on('document-access-denied', resolve);
+        },
+      );
+      client.emit('request-history', {
+        documentId: 'doc-denied-history',
+      });
+
+      await expect(deniedEvent).resolves.toEqual({
+        documentId: 'doc-denied-history',
+        error: 'Not authorized for this document',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(historyReceived).toBe(false);
+      client.disconnect();
     });
   });
 

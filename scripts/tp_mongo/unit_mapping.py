@@ -4,6 +4,9 @@
 Two key expressions are re-rendered for the harness (fields are always verbatim); every
 rendering is asserted against the approved entry and recorded in the emitted file under
 `_recon_key_rendering`.
+
+Approved embed exclusions are explicit and recorded in the emitted subset; all remaining
+embeds are asserted verbatim against the approved mapping.
 """
 from __future__ import annotations
 
@@ -40,6 +43,9 @@ KEY_RENDERING = {
             "INITIALIZED_AT on the source side; no other column is referenced."
         ),
     },
+}
+EMBED_EXCLUSION_REASONS = {
+    ("invoices", "dunning_attempts"): "U6-owned, sequential batch, deferred",
 }
 
 
@@ -85,6 +91,13 @@ def main() -> int:
     )
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--collection", action="append", required=True)
+    parser.add_argument(
+        "--exclude-embed",
+        action="append",
+        default=[],
+        metavar="COLLECTION.ARRAY_PATH",
+        help="exclude an approved embedded array from reconciliation (repeatable)",
+    )
     args = parser.parse_args()
 
     source = json.loads(args.spec.read_text())
@@ -96,6 +109,26 @@ def main() -> int:
             f"requested collection(s) absent from {args.spec}: {', '.join(missing)}"
         )
     requested = set(args.collection)
+    exclusions = []
+    exclusions_by_collection = {}
+    for raw in args.exclude_embed:
+        try:
+            collection, array_path = raw.split(".", 1)
+        except ValueError as exc:
+            raise SystemExit(
+                f"--exclude-embed must be COLLECTION.ARRAY_PATH: {raw}"
+            ) from exc
+        reason = EMBED_EXCLUSION_REASONS.get((collection, array_path))
+        if reason is None:
+            raise SystemExit(f"no approved exclusion reason for {raw}")
+        if collection not in requested:
+            raise SystemExit(f"excluded embed collection is not selected: {raw}")
+        if (collection, array_path) in exclusions_by_collection.get(collection, set()):
+            raise SystemExit(f"duplicate --exclude-embed: {raw}")
+        exclusions_by_collection.setdefault(collection, set()).add((collection, array_path))
+        exclusions.append(
+            {"collection": collection, "array_path": array_path, "reason": reason}
+        )
     selected = [
         copy.deepcopy(entry)
         for entry in source_entries
@@ -114,8 +147,38 @@ def main() -> int:
             raise AssertionError(f"{entry['collection']}: fields differ from the approved entry")
         if entry["root_table"] != approved["root_table"] or entry.get("root_where") != approved.get("root_where"):
             raise AssertionError(f"{entry['collection']}: root scope differs from the approved entry")
+        approved_embeds = approved.get("embeds", [])
+        excluded_paths = {
+            item["array_path"]
+            for item in exclusions
+            if item["collection"] == entry["collection"]
+        }
+        embeds = entry.get("embeds", [])
+        for array_path in excluded_paths:
+            matches = [embed for embed in approved_embeds if embed["array_path"] == array_path]
+            if len(matches) != 1:
+                raise AssertionError(
+                    f"{entry['collection']}.{array_path}: excluded embed is not approved"
+                )
+        if approved_embeds or excluded_paths:
+            entry["embeds"] = [
+                embed
+                for embed in embeds
+                if embed["array_path"] not in excluded_paths
+            ]
+        expected_embeds = [
+            embed for embed in approved_embeds if embed["array_path"] not in excluded_paths
+        ]
+        if entry.get("embeds", []) != expected_embeds:
+            raise AssertionError(
+                f"{entry['collection']}: non-excluded embeds differ from approved entry"
+            )
 
-    payload = {"version": source["version"], "collections": selected}
+    payload = {
+        "version": source["version"],
+        "collections": selected,
+        "_recon_embed_exclusions": exclusions,
+    }
     encoded = json.dumps(payload, indent=2) + "\n"
     if json.loads(encoded)["collections"] != selected:
         raise AssertionError("serialized unit mapping changed an entry")

@@ -1,0 +1,40 @@
+{
+  "started_at": "2026-09-01T16:14:23.502319+00:00",
+  "finished_at": "2026-09-01T16:14:25.533684+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "collections": {
+    "invoices": {
+      "root_table": "INVOICES",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 3,
+      "inserted": 3,
+      "docs_after": 3,
+      "ns_docs_after": 3,
+      "indexes": [
+        "_id_",
+        "tenant_id_1_status_cd_1_issued_at_1"
+      ],
+      "embedded_lines_source_rows": 2,
+      "embedded_lines_after": 2
+    },
+    "credit_notes": {
+      "root_table": "CREDIT_NOTES",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 5,
+      "inserted": 5,
+      "docs_after": 5,
+      "ns_docs_after": 5,
+      "indexes": [
+        "_id_",
+        "tenant_id_1_issued_on_1"
+      ]
+    }
+  }
+}

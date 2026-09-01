@@ -1,0 +1,186 @@
+{
+  "version": "1.2",
+  "collections": [
+    {
+      "collection": "invoices",
+      "root_table": "INVOICES",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PERIOD_ID",
+          "target": "period_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ISSUED_AT",
+          "target": "issued_at",
+          "source_type": "TIMESTAMP(6)",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "SUBTOTAL",
+          "target": "subtotal",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "TAX",
+          "target": "tax",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "TOTAL",
+          "target": "total",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": []
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "lines",
+          "child_table": "INVOICE_LINES",
+          "parent_key": [
+            "INVOICE_ID"
+          ],
+          "key": {
+            "source": [
+              "LINE_NO"
+            ],
+            "target": "line_no"
+          },
+          "fields": [
+            {
+              "source": "ID",
+              "target": "id",
+              "source_type": "VARCHAR2",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "LINE_TYPE",
+              "target": "line_type",
+              "source_type": "VARCHAR2",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "DESCRIPTION",
+              "target": "description",
+              "source_type": "VARCHAR2",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "AMOUNT",
+              "target": "amount",
+              "source_type": "NUMBER(12,2)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "collection": "credit_notes",
+      "root_table": "CREDIT_NOTES",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ISSUED_ON",
+          "target": "issued_on",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "AMOUNT",
+          "target": "amount",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "REMAINING_AMOUNT",
+          "target": "remaining_amount",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ]
+    }
+  ],
+  "_recon_embed_exclusions": [
+    {
+      "collection": "invoices",
+      "array_path": "dunning_attempts",
+      "reason": "U6-owned, sequential batch, deferred"
+    }
+  ]
+}

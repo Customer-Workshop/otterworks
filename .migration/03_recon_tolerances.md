@@ -1,6 +1,6 @@
 # 03 — Reconciliation tolerance record
 
-**Version 1 — 2026-09-01 — status: PROPOSED (pending STOP A).** Every recon report cites `tolerances v1` and the recon mode in its header. A report without both is invalid.
+**Version 1 — 2026-09-01 — status: APPROVED at STOP A (2026-09-01).** Every recon report cites `tolerances v1` and the recon mode in its header. A report without both is invalid.
 
 **Recon mode: DEGRADED** (snapshot). Lakehouse Federation to the source is not reachable (D10-1). Every comparison names its snapshot manifest (source object, extraction time, row count, sha256, `FIXTURE_SOURCE`); every verdict is a statement about the snapshot, not production. An in-perimeter recon run by the customer with the delivered harness is an entry criterion for STOP E.
 

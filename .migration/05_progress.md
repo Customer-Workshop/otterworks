@@ -7,7 +7,7 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 |---|---|---|
 | Intake | DONE | `.migration/00_intake_template.md` (PR #1413) |
 | Setup (Phase 1 + 2) | DONE, awaiting STOP A | `.migration/` this PR |
-| STOP A | PENDING | `#ow-migrations` thread |
+| STOP A | APPROVED 2026-09-01 (in-thread reply) | `#ow-migrations` thread |
 | Inventory / STOP B | NOT_STARTED | |
 | Analysis + plan / STOP C | NOT_STARTED | |
 | Wave 0 | NOT_STARTED | |

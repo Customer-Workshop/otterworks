@@ -47,7 +47,6 @@ public final class ReportDateUtils {
         if (date == null) {
             return null;
         }
-        // LEGACY: Commons Lang 2 DateFormatUtils
         return DateFormatUtils.formatUTC(date, "yyyy-MM-dd'T'HH:mm:ss'Z'");
     }
 

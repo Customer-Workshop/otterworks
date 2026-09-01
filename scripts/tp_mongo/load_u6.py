@@ -215,14 +215,18 @@ def main() -> int:
         ns_docs_after = collection.count_documents({"ns": NS_VALUE})
         indexes = [index["name"] for index in collection.list_indexes()]
         source_attempt_rows = len(rows["dunning_attempts"])
-        embedded_after = sum(len(attempts) for attempts in attempts_by_invoice.values())
+        invoice_docs = list(invoices.find({"ns": NS_VALUE}, {"dunning_attempts": 1}))
+        invoice_array_lengths = {
+            document["_id"]: len(document.get("dunning_attempts", []))
+            for document in invoice_docs
+        }
+        embedded_after = sum(invoice_array_lengths.values())
         if docs_after != len(rows["notifications"]) or ns_docs_after != len(
             rows["notifications"]
         ):
             raise RuntimeError("notifications count or namespace assertion failed")
         if embedded_after != source_attempt_rows:
             raise RuntimeError("embedded dunning_attempts count assertion failed")
-        invoice_docs = list(invoices.find({"ns": NS_VALUE}, {"dunning_attempts": 1}))
         if len(invoice_docs) != len(invoice_ids) or any(
             "dunning_attempts" not in document for document in invoice_docs
         ):
@@ -262,6 +266,7 @@ def main() -> int:
                         "embedded_dunning_attempts_source_rows": source_attempt_rows,
                         "embedded_dunning_attempts_after": embedded_after,
                         "invoice_docs_after": len(invoice_docs),
+                        "dunning_attempts_per_invoice": invoice_array_lengths,
                         "all_have_dunning_attempts": True,
                     },
                 },

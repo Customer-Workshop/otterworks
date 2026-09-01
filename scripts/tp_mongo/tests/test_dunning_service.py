@@ -186,11 +186,13 @@ def test_schedule_attempt_numbering_weekend_shift_ids_and_metadata():
             ),
         ]
     )
-    service = DunningService(db)
+    audit = []
+    service = DunningService(db, audit_sink=lambda module, message: audit.append((module, message)))
 
     result = service.schedule_dunning(date(2026, 2, 14))
 
     assert result == {"scheduled": 2, "last_run_dt": date(2026, 2, 14)}
+    assert audit == [("DUNNING", "scheduled 2 attempts as of 14-FEB-26")]
     assert service.scheduled_cnt == 2
     assert service.last_run_dt == date(2026, 2, 14)
     attempts = db["invoices"].find_one({"_id": "invoice-a"})["dunning_attempts"]
@@ -219,13 +221,18 @@ def test_schedule_attempt_numbering_weekend_shift_ids_and_metadata():
 def test_successive_schedules_advance_attempt_numbers_and_count():
     db = _db()
     db["invoices"].insert_one(_invoice("invoice-a", "tenant-active", date(2026, 2, 1)))
-    service = DunningService(db)
+    audit = []
+    service = DunningService(db, audit_sink=lambda module, message: audit.append((module, message)))
 
     first = service.schedule_dunning(date(2026, 2, 17))
     second = service.schedule_dunning(date(2026, 2, 17))
 
     assert first["scheduled"] == 1
     assert second["scheduled"] == 1
+    assert audit == [
+        ("DUNNING", "scheduled 1 attempts as of 17-FEB-26"),
+        ("DUNNING", "scheduled 1 attempts as of 17-FEB-26"),
+    ]
     attempts = db["invoices"].find_one({"_id": "invoice-a"})["dunning_attempts"]
     assert [attempt["attempt_no"] for attempt in attempts] == [1, 2]
     assert all(attempt["status_cd"] == 10 for attempt in attempts)
@@ -244,7 +251,8 @@ def test_element_key_guard_silently_ignores_colliding_write():
     db = _db()
     invoice = _invoice("invoice-a", "tenant-active", date(2026, 2, 1))
     db["invoices"].insert_one(invoice)
-    service = DunningService(db)
+    audit = []
+    service = DunningService(db, audit_sink=lambda module, message: audit.append((module, message)))
 
     assert service._schedule_attempt(invoice, 1, date(2026, 2, 17))
     assert not service._schedule_attempt(invoice, 1, date(2026, 2, 17))
@@ -274,7 +282,10 @@ def test_suspend_boundary_moves_only_active_subscriptions_and_notifies_once():
             _invoice("other-ns", "tenant-active", date(2026, 2, 1), ns="other"),
         ]
     )
-    service = DunningService(db)
+    audit = []
+    service = DunningService(
+        db, audit_sink=lambda module, message: audit.append((module, message))
+    )
 
     result = service.suspend_overdue(date(2026, 2, 28))
 
@@ -294,10 +305,12 @@ def test_suspend_boundary_moves_only_active_subscriptions_and_notifies_once():
     assert notification["_id"] == md5_uuid("tenant-activesuspension2026-02-28")
     assert notification["kind_cd"] == 3
     assert notification["sent_at"] == datetime(2026, 2, 28, tzinfo=timezone.utc)
+    assert audit == [("DUNNING", "suspended tenant=tenant-active")]
 
     again = service.suspend_overdue(date(2026, 2, 28))
     assert again == {"suspended": [], "notifications_inserted": 0}
     assert db["notifications"].count_documents({}) == 1
+    assert audit == [("DUNNING", "suspended tenant=tenant-active")]
 
 
 def test_suspend_skips_nonactive_tenants_and_uses_sorted_tenant_ids():

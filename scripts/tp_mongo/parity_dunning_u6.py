@@ -187,6 +187,7 @@ def _actual(service, db, scenario: str, inputs: dict) -> tuple[dict, dict]:
         }, {"suspension_notifications": _suspension_notifications(db)}
     if scenario == "DUNNING-005":
         service.suspend_overdue(as_of)
+        service.suspend_overdue(as_of)
         notification_kinds = [
             _notification_kind(notification.get("kind_cd"))
             for notification in db["notifications"]
@@ -199,7 +200,6 @@ def _actual(service, db, scenario: str, inputs: dict) -> tuple[dict, dict]:
             )
             .sort("sent_at", 1)
         ]
-        service.suspend_overdue(as_of)
         return {"notification_kinds": notification_kinds}, {
             "suspension_notifications": _suspension_notifications(db)
         }

@@ -2,7 +2,7 @@
 
 - Mode: `live`
 - Mapping `1.1` / tolerances `1.0` / seed `0`
-- Generated: 2026-09-01T14:08:20.438834+00:00
+- Generated: 2026-09-01T14:35:38.559503+00:00
 
 | Tier | Checks | Result |
 |---|---|---|

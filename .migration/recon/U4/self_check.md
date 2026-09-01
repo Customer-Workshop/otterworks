@@ -48,6 +48,10 @@ runs the independent live gate.
 - [x] **NULL is explicit, not missing.** Source NULL is written as BSON null for
   `quota_units`, `rollover_units`, `billable_units`, `overage_amount`, and
   `subscription_id`, and the service preserves the source NULL propagation.
+- [x] **Review round 1 fixes are covered.** `add_months` implements Oracle's last-day
+  promotion rule and `finalize_rating` runs its period write, rating computation, and
+  result write in one MongoDB session transaction; the parity, load, and gate evidence
+  below was regenerated after both fixes.
 
 ## Declared unverified paths
 

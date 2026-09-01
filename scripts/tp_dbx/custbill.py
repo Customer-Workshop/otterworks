@@ -122,15 +122,24 @@ def _landing_root(ns: str, part: str) -> str:
 
 
 def _delete_tree(dbx: Databricks, volume_path: str) -> None:
-    """Files API directory deletes are non-recursive; empty the tree bottom-up first."""
-    for entry in dbx.list_dir(volume_path):
-        child = entry.get("path") or f"{volume_path}/{entry['name']}"
-        if entry.get("is_directory"):
-            _delete_tree(dbx, child)
-        else:
-            status = dbx.delete_file(child)
-            if status not in (200, 204, 404):
-                raise DbxError(f"DELETE {child} -> HTTP {status}")
+    """Files API directory deletes are non-recursive; empty the tree bottom-up first.
+
+    list_dir returns one page; re-list after each pass until the directory is empty.
+    """
+    for _ in range(10_000):
+        entries = dbx.list_dir(volume_path)
+        if not entries:
+            break
+        for entry in entries:
+            child = entry.get("path") or f"{volume_path}/{entry['name']}"
+            if entry.get("is_directory"):
+                _delete_tree(dbx, child)
+            else:
+                status = dbx.delete_file(child)
+                if status not in (200, 204, 404):
+                    raise DbxError(f"DELETE {child} -> HTTP {status}")
+    else:
+        raise DbxError(f"{volume_path} still non-empty after 10000 delete passes")
     status = dbx.delete_dir(volume_path)
     if status not in (200, 204, 404):
         raise DbxError(f"DELETE {volume_path} -> HTTP {status}")

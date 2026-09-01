@@ -1,9 +1,9 @@
 {
-  "started_at": "2026-09-01T05:47:32.113762+00:00",
-  "finished_at": "2026-09-01T05:48:40.211386+00:00",
+  "started_at": "2026-09-01T12:55:22.573357+00:00",
+  "finished_at": "2026-09-01T12:56:37.559785+00:00",
   "target_db": "ow_tp_mongodb_032752",
   "ns": "mongo_032752",
-  "mapping_version": "1.0",
+  "mapping_version": "1.1",
   "secret_names": {
     "dsn": "OW_BILLING_FIXTURE_DSN",
     "uri": "MONGODB_ATLAS_URI"

@@ -1,0 +1,47 @@
+{
+  "unit": "U0-codes-PROPOSED",
+  "mode": "live",
+  "mapping_version": "1.0",
+  "tolerance_version": "1.0",
+  "seed": 0,
+  "params": {},
+  "generated_at": "2026-09-01T04:08:43.213185+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "deferred_to_tier3": [
+          "codes.code_type",
+          "codes.code_desc"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 32,
+      "stats": {
+        "codes": {
+          "mode": "full_diff",
+          "population": 32
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS"
+}

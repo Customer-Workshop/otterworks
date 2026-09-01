@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "collections": [
+    {
+      "collection": "fixture_meta",
+      "root_table": "FIXTURE_META",
+      "key": {
+        "source": [
+          "INITIALIZED_AT"
+        ],
+        "target": "_id"
+      },
+      "fields": []
+    }
+  ]
+}

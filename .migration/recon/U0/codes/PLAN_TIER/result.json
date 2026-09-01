@@ -1,0 +1,32 @@
+{
+  "unit": "U0-codes-PLAN_TIER",
+  "mode": "live",
+  "mapping_version": "1.0",
+  "tolerance_version": "1.0",
+  "seed": 0,
+  "params": {
+    "code_type": "PLAN_TIER"
+  },
+  "generated_at": "2026-09-01T04:08:19.968684+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": false,
+      "checks_run": 1,
+      "stats": {},
+      "findings": [
+        {
+          "collection": "codes",
+          "check": "root_count",
+          "detail": "rows(CODES)=3 vs docs=32",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "verdict": "FAIL"
+}

@@ -1,0 +1,32 @@
+{
+  "unit": "U0-codes-CUST_STATUS",
+  "mode": "live",
+  "mapping_version": "1.0",
+  "tolerance_version": "1.0",
+  "seed": 0,
+  "params": {
+    "code_type": "CUST_STATUS"
+  },
+  "generated_at": "2026-09-01T04:08:12.561325+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": false,
+      "checks_run": 1,
+      "stats": {},
+      "findings": [
+        {
+          "collection": "codes",
+          "check": "root_count",
+          "detail": "rows(CODES)=4 vs docs=32",
+          "source_value": "None",
+          "target_value": "None",
+          "rules_applied": []
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "verdict": "FAIL"
+}

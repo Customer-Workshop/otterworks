@@ -1,0 +1,106 @@
+{
+  "version": "1.0",
+  "collections": [
+    {
+      "collection": "tenants",
+      "root_table": "TENANTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "NAME",
+          "target": "name",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TAX_EXEMPT_YN",
+          "target": "tax_exempt_yn",
+          "source_type": "CHAR",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": []
+        }
+      ]
+    },
+    {
+      "collection": "plans",
+      "root_table": "PLANS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "CODE",
+          "target": "code",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TIER_CD",
+          "target": "tier_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": []
+        },
+        {
+          "source": "MONTHLY_FEE",
+          "target": "monthly_fee",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "INCLUDED_UNITS",
+          "target": "included_units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "OVERAGE_RATE",
+          "target": "overage_rate",
+          "source_type": "NUMBER(12,6)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "ACTIVE_YN",
+          "target": "active_yn",
+          "source_type": "CHAR",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

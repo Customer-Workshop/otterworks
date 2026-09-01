@@ -26,10 +26,11 @@ gate rerun.
   wrote through it, called `log_msg`, then aborted the caller transaction: the caller's
   write rolled back, the audit document survived, no `ClientSession` was passed, and the
   audit handle carried its own `{'w': 'majority'}` write concern.
-- [x] **`log_msg` truncates like the source and never raises.** 40 characters of module
-  stored as 30, 5,000 characters of message stored as 4,000, `_id` an `ObjectId`,
-  `logged_at` at whole-second granularity, `ns` tagged; against an unreachable target it
-  returned `False`, raised nothing, and still recorded `last_module`.
+- [x] **`log_msg` truncates and never raises.** 40 characters of module stored as 30, 5,000
+  characters of message stored as 4,000, `_id` an `ObjectId`, `logged_at` at whole-second
+  granularity, `ns` tagged; against an unreachable target it returned `False`, raised
+  nothing, and still recorded `last_module`. The truncation is a **declared divergence**,
+  not parity — see below.
 - [x] **Retention is preserved without the scheduler job.** The TTL index read back from the
   target is `logged_at` ascending with `expireAfterSeconds = 7776000` (90 days), asserted by
   the loader on every run and re-read by the probes.
@@ -47,6 +48,23 @@ gate rerun.
 - [x] **No ungraded embed.** U7 has no embed at all, and `gate/result.json` carries no
   warnings.
 - [x] **`make tp-validate-recon` is green for `U7.recon.json`, and `make tp-smoke` is green.**
+
+## Declared divergence: audit acceptance rules
+
+Read-only probes against the fixture (`audit_acceptance_probe.json`; anonymous PL/SQL
+blocks, no table writes) show the source is narrower than it looks. `g_last_module` is
+`VARCHAR2(30)` under `NLS_LENGTH_SEMANTICS=BYTE` on an `AL32UTF8` database, so
+`g_last_module := p_module` raises `ORA-06502 (character string buffer too small)` before
+the INSERT for any module over 30 bytes — 40 ASCII characters and 30 `ö` characters (60
+bytes) both raise — and `WHEN OTHERS THEN ROLLBACK` then drops the event silently, leaving
+`g_last_module` unchanged. The `SUBSTR(p_module, 1, 30)` in the INSERT is unreachable for
+those calls. A message truncated to 4,000 characters can likewise exceed the 4,000-**byte**
+column and lose the event at insert time.
+
+The port deliberately does not reproduce that loss: per the unit spec the audit write is
+unconditional, the Mongo target has no byte ceiling, and truncation is by characters. Audit
+coverage is therefore strictly wider than the source, and `last_module` is recorded even for
+an over-long module. Flagged for the wave gate as a semantics choice, not an accident.
 
 ## Declared unverified paths
 

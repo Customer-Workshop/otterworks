@@ -45,7 +45,15 @@
       "expected": "module truncated to 30, message to 4000, ObjectId _id, whole-second logged_at, ns tagged; a driver failure returns False without raising",
       "actual": "40 -> 30 and 5000 -> 4000 stored; ObjectId; microsecond 0; ns mongo_032752; unreachable target returned False and raised nothing",
       "source_of_truth": ".migration/recon/U7/supplemental.json probes.truncation and probes.silent_failure",
-      "result": "pass"
+      "result": "pass",
+      "note": "truncation is a declared divergence, not parity - see u7.audit_acceptance_divergence"
+    },
+    {
+      "id": "u7.audit_acceptance_divergence",
+      "expected": "the source drops an audit event whose module exceeds 30 bytes (ORA-06502 assigning g_last_module VARCHAR2(30) under BYTE semantics) or whose truncated message exceeds the 4000-byte column",
+      "actual": "confirmed read-only: 40 ASCII chars and 30 multibyte chars (60 bytes) both raise; the port instead truncates by characters and always records the event, per the unit spec's unconditional audit write",
+      "source_of_truth": ".migration/recon/U7/audit_acceptance_probe.json (read-only anonymous PL/SQL blocks; no table writes)",
+      "result": "skipped"
     },
     {
       "id": "u7.ttl_replaces_purge_job",
@@ -86,6 +94,7 @@
     "three-digit years in f_str2dt - accepted literally by the port, not present in the recorded source transcript",
     "log_msg has no migrated caller: pkg_rating/pkg_invoicing/pkg_dunning belong to units U3-U6",
     "TTL expiry timing is a background-sweep observation, not a contract; retention is evidenced by the index specification",
-    "fixture-only run mode - the wave gate runs LIVE independently"
+    "fixture-only run mode - the wave gate runs LIVE independently",
+    "audit acceptance is deliberately wider than the source: events the legacy logger silently drops on a 30-byte module or 4000-byte message overflow are recorded by the port"
   ]
 }

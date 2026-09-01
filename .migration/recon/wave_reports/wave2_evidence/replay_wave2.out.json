@@ -1,0 +1,20 @@
+{
+ "failures": [],
+ "list_plans": {
+  "ora_rows": 3,
+  "mongo_rows": 3,
+  "equal": true
+ },
+ "entitlement": {
+  "checked": 213,
+  "equal": 213
+ },
+ "usage_summary": {
+  "checked": 78,
+  "equal": 78
+ },
+ "compute_rating": {
+  "checked": 31,
+  "equal": 31
+ }
+}

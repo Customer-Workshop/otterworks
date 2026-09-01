@@ -35,7 +35,7 @@ A write to any of them is a guardrail breach, not a collision to negotiate.
 | Wave | Unit | Mapping version | Tolerance version | Recon verdict | PR | Status |
 |---|---|---|---|---|---|---|
 | 1 | `customers` | 1.0.0 (STOP B approved) | 1 | **PASS** (live; T1 2 / T2 42 / T3 25,000 / T4 2 checks) | [#1392](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1392) | **MERGED** 2026-09-01 into `tp-run/mongodb-20260831T232410Z` (merge commit `83ec971`) with the green verdict attached |
-| 2 | `invoices` | 1.0.0 (STOP B approved) | 1 | **PASS** (live; T1 2 / T2 9 / T3 18,750 / T4 2 checks) | [#1393](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1393) | in flight — `!mongo_unit` wave 2, loaded and green, PR open |
+| 2 | `invoices` | 1.0.0 (STOP B approved) | 1 | **PASS** (live; T1 2 / T2 9 / T3 18,750 / T4 2 checks) | [#1393](https://github.com/Cognition-Partner-Workshops/otterworks/pull/1393) | **MERGED** 2026-09-01 into `tp-run/mongodb-20260831T232410Z` (merge commit `1743216`) with the green verdict attached |
 
 ### Wave 1 `customers` load record
 

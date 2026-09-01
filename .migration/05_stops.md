@@ -102,4 +102,5 @@ Not reached.
 
 | Timestamp (UTC) | Phase detected | Evidence read | Action taken |
 |---|---|---|---|
+| 2026-09-01T02:05Z | Both wave units merged and green | `04_progress.md` ledger: `customers` MERGED (`83ec971`), `invoices` MERGED (`1743216`), both mapping `1.0.0` / tolerances `1`; `recon/customers/result.json` and `recon/invoices/result.json` both PASS on tiers 1–4 in `live` mode; circuit breaker 0 failures | Marked `invoices` MERGED in the ledger and handed over `!mongo_wave` (playbook 4) for wave closure; cutover not started |
 | 2026-09-01T00:15Z | STOP A pending | `05_stops.md` STOP A "Status: **PENDING**", approval block still the `_(verbatim approval to be pasted here…)_` placeholder; `03_mapping_spec.json` still the playbook-2 placeholder; `04_progress.md` ledger shows both units `not started`, write-target registry `not loaded`, circuit breaker 0 failures for wave 1; no `recon/` evidence directory exists | Reported that the engagement is awaiting STOP A approval; no phase launched, no unit dispatched, no write to source or migration cluster |

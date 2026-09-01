@@ -9,7 +9,7 @@
     "ow_tp.silver.custbill_quarantine",
     "/Shared/ow_tp/custbill/parse (notebook task `parse` of job ow_tp_custbill)"
   ],
-  "target_code_path": "databricks/parse_custbill_fixedwidth/",
+  "target_code_path": "infrastructure/terraform-databricks/notebooks/parse.py",
   "input_object": "ow_tp.bronze.custbill_raw WHERE ns=? (record_kind='BODY' is parsed; HDR/TRL rows feed the trailer check). Fixture seed: `python3 scripts/tp_dbx/custbill.py seed-fixture --layer bronze --ns <ns> --legacy-root <root>`.",
   "golden_baseline_location": "Regenerated: `make legacy-etl-gen-data NS=<ns>`, `make legacy-etl-run JOB=sftp_ingest_poll`, `make legacy-etl-run JOB=parse_custbill_fixedwidth` under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh. Baseline = `parsed/CUSTBILL*.psv` (6 pipe-delimited fields, 50 rows per file, 100 total). Anomaly baseline = `make legacy-etl-gen-history NS=<ns> START_YEAR=2023 END_YEAR=2023 ROWS_PER_MONTH=40` manifest `sftp-drop/history/expected/<ns>-history-expected.json` (`planted_anomalies`).",
   "declared_source_volume": {"clean_seed_body_rows": 100, "clean_seed_files": 2, "anomaly_seed": "gen_history_data.pl 2023 → 12 files × 40 rows with per-file planted rows listed in the manifest"},

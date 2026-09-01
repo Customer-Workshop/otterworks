@@ -1,8 +1,14 @@
 # Databricks notebook source
-"""`parse` task of job ow_tp_custbill.
+"""`parse` task of job ow_tp_custbill: conversion of etl/legacy-extra/jobs/parse_custbill_fixedwidth.sh.
 
-Fixed-width body records are parsed on the driver so byte-level slicing and
-exact decimal conversion remain explicit. Malformed rows are quarantined.
+Reads the BODY records of ow_tp.bronze.custbill_raw for one namespace, slices them by the
+CBCUST01 copybook offsets into typed columns and loads ow_tp.silver.custbill_records;
+defective records and per-file trailer mismatches go to ow_tp.silver.custbill_quarantine.
+Contract: docs/tech-partnerships/contracts/parse_custbill_fixedwidth.contract.json.
+
+Fixed-width slicing and the implied-decimal conversion are byte-level work, so they run on
+the driver with exact Decimal arithmetic; the pure helpers above `main()` have no Spark or
+dbutils dependency and are unit-tested from scripts/tp_dbx/tests.
 """
 import json
 import re

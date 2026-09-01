@@ -12,7 +12,7 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | STOP B | APPROVED 2026-09-01 — P1 (whole `COMMISSION_DW` schema), boundary confirmed | `#ow-migrations` thread |
 | Analysis + plan / STOP C | DONE; STOP C APPROVED 2026-09-01 (engagement lead, relayed) | `.migration/COMMISSION_DW_analysis.md`, `COMMISSION_DW_plan.md` |
 | Wave 0 | MERGED (PR #1422, CI green, 6 review findings fixed) — all 6 gates green (catalog+schemas+volume, preflight 11/11 probes 0 denied, legacy load FACT 0→3, 9-object baseline hash-pinned, Files API landing checksum 0 mismatches, 4 bronze feed tables loaded, skill stub, harness validated) | branch `migrate/commission-dw/w0-scaffolding`; evidence `.migration/COMMISSION_DW_wave0_evidence.md` |
-| Waves 1..N | Wave 1 MERGED 2026-09-01 (#1425 #1426 #1427; independent recon PASS ×3); wave 2 NOT_STARTED | ledger PR #1424 |
+| Waves 1..N | Wave 1 MERGED 2026-09-01 (#1425 #1426 #1427; independent recon PASS ×3); wave 2 IN_FLIGHT 2026-09-01 (B2-1 child f06d0fb2, width 1) | ledger PR #1424 |
 | Parallel run | NOT_STARTED | |
 | STOP E | NOT_STARTED | |
 
@@ -23,8 +23,8 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | 1 (B1-1) | U1 dim_agent | MERGED | n/a | 0 | live-legacy-comparison (DEGRADED) | #1426 | ≈5.0 ACU / ≤15 wh-min |
 | 1 (B1-2) | U2 dim_product | MERGED | n/a | 0 | live-legacy-comparison (DEGRADED) | #1425 | ≈4.6 ACU / ≈2 wh-min |
 | 1 (B1-3) | U3 dim_period | MERGED | n/a | 0 | live-legacy-comparison (DEGRADED) | #1427 | ≈3.5 ACU / ≈8 wh-min |
-| 2 (B2-1) | U4 fact_commission + job load_commission_facts | NOT_STARTED | – | – | – | – | – |
-| 2 (B2-1) | U5 mv_agent_commission_summary | NOT_STARTED | – | – | – | – | – |
+| 2 (B2-1) | U4 fact_commission + job load_commission_facts | IN_FLIGHT | – | – | – | – | – |
+| 2 (B2-1) | U5 mv_agent_commission_summary | IN_FLIGHT | – | – | – | – | – |
 
 ## Write-target ledger (register BEFORE loading; duplicate = collision → halt)
 | Target object | Owning unit | Wave | Registered |

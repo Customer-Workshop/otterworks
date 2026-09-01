@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from customers_load import assert_source_slice, seed_counter
+from customers_load import assert_source_slice, load, seed_counter
 
 MAPPED = {"CUST_ID", "CUST_NO", "CUR_BAL_AMT"}
 CATALOG = [("CUST_ID",), ("CUST_NO",), ("CUR_BAL_AMT",), ("LEGACY_FAX_NO",)]
@@ -71,6 +71,13 @@ def test_preflight_refuses_an_empty_batch_before_touching_the_target():
 def test_preflight_refuses_a_retired_column_that_now_holds_data():
     with pytest.raises(SystemExit, match="LEGACY_FAX_NO"):
         assert_source_slice(FakeCursor(25000, (7,)), 85559852, MAPPED)
+
+
+@pytest.mark.parametrize("ns", ["", "demo/../prod", "Demo Namespace", "d" * 33])
+def test_a_malformed_namespace_is_rejected_before_anything_is_opened(ns):
+    with pytest.raises(SystemExit, match="not of the form"):
+        load(ns, "OW_BILLING_SOURCE_DSN", "MONGODB_ATLAS_URI", "ow_tp_demo",
+             "ow_tp_demo_quarantine")
 
 
 def test_counter_seeds_from_the_sequence_on_a_first_run():

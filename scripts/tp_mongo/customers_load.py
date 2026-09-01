@@ -48,6 +48,10 @@ DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity
 DERIVED_LISTS = [("RELATED_ACCT_IDS", "related_acct_ids", re.compile(r"^[0-9]{1,12}$")),
                  ("PROMO_CODES_CSV", "promo_codes", re.compile(r"^[A-Z0-9]{2,20}$"))]
 
+# A namespace is part of every `_id` this loader mints and of the filter its deletes run on,
+# so it is checked before it can reach either.
+NS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
+
 MONTHS = {m: i + 1 for i, m in enumerate(
     ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 
@@ -243,6 +247,8 @@ def assert_source_slice(cursor, batch_no: int, mapped: set[str]) -> int:
 
 def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str,
          quarantine_db: str, spec_path: Path = MAPPING_SPEC) -> dict:
+    if not NS_RE.match(ns):
+        raise SystemExit(f"namespace {ns!r} is not of the form {NS_RE.pattern}")
     batch_no = ns_batch_no(ns)
     fields = load_fields(spec_path)
     db = mongo_database(target_uri_secret, target_db)

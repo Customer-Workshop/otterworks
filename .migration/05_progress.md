@@ -9,8 +9,8 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | Setup (Phase 1 + 2) | DONE, awaiting STOP A | `.migration/` this PR |
 | STOP A | APPROVED 2026-09-01 (in-thread reply) | `#ow-migrations` thread |
 | Inventory | DONE | `.migration/COMMISSION_DW_inventory.md`, `08_governance_inventory.md` |
-| STOP B | PENDING | `#ow-migrations` thread |
-| Analysis + plan / STOP C | NOT_STARTED | |
+| STOP B | APPROVED 2026-09-01 — P1 (whole `COMMISSION_DW` schema), boundary confirmed | `#ow-migrations` thread |
+| Analysis + plan / STOP C | DONE, awaiting STOP C | `.migration/COMMISSION_DW_analysis.md`, `COMMISSION_DW_plan.md` |
 | Wave 0 | NOT_STARTED | |
 | Waves 1..N | NOT_STARTED | |
 | Parallel run | NOT_STARTED | |
@@ -19,12 +19,12 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 ## Units (filled by analysis; candidate list from intake)
 | Wave | Unit | Status | Money parity | Quarantine rate | Unverified paths | PR | Cost so far (ACU / warehouse-min) |
 |---|---|---|---|---|---|---|---|
-| – | dim_agent | NOT_STARTED | – | – | – | – | – |
-| – | dim_product | NOT_STARTED | – | – | – | – | – |
-| – | dim_period | NOT_STARTED | – | – | – | – | – |
-| – | fact_commission | NOT_STARTED | – | – | – | – | – |
-| – | load_commission_facts (DW_ETL_PKG) | NOT_STARTED | – | – | – | – | – |
-| – | mv_agent_commission_summary | NOT_STARTED | – | – | – | – | – |
+| 0 | W0 scaffolding (catalog, snapshots, skill stub, recon harness, preflight) | NOT_STARTED | – | – | – | – | – |
+| 1 (B1-1) | U1 dim_agent | NOT_STARTED | – | – | – | – | – |
+| 1 (B1-2) | U2 dim_product | NOT_STARTED | – | – | – | – | – |
+| 1 (B1-3) | U3 dim_period | NOT_STARTED | – | – | – | – | – |
+| 2 (B2-1) | U4 fact_commission + job load_commission_facts | NOT_STARTED | – | – | – | – | – |
+| 2 (B2-1) | U5 mv_agent_commission_summary | NOT_STARTED | – | – | – | – | – |
 
 ## Write-target ledger (register BEFORE loading; duplicate = collision → halt)
 | Target object | Owning unit | Wave | Registered |

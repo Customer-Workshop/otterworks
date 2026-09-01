@@ -50,6 +50,10 @@ class UsageEventRejected(Exception):
     """Raised when the Oracle usage-event trigger would reject an insert."""
 
 
+class RatingPeriodMissing(Exception):
+    """Raised when a result would reference a missing rating period."""
+
+
 @dataclass(frozen=True)
 class Rating:
     tenant_id: str
@@ -402,11 +406,16 @@ class RatingService:
             tenant_id, period_start, period_end, session=session
         )
         subscription_id = sub["_id"] if sub else None
-        # Preserve the source insert-then-update upsert rather than replace semantics:
-        # the insert keys on the period id while the fallback updates by
-        # (tenant_id, period_start).
+        # Preserve the source insert collision on either the period id or the
+        # (tenant_id, period_start) unique key, followed by its natural-key update.
         existing_period = self.rating_periods.find_one(
-            {"_id": period_id}, session=session
+            {
+                "$or": [
+                    {"_id": period_id},
+                    {"tenant_id": tenant_id, "period_start": period_start_dt},
+                ]
+            },
+            session=session,
         )
         inserted_period = existing_period is None
         if inserted_period:
@@ -425,6 +434,15 @@ class RatingService:
                 {"tenant_id": tenant_id, "period_start": period_start_dt},
                 {"$set": {"period_end": period_end_dt}},
                 session=session,
+            )
+
+        if (
+            not inserted_period
+            and self.rating_periods.find_one({"_id": period_id}, session=session)
+            is None
+        ):
+            raise RatingPeriodMissing(
+                f"fk_rr_period violated: rating_periods._id {period_id} is absent"
             )
 
         rating = self.compute_rating(

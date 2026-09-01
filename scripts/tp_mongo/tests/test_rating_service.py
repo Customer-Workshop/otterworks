@@ -16,6 +16,7 @@ from tp_mongo.rating_service import (  # noqa: E402
     NS_VALUE,
     TARGET_DB,
     RatingService,
+    RatingPeriodMissing,
     StaticSubscriptionSource,
     UsageEventRejected,
     add_months,
@@ -49,10 +50,8 @@ class _FakeCollection:
         self.session_calls.append(session)
         if self.find_one_error is not None:
             raise self.find_one_error
-        if self.plan is not None:
-            return self.plan
         if "_id" in query:
-            return next(
+            document = next(
                 (
                     doc
                     for doc in self.docs + self.inserted
@@ -60,6 +59,22 @@ class _FakeCollection:
                 ),
                 None,
             )
+            return self.plan if document is None and self.plan is not None else document
+        if "$or" in query:
+            for clause in query["$or"]:
+                document = next(
+                    (
+                        doc
+                        for doc in self.docs + self.inserted
+                        if all(doc.get(key) == value for key, value in clause.items())
+                    ),
+                    None,
+                )
+                if document is not None:
+                    return document
+            return self.plan
+        if self.plan is not None:
+            return self.plan
         return None
 
     def aggregate(self, pipeline, session=None):
@@ -378,6 +393,42 @@ def test_finalize_existing_documents_update_only_rating_values():
         "billable_units",
         "overage_amount",
     }
+
+
+def test_finalize_imported_period_mirrors_fk_violation_and_aborts():
+    service, db = _service(
+        plan={"included_units": Int64(100), "overage_rate": Decimal128("1.00")},
+        subscription={
+            "_id": "sub-1",
+            "tenant_id": "t-1",
+            "plan_id": "plan-1",
+            "starts_on": date(2025, 1, 1),
+            "ends_on": None,
+        },
+    )
+    db.collections["rating_periods"].docs.append(
+        {
+            "_id": "40000000-0000-0000-0000-000000000012",
+            "tenant_id": "t-1",
+            "period_start": datetime(2025, 12, 1),
+            "period_end": datetime(2025, 12, 31),
+        }
+    )
+    period_id = md5_uuid("t-1" + "2025-12-01")
+    with pytest.raises(
+        RatingPeriodMissing,
+        match=rf"fk_rr_period violated: rating_periods\._id {period_id} is absent",
+    ):
+        service.finalize_rating("t-1", date(2025, 12, 1), date(2025, 12, 31))
+    assert db.collections["rating_periods"].inserted == []
+    assert db.collections["rating_periods"].update_many_calls[0][0] == {
+        "tenant_id": "t-1",
+        "period_start": datetime(2025, 12, 1),
+    }
+    assert db.collections["rating_results"].inserted == []
+    assert db.collections["rating_results"].update_one_calls == []
+    assert db.client.session.aborted is True
+    assert db.client.session.committed is False
 
 
 def test_finalize_rating_twice_takes_the_update_path_without_duplicate_errors():

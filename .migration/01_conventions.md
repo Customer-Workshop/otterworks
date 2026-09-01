@@ -24,7 +24,7 @@ is uncontended.
 |---|---|
 | Target cluster URI | `MONGODB_ATLAS_URI` |
 | Atlas control plane | `MONGODB_ATLAS_PUBLIC_KEY`, `MONGODB_ATLAS_PRIVATE_KEY`, `MONGODB_ATLAS_PROJECT_ID` |
-| Source DSN | **none** — the Oracle estate is a local fixture reached at `localhost:52521/FREEPDB1` with fixture-local credentials defined in `docker-compose.oracle-billing.yml`. When a DSN secret is provisioned, its NAME is recorded here and passed to the harness as `--source-dsn-secret`; it is never inlined |
+| Source DSN | `OW_BILLING_SOURCE_DSN` — value is `user/password/dsn` (the format `recon.adapters.OracleSourceAdapter` expects). No secret is provisioned for it in the vault, because the Oracle estate is a local fixture reached at `localhost:52521/FREEPDB1` whose credentials live in `docker-compose.oracle-billing.yml`; the operator exports the NAME into the environment before the load and the recon run, and the value is never inlined into code, artifacts, logs, or a PR body. If the estate is ever repointed at a real instance, provision a vault secret under this same NAME |
 
 ## Collection and field naming
 

@@ -1,0 +1,23 @@
+[project]
+name = "mongo-recon-harness"
+version = "0.1.0"
+description = "Mapping-aware reconciliation harness for source-to-MongoDB migrations"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+oracle = ["oracledb>=2.0"]
+sqlserver = ["pyodbc>=5.0"]
+mongo = ["pymongo>=4.6"]
+all = ["oracledb>=2.0", "pyodbc>=5.0", "pymongo>=4.6"]
+test = ["pytest>=7.0"]
+
+[project.scripts]
+recon = "recon.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["recon*"]

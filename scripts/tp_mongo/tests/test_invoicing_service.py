@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from copy import deepcopy
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -22,19 +23,36 @@ from tp_mongo.rating_service import (  # noqa: E402
 
 
 class _Session:
+    def __init__(self, database):
+        self.database = database
+        self.snapshot = None
+
     def __enter__(self):
         return self
 
-    def __exit__(self, *_args):
+    def __exit__(self, exc_type, _exc, _traceback):
+        if exc_type is not None and self.snapshot is not None:
+            for name in self.database._db.list_collection_names():
+                self.database._db[name].delete_many({})
+            for name, documents in self.snapshot.items():
+                if documents:
+                    self.database._db[name].insert_many(deepcopy(documents))
         return False
 
     def start_transaction(self):
+        self.snapshot = {
+            name: list(self.database._db[name].find())
+            for name in self.database._db.list_collection_names()
+        }
         return self
 
 
 class _Client:
+    def __init__(self, database):
+        self.database = database
+
     def start_session(self):
-        return _Session()
+        return _Session(self.database)
 
 
 class _Collection:
@@ -64,8 +82,8 @@ class _Collection:
 class _Database:
     def __init__(self):
         self.name = TARGET_DB
-        self.client = _Client()
         self._db = mongomock.MongoClient(tz_aware=True)["target"]
+        self.client = _Client(self)
 
     def __getitem__(self, name):
         return _Collection(self._db[name])
@@ -94,8 +112,20 @@ class _RatingService:
             self.overage,
         )
 
-    def finalize_rating(self, tenant_id, period_start, period_end):
+    def finalize_rating(self, tenant_id, period_start, period_end, session=None):
         self.finalize_calls.append((tenant_id, period_start, period_end))
+        self.db["rating_periods"].update_one(
+            {"_id": "finalized-period"},
+            {"$set": {"tenant_id": tenant_id}},
+            upsert=True,
+            session=session,
+        )
+        self.db["rating_results"].update_one(
+            {"_id": "finalized-result"},
+            {"$set": {"period_id": "finalized-period"}},
+            upsert=True,
+            session=session,
+        )
 
 
 def _db(*, fee="49.00", overage=Decimal("5.56"), exempt=None, credits=()):
@@ -232,6 +262,56 @@ def test_issue_update_branch_replaces_stale_lines_and_ids_are_deterministic():
     assert issued["lines"][0]["description"] == "STARTER"
     assert issued["lines"][0]["id"] == md5_uuid(invoice_id + "1")
     assert invoice_id == md5_uuid(md5_uuid("tenant-1" + "2026-02-01") + "invoice")
+
+
+def test_issue_rolls_back_finalize_and_invoice_changes_on_failure(monkeypatch):
+    db, rating = _db(credits=(("c1", "2026-02-01", "10.00"),))
+    db["rating_periods"].insert_one({"_id": "existing-period", "value": 1})
+    db["rating_results"].insert_one({"_id": "existing-result", "value": 2})
+    service = InvoicingService(db, rating)
+    before = {
+        name: list(db[name].find())
+        for name in ("rating_periods", "rating_results", "invoices", "credit_notes")
+    }
+
+    def fail_preview(*_args, **_kwargs):
+        raise RuntimeError("forced issuance failure")
+
+    monkeypatch.setattr(service, "invoice_preview", fail_preview)
+    try:
+        service.issue_invoice("tenant-1", *_period())
+    except RuntimeError as exc:
+        assert str(exc) == "forced issuance failure"
+    else:
+        raise AssertionError("expected issuance failure")
+
+    after = {
+        name: list(db[name].find())
+        for name in ("rating_periods", "rating_results", "invoices", "credit_notes")
+    }
+    assert after == before
+    assert rating.finalize_calls
+
+
+def test_issue_upsert_preserves_insert_fields_on_second_call():
+    db, rating = _db(credits=())
+    service = InvoicingService(db, rating)
+    period_start, period_end = _period()
+    first = service.issue_invoice("tenant-1", period_start, period_end)
+    issued_at = first["issued_at"]
+    period_id = first["period_id"]
+    first_count = db["invoices"].count_documents({"_id": first["_id"]})
+
+    db["invoices"].update_one(
+        {"_id": first["_id"]}, {"$set": {"status_cd": 40, "subtotal": Decimal128("9.99")}}
+    )
+    second = service.issue_invoice("tenant-1", period_start, period_end)
+
+    assert first_count == 1
+    assert db["invoices"].count_documents({"_id": first["_id"]}) == 1
+    assert second["status_cd"] == 20
+    assert second["issued_at"] == issued_at
+    assert second["period_id"] == period_id
 
 
 def test_total_rounding_is_half_away_from_zero_and_lines_project_in_order():

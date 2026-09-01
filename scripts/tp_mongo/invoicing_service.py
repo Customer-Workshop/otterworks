@@ -189,34 +189,28 @@ class InvoicingService:
     def issue_invoice(self, tenant_id, period_start, period_end):
         period_id = md5_uuid(tenant_id + _date(period_start).strftime("%Y-%m-%d"))
         invoice_id = md5_uuid(period_id + "invoice")
-        self.rating_service.finalize_rating(tenant_id, period_start, period_end)
 
         with self.db.client.start_session() as session:
             with session.start_transaction():
-                existing = self.invoices.find_one(
-                    {"_id": invoice_id, **NS_FILTER}, session=session
+                self.rating_service.finalize_rating(
+                    tenant_id, period_start, period_end, session=session
                 )
-                if existing is None:
-                    self.invoices.insert_one(
-                        {
-                            "_id": invoice_id,
+                self.invoices.update_one(
+                    {"_id": invoice_id, **NS_FILTER},
+                    {
+                        "$setOnInsert": {
                             "tenant_id": tenant_id,
                             "period_id": period_id,
                             "issued_at": _utc_ms(_date(period_end)),
                             "subtotal": Decimal128("0.00"),
                             "tax": Decimal128("0.00"),
                             "total": Decimal128("0.00"),
-                            "status_cd": 20,
-                            "ns": NS_VALUE,
                         },
-                        session=session,
-                    )
-                else:
-                    self.invoices.update_one(
-                        {"_id": invoice_id, **NS_FILTER},
-                        {"$set": {"status_cd": 20}},
-                        session=session,
-                    )
+                        "$set": {"status_cd": 20},
+                    },
+                    upsert=True,
+                    session=session,
+                )
 
                 lines = []
                 subtotal = Decimal("0")

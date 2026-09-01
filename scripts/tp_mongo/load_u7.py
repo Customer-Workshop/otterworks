@@ -9,8 +9,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bson import ObjectId
-
 from load_u0 import date_ms, vc
 
 NS_VALUE = "mongo_032752"
@@ -119,6 +117,7 @@ def main() -> int:
 
     oracle = oracledb.connect(user=user, password=password, dsn=dsn)
     client = MongoClient(uri_value)
+    started_at = datetime.now(timezone.utc).isoformat()
     try:
         rows = _oracle_rows(oracle)
         documents = _transform(rows)
@@ -163,7 +162,7 @@ def main() -> int:
         _write_report(
             Path(args.report),
             {
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": started_at,
                 "finished_at": datetime.now(timezone.utc).isoformat(),
                 "target_db": args.target_db,
                 "ns": NS_VALUE,

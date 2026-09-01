@@ -61,7 +61,7 @@ def md5_uuid(value):
 def _oracle_number_text(value) -> str:
     value = Decimal("-1") if value is None else Decimal(str(value))
     if value == value.to_integral_value():
-        return format(value.quantize(Decimal(1)), "f")
+        return str(int(value))
     rendered = format(value, "f").rstrip("0").rstrip(".")
     if rendered.startswith("-0."):
         rendered = "-." + rendered[3:]

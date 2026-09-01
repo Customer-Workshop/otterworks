@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-09-01T05:27:44.419106+00:00",
+  "unit": "U2",
+  "namespace": "mongo_032752",
+  "cardinality": {
+    "oracle_total": 150000,
+    "oracle_matched": 149963,
+    "oracle_orphan": 37,
+    "target_embedded": 149963,
+    "target_quarantined": 37,
+    "embedded_plus_quarantined": 150000,
+    "total_pass": true,
+    "matched_pass": true,
+    "orphan_pass": true,
+    "target_embedded_pass": true,
+    "target_quarantined_pass": true,
+    "balanced": true
+  },
+  "orphan_identity": {
+    "oracle_count": 37,
+    "target_count": 37,
+    "missing_ids": [],
+    "unexpected_ids": [],
+    "invalid_quarantine_docs": [],
+    "pass": true
+  },
+  "report_parity": {
+    "batch_no": 85559852,
+    "status": {
+      "legacy_row_count": 3,
+      "mongo_row_count": 3,
+      "first_5_differences": [],
+      "pass": true
+    },
+    "line": {
+      "legacy_row_count": 12,
+      "mongo_row_count": 12,
+      "first_5_differences": [],
+      "pass": true
+    },
+    "pass": true
+  },
+  "pass": true
+}

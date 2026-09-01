@@ -1,0 +1,84 @@
+{
+  "kind": "recon-report",
+  "unit": "U2",
+  "namespace": "mongo_032752",
+  "generated_at": "2026-09-01T05:30:00Z",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "u2.counts_through_mapping",
+      "expected": "2/2 pass (invoice_feed roots 18750; embedded lines 149963)",
+      "actual": "2/2 pass",
+      "source_of_truth": "harness .migration/recon/U2/gate/result.json (tier1 counts_through_mapping)",
+      "result": "pass"
+    },
+    {
+      "id": "u2.per_field_aggregates",
+      "expected": "8/8 pass",
+      "actual": "8/8 pass",
+      "source_of_truth": "harness .migration/recon/U2/gate/result.json (tier2 per_field_aggregates)",
+      "result": "pass"
+    },
+    {
+      "id": "u2.keyed_diffs",
+      "expected": "168713/168713 pass, full_diff on invoice_feed and graded embedded lines",
+      "actual": "168713/168713 pass; invoice_feed population 18750; lines graded 149963",
+      "source_of_truth": "harness .migration/recon/U2/gate/result.json (tier3 keyed_diffs)",
+      "result": "pass"
+    },
+    {
+      "id": "u2.quarantine_cardinality",
+      "expected": "Oracle total 150000 = embedded 149963 + quarantined 37",
+      "actual": "Oracle total 150000 = embedded 149963 + quarantined 37",
+      "source_of_truth": ".migration/recon/U2/supplemental.json cardinality",
+      "result": "pass"
+    },
+    {
+      "id": "u2.orphan_identity",
+      "expected": "exact Oracle orphan LINE_ID set of 37; all documents orphan_fk/U2/mongo_032752",
+      "actual": "37/37 IDs matched; missing [], unexpected [], invalid documents []",
+      "source_of_truth": ".migration/recon/U2/supplemental.json orphan_identity",
+      "result": "pass"
+    },
+    {
+      "id": "u2.report_parity",
+      "expected": "status 3 rows and line 12 rows equal row-for-row for batch 85559852",
+      "actual": "status 3/3 and line 12/12; first_5_differences []",
+      "source_of_truth": ".migration/recon/U2/supplemental.json report_parity",
+      "result": "pass"
+    },
+    {
+      "id": "u2.namespace_tagging",
+      "expected": "18750 invoice_feed and 37 quarantine documents tagged mongo_032752",
+      "actual": "18750 invoice_feed and 37 quarantine documents tagged mongo_032752",
+      "source_of_truth": ".migration/recon/U2/load_report.json namespace counts",
+      "result": "pass"
+    },
+    {
+      "id": "u2.idempotency_rerun",
+      "expected": "second drop/recreate load and recon have no doubling",
+      "actual": "same 18750 roots, 149963 embedded lines, 37 quarantined; second PASS",
+      "source_of_truth": ".migration/recon/U2/load_report.rerun.json and gate_rerun/result.json",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U2/load_report.rerun.json and .migration/recon/U2/gate_rerun/result.json"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "UNKNOWN(status_cd) $ifNull branch — all seeded headers map to INV_STATUS 20/30/40",
+    "UNKNOWN(line_type_cd) $switch default — fixture has only line types 1/2/3/9",
+    "all-NULL SUM group semantics — Oracle NULL vs Mongo 0 cannot occur because amount/tax_amt are never NULL in the fixture",
+    "fixture-only run mode — the wave gate runs LIVE independently",
+    "reconciliation endpoint remains Oracle-backed via U1's customer_master"
+  ]
+}

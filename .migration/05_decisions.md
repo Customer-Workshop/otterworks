@@ -24,3 +24,4 @@
 | 2026-09-01 | U1 PR #1406 post-gate commits 02a8fd2c/e6abe951 vetted by orchestrator (app-code fidelity fixes + tests only; no loader/data change) and merged; wave-1 recon PASS remains valid | orchestrator | RECORDED |
 | 2026-09-01 | U3 halt resolved (user approved): mapping spec amendment v1.2 — SUBSCRIPTIONS.ENDS_ON and SUBSCRIPTIONS.SUSPENDED_ON (all-NULL DATE columns) carry null_missing_equiv, deferring their Tier-2 aggregate_distinct_count (Oracle COUNT(DISTINCT)=0 vs Mongo null group) to the Tier-3 keyed diff; bson_type stays date. Canonicalization v1.1 -> v1.2. Same grading-artifact class as v1.1. Data contract unchanged: source NULL -> explicit BSON null; NULL != missing. Consumes U3 re-run 2 of 3 | dhrov.subramanian ("approve", this session) | APPROVED |
 | 2026-09-01 | Wave 2 closed: U3, U4, U7 merged on independent recon PASS | orchestrator | RECORDED |
+| 2026-09-01 | Wave 3a closed: U5 merged on independent recon PASS | orchestrator | RECORDED |

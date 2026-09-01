@@ -9,7 +9,7 @@
 | `UX_FACT_ROW` | Unique index on `FACT_COMMISSION` natural columns; the recon key and MERGE key. |
 | `*_key` | Identity surrogate keys (`agent_key`, `product_key`, `period_key`, `fact_id`); preserved as explicit BIGINT values on the target. |
 | `loaded_at` | Server-side `SYSTIMESTAMP` on the fact; excluded from every comparison. |
-| Period | A calendar month (`period_month`, first day of month) — the ETL's batch granularity. |
+| Period | A calendar month represented by `period_month` as a seven-character `YYYY-MM` string (`VARCHAR2(7)`, preserved as `STRING` on the target) — the ETL's batch granularity. |
 | Line of business | Product classification carried on `DIM_PRODUCT`; a grouping column of the MV. |
 | ns / namespace | Run isolation suffix on every Databricks object (`_cdw`) and volume path. |
 | Snapshot / baseline | Deterministic read-only extract of legacy tables (CSV + manifest) used as recon truth (DEGRADED mode). |

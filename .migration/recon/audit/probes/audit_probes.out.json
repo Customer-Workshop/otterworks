@@ -1,0 +1,47 @@
+{
+  "probe_1_orphan_quarantine": {
+    "quarantined_docs": 37,
+    "source_orphan_rows": 37,
+    "expected": 37
+  },
+  "probe_2_line_conservation": {
+    "embedded_lines": 149963,
+    "quarantined_lines": 37,
+    "total": 150000,
+    "source_INVOICE_LINE": 150000
+  },
+  "probe_3_subscriptions": {
+    "target_docs": 69,
+    "source_rows": 69
+  },
+  "probe_4_customers_and_eav": {
+    "target_customers": 25000,
+    "source_CUSTOMER_MASTER": 25000,
+    "embedded_attributes": 8333,
+    "source_ENTITY_ATTR_VALUE": 8333
+  },
+  "probe_5_scope": {
+    "target_collections": [
+      "billing_audit_log",
+      "codes",
+      "credit_notes",
+      "customer_master_hist",
+      "customers",
+      "fixture_meta",
+      "invoice_feed",
+      "invoices",
+      "notifications",
+      "plans",
+      "rating_periods",
+      "rating_results",
+      "subscriptions",
+      "subscriptions_hist",
+      "tenants",
+      "usage_events"
+    ],
+    "quarantine_collections": [
+      "invoice_feed_orphan_lines"
+    ],
+    "invoice_feed_docs_missing_ns_stamp": 0
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "note": "independent re-seeded fixture (NS=demo, SCALE=demo) vs recorded cutover watermark",
+  "tables": {
+    "RATING_PERIODS": {
+      "watermark": 3,
+      "audit_fixture": 3
+    },
+    "CUSTOMER_MASTER_HIST": {
+      "watermark": 0,
+      "audit_fixture": 0
+    },
+    "INVOICES": {
+      "watermark": 3,
+      "audit_fixture": 3
+    },
+    "CREDIT_NOTES": {
+      "watermark": 5,
+      "audit_fixture": 5
+    },
+    "CODES": {
+      "watermark": 32,
+      "audit_fixture": 32
+    },
+    "TENANTS": {
+      "watermark": 69,
+      "audit_fixture": 69
+    },
+    "PLANS": {
+      "watermark": 3,
+      "audit_fixture": 3
+    },
+    "SUBSCRIPTIONS": {
+      "watermark": 69,
+      "audit_fixture": 69
+    },
+    "USAGE_EVENTS": {
+      "watermark": 814,
+      "audit_fixture": 814
+    },
+    "DUNNING_ATTEMPTS": {
+      "watermark": 1,
+      "audit_fixture": 1
+    },
+    "NOTIFICATIONS": {
+      "watermark": 1,
+      "audit_fixture": 1
+    },
+    "INVOICE_LINES": {
+      "watermark": 2,
+      "audit_fixture": 2
+    },
+    "FIXTURE_META": {
+      "watermark": 1,
+      "audit_fixture": 1
+    },
+    "CUSTOMER_MASTER": {
+      "watermark": 25000,
+      "audit_fixture": 25000
+    },
+    "ENTITY_ATTR_VALUE": {
+      "watermark": 8333,
+      "audit_fixture": 8333
+    },
+    "INVOICE_HEADER": {
+      "watermark": 18750,
+      "audit_fixture": 18750
+    },
+    "INVOICE_LINE": {
+      "watermark": 150000,
+      "audit_fixture": 150000
+    },
+    "BILLING_AUDIT_LOG": {
+      "watermark": 0,
+      "audit_fixture": 0
+    },
+    "SUBSCRIPTIONS_HIST": {
+      "watermark": 0,
+      "audit_fixture": 0
+    },
+    "RATING_RESULTS": {
+      "watermark": 3,
+      "audit_fixture": 3
+    }
+  },
+  "all_match": true
+}

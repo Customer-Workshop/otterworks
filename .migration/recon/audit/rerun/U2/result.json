@@ -1,0 +1,53 @@
+{
+  "unit": "U2",
+  "mode": "live",
+  "mapping_version": "1.2",
+  "tolerance_version": "1.0",
+  "seed": 0,
+  "params": {},
+  "generated_at": "2026-09-01T18:20:59.116407+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 8,
+      "stats": {
+        "deferred_to_tier3": [
+          "invoice_feed.invoice_no",
+          "invoice_feed.cust_id",
+          "invoice_feed.tenant_id",
+          "invoice_feed.invoice_dt",
+          "invoice_feed.due_dt"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 168713,
+      "stats": {
+        "invoice_feed": {
+          "mode": "full_diff",
+          "population": 18750
+        },
+        "embeds_graded": {
+          "invoice_feed.lines": 149963
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS"
+}

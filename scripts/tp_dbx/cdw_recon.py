@@ -27,6 +27,7 @@ import argparse
 import csv
 import hashlib
 import json
+import shlex
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -50,6 +51,12 @@ UNITS: dict[str, dict] = {
                                     "money": ["total_commission"]},
 }
 EXCLUDED_COLUMNS = {"loaded_at"}
+NULL = "\x00NULL"
+NUMERIC_COLUMNS = {
+    "agent_key", "agent_id", "product_key", "period_key", "year_num", "month_num",
+    "quarter_num", "fact_id", "policy_id", "split_pct", "base_premium",
+    "commission_amt", "policy_rows", "total_commission",
+}
 
 
 def target_table(unit: str, ns: str) -> str:
@@ -71,22 +78,31 @@ def read_target(dbx: Databricks, unit: str, ns: str, columns: list[str]) -> list
     order = ", ".join(spec["key"])
     cols = ", ".join(columns)
     result = dbx.sql_ok(f"SELECT {cols} FROM {target_table(unit, ns)} ORDER BY {order}")
-    return [["" if v is None else str(v) for v in row] for row in result.rows]
+    return [[NULL if v is None else str(v) for v in row] for row in result.rows]
 
 
-def norm(value: str) -> object:
-    try:
-        return Decimal(value) if value != "" else ""
-    except InvalidOperation:
+def norm(col: str, value: str) -> object:
+    if value == NULL:
+        return NULL
+    if col not in NUMERIC_COLUMNS:
         return value
+    try:
+        return Decimal(value)
+    except InvalidOperation:
+        raise SystemExit(f"invalid numeric value for {col}: {value!r}") from None
 
 
-def keyed(header: list[str], rows: list[list[str]], key: list[str]) -> dict[tuple, dict]:
+def keyed(header: list[str], rows: list[list[str]], key: list[str]) -> tuple[dict[tuple, dict], list[tuple]]:
     idx = [header.index(k) for k in key]
     out = {}
+    duplicates = []
     for row in rows:
-        out[tuple(row[i] for i in idx)] = {h: norm(v) for h, v in zip(header, row) if h not in EXCLUDED_COLUMNS}
-    return out
+        row_key = tuple(row[i] for i in idx)
+        if row_key in out:
+            duplicates.append(row_key)
+            continue
+        out[row_key] = {h: norm(h, v) for h, v in zip(header, row) if h not in EXCLUDED_COLUMNS}
+    return out, duplicates
 
 
 def cents(rows: dict[tuple, dict], col: str) -> int:
@@ -123,8 +139,10 @@ def main() -> int:
     header, brows = read_baseline(baseline_dir, spec["obj"])
     columns = [c for c in header if c not in EXCLUDED_COLUMNS]
     trows = read_target(dbx, args.unit, ns, columns)
-    base = keyed(header, brows, spec["key"])
-    tgt = keyed(columns, trows, spec["key"])
+    base, base_dups = keyed(header, brows, spec["key"])
+    if base_dups:
+        raise SystemExit(f"baseline {spec['obj']} has duplicate keys: {base_dups}")
+    tgt, target_dups = keyed(columns, trows, spec["key"])
 
     missing = sorted(k for k in base if k not in tgt)
     unexpected = sorted(k for k in tgt if k not in base)
@@ -132,7 +150,9 @@ def main() -> int:
     sot = f"legacy baseline {spec['obj']}.csv (manifest-pinned) vs {target_table(args.unit, ns)}"
 
     checks = [
-        check("rowcount", len(base), len(tgt), sot),
+        check("rowcount", len(brows), len(trows), sot),
+        check("duplicate_keys", 0, len(target_dups), sot),
+        check("null_count", 0, sum(value == NULL for row in trows for value in row), sot),
         check("row_diff", {"missing": 0, "unexpected": 0, "changed": 0},
               {"missing": len(missing), "unexpected": len(unexpected), "changed": len(changed)}, sot),
     ]
@@ -150,12 +170,12 @@ def main() -> int:
 
     idem = {"performed": False, "result": "fail", "evidence": "no --rerun command supplied"}
     if args.rerun:
-        proc = subprocess.run(args.rerun, shell=True, capture_output=True, text=True, check=False)
-        after = keyed(columns, read_target(dbx, args.unit, ns, columns), spec["key"])
-        same = proc.returncode == 0 and after == tgt
+        proc = subprocess.run(shlex.split(args.rerun), shell=False, capture_output=True, text=True, check=False)
+        after = read_target(dbx, args.unit, ns, columns)
+        same = proc.returncode == 0 and sorted(after) == sorted(trows)
         idem = {"performed": True, "result": "pass" if same else "fail",
-                "evidence": f"rerun rc={proc.returncode}; rows before={len(tgt)} after={len(after)}; "
-                            f"row set identical={after == tgt} (loaded_at excluded)"}
+                "evidence": f"rerun rc={proc.returncode}; rows before={len(trows)} after={len(after)}; "
+                            f"row set identical={same} (loaded_at excluded)"}
 
     report = {
         "kind": "recon-report",

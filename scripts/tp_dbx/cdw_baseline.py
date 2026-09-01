@@ -25,6 +25,7 @@ import io
 import json
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -120,6 +121,16 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def get_file(dbx: Databricks, path: str) -> bytes:
+    url = dbx.host + f"/api/2.0/fs/files{urllib.parse.quote(path, safe='/')}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {dbx.token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return resp.read()
+    except urllib.error.URLError as exc:
+        raise SystemExit(f"failed to GET {path}: {exc}") from exc
+
+
 # --- provision -------------------------------------------------------------
 def provision_statements() -> list[str]:
     stmts = [f"CREATE CATALOG IF NOT EXISTS {CATALOG} COMMENT 'OtterWorks tech-partnerships migration (prefix ow_tp)'"]
@@ -212,10 +223,7 @@ def cmd_upload(args) -> int:
             raise SystemExit(f"local {name} does not match manifest sha256")
         target = f"{landing(ns)}/{meta['group']}/{name}"
         dbx.put_file(target, payload)
-        req = urllib.request.Request(dbx.host + f"/api/2.0/fs/files{urllib.parse.quote(target, safe='/')}",
-                                     headers={"Authorization": f"Bearer {dbx.token}"})
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            remote = resp.read()
+        remote = get_file(dbx, target)
         ok = sha256(remote) == meta["sha256"]
         failures += 0 if ok else 1
         print(f"{'OK ' if ok else 'BAD'} {target} bytes={len(remote)}")
@@ -244,7 +252,29 @@ def load_feed_statements(ns: str) -> list[tuple[str, str]]:
 def cmd_load_feed(args) -> int:
     ns = require_ns(args.ns)
     dbx = Databricks(warehouse_id=args.warehouse)
-    manifest = json.loads((local_dir(ns) / "manifest.json").read_text())
+    manifest_path = local_dir(ns) / "manifest.json"
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+        manifest = json.loads(manifest_bytes)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"failed to read local manifest {manifest_path}: {exc}") from exc
+    remote_manifest = get_file(dbx, f"{landing(ns)}/feed/manifest.json")
+    if remote_manifest != manifest_bytes:
+        raise SystemExit(f"remote feed manifest does not match local {manifest_path}")
+    for obj in FEED_SCHEMAS:
+        name = f"{obj}.csv"
+        payload = get_file(dbx, f"{landing(ns)}/feed/{name}")
+        try:
+            meta = manifest["files"][name]
+            expected_sha256 = meta["sha256"]
+            expected_rows = meta["rows"]
+        except (KeyError, TypeError) as exc:
+            raise SystemExit(f"local manifest is missing feed metadata for {name}") from exc
+        rows = len(payload.splitlines()) - 1
+        if sha256(payload) != expected_sha256:
+            raise SystemExit(f"remote feed {name} does not match manifest sha256")
+        if rows != expected_rows:
+            raise SystemExit(f"remote feed {name} has {rows} rows; manifest has {expected_rows}")
     bad = 0
     for obj, stmt in load_feed_statements(ns):
         dbx.sql_ok(stmt)

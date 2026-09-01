@@ -1,0 +1,12 @@
+{"name": "ow_tp_cdw_load_commission_facts", "format": "MULTI_TASK", "max_concurrent_runs": 1, "timeout_seconds": 3600, "queue": {"enabled": false},
+ "schedule": {"quartz_cron_expression": "0 0 6 1 * ?", "timezone_id": "UTC", "pause_status": "PAUSED"},
+ "parameters": [{"name": "ns", "default": "cdw"}, {"name": "period_month", "default": ""}],
+ "tasks": [
+   {"task_key": "t0_feed_refresh", "notebook_task": {"notebook_path": "/Shared/ow_tp/cdw/load_commission_facts", "base_parameters": {"task": "feed_refresh", "ns": "{{job.parameters.ns}}", "period_month": "{{job.parameters.period_month}}", "run_id": "{{job.run_id}}"}}},
+   {"task_key": "t1_dim_agent", "depends_on": [{"task_key": "t0_feed_refresh"}], "notebook_task": {"notebook_path": "/Shared/ow_tp/cdw/load_commission_facts", "base_parameters": {"task": "dim_agent", "ns": "{{job.parameters.ns}}", "period_month": "{{job.parameters.period_month}}", "run_id": "{{job.run_id}}"}}},
+   {"task_key": "t2_dim_product", "depends_on": [{"task_key": "t1_dim_agent"}], "notebook_task": {"notebook_path": "/Shared/ow_tp/cdw/load_commission_facts", "base_parameters": {"task": "dim_product", "ns": "{{job.parameters.ns}}", "period_month": "{{job.parameters.period_month}}", "run_id": "{{job.run_id}}"}}},
+   {"task_key": "t3_dim_period", "depends_on": [{"task_key": "t2_dim_product"}], "notebook_task": {"notebook_path": "/Shared/ow_tp/cdw/load_commission_facts", "base_parameters": {"task": "dim_period", "ns": "{{job.parameters.ns}}", "period_month": "{{job.parameters.period_month}}", "run_id": "{{job.run_id}}"}}},
+   {"task_key": "t4_fact_commission", "depends_on": [{"task_key": "t3_dim_period"}], "notebook_task": {"notebook_path": "/Shared/ow_tp/cdw/load_commission_facts", "base_parameters": {"task": "fact_commission", "ns": "{{job.parameters.ns}}", "period_month": "{{job.parameters.period_month}}", "run_id": "{{job.run_id}}"}}},
+   {"task_key": "t5_mv_agent_commission_summary", "depends_on": [{"task_key": "t4_fact_commission"}], "notebook_task": {"notebook_path": "/Shared/ow_tp/cdw/load_commission_facts", "base_parameters": {"task": "mv_agent_commission_summary", "ns": "{{job.parameters.ns}}", "period_month": "{{job.parameters.period_month}}", "run_id": "{{job.run_id}}"}}}
+ ],
+ "tags": {"project": "ow_tp", "ns": "cdw", "unit": "fact_commission"}}

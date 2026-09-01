@@ -1,6 +1,6 @@
 # 03 — Mapping spec
 
-Version: `1.0-proposed` (authored in phase 2; becomes `1.0` on STOP B approval).
+Version: `1.0` (approved at STOP B, 2026-09-01).
 Machine-readable contract: `.migration/03_mapping_spec.json` (generated deterministically
 by `.migration/census/gen_mapping_spec.py` from `census/raw/columns.txt`; regenerating is
 byte-stable). Canonicalization rules: `.migration/recon_canonicalization.json` v1.0.

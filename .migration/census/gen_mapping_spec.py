@@ -136,7 +136,7 @@ def main():
         if es:
             c["embeds"] = es
         collections.append(c)
-    spec = {"version": "1.0-proposed", "collections": collections}
+    spec = {"version": "1.0", "collections": collections}
     OUT.write_text(json.dumps(spec, indent=2) + "\n")
     n_fields = sum(len(c["fields"]) for c in collections)
     n_embed_fields = sum(len(e["fields"]) for c in collections for e in c.get("embeds", []))

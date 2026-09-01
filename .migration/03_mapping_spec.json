@@ -1,5 +1,5 @@
 {
-  "version": "1.0-proposed",
+  "version": "1.0",
   "collections": [
     {
       "collection": "tenants",

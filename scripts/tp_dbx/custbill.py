@@ -118,11 +118,24 @@ def _landing_root(ns: str, part: str) -> str:
     return f"{LANDING}/{ns}/{part}"
 
 
+def _delete_tree(dbx: Databricks, volume_path: str) -> None:
+    """Files API directory deletes are non-recursive; empty the tree bottom-up first."""
+    for entry in dbx.list_dir(volume_path):
+        child = entry.get("path") or f"{volume_path}/{entry['name']}"
+        if entry.get("is_directory"):
+            _delete_tree(dbx, child)
+        else:
+            status = dbx.delete_file(child)
+            if status not in (200, 204, 404):
+                raise DbxError(f"DELETE {child} -> HTTP {status}")
+    status = dbx.delete_dir(volume_path)
+    if status not in (200, 204, 404):
+        raise DbxError(f"DELETE {volume_path} -> HTTP {status}")
+
+
 def _clean_landing(dbx: Databricks, ns: str) -> None:
     for part in ("incoming", "archive", "reports"):
-        status = dbx.delete_dir(_landing_root(ns, part))
-        if status not in (200, 204, 404):
-            raise DbxError(f"DELETE {_landing_root(ns, part)} -> HTTP {status}")
+        _delete_tree(dbx, _landing_root(ns, part))
 
 
 def _listed_names(result, preferred: tuple[str, ...], fallback_index: int = -1) -> set[str]:

@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 from bson.decimal128 import Decimal128
-from pymongo import ASCENDING, InsertOne
+from pymongo import ASCENDING, InsertOne, ReturnDocument
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -189,17 +189,56 @@ def ensure_indexes(collection) -> None:
 def seed_counter(db, cursor, ns: str) -> int:
     """`CUST_SEQ_NO` is trigger-assigned from SEQ_CUSTOMER_MASTER source-side; new inserts on
     Atlas draw from a counters document instead (D3), seeded past the sequence's high-water
-    mark so no number is ever reissued."""
+    mark so no number is ever reissued.
+
+    Monotonic: the counter only ever moves up. A reload re-seeds from the sequence, but by
+    then Atlas may have issued numbers of its own, and lowering the counter back to the
+    source's mark would reissue them.
+    """
     cursor.execute("SELECT last_number FROM all_sequences "
                    "WHERE sequence_owner = 'OW_BILLING' AND sequence_name = 'SEQ_CUSTOMER_MASTER'")
     row = cursor.fetchone()
     if row is None:
         raise SystemExit("SEQ_CUSTOMER_MASTER not found; D3's counter cannot be seeded")
-    seq = int(row[0])
-    db["counters"].replace_one({"_id": f"{ns}:customers.cust_seq_no"},
-                               {"_id": f"{ns}:customers.cust_seq_no", "ns": ns,
-                                "unit": UNIT, "seq": seq}, upsert=True)
-    return seq
+    counter = db["counters"].find_one_and_update(
+        {"_id": f"{ns}:customers.cust_seq_no"},
+        {"$max": {"seq": int(row[0])},
+         "$setOnInsert": {"ns": ns, "unit": UNIT}},
+        upsert=True, return_document=ReturnDocument.AFTER)
+    return int(counter["seq"])
+
+
+def assert_source_slice(cursor, batch_no: int, mapped: set[str]) -> int:
+    """Preconditions checked before a single document is written, because both of them make
+    the load destructive rather than wrong:
+
+    - the batch must hold rows. An empty answer (wrong batch number, a source outage) would
+      otherwise clear the namespace and report a successful load of nothing.
+    - every column D13 retired must still be entirely NULL for this batch. They are dropped
+      from the mapping, so recon cannot see them: were the estate to start populating one,
+      the data would be discarded silently by a green run.
+    """
+    cursor.execute(f"SELECT COUNT(*) FROM {ROOT_TABLE} WHERE CONVERSION_BATCH_NO = :b",
+                   b=batch_no)
+    rows = int(cursor.fetchone()[0])
+    if rows == 0:
+        raise SystemExit(f"{ROOT_TABLE} has no rows for CONVERSION_BATCH_NO={batch_no}; "
+                         f"refusing to clear the target for an empty source")
+
+    cursor.execute("SELECT column_name FROM all_tab_columns "
+                   "WHERE owner = 'OW_BILLING' AND table_name = 'CUSTOMER_MASTER' "
+                   "ORDER BY column_id")
+    retired = [c for (c,) in cursor if c not in mapped]
+    if retired:
+        counts = ", ".join(f"COUNT({c})" for c in retired)
+        cursor.execute(f"SELECT {counts} FROM {ROOT_TABLE} WHERE CONVERSION_BATCH_NO = :b",
+                       b=batch_no)
+        populated = [c for c, n in zip(retired, cursor.fetchone()) if n]
+        if populated:
+            raise SystemExit(
+                "columns retired at D13 now hold data and are not in the mapping, so the "
+                f"load would drop it: {', '.join(populated)}")
+    return rows
 
 
 def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str,
@@ -213,10 +252,12 @@ def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str
     connection = oracle_connect(source_dsn_secret)
     with connection, connection.cursor() as cursor:
         cursor.arraysize = BATCH_SIZE
+        columns = [f[0] for f in fields]
+        assert_source_slice(cursor, batch_no, set(columns))
+
         attributes = fetch_attributes(cursor, batch_no)
         counter_seed = seed_counter(db, cursor, ns)
 
-        columns = [f[0] for f in fields]
         cursor.execute(f"SELECT {', '.join(columns)} FROM {ROOT_TABLE} "
                        f" WHERE CONVERSION_BATCH_NO = :b ORDER BY CUST_NO", b=batch_no)
         names = [d[0] for d in cursor.description]

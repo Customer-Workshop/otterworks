@@ -15,6 +15,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from tp_mongo.rating_service import (  # noqa: E402
     NS_VALUE,
     TARGET_DB,
+    RatingResultNullValue,
     RatingService,
     RatingPeriodMissing,
     StaticSubscriptionSource,
@@ -361,6 +362,42 @@ def test_finalize_insert_stores_quota_minus_used_rollover():
     assert finalized["inserted_result"] is True
     assert document["rollover_units"] == Int64(50)
     assert document["rollover_units"] != Int64(finalized["rating"].rollover_units)
+
+
+def test_finalize_without_subscription_mirrors_not_null_and_aborts_transaction():
+    service, db = _service()
+    with pytest.raises(
+        RatingResultNullValue,
+        match="NOT NULL violated: rating_results.subscription_id",
+    ):
+        service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
+    # The period insert is part of the transaction and rolls back with the result error.
+    assert len(db.collections["rating_periods"].inserted) == 1
+    assert db.collections["rating_results"].inserted == []
+    assert db.client.session.aborted is True
+    assert db.client.session.committed is False
+
+
+def test_finalize_without_plan_mirrors_quota_not_null_and_aborts_transaction():
+    service, db = _service(
+        subscription={
+            "_id": "sub-1",
+            "tenant_id": "t-1",
+            "plan_id": "missing-plan",
+            "starts_on": date(2026, 1, 1),
+            "ends_on": None,
+        },
+    )
+    with pytest.raises(
+        RatingResultNullValue,
+        match="NOT NULL violated: rating_results.quota_units",
+    ):
+        service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
+    # The period insert is part of the transaction and rolls back with the result error.
+    assert len(db.collections["rating_periods"].inserted) == 1
+    assert db.collections["rating_results"].inserted == []
+    assert db.client.session.aborted is True
+    assert db.client.session.committed is False
 
 
 def test_finalize_existing_documents_update_only_rating_values():

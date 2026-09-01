@@ -54,6 +54,10 @@ class RatingPeriodMissing(Exception):
     """Raised when a result would reference a missing rating period."""
 
 
+class RatingResultNullValue(Exception):
+    """Raised when finalize_rating would violate a result NOT NULL constraint."""
+
+
 @dataclass(frozen=True)
 class Rating:
     tenant_id: str
@@ -483,6 +487,24 @@ class RatingService:
             {"_id": result_id}, session=session
         )
         inserted_result = existing_result is None
+        required_columns = (
+            (
+                "subscription_id",
+                "used_units",
+                "quota_units",
+                "rollover_units",
+                "billable_units",
+                "overage_amount",
+                "created_at",
+            )
+            if inserted_result
+            else ("used_units", "rollover_units", "billable_units", "overage_amount")
+        )
+        for column in required_columns:
+            if result_document[column] is None:
+                raise RatingResultNullValue(
+                    f"NOT NULL violated: rating_results.{column}"
+                )
         if inserted_result:
             self.rating_results.insert_one(result_document, session=session)
         else:

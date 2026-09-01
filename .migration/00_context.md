@@ -114,3 +114,11 @@ exists or is requested. Cutover principal: customer-held, not in any Devin secre
   default; setup confirms at STOP A.
 - Runbook names the target catalog `otterworks.custbill_*`; contracts README and preflight use
   `ow_tp.{bronze,silver,gold}`. `ow_tp` is authoritative (shared-workspace prefix rule).
+
+## 9. Setup (appended by `!dbx_migration_setup`, 2026-09-01)
+
+- Target state: `docs/tech-partnerships/OtterWorks_ETL_target_state.md` v1.0-draft (CORE + PIPELINE, ORCHESTRATION, CONSUMER, DATA/DEPENDENCY; SQL and ML-SCORING N/A).
+- Parity contract: `.migration/03_recon_tolerances.md` v1 (LIVE dual-run, exact match).
+- Access posture after probes (`07_access_checklist.md`): Databricks auth WORKS and the token can CREATE CATALOG (probe catalog created and dropped), so D10-1 needs no customer action; legacy baseline regeneration WORKS (NS=demo report matches); AWS WORKS but `AWS_DEFAULT_REGION` is unset on the VM (D10-4); `make tp-smoke` green in 12.6 s.
+- Designated write area (kit guardrail): Unity Catalog `ow_tp` only; AWS `ow-tp-*` serverless only.
+- Interaction contract: blocking stops are posted to `#ow-migrations` and approved by an in-thread reply; the same stop is mirrored in the web session. One question at a time, options offered where the set is small. Daily digest: off.

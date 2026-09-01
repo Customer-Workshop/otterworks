@@ -22,7 +22,7 @@ finalise it at STOP C.
 ## Stops
 | Stop | Status | Date | Evidence |
 |---|---|---|---|
-| A | PENDING | 2026-09-01 | Slack #ow-migrations thread (link added on approval) |
+| A | POSTED, awaiting approval | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788296591998709 |
 | B | – | | |
 | C | – | | |
 | D (per wave) | – | | |

@@ -9,7 +9,7 @@ DB prefix below: `ow` = `ow_tp_mongodb_032752`, `owq` = `ow_tp_mongodb_032752_qu
 |---|---|---|---|---|---|---|---|---|
 | 0 | U0 shared-reference | ow.codes, ow.tenants, ow.plans, ow.fixture_meta | MERGED | GREEN (independent LIVE recon DRIFT-EXPLAINED, functionally PASS — wave report `recon/wave0-independent-20260901`:.migration/recon/wave_reports/wave0.md) | 0% (0 rejects, quarantine unused) | fixture_meta.INITIALIZED_AT declared-unexercised | M0 free tier, 105 docs | #1397 |
 | 1 | U1 customers | ow.customers, ow.customer_master_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |
-| 1 | U2 invoice-feed | ow.invoice_feed, owq.invoice_feed_orphan_lines | PLANNED — AWAITING STOP B | — | — | — | — | — |
+| 1 | U2 invoice-feed | ow.invoice_feed, owq.invoice_feed_orphan_lines | IN PROGRESS | — | — | — | — | — |
 | 2 | U3 subscriptions | ow.subscriptions, ow.subscriptions_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 2 | U4 rating | ow.usage_events, ow.rating_periods, ow.rating_results | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 2 | U7 audit-util | ow.billing_audit_log | PLANNED — AWAITING STOP B | — | — | — | — | — |

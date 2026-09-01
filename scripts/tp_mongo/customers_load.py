@@ -19,39 +19,34 @@ reloads them, so a retry starts clean.
 from __future__ import annotations
 
 import argparse
-import datetime as dt
-import decimal
 import json
 import re
 import sys
 from pathlib import Path
 
-from bson.decimal128 import Decimal128
 from pymongo import ASCENDING, InsertOne, ReturnDocument
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import mongo_database, ns_batch_no, oracle_connect, secret
+from common import (
+    CONVENTIONS,
+    MAPPING_SPEC,
+    assert_designated_cluster,
+    assert_target,
+    canonical,
+    load_fields,
+    mongo_database,
+    oracle_connect,
+    parse_legacy_date,
+    put,
+)
+
+__all__ = ["assert_designated_cluster", "assert_source_slice", "load", "seed_counter"]
 
 UNIT = "customers"
 ROOT_TABLE = "OW_BILLING.CUSTOMER_MASTER"
 EAV_TABLE = "OW_BILLING.ENTITY_ATTR_VALUE"
 BATCH_SIZE = 1000
-
-MAPPING_SPEC = Path(".migration/03_mapping_spec.json")
-CONVENTIONS = Path(".migration/01_conventions.md")
-
-# The cluster credential can write any database on the cluster, several of which belong to
-# other owners, so the designated pair is read from the conventions record and enforced here
-# rather than trusted from the command line.
-DB_ROWS = {"target_db": "Database", "quarantine_db": "Quarantine database"}
-CLUSTER_ROW = re.compile(r"^\|\s*Cluster\s*\|[^|]*`([A-Za-z0-9.-]+\.mongodb\.net)`", re.MULTILINE)
-URI_SECRET_ROW = re.compile(r"^\|\s*Target cluster URI\s*\|\s*`([A-Z0-9_]+)`", re.MULTILINE)
-
-# The SRV host of a connection string: everything between the credentials and the path. Only
-# the `mongodb+srv://` form is accepted, because a standard seed list names generated shard
-# hosts (`ac-...-shard-00-00.<subdomain>.mongodb.net`) that do not identify their cluster.
-URI_SRV_HOST = re.compile(r"^mongodb\+srv://(?:[^@/]*@)?([^/?]+)(?:[/?]|$)")
 
 # Typed fields derived from the estate's `DD-MON-YY` string dates (D4).
 DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity_at")]
@@ -60,79 +55,6 @@ DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity
 # and reported, never coerced (D5).
 DERIVED_LISTS = [("RELATED_ACCT_IDS", "related_acct_ids", re.compile(r"^[0-9]{1,12}$")),
                  ("PROMO_CODES_CSV", "promo_codes", re.compile(r"^[A-Z0-9]{2,20}$"))]
-
-# A namespace is part of every `_id` this loader mints and of the filter its deletes run on,
-# so it is checked before it can reach either.
-NS_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
-
-MONTHS = {m: i + 1 for i, m in enumerate(
-    ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
-
-
-def parse_legacy_date(raw: str) -> dt.datetime | None:
-    """`DD-MON-YY` under Oracle's RR windowing (00-49 -> 2000s, 50-99 -> 1900s).
-
-    Returns None for anything the estate itself cannot convert, including calendar-invalid
-    days like `31-FEB-24`.
-    """
-    parts = raw.strip().upper().split("-")
-    if len(parts) != 3:
-        return None
-    day, mon, year = parts
-    if not day.isdigit() or not year.isdigit() or mon not in MONTHS:
-        return None
-    century = 2000 if int(year) <= 49 else 1900
-    try:
-        return dt.datetime(century + int(year), MONTHS[mon], int(day),
-                           tzinfo=dt.timezone.utc)
-    except ValueError:
-        return None
-
-
-def load_fields(spec_path: Path) -> list[tuple[str, str, str, list[str]]]:
-    """`(source column, target path, bson type, rules)` for this unit's collection, straight
-    from the approved mapping spec — the loader and recon read the same rule list, so a
-    field can never be canonicalized one way at load time and compared another way."""
-    spec = json.loads(spec_path.read_text())
-    collections = [c for c in spec["collections"] if c["collection"] == UNIT]
-    if not collections:
-        raise SystemExit(f"mapping spec {spec_path} has no '{UNIT}' collection")
-    return [(f["source"], f["target"], f["bson_type"], list(f["rules"]))
-            for f in collections[0]["fields"]]
-
-
-def canonical(value, bson_type: str, rules: list[str]):
-    """Load-time canonicalization: exactly the mapping's rules for this field, in order.
-
-    Only the CHAR columns carry `rstrip_spaces`; blank-stripping a VARCHAR2 would rewrite
-    source data (the estate stores meaningful all-blank legacy date strings).
-    """
-    if isinstance(value, str):
-        if "rstrip_spaces" in rules:
-            value = value.rstrip(" ")
-        if "empty_string_is_null" in rules and value == "":
-            return None
-    if value is None:
-        return None
-    if bson_type == "decimal":
-        return Decimal128(value if isinstance(value, decimal.Decimal)
-                          else decimal.Decimal(str(value)))
-    if bson_type == "long":
-        return int(value)
-    if bson_type == "date":
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=dt.timezone.utc)
-        return value.astimezone(dt.timezone.utc).replace(
-            microsecond=(value.microsecond // 1000) * 1000)
-    return value
-
-
-def put(doc: dict, path: str, value) -> None:
-    head, _, tail = path.partition(".")
-    if tail:
-        doc.setdefault(head, {})[tail] = value
-    else:
-        doc[head] = value
 
 
 def fetch_attributes(cursor, batch_no: int) -> dict[str, list[dict]]:
@@ -258,69 +180,12 @@ def assert_source_slice(cursor, batch_no: int, mapped: set[str]) -> int:
     return rows
 
 
-def designated_database(conventions_path: Path, row: str) -> str:
-    """The database named on one row of the conventions record's target table."""
-    pattern = re.compile(rf"^\|\s*{row}\s*\|\s*`([^`]+)`\s*\|", re.MULTILINE)
-    match = pattern.search(conventions_path.read_text())
-    if match is None:
-        raise SystemExit(f"{conventions_path} declares no '{row}' row")
-    return match.group(1)
-
-
-def assert_designated(conventions_path: Path, **databases: str) -> None:
-    for argument, given in databases.items():
-        expected = designated_database(conventions_path, DB_ROWS[argument])
-        if given != expected:
-            raise SystemExit(
-                f"--{argument.replace('_', '-')} {given!r} is not the database designated in "
-                f"{conventions_path} ({expected!r}); writing anywhere else is out of bounds")
-
-
-def designated_row(conventions_path: Path, pattern: re.Pattern[str], what: str) -> str:
-    match = pattern.search(conventions_path.read_text())
-    if match is None:
-        raise SystemExit(f"{conventions_path} names no {what}")
-    return match.group(1)
-
-
-def assert_designated_cluster(conventions_path: Path, uri_secret: str) -> None:
-    """The database names alone do not bound the target: the same two names exist on any
-    cluster the operator can reach. The connection string must be the SRV URI of the cluster
-    the conventions record designates, and it must arrive under the secret NAME recorded
-    there.
-
-    Only the host of the connection string is ever read, never echoed.
-    """
-    expected_secret = designated_row(conventions_path, URI_SECRET_ROW, "target cluster URI secret")
-    if uri_secret != expected_secret:
-        raise SystemExit(
-            f"--target-uri-secret {uri_secret!r} is not the secret NAME designated in "
-            f"{conventions_path} ({expected_secret!r})")
-
-    expected_host = designated_row(conventions_path, CLUSTER_ROW, "target cluster host")
-    host = URI_SRV_HOST.match(secret(uri_secret))
-    if host is None:
-        raise SystemExit(
-            f"secret '{uri_secret}' does not hold a 'mongodb+srv://' connection string; a "
-            f"standard seed list names generated shard hosts, which do not identify the "
-            f"cluster they belong to")
-    # The whole host section, not a prefix of it: a port or a second seed host appended to the
-    # designated name would otherwise reach the client unexamined.
-    if host.group(1).lower() != expected_host:
-        raise SystemExit(
-            f"secret '{uri_secret}' points at a cluster other than the designated "
-            f"{expected_host}; writing anywhere else is out of bounds")
-
-
 def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str,
          quarantine_db: str, spec_path: Path = MAPPING_SPEC,
          conventions_path: Path = CONVENTIONS) -> dict:
-    if not NS_RE.match(ns):
-        raise SystemExit(f"namespace {ns!r} is not of the form {NS_RE.pattern}")
-    assert_designated(conventions_path, target_db=target_db, quarantine_db=quarantine_db)
-    assert_designated_cluster(conventions_path, target_uri_secret)
-    batch_no = ns_batch_no(ns)
-    fields = load_fields(spec_path)
+    batch_no = assert_target(ns, conventions_path, target_uri_secret,
+                             target_db=target_db, quarantine_db=quarantine_db)
+    fields = load_fields(spec_path, UNIT)
     db = mongo_database(target_uri_secret, target_db)
     qdb = mongo_database(target_uri_secret, quarantine_db)
     customers, quarantined = db["customers"], qdb["customers"]

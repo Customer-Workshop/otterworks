@@ -1,7 +1,7 @@
 # 02 — Reconciliation tolerances
 
-Version: `0.1-proposed`
-Approval state: STOP A pending
+Version: `1.0` (approved at STOP A, 2026-09-01)
+Approval state: APPROVED — all rows below confirmed as proposed
 
 | Surface | Proposed contract | Status |
 |---|---|---|

@@ -1,0 +1,59 @@
+{
+  "unit": "U4",
+  "probe": "finalize_rating idempotency",
+  "run_mode": "fixture",
+  "generated_at": "2026-09-01T14:51:14.058831+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "inputs": {
+    "tenant_id": "00000000-0000-0000-0000-000000000001",
+    "period_start": "2026-02-01",
+    "period_end": "2026-02-28"
+  },
+  "subscription_source": "read-only Oracle extract (SUBSCRIPTIONS belongs to unit U3 and is not loaded; the Mongo-backed subscription read path is declared-unexercised)",
+  "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+  "result_id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+  "rating_periods_docs_for_period": 1,
+  "rating_results_docs_for_period": 1,
+  "first_call": {
+    "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+    "result_id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+    "inserted_period": true,
+    "inserted_result": true,
+    "rating": {
+      "used_units": 260,
+      "quota_units": 100,
+      "rollover_units": 200,
+      "billable_units": 0,
+      "first_tier_units": 0,
+      "second_tier_units": 0,
+      "overage_amount": "0.00"
+    }
+  },
+  "second_call": {
+    "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+    "result_id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+    "inserted_period": false,
+    "inserted_result": false,
+    "rating": {
+      "used_units": 260,
+      "quota_units": 100,
+      "rollover_units": 200,
+      "billable_units": 0,
+      "first_tier_units": 0,
+      "second_tier_units": 0,
+      "overage_amount": "0.00"
+    }
+  },
+  "checks": {
+    "both_calls_succeeded": true,
+    "second_call_took_update_path": true,
+    "single_rating_period_doc": true,
+    "single_rating_result_doc": true,
+    "payloads_equal": true
+  },
+  "verdict": "PASS"
+}

@@ -1,7 +1,7 @@
 {
   "unit": "U4",
   "run_mode": "fixture",
-  "generated_at": "2026-09-01T14:30:46.244740+00:00",
+  "generated_at": "2026-09-01T14:51:17.040581+00:00",
   "target_db": "ow_tp_mongodb_032752",
   "secret_names": {
     "dsn": "OW_BILLING_FIXTURE_DSN",

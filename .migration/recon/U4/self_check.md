@@ -52,6 +52,10 @@ runs the independent live gate.
   promotion rule and `finalize_rating` runs its period write, rating computation, and
   result write in one MongoDB session transaction; the parity, load, and gate evidence
   below was regenerated after both fixes.
+- [x] **Review round 2 fix is covered.** `finalize_rating` branches on an
+  in-transaction existence check instead of catching `DuplicateKeyError`, which a
+  MongoDB transaction cannot recover from; `scripts/tp_mongo/finalize_idempotency_u4.py`
+  probes a real double finalize against the target and its report is listed below.
 
 ## Declared unverified paths
 
@@ -72,6 +76,7 @@ runs the independent live gate.
 - `.migration/recon/U4/load_report.json`
 - `.migration/recon/U4/load_report.rerun.json`
 - `.migration/recon/U4/parity_rating.json`
+- `.migration/recon/U4/finalize_idempotency.json`
 - `.migration/recon/U4/gate/result.json`
 - `.migration/recon/U4/gate/report.md`
 - `.migration/recon/U4/gate/recon.summary.md`

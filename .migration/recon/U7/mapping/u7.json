@@ -1,0 +1,44 @@
+{
+  "version": "1.1",
+  "collections": [
+    {
+      "collection": "billing_audit_log",
+      "root_table": "BILLING_AUDIT_LOG",
+      "key": {
+        "source": [
+          "LOG_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "LOGGED_AT",
+          "target": "logged_at",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "MODULE",
+          "target": "module",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MESSAGE",
+          "target": "message",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

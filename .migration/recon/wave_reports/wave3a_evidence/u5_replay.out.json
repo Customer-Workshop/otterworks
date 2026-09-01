@@ -1,0 +1,15 @@
+{
+ "failures": [],
+ "invoice_preview": {
+  "checked": 144,
+  "equal": 144
+ },
+ "transcripts": {
+  "checked": 2,
+  "equal": 2
+ },
+ "invoice_lines": {
+  "checked": 4,
+  "equal": 4
+ }
+}

@@ -1,0 +1,256 @@
+{
+ "src_counts": [
+  {
+   "INVOICES": 3,
+   "INVOICE_LINES": 2,
+   "CREDIT_NOTES": 5,
+   "DUNNING_ATTEMPTS": 1
+  },
+  {
+   "INVOICES": 3,
+   "INVOICE_LINES": 2,
+   "CREDIT_NOTES": 5,
+   "DUNNING_ATTEMPTS": 1
+  }
+ ],
+ "tgt_counts": {
+  "invoices": 3,
+  "credit_notes": 5
+ },
+ "tgt_lines_total": [
+  {
+   "_id": null,
+   "n": 2
+  }
+ ],
+ "dup_src": {
+  "INVOICES": [],
+  "CREDIT_NOTES": []
+ },
+ "dup_line_key": [],
+ "orphan_lines": 0,
+ "nulls_invoices": {
+  "tenant_id": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "period_id": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "issued_at": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "subtotal": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "tax": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "total": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "status_cd": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  }
+ },
+ "nulls_credit_notes": {
+  "tenant_id": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "issued_on": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "amount": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  },
+  "remaining_amount": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0
+  }
+ },
+ "src_empty_strings": "n/a (Oracle treats '' as NULL)",
+ "embed_dist_match": true,
+ "embed_dist": {
+  "src": {
+   "60000000-0000-0000-0000-000000000001": 2
+  },
+  "tgt": {
+   "60000000-0000-0000-0000-000000000001": 2,
+   "60000000-0000-0000-0000-000000000002": 0,
+   "60000000-0000-0000-0000-000000000003": 0
+  }
+ },
+ "empty_lines_arrays": 2,
+ "lines_out_of_order": [],
+ "dunning_field_present": 0,
+ "src_dunning_rows": 1,
+ "minmax_invoices": {
+  "src": [
+   "60000000-0000-0000-0000-000000000001",
+   "60000000-0000-0000-0000-000000000003"
+  ],
+  "tgt_min": true,
+  "tgt_max": true,
+  "tgt_minmax": [
+   "60000000-0000-0000-0000-000000000001",
+   "60000000-0000-0000-0000-000000000003"
+  ]
+ },
+ "minmax_credit_notes": {
+  "src": [
+   "70000000-0000-0000-0000-000000000001",
+   "70000000-0000-0000-0000-000000000006"
+  ],
+  "tgt_min": true,
+  "tgt_max": true,
+  "tgt_minmax": [
+   "70000000-0000-0000-0000-000000000001",
+   "70000000-0000-0000-0000-000000000006"
+  ]
+ },
+ "doclevel_mismatches": [],
+ "src_sums": [
+  [
+   "347",
+   "28.62",
+   "375.62"
+  ],
+  [
+   "145",
+   "145"
+  ]
+ ],
+ "tgt_sums": [
+  [
+   "{'_id': None, 's': Decimal128('347.00'), 't': Decimal128('28.62'), 'tt': Decimal128('375.62')}"
+  ],
+  [
+   "{'_id': None, 'a': Decimal128('145.00'), 'r': Decimal128('145.00')}"
+  ]
+ ],
+ "fields_invoices": [
+  "_id",
+  "issued_at",
+  "lines",
+  "ns",
+  "period_id",
+  "status_cd",
+  "subtotal",
+  "tax",
+  "tenant_id",
+  "total"
+ ],
+ "fields_credit_notes": [
+  "_id",
+  "amount",
+  "issued_on",
+  "ns",
+  "remaining_amount",
+  "tenant_id"
+ ],
+ "ns_ok": {
+  "invoices": 3,
+  "credit_notes": 5
+ },
+ "db_collections": [
+  "billing_audit_log",
+  "codes",
+  "credit_notes",
+  "customer_master_hist",
+  "customers",
+  "fixture_meta",
+  "invoice_feed",
+  "invoices",
+  "plans",
+  "rating_periods",
+  "rating_results",
+  "subscriptions",
+  "subscriptions_hist",
+  "tenants",
+  "usage_events"
+ ],
+ "quarantine_collections": {
+  "invoice_feed_orphan_lines": 37
+ },
+ "indexes": {
+  "invoices": {
+   "_id_": [
+    [
+     "_id",
+     1
+    ]
+   ],
+   "tenant_id_1_status_cd_1_issued_at_1": [
+    [
+     "tenant_id",
+     1
+    ],
+    [
+     "status_cd",
+     1
+    ],
+    [
+     "issued_at",
+     1
+    ]
+   ]
+  },
+  "credit_notes": {
+   "_id_": [
+    [
+     "_id",
+     1
+    ]
+   ],
+   "tenant_id_1_issued_on_1": [
+    [
+     "tenant_id",
+     1
+    ],
+    [
+     "issued_on",
+     1
+    ]
+   ]
+  }
+ },
+ "join_tgt": {
+  "inv_tenant_orphans": [],
+  "inv_period_orphans": [],
+  "cn_tenant_orphans": []
+ },
+ "join_src": {
+  "inv_tenant": 0,
+  "inv_period": 0,
+  "cn_tenant": 0
+ },
+ "inv_status_src": [
+  20,
+  40
+ ],
+ "inv_status_tgt": [
+  20,
+  40
+ ],
+ "codes_inv_status": []
+}

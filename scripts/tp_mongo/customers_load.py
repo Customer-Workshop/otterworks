@@ -31,7 +31,7 @@ from pymongo import ASCENDING, InsertOne, ReturnDocument
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import mongo_database, ns_batch_no, oracle_connect  # noqa: E402
+from common import mongo_database, ns_batch_no, oracle_connect
 
 UNIT = "customers"
 ROOT_TABLE = "OW_BILLING.CUSTOMER_MASTER"

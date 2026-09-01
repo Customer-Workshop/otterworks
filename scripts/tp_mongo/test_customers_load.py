@@ -1,0 +1,85 @@
+"""Offline guards for the customers loader's preflight and counter seeding.
+
+These cover the two ways the load can destroy data rather than merely get it wrong: clearing
+the target for an empty source, and re-seeding the Atlas counter below numbers it has already
+issued. Both run against fakes — no Oracle, no Atlas.
+"""
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from customers_load import assert_source_slice, seed_counter
+
+MAPPED = {"CUST_ID", "CUST_NO", "CUR_BAL_AMT"}
+CATALOG = [("CUST_ID",), ("CUST_NO",), ("CUR_BAL_AMT",), ("LEGACY_FAX_NO",)]
+
+
+class FakeCursor:
+    """Answers the three preflight queries in the order the loader issues them."""
+
+    def __init__(self, root_count, retired_counts):
+        self._root_count = root_count
+        self._retired_counts = retired_counts
+        self._rows = []
+        self._result = None
+
+    def execute(self, sql, **_):
+        if sql.startswith("SELECT COUNT(*)"):
+            self._result = (self._root_count,)
+        elif "all_tab_columns" in sql:
+            self._rows = list(CATALOG)
+        elif "all_sequences" in sql:
+            self._result = (125000,)
+        else:
+            self._result = self._retired_counts
+
+    def fetchone(self):
+        return self._result
+
+    def __iter__(self):
+        return iter(self._rows)
+
+
+class FakeCounters:
+    """Just enough of a collection to exercise `$max` + `$setOnInsert` upsert semantics."""
+
+    def __init__(self, existing=None):
+        self.doc = existing
+
+    def find_one_and_update(self, filt, update, upsert=False, return_document=None):
+        if self.doc is None:
+            self.doc = dict(filt)
+            self.doc.update(update["$setOnInsert"])
+            self.doc["seq"] = update["$max"]["seq"]
+        else:
+            self.doc["seq"] = max(self.doc["seq"], update["$max"]["seq"])
+        return self.doc
+
+
+def test_preflight_accepts_a_populated_batch_with_retired_columns_still_null():
+    assert assert_source_slice(FakeCursor(25000, (0,)), 85559852, MAPPED) == 25000
+
+
+def test_preflight_refuses_an_empty_batch_before_touching_the_target():
+    with pytest.raises(SystemExit, match="no rows for CONVERSION_BATCH_NO"):
+        assert_source_slice(FakeCursor(0, (0,)), 85559852, MAPPED)
+
+
+def test_preflight_refuses_a_retired_column_that_now_holds_data():
+    with pytest.raises(SystemExit, match="LEGACY_FAX_NO"):
+        assert_source_slice(FakeCursor(25000, (7,)), 85559852, MAPPED)
+
+
+def test_counter_seeds_from_the_sequence_on_a_first_run():
+    counters = FakeCounters()
+    assert seed_counter({"counters": counters}, FakeCursor(1, ()), "demo") == 125000
+    assert counters.doc["ns"] == "demo"
+
+
+def test_counter_is_not_lowered_by_a_reload_after_atlas_issued_numbers():
+    counters = FakeCounters({"_id": "demo:customers.cust_seq_no", "ns": "demo",
+                             "unit": "customers", "seq": 125042})
+    assert seed_counter({"counters": counters}, FakeCursor(1, ()), "demo") == 125042

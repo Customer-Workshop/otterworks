@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import mongo_database, ns_batch_no, oracle_connect, secret  # noqa: E402
+from common import mongo_database, ns_batch_no, oracle_connect, secret
 
 UNIT = "customers"
 

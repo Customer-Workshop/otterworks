@@ -1,0 +1,137 @@
+{
+  "kind": "recon-report",
+  "unit": "sftp_ingest_poll",
+  "namespace": "sftp-ingest-poll-w1",
+  "generated_at": "2026-09-01T23:11:13+00:00",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "U6-a",
+      "expected": [
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_001.dat",
+          "bytes": 3439,
+          "sha256": "8e4cc5c1c8c2240a9866255745f8be3cd24624e5fe780c12069ad383496f2d5d"
+        },
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_002.dat",
+          "bytes": 3439,
+          "sha256": "49e4ee873d3fa697ab7859f98fdd9327ac18ec0140e4c60d93abedf7e8216484"
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_001.dat",
+          "bytes": 3439,
+          "sha256": "8e4cc5c1c8c2240a9866255745f8be3cd24624e5fe780c12069ad383496f2d5d"
+        },
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_002.dat",
+          "bytes": 3439,
+          "sha256": "49e4ee873d3fa697ab7859f98fdd9327ac18ec0140e4c60d93abedf7e8216484"
+        }
+      ],
+      "source_of_truth": "legacy incoming/*.dat bytes vs volume archive/<file>.<sha12> bytes",
+      "result": "pass"
+    },
+    {
+      "id": "U6-b",
+      "expected": [
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_001.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        },
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_002.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_001.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        },
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_002.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        }
+      ],
+      "source_of_truth": "wc -l / prefix classification of legacy file vs bronze record_kind counts",
+      "result": "pass"
+    },
+    {
+      "id": "U6-c",
+      "expected": [
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_001.dat",
+          "sha256": "8e4cc5c1c8c2240a9866255745f8be3cd24624e5fe780c12069ad383496f2d5d"
+        },
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_002.dat",
+          "sha256": "49e4ee873d3fa697ab7859f98fdd9327ac18ec0140e4c60d93abedf7e8216484"
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_001.dat",
+          "sha256": "8e4cc5c1c8c2240a9866255745f8be3cd24624e5fe780c12069ad383496f2d5d"
+        },
+        {
+          "file": "CUSTBILL_SFTP-INGEST-POLL-W1_002.dat",
+          "sha256": "49e4ee873d3fa697ab7859f98fdd9327ac18ec0140e4c60d93abedf7e8216484"
+        }
+      ],
+      "source_of_truth": "sha256(legacy file) vs sha256(concat bronze raw_line ORDER BY line_no)",
+      "result": "pass"
+    },
+    {
+      "id": "U6-e",
+      "expected": [],
+      "actual": [],
+      "source_of_truth": "volume incoming/ listing after run: processed files must be gone",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "reason": "newer successful ow_tp_custbill run confirmed",
+    "previous_latest_run": {
+      "run_id": 735610416173220,
+      "end_time": 1788304210684,
+      "result_state": "SUCCESS"
+    },
+    "latest_run": {
+      "run_id": 221674496785923,
+      "end_time": 1788304266990,
+      "result_state": "SUCCESS"
+    },
+    "snapshot_time_ms": 1788304216631,
+    "evidence": "first pass 2026-09-01T23:10:16+00:00 wrote_rows=True; second pass 2026-09-01T23:11:13+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=sftp-ingest-poll-w1; fingerprint={\"archive\": [{\"bytes\": 3439, \"file\": \"CUSTBILL_SFTP-INGEST-POLL-W1_001.dat\", \"sha256\": \"8e4cc5c1c8c2240a9866255745f8be3cd24624e5fe780c12069ad383496f2d5d\"}, {\"bytes\": 3439, \"file\": \"CUSTBILL_SFTP-INGEST-POLL-W1_002.dat\", \"sha256\": \"49e4ee873d3fa697ab7859f98fdd9327ac18ec0140e4c60d93abedf7e8216484\"}], \"bronze_content\": [{\"file\": \"CUSTBILL_SFTP-INGEST-POLL-W1_001.dat\", \"sha256\": \"8e4cc5c1c8c2240a9866255745f8be3cd24624e5fe780c12069ad383496f2d5d\"}, {\"file\": \"CUSTBILL_SFTP-INGEST-POLL-W1_002.dat\", \"sha256\": \"49e4ee873d3fa697ab7859f98fdd9327ac18ec0140e4c60d93abedf7e8216484\"}], \"bronze_rows\": [{\"BODY\":"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "prod/UAT host roots /data/otterworks, /data2/otterworks_uat",
+    "production encoding (R1)",
+    "production mainframe SFTP producer (R4)"
+  ],
+  "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-sftp-ingest-poll-w1 via scripts/tp-run-deterministic.sh"
+}

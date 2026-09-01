@@ -10,7 +10,7 @@
     "/Volumes/ow_tp/bronze/landing/<ns>/archive/",
     "/Shared/ow_tp/custbill/ingest (notebook task `ingest` of job ow_tp_custbill)"
   ],
-  "target_code_path": "databricks/sftp_ingest_poll/",
+  "target_code_path": "infrastructure/terraform-databricks/notebooks/ingest.py",
   "golden_baseline_location": "Regenerated, never copied: `make legacy-etl-gen-data NS=<ns>` then `make legacy-etl-run JOB=sftp_ingest_poll` under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh. Baseline = the seeded `sftp-drop/upload/CUSTBILL*.dat` bytes (2 files, 52 lines each incl. HDR/TRL) and the legacy `incoming/` copies.",
   "declared_source_volume": {"files": 2, "body_rows_per_file": 50, "lines_per_file": 52, "ns_seeded_by": "etl/legacy-extra/tools/gen_sample_data.pl <ns>"},
   "behaviour": {

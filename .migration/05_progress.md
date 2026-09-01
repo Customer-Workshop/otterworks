@@ -35,5 +35,5 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | `ow_tp.silver.dim_agent_cdw` | U1 | 1 | 2026-09-01 (registered by parent at W1 launch) |
 | `ow_tp.silver.dim_product_cdw` | U2 | 1 | 2026-09-01 (registered by parent at W1 launch) |
 | `ow_tp.silver.dim_period_cdw` | U3 | 1 | 2026-09-01 (registered by parent at W1 launch) |
-| `ow_tp.silver.fact_commission_cdw`, `ow_tp.ops.run_log_cdw`, `ow_tp.ops.quarantine_cdw`, job `ow_tp_cdw_load_commission_facts`, notebooks `/Shared/ow_tp/cdw/*` | U4 | 2 | reserved |
-| `ow_tp.gold.mv_agent_commission_summary_cdw` | U5 | 2 | reserved |
+| `ow_tp.silver.fact_commission_cdw`, `ow_tp.ops.run_log_cdw`, `ow_tp.ops.quarantine_cdw`, job `ow_tp_cdw_load_commission_facts`, notebooks `/Shared/ow_tp/cdw/*` | U4 | 2 | 2026-09-01 (registered by parent at W2 launch) |
+| `ow_tp.gold.mv_agent_commission_summary_cdw` | U5 | 2 | 2026-09-01 (registered by parent at W2 launch) |

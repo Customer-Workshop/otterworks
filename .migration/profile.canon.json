@@ -1,0 +1,43 @@
+{
+  "profile": "oracle",
+  "profile_source": "skills/mongo-migration/profiles/oracle.md (plugin account-upload_org-default-8486a6b8 v0.1.1), section recon_canonicalization",
+  "placeholders_resolved_at": "STOP A",
+  "rules": [
+    {
+      "rule": "decimal_round",
+      "applies_to": "NUMBER->Decimal128",
+      "params": {"mode": "half_even"}
+    },
+    {
+      "rule": "datetime_utc_truncate_ms",
+      "applies_to": "DATE,TIMESTAMP*->date",
+      "params": {"precision": "ms"}
+    },
+    {
+      "rule": "rstrip_spaces",
+      "applies_to": "CHAR->string",
+      "params": {}
+    },
+    {
+      "rule": "empty_string_is_null",
+      "applies_to": "VARCHAR2,NVARCHAR2,CHAR->string",
+      "params": {"target_policy": "null"}
+    },
+    {
+      "rule": "null_missing_equiv",
+      "applies_to": "*",
+      "params": {"policy": "equivalent"}
+    },
+    {
+      "rule": "collation_casefold",
+      "applies_to": "string",
+      "params": {"enabled_if": "NLS case-insensitive comparisons found in census", "enabled": false}
+    }
+  ],
+  "resolution_notes": {
+    "empty_string_is_null.target_policy": "Set to 'null' (decision D2). Oracle cannot distinguish '' from NULL for VARCHAR2, so there is no source-side signal to preserve. Loads write null (or omit the field); they never write an empty string.",
+    "null_missing_equiv.policy": "Set to 'equivalent' (decision D1): an absent field on the target equals a NULL column on the source.",
+    "collation_casefold.enabled": "false. Census FACT: the source has NLS_COMP=BINARY and NLS_SORT=BINARY, so no case-insensitive comparison exists to reproduce. Enabling it would make recon accept case differences the source treats as real. The rule is kept in the file (the harness resolves rule names against this list) but is referenced by no field's rule list.",
+    "harness_caveat": "recon/canon.py implements _empty_string_is_null and _null_missing_equiv unconditionally: both ignore their params entirely. The two policies above are the only ones the current harness code can honor. Selecting the opposite policy would require omitting the rule from a field's rule list, not editing params here. See gap G3 in 00_context.md."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "version": "1",
+  "approved_at_stop": "A",
+  "full_diff_row_threshold": 100000,
+  "sample_size": 1000,
+  "numeric_abs_tol": 0.0,
+  "aggregate_rel_tol": 0.0,
+  "source_concurrency": 1,
+  "rationale": {
+    "full_diff_row_threshold": "Both in-scope root tables are below this threshold (CUSTOMER_MASTER 25,000; INVOICE_HEADER 18,750), so Tier 3 runs a FULL keyed diff on every root document rather than a sample. The 150,000 INVOICE_LINE rows are compared as embedded-array cardinality in Tier 1 and through their parent documents in Tier 3.",
+    "sample_size": "Only used if a future unit exceeds the row threshold; recorded so the value is approved rather than defaulted.",
+    "numeric_abs_tol": "Zero. Money is NUMBER(p,s) -> Decimal128 and precision is a contract, not a tolerance; any non-zero value here would let a rounding defect merge.",
+    "aggregate_rel_tol": "Zero. Tier 2 aggregates are computed natively on each side over the same canonicalized values, so an exact match is achievable and any drift is a real defect.",
+    "source_concurrency": "One. The source is a single Oracle Free container shared with the rest of the demo estate; concurrent extracts would contend for its budget and make timings non-reproducible."
+  }
+}

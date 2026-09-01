@@ -1,0 +1,5 @@
+agent_id,agent_code,full_name,license_no,status,hired_date
+1,AG-100,Maria Alvarez,LIC-TX-55001,ACTIVE,2018-03-12
+2,AG-101,James Okafor,LIC-TX-55002,ACTIVE,2019-07-01
+3,AG-102,Priya Natarajan,LIC-TX-55003,ACTIVE,2020-01-15
+4,AG-103,Dale Whitfield,LIC-TX-55004,SUSPENDED,2017-11-30

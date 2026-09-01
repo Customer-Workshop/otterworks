@@ -54,6 +54,7 @@ From the repository root:
 
 ```bash
 make procs-up NS=dev
+# Month-end reports also require MONGODB_ATLAS_URI exported in the shell.
 curl http://localhost:8096/health
 make procs-down NS=dev
 ```

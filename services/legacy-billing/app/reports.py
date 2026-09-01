@@ -1,11 +1,12 @@
-"""Month-end finance reporting served straight from the Oracle billing estate.
+"""Month-end finance reporting served from the migrated invoice collection.
 
 The report is the legacy RPT-114 rollup (see
 db/oracle/ops/OPERATIONS_HANDBOOK.doc.txt and the CODES lookup conventions):
 invoice counts and header totals by status, plus a line rollup by status and
-line type. Orphaned INVOICE_LINE rows fall out of the join, exactly as finance
-always ran it. Rows are namespace-scoped through the deterministic
-conversion batch number.
+line type. The month-end rollup is served from the migrated collection while
+reconciliation still reads Oracle. Orphaned INVOICE_LINE rows are quarantined
+and therefore are not embedded in the migrated collection. Rows are
+namespace-scoped through the deterministic conversion batch number.
 """
 
 import hashlib
@@ -32,53 +33,20 @@ SOURCE = {
 
 MONGO_SOURCE = {
     "engine": "mongodb",
+    "system": "MongoDB Atlas migration target (ow_tp_mongodb_032752)",
+    "detail": "invoice_feed roots with embedded lines[] via the codes lookup (RPT-114 port)",
+}
+
+MONGO_BALANCES_SOURCE = {
+    "engine": "mongodb",
     "system": "ow_tp_mongodb_032752 (MongoDB Atlas)",
     "detail": "customers aggregation pipeline (RPT-114 balances)",
 }
 
+_mongo_client = None
+
 ORACLE_AMOUNT_OVERFLOW_MARKER = "#" * 19
 ORACLE_AMOUNT_OVERFLOW_LIMIT = Decimal("1000000000000000")
-
-STATUS_SQL = """
-SELECT NVL(st.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')') AS status_desc,
-       COUNT(*)                                   AS invoice_count,
-       TO_CHAR(SUM(h.total_amt), 'FM999999999999990.00') AS header_total_amt
-  FROM invoice_header h,
-       codes st
- WHERE h.batch_no = :batch_no
-   AND st.code_type (+) = 'INV_STATUS'
-   AND st.code_val  (+) = h.status_cd
- GROUP BY NVL(st.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')')
- ORDER BY 1
-"""
-
-LINE_SQL = """
-SELECT NVL(st.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')') AS status_desc,
-       DECODE(l.line_type_cd, 1, 'CHARGE',
-                              2, 'CREDIT',
-                              3, 'ADJUSTMENT',
-                              9, 'MISC',
-                              'UNKNOWN(' || TO_CHAR(l.line_type_cd) || ')')
-                                                  AS line_type,
-       COUNT(*)                                   AS line_count,
-       TO_CHAR(SUM(l.amount),  'FM999999999999990.00') AS line_amount,
-       TO_CHAR(SUM(l.tax_amt), 'FM999999999999990.00') AS line_tax,
-       COUNT(DISTINCT h.invoice_id)               AS invoices_touched
-  FROM invoice_header h,
-       invoice_line   l,
-       codes          st
- WHERE h.batch_no = :batch_no
-   AND h.invoice_id = l.invoice_id
-   AND st.code_type (+) = 'INV_STATUS'
-   AND st.code_val  (+) = h.status_cd
- GROUP BY NVL(st.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')'),
-          DECODE(l.line_type_cd, 1, 'CHARGE',
-                                 2, 'CREDIT',
-                                 3, 'ADJUSTMENT',
-                                 9, 'MISC',
-                                 'UNKNOWN(' || TO_CHAR(l.line_type_cd) || ')')
- ORDER BY 1, 2
-"""
 
 BALANCES_SQL = """
 SELECT COUNT(*)                                          AS customer_count,
@@ -157,6 +125,227 @@ def shape_balances(row):
     }
 
 
+def status_pipeline(batch_no):
+    return [
+        {"$match": {"batch_no": batch_no}},
+        {
+            "$group": {
+                "_id": "$status_cd",
+                "invoice_count": {"$sum": 1},
+                "header_total_amt": {"$sum": "$total_amt"},
+            }
+        },
+        {
+            "$set": {
+                "code_key": {
+                    "$concat": [
+                        "INV_STATUS#",
+                        {"$toString": {"$ifNull": ["$_id", ""]}},
+                    ]
+                }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "codes",
+                "localField": "code_key",
+                "foreignField": "_id",
+                "as": "code",
+            }
+        },
+        {
+            "$set": {
+                "status_desc": {
+                    "$ifNull": [
+                        {"$first": "$code.code_desc"},
+                        {
+                            "$concat": [
+                                "UNKNOWN(",
+                                {"$toString": {"$ifNull": ["$_id", ""]}},
+                                ")",
+                            ]
+                        },
+                    ]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$status_desc",
+                "invoice_count": {"$sum": "$invoice_count"},
+                "header_total_amt": {"$sum": "$header_total_amt"},
+            }
+        },
+        {"$sort": {"_id": 1}},
+    ]
+
+
+def line_pipeline(batch_no):
+    return [
+        {"$match": {"batch_no": batch_no}},
+        {"$unwind": "$lines"},
+        {
+            "$group": {
+                "_id": {
+                    "status_cd": "$status_cd",
+                    "line_type_cd": "$lines.line_type_cd",
+                    "invoice_id": "$_id",
+                },
+                "line_count": {"$sum": 1},
+                "line_amount": {"$sum": "$lines.amount"},
+                "line_tax": {"$sum": "$lines.tax_amt"},
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "status_cd": "$_id.status_cd",
+                    "line_type_cd": "$_id.line_type_cd",
+                },
+                "line_count": {"$sum": "$line_count"},
+                "line_amount": {"$sum": "$line_amount"},
+                "line_tax": {"$sum": "$line_tax"},
+                "invoices_touched": {"$sum": 1},
+            }
+        },
+        {
+            "$set": {
+                "code_key": {
+                    "$concat": [
+                        "INV_STATUS#",
+                        {"$toString": {"$ifNull": ["$_id.status_cd", ""]}},
+                    ]
+                }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "codes",
+                "localField": "code_key",
+                "foreignField": "_id",
+                "as": "code",
+            }
+        },
+        {
+            "$set": {
+                "status_desc": {
+                    "$ifNull": [
+                        {"$first": "$code.code_desc"},
+                        {
+                            "$concat": [
+                                "UNKNOWN(",
+                                {
+                                    "$toString": {
+                                        "$ifNull": ["$_id.status_cd", ""]
+                                    }
+                                },
+                                ")",
+                            ]
+                        },
+                    ]
+                },
+                "line_type": {
+                    "$switch": {
+                        "branches": [
+                            {
+                                "case": {"$eq": ["$_id.line_type_cd", 1]},
+                                "then": "CHARGE",
+                            },
+                            {
+                                "case": {"$eq": ["$_id.line_type_cd", 2]},
+                                "then": "CREDIT",
+                            },
+                            {
+                                "case": {"$eq": ["$_id.line_type_cd", 3]},
+                                "then": "ADJUSTMENT",
+                            },
+                            {
+                                "case": {"$eq": ["$_id.line_type_cd", 9]},
+                                "then": "MISC",
+                            },
+                        ],
+                        "default": {
+                            "$concat": [
+                                "UNKNOWN(",
+                                {
+                                    "$toString": {
+                                        "$ifNull": ["$_id.line_type_cd", ""]
+                                    }
+                                },
+                                ")",
+                            ]
+                        },
+                    }
+                },
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "status_desc": "$status_desc",
+                    "line_type": "$line_type",
+                },
+                "line_count": {"$sum": "$line_count"},
+                "line_amount": {"$sum": "$line_amount"},
+                "line_tax": {"$sum": "$line_tax"},
+                "invoices_touched": {"$sum": "$invoices_touched"},
+            }
+        },
+        {"$sort": {"_id.status_desc": 1, "_id.line_type": 1}},
+    ]
+
+
+def mongo_client():
+    global _mongo_client
+
+    if _mongo_client is not None:
+        return _mongo_client
+
+    from pymongo import MongoClient
+
+    _mongo_client = MongoClient(os.environ["MONGODB_ATLAS_URI"])
+    return _mongo_client
+
+
+def mongo_db():
+    return mongo_client()[os.getenv("MONGO_MIGRATION_DB", "ow_tp_mongodb_032752")]
+
+
+def mongo_aggregate(collection, pipeline):
+    return list(mongo_db()[collection].aggregate(pipeline))
+
+
+def amount_str(value):
+    if hasattr(value, "to_decimal"):
+        value = value.to_decimal()
+    return f"{Decimal(value):.2f}"
+
+
+def status_report_rows(batch_no):
+    return [
+        (
+            doc["_id"],
+            int(doc["invoice_count"]),
+            amount_str(doc["header_total_amt"]),
+        )
+        for doc in mongo_aggregate("invoice_feed", status_pipeline(batch_no))
+    ]
+
+
+def line_report_rows(batch_no):
+    return [
+        (
+            doc["_id"]["status_desc"],
+            doc["_id"]["line_type"],
+            int(doc["line_count"]),
+            amount_str(doc["line_amount"]),
+            amount_str(doc["line_tax"]),
+            int(doc["invoices_touched"]),
+        )
+        for doc in mongo_aggregate("invoice_feed", line_pipeline(batch_no))
+    ]
+
+
 def oracle_connect():
     import oracledb
 
@@ -230,12 +419,12 @@ def month_end():
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
     try:
-        status_rows = oracle_query(STATUS_SQL, {"batch_no": batch_no})
-        line_rows = oracle_query(LINE_SQL, {"batch_no": batch_no})
+        status_rows = status_report_rows(batch_no)
+        line_rows = line_report_rows(batch_no)
     except Exception:  # estate offline: fail closed, never fabricate numbers
         logger.exception("month-end report failed for ns=%s", ns)
         return jsonify(ESTATE_UNAVAILABLE), 503
-    body = report_meta(ns)
+    body = report_meta(ns, source=MONGO_SOURCE)
     body["report"] = "month-end-finance"
     body["by_status"] = shape_status_rows(status_rows)
     body["by_status_line_type"] = shape_line_rows(line_rows)
@@ -255,7 +444,9 @@ def reconciliation():
     except Exception:
         logger.exception("reconciliation report failed for ns=%s", ns)
         return jsonify(ESTATE_UNAVAILABLE), 503
-    body = report_meta(ns, MONGO_SOURCE if backend == "mongodb" else SOURCE)
+    body = report_meta(
+        ns, MONGO_BALANCES_SOURCE if backend == "mongodb" else SOURCE
+    )
     body["balances"] = shape_balances(balance_rows[0])
     # The legacy estate IS the source of truth: there is nothing to reconcile
     # against, so it reports baseline with no checks. Post-migration backends

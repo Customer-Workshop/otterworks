@@ -257,9 +257,11 @@ Commit with message 'mongo 032752: wave <w> close — merge + ledger' and push. 
 conflicts or a PR is missing/closed, STOP (status BLOCKED) and report; never force-push,
 never resolve substantive conflicts yourself.
 
-IDEMPOTENCY: the orchestrator may already have merged some or all of this wave (e.g. after
-resolving a conflict itself). For each PR, if its head commit is already reachable from
-{RUN_BRANCH}, treat it as merged and skip it. Likewise skip ledger/decision/journal lines
+IDEMPOTENCY (merge-protocol r3): the orchestrator may already have merged some or all of
+this wave (e.g. after resolving a conflict or vetting post-gate commits itself). For each
+PR, if its head commit is already reachable from {RUN_BRANCH}, treat it as merged and skip
+it — if the PR is still marked open on GitHub despite its head being reachable, close/mark
+it merged if the API allows, otherwise just report it. Likewise skip ledger/decision/journal lines
 that are already present — never duplicate them. If everything is already merged and
 ledgered, verify and return status OK with the merged PR list.
 """

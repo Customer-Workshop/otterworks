@@ -76,8 +76,15 @@ the parent runs the independent live gate.
 - The `WHEN OTHERS THEN NULL` swallowed-write path was not induced against Atlas.
 - Real Atlas transaction rollback under an injected failure was not induced; it is
   covered only by the mongomock transaction shim test.
-- Runtime writes to U0/U3-owned `tenants` and `subscriptions` were exercised only
-  during transcript replay.
+- Runtime writes to U0/U3-owned `tenants`, `subscriptions`, and `subscriptions_hist`
+  were exercised only during transcript replay; no dunning transcript probes
+  `subscriptions_hist`, so the ported `TRG_SUBSCRIPTIONS_HIST` pre-image write is
+  covered by unit tests rather than by recorded Oracle parity. Atlas was left with
+  `subscriptions_hist` back at 0 documents after restoration.
+- Explicit `dunning_attempts: []` holds over migrated invoices. Invoices created
+  after cutover by U5's `invoicing_service.issue_invoice` do not initialize the
+  array; normalizing that is a declared cross-unit follow-up for U5 (functionally
+  safe here — the guarded `$push` creates the array on the first attempt).
 - `UNKNOWN` status, notification-kind, and subscription-status code branches were
   not exercised by the deterministic fixture.
 - The standalone job demo observed `suspended=0` because the preceding replay had

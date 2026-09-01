@@ -1,0 +1,330 @@
+{
+  "kind": "recon-report",
+  "unit": "U5",
+  "run_mode": "fixture",
+  "generated_at": "2026-09-01T16:14:14.281067+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "transcript_dir": "procs/oracle/transcripts/invoicing",
+  "read_source": "migrated MongoDB collections only",
+  "restoration": {
+    "commands": [
+      "scripts/tp_mongo/load_u4.py",
+      "scripts/tp_mongo/load_u5.py"
+    ],
+    "required_after_mutation": true,
+    "completed": true
+  },
+  "scenarios": [
+    {
+      "scenario": "INVOICE-001",
+      "entrypoint": "billing.fn_invoice_preview",
+      "oracle_entrypoint": "pkg_invoicing.fn_invoice_preview",
+      "transcript_sha256": "18e42f4394c93480d9d3f44d2c04f67ecd5404d6f98b7964968fd86b67a13c7f",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000006"
+      },
+      "expected": {
+        "amounts": [
+          "49.00",
+          "5.56",
+          "2.25",
+          "2.25",
+          "0.00"
+        ],
+        "line_numbers": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "totals": [
+          "49.00",
+          "5.56",
+          "2.25",
+          "2.25",
+          "0.00"
+        ]
+      },
+      "actual": {
+        "amounts": [
+          "49.00",
+          "5.56",
+          "2.25",
+          "2.25",
+          "0.00"
+        ],
+        "line_numbers": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "totals": [
+          "49.00",
+          "5.56",
+          "2.25",
+          "2.25",
+          "0.00"
+        ]
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "INVOICE-002",
+      "entrypoint": "billing.fn_invoice_preview",
+      "oracle_entrypoint": "pkg_invoicing.fn_invoice_preview",
+      "transcript_sha256": "edf10e2299b976f040988824fe723b34fb38f419abf1379f09f06c1ef8dc0c7e",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000003"
+      },
+      "expected": {
+        "line_types": [
+          "plan",
+          "usage",
+          "tax",
+          "tax",
+          "credit"
+        ],
+        "tax_amount": [
+          "0.00",
+          "0.00",
+          "0.00",
+          "0.00",
+          "0.00"
+        ]
+      },
+      "actual": {
+        "line_types": [
+          "plan",
+          "usage",
+          "tax",
+          "tax",
+          "credit"
+        ],
+        "tax_amount": [
+          "0.00",
+          "0.00",
+          "0.00",
+          "0.00",
+          "0.00"
+        ]
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "INVOICE-003",
+      "entrypoint": "billing.sp_issue_invoice",
+      "oracle_entrypoint": "pkg_invoicing.sp_issue_invoice",
+      "transcript_sha256": "aecc8b2178d6f7f9a2a65b5ec9d66becf42e4d156eb985ca978d79e83d4102a1",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000009"
+      },
+      "expected": {
+        "credit_ids": [
+          "70000000-0000-0000-0000-000000000005",
+          "70000000-0000-0000-0000-000000000006"
+        ],
+        "issued_on": [
+          "2026-01-31",
+          "2026-02-01"
+        ],
+        "remaining": [
+          "0.00",
+          "6.96"
+        ]
+      },
+      "actual": {
+        "credit_ids": [
+          "70000000-0000-0000-0000-000000000005",
+          "70000000-0000-0000-0000-000000000006"
+        ],
+        "issued_on": [
+          "2026-01-31",
+          "2026-02-01"
+        ],
+        "remaining": [
+          "0.00",
+          "6.96"
+        ]
+      },
+      "expected_probes": {
+        "invoice_state": [
+          {
+            "status": "issued",
+            "subtotal": "49.00",
+            "tax": "4.04",
+            "total": "0.00"
+          }
+        ]
+      },
+      "actual_probes": {
+        "invoice_state": [
+          {
+            "status": "issued",
+            "subtotal": "49.00",
+            "tax": "4.04",
+            "total": "0.00"
+          }
+        ]
+      },
+      "mutates_target": true,
+      "match": true
+    },
+    {
+      "scenario": "INVOICE-004",
+      "entrypoint": "billing.sp_issue_invoice",
+      "oracle_entrypoint": "pkg_invoicing.sp_issue_invoice",
+      "transcript_sha256": "3b536fdc8ea4b06253965a2bdee3c1a51aebc1520256391c3ab41fefb78ad7c0",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000004"
+      },
+      "expected": {
+        "credit_ids": [
+          "70000000-0000-0000-0000-000000000001",
+          "70000000-0000-0000-0000-000000000002"
+        ],
+        "issued_on": [
+          "2026-02-01",
+          "2026-02-01"
+        ],
+        "remaining": [
+          "0.00",
+          "6.96"
+        ]
+      },
+      "actual": {
+        "credit_ids": [
+          "70000000-0000-0000-0000-000000000001",
+          "70000000-0000-0000-0000-000000000002"
+        ],
+        "issued_on": [
+          "2026-02-01",
+          "2026-02-01"
+        ],
+        "remaining": [
+          "0.00",
+          "6.96"
+        ]
+      },
+      "expected_probes": {
+        "invoice_state": [
+          {
+            "status": "issued",
+            "subtotal": "49.00",
+            "tax": "4.04",
+            "total": "0.00"
+          }
+        ]
+      },
+      "actual_probes": {
+        "invoice_state": [
+          {
+            "status": "issued",
+            "subtotal": "49.00",
+            "tax": "4.04",
+            "total": "0.00"
+          }
+        ]
+      },
+      "mutates_target": true,
+      "match": true
+    },
+    {
+      "scenario": "INVOICE-005",
+      "entrypoint": "billing.sp_issue_invoice",
+      "oracle_entrypoint": "pkg_invoicing.sp_issue_invoice",
+      "transcript_sha256": "844a427e3051a6a5a3cd904763b99af5cbf5704e558a14e9735fcafaf316f48b",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000006"
+      },
+      "expected": {
+        "status": "issued",
+        "tax": "4.50",
+        "total": "59.06"
+      },
+      "actual": {
+        "status": "issued",
+        "tax": "4.50",
+        "total": "59.06"
+      },
+      "expected_probes": {
+        "invoice_state": [
+          {
+            "status": "issued",
+            "subtotal": "54.56",
+            "tax": "4.50",
+            "total": "59.06"
+          }
+        ]
+      },
+      "actual_probes": {
+        "invoice_state": [
+          {
+            "status": "issued",
+            "subtotal": "54.56",
+            "tax": "4.50",
+            "total": "59.06"
+          }
+        ]
+      },
+      "mutates_target": true,
+      "match": true
+    },
+    {
+      "scenario": "INVOICE-006",
+      "entrypoint": "billing.fn_invoice_lines",
+      "oracle_entrypoint": "pkg_invoicing.fn_invoice_lines",
+      "transcript_sha256": "aa3445ffa6f790f32bbae5e1d72bb65e44fb056611c0405946ffc7a307fd1bff",
+      "inputs": {
+        "invoice_id": "60000000-0000-0000-0000-000000000001"
+      },
+      "expected": {
+        "amounts": [
+          "149.00",
+          "12.29"
+        ],
+        "line_types": [
+          "plan",
+          "usage"
+        ]
+      },
+      "actual": {
+        "amounts": [
+          "149.00",
+          "12.29"
+        ],
+        "line_types": [
+          "plan",
+          "usage"
+        ]
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    }
+  ],
+  "verdict": "PASS"
+}

@@ -37,7 +37,7 @@ backlog, never a silent transform inside this migration.
 |---|---|---|---|---|---|
 | tenants | TENANTS | source ID | — | 1 row = 1 doc | entitlement/dunning joins (access_patterns.txt:40-45, 86-90) |
 | plans | PLANS | source ID | — | 1:1 | fn_list_plans / entitlement (40-52) |
-| codes | CODES | `<code_type>#<code_val>` (loader-composed; recon keys on code_val within `root_where CODE_TYPE='${code_type}'`, one run per the 10 census types) | — | 1:1 | report decode lookups, f_code_desc (10-21, 35-38) |
+| codes | CODES | `<code_type>#<code_val>` (loader-composed; recon keys on the composed expression `CODE_TYPE \|\| '#' \|\| CODE_VAL` vs `_id`, single whole-table gate — amendment approved 2026-09-01, see 05_decisions.md) | — | 1:1 | report decode lookups, f_code_desc (10-21, 35-38) |
 | customers | CUSTOMER_MASTER | source CUST_ID | attributes[] ← ENTITY_ATTR_VALUE (child_where ENTITY_TYPE='CUSTOMER', parent_key ENTITY_ID, element key eav_id) | 25,000 roots; 8,333 attrs, 0 orphans (live probe 2026-09-01) | BALANCES_SQL; EAV always entity-keyed, no independent reader (73-79, 181-183) |
 | customer_master_hist | CUSTOMER_MASTER_HIST | source HIST_ID | — | append-only audit, 1:1 | TRG_CUSTOMER_MASTER_HIST (134-139) |
 | invoice_feed | INVOICE_HEADER | source INVOICE_ID | lines[] ← INVOICE_LINE (parent_key INVOICE_ID, element key line_id; child_where excludes orphans) | 18,750 roots; 149,963 embedded lines; **37 orphan lines → quarantine** `ow_tp_mongodb_032752_quarantine.invoice_feed_orphan_lines` (STOP A: no silent drops) | LINE_SQL inner join reproduces this exactly (16-21) |
@@ -50,7 +50,7 @@ backlog, never a silent transform inside this migration.
 | credit_notes | CREDIT_NOTES | source ID | — | 1:1; read/decremented row-by-row | compute_preview / sp_issue_invoice (64-75) |
 | notifications | NOTIFICATIONS | source ID | — | 1:1; unique index (tenant_id, kind_cd, sent_at) preserves dedup contract | sp_suspend_overdue conditional insert (86-90) |
 | billing_audit_log | BILLING_AUDIT_LOG | source LOG_ID | — | append-only; TTL index logged_at 90d replaces JOB_PURGE_AUDIT_LOG | log_msg autonomous txn (113-115, 157-161) |
-| fixture_meta | FIXTURE_META | initialized_at | — | single bookkeeping row | no runtime reader; migrated verbatim |
+| fixture_meta | FIXTURE_META | initialized_at | — | single bookkeeping row; parity count-only, INITIALIZED_AT declared-unexercised (SYSTIMESTAMP at fixture init is non-deterministic; amendment approved 2026-09-01) | no runtime reader; migrated verbatim |
 
 Embed-vs-reference rationale (PROPOSED): embed only where the dominant access is
 through the parent and the write unit is the whole parent (invoice lines both pairs,
@@ -122,5 +122,5 @@ recon run --unit <unit_id> \
   --target-uri-secret MONGODB_ATLAS_URI \
   --out .migration/recon/<unit_id>/
 ```
-`codes` runs once per code_type param (10 values recorded in coverage.md).
+`codes` runs as one whole-table gate on the composed key (per the approved amendment).
 `result.json` is the merge authority; UNGRADED embeds are work, never a PASS.

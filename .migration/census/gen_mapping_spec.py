@@ -68,7 +68,7 @@ def fields(cols, table, exclude=()):
 DESIGN = [
     ("tenants", "TENANTS", "ID", None, []),
     ("plans", "PLANS", "ID", None, []),
-    ("codes", "CODES", "CODE_VAL", "CODE_TYPE = '${code_type}'", []),
+    ("codes", "CODES", "CODE_TYPE || '#' || CODE_VAL", None, []),
     ("customers", "CUSTOMER_MASTER", "CUST_ID", None, [
         {"array_path": "attributes", "child_table": "ENTITY_ATTR_VALUE",
          "child_where": "ENTITY_TYPE = 'CUSTOMER'",
@@ -118,6 +118,9 @@ def main():
         }
         if where:
             c["root_where"] = where
+        if name == "fixture_meta":
+            c["parity"] = "count_only"
+            c["declared_unexercised"] = ["INITIALIZED_AT"]
         es = []
         for e in embeds:
             key_srcs = e["key"]["source"]

@@ -107,7 +107,7 @@
       "root_table": "CODES",
       "key": {
         "source": [
-          "CODE_VAL"
+          "CODE_TYPE || '#' || CODE_VAL"
         ],
         "target": "_id"
       },
@@ -122,6 +122,13 @@
           ]
         },
         {
+          "source": "CODE_VAL",
+          "target": "code_val",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": []
+        },
+        {
           "source": "CODE_DESC",
           "target": "code_desc",
           "source_type": "VARCHAR2",
@@ -130,8 +137,7 @@
             "empty_string_is_null"
           ]
         }
-      ],
-      "root_where": "CODE_TYPE = '${code_type}'"
+      ]
     },
     {
       "collection": "customers",
@@ -3875,7 +3881,11 @@
         ],
         "target": "_id"
       },
-      "fields": []
+      "fields": [],
+      "parity": "count_only",
+      "declared_unexercised": [
+        "INITIALIZED_AT"
+      ]
     }
   ]
 }

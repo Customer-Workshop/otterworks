@@ -13,7 +13,12 @@ Deterministic, review-audited rules (lead-authored):
 - VARCHAR2 columns that hold formatted dates (e.g. INVOICE_DT, HIST_DT, CREATED_DT)
   migrate verbatim as strings in v1 (parity-first; typed-date normalization is a
   recorded backlog item, not part of this migration's contract).
-NULL and missing stay distinct: null_missing_equiv is intentionally NOT applied.
+NULL and missing stay distinct: null_missing_equiv is intentionally NOT applied,
+EXCEPT the v1.1 amendment (approved 2026-09-01, 05_decisions.md): 19 NULL-bearing numeric
+CUSTOMER_MASTER columns carry null_missing_equiv solely to defer their Tier-2 native
+aggregates (Oracle excludes NULLs; Mongo counts the null group) to the Tier-3 keyed diff;
+the 17 all-NULL columns among them also drop the bson_type assertion (SUM of all-NULL is
+Oracle NULL vs Mongo 0). Loaded data is unchanged: source NULL -> explicit BSON null.
 """
 import json
 import re
@@ -53,12 +58,27 @@ def bson_and_rules(dtype, p, s):
         return "date", ["datetime_utc_truncate_ms"]
     raise ValueError(f"unmapped Oracle type {dtype}")
 
+# v1.1 amendment: CUSTOMER_MASTER columns whose Tier-2 aggregates are deferred to Tier 3.
+AGG_DEFERRED = {
+    "CHANNEL_CD", "CREDIT_LIMIT_AMT", "LTD_BILLED_AMT", "PHONE3_TYPE_CD",
+    "PHONE4_TYPE_CD", "RATE_CLASS_CD", "SUB_STATUS_CD", "TERRITORY_CD",
+    "UDF_AMT_01", "UDF_AMT_02", "UDF_AMT_03", "UDF_AMT_04", "UDF_AMT_05",
+    "UDF_AMT_06", "UDF_AMT_07", "UDF_AMT_08", "UDF_AMT_09", "UDF_AMT_10",
+    "YTD_PAID_AMT",
+}
+# The all-NULL subset also drops the bson_type assertion so Tier 2 skips SUM.
+ALL_NULL = AGG_DEFERRED - {"SUB_STATUS_CD", "CREDIT_LIMIT_AMT"}
+
 def fields(cols, table, exclude=()):
     out = []
     for col, dtype, p, s in cols[table]:
         if col in exclude:
             continue
         bson, rules = bson_and_rules(dtype, p, s)
+        if table == "CUSTOMER_MASTER" and col in AGG_DEFERRED:
+            rules = rules + ["null_missing_equiv"]
+            if col in ALL_NULL:
+                bson = ""
         out.append({"source": col, "target": col.lower(),
                     "source_type": dtype if p is None else f"{dtype}({p},{s})",
                     "bson_type": bson, "rules": rules})
@@ -139,7 +159,7 @@ def main():
         if es:
             c["embeds"] = es
         collections.append(c)
-    spec = {"version": "1.0", "collections": collections}
+    spec = {"version": "1.1", "collections": collections}
     OUT.write_text(json.dumps(spec, indent=2) + "\n")
     n_fields = sum(len(c["fields"]) for c in collections)
     n_embed_fields = sum(len(e["fields"]) for c in collections for e in c.get("embeds", []))

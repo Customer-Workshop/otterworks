@@ -131,7 +131,19 @@ customers). String-date VARCHAR2 columns migrate VERBATIM as strings (STOP B dec
 XL protocol: your FIRST commit is the ~100-line decision-first contract excerpt (mapping
 rows, key strategy, index plan for this unit, copied from the approved spec) under
 .migration/contracts/U1.md — the contract content was already human-approved at STOP B, so
-proceed to implementation in the same PR without waiting.""",
+proceed to implementation in the same PR without waiting.
+
+AMENDMENT v1.1 (approved 2026-09-01, recorded in .migration/05_decisions.md): your earlier
+Tier-2 FAIL (36 aggregate findings on 19 NULL-bearing numeric CUSTOMER_MASTER columns) is
+resolved by mapping spec v1.1 + canonicalization v1.1 already on the run branch — pull the
+latest run branch and re-run the gate with them (this consumes re-run 1 of 3). The 19
+fields now carry null_missing_equiv (defers their native aggregates to the Tier-3 keyed
+diff) and the 17 all-NULL fields have a blank bson_type (skips the SUM check). This is a
+RECON-GRADING change only: the loader still writes source NULL as explicit BSON null, and
+NULL != missing stays in force everywhere. A previous session already worked this unit:
+branch tp-run/mongodb-20260901T032752Z--u1 exists with your loader + evidence — resume it
+(rebase onto the latest run branch), reload if needed (drop+recreate idempotent), re-gate,
+then open the PR.""",
     },
     "U2": {
         "title": "U2 invoice-feed (bulk): INVOICE_HEADER + INVOICE_LINE + orphan quarantine",

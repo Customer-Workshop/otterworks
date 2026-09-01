@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "collections": [
     {
       "collection": "tenants",
@@ -444,15 +444,19 @@
           "source": "PHONE3_TYPE_CD",
           "target": "phone3_type_cd",
           "source_type": "NUMBER(4,0)",
-          "bson_type": "int",
-          "rules": []
+          "bson_type": "",
+          "rules": [
+            "null_missing_equiv"
+          ]
         },
         {
           "source": "PHONE4_TYPE_CD",
           "target": "phone4_type_cd",
           "source_type": "NUMBER(4,0)",
-          "bson_type": "int",
-          "rules": []
+          "bson_type": "",
+          "rules": [
+            "null_missing_equiv"
+          ]
         },
         {
           "source": "FAX",
@@ -547,7 +551,9 @@
           "target": "sub_status_cd",
           "source_type": "NUMBER(4,0)",
           "bson_type": "int",
-          "rules": []
+          "rules": [
+            "null_missing_equiv"
+          ]
         },
         {
           "source": "CUST_TYPE_CD",
@@ -574,22 +580,28 @@
           "source": "TERRITORY_CD",
           "target": "territory_cd",
           "source_type": "NUMBER(4,0)",
-          "bson_type": "int",
-          "rules": []
+          "bson_type": "",
+          "rules": [
+            "null_missing_equiv"
+          ]
         },
         {
           "source": "CHANNEL_CD",
           "target": "channel_cd",
           "source_type": "NUMBER(4,0)",
-          "bson_type": "int",
-          "rules": []
+          "bson_type": "",
+          "rules": [
+            "null_missing_equiv"
+          ]
         },
         {
           "source": "RATE_CLASS_CD",
           "target": "rate_class_cd",
           "source_type": "NUMBER(4,0)",
-          "bson_type": "int",
-          "rules": []
+          "bson_type": "",
+          "rules": [
+            "null_missing_equiv"
+          ]
         },
         {
           "source": "TAX_EXEMPT_YN",
@@ -662,18 +674,20 @@
           "source": "LTD_BILLED_AMT",
           "target": "ltd_billed_amt",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "YTD_PAID_AMT",
           "target": "ytd_paid_amt",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
@@ -682,7 +696,8 @@
           "source_type": "NUMBER(14,2)",
           "bson_type": "decimal",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
@@ -1310,90 +1325,100 @@
           "source": "UDF_AMT_01",
           "target": "udf_amt_01",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_02",
           "target": "udf_amt_02",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_03",
           "target": "udf_amt_03",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_04",
           "target": "udf_amt_04",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_05",
           "target": "udf_amt_05",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_06",
           "target": "udf_amt_06",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_07",
           "target": "udf_amt_07",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_08",
           "target": "udf_amt_08",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_09",
           "target": "udf_amt_09",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {
           "source": "UDF_AMT_10",
           "target": "udf_amt_10",
           "source_type": "NUMBER(14,2)",
-          "bson_type": "decimal",
+          "bson_type": "",
           "rules": [
-            "decimal_round"
+            "decimal_round",
+            "null_missing_equiv"
           ]
         },
         {

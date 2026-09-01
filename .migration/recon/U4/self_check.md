@@ -60,6 +60,10 @@ runs the independent live gate.
   enforced application-side inside the finalize transaction because the approved mapping
   index plan defines no unique/natural-key index on `rating_periods`; the real-Mongo probe
   also verifies the imported-period FK-violation mirror without adding an index.
+- [x] **Review round 4 fix is covered.** The source `rating_results` `NOT NULL`
+  constraints are enforced application-side inside the finalize transaction, with
+  branch-specific checks matching the columns touched by the source INSERT or UPDATE;
+  no schema or index additions were made.
 
 ## Declared unverified paths
 

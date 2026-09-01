@@ -30,7 +30,7 @@ estate into P-A {1,5}, P-B {6,7,8,9}, P-C {2}, P-D {4}, P-E {3}; max width 5, se
 | Stop | Status | Date | Evidence |
 |---|---|---|---|
 | A | APPROVED ("approved", dhrov.subramanian) | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788296591998709 |
-| B | POSTED, awaiting pipeline choice | 2026-09-01 | (thread permalink filled after post) |
+| B | POSTED, awaiting pipeline choice | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788297325513999 |
 | C | – | | |
 | D (per wave) | – | | |
 | E | – | | |

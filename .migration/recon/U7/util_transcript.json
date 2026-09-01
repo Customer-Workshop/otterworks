@@ -1,0 +1,756 @@
+{
+  "generated_at": "2026-09-01T13:46:13.562279+00:00",
+  "unit": "U7",
+  "source": {
+    "dsn_secret": "OW_BILLING_FIXTURE_DSN",
+    "package": "PKG_OW_UTIL",
+    "access": "read-only; log_msg is never called (it inserts)"
+  },
+  "code_pairs": 32,
+  "ops": [
+    {
+      "fn": "f_md5_uuid",
+      "label": "empty",
+      "args": {
+        "p_input": ""
+      },
+      "value": "d41d8cd9-8f00-b204-e980-0998ecf8427e"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "single_char",
+      "args": {
+        "p_input": "a"
+      },
+      "value": "0cc175b9-c0f1-b6a8-31c3-99e269772661"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "abc",
+      "args": {
+        "p_input": "abc"
+      },
+      "value": "90015098-3cd2-4fb0-d696-3f7d28e17f72"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "module_name",
+      "args": {
+        "p_input": "OW_BILLING"
+      },
+      "value": "02155385-25af-5466-05dc-7da37c01514d"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "composed_key",
+      "args": {
+        "p_input": "tenant-0001|2026-09-01"
+      },
+      "value": "b6eefd02-fc25-b889-427d-242f95dd7ae4"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "non_ascii",
+      "args": {
+        "p_input": "\u00f6tterworks"
+      },
+      "value": "50ac78bd-e723-848b-ec63-58b368b6ee9e"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "raw_limit_2000",
+      "args": {
+        "p_input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "value": "6284398f-25b3-1fbd-d31e-5c6cc04af9ad"
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "raw_limit_2001",
+      "args": {
+        "p_input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "error": {
+        "code": 6502,
+        "message": "ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+      }
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "raw_limit_multibyte_1500",
+      "args": {
+        "p_input": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6"
+      },
+      "error": {
+        "code": 6502,
+        "message": "ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+      }
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "long_4000",
+      "args": {
+        "p_input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "error": {
+        "code": 6502,
+        "message": "ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+      }
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "null",
+      "args": {
+        "p_input": null
+      },
+      "value": "d41d8cd9-8f00-b204-e980-0998ecf8427e"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_1",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 1
+      },
+      "value": "active"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_2",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 2
+      },
+      "value": "suspended"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_3",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 3
+      },
+      "value": "closed"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_99",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 99
+      },
+      "value": "conversion-limbo"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_TYPE_1",
+      "args": {
+        "p_type": "CUST_TYPE",
+        "p_val": 1
+      },
+      "value": "individual"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_TYPE_2",
+      "args": {
+        "p_type": "CUST_TYPE",
+        "p_val": 2
+      },
+      "value": "business"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_TYPE_3",
+      "args": {
+        "p_type": "CUST_TYPE",
+        "p_val": 3
+      },
+      "value": "government"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_DUN_STATUS_10",
+      "args": {
+        "p_type": "DUN_STATUS",
+        "p_val": 10
+      },
+      "value": "scheduled"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_DUN_STATUS_20",
+      "args": {
+        "p_type": "DUN_STATUS",
+        "p_val": 20
+      },
+      "value": "sent"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_DUN_STATUS_30",
+      "args": {
+        "p_type": "DUN_STATUS",
+        "p_val": 30
+      },
+      "value": "skipped"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_10",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 10
+      },
+      "value": "draft"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_20",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 20
+      },
+      "value": "issued"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_30",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 30
+      },
+      "value": "paid"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_40",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 40
+      },
+      "value": "overdue"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_NOTIF_KIND_1",
+      "args": {
+        "p_type": "NOTIF_KIND",
+        "p_val": 1
+      },
+      "value": "invoice"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_NOTIF_KIND_2",
+      "args": {
+        "p_type": "NOTIF_KIND",
+        "p_val": 2
+      },
+      "value": "dunning"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_NOTIF_KIND_3",
+      "args": {
+        "p_type": "NOTIF_KIND",
+        "p_val": 3
+      },
+      "value": "suspension"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_1",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 1
+      },
+      "value": "main"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_2",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 2
+      },
+      "value": "billing"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_3",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 3
+      },
+      "value": "fax"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_4",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 4
+      },
+      "value": "after-hours"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PLAN_TIER_1",
+      "args": {
+        "p_type": "PLAN_TIER",
+        "p_val": 1
+      },
+      "value": "starter"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PLAN_TIER_2",
+      "args": {
+        "p_type": "PLAN_TIER",
+        "p_val": 2
+      },
+      "value": "growth"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PLAN_TIER_3",
+      "args": {
+        "p_type": "PLAN_TIER",
+        "p_val": 3
+      },
+      "value": "scale"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_SUB_STATUS_10",
+      "args": {
+        "p_type": "SUB_STATUS",
+        "p_val": 10
+      },
+      "value": "active"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_SUB_STATUS_20",
+      "args": {
+        "p_type": "SUB_STATUS",
+        "p_val": 20
+      },
+      "value": "suspended"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_SUB_STATUS_30",
+      "args": {
+        "p_type": "SUB_STATUS",
+        "p_val": 30
+      },
+      "value": "cancelled"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_TENANT_STATUS_10",
+      "args": {
+        "p_type": "TENANT_STATUS",
+        "p_val": 10
+      },
+      "value": "active"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_TENANT_STATUS_20",
+      "args": {
+        "p_type": "TENANT_STATUS",
+        "p_val": 20
+      },
+      "value": "suspended"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_USAGE_KIND_1",
+      "args": {
+        "p_type": "USAGE_KIND",
+        "p_val": 1
+      },
+      "value": "api"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_USAGE_KIND_2",
+      "args": {
+        "p_type": "USAGE_KIND",
+        "p_val": 2
+      },
+      "value": "storage"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_USAGE_KIND_3",
+      "args": {
+        "p_type": "USAGE_KIND",
+        "p_val": 3
+      },
+      "value": "compute"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "miss_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 99
+      },
+      "value": "UNKNOWN(99)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "miss_type",
+      "args": {
+        "p_type": "NO_SUCH_TYPE",
+        "p_val": 1
+      },
+      "value": "UNKNOWN(1)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "null_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": null
+      },
+      "value": "UNKNOWN(-1)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "null_type",
+      "args": {
+        "p_type": null,
+        "p_val": 10
+      },
+      "value": "UNKNOWN(10)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "negative_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": -1
+      },
+      "value": "UNKNOWN(-1)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "fractional_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 1.5
+      },
+      "value": "UNKNOWN(1.5)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "sub_one_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 0.5
+      },
+      "value": "UNKNOWN(.5)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "zero_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 0
+      },
+      "value": "UNKNOWN(0)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "trailing_zero_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 1.5
+      },
+      "value": "UNKNOWN(1.5)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "wide_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 999999999999
+      },
+      "value": "UNKNOWN(999999999999)"
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "empty_type",
+      "args": {
+        "p_type": "",
+        "p_val": 10
+      },
+      "value": "UNKNOWN(10)"
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "null",
+      "args": {
+        "p_dt": null
+      },
+      "value": null
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "mid_2026",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "value": "01-SEP-26"
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "last_1999",
+      "args": {
+        "p_dt": {
+          "__datetime__": "1999-12-31T00:00:00"
+        }
+      },
+      "value": "31-DEC-99"
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "y2k",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2000-01-01T00:00:00"
+        }
+      },
+      "value": "01-JAN-00"
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "pre_1900",
+      "args": {
+        "p_dt": {
+          "__datetime__": "1899-03-05T00:00:00"
+        }
+      },
+      "value": "05-MAR-99"
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "y2099",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2099-07-04T00:00:00"
+        }
+      },
+      "value": "04-JUL-99"
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "with_time",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2026-03-15T13:45:59"
+        }
+      },
+      "value": "15-MAR-26"
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "canonical",
+      "args": {
+        "p_str": "01-SEP-26"
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "unpadded_day",
+      "args": {
+        "p_str": "1-SEP-26"
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "lowercase_month",
+      "args": {
+        "p_str": "01-sep-26"
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "century_pivot_99",
+      "args": {
+        "p_str": "31-DEC-99"
+      },
+      "value": {
+        "__datetime__": "2099-12-31T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "leap_day",
+      "args": {
+        "p_str": "29-FEB-24"
+      },
+      "value": {
+        "__datetime__": "2024-02-29T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "impossible_day",
+      "args": {
+        "p_str": "31-FEB-24"
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "not_a_date",
+      "args": {
+        "p_str": "N/A"
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "empty",
+      "args": {
+        "p_str": ""
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "null",
+      "args": {
+        "p_str": null
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "full_month_name",
+      "args": {
+        "p_str": "01-SEPTEMBER-26"
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "surrounding_spaces",
+      "args": {
+        "p_str": " 01-SEP-26 "
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "four_digit_year",
+      "args": {
+        "p_str": "01-SEP-2026"
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "four_digit_year_past",
+      "args": {
+        "p_str": "01-SEP-1999"
+      },
+      "value": {
+        "__datetime__": "1999-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "zero_padded_year",
+      "args": {
+        "p_str": "01-SEP-0026"
+      },
+      "value": {
+        "__datetime__": "0026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "single_digit_year",
+      "args": {
+        "p_str": "01-SEP-2"
+      },
+      "value": {
+        "__datetime__": "2002-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "missing_year",
+      "args": {
+        "p_str": "01-SEP"
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "slash_separator",
+      "args": {
+        "p_str": "01/SEP/26"
+      },
+      "value": {
+        "__datetime__": "2026-09-01T00:00:00"
+      }
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "trailing_text",
+      "args": {
+        "p_str": "01-SEP-26 12:00"
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "wrong_order",
+      "args": {
+        "p_str": "SEP-01-26"
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "numeric_month",
+      "args": {
+        "p_str": "1-9-26"
+      },
+      "value": null
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "month_prefix_typo",
+      "args": {
+        "p_str": "01-JANU-26"
+      },
+      "value": null
+    }
+  ]
+}

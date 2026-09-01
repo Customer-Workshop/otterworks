@@ -1,0 +1,32 @@
+{
+  "started_at": "2026-09-01T13:57:22.158816+00:00",
+  "finished_at": "2026-09-01T13:57:23.406204+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "collections": {
+    "billing_audit_log": {
+      "root_table": "BILLING_AUDIT_LOG",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 0,
+      "inserted": 0,
+      "docs_after": 0,
+      "ns_docs_after": 0,
+      "indexes": [
+        "_id_",
+        "ttl_logged_at_90d"
+      ],
+      "ttl_index": {
+        "name": "ttl_logged_at_90d",
+        "key": {
+          "logged_at": 1
+        },
+        "expireAfterSeconds": 7776000
+      }
+    }
+  }
+}

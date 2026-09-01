@@ -1,0 +1,100 @@
+{
+  "kind": "recon-report",
+  "unit": "U7",
+  "namespace": "mongo_032752",
+  "generated_at": "2026-09-01T14:00:00Z",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "u7.counts_through_mapping",
+      "expected": "1/1 pass (BILLING_AUDIT_LOG 0 rows; billing_audit_log 0 documents)",
+      "actual": "1/1 pass",
+      "source_of_truth": "harness .migration/recon/U7/gate/result.json (tier1 counts_through_mapping)",
+      "result": "pass"
+    },
+    {
+      "id": "u7.per_field_aggregates",
+      "expected": "3/3 pass; module and message aggregates deferred to tier 3 under mapping v1.1",
+      "actual": "3/3 pass; deferred_to_tier3 [billing_audit_log.module, billing_audit_log.message]",
+      "source_of_truth": "harness .migration/recon/U7/gate/result.json (tier2 per_field_aggregates)",
+      "result": "pass"
+    },
+    {
+      "id": "u7.keyed_diffs",
+      "expected": "full_diff over an empty population; 0 keyed checks",
+      "actual": "0/0 pass; billing_audit_log mode full_diff population 0",
+      "source_of_truth": "harness .migration/recon/U7/gate/result.json (tier3 keyed_diffs)",
+      "result": "pass"
+    },
+    {
+      "id": "u7.pkg_ow_util_transcript_parity",
+      "expected": "82/82 recorded PKG_OW_UTIL calls reproduced by the port",
+      "actual": "82/82 matched; mismatches []",
+      "source_of_truth": ".migration/recon/U7/util_parity.json replayed against .migration/recon/U7/util_transcript.json",
+      "result": "pass"
+    },
+    {
+      "id": "u7.log_msg_autonomous_independence",
+      "expected": "audit write survives an aborted caller transaction, with its own write concern and no session",
+      "actual": "caller write rolled back, audit document survived, write concern {'w': 'majority'}, no ClientSession passed",
+      "source_of_truth": ".migration/recon/U7/supplemental.json probes.autonomous_independence",
+      "result": "pass"
+    },
+    {
+      "id": "u7.log_msg_truncation_and_silence",
+      "expected": "module truncated to 30, message to 4000, ObjectId _id, whole-second logged_at, ns tagged; a driver failure returns False without raising",
+      "actual": "40 -> 30 and 5000 -> 4000 stored; ObjectId; microsecond 0; ns mongo_032752; unreachable target returned False and raised nothing",
+      "source_of_truth": ".migration/recon/U7/supplemental.json probes.truncation and probes.silent_failure",
+      "result": "pass",
+      "note": "truncation is a declared divergence, not parity - see u7.audit_acceptance_divergence"
+    },
+    {
+      "id": "u7.audit_acceptance_divergence",
+      "expected": "the source drops an audit event whose module exceeds 30 bytes (ORA-06502 assigning g_last_module VARCHAR2(30) under BYTE semantics) or whose truncated message exceeds the 4000-byte column",
+      "actual": "confirmed read-only: 40 ASCII chars and 30 multibyte chars (60 bytes) both raise; the port instead truncates by characters and always records the event, per the unit spec's unconditional audit write",
+      "source_of_truth": ".migration/recon/U7/audit_acceptance_probe.json (read-only anonymous PL/SQL blocks; no table writes)",
+      "result": "skipped"
+    },
+    {
+      "id": "u7.ttl_replaces_purge_job",
+      "expected": "TTL index on logged_at with expireAfterSeconds 7776000 replacing disabled JOB_PURGE_AUDIT_LOG",
+      "actual": "ttl_logged_at_90d on {logged_at: 1} with expireAfterSeconds 7776000, read back from the target on every load",
+      "source_of_truth": ".migration/recon/U7/supplemental.json probes.ttl_index and load_report.json ttl_index",
+      "result": "pass"
+    },
+    {
+      "id": "u7.namespace_tagging",
+      "expected": "0 migrated documents, 0 namespace-tagged documents; every written document carries ns",
+      "actual": "0 = 0 asserted by the load; the truncation probe document carried ns mongo_032752",
+      "source_of_truth": ".migration/recon/U7/load_report.json namespace counts",
+      "result": "pass"
+    },
+    {
+      "id": "u7.idempotency_rerun",
+      "expected": "second drop/recreate load rebuilds the TTL index and doubles nothing",
+      "actual": "same 0 source rows / 0 inserted / 0 documents; indexes _id_ and ttl_logged_at_90d; second gate PASS",
+      "source_of_truth": ".migration/recon/U7/load_report.rerun.json and gate_rerun/result.json",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U7/load_report.rerun.json and .migration/recon/U7/gate_rerun/result.json"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "empty source population - no migrated document exercises the LOGGED_AT/MODULE/MESSAGE transforms, and the v1.1 tier-2 deferral of module/message to tier 3 grades nothing over 0 rows",
+    "three-digit years in f_str2dt - accepted literally by the port, not present in the recorded source transcript",
+    "log_msg has no migrated caller: pkg_rating/pkg_invoicing/pkg_dunning belong to units U3-U6",
+    "TTL expiry timing is a background-sweep observation, not a contract; retention is evidenced by the index specification",
+    "fixture-only run mode - the wave gate runs LIVE independently",
+    "audit acceptance is deliberately wider than the source: events the legacy logger silently drops on a 30-byte module or 4000-byte message overflow are recorded by the port"
+  ]
+}

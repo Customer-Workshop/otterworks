@@ -1,0 +1,1293 @@
+{
+  "generated_at": "2026-09-01T13:56:41.136988+00:00",
+  "unit": "U7",
+  "transcript": ".migration/recon/U7/util_transcript.json",
+  "target_db": "ow_tp_mongodb_032752",
+  "secret_names": {
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "by_function": {
+    "f_md5_uuid": {
+      "checks": 11,
+      "matched": 11
+    },
+    "f_code_desc": {
+      "checks": 43,
+      "matched": 43
+    },
+    "f_dt2str": {
+      "checks": 7,
+      "matched": 7
+    },
+    "f_str2dt": {
+      "checks": 21,
+      "matched": 21
+    }
+  },
+  "checks": 82,
+  "matched": 82,
+  "pass": true,
+  "mismatches": [],
+  "results": [
+    {
+      "fn": "f_md5_uuid",
+      "label": "empty",
+      "args": {
+        "p_input": ""
+      },
+      "oracle": {
+        "value": "d41d8cd9-8f00-b204-e980-0998ecf8427e"
+      },
+      "port": {
+        "value": "d41d8cd9-8f00-b204-e980-0998ecf8427e"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "single_char",
+      "args": {
+        "p_input": "a"
+      },
+      "oracle": {
+        "value": "0cc175b9-c0f1-b6a8-31c3-99e269772661"
+      },
+      "port": {
+        "value": "0cc175b9-c0f1-b6a8-31c3-99e269772661"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "abc",
+      "args": {
+        "p_input": "abc"
+      },
+      "oracle": {
+        "value": "90015098-3cd2-4fb0-d696-3f7d28e17f72"
+      },
+      "port": {
+        "value": "90015098-3cd2-4fb0-d696-3f7d28e17f72"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "module_name",
+      "args": {
+        "p_input": "OW_BILLING"
+      },
+      "oracle": {
+        "value": "02155385-25af-5466-05dc-7da37c01514d"
+      },
+      "port": {
+        "value": "02155385-25af-5466-05dc-7da37c01514d"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "composed_key",
+      "args": {
+        "p_input": "tenant-0001|2026-09-01"
+      },
+      "oracle": {
+        "value": "b6eefd02-fc25-b889-427d-242f95dd7ae4"
+      },
+      "port": {
+        "value": "b6eefd02-fc25-b889-427d-242f95dd7ae4"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "non_ascii",
+      "args": {
+        "p_input": "\u00f6tterworks"
+      },
+      "oracle": {
+        "value": "50ac78bd-e723-848b-ec63-58b368b6ee9e"
+      },
+      "port": {
+        "value": "50ac78bd-e723-848b-ec63-58b368b6ee9e"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "raw_limit_2000",
+      "args": {
+        "p_input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "oracle": {
+        "value": "6284398f-25b3-1fbd-d31e-5c6cc04af9ad"
+      },
+      "port": {
+        "value": "6284398f-25b3-1fbd-d31e-5c6cc04af9ad"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "raw_limit_2001",
+      "args": {
+        "p_input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "oracle": {
+        "error": {
+          "code": 6502,
+          "message": "ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+        }
+      },
+      "port": {
+        "raised": "ValueError: ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "raw_limit_multibyte_1500",
+      "args": {
+        "p_input": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6"
+      },
+      "oracle": {
+        "error": {
+          "code": 6502,
+          "message": "ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+        }
+      },
+      "port": {
+        "raised": "ValueError: ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "long_4000",
+      "args": {
+        "p_input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "oracle": {
+        "error": {
+          "code": 6502,
+          "message": "ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+        }
+      },
+      "port": {
+        "raised": "ValueError: ORA-06502: PL/SQL: value or conversion error: raw variable length too long"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_md5_uuid",
+      "label": "null",
+      "args": {
+        "p_input": null
+      },
+      "oracle": {
+        "value": "d41d8cd9-8f00-b204-e980-0998ecf8427e"
+      },
+      "port": {
+        "value": "d41d8cd9-8f00-b204-e980-0998ecf8427e"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_1",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "active"
+      },
+      "port": {
+        "value": "active"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_2",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 2
+      },
+      "oracle": {
+        "value": "suspended"
+      },
+      "port": {
+        "value": "suspended"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_3",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 3
+      },
+      "oracle": {
+        "value": "closed"
+      },
+      "port": {
+        "value": "closed"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_STATUS_99",
+      "args": {
+        "p_type": "CUST_STATUS",
+        "p_val": 99
+      },
+      "oracle": {
+        "value": "conversion-limbo"
+      },
+      "port": {
+        "value": "conversion-limbo"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_TYPE_1",
+      "args": {
+        "p_type": "CUST_TYPE",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "individual"
+      },
+      "port": {
+        "value": "individual"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_TYPE_2",
+      "args": {
+        "p_type": "CUST_TYPE",
+        "p_val": 2
+      },
+      "oracle": {
+        "value": "business"
+      },
+      "port": {
+        "value": "business"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_CUST_TYPE_3",
+      "args": {
+        "p_type": "CUST_TYPE",
+        "p_val": 3
+      },
+      "oracle": {
+        "value": "government"
+      },
+      "port": {
+        "value": "government"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_DUN_STATUS_10",
+      "args": {
+        "p_type": "DUN_STATUS",
+        "p_val": 10
+      },
+      "oracle": {
+        "value": "scheduled"
+      },
+      "port": {
+        "value": "scheduled"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_DUN_STATUS_20",
+      "args": {
+        "p_type": "DUN_STATUS",
+        "p_val": 20
+      },
+      "oracle": {
+        "value": "sent"
+      },
+      "port": {
+        "value": "sent"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_DUN_STATUS_30",
+      "args": {
+        "p_type": "DUN_STATUS",
+        "p_val": 30
+      },
+      "oracle": {
+        "value": "skipped"
+      },
+      "port": {
+        "value": "skipped"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_10",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 10
+      },
+      "oracle": {
+        "value": "draft"
+      },
+      "port": {
+        "value": "draft"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_20",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 20
+      },
+      "oracle": {
+        "value": "issued"
+      },
+      "port": {
+        "value": "issued"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_30",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 30
+      },
+      "oracle": {
+        "value": "paid"
+      },
+      "port": {
+        "value": "paid"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_INV_STATUS_40",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 40
+      },
+      "oracle": {
+        "value": "overdue"
+      },
+      "port": {
+        "value": "overdue"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_NOTIF_KIND_1",
+      "args": {
+        "p_type": "NOTIF_KIND",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "invoice"
+      },
+      "port": {
+        "value": "invoice"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_NOTIF_KIND_2",
+      "args": {
+        "p_type": "NOTIF_KIND",
+        "p_val": 2
+      },
+      "oracle": {
+        "value": "dunning"
+      },
+      "port": {
+        "value": "dunning"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_NOTIF_KIND_3",
+      "args": {
+        "p_type": "NOTIF_KIND",
+        "p_val": 3
+      },
+      "oracle": {
+        "value": "suspension"
+      },
+      "port": {
+        "value": "suspension"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_1",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "main"
+      },
+      "port": {
+        "value": "main"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_2",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 2
+      },
+      "oracle": {
+        "value": "billing"
+      },
+      "port": {
+        "value": "billing"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_3",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 3
+      },
+      "oracle": {
+        "value": "fax"
+      },
+      "port": {
+        "value": "fax"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PHONE_TYPE_4",
+      "args": {
+        "p_type": "PHONE_TYPE",
+        "p_val": 4
+      },
+      "oracle": {
+        "value": "after-hours"
+      },
+      "port": {
+        "value": "after-hours"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PLAN_TIER_1",
+      "args": {
+        "p_type": "PLAN_TIER",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "starter"
+      },
+      "port": {
+        "value": "starter"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PLAN_TIER_2",
+      "args": {
+        "p_type": "PLAN_TIER",
+        "p_val": 2
+      },
+      "oracle": {
+        "value": "growth"
+      },
+      "port": {
+        "value": "growth"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_PLAN_TIER_3",
+      "args": {
+        "p_type": "PLAN_TIER",
+        "p_val": 3
+      },
+      "oracle": {
+        "value": "scale"
+      },
+      "port": {
+        "value": "scale"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_SUB_STATUS_10",
+      "args": {
+        "p_type": "SUB_STATUS",
+        "p_val": 10
+      },
+      "oracle": {
+        "value": "active"
+      },
+      "port": {
+        "value": "active"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_SUB_STATUS_20",
+      "args": {
+        "p_type": "SUB_STATUS",
+        "p_val": 20
+      },
+      "oracle": {
+        "value": "suspended"
+      },
+      "port": {
+        "value": "suspended"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_SUB_STATUS_30",
+      "args": {
+        "p_type": "SUB_STATUS",
+        "p_val": 30
+      },
+      "oracle": {
+        "value": "cancelled"
+      },
+      "port": {
+        "value": "cancelled"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_TENANT_STATUS_10",
+      "args": {
+        "p_type": "TENANT_STATUS",
+        "p_val": 10
+      },
+      "oracle": {
+        "value": "active"
+      },
+      "port": {
+        "value": "active"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_TENANT_STATUS_20",
+      "args": {
+        "p_type": "TENANT_STATUS",
+        "p_val": 20
+      },
+      "oracle": {
+        "value": "suspended"
+      },
+      "port": {
+        "value": "suspended"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_USAGE_KIND_1",
+      "args": {
+        "p_type": "USAGE_KIND",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "api"
+      },
+      "port": {
+        "value": "api"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_USAGE_KIND_2",
+      "args": {
+        "p_type": "USAGE_KIND",
+        "p_val": 2
+      },
+      "oracle": {
+        "value": "storage"
+      },
+      "port": {
+        "value": "storage"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "hit_USAGE_KIND_3",
+      "args": {
+        "p_type": "USAGE_KIND",
+        "p_val": 3
+      },
+      "oracle": {
+        "value": "compute"
+      },
+      "port": {
+        "value": "compute"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "miss_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 99
+      },
+      "oracle": {
+        "value": "UNKNOWN(99)"
+      },
+      "port": {
+        "value": "UNKNOWN(99)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "miss_type",
+      "args": {
+        "p_type": "NO_SUCH_TYPE",
+        "p_val": 1
+      },
+      "oracle": {
+        "value": "UNKNOWN(1)"
+      },
+      "port": {
+        "value": "UNKNOWN(1)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "null_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": null
+      },
+      "oracle": {
+        "value": "UNKNOWN(-1)"
+      },
+      "port": {
+        "value": "UNKNOWN(-1)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "null_type",
+      "args": {
+        "p_type": null,
+        "p_val": 10
+      },
+      "oracle": {
+        "value": "UNKNOWN(10)"
+      },
+      "port": {
+        "value": "UNKNOWN(10)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "negative_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": -1
+      },
+      "oracle": {
+        "value": "UNKNOWN(-1)"
+      },
+      "port": {
+        "value": "UNKNOWN(-1)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "fractional_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 1.5
+      },
+      "oracle": {
+        "value": "UNKNOWN(1.5)"
+      },
+      "port": {
+        "value": "UNKNOWN(1.5)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "sub_one_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 0.5
+      },
+      "oracle": {
+        "value": "UNKNOWN(.5)"
+      },
+      "port": {
+        "value": "UNKNOWN(.5)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "zero_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 0
+      },
+      "oracle": {
+        "value": "UNKNOWN(0)"
+      },
+      "port": {
+        "value": "UNKNOWN(0)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "trailing_zero_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 1.5
+      },
+      "oracle": {
+        "value": "UNKNOWN(1.5)"
+      },
+      "port": {
+        "value": "UNKNOWN(1.5)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "wide_val",
+      "args": {
+        "p_type": "INV_STATUS",
+        "p_val": 999999999999
+      },
+      "oracle": {
+        "value": "UNKNOWN(999999999999)"
+      },
+      "port": {
+        "value": "UNKNOWN(999999999999)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_code_desc",
+      "label": "empty_type",
+      "args": {
+        "p_type": "",
+        "p_val": 10
+      },
+      "oracle": {
+        "value": "UNKNOWN(10)"
+      },
+      "port": {
+        "value": "UNKNOWN(10)"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "null",
+      "args": {
+        "p_dt": null
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "mid_2026",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "oracle": {
+        "value": "01-SEP-26"
+      },
+      "port": {
+        "value": "01-SEP-26"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "last_1999",
+      "args": {
+        "p_dt": {
+          "__datetime__": "1999-12-31T00:00:00"
+        }
+      },
+      "oracle": {
+        "value": "31-DEC-99"
+      },
+      "port": {
+        "value": "31-DEC-99"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "y2k",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2000-01-01T00:00:00"
+        }
+      },
+      "oracle": {
+        "value": "01-JAN-00"
+      },
+      "port": {
+        "value": "01-JAN-00"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "pre_1900",
+      "args": {
+        "p_dt": {
+          "__datetime__": "1899-03-05T00:00:00"
+        }
+      },
+      "oracle": {
+        "value": "05-MAR-99"
+      },
+      "port": {
+        "value": "05-MAR-99"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "y2099",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2099-07-04T00:00:00"
+        }
+      },
+      "oracle": {
+        "value": "04-JUL-99"
+      },
+      "port": {
+        "value": "04-JUL-99"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_dt2str",
+      "label": "with_time",
+      "args": {
+        "p_dt": {
+          "__datetime__": "2026-03-15T13:45:59"
+        }
+      },
+      "oracle": {
+        "value": "15-MAR-26"
+      },
+      "port": {
+        "value": "15-MAR-26"
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "canonical",
+      "args": {
+        "p_str": "01-SEP-26"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "unpadded_day",
+      "args": {
+        "p_str": "1-SEP-26"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "lowercase_month",
+      "args": {
+        "p_str": "01-sep-26"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "century_pivot_99",
+      "args": {
+        "p_str": "31-DEC-99"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2099-12-31T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2099-12-31T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "leap_day",
+      "args": {
+        "p_str": "29-FEB-24"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2024-02-29T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2024-02-29T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "impossible_day",
+      "args": {
+        "p_str": "31-FEB-24"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "not_a_date",
+      "args": {
+        "p_str": "N/A"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "empty",
+      "args": {
+        "p_str": ""
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "null",
+      "args": {
+        "p_str": null
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "full_month_name",
+      "args": {
+        "p_str": "01-SEPTEMBER-26"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "surrounding_spaces",
+      "args": {
+        "p_str": " 01-SEP-26 "
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "four_digit_year",
+      "args": {
+        "p_str": "01-SEP-2026"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "four_digit_year_past",
+      "args": {
+        "p_str": "01-SEP-1999"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "1999-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "1999-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "zero_padded_year",
+      "args": {
+        "p_str": "01-SEP-0026"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "0026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "0026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "single_digit_year",
+      "args": {
+        "p_str": "01-SEP-2"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2002-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2002-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "missing_year",
+      "args": {
+        "p_str": "01-SEP"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "slash_separator",
+      "args": {
+        "p_str": "01/SEP/26"
+      },
+      "oracle": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "port": {
+        "value": {
+          "__datetime__": "2026-09-01T00:00:00"
+        }
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "trailing_text",
+      "args": {
+        "p_str": "01-SEP-26 12:00"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "wrong_order",
+      "args": {
+        "p_str": "SEP-01-26"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "numeric_month",
+      "args": {
+        "p_str": "1-9-26"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    },
+    {
+      "fn": "f_str2dt",
+      "label": "month_prefix_typo",
+      "args": {
+        "p_str": "01-JANU-26"
+      },
+      "oracle": {
+        "value": null
+      },
+      "port": {
+        "value": null
+      },
+      "match": true
+    }
+  ]
+}

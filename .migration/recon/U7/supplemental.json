@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-09-01T13:57:16.674086+00:00",
+  "unit": "U7",
+  "namespace": "mongo_032752",
+  "target_db": "ow_tp_mongodb_032752",
+  "collection": "billing_audit_log",
+  "secret_names": {
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "probes": {
+    "ttl_index": {
+      "index": {
+        "name": "ttl_logged_at_90d",
+        "key": {
+          "logged_at": 1
+        },
+        "expireAfterSeconds": 7776000
+      },
+      "expected_expire_after_seconds": 7776000,
+      "pass": true
+    },
+    "ttl_expiry": {
+      "inserted_logged_at": "2026-06-02T13:56:44+00:00",
+      "age_days": 91,
+      "waited_seconds": 30.4,
+      "wait_budget_seconds": 240,
+      "removed_by_ttl": true,
+      "observed": true
+    },
+    "autonomous_independence": {
+      "caller_transaction_aborted": true,
+      "log_msg_returned": true,
+      "caller_write_rolled_back": true,
+      "audit_write_survived": true,
+      "audit_write_concern": "{'w': 'majority'}",
+      "audit_write_used_session": false,
+      "pass": true
+    },
+    "truncation": {
+      "log_msg_returned": true,
+      "module_source_length": 40,
+      "module_stored_length": 30,
+      "message_source_length": 5000,
+      "message_stored_length": 4000,
+      "id_is_object_id": true,
+      "ns": "mongo_032752",
+      "logged_at_whole_seconds": true,
+      "logged_at_not_before_call": true,
+      "last_module_recorded": true,
+      "pass": true
+    },
+    "silent_failure": {
+      "log_msg_returned": false,
+      "raised": null,
+      "last_module_recorded": true,
+      "pass": true
+    }
+  },
+  "residual_probe_documents": 0,
+  "gated_probes": [
+    "ttl_index",
+    "autonomous_independence",
+    "truncation",
+    "silent_failure"
+  ],
+  "pass": true
+}

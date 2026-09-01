@@ -43,10 +43,10 @@ MONGO_BALANCES_SOURCE = {
     "detail": "customers aggregation pipeline (RPT-114 balances)",
 }
 
-_mongo_client = None
-
 ORACLE_AMOUNT_OVERFLOW_MARKER = "#" * 19
 ORACLE_AMOUNT_OVERFLOW_LIMIT = Decimal("1000000000000000")
+
+_mongo_client = None
 
 BALANCES_SQL = """
 SELECT COUNT(*)                                          AS customer_count,

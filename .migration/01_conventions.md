@@ -60,9 +60,10 @@ is uncontended.
   00_context.md          scope, census facts, capability manifest, gaps
   01_conventions.md      this file
   02_tolerances.json     versioned tolerance record
-  03_mapping_spec.json   placeholder until playbook 2
+  03_mapping_spec.json   harness mapping spec (v1.0.0, authored at playbook 2)
   04_progress.md         write-target registry, unit ledger, circuit breaker
   05_stops.md            STOP A/B/C decision log
+  06_census.md           object census, stored logic, access patterns, anomaly scan
   profile.canon.json     oracle recon_canonicalization, placeholders resolved
   recon/<unit_id>/       harness evidence: result.json, report.md, recon.summary.md
 ```

@@ -6,8 +6,8 @@ Artifacts presented: `00_context.md`, `01_conventions.md`, `02_tolerances.json` 
 `03_mapping_spec.json` (placeholder), `04_progress.md`, `profile.canon.json`.
 Profile: `oracle`. Target: `ow_tp_demo` on Atlas `otterworks-demo`.
 
-Status: **PENDING** — awaiting explicit approval. Playbook 2 does not start until the
-approval is recorded verbatim below.
+Status: **APPROVED** 2026-09-01. Playbook 2 (`!mongo_model`) started only after the
+approval below was recorded verbatim.
 
 ### Intake answers already given by the approver
 
@@ -34,14 +34,46 @@ this approval.
 
 ### Approval
 
-> _(verbatim approval to be pasted here on sign-off, with date and approver)_
+> Question 1: Selected: Approved as-is — proceed to !mongo_model (playbook 2)
+
+Recorded 2026-09-01, in-session reply to the STOP A approval request (approver: the
+engagement requester for this run). Approved as-is: no decision row amended.
 
 Artifact versions approved: tolerances v1, mapping spec (placeholder, v0), profile.canon
 resolved at STOP A, context/conventions/progress as of this commit.
 
-## STOP B — mapping and cutover strategy
+## STOP B — data model sign-off
 
-Not reached.
+Artifacts presented: `06_census.md` (object census, stored-logic dispositions,
+access-pattern evidence, anomaly scan), `03_mapping_spec.json` **v1.0.0** (2 collections,
+51 mapped fields, 2 embeds, harness-validated), `04_progress.md` ledger.
+
+Status: **PENDING** — awaiting explicit approval. No unit (`!mongo_unit`) starts, and no
+data is loaded, until the approval is recorded verbatim below.
+
+### Decision table (all PROPOSED; full evidence in `06_census.md` §6)
+
+| # | Decision | Recommendation |
+|---|---|---|
+| D1 | `INVOICE_LINE` embed vs reference | Embed `invoices.lines[]` (max 23/invoice, ≤17 KB); 37 orphans row-quarantined |
+| D2 | `ENTITY_ATTR_VALUE` embed shape | Embed as an **array** `attributes[]`, not a key/value object (187 duplicate `(entity, attr_name)` pairs) |
+| D3 | Sequence-backed keys | Natural `_id` (`CUST_NO` / `INVOICE_ID`); `CUST_SEQ_NO` served by a `counters` collection seeded to 125,000; `EAV_ID` retired |
+| D4 | 50 unparseable `SIGNUP_DT` strings | Field-level quarantine; document still lands with the raw string preserved |
+| D5 | 31 malformed CSV lists | Field-level quarantine; raw preserved, array holds well-formed tokens |
+| D6 | Case-insensitive name lookup | Collation index `{locale:"en", strength:2}` on `customers.name`; drop the `CUST_NAME_UPPER` shadow column |
+| D7 | LOB/BLOB handling | None needed — no LOB in scope |
+| D8 | `CODES` lookup | Migrate `status_cd` as-is; descriptions from a static map reproducing `UNKNOWN(<cd>)` |
+| D9 | Target index plan | Per `06_census.md` §6 (report-query driven; the source has no secondary index to port) |
+| D10 | Sync/CDC | None — one-shot idempotent load, source frozen; CDC would require writing to the source |
+| D11 | Wave order | `customers` → `invoices`, unchanged |
+| D12 | Tolerance change | None; tolerances stay at version `1` |
+| D13 | 113 all-NULL `CUSTOMER_MASTER` columns | Retired as a declared coverage gap |
+| H1 | Tier-2 `sum` is not type-aware (false FAIL on every string/date/all-NULL field) | Fix upstream; choose (a) wait for the plugin release or (b) run wave 1 against a repo-vendored harness carrying only that fix |
+| H2 | No canon rule compares a `DD-MON-YY` string to a date, or CSV to an array | v1.0.0 maps the preserved raw value (`legacy.*`); proposed profile rules for a later version |
+
+### Approval
+
+> _(verbatim approval to be pasted here on sign-off, with date and approver)_
 
 ## STOP C — cutover readiness
 

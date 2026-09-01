@@ -1,6 +1,491 @@
 {
-  "version": "0-placeholder",
-  "status": "PLACEHOLDER — authored at playbook 2 (mongo_model) from the census, not here.",
-  "note": "The harness refuses unversioned inputs, so this file carries a version from the moment it exists. It is deliberately NOT loadable as a mapping spec: 'collections' is empty, which recon.config.load_mapping_spec rejects with 'mapping spec has no collections'. That failure is the intended behavior — no recon run can accidentally pass against a placeholder.",
-  "collections": []
+  "version": "1.0.0",
+  "collections": [
+    {
+      "collection": "customers",
+      "root_table": "OW_BILLING.CUSTOMER_MASTER",
+      "root_where": null,
+      "key": {
+        "source": [
+          "CUST_NO"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "CUST_ID",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_SEQ_NO",
+          "target": "cust_seq_no",
+          "source_type": "NUMBER(12,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_NO",
+          "target": "_id",
+          "source_type": "VARCHAR2(20)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_NAME",
+          "target": "cust_name",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_NAME_UPPER",
+          "target": "cust_name_upper",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LEGAL_NAME",
+          "target": "legal_name",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_1",
+          "target": "addr_line_1",
+          "source_type": "VARCHAR2(120)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_2",
+          "target": "addr_line_2",
+          "source_type": "VARCHAR2(120)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "ADDR_LINE_3",
+          "target": "addr_line_3",
+          "source_type": "VARCHAR2(120)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CITY",
+          "target": "city",
+          "source_type": "VARCHAR2(80)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATE_CD",
+          "target": "state_cd",
+          "source_type": "VARCHAR2(4)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ZIP",
+          "target": "zip",
+          "source_type": "VARCHAR2(12)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE1",
+          "target": "phone1",
+          "source_type": "VARCHAR2(25)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PHONE2",
+          "target": "phone2",
+          "source_type": "VARCHAR2(25)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "PHONE1_TYPE_CD",
+          "target": "phone1_type_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "PHONE2_TYPE_CD",
+          "target": "phone2_type_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "EMAIL_1",
+          "target": "email_1",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "SIGNUP_DT",
+          "target": "legacy.signup_dt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LAST_ACTIVITY_DT",
+          "target": "legacy.last_activity_dt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "SUB_STATUS_CD",
+          "target": "sub_status_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CUST_TYPE_CD",
+          "target": "cust_type_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "SEGMENT_CD",
+          "target": "segment_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "REGION_CD",
+          "target": "region_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "TAX_EXEMPT_YN",
+          "target": "tax_exempt_yn",
+          "source_type": "CHAR(1)",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CREDIT_HOLD_YN",
+          "target": "credit_hold_yn",
+          "source_type": "CHAR(1)",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "VIP_YN",
+          "target": "vip_yn",
+          "source_type": "CHAR(1)",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUR_BAL_AMT",
+          "target": "cur_bal_amt",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "PAST_DUE_AMT",
+          "target": "past_due_amt",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "YTD_BILLED_AMT",
+          "target": "ytd_billed_amt",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "CREDIT_LIMIT_AMT",
+          "target": "credit_limit_amt",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "RELATED_ACCT_IDS",
+          "target": "legacy.related_acct_ids",
+          "source_type": "VARCHAR2(2000)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "PROMO_CODES_CSV",
+          "target": "legacy.promo_codes_csv",
+          "source_type": "VARCHAR2(1000)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "LEGACY_SYS_KEY",
+          "target": "legacy_sys_key",
+          "source_type": "VARCHAR2(50)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAINFRAME_ACCT_NO",
+          "target": "mainframe_acct_no",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CONVERSION_BATCH_NO",
+          "target": "conversion_batch_no",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "CREATED_BY",
+          "target": "created_by",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CREATED_DT",
+          "target": "created_at",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "UPDATED_BY",
+          "target": "updated_by",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UPDATED_DT",
+          "target": "updated_at",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "ROW_VERSION_NO",
+          "target": "row_version_no",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "long",
+          "rules": []
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "attributes",
+          "child_table": "OW_BILLING.ENTITY_ATTR_VALUE",
+          "child_where": "ENTITY_TYPE = 'CUSTOMER'"
+        }
+      ]
+    },
+    {
+      "collection": "invoices",
+      "root_table": "OW_BILLING.INVOICE_HEADER",
+      "root_where": null,
+      "key": {
+        "source": [
+          "INVOICE_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "INVOICE_ID",
+          "target": "_id",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "INVOICE_NO",
+          "target": "invoice_no",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_ID",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "INVOICE_DT",
+          "target": "legacy.invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "DUE_DT",
+          "target": "legacy.due_dt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "TOTAL_AMT",
+          "target": "total_amt",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "BATCH_NO",
+          "target": "batch_no",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "long",
+          "rules": []
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "lines",
+          "child_table": "OW_BILLING.INVOICE_LINE",
+          "child_where": "EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = OW_BILLING.INVOICE_LINE.INVOICE_ID)"
+        }
+      ]
+    }
+  ]
 }

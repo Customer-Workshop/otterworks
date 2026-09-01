@@ -301,6 +301,12 @@ def test_suspend_boundary_moves_only_active_subscriptions_and_notifies_once():
     assert db["subscriptions"].find_one({"_id": "suspended-sub"})["status_cd"] == 20
     assert db["subscriptions"].find_one({"_id": "cancelled-sub"})["status_cd"] == 30
     assert db["subscriptions"].find_one({"_id": "other-ns-sub"})["status_cd"] == 10
+    history = list(db["subscriptions_hist"].find({}))
+    assert len(history) == 1
+    assert history[0]["id"] == "active-sub"
+    assert history[0]["hist_op"] == "UPD"
+    assert history[0]["status_cd"] == 10
+    assert history[0]["suspended_on"] is None
     notification = db["notifications"].find_one({"tenant_id": "tenant-active"})
     assert notification["_id"] == md5_uuid("tenant-activesuspension2026-02-28")
     assert notification["kind_cd"] == 3
@@ -310,6 +316,7 @@ def test_suspend_boundary_moves_only_active_subscriptions_and_notifies_once():
     again = service.suspend_overdue(date(2026, 2, 28))
     assert again == {"suspended": [], "notifications_inserted": 0}
     assert db["notifications"].count_documents({}) == 1
+    assert db["subscriptions_hist"].count_documents({}) == 1
     assert audit == [("DUNNING", "suspended tenant=tenant-active")]
 
 
@@ -328,6 +335,7 @@ def test_suspend_skips_nonactive_tenants_and_uses_sorted_tenant_ids():
 
     assert result == {"suspended": [], "notifications_inserted": 0}
     assert db["notifications"].count_documents({}) == 0
+    assert db["subscriptions_hist"].count_documents({}) == 0
     assert seen == []
 
 
@@ -347,3 +355,4 @@ def test_suspend_rolls_back_all_writes_on_transaction_failure(monkeypatch):
     else:
         raise AssertionError("expected transaction failure")
     assert db["tenants"].find_one({"_id": "tenant-active"})["status_cd"] == 10
+    assert db["subscriptions_hist"].count_documents({}) == 0

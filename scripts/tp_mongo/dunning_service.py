@@ -12,10 +12,12 @@ from tp_mongo.rating_service import (
     _utc_ms,
     md5_uuid,
 )
+from tp_mongo.plans_service import history_doc
 
 INVOICES = "invoices"
 TENANTS = "tenants"
 SUBSCRIPTIONS = "subscriptions"
+SUBSCRIPTIONS_HIST = "subscriptions_hist"
 NOTIFICATIONS = "notifications"
 OVERDUE_STATUS_CD = 40
 ACTIVE_STATUS_CD = 10
@@ -51,6 +53,8 @@ class DunningService:
         self.invoices = db[INVOICES]
         self.tenants = db[TENANTS]
         self.subscriptions = db[SUBSCRIPTIONS]
+        # Port trg_subscriptions_hist's pre-image write for subscription updates.
+        self.subscriptions_hist = db[SUBSCRIPTIONS_HIST]
         self.notifications = db[NOTIFICATIONS]
         self.audit_sink = audit_sink or (lambda _module, _message: None)
         self.last_run_dt: date | None = None
@@ -165,20 +169,27 @@ class DunningService:
                     {"$set": {"status_cd": SUSPENDED_STATUS_CD}},
                     session=session,
                 )
-                self.subscriptions.update_many(
+                for subscription in self.subscriptions.find(
                     {
                         "tenant_id": tenant_id,
                         "status_cd": ACTIVE_STATUS_CD,
                         **NS_FILTER,
                     },
-                    {
-                        "$set": {
-                            "status_cd": SUSPENDED_STATUS_CD,
-                            "suspended_on": suspended_on,
-                        }
-                    },
                     session=session,
-                )
+                ):
+                    self.subscriptions_hist.insert_one(
+                        history_doc(subscription, "UPD"), session=session
+                    )
+                    self.subscriptions.update_one(
+                        {"_id": subscription["_id"], **NS_FILTER},
+                        {
+                            "$set": {
+                                "status_cd": SUSPENDED_STATUS_CD,
+                                "suspended_on": suspended_on,
+                            }
+                        },
+                        session=session,
+                    )
                 # Port the NOT EXISTS guard: an insert-if-absent upsert whose
                 # uniqueness the (tenant_id, kind_cd, sent_at) index enforces.
                 result = self.notifications.update_one(

@@ -60,7 +60,7 @@ data is loaded, until the approval is recorded verbatim below.
 | D3 | Sequence-backed keys | Natural `_id` (`CUST_NO` / `INVOICE_ID`); `CUST_SEQ_NO` served by a `counters` collection seeded to 125,000; `EAV_ID` retired |
 | D4 | 50 unparseable `SIGNUP_DT` strings | Field-level quarantine; document still lands with the raw string preserved |
 | D5 | 31 malformed CSV lists | Field-level quarantine; raw preserved, array holds well-formed tokens |
-| D6 | Case-insensitive name lookup | Collation index `{locale:"en", strength:2}` on `customers.name`; drop the `CUST_NAME_UPPER` shadow column |
+| D6 | Case-insensitive name lookup | Collation index `{locale:"en", strength:2}` on `customers.cust_name`; drop the `CUST_NAME_UPPER` shadow column |
 | D7 | LOB/BLOB handling | None needed — no LOB in scope |
 | D8 | `CODES` lookup | Migrate `status_cd` as-is; descriptions from a static map reproducing `UNKNOWN(<cd>)` |
 | D9 | Target index plan | Per `06_census.md` §6 (report-query driven; the source has no secondary index to port) |

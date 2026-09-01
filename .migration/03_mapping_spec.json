@@ -4,7 +4,7 @@
     {
       "collection": "customers",
       "root_table": "OW_BILLING.CUSTOMER_MASTER",
-      "root_where": null,
+      "root_where": "CONVERSION_BATCH_NO = 85559852",
       "key": {
         "source": [
           "CUST_NO"
@@ -386,14 +386,14 @@
         {
           "array_path": "attributes",
           "child_table": "OW_BILLING.ENTITY_ATTR_VALUE",
-          "child_where": "ENTITY_TYPE = 'CUSTOMER'"
+          "child_where": "ENTITY_TYPE = 'CUSTOMER' AND EXISTS (SELECT 1 FROM OW_BILLING.CUSTOMER_MASTER c WHERE c.CUST_ID = OW_BILLING.ENTITY_ATTR_VALUE.ENTITY_ID AND c.CONVERSION_BATCH_NO = 85559852)"
         }
       ]
     },
     {
       "collection": "invoices",
       "root_table": "OW_BILLING.INVOICE_HEADER",
-      "root_where": null,
+      "root_where": "BATCH_NO = 85559852",
       "key": {
         "source": [
           "INVOICE_ID"
@@ -483,7 +483,7 @@
         {
           "array_path": "lines",
           "child_table": "OW_BILLING.INVOICE_LINE",
-          "child_where": "EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = OW_BILLING.INVOICE_LINE.INVOICE_ID)"
+          "child_where": "BATCH_NO = 85559852 AND EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = OW_BILLING.INVOICE_LINE.INVOICE_ID AND h.BATCH_NO = 85559852)"
         }
       ]
     }

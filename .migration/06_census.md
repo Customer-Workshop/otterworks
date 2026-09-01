@@ -137,8 +137,17 @@ $ python3 -c "from recon.config import load_mapping_spec as l; import pathlib; \
 
 | Collection | Root table | Comparison key | Fields | Embed (Tier-1 cardinality rule) |
 |---|---|---|---:|---|
-| `customers` | `OW_BILLING.CUSTOMER_MASTER` | `CUST_NO → _id` | 42 | `attributes[]` ← `ENTITY_ATTR_VALUE WHERE ENTITY_TYPE = 'CUSTOMER'` (8,333) |
-| `invoices` | `OW_BILLING.INVOICE_HEADER` | `INVOICE_ID → _id` | 9 | `lines[]` ← `INVOICE_LINE WHERE EXISTS (matching header)` (149,963) |
+| `customers` | `OW_BILLING.CUSTOMER_MASTER` (`CONVERSION_BATCH_NO = 85559852`) | `CUST_NO → _id` | 42 | `attributes[]` ← `ENTITY_ATTR_VALUE WHERE ENTITY_TYPE = 'CUSTOMER' AND EXISTS (parent in batch)` (8,333) |
+| `invoices` | `OW_BILLING.INVOICE_HEADER` (`BATCH_NO = 85559852`) | `INVOICE_ID → _id` | 9 | `lines[]` ← `INVOICE_LINE WHERE BATCH_NO = 85559852 AND EXISTS (matching header in batch)` (149,963) |
+
+**Every root and child predicate is namespace-scoped.** `85559852` is the deterministic batch
+number for `ns = demo` (`ns_batch_no()` in `services/legacy-billing/app/reports.py`, the same
+value the report endpoints filter by). Loads are per-namespace (`01_conventions.md`), so an
+unscoped `root_where` would reconcile *every* namespace's source rows against a `demo`-only
+target the moment a second namespace is seeded into this estate. `ENTITY_ATTR_VALUE` has no
+batch column, so its predicate joins back to `CUSTOMER_MASTER`. Today all four tables hold
+only the `demo` batch, so the scoped counts are identical to the unscoped ones (25,000 /
+8,333 / 18,750 / 149,963) — the scoping is what keeps that true later.
 
 Type rules applied straight from the profile's `type_mappings`:
 
@@ -173,10 +182,10 @@ modern shape.
 | D3 | Sequence-backed keys | `_id = CUST_NO` / `INVOICE_ID` (natural keys, per conventions). `CUST_SEQ_NO` is migrated as data and, for new inserts, served by a `counters` collection in `ow_tp_demo` (`findOneAndUpdate $inc`), seeded to 125,000. `EAV_ID` retired | `SEQ_CUSTOMER_MASTER` is at 125,000 and `CUST_SEQ_NO` is a real column other systems may read; EAV ids are surrogate-only |
 | D4 | 50 unparseable `SIGNUP_DT` strings | **Field-level quarantine**: load the customer, omit `signup_at`, keep `legacy.signup_dt`, write a quarantine record naming the field. Do not drop the customer | Row-level drop would break the 25,000-doc count and lose 50 real customers; STOP A D3 (quarantine malformed) is field-scoped |
 | D5 | 31 malformed CSV lists | Same pattern: raw preserved, array holds well-formed tokens only, row logged to quarantine | Same as D4 |
-| D6 | Case-insensitive name lookup | Replace `CUST_NAME_UPPER` with a **collation-aware index** on `customers.name` (`{locale: "en", strength: 2}`); do not migrate the shadow column | The shadow column is trigger-derived, and no query in the repo reads it |
+| D6 | Case-insensitive name lookup | Replace `CUST_NAME_UPPER` with a **collation-aware index** on `customers.cust_name` (`{locale: "en", strength: 2}`); do not migrate the shadow column | The shadow column is trigger-derived, and no query in the repo reads it |
 | D7 | LOB/BLOB handling | **None needed** — no LOB in scope, max document ≈ 17 KB | §3 ceiling check |
 | D8 | `CODES` lookup (`INV_STATUS`) | Migrate `status_cd` as-is; the migrated backend resolves descriptions from a static map that reproduces `UNKNOWN(<cd>)` for unmapped codes | Contract requires byte-identical report output; `CODES` is out of unit scope |
-| D9 | Target index plan | `customers`: `_id` (`CUST_NO`), `{cust_id: 1}` unique, `{conversion_batch_no: 1}`, `{tenant_id: 1, status_cd: 1}`, `{name: 1}` with collation. `invoices`: `_id` (`INVOICE_ID`), `{batch_no: 1, status_cd: 1}`, `{cust_id: 1, "legacy.invoice_dt": 1}`, `{invoice_no: 1}` unique, `{"lines.line_id": 1}` | Derived from the report queries in §3, plus the join keys wave 2 needs from wave 1; the source has no secondary index to port |
+| D9 | Target index plan | `customers`: `_id` (`CUST_NO`), `{cust_id: 1}` unique, `{conversion_batch_no: 1}`, `{tenant_id: 1, status_cd: 1}`, `{cust_name: 1}` with collation. `invoices`: `_id` (`INVOICE_ID`), `{batch_no: 1, status_cd: 1}`, `{cust_id: 1, "legacy.invoice_dt": 1}`, `{invoice_no: 1}` unique, `{"lines.line_id": 1}` | Derived from the report queries in §3, plus the join keys wave 2 needs from wave 1; the source has no secondary index to port |
 | D10 | Sync/CDC for the parallel-run window | **None.** One-shot idempotent load per namespace, re-runnable, with the source frozen for the window; the fixture has no supplemental logging/GoldenGate and the estate is read-only by policy | Setting up CDC would require writes to the source (guardrail 1). Cutover stays a customer-held, human-started action |
 | D11 | Wave order | Unchanged: `customers` (wave 1) → `invoices` (wave 2) | Invoice documents carry `cust_id`/`cust_no` established by wave 1 |
 | D12 | Tolerance change | **None proposed.** Tolerances stay at version `1` | Exact-money comparison at `numeric_abs_tol = 0.0` is achievable with Decimal128 |

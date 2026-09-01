@@ -181,6 +181,12 @@ class SubscriptionWritePath:
                 old_doc = self.subscriptions.find_one(query, session=session)
                 if old_doc is None:
                     raise KeyError(f"no subscription with _id {sub_id}")
+                if self.db["rating_results"].find_one(
+                    {"subscription_id": sub_id, **NS_FILTER}, session=session
+                ) is not None:
+                    raise ValueError(
+                        f"subscription {sub_id} is referenced by rating_results"
+                    )
                 self.history.insert_one(
                     history_doc(old_doc, "DEL"), session=session
                 )

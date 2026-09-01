@@ -265,6 +265,9 @@ def test_delete_writes_del_preimage_history_and_removes_subscription():
     starts = datetime(2026, 8, 1, tzinfo=timezone.utc)
     old = _subscription("s1", "t1", "p1", starts, status_cd=20)
     db["subscriptions"].insert_one(old)
+    db["rating_results"].insert_one(
+        {"subscription_id": "other", "ns": NS_VALUE}
+    )
 
     result = SubscriptionWritePath(db).delete("s1")
 
@@ -277,6 +280,23 @@ def test_delete_writes_del_preimage_history_and_removes_subscription():
     assert history["starts_on"] == starts
     assert history["status_cd"] == 20
     assert history["ns"] == NS_VALUE
+
+
+def test_delete_rejects_subscription_referenced_by_namespaced_rating_result():
+    db = _db()
+    starts = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db["subscriptions"].insert_one(_subscription("s1", "t1", "p1", starts))
+    db["rating_results"].insert_one(
+        {"subscription_id": "s1", "ns": NS_VALUE}
+    )
+
+    with pytest.raises(
+        ValueError, match="subscription s1 is referenced by rating_results"
+    ):
+        SubscriptionWritePath(db).delete("s1")
+
+    assert db["subscriptions"].find_one({"_id": "s1"}) is not None
+    assert db["subscriptions_hist"].count_documents({}) == 0
 
 
 def test_delete_missing_subscription_writes_no_history():

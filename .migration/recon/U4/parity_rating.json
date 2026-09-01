@@ -1,0 +1,241 @@
+{
+  "unit": "U4",
+  "run_mode": "fixture",
+  "generated_at": "2026-09-01T15:07:50.866957+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "transcript_dir": "procs/oracle/transcripts/rating",
+  "subscription_source": "read-only Oracle extract (SUBSCRIPTIONS belongs to unit U3 and is not loaded; the Mongo-backed subscription read path is declared-unexercised)",
+  "scenarios": [
+    {
+      "scenario": "RATING-001",
+      "entrypoint": "billing.fn_usage_rating",
+      "oracle_entrypoint": "pkg_rating.fn_usage_rating",
+      "transcript_sha256": "cb032ebd6e36e0cdfc825de4449923be44d9bad7947e8d1c3112d2152f6dcb75",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000007"
+      },
+      "expected": {
+        "billable_units": 160,
+        "rollover_units": 0,
+        "used_units": 260
+      },
+      "actual": {
+        "billable_units": 160,
+        "rollover_units": 0,
+        "used_units": 260
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-002",
+      "entrypoint": "billing.fn_usage_rating",
+      "oracle_entrypoint": "pkg_rating.fn_usage_rating",
+      "transcript_sha256": "6331ee035eb5a9d717de46c765fdc4e1898f600ea5625eca4a69eb19e9d3b1ec",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000001"
+      },
+      "expected": {
+        "overage_amount": "0.00",
+        "rollover_units": 200
+      },
+      "actual": {
+        "overage_amount": "0.00",
+        "rollover_units": 200
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-003",
+      "entrypoint": "billing.fn_usage_rating",
+      "oracle_entrypoint": "pkg_rating.fn_usage_rating",
+      "transcript_sha256": "097ca7a3ab6a91340e02ecf92220e71b336631db815e8882c3113b07542fe9b0",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000002"
+      },
+      "expected": {
+        "billable_units": 100,
+        "overage_amount": "4.37"
+      },
+      "actual": {
+        "billable_units": 100,
+        "overage_amount": "4.37"
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-004",
+      "entrypoint": "billing.fn_usage_rating",
+      "oracle_entrypoint": "pkg_rating.fn_usage_rating",
+      "transcript_sha256": "ce2acc14db3443c68cfafa2b8921d0a678806adc98ad763ad2360414d676e98f",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000006"
+      },
+      "expected": {
+        "first_tier_units": 101,
+        "overage_amount": "5.56"
+      },
+      "actual": {
+        "first_tier_units": 101,
+        "overage_amount": "5.56"
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-005",
+      "entrypoint": "billing.fn_usage_rating",
+      "oracle_entrypoint": "pkg_rating.fn_usage_rating",
+      "transcript_sha256": "6219b8770b209c66a6f6b7f7932cf76d239ad69c44bc750327ea46dbb16e7710",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000008"
+      },
+      "expected": {
+        "first_tier_units": 101,
+        "second_tier_units": 1
+      },
+      "actual": {
+        "first_tier_units": 101,
+        "second_tier_units": 1
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-006",
+      "entrypoint": "billing.fn_usage_rating",
+      "oracle_entrypoint": "pkg_rating.fn_usage_rating",
+      "transcript_sha256": "aa4ac45c89cadfc7365ba77ca1b84005d751774421ef33cd1092f968d721cb56",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000003"
+      },
+      "expected": {
+        "first_tier_units": 101,
+        "overage_amount": "5.02",
+        "second_tier_units": 100
+      },
+      "actual": {
+        "first_tier_units": 101,
+        "overage_amount": "5.02",
+        "second_tier_units": 100
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-007",
+      "entrypoint": "billing.fn_usage_summary",
+      "oracle_entrypoint": "pkg_rating.fn_usage_summary",
+      "transcript_sha256": "38a082347032a7dd43f44c556555b5432da7709b949c4a42f413689523062856",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000004"
+      },
+      "expected": {
+        "kinds": [
+          "api",
+          "storage"
+        ],
+        "units": [
+          20,
+          30
+        ]
+      },
+      "actual": {
+        "kinds": [
+          "api",
+          "storage"
+        ],
+        "units": [
+          20,
+          30
+        ]
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "mutates_target": false,
+      "match": true
+    },
+    {
+      "scenario": "RATING-008",
+      "entrypoint": "billing.sp_finalize_rating",
+      "oracle_entrypoint": "pkg_rating.sp_finalize_rating",
+      "transcript_sha256": "9848d3ebbfcbaa68814bb3aa5d600e8c4365fc887d404af088bf6d6ec5aa647c",
+      "inputs": {
+        "period_end": "2026-02-28",
+        "period_start": "2026-02-01",
+        "tenant_id": "00000000-0000-0000-0000-000000000001"
+      },
+      "expected": {
+        "billable_units": 0,
+        "overage_amount": "0.00",
+        "quota_units": 100,
+        "rollover_units": 0,
+        "used_units": 260
+      },
+      "actual": {
+        "billable_units": 0,
+        "overage_amount": "0.00",
+        "quota_units": 100,
+        "rollover_units": 0,
+        "used_units": 260
+      },
+      "expected_probes": {
+        "rating_result": [
+          {
+            "billable_units": 0,
+            "overage_amount": "0.00",
+            "quota_units": 100,
+            "rollover_units": 0,
+            "used_units": 260
+          }
+        ]
+      },
+      "actual_probes": {
+        "rating_result": [
+          {
+            "billable_units": 0,
+            "overage_amount": "0.00",
+            "quota_units": 100,
+            "rollover_units": 0,
+            "used_units": 260
+          }
+        ]
+      },
+      "mutates_target": true,
+      "match": true
+    }
+  ],
+  "verdict": "PASS"
+}

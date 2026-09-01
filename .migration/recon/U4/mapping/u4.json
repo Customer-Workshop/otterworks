@@ -1,0 +1,164 @@
+{
+  "version": "1.1",
+  "collections": [
+    {
+      "collection": "usage_events",
+      "root_table": "USAGE_EVENTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "OCCURRED_AT",
+          "target": "occurred_at",
+          "source_type": "TIMESTAMP(6)",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "UNITS",
+          "target": "units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "KIND_CD",
+          "target": "kind_cd",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": []
+        }
+      ]
+    },
+    {
+      "collection": "rating_periods",
+      "root_table": "RATING_PERIODS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "PERIOD_START",
+          "target": "period_start",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "PERIOD_END",
+          "target": "period_end",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        }
+      ]
+    },
+    {
+      "collection": "rating_results",
+      "root_table": "RATING_RESULTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "PERIOD_ID",
+          "target": "period_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "SUBSCRIPTION_ID",
+          "target": "subscription_id",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "USED_UNITS",
+          "target": "used_units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "QUOTA_UNITS",
+          "target": "quota_units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "ROLLOVER_UNITS",
+          "target": "rollover_units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "BILLABLE_UNITS",
+          "target": "billable_units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": []
+        },
+        {
+          "source": "OVERAGE_AMOUNT",
+          "target": "overage_amount",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "CREATED_AT",
+          "target": "created_at",
+          "source_type": "TIMESTAMP(6)",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        }
+      ]
+    }
+  ]
+}

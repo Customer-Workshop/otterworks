@@ -1,0 +1,50 @@
+{
+  "started_at": "2026-09-01T14:00:29.928290+00:00",
+  "finished_at": "2026-09-01T14:00:34.632199+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "collections": {
+    "usage_events": {
+      "root_table": "USAGE_EVENTS",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 814,
+      "inserted": 814,
+      "docs_after": 814,
+      "ns_docs_after": 814,
+      "indexes": [
+        "_id_",
+        "tenant_id_1_occurred_at_1_kind_cd_1"
+      ]
+    },
+    "rating_periods": {
+      "root_table": "RATING_PERIODS",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 3,
+      "inserted": 3,
+      "docs_after": 3,
+      "ns_docs_after": 3,
+      "indexes": [
+        "_id_"
+      ]
+    },
+    "rating_results": {
+      "root_table": "RATING_RESULTS",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 3,
+      "inserted": 3,
+      "docs_after": 3,
+      "ns_docs_after": 3,
+      "indexes": [
+        "_id_",
+        "period_id_1"
+      ]
+    }
+  }
+}

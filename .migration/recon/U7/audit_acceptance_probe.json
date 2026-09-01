@@ -1,0 +1,26 @@
+{
+  "source": "read-only anonymous PL/SQL blocks against the NS=demo fixture; no table writes",
+  "column_semantics": {
+    "g_last_module": "VARCHAR2(30 BYTE)",
+    "module": "VARCHAR2(30 BYTE)",
+    "message": "VARCHAR2(4000 BYTE)",
+    "nls_length_semantics": "BYTE",
+    "nls_characterset": "AL32UTF8"
+  },
+  "probes": [
+    {
+      "case": "assign_40_ascii",
+      "result": "ORA-06502 character string buffer too small"
+    },
+    {
+      "case": "assign_30_ascii",
+      "result": "ok"
+    },
+    {
+      "case": "assign_30_multibyte_60_bytes",
+      "result": "ORA-06502 character string buffer too small"
+    }
+  ],
+  "conclusion": "The source drops events whose module exceeds 30 bytes or whose character-truncated message exceeds 4000 bytes.",
+  "port_behaviour": "unconditional write, character truncation - declared divergence"
+}

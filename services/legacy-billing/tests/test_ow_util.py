@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from bson import ObjectId
+from bson.errors import InvalidDocument
 from pymongo.errors import PyMongoError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
@@ -107,6 +108,19 @@ def test_transcript_replay():
             assert _jsonable(function(*call_args)) == operation["value"], operation["label"]
 
 
+def test_log_msg_accepts_source_dropped_lengths_as_declared_divergence():
+    # Declared divergence: the port writes module lengths the BYTE-limited source drops.
+    ascii_collection = _AuditCollection()
+    ascii_util = ow_util.OwUtil(_FakeDb(audit=ascii_collection))
+    assert ascii_util.log_msg("M" * 40, "message") is True
+    assert len(ascii_collection.documents) == 1
+
+    multibyte_collection = _AuditCollection()
+    multibyte_util = ow_util.OwUtil(_FakeDb(audit=multibyte_collection))
+    assert multibyte_util.log_msg("ö" * 30, "message") is True
+    assert len(multibyte_collection.documents) == 1
+
+
 def test_log_msg_truncates_and_uses_independent_insert():
     collection = _AuditCollection()
     util = ow_util.OwUtil(_FakeDb(audit=collection))
@@ -122,6 +136,28 @@ def test_log_msg_truncates_and_uses_independent_insert():
     assert isinstance(document["_id"], ObjectId)
     assert document["logged_at"].microsecond == 0
     assert util.last_module == module
+
+
+def test_log_msg_swallows_argument_failure_before_insert():
+    collection = _AuditCollection()
+    util = ow_util.OwUtil(_FakeDb(audit=collection))
+
+    assert util.log_msg(123, "message") is False
+    assert collection.documents == []
+    assert util.last_module == 123
+
+
+def test_log_msg_swallows_bson_encoding_failure():
+    class _InvalidDocumentCollection(_AuditCollection):
+        def insert_one(self, document, **kwargs):
+            raise InvalidDocument("cannot encode document")
+
+    collection = _InvalidDocumentCollection()
+    util = ow_util.OwUtil(_FakeDb(audit=collection))
+
+    assert util.log_msg("module", "message") is False
+    assert collection.documents == []
+    assert util.last_module == "module"
 
 
 def test_log_msg_swallowing_driver_error():

@@ -184,19 +184,23 @@ class OwUtil:
         The collection's independent write concern and the single-document
         atomic insert keep this write independent from any caller transaction,
         which is the MongoDB equivalent of the source autonomous transaction.
-        Driver failures are logged at DEBUG and swallowed.
+        The source drops events when the module exceeds 30 bytes or its
+        character-truncated message exceeds 4000 bytes. The port truncates by
+        characters and always records the event, so audit coverage is wider
+        than the source by design. Argument, encoding, and driver failures are
+        logged at DEBUG and swallowed.
         """
         self.last_module = module
-        document = {
-            "_id": ObjectId(),
-            "logged_at": datetime.now(timezone.utc).replace(microsecond=0),
-            "module": None if module is None else module[:MODULE_MAX_LEN],
-            "message": None if message is None else message[:MESSAGE_MAX_LEN],
-            "ns": NS_VALUE,
-        }
         try:
+            document = {
+                "_id": ObjectId(),
+                "logged_at": datetime.now(timezone.utc).replace(microsecond=0),
+                "module": None if module is None else module[:MODULE_MAX_LEN],
+                "message": None if message is None else message[:MESSAGE_MAX_LEN],
+                "ns": NS_VALUE,
+            }
             self.audit_collection.insert_one(document)
-        except PyMongoError:
+        except Exception:
             _LOGGER.debug("billing audit log write failed", exc_info=True)
             return False
         return True

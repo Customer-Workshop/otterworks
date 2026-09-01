@@ -39,6 +39,12 @@ EAV_TABLE = "OW_BILLING.ENTITY_ATTR_VALUE"
 BATCH_SIZE = 1000
 
 MAPPING_SPEC = Path(".migration/03_mapping_spec.json")
+CONVENTIONS = Path(".migration/01_conventions.md")
+
+# The cluster credential can write any database on the cluster, several of which belong to
+# other owners, so the designated pair is read from the conventions record and enforced here
+# rather than trusted from the command line.
+DB_ROWS = {"target_db": "Database", "quarantine_db": "Quarantine database"}
 
 # Typed fields derived from the estate's `DD-MON-YY` string dates (D4).
 DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity_at")]
@@ -245,8 +251,28 @@ def assert_source_slice(cursor, batch_no: int, mapped: set[str]) -> int:
     return rows
 
 
+def designated_database(conventions_path: Path, row: str) -> str:
+    """The database named on one row of the conventions record's target table."""
+    pattern = re.compile(rf"^\|\s*{row}\s*\|\s*`([^`]+)`\s*\|", re.MULTILINE)
+    match = pattern.search(conventions_path.read_text())
+    if match is None:
+        raise SystemExit(f"{conventions_path} declares no '{row}' row")
+    return match.group(1)
+
+
+def assert_designated(conventions_path: Path, **databases: str) -> None:
+    for argument, given in databases.items():
+        expected = designated_database(conventions_path, DB_ROWS[argument])
+        if given != expected:
+            raise SystemExit(
+                f"--{argument.replace('_', '-')} {given!r} is not the database designated in "
+                f"{conventions_path} ({expected!r}); writing anywhere else is out of bounds")
+
+
 def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str,
-         quarantine_db: str, spec_path: Path = MAPPING_SPEC) -> dict:
+         quarantine_db: str, spec_path: Path = MAPPING_SPEC,
+         conventions_path: Path = CONVENTIONS) -> dict:
+    assert_designated(conventions_path, target_db=target_db, quarantine_db=quarantine_db)
     if not NS_RE.match(ns):
         raise SystemExit(f"namespace {ns!r} is not of the form {NS_RE.pattern}")
     batch_no = ns_batch_no(ns)

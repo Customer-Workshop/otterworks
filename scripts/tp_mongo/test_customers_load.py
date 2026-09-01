@@ -13,6 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from customers_load import assert_source_slice, load, seed_counter
 
+# Resolved from the repo root so the suite runs from anywhere.
+CONVENTIONS = Path(__file__).resolve().parents[2] / ".migration" / "01_conventions.md"
+
 MAPPED = {"CUST_ID", "CUST_NO", "CUR_BAL_AMT"}
 CATALOG = [("CUST_ID",), ("CUST_NO",), ("CUR_BAL_AMT",), ("LEGACY_FAX_NO",)]
 
@@ -73,11 +76,21 @@ def test_preflight_refuses_a_retired_column_that_now_holds_data():
         assert_source_slice(FakeCursor(25000, (7,)), 85559852, MAPPED)
 
 
+@pytest.mark.parametrize("target_db,quarantine_db", [
+    ("ow_tp_billing_demo", "ow_tp_demo_quarantine"),
+    ("ow_tp_demo", "ow_tp_mongodb_demo_quarantine"),
+])
+def test_a_database_outside_the_conventions_record_is_refused(target_db, quarantine_db):
+    with pytest.raises(SystemExit, match="not the database designated"):
+        load("demo", "OW_BILLING_SOURCE_DSN", "MONGODB_ATLAS_URI", target_db, quarantine_db,
+             conventions_path=CONVENTIONS)
+
+
 @pytest.mark.parametrize("ns", ["", "demo/../prod", "Demo Namespace", "d" * 33])
 def test_a_malformed_namespace_is_rejected_before_anything_is_opened(ns):
     with pytest.raises(SystemExit, match="not of the form"):
         load(ns, "OW_BILLING_SOURCE_DSN", "MONGODB_ATLAS_URI", "ow_tp_demo",
-             "ow_tp_demo_quarantine")
+             "ow_tp_demo_quarantine", conventions_path=CONVENTIONS)
 
 
 def test_counter_seeds_from_the_sequence_on_a_first_run():

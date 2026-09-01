@@ -190,9 +190,9 @@ def main() -> int:
         "values_recomputed_from_target": True,
         "idempotency_rerun": idem,
         "planted_anomaly_detections": {"expected_set": [], "actual_set": [], "missing": [], "unexpected": []},
-        "unverified_paths": [] if args.run_mode == "live" else
-            ["live-legacy-comparison (DEGRADED mode)",
-             "live-mode pass is owned by the parent's independent recon window"],
+        "unverified_paths": ["live-legacy-comparison (DEGRADED mode)"] +
+            ([] if args.run_mode == "live" else
+             ["live-mode pass is owned by the parent's independent recon window"]),
         "row_diff_samples": {"missing": [list(k) for k in missing[:5]],
                              "unexpected": [list(k) for k in unexpected[:5]],
                              "changed": [list(k) for k in changed[:5]]},

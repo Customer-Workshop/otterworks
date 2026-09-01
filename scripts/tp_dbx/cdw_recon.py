@@ -17,6 +17,7 @@ Checks (tolerances v1, 03_recon_tolerances.md):
   key_preservation    every baseline surrogate key present with the same natural key
   money_sum_cents     exact integer-cents sum for money columns (fact, summary)
   fact_covers_ledger  (fact only) fact rows == ledger feed rows -> dropped_join_rows = 0
+  dropped_join_rows   (fact only) ledger feed rows - target fact rows, clamped at 0; expected 0
   idempotency         the --rerun program (one argv, no shell syntax; wrap shell logic in a
                       script) is executed and the target re-read; row set must be
                       identical (loaded_at excluded). Without --rerun the report is invalid
@@ -168,6 +169,8 @@ def main() -> int:
         _, lrows = read_baseline(baseline_dir, "COMMISSION_LEDGER")
         checks.append(check("fact_covers_ledger", len(lrows), len(tgt),
                             "COMMISSION_LEDGER.csv feed rows vs fact rows (dropped_join_rows must be 0)"))
+        checks.append(check("dropped_join_rows", 0, max(0, len(lrows) - len(tgt)),
+                            "COMMISSION_LEDGER.csv feed vs target fact rows"))
 
     idem = {"performed": False, "result": "fail", "evidence": "no --rerun command supplied"}
     if args.rerun:

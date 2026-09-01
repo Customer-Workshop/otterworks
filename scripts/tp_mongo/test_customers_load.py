@@ -102,6 +102,17 @@ def test_a_connection_string_for_another_cluster_is_refused(monkeypatch):
         assert_designated_cluster(CONVENTIONS, "MONGODB_ATLAS_URI")
 
 
+@pytest.mark.parametrize("host_section", [
+    "otterworks-demo.cgbijgv.mongodb.net:27017",
+    "otterworks-demo.cgbijgv.mongodb.net,someone-else.abcde.mongodb.net",
+    "otterworks-demo.cgbijgv.mongodb.net.someone-else.example",
+])
+def test_the_designated_host_with_anything_appended_is_refused(monkeypatch, host_section):
+    monkeypatch.setenv("MONGODB_ATLAS_URI", f"mongodb+srv://u:p@{host_section}/?tls=true")
+    with pytest.raises(SystemExit, match="other than the designated"):
+        assert_designated_cluster(CONVENTIONS, "MONGODB_ATLAS_URI")
+
+
 def test_a_standard_seed_list_is_refused(monkeypatch):
     monkeypatch.setenv("MONGODB_ATLAS_URI",
                        "mongodb://u:p@ac-1a2b3c-shard-00-00.cgbijgv.mongodb.net:27017,"

@@ -51,7 +51,7 @@ URI_SECRET_ROW = re.compile(r"^\|\s*Target cluster URI\s*\|\s*`([A-Z0-9_]+)`", r
 # The SRV host of a connection string: everything between the credentials and the path. Only
 # the `mongodb+srv://` form is accepted, because a standard seed list names generated shard
 # hosts (`ac-...-shard-00-00.<subdomain>.mongodb.net`) that do not identify their cluster.
-URI_SRV_HOST = re.compile(r"^mongodb\+srv://(?:[^@/]*@)?([^/?,:]+)")
+URI_SRV_HOST = re.compile(r"^mongodb\+srv://(?:[^@/]*@)?([^/?]+)(?:[/?]|$)")
 
 # Typed fields derived from the estate's `DD-MON-YY` string dates (D4).
 DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity_at")]
@@ -304,6 +304,8 @@ def assert_designated_cluster(conventions_path: Path, uri_secret: str) -> None:
             f"secret '{uri_secret}' does not hold a 'mongodb+srv://' connection string; a "
             f"standard seed list names generated shard hosts, which do not identify the "
             f"cluster they belong to")
+    # The whole host section, not a prefix of it: a port or a second seed host appended to the
+    # designated name would otherwise reach the client unexamined.
     if host.group(1).lower() != expected_host:
         raise SystemExit(
             f"secret '{uri_secret}' points at a cluster other than the designated "

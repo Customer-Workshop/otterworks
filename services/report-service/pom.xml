@@ -7,9 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- LEGACY: Spring Boot 2.5.14 — last 2.5.x release. Upgrade target: 3.2+ -->
-        <!-- Pinned via 2.5.15 patch release pending security review; see internal ticket OW-4471 -->
-        <version>2.5.15</version>
+        <version>3.2.5</version>
         <relativePath/>
     </parent>
 
@@ -26,8 +24,6 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- LEGACY: SpringFox 3.0 (dead project). Upgrade target: springdoc-openapi 2.x -->
-        <springfox.version>3.0.0</springfox.version>
         <!-- LEGACY: Apache POI 4.1.2 (2020). Upgrade target: 5.2+ -->
         <poi.version>4.1.2</poi.version>
         <!-- LEGACY: iText 5.5.13.3 (AGPL, pre-license-change). Upgrade target: OpenPDF or iText 7+ -->
@@ -65,14 +61,6 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- LEGACY: javax.servlet — removed in Jakarta EE 9+. Upgrade: jakarta.servlet -->
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Database -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -80,11 +68,10 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- LEGACY: SpringFox Swagger 2 (dead project, last release 2020) -->
         <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-boot-starter</artifactId>
-            <version>${springfox.version}</version>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
         </dependency>
 
         <!-- LEGACY: Apache POI 4.x for Excel generation -->
@@ -136,9 +123,8 @@
 
         <!-- LEGACY: RestTemplate HTTP client (deprecated in favor of WebClient) -->
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
         </dependency>
 
         <!-- Observability (also legacy versions) -->
@@ -155,24 +141,10 @@
         </dependency>
 
         <!-- Testing -->
-        <!-- LEGACY: JUnit 4 (not JUnit 5/Jupiter). Upgrade target: junit-jupiter -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-            <!-- Exclude JUnit 5 to force JUnit 4 usage -->
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
@@ -182,7 +154,11 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>3.12.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -206,7 +182,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>

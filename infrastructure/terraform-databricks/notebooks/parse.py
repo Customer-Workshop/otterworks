@@ -176,14 +176,6 @@ def main() -> None:
     ns = require_ns(dbutils.widgets.get("ns"))  # noqa: F821 - injected by Databricks
     log(stage="parse", ns=ns)
 
-    non_ascii = spark.sql(  # noqa: F821
-        f"SELECT count(*) FROM {BRONZE} "
-        "WHERE ns = :ns AND raw_line RLIKE '[^\\x00-\\x7F]'",
-        args={"ns": ns},
-    ).collect()[0][0]
-    if non_ascii:
-        raise RuntimeError("non-ASCII raw_line values are not supported")
-
     rows = spark.sql(  # noqa: F821
         f"SELECT source_file, line_no, record_kind, raw_line FROM {BRONZE} "
         "WHERE ns = :ns ORDER BY source_file, line_no",
@@ -192,6 +184,10 @@ def main() -> None:
     file_lines: dict[str, list[tuple[int, str, str]]] = {}
     for row in rows:
         source_file, line_no, record_kind, raw_line = row
+        if NON_ASCII_RE.search(raw_line):
+            raise RuntimeError(
+                f"non-ASCII raw_line at {source_file}:{line_no}; character offsets must equal byte offsets"
+            )
         file_lines.setdefault(source_file, []).append((line_no, record_kind, raw_line))
 
     if not any(record_kind == "BODY" for lines in file_lines.values() for _, record_kind, _ in lines):

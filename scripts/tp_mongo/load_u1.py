@@ -62,13 +62,31 @@ def _number_scale(source_type: str) -> int:
     return int(parts[1]) if len(parts) == 2 else 0
 
 
+# The v1.1 recon-grading amendment blanks bson_type on the aggregate-deferred
+# CUSTOMER_MASTER fields; the write contract is unchanged, so a blank type is re-derived
+# from source_type by the same deterministic rule that generated the spec.
+GRADING_BLANKED_WRITE_TYPES = {"NUMBER(4,0)": "int", "NUMBER(14,2)": "decimal"}
+
+
+def _write_bson_type(field: dict) -> str:
+    if field["bson_type"]:
+        return field["bson_type"]
+    try:
+        return GRADING_BLANKED_WRITE_TYPES[field["source_type"]]
+    except KeyError:
+        raise RuntimeError(
+            f"{field['source']}: blank bson_type with unsupported source_type "
+            f"{field['source_type']}"
+        ) from None
+
+
 def converter(field: dict):
     """Per-field converter built from the approved (bson_type, source_type) pair.
 
     Every converter maps a source NULL to None so the field is present in the
     document as an explicit BSON null (tolerances v1.0: NULL != missing).
     """
-    bson_type = field["bson_type"]
+    bson_type = _write_bson_type(field)
     source_type = field["source_type"]
     if bson_type == "string" and source_type == "VARCHAR2":
         return vc

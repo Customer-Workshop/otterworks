@@ -37,6 +37,8 @@ MONGO_SOURCE = {
     "detail": "invoice_feed roots with embedded lines[] via the codes lookup (RPT-114 port)",
 }
 
+_mongo_client = None
+
 BALANCES_SQL = """
 SELECT COUNT(*)                                          AS customer_count,
        TO_CHAR(SUM(cur_bal_amt), 'FM999999999999990.00') AS current_balance_total,
@@ -237,9 +239,15 @@ def line_pipeline(batch_no):
 
 
 def mongo_client():
+    global _mongo_client
+
+    if _mongo_client is not None:
+        return _mongo_client
+
     from pymongo import MongoClient
 
-    return MongoClient(os.environ["MONGODB_ATLAS_URI"])
+    _mongo_client = MongoClient(os.environ["MONGODB_ATLAS_URI"])
+    return _mongo_client
 
 
 def mongo_db():

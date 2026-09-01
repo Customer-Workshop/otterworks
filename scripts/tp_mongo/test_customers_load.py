@@ -102,6 +102,14 @@ def test_a_connection_string_for_another_cluster_is_refused(monkeypatch):
         assert_designated_cluster(CONVENTIONS, "MONGODB_ATLAS_URI")
 
 
+def test_a_standard_seed_list_is_refused(monkeypatch):
+    monkeypatch.setenv("MONGODB_ATLAS_URI",
+                       "mongodb://u:p@ac-1a2b3c-shard-00-00.cgbijgv.mongodb.net:27017,"
+                       "ac-1a2b3c-shard-00-01.cgbijgv.mongodb.net:27017/?ssl=true")
+    with pytest.raises(SystemExit, match="mongodb\\+srv://"):
+        assert_designated_cluster(CONVENTIONS, "MONGODB_ATLAS_URI")
+
+
 def test_the_designated_cluster_is_accepted(monkeypatch):
     monkeypatch.setenv("MONGODB_ATLAS_URI",
                        "mongodb+srv://u:p@otterworks-demo.cgbijgv.mongodb.net/?retryWrites=true")

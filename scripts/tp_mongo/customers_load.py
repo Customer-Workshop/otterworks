@@ -48,8 +48,10 @@ DB_ROWS = {"target_db": "Database", "quarantine_db": "Quarantine database"}
 CLUSTER_ROW = re.compile(r"^\|\s*Cluster\s*\|[^|]*`([A-Za-z0-9.-]+\.mongodb\.net)`", re.MULTILINE)
 URI_SECRET_ROW = re.compile(r"^\|\s*Target cluster URI\s*\|\s*`([A-Z0-9_]+)`", re.MULTILINE)
 
-# Hosts of a connection string: everything between the credentials and the path.
-URI_HOSTS = re.compile(r"^mongodb(?:\+srv)?://(?:[^@/]*@)?([^/?]+)")
+# The SRV host of a connection string: everything between the credentials and the path. Only
+# the `mongodb+srv://` form is accepted, because a standard seed list names generated shard
+# hosts (`ac-...-shard-00-00.<subdomain>.mongodb.net`) that do not identify their cluster.
+URI_SRV_HOST = re.compile(r"^mongodb\+srv://(?:[^@/]*@)?([^/?,:]+)")
 
 # Typed fields derived from the estate's `DD-MON-YY` string dates (D4).
 DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity_at")]
@@ -283,8 +285,9 @@ def designated_row(conventions_path: Path, pattern: re.Pattern[str], what: str) 
 
 def assert_designated_cluster(conventions_path: Path, uri_secret: str) -> None:
     """The database names alone do not bound the target: the same two names exist on any
-    cluster the operator can reach. The connection string must lead to the cluster the
-    conventions record designates, and it must arrive under the secret NAME recorded there.
+    cluster the operator can reach. The connection string must be the SRV URI of the cluster
+    the conventions record designates, and it must arrive under the secret NAME recorded
+    there.
 
     Only the host of the connection string is ever read, never echoed.
     """
@@ -295,11 +298,13 @@ def assert_designated_cluster(conventions_path: Path, uri_secret: str) -> None:
             f"{conventions_path} ({expected_secret!r})")
 
     expected_host = designated_row(conventions_path, CLUSTER_ROW, "target cluster host")
-    hosts = URI_HOSTS.match(secret(uri_secret))
-    if hosts is None:
-        raise SystemExit(f"secret '{uri_secret}' does not hold a MongoDB connection string")
-    reached = [h.split(":")[0].lower() for h in hosts.group(1).split(",")]
-    if any(h != expected_host and not h.endswith("." + expected_host) for h in reached):
+    host = URI_SRV_HOST.match(secret(uri_secret))
+    if host is None:
+        raise SystemExit(
+            f"secret '{uri_secret}' does not hold a 'mongodb+srv://' connection string; a "
+            f"standard seed list names generated shard hosts, which do not identify the "
+            f"cluster they belong to")
+    if host.group(1).lower() != expected_host:
         raise SystemExit(
             f"secret '{uri_secret}' points at a cluster other than the designated "
             f"{expected_host}; writing anywhere else is out of bounds")

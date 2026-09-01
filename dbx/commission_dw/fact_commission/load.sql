@@ -1,6 +1,10 @@
 -- fact_commission loader: initialise from the FACT_COMMISSION baseline, guard
 -- feed integrity, quarantine dropped inner-join rows, then apply the legacy MERGE.
 
+DELETE FROM ow_tp.ops.quarantine_cdw
+ WHERE run_id = '__RUN_ID__'
+   AND unit = 'fact_commission';
+
 INSERT INTO ow_tp.silver.fact_commission_cdw (fact_id, agent_key, product_key, period_key, policy_id, split_pct, base_premium, commission_amt, loaded_at)
 SELECT fact_id, agent_key, product_key, period_key, policy_id, split_pct, base_premium, commission_amt, current_timestamp()
   FROM read_files('/Volumes/ow_tp/bronze/landing/cdw/baseline/FACT_COMMISSION.csv', format => 'csv', header => true,
@@ -29,10 +33,6 @@ SELECT assert_true(count(*) = 0,
          GROUP BY 1, 2, 3
         HAVING count(*) > 1
        );
-
-DELETE FROM ow_tp.ops.quarantine_cdw
- WHERE run_id = '__RUN_ID__'
-   AND unit = 'fact_commission';
 
 INSERT INTO ow_tp.ops.quarantine_cdw (run_id, unit, ledger_id, policy_id, agent_id, period_month, reason, quarantined_at)
 SELECT '__RUN_ID__', 'fact_commission', cl.ledger_id, cl.policy_id, cl.agent_id, cl.period_month,

@@ -26,10 +26,13 @@ def esc(value: str) -> str:
     return value.replace("\\", "\\\\").replace("'", "''")
 
 
-def legacy_dat_files(root: Path) -> list[tuple[str, Path]]:
-    candidates = sorted((root / "incoming").glob("CUSTBILL*.dat*"))
-    if not candidates:
-        candidates = sorted((root / "sftp-drop" / "upload").glob("CUSTBILL*.dat"))
+def legacy_dat_files(root: Path, history: bool = False) -> list[tuple[str, Path]]:
+    if history:
+        candidates = sorted((root / "sftp-drop" / "history").glob("*/CUSTBILL*.dat"))
+    else:
+        candidates = sorted((root / "incoming").glob("CUSTBILL*.dat*"))
+        if not candidates:
+            candidates = sorted((root / "sftp-drop" / "upload").glob("CUSTBILL*.dat"))
     by_name: dict[str, Path] = {}
     for path in candidates:
         if not path.is_file():
@@ -197,7 +200,7 @@ def cmd_seed_fixture(dbx: Databricks, args: argparse.Namespace) -> int:
         raise SystemExit("seed-fixture refuses --ns demo; use a non-demo fixture namespace")
     root = Path(args.legacy_root)
     if args.layer == "bronze":
-        files = legacy_dat_files(root)
+        files = legacy_dat_files(root, history=args.history)
         rows = [row for source_file, path in files
                 for row in bronze_rows_from_file(path, source_file)]
         table = BRONZE
@@ -281,6 +284,8 @@ def parser() -> argparse.ArgumentParser:
     seed = commands.add_parser("seed-fixture")
     seed.add_argument("--layer", required=True, choices=("bronze", "silver"))
     seed.add_argument("--legacy-root", required=True)
+    seed.add_argument("--history", action="store_true",
+                      help="bronze only: seed sftp-drop/history/*/CUSTBILL*.dat (gen_history_data.pl output)")
     run = commands.add_parser("run-job")
     run.add_argument("--wait", action="store_true")
     run.add_argument("--report-date", type=_date_literal)

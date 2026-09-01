@@ -159,3 +159,13 @@ def test_idempotency_run_ending_after_snapshot_is_pass() -> None:
     assert idempotency_result(True, True, None, current, 200) == (
         "pass", "newer successful ow_tp_custbill run confirmed"
     )
+
+
+def test_legacy_dat_files_history_reads_year_dirs(tmp_path: Path) -> None:
+    hist = tmp_path / "sftp-drop" / "history" / "2023"
+    hist.mkdir(parents=True)
+    (hist / "CUSTBILL_X_202301.dat").write_bytes(b"HDR\nTRL\n")
+    (tmp_path / "incoming").mkdir()
+    (tmp_path / "incoming" / "CUSTBILL_X_001.dat").write_bytes(b"HDR\nTRL\n")
+    assert [name for name, _ in legacy_dat_files(tmp_path)] == ["CUSTBILL_X_001.dat"]
+    assert [name for name, _ in legacy_dat_files(tmp_path, history=True)] == ["CUSTBILL_X_202301.dat"]

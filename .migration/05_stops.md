@@ -48,8 +48,9 @@ Artifacts presented: `06_census.md` (object census, stored-logic dispositions,
 access-pattern evidence, anomaly scan), `03_mapping_spec.json` **v1.0.0** (2 collections,
 51 mapped fields, 2 embeds, harness-validated), `04_progress.md` ledger.
 
-Status: **PENDING** — awaiting explicit approval. No unit (`!mongo_unit`) starts, and no
-data is loaded, until the approval is recorded verbatim below.
+Status: **APPROVED** 2026-09-01 for mapping spec version `1.0.0`. Wave 1 (`customers`)
+starts under `!mongo_unit`; H1 is resolved by option (b), a repo-vendored pinned harness
+copy carrying only the Tier-2 `sum` fix.
 
 ### Decision table (all PROPOSED; full evidence in `06_census.md` §6)
 
@@ -68,12 +69,19 @@ data is loaded, until the approval is recorded verbatim below.
 | D11 | Wave order | `customers` → `invoices`, unchanged |
 | D12 | Tolerance change | None; tolerances stay at version `1` |
 | D13 | 113 all-NULL `CUSTOMER_MASTER` columns | Retired as a declared coverage gap |
-| H1 | Tier-2 `sum` is not type-aware (false FAIL on every string/date/all-NULL field) | Fix upstream; choose (a) wait for the plugin release or (b) run wave 1 against a repo-vendored harness carrying only that fix |
+| H1 | Tier-2 `sum` is not type-aware (false FAIL on every string/date/all-NULL field) | **Approved: option (b)** — wave 1 runs against a repo-vendored, pinned harness copy carrying only that fix; the upstream profile feedback still stands |
 | H2 | No canon rule compares a `DD-MON-YY` string to a date, or CSV to an array | v1.0.0 maps the preserved raw value (`legacy.*`); proposed profile rules for a later version |
 
 ### Approval
 
-> _(verbatim approval to be pasted here on sign-off, with date and approver)_
+Approved 2026-09-01, verbatim:
+
+> Question 1: Selected: Approved — proceed to !mongo_unit wave 1, vendoring a pinned harness copy with the H1 fix
+
+Scope of the approval: mapping spec `03_mapping_spec.json` version **1.0.0** (2 collections,
+51 fields, 2 embeds, both roots and both embeds scoped to the deterministic `demo` batch
+`85559852`), decisions D1–D13 as recommended, tolerances unchanged at version `1`, wave order
+`customers` → `invoices`. No later mapping version inherits this approval.
 
 ## STOP C — cutover readiness
 

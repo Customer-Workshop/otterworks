@@ -124,7 +124,7 @@ def main() -> int:
     p.add_argument("--unit", required=True, choices=sorted(UNITS))
     p.add_argument("--ns", default="cdw")
     p.add_argument("--run-mode", default="fixture", choices=["fixture", "live"])
-    p.add_argument("--baseline-dir", default=None)
+    p.add_argument("--baseline-dir", "--baseline", dest="baseline_dir", default=None)
     p.add_argument("--rerun", default=None, help="program + args (single argv string, no shell operators) that re-runs the unit's load (idempotency proof)")
     p.add_argument("--out", required=True)
     p.add_argument("--warehouse", default="565cd2fd713738c4")
@@ -190,8 +190,9 @@ def main() -> int:
         "values_recomputed_from_target": True,
         "idempotency_rerun": idem,
         "planted_anomaly_detections": {"expected_set": [], "actual_set": [], "missing": [], "unexpected": []},
-        "unverified_paths": [] if args.run_mode == "live" else
-            ["live-mode pass is owned by the parent's independent recon window"],
+        "unverified_paths": ["live-legacy-comparison (DEGRADED mode)"] +
+            ([] if args.run_mode == "live" else
+             ["live-mode pass is owned by the parent's independent recon window"]),
         "row_diff_samples": {"missing": [list(k) for k in missing[:5]],
                              "unexpected": [list(k) for k in unexpected[:5]],
                              "changed": [list(k) for k in changed[:5]]},
@@ -199,7 +200,8 @@ def main() -> int:
     (out / f"{args.unit}.recon.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
 
     verdict = "PASS" if all(c["result"] == "pass" for c in checks) and idem["result"] == "pass" else "FAIL"
-    lines = [f"# Recon summary — `{args.unit}` (ns `{ns}`, mode {args.run_mode}, DEGRADED snapshot, tolerances v1)",
+    lines = [(f"# Recon summary — `{args.unit}` (ns `{ns}`, run_mode {args.run_mode}, "
+              "DEGRADED snapshot (federation unavailable), tolerances v1)"),
              "", f"**Verdict: {verdict}**", "", "| check | expected | actual | result |", "|---|---|---|---|"]
     for c in checks:
         lines.append(f"| {c['id']} | `{c['expected']}` | `{c['actual']}` | {c['result']} |")

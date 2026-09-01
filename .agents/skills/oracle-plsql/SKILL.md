@@ -58,3 +58,24 @@ rule below is either taken from the field dictionary in `.migration/COMMISSION_D
 - Recon: `python3 scripts/tp_dbx/cdw_recon.py --unit <unit> --ns <ns> --run-mode fixture --rerun "<load cmd>" --out dbx/commission_dw/<unit>`
   then `make tp-validate-recon FILE=dbx/commission_dw/<unit>/<unit>.recon.json`.
 - Legacy Oracle is read-only: never DDL/DML, never grants.
+
+## Pilot learnings (wave 1)
+
+- New surrogate keys in a MERGE: compute `max(key) + row_number()` ONLY over
+  feed rows that do not already exist in the target (`LEFT JOIN target …
+  WHERE target.natural_key IS NULL` or `NOT EXISTS`), otherwise matched rows
+  consume numbers and leave key gaps vs the legacy identity. Delta accepts the
+  target table being referenced inside the MERGE `USING` subquery (verified U1–U3).
+- Do not put `;` inside string literals (e.g. `COMMENT '...'`) — unit runners
+  split statements on `;`.
+- `YYYY-MM` period derivation: guard with
+  `period_month RLIKE '^[0-9]{4}-(0[1-9]|1[0-2])$'` in addition to the NULL
+  guard; `CAST('2025-13' AS INT)` passes a NULL-only guard.
+- Every silver/gold target carries
+  `loaded_at TIMESTAMP NOT NULL DEFAULT current_timestamp()`-equivalent (set
+  in INSERT), excluded from recon; declare it in the unit contract.
+- Wave-1 dims initialise by drop + rebuild-from-baseline then MERGE the feed
+  (full-snapshot semantics); the init-once vs recurring-run split is owned by
+  the U4 Workflow (DEC-017).
+- Recon invocation: `--baseline-dir` (alias `--baseline`); `--rerun` costs one
+  extra full load per gate — budget 2 loads per recon.

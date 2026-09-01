@@ -1,0 +1,38 @@
+{
+  "started_at": "2026-09-01T17:27:37.590684+00:00",
+  "finished_at": "2026-09-01T17:27:39.116013+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "collections": {
+    "notifications": {
+      "root_table": "NOTIFICATIONS",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 1,
+      "inserted": 1,
+      "docs_after": 1,
+      "ns_docs_after": 1,
+      "indexes": [
+        "_id_",
+        "tenant_id_1_kind_cd_1_sent_at_1"
+      ]
+    },
+    "invoices": {
+      "root_table": "INVOICES",
+      "dropped": false,
+      "embedded_dunning_attempts_source_rows": 1,
+      "embedded_dunning_attempts_after": 1,
+      "invoice_docs_after": 3,
+      "dunning_attempts_per_invoice": {
+        "60000000-0000-0000-0000-000000000001": 0,
+        "60000000-0000-0000-0000-000000000002": 1,
+        "60000000-0000-0000-0000-000000000003": 0
+      },
+      "all_have_dunning_attempts": true
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "kind": "job-run-report",
+  "job": "JOB_NIGHTLY_DUNNING",
+  "source_enabled": false,
+  "schedule_activated": false,
+  "target_db": "ow_tp_mongodb_032752",
+  "as_of": "2026-02-28",
+  "secret_names": {
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "started_at": "2026-09-01T17:18:55.948212+00:00",
+  "finished_at": "2026-09-01T17:18:56.964686+00:00",
+  "schedule_dunning": {
+    "scheduled": 2,
+    "last_run_dt": "2026-02-28"
+  },
+  "suspend_overdue": {
+    "suspended": [],
+    "notifications_inserted": 0
+  }
+}

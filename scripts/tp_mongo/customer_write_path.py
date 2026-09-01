@@ -53,7 +53,8 @@ def derive_on_insert(doc: dict) -> dict:
         derived["_id"] = str(uuid.uuid4())
     cust_name = derived.get("cust_name")
     derived["cust_name_upper"] = None if cust_name is None else cust_name.upper()
-    derived["row_version_no"] = derived.get("row_version_no") or 1
+    if derived.get("row_version_no") is None:
+        derived["row_version_no"] = 1
     if derived.get("cust_seq_no") is None:
         derived["cust_seq_no"] = app_cust_seq_no()
     derived["ns"] = NS_VALUE

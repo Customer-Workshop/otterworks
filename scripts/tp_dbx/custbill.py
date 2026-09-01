@@ -139,7 +139,8 @@ def _delete_tree(dbx: Databricks, volume_path: str) -> None:
                 if status not in (200, 204, 404):
                     raise DbxError(f"DELETE {child} -> HTTP {status}")
     else:
-        raise DbxError(f"{volume_path} still non-empty after 10000 delete passes")
+        if dbx.list_dir(volume_path):
+            raise DbxError(f"{volume_path} still non-empty after 10000 delete passes")
     status = dbx.delete_dir(volume_path)
     if status not in (200, 204, 404):
         raise DbxError(f"DELETE {volume_path} -> HTTP {status}")

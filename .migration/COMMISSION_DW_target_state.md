@@ -35,7 +35,7 @@ A child that has read only CORE + its surface profile + DATA/DEPENDENCY must be 
 | Field | Value | Status |
 |---|---|---|
 | Target runtime | Databricks Job (serverless) running Spark SQL `MERGE` statements, parameterised by `ns` and `period`; DLT deferred unless pilot recommends | PROPOSED |
-| Layering | bronze = landed snapshots of the four `COMMISSION_PAY` inputs (D3 feed) and of the DW tables (recon baseline); silver = `dim_*`, `fact_commission` rebuilt by the converted loader from bronze inputs; gold = `mv_agent_commission_summary` | PROPOSED |
+| Layering | bronze = landed snapshots of the four `COMMISSION_PAY` inputs (D3 feed) and of the DW tables (recon baseline); silver = `dim_*`, `fact_commission` **initialised from the `COMMISSION_DW` baseline snapshots (explicit `agent_key`/`product_key`/`period_key`/`fact_id` values carried over, DEC-003)** and thereafter maintained by the converted loader MERGE from the bronze feed; new rows receive keys allocated as `max(key) + row_number() OVER (ORDER BY natural key)` inside the single-writer job (deterministic, collision-free because the job is the only writer); gold = `mv_agent_commission_summary` | PROPOSED |
 | Load pattern | MERGE (upsert) keyed on natural keys, mirroring the PL/SQL; **idempotent**: rerun for the same period yields an identical row set (excluding `loaded_at`) | FACT (intake §4) |
 | Error / reject rows | no silent swallowing; rows failing NOT NULL / FK lookups go to `ow_tp.ops.quarantine_cdw` with reason; the legacy package's exception handling is documented in the dictionary and its `WHEN OTHERS` (if any) is **not** reproduced | PROPOSED |
 | Restart | full rerun is safe (MERGE); no checkpoint needed at this size | PROPOSED |
@@ -45,7 +45,7 @@ A child that has read only CORE + its surface profile + DATA/DEPENDENCY must be 
 | Field | Value | Status |
 |---|---|---|
 | Legacy schedule | none visible (no `DBMS_SCHEDULER` job; ETL invoked on demand, per period) | FACT (intake §1) |
-| Target | one Databricks Job `ow_tp_cdw_load_commission_dw` with tasks load → refresh gold → recon; **schedule PAUSED** (nothing runs on a schedule in this workspace); trigger by hand | PROPOSED |
+| Target | one Databricks Job `ow_tp_cdw_load_commission_facts` with tasks **ingest feed** (validate `manifest.json` under `/Volumes/ow_tp/bronze/landing/cdw/feed/`, sha256 + rowcount check, then `CREATE OR REPLACE TABLE ow_tp.bronze.<feed>_cdw AS SELECT … FROM read_files(...)` for all four inputs — atomic per table, fail-fast before any silver task) → load dims → load fact → refresh gold → recon; **schedule PAUSED** (nothing runs on a schedule in this workspace); trigger by hand | PROPOSED |
 | Completion signalling | job run state + `ops.run_log_cdw` row | PROPOSED |
 | Alerting | recon failure = job task failure; parallel-run remediation is event-driven per `!dbx_parallel_run` | PROPOSED |
 

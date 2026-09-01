@@ -1,0 +1,295 @@
+{
+  "kind": "recon-report",
+  "unit": "U6",
+  "run_mode": "fixture",
+  "generated_at": "2026-09-01T17:16:29.238215+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "transcript_dir": "procs/oracle/transcripts/dunning",
+  "read_source": "migrated MongoDB collections only",
+  "scenarios": [
+    {
+      "scenario": "DUNNING-001",
+      "entrypoint": "billing.fn_overdue_accounts",
+      "oracle_entrypoint": "pkg_dunning.fn_overdue_accounts",
+      "transcript_sha256": "722e4ff3d849a7d00650a40f87a3a7a5a5ad8b177b055dbbfc495057c65b6ecb",
+      "inputs": {
+        "as_of": "2026-02-28"
+      },
+      "expected": {
+        "days_overdue": [
+          27,
+          15
+        ],
+        "tenant_ids": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000005"
+        ]
+      },
+      "actual": {
+        "tenant_ids": [
+          "00000000-0000-0000-0000-000000000002",
+          "00000000-0000-0000-0000-000000000005"
+        ],
+        "days_overdue": [
+          27,
+          15
+        ]
+      },
+      "expected_probes": {},
+      "actual_probes": {},
+      "restoration": {
+        "commands": [
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u0.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-001-u0-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u3.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-001-u3-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u5.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-001-u5-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u6.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-001-u6-load-report.json"
+        ],
+        "completed": true
+      },
+      "match": true
+    },
+    {
+      "scenario": "DUNNING-002",
+      "entrypoint": "billing.sp_schedule_dunning",
+      "oracle_entrypoint": "pkg_dunning.sp_schedule_dunning",
+      "transcript_sha256": "8d0e30a0020c2ea0a8c08ae90c6d64a116467976434b8b3a6caf0f4075ec6294",
+      "inputs": {
+        "as_of": "2026-02-14"
+      },
+      "expected": {
+        "scheduled_for": "2026-02-16",
+        "status": "scheduled"
+      },
+      "actual": {
+        "scheduled_for": "2026-02-16",
+        "status": "scheduled"
+      },
+      "expected_probes": {
+        "schedule_rows": [
+          {
+            "attempt_no": 1,
+            "invoice_id": "60000000-0000-0000-0000-000000000001",
+            "scheduled_for": "2026-02-16",
+            "status": "scheduled"
+          },
+          {
+            "attempt_no": 1,
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "scheduled_for": "2026-02-16",
+            "status": "sent"
+          },
+          {
+            "attempt_no": 2,
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "scheduled_for": "2026-02-16",
+            "status": "scheduled"
+          }
+        ]
+      },
+      "actual_probes": {
+        "schedule_rows": [
+          {
+            "invoice_id": "60000000-0000-0000-0000-000000000001",
+            "attempt_no": 1,
+            "scheduled_for": "2026-02-16",
+            "status": "scheduled"
+          },
+          {
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "attempt_no": 1,
+            "scheduled_for": "2026-02-16",
+            "status": "sent"
+          },
+          {
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "attempt_no": 2,
+            "scheduled_for": "2026-02-16",
+            "status": "scheduled"
+          }
+        ]
+      },
+      "restoration": {
+        "commands": [
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u0.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-002-u0-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u3.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-002-u3-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u5.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-002-u5-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u6.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-002-u6-load-report.json"
+        ],
+        "completed": true
+      },
+      "match": true
+    },
+    {
+      "scenario": "DUNNING-003",
+      "entrypoint": "billing.sp_schedule_dunning",
+      "oracle_entrypoint": "pkg_dunning.sp_schedule_dunning",
+      "transcript_sha256": "15236698de479576522b35636b87176017e83bc2c61ffe16c9c916ff40faadfc",
+      "inputs": {
+        "as_of": "2026-02-17"
+      },
+      "expected": {
+        "attempt_no": 2,
+        "scheduled_for": "2026-02-17"
+      },
+      "actual": {
+        "attempt_no": 2,
+        "scheduled_for": "2026-02-17"
+      },
+      "expected_probes": {
+        "schedule_rows": [
+          {
+            "attempt_no": 1,
+            "invoice_id": "60000000-0000-0000-0000-000000000001",
+            "scheduled_for": "2026-02-17",
+            "status": "scheduled"
+          },
+          {
+            "attempt_no": 1,
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "scheduled_for": "2026-02-16",
+            "status": "sent"
+          },
+          {
+            "attempt_no": 2,
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "scheduled_for": "2026-02-17",
+            "status": "scheduled"
+          }
+        ]
+      },
+      "actual_probes": {
+        "schedule_rows": [
+          {
+            "invoice_id": "60000000-0000-0000-0000-000000000001",
+            "attempt_no": 1,
+            "scheduled_for": "2026-02-17",
+            "status": "scheduled"
+          },
+          {
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "attempt_no": 1,
+            "scheduled_for": "2026-02-16",
+            "status": "sent"
+          },
+          {
+            "invoice_id": "60000000-0000-0000-0000-000000000002",
+            "attempt_no": 2,
+            "scheduled_for": "2026-02-17",
+            "status": "scheduled"
+          }
+        ]
+      },
+      "restoration": {
+        "commands": [
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u0.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-003-u0-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u3.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-003-u3-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u5.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-003-u5-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u6.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-003-u6-load-report.json"
+        ],
+        "completed": true
+      },
+      "match": true
+    },
+    {
+      "scenario": "DUNNING-004",
+      "entrypoint": "billing.sp_suspend_overdue",
+      "oracle_entrypoint": "pkg_dunning.sp_suspend_overdue",
+      "transcript_sha256": "f9c2464c682c434d3fd017be033ac50a6a8067ed2819afaa7c15d8a51e7ebf14",
+      "inputs": {
+        "as_of": "2026-02-28"
+      },
+      "expected": {
+        "status": "suspended",
+        "suspended_on": "2026-02-28"
+      },
+      "actual": {
+        "status": "suspended",
+        "suspended_on": "2026-02-28"
+      },
+      "expected_probes": {
+        "suspension_notifications": [
+          {
+            "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+            "kind": "suspension",
+            "sent_at": "2026-02-28T00:00:00Z",
+            "tenant_id": "00000000-0000-0000-0000-000000000005"
+          }
+        ]
+      },
+      "actual_probes": {
+        "suspension_notifications": [
+          {
+            "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+            "tenant_id": "00000000-0000-0000-0000-000000000005",
+            "kind": "suspension",
+            "sent_at": "2026-02-28T00:00:00Z"
+          }
+        ]
+      },
+      "restoration": {
+        "commands": [
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u0.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-004-u0-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u3.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-004-u3-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u5.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-004-u5-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u6.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-004-u6-load-report.json"
+        ],
+        "completed": true
+      },
+      "match": true
+    },
+    {
+      "scenario": "DUNNING-005",
+      "entrypoint": "billing.sp_suspend_overdue",
+      "oracle_entrypoint": "pkg_dunning.sp_suspend_overdue",
+      "transcript_sha256": "0194771d0ee86b87c34dd10bb6811e7eaa1100b7a30e986fb9f832140980abdf",
+      "inputs": {
+        "as_of": "2026-02-28"
+      },
+      "expected": {
+        "notification_kinds": [
+          "suspension"
+        ]
+      },
+      "actual": {
+        "notification_kinds": [
+          "suspension"
+        ]
+      },
+      "expected_probes": {
+        "suspension_notifications": [
+          {
+            "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+            "kind": "suspension",
+            "sent_at": "2026-02-28T00:00:00Z",
+            "tenant_id": "00000000-0000-0000-0000-000000000005"
+          }
+        ]
+      },
+      "actual_probes": {
+        "suspension_notifications": [
+          {
+            "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+            "tenant_id": "00000000-0000-0000-0000-000000000005",
+            "kind": "suspension",
+            "sent_at": "2026-02-28T00:00:00Z"
+          }
+        ]
+      },
+      "restoration": {
+        "commands": [
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u0.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-005-u0-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u3.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-005-u3-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u5.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-005-u5-load-report.json",
+          "/home/ubuntu/.venvs/recon/bin/python /home/ubuntu/repos/otterworks/scripts/tp_mongo/load_u6.py --dsn-secret OW_BILLING_FIXTURE_DSN --uri-secret MONGODB_ATLAS_URI --report /tmp/u6-DUNNING-005-u6-load-report.json"
+        ],
+        "completed": true
+      },
+      "match": true
+    }
+  ],
+  "verdict": "PASS"
+}

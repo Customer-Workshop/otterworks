@@ -1,0 +1,110 @@
+{
+  "extracted_at": "2026-09-01T21:45:12Z",
+  "files": {
+    "AGENTS.csv": {
+      "bytes": 280,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "feed",
+      "order_key": [
+        "agent_id"
+      ],
+      "rows": 4,
+      "sha256": "8e8c8cf0d3039f8459f5e58fab488f66093f13db32f30b0b64d90804f7e83443",
+      "source_object": "AGENTS"
+    },
+    "COMMISSION_LEDGER.csv": {
+      "bytes": 294,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "feed",
+      "order_key": [
+        "ledger_id"
+      ],
+      "rows": 3,
+      "sha256": "7a5e21a7cc80abe31e8b3a4efdd459b8058d1c71658656bac7b0af7a43128a68",
+      "source_object": "COMMISSION_LEDGER"
+    },
+    "DIM_AGENT.csv": {
+      "bytes": 180,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "baseline",
+      "order_key": [
+        "agent_key"
+      ],
+      "rows": 4,
+      "sha256": "ecdebbadb7acd3a2ccf1a6fb7f50078cb1f8300babe2ad6f7b941e44de628f8f",
+      "source_object": "DIM_AGENT"
+    },
+    "DIM_PERIOD.csv": {
+      "bytes": 74,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "baseline",
+      "order_key": [
+        "period_key"
+      ],
+      "rows": 1,
+      "sha256": "d55687af0968d1763aa1cc2dd0064e8b21972f24ec48410954efe8a5e79168b0",
+      "source_object": "DIM_PERIOD"
+    },
+    "DIM_PRODUCT.csv": {
+      "bytes": 151,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "baseline",
+      "order_key": [
+        "product_key"
+      ],
+      "rows": 3,
+      "sha256": "dc2941c1724b27f37a5dec2f2c2bf8a66397ee488b61a8455687734cf15a216d",
+      "source_object": "DIM_PRODUCT"
+    },
+    "FACT_COMMISSION.csv": {
+      "bytes": 179,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "baseline",
+      "order_key": [
+        "fact_id"
+      ],
+      "rows": 3,
+      "sha256": "e525530e7eeea27b2f3a671109a301e09732de2942df7477f68910002c7ed0f9",
+      "source_object": "FACT_COMMISSION"
+    },
+    "MV_AGENT_COMMISSION_SUMMARY.csv": {
+      "bytes": 207,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "baseline",
+      "order_key": [
+        "agent_code",
+        "full_name",
+        "period_month",
+        "line_of_business"
+      ],
+      "rows": 3,
+      "sha256": "3028c5bf2efd96efcef22d5bee13a53a33153ef1732787b9ffa8ca4a4dfe7101",
+      "source_object": "MV_AGENT_COMMISSION_SUMMARY"
+    },
+    "POLICIES.csv": {
+      "bytes": 422,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "feed",
+      "order_key": [
+        "policy_id"
+      ],
+      "rows": 5,
+      "sha256": "f0b1382f8dc23191db63bb09e782b88a1b0c0f83655b61ffcef5d3399e6cae5e",
+      "source_object": "POLICIES"
+    },
+    "PRODUCTS.csv": {
+      "bytes": 133,
+      "extracted_at": "2026-09-01T21:45:12Z",
+      "group": "feed",
+      "order_key": [
+        "product_code"
+      ],
+      "rows": 3,
+      "sha256": "21037b9de63c50f74fbf9466d774ec13221ea8c15b946fb9ffc8544d1c340fb1",
+      "source_object": "PRODUCTS"
+    }
+  },
+  "kind": "baseline-manifest",
+  "namespace": "cdw",
+  "source": "COMMISSION_DW@FREEPDB1 (read-only)"
+}

@@ -1,0 +1,6 @@
+policy_id,policy_no,product_code,holder_name,annual_premium,issued_date,status
+1,POL-2025-0001,AUTO-STD,Chen Household,1800.00,2025-02-10,IN_FORCE
+2,POL-2025-0002,HOME-PLUS,Robinson Family,2400.00,2025-03-05,IN_FORCE
+3,POL-2025-0003,TERM-20,S. Gutierrez,1200.00,2025-04-20,IN_FORCE
+4,POL-2025-0004,AUTO-STD,Kowalski LLC Fleet,9600.00,2025-05-01,IN_FORCE
+5,POL-2025-0005,HOME-PLUS,Ncube Residence,2000.00,2025-05-15,LAPSED

@@ -1,0 +1,5 @@
+agent_key,agent_id,agent_code,full_name,status
+1,1,AG-100,Maria Alvarez,ACTIVE
+2,2,AG-101,James Okafor,ACTIVE
+3,4,AG-103,Dale Whitfield,SUSPENDED
+4,3,AG-102,Priya Natarajan,ACTIVE

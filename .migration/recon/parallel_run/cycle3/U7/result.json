@@ -1,0 +1,47 @@
+{
+  "unit": "U7",
+  "mode": "live",
+  "mapping_version": "1.1",
+  "tolerance_version": "1.0",
+  "seed": 0,
+  "params": {},
+  "generated_at": "2026-09-01T18:08:07.008861+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {
+        "deferred_to_tier3": [
+          "billing_audit_log.module",
+          "billing_audit_log.message"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "billing_audit_log": {
+          "mode": "full_diff",
+          "population": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS"
+}

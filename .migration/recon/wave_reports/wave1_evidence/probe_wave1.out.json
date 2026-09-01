@@ -1,0 +1,428 @@
+{
+  "counts": {
+    "src_customer_master": 25000,
+    "src_hist": 0,
+    "src_inv_hdr": 18750,
+    "src_inv_line": 150000,
+    "src_inv_line_orphan": 37,
+    "src_eav_customer": 8333,
+    "tgt_customers": 25000,
+    "tgt_hist": 0,
+    "tgt_invoice_feed": 18750,
+    "tgt_lines_embedded": 149963,
+    "tgt_attrs_embedded": 8333,
+    "quarantine_collections": [
+      "invoice_feed_orphan_lines"
+    ],
+    "q_invoice_feed_orphan_lines": 37
+  },
+  "dup_keys": {
+    "src_dup_cust_id": 0,
+    "src_dup_hist_id": 0,
+    "src_dup_invoice_id": 0,
+    "src_dup_line_id": 0,
+    "tgt_dup_line_id_within_docs": 0
+  },
+  "embed_dist": {
+    "lines_src": {
+      "9": 2330,
+      "10": 1792,
+      "12": 877,
+      "6": 2403,
+      "7": 2618,
+      "5": 1687,
+      "8": 2565,
+      "15": 181,
+      "14": 335,
+      "11": 1355,
+      "13": 564,
+      "21": 4,
+      "4": 1037,
+      "16": 93,
+      "3": 565,
+      "18": 14,
+      "17": 55,
+      "2": 202,
+      "1": 61,
+      "19": 2,
+      "20": 4,
+      "23": 1,
+      "0": 5
+    },
+    "lines_tgt": {
+      "0": 5,
+      "19": 2,
+      "4": 1037,
+      "1": 61,
+      "21": 4,
+      "16": 93,
+      "7": 2618,
+      "17": 55,
+      "15": 181,
+      "23": 1,
+      "9": 2330,
+      "2": 202,
+      "3": 565,
+      "13": 564,
+      "10": 1792,
+      "20": 4,
+      "11": 1355,
+      "8": 2565,
+      "5": 1687,
+      "14": 335,
+      "12": 877,
+      "18": 14,
+      "6": 2403
+    },
+    "lines_equal": true,
+    "attrs_src": {
+      "0": 17925,
+      "1": 5952,
+      "2": 1000,
+      "4": 8,
+      "3": 113,
+      "5": 2
+    },
+    "attrs_tgt": {
+      "4": 8,
+      "2": 1000,
+      "3": 113,
+      "0": 17925,
+      "5": 2,
+      "1": 5952
+    },
+    "attrs_equal": true
+  },
+  "null_missing_customers": {
+    "sub_status_cd": {
+      "src_null": 8344,
+      "tgt_null": 8344,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "territory_cd": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "channel_cd": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "rate_class_cd": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "phone3_type_cd": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "phone4_type_cd": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "credit_limit_amt": {
+      "src_null": 5039,
+      "tgt_null": 5039,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "ltd_billed_amt": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "ytd_paid_amt": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "udf_amt_01": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "udf_amt_10": {
+      "src_null": 25000,
+      "tgt_null": 25000,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "cur_bal_amt": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "signup_dt": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "related_acct_ids": {
+      "src_null": 4984,
+      "tgt_null": 4984,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "tenant_id": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "cust_name": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "tax_exempt_yn": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    }
+  },
+  "null_missing_invoice_feed": {
+    "cust_id": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "tenant_id": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "invoice_dt": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "due_dt": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "total_amt": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "batch_no": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "status_cd": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    },
+    "invoice_no": {
+      "src_null": 0,
+      "tgt_null": 0,
+      "tgt_missing": 0,
+      "ok": true
+    }
+  },
+  "boundary_docs": {
+    "cust_min": {
+      "key": "0003a4ea-c05c-475d-117c-a030f086f6aa",
+      "found": true,
+      "diffs": []
+    },
+    "cust_max": {
+      "key": "ffffe14d-9edc-f5d9-fac6-18eb4dc16819",
+      "found": true,
+      "diffs": []
+    },
+    "inv_min": {
+      "key": "0003c227-2184-5775-53c6-8cab94f8d9ef",
+      "found": true,
+      "diffs": [],
+      "line_count_equal": true,
+      "line_diffs": []
+    },
+    "inv_max": {
+      "key": "fffca8e7-b1a7-3a1d-8eaf-636f76e34139",
+      "found": true,
+      "diffs": [],
+      "line_count_equal": true,
+      "line_diffs": []
+    }
+  },
+  "aggregate_spot": {
+    "customers_decimal_spot_25": [],
+    "invoice_feed_decimal_spot_25": [
+      [
+        "fee1073b-6ccd-9c6b-f7f7-66ec42879ded",
+        "sum(lines.amount)",
+        "103183.73",
+        "103183.73"
+      ],
+      [
+        "26f10c13-bc2e-501b-d36f-379711f198f9",
+        "sum(lines.amount)",
+        "103379.19",
+        "103379.19"
+      ],
+      [
+        "f6362f6f-3ea4-3035-737a-6529f428ea8a",
+        "sum(lines.amount)",
+        "50742.46",
+        "50742.46"
+      ],
+      [
+        "dedca539-e7d4-b53d-fcf0-2b576da6c988",
+        "sum(lines.amount)",
+        "101419.03",
+        "101419.03"
+      ],
+      [
+        "6b6b54b1-2c8b-c8dd-8584-ee12747c399a",
+        "sum(lines.amount)",
+        "115761.18",
+        "115761.18"
+      ],
+      [
+        "87a201f4-352c-f820-1107-d88127ca2c4b",
+        "sum(lines.amount)",
+        "15906.98",
+        "15906.98"
+      ],
+      [
+        "47a199c1-b958-63ae-c995-71dd87879f50",
+        "sum(lines.amount)",
+        "90428.77",
+        "90428.77"
+      ],
+      [
+        "5444057d-2971-e98b-f7bc-31127a9836c3",
+        "sum(lines.amount)",
+        "56278.21",
+        "56278.21"
+      ],
+      [
+        "a9b83ef1-60bc-8cbf-0ab8-6b12a89f09cb",
+        "sum(lines.amount)",
+        "17914.7",
+        "17914.70"
+      ],
+      [
+        "a18b0ee3-9223-3fab-e4f5-e1ea8b0892f6",
+        "sum(lines.amount)",
+        "163000.49",
+        "163000.49"
+      ],
+      [
+        "5ca0ac7a-c6ff-a355-f3cb-ef69c9f50ef9",
+        "sum(lines.amount)",
+        "118623.19",
+        "118623.19"
+      ],
+      [
+        "285357da-485d-4977-e471-fdd9330e5458",
+        "sum(lines.amount)",
+        "92109.63",
+        "92109.63"
+      ],
+      [
+        "7c698569-0ab9-5c62-798d-f498cc0c130e",
+        "sum(lines.amount)",
+        "115620.54",
+        "115620.54"
+      ],
+      [
+        "a52502a7-a384-dd69-d818-c7e10773bfa5",
+        "sum(lines.amount)",
+        "113264.85",
+        "113264.85"
+      ],
+      [
+        "94101421-657c-d678-67b4-aac7c1caa2e5",
+        "sum(lines.amount)",
+        "74782.72",
+        "74782.72"
+      ],
+      [
+        "3c7d59bc-7378-be26-9c5c-6cb956982cfa",
+        "sum(lines.amount)",
+        "159826.27",
+        "159826.27"
+      ],
+      [
+        "54ccbdc4-99d3-d51b-b238-2d8baaa8827b",
+        "sum(lines.amount)",
+        "48255.78",
+        "48255.78"
+      ],
+      [
+        "60f5f96a-d453-7270-d408-607ad275db92",
+        "sum(lines.amount)",
+        "100734.51",
+        "100734.51"
+      ],
+      [
+        "fa75c2cc-cf05-c96c-f85b-a04fbb2aa07a",
+        "sum(lines.amount)",
+        "38620.82",
+        "38620.82"
+      ],
+      [
+        "1576f80b-d536-688a-6d08-0263f9f6bb5a",
+        "sum(lines.amount)",
+        "68124.79",
+        "68124.79"
+      ],
+      [
+        "5f4a96ee-bf7b-17f8-f295-9cc35025bec6",
+        "sum(lines.amount)",
+        "107251.4",
+        "107251.40"
+      ],
+      [
+        "9dad3e60-24fa-c115-abd2-ea561a9fc603",
+        "sum(lines.amount)",
+        "88092.9",
+        "88092.90"
+      ]
+    ]
+  },
+  "schema": {
+    "customers_field_universe_minus_expected": [],
+    "customers_ns_ok": true,
+    "hist_ns_ok": true,
+    "invoice_feed_ns_ok": true,
+    "target_db_collections": [
+      "codes",
+      "customer_master_hist",
+      "customers",
+      "fixture_meta",
+      "invoice_feed",
+      "plans",
+      "tenants"
+    ]
+  }
+}

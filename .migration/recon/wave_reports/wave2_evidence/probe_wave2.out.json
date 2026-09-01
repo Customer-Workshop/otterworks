@@ -1,0 +1,433 @@
+{
+ "target_collections": [
+  "billing_audit_log",
+  "codes",
+  "customer_master_hist",
+  "customers",
+  "fixture_meta",
+  "invoice_feed",
+  "plans",
+  "rating_periods",
+  "rating_results",
+  "subscriptions",
+  "subscriptions_hist",
+  "tenants",
+  "usage_events"
+ ],
+ "quarantine_collections": [
+  "invoice_feed_orphan_lines"
+ ],
+ "subscriptions.count": 69,
+ "subscriptions.ns_ok": true,
+ "subscriptions_hist.count": 0,
+ "subscriptions_hist.ns_ok": true,
+ "usage_events.count": 814,
+ "usage_events.ns_ok": true,
+ "rating_periods.count": 3,
+ "rating_periods.ns_ok": true,
+ "rating_results.count": 3,
+ "rating_results.ns_ok": true,
+ "billing_audit_log.count": 0,
+ "billing_audit_log.ns_ok": true,
+ "src_counts": {
+  "subscriptions": [
+   69,
+   69
+  ],
+  "subscriptions_hist": [
+   0,
+   0
+  ],
+  "usage_events": [
+   814,
+   814
+  ],
+  "rating_periods": [
+   3,
+   3
+  ],
+  "rating_results": [
+   3,
+   3
+  ],
+  "billing_audit_log": [
+   0,
+   0
+  ]
+ },
+ "dup_keys": {
+  "SUBSCRIPTIONS": [],
+  "USAGE_EVENTS": [],
+  "RATING_PERIODS": [],
+  "RATING_RESULTS": []
+ },
+ "dup_rating_period_natural": [],
+ "nulls.subscriptions": {
+  "tenant_id": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plan_id": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "starts_on": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "ends_on": {
+   "src_null": 69,
+   "tgt_null_or_missing": 69,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "status_cd": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "suspended_on": {
+   "src_null": 68,
+   "tgt_null_or_missing": 68,
+   "tgt_missing": 0,
+   "ok": true
+  }
+ },
+ "nulls.usage_events": {
+  "tenant_id": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "occurred_at": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "units": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "kind_cd": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  }
+ },
+ "nulls.rating_periods": {
+  "tenant_id": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "period_start": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "period_end": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  }
+ },
+ "nulls.rating_results": {
+  "period_id": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "subscription_id": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "used_units": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "quota_units": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "rollover_units": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "billable_units": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "overage_amount": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "created_at": {
+   "src_null": 0,
+   "tgt_null_or_missing": 0,
+   "tgt_missing": 0,
+   "ok": true
+  }
+ },
+ "fullcmp.subscriptions": {
+  "rows": 69,
+  "mismatches": [],
+  "mismatch_count": 0
+ },
+ "fullcmp.rating_periods": {
+  "rows": 3,
+  "mismatches": [],
+  "mismatch_count": 0
+ },
+ "fullcmp.rating_results": {
+  "rows": 3,
+  "mismatches": [],
+  "mismatch_count": 0
+ },
+ "fullcmp.usage_events": {
+  "rows": 814,
+  "mismatches": [],
+  "mismatch_count": 0
+ },
+ "boundary": {
+  "subscriptions": {
+   "min": "013adf36-54c4-13b3-9a07-b3082f2df28e",
+   "max": "fe6f5e18-3d44-a720-dc37-a89edff1cbf6",
+   "min_doc_exists": true,
+   "max_doc_exists": true,
+   "tgt_min": "013adf36-54c4-13b3-9a07-b3082f2df28e",
+   "tgt_max": "fe6f5e18-3d44-a720-dc37-a89edff1cbf6"
+  },
+  "usage_events": {
+   "min": "002051d0-e351-d1bf-e160-f826ec3667d2",
+   "max": "ff743331-1aa0-1b17-064e-33db5beaeffa",
+   "min_doc_exists": true,
+   "max_doc_exists": true,
+   "tgt_min": "002051d0-e351-d1bf-e160-f826ec3667d2",
+   "tgt_max": "ff743331-1aa0-1b17-064e-33db5beaeffa"
+  }
+ },
+ "agg": {
+  "usage_units_sum": [
+   "336293",
+   "336293"
+  ],
+  "overage_sum": [
+   "0",
+   "0.00"
+  ],
+  "sub_status_hist": [
+   [
+    [
+     "10",
+     "68"
+    ],
+    [
+     "20",
+     "1"
+    ]
+   ],
+   [
+    [
+     10,
+     68
+    ],
+    [
+     20,
+     1
+    ]
+   ]
+  ],
+  "usage_kind_hist": [
+   [
+    [
+     "1",
+     "504"
+    ],
+    [
+     "2",
+     "149"
+    ],
+    [
+     "3",
+     "161"
+    ]
+   ],
+   [
+    [
+     1,
+     504
+    ],
+    [
+     2,
+     149
+    ],
+    [
+     3,
+     161
+    ]
+   ]
+  ]
+ },
+ "u3_amendment": {
+  "src_ends_on_notnull": "0",
+  "src_suspended_notnull": "1",
+  "tgt_ends_on_nonnull": 0,
+  "tgt_ends_on_missing": 0,
+  "tgt_susp_nonnull": 1,
+  "tgt_susp_missing": 0
+ },
+ "fields.subscriptions": {
+  "seen": [
+   "_id",
+   "ends_on",
+   "ns",
+   "plan_id",
+   "starts_on",
+   "status_cd",
+   "suspended_on",
+   "tenant_id"
+  ],
+  "stray": []
+ },
+ "fields.usage_events": {
+  "seen": [
+   "_id",
+   "kind_cd",
+   "ns",
+   "occurred_at",
+   "tenant_id",
+   "units"
+  ],
+  "stray": []
+ },
+ "fields.rating_results": {
+  "seen": [
+   "_id",
+   "billable_units",
+   "created_at",
+   "ns",
+   "overage_amount",
+   "period_id",
+   "quota_units",
+   "rollover_units",
+   "subscription_id",
+   "used_units"
+  ],
+  "stray": []
+ },
+ "indexes": {
+  "subscriptions": [
+   "_id_",
+   "tenant_id_1_starts_on_1"
+  ],
+  "usage_events": [
+   "_id_",
+   "tenant_id_1_occurred_at_1_kind_cd_1"
+  ],
+  "rating_periods": [
+   "_id_"
+  ],
+  "rating_results": [
+   "_id_",
+   "period_id_1"
+  ],
+  "billing_audit_log": [
+   "_id_",
+   "ttl_logged_at_90d"
+  ],
+  "subscriptions_hist": [
+   "_id_"
+  ]
+ },
+ "ttl_index": {
+  "_id_": {
+   "key": [
+    [
+     "_id",
+     1
+    ]
+   ]
+  },
+  "ttl_logged_at_90d": {
+   "key": [
+    [
+     "logged_at",
+     1
+    ]
+   ],
+   "expireAfterSeconds": 7776000
+  }
+ },
+ "xref": {
+  "src_sub_tenant_orphans": "0",
+  "tgt_sub_tenant_orphans": 0,
+  "src_sub_plan_orphans": "0",
+  "tgt_sub_plan_orphans": 0,
+  "src_ue_tenant_orphans": "0",
+  "tgt_ue_tenant_orphans": 0,
+  "src_rr_period_orphans": "0",
+  "tgt_rr_period_orphans": 0,
+  "src_rr_sub_orphans": "0",
+  "tgt_rr_sub_orphans": 0,
+  "sub_status_decodable": {
+   "src": [
+    "10",
+    "20"
+   ],
+   "tgt": [
+    10,
+    20
+   ],
+   "codes_SUB_STATUS": [
+    10,
+    20,
+    30
+   ]
+  },
+  "usage_kind_decodable": {
+   "src": [
+    "1",
+    "2",
+    "3"
+   ],
+   "tgt": [
+    1,
+    2,
+    3
+   ],
+   "codes_USAGE_KIND": [
+    1,
+    2,
+    3
+   ]
+  }
+ }
+}

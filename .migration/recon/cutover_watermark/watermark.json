@@ -1,0 +1,31 @@
+{
+  "source": {
+    "schema": "OW_BILLING",
+    "dsn": "localhost:52521/FREEPDB1",
+    "read_only": true
+  },
+  "current_scn": 3244576,
+  "systimestamp": "2026-09-01T18:00:10.303791",
+  "table_row_counts": {
+    "RATING_PERIODS": 3,
+    "CUSTOMER_MASTER_HIST": 0,
+    "INVOICES": 3,
+    "CREDIT_NOTES": 5,
+    "CODES": 32,
+    "TENANTS": 69,
+    "PLANS": 3,
+    "SUBSCRIPTIONS": 69,
+    "USAGE_EVENTS": 814,
+    "DUNNING_ATTEMPTS": 1,
+    "NOTIFICATIONS": 1,
+    "INVOICE_LINES": 2,
+    "FIXTURE_META": 1,
+    "CUSTOMER_MASTER": 25000,
+    "ENTITY_ATTR_VALUE": 8333,
+    "INVOICE_HEADER": 18750,
+    "INVOICE_LINE": 150000,
+    "BILLING_AUDIT_LOG": 0,
+    "SUBSCRIPTIONS_HIST": 0,
+    "RATING_RESULTS": 3
+  }
+}

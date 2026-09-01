@@ -1,0 +1,63 @@
+{
+  "ns": "mongo_032752",
+  "batch_no": 85559852,
+  "status_rollup": {
+    "oracle": [
+      [
+        "issued",
+        5504,
+        "55450955.92"
+      ],
+      [
+        "overdue",
+        2748,
+        "27585416.69"
+      ],
+      [
+        "paid",
+        10498,
+        "104582085.97"
+      ]
+    ],
+    "mongo": [
+      [
+        "issued",
+        5504,
+        "55450955.92"
+      ],
+      [
+        "overdue",
+        2748,
+        "27585416.69"
+      ],
+      [
+        "paid",
+        10498,
+        "104582085.97"
+      ]
+    ],
+    "equal": true
+  },
+  "line_rollup": {
+    "oracle_rows": 12,
+    "mongo_rows": 12,
+    "equal": true,
+    "diff": []
+  },
+  "balances": {
+    "oracle": [
+      25000,
+      "39799450.31",
+      "7330214.66"
+    ],
+    "mongo": [
+      25000,
+      "39799450.31",
+      "7330214.66"
+    ],
+    "equal": true
+  },
+  "customer_point_lookup_20": {
+    "failures": []
+  }
+}

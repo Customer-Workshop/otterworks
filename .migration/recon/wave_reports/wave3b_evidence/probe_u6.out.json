@@ -1,0 +1,186 @@
+{
+ "source_counts_twice": {
+  "NOTIFICATIONS": [
+   1,
+   1,
+   true
+  ],
+  "DUNNING_ATTEMPTS": [
+   1,
+   1,
+   true
+  ],
+  "INVOICES": [
+   3,
+   3,
+   true
+  ],
+  "INVOICE_LINES": [
+   2,
+   2,
+   true
+  ]
+ },
+ "tgt_counts": {
+  "notifications": 1,
+  "invoices": 3,
+  "sum_dunning_embed": 1
+ },
+ "dup_src_notif_id": 0,
+ "dup_src_dun_key": 0,
+ "dup_tgt_notif": 0,
+ "src_orphan_dunning": 0,
+ "embed_dist_src": {
+  "60000000-0000-0000-0000-000000000001": 0,
+  "60000000-0000-0000-0000-000000000002": 1,
+  "60000000-0000-0000-0000-000000000003": 0
+ },
+ "embed_dist_tgt": {
+  "60000000-0000-0000-0000-000000000001": 0,
+  "60000000-0000-0000-0000-000000000002": 1,
+  "60000000-0000-0000-0000-000000000003": 0
+ },
+ "embed_dist_match": true,
+ "invoices_missing_dunning_field": [],
+ "invoices_empty_dunning_array": [
+  "60000000-0000-0000-0000-000000000001",
+  "60000000-0000-0000-0000-000000000003"
+ ],
+ "null_missing": {
+  "src.NOTIFICATIONS.TENANT_ID": 0,
+  "src.NOTIFICATIONS.KIND_CD": 0,
+  "src.NOTIFICATIONS.SENT_AT": 0,
+  "src.DUNNING_ATTEMPTS.ID": 0,
+  "src.DUNNING_ATTEMPTS.TENANT_ID": 0,
+  "src.DUNNING_ATTEMPTS.SCHEDULED_FOR": 0,
+  "src.DUNNING_ATTEMPTS.STATUS_CD": 0,
+  "tgt.notifications.tenant_id.null": 0,
+  "tgt.notifications.tenant_id.missing": 0,
+  "tgt.notifications.kind_cd.null": 0,
+  "tgt.notifications.kind_cd.missing": 0,
+  "tgt.notifications.sent_at.null": 0,
+  "tgt.notifications.sent_at.missing": 0
+ },
+ "notif_doc_compare_mismatches": [],
+ "notif_doc_compare_n": 1,
+ "dunning_doc_compare_mismatches": [],
+ "dunning_doc_compare_n": 1,
+ "dunning_array_order_violations": [],
+ "src_notif_minmax": [
+  "90000000-0000-0000-0000-000000000001",
+  "90000000-0000-0000-0000-000000000001"
+ ],
+ "tgt_notif_minmax": [
+  "90000000-0000-0000-0000-000000000001",
+  "90000000-0000-0000-0000-000000000001"
+ ],
+ "notif_field_universe": [
+  "_id",
+  "kind_cd",
+  "ns",
+  "sent_at",
+  "tenant_id"
+ ],
+ "notif_ns_ok": true,
+ "dunning_embed_field_universe": [
+  "attempt_no",
+  "id",
+  "scheduled_for",
+  "status_cd",
+  "tenant_id"
+ ],
+ "invoice_sums": {
+  "src": [
+   "347.00",
+   "28.62",
+   "375.62"
+  ],
+  "tgt": [
+   "347.00",
+   "28.62",
+   "375.62"
+  ]
+ },
+ "target_collections": [
+  "billing_audit_log",
+  "codes",
+  "credit_notes",
+  "customer_master_hist",
+  "customers",
+  "fixture_meta",
+  "invoice_feed",
+  "invoices",
+  "notifications",
+  "plans",
+  "rating_periods",
+  "rating_results",
+  "subscriptions",
+  "subscriptions_hist",
+  "tenants",
+  "usage_events"
+ ],
+ "quarantine_collections": {
+  "invoice_feed_orphan_lines": 37
+ },
+ "cross_unit": {
+  "src_notif_tenant_orphans": 0,
+  "tgt_notif_tenant_orphans": 0,
+  "src_dun_tenant_orphans": 0,
+  "tgt_dun_tenant_orphans": [],
+  "src_dun_tenant_vs_invoice": 0,
+  "src_notif_kind_distinct": [
+   2
+  ],
+  "tgt_notif_kind_distinct": [
+   2
+  ],
+  "src_codes_notif_kind": [
+   1,
+   1,
+   2,
+   2,
+   3,
+   3
+  ],
+  "src_dun_status_distinct": [
+   20
+  ],
+  "tgt_dun_status_distinct": [
+   20
+  ],
+  "codes_types": [
+   "CUST_STATUS",
+   "CUST_TYPE",
+   "DUN_STATUS",
+   "INV_STATUS",
+   "NOTIF_KIND",
+   "PHONE_TYPE",
+   "PLAN_TIER",
+   "SUB_STATUS",
+   "TENANT_STATUS",
+   "USAGE_KIND"
+  ]
+ },
+ "notif_indexes": {
+  "_id_": [
+   [
+    "_id",
+    1
+   ]
+  ],
+  "tenant_id_1_kind_cd_1_sent_at_1": [
+   [
+    "tenant_id",
+    1
+   ],
+   [
+    "kind_cd",
+    1
+   ],
+   [
+    "sent_at",
+    1
+   ]
+  ]
+ }
+}

@@ -4,9 +4,9 @@ Evidence produced for U5 against the deterministic `NS=demo` Oracle fixture. The
 authoritative migration gate is `.migration/recon/U5/gate/result.json` (verdict PASS,
 tiers 3/11/10); it was not modified.
 
-This is a fixture-backed run: the source is the local deterministic read-only
-`NS=demo` Oracle fixture. The harness CLI models that with `--mode live` (its modes are
-`live`, `snapshot`, `continuous`), and the U5 wrapper ran the independent live gate.
+This is a child self-check (`run_mode=fixture`): the source is the local deterministic
+read-only `NS=demo` Oracle fixture. The harness CLI models that with `--mode live` (its
+modes are `live`, `snapshot`, `continuous`); the parent runs the independent live gate.
 
 - Harness tier 1 `counts_through_mapping`: **PASS** (3 checks).
 - Harness tier 2 `per_field_aggregates`: **PASS** (11 checks).

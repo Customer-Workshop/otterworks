@@ -1,0 +1,74 @@
+{
+  "kind": "recon-report",
+  "unit": "dim_product",
+  "namespace": "cdw",
+  "generated_at": "2026-09-01T22:33:47Z",
+  "run_mode": "fixture",
+  "tolerances_version": "v1 (03_recon_tolerances.md)",
+  "recon_mode": "DEGRADED (snapshot; federation unavailable)",
+  "checks": [
+    {
+      "id": "rowcount",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "legacy baseline DIM_PRODUCT.csv (manifest-pinned) vs ow_tp.silver.dim_product_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "duplicate_keys",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "legacy baseline DIM_PRODUCT.csv (manifest-pinned) vs ow_tp.silver.dim_product_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "null_count",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "legacy baseline DIM_PRODUCT.csv (manifest-pinned) vs ow_tp.silver.dim_product_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "row_diff",
+      "expected": {
+        "missing": 0,
+        "unexpected": 0,
+        "changed": 0
+      },
+      "actual": {
+        "missing": 0,
+        "unexpected": 0,
+        "changed": 0
+      },
+      "source_of_truth": "legacy baseline DIM_PRODUCT.csv (manifest-pinned) vs ow_tp.silver.dim_product_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "key_preservation",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "legacy baseline DIM_PRODUCT.csv (manifest-pinned) vs ow_tp.silver.dim_product_cdw",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "rerun rc=0; rows before=3 after=3; row set identical=True (loaded_at excluded)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "live-mode pass is owned by the parent's independent recon window"
+  ],
+  "row_diff_samples": {
+    "missing": [],
+    "unexpected": [],
+    "changed": []
+  }
+}

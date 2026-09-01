@@ -18,22 +18,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 import reports as reports_module
 from flask import Flask
 from reports import (
+    amount_str,
+    line_pipeline,
     ns_batch_no,
     reports,
     shape_balances,
     shape_line_rows,
     shape_status_rows,
+    status_pipeline,
 )
 
 
 @pytest.fixture
 def client(monkeypatch):
-    fixtures = {
-        reports_module.STATUS_SQL: [("ISSUED", 100, "12345.00"), ("PAID", 50, "999.00")],
-        reports_module.LINE_SQL: [("ISSUED", "CHARGE", 400, "12000.00", "345.00", 100)],
-        reports_module.BALANCES_SQL: [(25000, "1234567.00", "8901.00")],
-    }
-    monkeypatch.setattr(reports_module, "oracle_query", lambda sql, params: fixtures[sql])
+    monkeypatch.setattr(
+        reports_module,
+        "status_report_rows",
+        lambda batch_no: [("ISSUED", 100, "12345.00"), ("PAID", 50, "999.00")],
+    )
+    monkeypatch.setattr(
+        reports_module,
+        "line_report_rows",
+        lambda batch_no: [("ISSUED", "CHARGE", 400, "12000.00", "345.00", 100)],
+    )
     app = Flask(__name__)
     app.register_blueprint(reports)
     return app.test_client()
@@ -74,7 +81,7 @@ def test_month_end_contract(client):
     assert body["report"] == "month-end-finance"
     assert body["namespace"] == "demo"
     assert body["batch_no"] == ns_batch_no("demo")
-    assert body["source"]["engine"] == "oracle"
+    assert body["source"]["engine"] == "mongodb"
     assert body["by_status"][0] == {
         "status": "ISSUED", "invoice_count": 100, "header_total_amt": "12345.00"
     }
@@ -82,7 +89,12 @@ def test_month_end_contract(client):
     assert "generated_at" in body
 
 
-def test_reconciliation_contract(client):
+def test_reconciliation_contract(client, monkeypatch):
+    monkeypatch.setattr(
+        reports_module,
+        "oracle_query",
+        lambda sql, params: [(25000, "1234567.00", "8901.00")],
+    )
     body = client.get("/api/reports/reconciliation?ns=demo").get_json()
     assert body["source"]["engine"] == "oracle"
     assert body["balances"] == {
@@ -95,10 +107,45 @@ def test_reconciliation_contract(client):
 
 
 def test_estate_offline_returns_503(client, monkeypatch):
-    def boom(sql, params):
-        raise RuntimeError("ORA-12541: no listener")
+    def boom(batch_no):
+        raise RuntimeError("MongoDB unavailable")
 
-    monkeypatch.setattr(reports_module, "oracle_query", boom)
+    monkeypatch.setattr(reports_module, "status_report_rows", boom)
     response = client.get("/api/reports/month-end")
     assert response.status_code == 503
     assert response.get_json()["error"] == "legacy estate unavailable"
+
+
+def test_amount_str():
+    from decimal import Decimal
+
+    assert amount_str(Decimal("12345.6")) == "12345.60"
+    assert amount_str(Decimal("0")) == "0.00"
+
+
+def test_report_pipelines():
+    status = status_pipeline(123)
+    line = line_pipeline(123)
+    assert status[0] == {"$match": {"batch_no": 123}}
+    assert line[0] == {"$match": {"batch_no": 123}}
+    assert {"$lookup": {
+        "from": "codes",
+        "localField": "code_key",
+        "foreignField": "_id",
+        "as": "code",
+    }} in status
+    assert {"$lookup": {
+        "from": "codes",
+        "localField": "code_key",
+        "foreignField": "_id",
+        "as": "code",
+    }} in line
+    assert {"$unwind": "$lines"} in line
+    switches = [
+        stage["$set"]["line_type"]["$switch"]
+        for stage in line
+        if "$set" in stage and "line_type" in stage["$set"]
+    ]
+    assert len(switches) == 1
+    assert [branch["case"]["$eq"][1] for branch in switches[0]["branches"]] == [1, 2, 3, 9]
+    assert switches[0]["default"]["$concat"][0] == "UNKNOWN("

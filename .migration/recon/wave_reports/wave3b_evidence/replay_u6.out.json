@@ -1,0 +1,259 @@
+{
+ "read_path": [
+  {
+   "as_of": "2020-01-01",
+   "oracle_rows": 0,
+   "equal": true
+  },
+  {
+   "as_of": "2026-01-31",
+   "oracle_rows": 0,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-01",
+   "oracle_rows": 0,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-02",
+   "oracle_rows": 1,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-12",
+   "oracle_rows": 1,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-13",
+   "oracle_rows": 1,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-14",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-15",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-16",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-17",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-26",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-27",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-02-28",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-03-01",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-03-07",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-03-08",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-03-13",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-03-14",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2026-03-15",
+   "oracle_rows": 2,
+   "equal": true
+  },
+  {
+   "as_of": "2030-12-31",
+   "oracle_rows": 2,
+   "equal": true
+  }
+ ],
+ "write_path": [
+  {
+   "scenario": "DUNNING-002",
+   "equal": true,
+   "got": [
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-02-16",
+     "status": "scheduled"
+    },
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "sent"
+    },
+    {
+     "attempt_no": 2,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "scheduled"
+    }
+   ],
+   "expected": [
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-02-16",
+     "status": "scheduled"
+    },
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "sent"
+    },
+    {
+     "attempt_no": 2,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "scheduled"
+    }
+   ]
+  },
+  {
+   "scenario": "DUNNING-003",
+   "equal": true,
+   "got": [
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-02-17",
+     "status": "scheduled"
+    },
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "sent"
+    },
+    {
+     "attempt_no": 2,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-17",
+     "status": "scheduled"
+    }
+   ],
+   "expected": [
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000001",
+     "scheduled_for": "2026-02-17",
+     "status": "scheduled"
+    },
+    {
+     "attempt_no": 1,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-16",
+     "status": "sent"
+    },
+    {
+     "attempt_no": 2,
+     "invoice_id": "60000000-0000-0000-0000-000000000002",
+     "scheduled_for": "2026-02-17",
+     "status": "scheduled"
+    }
+   ]
+  },
+  {
+   "scenario": "DUNNING-004",
+   "equal": true,
+   "got": [
+    {
+     "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "kind": "suspension",
+     "sent_at": "2026-02-28T00:00:00Z",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "expected": [
+    {
+     "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "kind": "suspension",
+     "sent_at": "2026-02-28T00:00:00Z",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "tenant5_status_cd": 20,
+   "tenant5_subs": [
+    {
+     "id": "20000000-0000-0000-0000-000000000005",
+     "status_cd": 20,
+     "suspended_on": "2026-02-28"
+    }
+   ],
+   "hist_rows_added": 1,
+   "hist_added_ops": [
+    "UPD"
+   ],
+   "hist_preimage_status": [
+    10
+   ]
+  },
+  {
+   "scenario": "DUNNING-005",
+   "equal": true,
+   "got": [
+    {
+     "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "kind": "suspension",
+     "sent_at": "2026-02-28T00:00:00Z",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "expected": [
+    {
+     "id": "8cd558f5-d843-8d3d-be19-fb94c21ab81f",
+     "kind": "suspension",
+     "sent_at": "2026-02-28T00:00:00Z",
+     "tenant_id": "00000000-0000-0000-0000-000000000005"
+    }
+   ],
+   "second_run_inserted": 0,
+   "notif_count_after_two_runs": 1
+  }
+ ],
+ "read_path_summary": {
+  "cases": 20,
+  "mismatches": 0
+ },
+ "write_path_summary": {
+  "scenarios": 4,
+  "mismatches": 0
+ }
+}

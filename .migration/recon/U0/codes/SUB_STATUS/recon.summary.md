@@ -2,7 +2,7 @@
 
 - Mode: `live`
 - Mapping `1.0` / tolerances `1.0` / seed `0` / params `{'code_type': 'SUB_STATUS'}`
-- Generated: 2026-09-01T04:08:21.263845+00:00
+- Generated: 2026-09-01T04:17:41.741232+00:00
 
 | Tier | Checks | Result |
 |---|---|---|

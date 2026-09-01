@@ -12,7 +12,7 @@ This checklist records the evidence produced for U0 before the PR review.
 - [x] **Idempotency was proven by an actual rerun, not inferred from code.** Evidence: `.migration/recon/U0/load_report.rerun.json` records `dropped: true`, `recreated: true`, and unchanged `source_rows`, `inserted`, `docs_after`, and `ns_docs_after` for all four collections; `.migration/recon/U0/core_rerun/result.json` is a second `U0-core` PASS.
 - [x] **Recon values were recomputed from the target platform, not copied from migration memory or a previous report.** Evidence: `.migration/recon/U0/core_rerun/result.json` was produced by a fresh live recon invocation after the second load; its Tier 1–3 check counts are 2, 9, and 72.
 - [ ] **Every unverified or untested path is listed in the recon report.** **GAP:** the installed harness result schema does not emit an explicit `unverified_paths` field. The known ungraded codes and `fixture_meta` parity paths are recorded below and in their generated reports.
-- [ ] **The recon report declares `"kind": "recon-report"` and is stored as a `*.recon.json` artifact when using the machine-readable report schema.** **GAP:** the installed harness emits authoritative `result.json` files and does not emit the requested `kind`/`*.recon.json` shape. `make tp-validate-recon FILE=.migration/recon/U0/core/result.json` reported the schema mismatch; the harness output was not modified or wrapped.
+- [x] **The recon report declares `"kind": "recon-report"` and is stored as a `*.recon.json` artifact when using the machine-readable report schema.** Evidence: `docs/tech-partnerships/recon/U0.recon.json` is the authored schema-conforming unit report; `make tp-validate-recon FILE=docs/tech-partnerships/recon/U0.recon.json` validates it. The harness-generated `result.json` files remain the merge authority and were not modified.
 - [x] **Capability preflight passed for every required path before live work.** Evidence: `.tp-preflight/atlas-capabilities.json` records 8 verified probes and 0 denied probes. The manifest contains no URI or credential values and is outside the migration evidence path, so it was not committed.
 - [x] **`make tp-smoke` is green.** Evidence: the command completed with `tp-smoke: all checks passed`.
 
@@ -25,3 +25,7 @@ This checklist records the evidence produced for U0 before the PR review.
 ## Environment note
 
 The org-blueprint venv `/home/ubuntu/.venvs/recon` was absent when checked. The duplicate reusable venv `/home/ubuntu/venvs/recon` was retained and used via explicit override; the recon runner now prefers the org-blueprint path and falls back to `recon` on PATH when that path is absent.
+
+## Runner hardening evidence
+
+The fresh end-to-end run from `scripts/tp-mongo-recon-u0.sh` removed each scope output before invocation, ran all 12 scopes, recorded each invocation status, printed the complete verdict table, and exited `1` because the ten codes scopes and `fixture_meta` were FAIL. Fresh authoritative outputs are under `.migration/recon/U0/`.

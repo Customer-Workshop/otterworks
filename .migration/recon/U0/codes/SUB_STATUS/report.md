@@ -5,7 +5,7 @@
 - Mapping version: `1.0`
 - Tolerance version: `1.0`
 - Seed: `0` | Params: `{'code_type': 'SUB_STATUS'}`
-- Generated: 2026-09-01T04:08:21.263845+00:00
+- Generated: 2026-09-01T04:17:41.741232+00:00
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

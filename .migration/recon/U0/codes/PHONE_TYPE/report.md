@@ -5,7 +5,7 @@
 - Mapping version: `1.0`
 - Tolerance version: `1.0`
 - Seed: `0` | Params: `{'code_type': 'PHONE_TYPE'}`
-- Generated: 2026-09-01T04:08:18.724567+00:00
+- Generated: 2026-09-01T04:17:39.261665+00:00
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

@@ -5,7 +5,7 @@
 - Mapping version: `1.0`
 - Tolerance version: `1.0`
 - Seed: `0` | Params: `{'code_type': 'TENANT_STATUS'}`
-- Generated: 2026-09-01T04:08:22.447292+00:00
+- Generated: 2026-09-01T04:17:42.963211+00:00
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

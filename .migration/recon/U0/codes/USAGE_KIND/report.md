@@ -5,7 +5,7 @@
 - Mapping version: `1.0`
 - Tolerance version: `1.0`
 - Seed: `0` | Params: `{'code_type': 'USAGE_KIND'}`
-- Generated: 2026-09-01T04:08:23.696698+00:00
+- Generated: 2026-09-01T04:17:44.196542+00:00
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

@@ -5,7 +5,7 @@
 - Mapping version: `1.0`
 - Tolerance version: `1.0`
 - Seed: `0` | Params: `{'code_type': 'NOTIF_KIND'}`
-- Generated: 2026-09-01T04:08:17.547084+00:00
+- Generated: 2026-09-01T04:17:38.054422+00:00
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

@@ -1,0 +1,77 @@
+{
+  "kind": "recon-report",
+  "unit": "U0",
+  "namespace": "mongo_032752",
+  "generated_at": "2026-09-01T04:08:22Z",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "tenants.root_count",
+      "expected": 69,
+      "actual": 69,
+      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier1 counts_through_mapping)",
+      "result": "pass"
+    },
+    {
+      "id": "plans.root_count",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier1 counts_through_mapping)",
+      "result": "pass"
+    },
+    {
+      "id": "core.per_field_aggregates",
+      "expected": "9/9 pass",
+      "actual": "9/9 pass",
+      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier2 per_field_aggregates)",
+      "result": "pass"
+    },
+    {
+      "id": "core.keyed_diffs",
+      "expected": "72/72 pass",
+      "actual": "72/72 pass",
+      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier3 keyed_diffs)",
+      "result": "pass"
+    },
+    {
+      "id": "codes.parity",
+      "expected": "PASS for each of the 10 code_type scopes",
+      "actual": "UNGRADED: harness 0.2.0 compares a root_where-scoped source count against an unfiltered target doc_count, and cannot key on the loader-composed _id",
+      "source_of_truth": "harness .migration/recon/U0/codes/<CODE_TYPE>/result.json (10 scopes, all FAIL at tier1)",
+      "result": "skipped"
+    },
+    {
+      "id": "fixture_meta.parity",
+      "expected": "PASS on the single INITIALIZED_AT row",
+      "actual": "UNGRADED: harness compares tier3 keys pre-canonicalization, so a TIMESTAMP(6) key cannot match a millisecond-precision BSON date",
+      "source_of_truth": "harness .migration/recon/U0/fixture_meta/result.json (FAIL: missing_doc + extra_doc on the same row)",
+      "result": "skipped"
+    },
+    {
+      "id": "load.namespace_tagging",
+      "expected": 105,
+      "actual": 105,
+      "source_of_truth": "loader count_documents({ns: 'mongo_032752'}) per collection, .migration/recon/U0/load_report.json (32+69+3+1)",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U0/load_report.rerun.json (drop+recreate, identical 32/69/3/1 with no doubling) and .migration/recon/U0/core_rerun/result.json (U0-core PASS, identical tier counts 2/9/72)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "codes parity (10 code_type scopes) — UNGRADED, see checks[codes.parity]",
+    "fixture_meta parity — UNGRADED, see checks[fixture_meta.parity]",
+    "live gate — this unit ran run_mode=fixture only; the wave gate runs the live recon independently",
+    "no application code reads these collections in U0; no reader path exercised",
+    "quarantine database ow_tp_mongodb_032752_quarantine unused (0 rejected rows)"
+  ]
+}

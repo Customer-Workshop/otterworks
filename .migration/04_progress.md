@@ -7,7 +7,7 @@ DB prefix below: `ow` = `ow_tp_mongodb_032752`, `owq` = `ow_tp_mongodb_032752_qu
 
 | Wave | Unit | Write target (db.collection) | Status | Parity | Quarantine rate | Unverified paths | Cost | PR |
 |---|---|---|---|---|---|---|---|---|
-| 0 | U0 shared-reference | ow.codes, ow.tenants, ow.plans, ow.fixture_meta | PLANNED — AWAITING STOP B | — | — | — | — | — |
+| 0 | U0 shared-reference | ow.codes, ow.tenants, ow.plans, ow.fixture_meta | IN PROGRESS | — | — | — | — | — |
 | 1 | U1 customers | ow.customers, ow.customer_master_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 1 | U2 invoice-feed | ow.invoice_feed, owq.invoice_feed_orphan_lines | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 2 | U3 subscriptions | ow.subscriptions, ow.subscriptions_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |
@@ -18,6 +18,7 @@ DB prefix below: `ow` = `ow_tp_mongodb_032752`, `owq` = `ow_tp_mongodb_032752_qu
 
 ## Registered write targets
 
-All targets above are registered as PLANNED; no unit may load until its row is flipped to
-IN PROGRESS after STOP B. No collisions: each collection has exactly one owning unit
+All targets above are registered; U0's four targets are registered and flipped to IN
+PROGRESS (STOP B approved per 05_decisions.md). No collisions: each collection has exactly
+one owning unit
 (U6's dunning_attempts[] embed lands via the U5/U6 sequential batch that owns ow.invoices).

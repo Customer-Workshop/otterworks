@@ -11,7 +11,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from customers_load import assert_source_slice, load, seed_counter
+from customers_load import (
+    assert_designated_cluster,
+    assert_source_slice,
+    load,
+    seed_counter,
+)
 
 # Resolved from the repo root so the suite runs from anywhere.
 CONVENTIONS = Path(__file__).resolve().parents[2] / ".migration" / "01_conventions.md"
@@ -84,6 +89,23 @@ def test_a_database_outside_the_conventions_record_is_refused(target_db, quarant
     with pytest.raises(SystemExit, match="not the database designated"):
         load("demo", "OW_BILLING_SOURCE_DSN", "MONGODB_ATLAS_URI", target_db, quarantine_db,
              conventions_path=CONVENTIONS)
+
+
+def test_a_uri_secret_the_conventions_record_does_not_name_is_refused():
+    with pytest.raises(SystemExit, match="not the secret NAME designated"):
+        assert_designated_cluster(CONVENTIONS, "SOME_OTHER_URI")
+
+
+def test_a_connection_string_for_another_cluster_is_refused(monkeypatch):
+    monkeypatch.setenv("MONGODB_ATLAS_URI", "mongodb+srv://u:p@someone-else.abcde.mongodb.net/")
+    with pytest.raises(SystemExit, match="other than the designated"):
+        assert_designated_cluster(CONVENTIONS, "MONGODB_ATLAS_URI")
+
+
+def test_the_designated_cluster_is_accepted(monkeypatch):
+    monkeypatch.setenv("MONGODB_ATLAS_URI",
+                       "mongodb+srv://u:p@otterworks-demo.cgbijgv.mongodb.net/?retryWrites=true")
+    assert_designated_cluster(CONVENTIONS, "MONGODB_ATLAS_URI")
 
 
 @pytest.mark.parametrize("ns", ["", "demo/../prod", "Demo Namespace", "d" * 33])

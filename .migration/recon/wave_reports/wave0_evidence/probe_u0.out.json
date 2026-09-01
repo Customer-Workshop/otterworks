@@ -1,0 +1,170 @@
+{
+ "null_missing": {
+  "tenants.name": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "tenants.tax_exempt_yn": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "tenants.status_cd": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plans.code": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plans.tier_cd": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plans.monthly_fee": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plans.included_units": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plans.overage_rate": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "plans.active_yn": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "codes.code_type": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "codes.code_val": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  },
+  "codes.code_desc": {
+   "src_null": 0,
+   "tgt_null": 0,
+   "tgt_missing": 0,
+   "ok": true
+  }
+ },
+ "duplicates": {
+  "tenants_src_dup_id": 0,
+  "plans_src_dup_id": 0,
+  "codes_src_dup_composed": 0,
+  "tenants_tgt_dup__id": 0,
+  "plans_tgt_dup__id": 0,
+  "codes_tgt_dup__id": 0,
+  "fixture_meta_tgt_dup__id": 0
+ },
+ "boundaries": {
+  "tenants_min_id": {
+   "id": "00000000-0000-0000-0000-000000000001",
+   "ok": true,
+   "doc_found": true
+  },
+  "tenants_max_id": {
+   "id": "fd52ea22-b475-5783-4a84-900e36eb5289",
+   "ok": true,
+   "doc_found": true
+  },
+  "plans_all3_doc_level": true
+ },
+ "codes_full_value_diff": {
+  "src_n": 32,
+  "tgt_n": 32,
+  "mismatch": [],
+  "extra": []
+ },
+ "ns_field": {
+  "tenants": 0,
+  "plans": 0,
+  "codes": 0,
+  "fixture_meta": 0
+ },
+ "stray_or_missing_fields": {
+  "tenants": 0,
+  "plans": 0,
+  "codes": 0,
+  "fixture_meta": 0
+ },
+ "quarantine_collections": [],
+ "target_db_collections": [
+  "codes",
+  "fixture_meta",
+  "plans",
+  "tenants"
+ ],
+ "fixture_meta_count": {
+  "src": 1,
+  "tgt": 1
+ },
+ "indexes": {
+  "tenants": [
+   "_id_"
+  ],
+  "plans": [
+   "_id_"
+  ],
+  "codes": [
+   "_id_"
+  ],
+  "fixture_meta": [
+   "_id_"
+  ]
+ },
+ "cross_unit": {
+  "tenant_status_distinct_equal": true,
+  "tenant_status_all_decodable": [],
+  "plan_tier_all_decodable": [],
+  "code_type_hist_src": {
+   "CUST_STATUS": 4,
+   "CUST_TYPE": 3,
+   "DUN_STATUS": 3,
+   "INV_STATUS": 4,
+   "NOTIF_KIND": 3,
+   "PHONE_TYPE": 4,
+   "PLAN_TIER": 3,
+   "SUB_STATUS": 3,
+   "TENANT_STATUS": 2,
+   "USAGE_KIND": 3
+  },
+  "code_type_hist_tgt": {
+   "CUST_STATUS": 4,
+   "CUST_TYPE": 3,
+   "DUN_STATUS": 3,
+   "INV_STATUS": 4,
+   "NOTIF_KIND": 3,
+   "PHONE_TYPE": 4,
+   "PLAN_TIER": 3,
+   "SUB_STATUS": 3,
+   "TENANT_STATUS": 2,
+   "USAGE_KIND": 3
+  }
+ }
+}

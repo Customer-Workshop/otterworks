@@ -62,6 +62,10 @@ class _Collection:
         kwargs.pop("session", None)
         return self.collection.update_one(*args, **kwargs)
 
+    def delete_one(self, *args, **kwargs):
+        kwargs.pop("session", None)
+        return self.collection.delete_one(*args, **kwargs)
+
 
 class _Database:
     def __init__(self):
@@ -202,6 +206,8 @@ def test_md5_uuid_matches_known_vector_and_uuid_shape():
 def test_change_plan_closes_open_subscriptions_and_writes_old_history():
     db = _db()
     effective = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    db["tenants"].insert_one({"_id": "t1", "ns": NS_VALUE})
+    db["plans"].insert_one(_plan("p1", "NEW", 15))
     db["subscriptions"].insert_many(
         [
             _subscription("s1", "t1", "old", effective - timedelta(days=30), status_cd=30),
@@ -223,6 +229,63 @@ def test_change_plan_closes_open_subscriptions_and_writes_old_history():
     assert {doc["id"] for doc in history} == {"s1", "s2"}
     assert {doc["status_cd"] for doc in history} == {20, 30}
     assert db["subscriptions"].find_one({"_id": new_doc["_id"]})["status_cd"] == 10
+
+
+def test_change_plan_unknown_tenant_aborts_before_mutation():
+    db = _db()
+    effective = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    db["subscriptions"].insert_one(
+        _subscription("s1", "missing", "old", effective - timedelta(days=1))
+    )
+
+    with pytest.raises(KeyError, match="no tenant with _id missing"):
+        SubscriptionWritePath(db).change_plan("missing", "p1", effective)
+
+    assert db["subscriptions"].find_one({"_id": "s1"})["ends_on"] is None
+    assert db["subscriptions_hist"].count_documents({}) == 0
+
+
+def test_change_plan_unknown_plan_aborts_before_mutation():
+    db = _db()
+    effective = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    db["tenants"].insert_one({"_id": "t1", "ns": NS_VALUE})
+    db["subscriptions"].insert_one(
+        _subscription("s1", "t1", "old", effective - timedelta(days=1))
+    )
+
+    with pytest.raises(KeyError, match="no plan with _id missing"):
+        SubscriptionWritePath(db).change_plan("t1", "missing", effective)
+
+    assert db["subscriptions"].find_one({"_id": "s1"})["ends_on"] is None
+    assert db["subscriptions_hist"].count_documents({}) == 0
+
+
+def test_delete_writes_del_preimage_history_and_removes_subscription():
+    db = _db()
+    starts = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    old = _subscription("s1", "t1", "p1", starts, status_cd=20)
+    db["subscriptions"].insert_one(old)
+
+    result = SubscriptionWritePath(db).delete("s1")
+
+    assert result["_id"] == "s1"
+    assert db["subscriptions"].find_one({"_id": "s1"}) is None
+    history = db["subscriptions_hist"].find_one({"id": "s1"})
+    assert history["hist_op"] == "DEL"
+    assert history["tenant_id"] == "t1"
+    assert history["plan_id"] == "p1"
+    assert history["starts_on"] == starts
+    assert history["status_cd"] == 20
+    assert history["ns"] == NS_VALUE
+
+
+def test_delete_missing_subscription_writes_no_history():
+    db = _db()
+
+    with pytest.raises(KeyError, match="no subscription with _id missing"):
+        SubscriptionWritePath(db).delete("missing")
+
+    assert db["subscriptions_hist"].count_documents({}) == 0
 
 
 def test_set_status_rejects_uncancel_and_allows_valid_transitions_with_history():

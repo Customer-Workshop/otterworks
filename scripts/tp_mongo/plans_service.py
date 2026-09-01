@@ -147,6 +147,14 @@ class SubscriptionWritePath:
         }
         with self.db.client.start_session() as session:
             with session.start_transaction():
+                if self.db["tenants"].find_one(
+                    {"_id": tenant_id, **NS_FILTER}, session=session
+                ) is None:
+                    raise KeyError(f"no tenant with _id {tenant_id}")
+                if self.db["plans"].find_one(
+                    {"_id": plan_id, **NS_FILTER}, session=session
+                ) is None:
+                    raise KeyError(f"no plan with _id {plan_id}")
                 query = {
                     "tenant_id": tenant_id,
                     **NS_FILTER,
@@ -165,6 +173,19 @@ class SubscriptionWritePath:
                     )
                 self.subscriptions.insert_one(new_doc, session=session)
         return new_doc
+
+    def delete(self, sub_id):
+        with self.db.client.start_session() as session:
+            with session.start_transaction():
+                query = {"_id": sub_id, **NS_FILTER}
+                old_doc = self.subscriptions.find_one(query, session=session)
+                if old_doc is None:
+                    raise KeyError(f"no subscription with _id {sub_id}")
+                self.history.insert_one(
+                    history_doc(old_doc, "DEL"), session=session
+                )
+                self.subscriptions.delete_one(query, session=session)
+        return old_doc
 
     def set_status(self, sub_id, new_status_cd):
         with self.db.client.start_session() as session:

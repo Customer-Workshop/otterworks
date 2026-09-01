@@ -1,9 +1,9 @@
 """Application-side replacement for the Oracle PKG_DUNNING package."""
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from collections.abc import Callable
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Callable
 
 from tp_mongo.rating_service import (
     NS_VALUE,
@@ -109,7 +109,7 @@ class DunningService:
                 {"$push": {"dunning_attempts": element}},
             )
             return result.modified_count == 1
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Port the source's WHEN OTHERS THEN NULL swallow.
             return False
 
@@ -152,58 +152,57 @@ class DunningService:
         suspended: list[str] = []
         notifications_inserted = 0
         # The source procedure is a single transaction; keep that boundary.
-        with self.db.client.start_session() as session:
-            with session.start_transaction():
-                for tenant_id in self._suspension_candidates(as_of_day, session=session):
-                    active = self.tenants.count_documents(
-                        {"_id": tenant_id, "status_cd": ACTIVE_STATUS_CD, **NS_FILTER},
-                        session=session,
-                    )
-                    if not active:
-                        continue
-                    self.tenants.update_one(
-                        {"_id": tenant_id, **NS_FILTER},
-                        {"$set": {"status_cd": SUSPENDED_STATUS_CD}},
-                        session=session,
-                    )
-                    self.subscriptions.update_many(
-                        {
-                            "tenant_id": tenant_id,
-                            "status_cd": ACTIVE_STATUS_CD,
-                            **NS_FILTER,
-                        },
-                        {
-                            "$set": {
-                                "status_cd": SUSPENDED_STATUS_CD,
-                                "suspended_on": suspended_on,
-                            }
-                        },
-                        session=session,
-                    )
-                    # Port the NOT EXISTS guard: an insert-if-absent upsert whose
-                    # uniqueness the (tenant_id, kind_cd, sent_at) index enforces.
-                    result = self.notifications.update_one(
-                        {
-                            "tenant_id": tenant_id,
-                            "kind_cd": SUSPENSION_KIND_CD,
-                            "sent_at": suspended_on,
-                            "ns": NS_VALUE,
-                        },
-                        {
-                            "$setOnInsert": {
-                                "_id": md5_uuid(
-                                    tenant_id
-                                    + "suspension"
-                                    + as_of_day.strftime("%Y-%m-%d")
-                                )
-                            }
-                        },
-                        upsert=True,
-                        session=session,
-                    )
-                    if result.upserted_id is not None:
-                        notifications_inserted += 1
-                    suspended.append(tenant_id)
+        with self.db.client.start_session() as session, session.start_transaction():
+            for tenant_id in self._suspension_candidates(as_of_day, session=session):
+                active = self.tenants.count_documents(
+                    {"_id": tenant_id, "status_cd": ACTIVE_STATUS_CD, **NS_FILTER},
+                    session=session,
+                )
+                if not active:
+                    continue
+                self.tenants.update_one(
+                    {"_id": tenant_id, **NS_FILTER},
+                    {"$set": {"status_cd": SUSPENDED_STATUS_CD}},
+                    session=session,
+                )
+                self.subscriptions.update_many(
+                    {
+                        "tenant_id": tenant_id,
+                        "status_cd": ACTIVE_STATUS_CD,
+                        **NS_FILTER,
+                    },
+                    {
+                        "$set": {
+                            "status_cd": SUSPENDED_STATUS_CD,
+                            "suspended_on": suspended_on,
+                        }
+                    },
+                    session=session,
+                )
+                # Port the NOT EXISTS guard: an insert-if-absent upsert whose
+                # uniqueness the (tenant_id, kind_cd, sent_at) index enforces.
+                result = self.notifications.update_one(
+                    {
+                        "tenant_id": tenant_id,
+                        "kind_cd": SUSPENSION_KIND_CD,
+                        "sent_at": suspended_on,
+                        "ns": NS_VALUE,
+                    },
+                    {
+                        "$setOnInsert": {
+                            "_id": md5_uuid(
+                                tenant_id
+                                + "suspension"
+                                + as_of_day.strftime("%Y-%m-%d")
+                            )
+                        }
+                    },
+                    upsert=True,
+                    session=session,
+                )
+                if result.upserted_id is not None:
+                    notifications_inserted += 1
+                suspended.append(tenant_id)
         for tenant_id in suspended:
             self.audit_sink("DUNNING", f"suspended tenant={tenant_id}")
         return {"suspended": suspended, "notifications_inserted": notifications_inserted}

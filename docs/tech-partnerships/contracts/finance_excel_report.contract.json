@@ -1,0 +1,62 @@
+{
+  "unit": "finance_excel_report",
+  "wave": 2,
+  "pipeline": "P-B CUSTBILL",
+  "source_artifact_path": "etl/legacy-extra/jobs/finance_excel_report.pl",
+  "source_schedule": "10 2 * * * (crontab); stage 3 of run_all.sh",
+  "target_objects": [
+    "ow_tp.gold.finance_billing",
+    "/Volumes/ow_tp/bronze/landing/<ns>/reports/finance_billing_<YYYYMMDD>.csv",
+    "/Volumes/ow_tp/bronze/landing/<ns>/reports/finance_billing_<YYYYMMDD>.xlsx",
+    "/Shared/ow_tp/custbill/finance (notebook task `finance` of job ow_tp_custbill)"
+  ],
+  "target_code_path": "databricks/finance_excel_report/",
+  "input_object": "ow_tp.silver.custbill_records WHERE ns=? — ALL rows for the namespace, no date window (legacy aggregates every parsed/*.psv ever written). Fixture seed: `python3 scripts/tp_dbx/custbill.py seed-fixture --layer silver --ns <ns> --legacy-root <root>`.",
+  "golden_baseline_location": "Regenerated: full legacy chain `make legacy-etl-run JOB=run_all` (RUN_ALL_SLEEP=0) under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh with `TP_FAKETIME='2026-09-01 02:10:00'` so the stamp is 20260901. Baseline = `reports/finance_billing_20260901.csv` (header + 6 rows) and the awk recompute in docs/tech-partnerships/runbook-databricks.md.",
+  "declared_source_volume": {"silver_rows": 100, "gold_rows": 6, "keys": "3 currencies × 2 record types present in the demo seed"},
+  "behaviour": {
+    "aggregation": "SELECT currency, CASE rec_type WHEN '01' THEN 'INVOICE' WHEN '02' THEN 'CREDIT' ELSE concat('UNKNOWN(', rec_type, ')') END AS record_type, count(*) AS record_count, sum(bill_amt) AS total_amount (DECIMAL(18,2), exact) FROM silver WHERE ns=? GROUP BY currency, rec_type. Rows with empty cust_id are excluded (legacy `next if $cust eq \"\"`).",
+    "ordering": "ORDER BY currency, rec_type — identical to Perl `sort keys %tot` on the `ccy|rt` key because currency is fixed 3 chars and `|` sorts below letters/digits in ASCII; assert equality with the legacy CSV order in recon rather than assume.",
+    "load": "INSERT OVERWRITE gold ... WHERE ns=? (replace the namespace's rows only) with report_date = run date (parameter `report_date`, default current_date in UTC) and generated_at.",
+    "csv_export": "Header `Currency,RecordType,RecordCount,TotalAmount` then `%s,%s,%d,%.2f` rows, `\\n` line ends, no BOM, no trailing blank line beyond the final newline → byte-identical to legacy.",
+    "xlsx_export": "Real workbook (openpyxl), one sheet `finance_billing`, same header and rows, amounts as numbers with 0.00 format. Replaces the CSV-renamed-to-.xls; the legacy `.xls` is compared to the CSV (T6) not to the workbook.",
+    "distribution": "Job-level e-mail notification (Terraform var finance_recipients, default finance-reports@otterworks.dev) on failure; on success the run log prints the two export paths. No sendmail, no jake@. Delivery to real inboxes is not exercised in the run (D4-1/R2)."
+  },
+  "encoding_policy": {
+    "input_encoding": "typed silver columns; CSV written as UTF-8 (ASCII on fixtures)",
+    "byte_transparency": "CSV bytes must equal the legacy CSV bytes after T6 canonicalisation (none needed on fixtures); currency and record_type strings copied verbatim from silver",
+    "invalid_bytes": "n/a — no raw input"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "fail",
+    "details": "Silver is typed and never NULL by the parse contract; a NULL bill_amt/currency/rec_type reaching finance is a contract violation and fails the task loudly (legacy silently summed undef as 0). Unknown rec_type values are reported as UNKNOWN(<rt>) exactly like legacy."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "0 silver rows for ns → gold rows for ns deleted, CSV with header only, xlsx with header only; task succeeds (legacy wrote a header-only CSV)."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {"id": "quarantined_rows_change_totals", "status": "must-detect", "description": "On the 2023 anomaly seed the target totals legitimately differ from the legacy CSV by exactly the quarantined rows; recon must report this as a named, quantified delta (rows and cents) computed from the quarantine table, not as a tolerance."},
+    {"id": "float_accumulation_drift", "status": "coverage_gap", "reason": "Legacy Perl float sum happens to round correctly on the 100-row seed; no fixture produces a visible drift. DECIMAL(18,2) makes the target exact by construction; recon compares to the cent."}
+  ],
+  "acceptance_checks": [
+    {"id": "U8-a", "description": "Gold WHERE ns=?: key set, record_count and total_amount == legacy CSV rows exactly (6 keys on demo seed; T5, T2)."},
+    {"id": "U8-b", "description": "Exported CSV bytes == legacy finance_billing_<stamp>.csv bytes (T6); legacy .xls bytes == legacy .csv bytes (documents the legacy defect)."},
+    {"id": "U8-c", "description": "Independent recompute: awk over the legacy PSV (runbook one-liner) == gold totals to the cent; and sum(total_amount) over gold == sum(bill_amt) over silver for ns."},
+    {"id": "U8-d", "description": "Idempotency: rerun → identical gold rows, byte-identical CSV; xlsx re-generated with identical cell values (T9; xlsx bytes excluded from parity per T11 because of embedded timestamps)."},
+    {"id": "U8-e", "description": "xlsx opens with openpyxl, sheet finance_billing, header + 6 rows, numeric amounts equal to CSV values."}
+  ],
+  "deficiencies_retired": [
+    "CSV renamed to .xls → real .xlsx + canonical CSV",
+    "sendmail pipe no-op, stale recipients hardcoded → job notification to a managed Terraform list",
+    "float accumulation → DECIMAL(18,2)",
+    "silently skipped/undef fields → typed input, loud failure",
+    "Perl 5.005 no strict → Spark SQL + tested Python export",
+    "/tmp/finance_report.lock never removed → max_concurrent_runs=1"
+  ],
+  "run_mode_budget": {"child": "own ns slice `<unit>-w2`; silver seeded by seed-fixture; report run_mode=live with that namespace; never NS=demo", "parent": "single uncontended window on NS=demo per wave"},
+  "recon": {"harness": "scripts/tp_dbx/recon_custbill.py --unit finance_excel_report --ns <ns> --legacy-root <root>", "report": "docs/tech-partnerships/recon/finance_excel_report.recon.json", "tolerances": ".migration/03_recon_tolerances.md v1 (T2, T5, T6, T9, T11)"},
+  "unverified_paths_expected": ["e-mail delivery to finance-reports@ (R2)", "shared-drive pickup (R3)", "sendmail relay (retired 2020)"]
+}

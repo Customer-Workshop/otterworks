@@ -27,19 +27,23 @@ informationally rather than treated as recon reports.
 - Demo state is per-run and per-namespace: every job takes an `ns` parameter (`demo` for
   this run), volume paths are `<ns>/<unit>/...`, and table rows carry `ns`. Branches hold
   code only — no data, no state files, no secrets.
-- Use `scripts/tp_databricks/dbx.py` for SQL, volume uploads, notebook deploys, and job
-  runs instead of hand-rolling REST calls.
+- Use `scripts/tp_dbx/custbill.py` (CUSTBILL landing, fixture seeding, job runs, wipes)
+  and `scripts/tp_dbx/client.py` (SQL, volume files, notebooks, jobs) instead of
+  hand-rolling REST calls. Recon reports come from `scripts/tp_dbx/recon_custbill.py`.
+- Child sessions work in their own namespace slice (`<unit>-w<wave>`) of the shared
+  `ow_tp` tables and volume: `DELETE ... WHERE ns = '<yours>'` and `INSERT` only. No DDL
+  on shared tables, never touch `ns = 'demo'` (the parent's live proof window).
 - Conversions must retire the deficiencies listed in the unit's contract; they are drawn
   from `etl/ETL_UPGRADE_GUIDE.md` and
   `etl/legacy-extra/ETL_UPGRADE_GUIDE_ADDENDUM.md`.
 - The legacy scripts under `etl/` are the demo's before-state: **do not edit them**, and
   do not touch the golden app path (`make up` / `make test`, `services/`, compose files,
   CI). Every PR must pass `make tp-smoke`.
-- Deliver a stacked PR series, bottom-up mergeable, based off `tech-partnerships`:
-  1. `jobs_<unit>.tf` (+ table DDL for your own tables),
-  2. pipeline code (notebook / job source),
-  3. recon evidence (recon script + committed report).
-  Never one monolithic PR. Never merge to `main`; never merge from
+- Deliver **one PR per unit** targeting the run branch (`tp-run/<track>-<timestamp>`),
+  never a stacked series and never a PR into `tech-partnerships` or `main`. The PR
+  carries the unit's notebook/job code under `databricks/<unit>/`, any
+  `infrastructure/terraform-databricks/job_<unit>.tf` edits, and the committed recon
+  report `docs/tech-partnerships/recon/<unit>.recon.json`. Never merge from
   `tech-partnerships-solutions` (reference only).
 
 ## Reconciliation honesty rule
@@ -57,13 +61,27 @@ legacy script needs does not exist locally), you must:
 Never synthesize a golden output, never soften a comparison to make it pass, and state
 the provenance of your baseline explicitly in the recon report.
 
+The recon harness accepts repeatable `--waive <check-id>` flags; a skipped required
+check is RED unless it is explicitly waived, and waived skipped checks remain listed
+in `unverified_paths`.
+Idempotency is GREEN only when the fingerprints match and a newer successful job run
+for the namespace is present after the first pass.
+
 ## Units
+
+Schema-valid JSON contracts (P-B CUSTBILL run, `tp-run/databricks-20260901T205308Z`):
 
 | Unit | Language / vintage | Contract |
 |---|---|---|
-| `sftp_ingest_poll.ksh` | ksh, 1998 (ported 2014) | [sftp_ingest_poll.md](sftp_ingest_poll.md) |
-| `parse_custbill_fixedwidth.sh` | bash + sed/awk/cut, 2001 | [parse_custbill_fixedwidth.md](parse_custbill_fixedwidth.md) |
-| `finance_excel_report.pl` | Perl (no modules), 2004 | [finance_excel_report.md](finance_excel_report.md) |
+| `sftp_ingest_poll.ksh` | ksh, 1998 (ported 2014) | [sftp_ingest_poll.contract.json](sftp_ingest_poll.contract.json) |
+| `parse_custbill_fixedwidth.sh` | bash + sed/awk/cut, 2001 | [parse_custbill_fixedwidth.contract.json](parse_custbill_fixedwidth.contract.json) |
+| `finance_excel_report.pl` | Perl (no modules), 2004 | [finance_excel_report.contract.json](finance_excel_report.contract.json) |
+| `run_all.sh` | bash, 2014 | [custbill_workflow.contract.json](custbill_workflow.contract.json) |
+
+Other estate units (not in this run's approved boundary):
+
+| Unit | Language / vintage | Contract |
+|---|---|---|
 | `analytics_daily.py` | Python, 2014 | [analytics_daily.md](analytics_daily.md) |
 | `audit_archive_weekly.py` | Python, 2014 | [audit_archive_weekly.md](audit_archive_weekly.md) |
 | `search_reindex_weekly.py` | Python, 2014 | [search_reindex_weekly.md](search_reindex_weekly.md) |

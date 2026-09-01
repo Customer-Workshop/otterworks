@@ -5,18 +5,18 @@ registered here before any load; a collision halts the wave.
 
 | # | Unit | Wave | Status | Write targets (registered) | Money parity | Quarantine rate | Unverified paths | PR | Cost so far (ACU / wh-h) |
 |---|---|---|---|---|---|---|---|---|---|
-| 0 | shared objects (catalog, schemas, volume, scope, dbx.py, contracts, dialect notes) | 0 | NOT_STARTED | `ow_tp`, `ow_tp.{bronze,silver,gold}`, `/Volumes/ow_tp/bronze/landing`, scope `ow_tp` | – | – | – | – | – |
-| 6 | sftp_ingest_poll.ksh | 1 (pilot) | NOT_STARTED | – | – | – | – | – | – |
-| 7 | parse_custbill_fixedwidth.sh | 1 (pilot) | NOT_STARTED | – | – | – | – | – | – |
-| 8 | finance_excel_report.pl | 1 (pilot) | NOT_STARTED | – | – | – | – | – | – |
+| 0 | shared objects (catalog, schemas, volume, scope, tables, job shell, custbill.py, recon harness, 4 contracts, dialect notes) | 0 | IN_FLIGHT (branch `migrate/w0-scaffold`) | `ow_tp`, `ow_tp.{bronze,silver,gold}`, `/Volumes/ow_tp/bronze/landing`, scope `ow_tp` (keys sftp_host/sftp_user/sftp_password), tables `ow_tp.bronze.custbill_raw`, `ow_tp.silver.custbill_records`, `ow_tp.silver.custbill_quarantine`, `ow_tp.gold.finance_billing`, notebooks `/Shared/ow_tp/custbill/{ingest,parse,finance}`, job `ow_tp_custbill` (PAUSED); parent-only ns slice `demo` (all tables + `landing/demo/`) | – | – | – | – | – |
+| 6 | sftp_ingest_poll.ksh | 1 (pilot) | NOT_STARTED | ns `sftp-ingest-poll-w1`: `bronze.custbill_raw`, `landing/sftp-ingest-poll-w1/{incoming,archive}`; notebook `/Shared/ow_tp/custbill/ingest` | – | – | – | – | – |
+| 7 | parse_custbill_fixedwidth.sh | 2 | NOT_STARTED | ns `parse-w2` (+ `parse-w2-anom`): `silver.custbill_records`, `silver.custbill_quarantine` (bronze rows parent-seeded); notebook `/Shared/ow_tp/custbill/parse` | – | – | – | – | – |
+| 8 | finance_excel_report.pl | 2 | NOT_STARTED | ns `finance-w2`: `gold.finance_billing`, `landing/finance-w2/reports/` (silver rows parent-seeded); notebook `/Shared/ow_tp/custbill/finance` | – | – | – | – | – |
 | 5 | user_activity_daily.py | 1 (pilot) | NOT_STARTED | – | – | – | – | – | – |
 | 1 | analytics_daily.py | 2 | NOT_STARTED | – | – | – | – | – | – |
 | 2 | audit_archive_weekly.py | 2 | NOT_STARTED | – | – | – | – | – | – |
 | 3 | search_reindex_weekly.py | 2 | NOT_STARTED | – | – | – | – | – | – |
 | 4 | storage_cleanup_daily.py | 2 | NOT_STARTED | – | – | – | – | – | – |
-| 9 | run_all.sh + estate rollup / Workflow | 3 | NOT_STARTED | – | – | – | – | – | – |
+| 9 | run_all.sh → Workflow `ow_tp_custbill` | 3 | NOT_STARTED | ns `custbill-workflow-w3` (all four tables + `landing/custbill-workflow-w3/`); job `ow_tp_custbill` settings (tasks/trigger/notifications only, pause_status stays PAUSED) | – | – | – | – | – |
 
-Wave assignment above is the front-door PROPOSAL; `!dbx_pipeline_analysis` / `!dbx_migration_plan`
+Units 1–5 are outside the STOP B boundary for this run (P-A/C/D/E) and stay NOT_STARTED. Wave assignment for 6–9 is the STOP C approved shape (CUSTBILL_plan.md §2). Namespace slices above are the registered write targets: a child writes only `WHERE ns = <its slice>`; `demo` is parent-only. Wave assignment below the P-B rows was the front-door PROPOSAL; `!dbx_pipeline_analysis` / `!dbx_migration_plan`
 finalise it at STOP C. Inventory (`docs/tech-partnerships/OtterWorks_ETL_inventory.md`) partitions the
 estate into P-A {1,5}, P-B {6,7,8,9}, P-C {2}, P-D {4}, P-E {3}; max width 5, serial floor 3 (P-B).
 
@@ -27,6 +27,7 @@ estate into P-A {1,5}, P-B {6,7,8,9}, P-C {2}, P-D {4}, P-E {3}; max width 5, se
 | inventory | DONE, STOP B approved (P-B) | 2026-09-01 | `OtterWorks_ETL_inventory.md`, `OtterWorks_ETL_dag.png`, `08_governance_inventory.md`; coverage 20 = 9 + 11 + 0 + 0 |
 | pipeline analysis (P-B) | DONE | 2026-09-01 | `docs/tech-partnerships/CUSTBILL_analysis.md`, `CUSTBILL_dag.png`; register D1-1, D1-2, D2-1, D2-2, D3-3, D4-4, D8-3, D10-6 appended |
 | migration plan (P-B) | DONE, STOP C approved | 2026-09-01 | `docs/tech-partnerships/CUSTBILL_plan.md`; D8-4 registered |
+| wave 0 scaffolding | IN_FLIGHT | 2026-09-01 | `infrastructure/terraform-databricks/`, `scripts/tp_dbx/{custbill,recon_custbill}.py`, `docs/tech-partnerships/contracts/*.contract.json`, `CUSTBILL_dialect_notes.md`; D-014 |
 
 ## Stops
 | Stop | Status | Date | Evidence |

@@ -1,0 +1,62 @@
+{
+  "unit": "sftp_ingest_poll",
+  "wave": 1,
+  "pipeline": "P-B CUSTBILL",
+  "source_artifact_path": "etl/legacy-extra/jobs/sftp_ingest_poll.ksh",
+  "source_schedule": "*/15 * * * * (crontab); also stage 1 of run_all.sh",
+  "target_objects": [
+    "ow_tp.bronze.custbill_raw",
+    "/Volumes/ow_tp/bronze/landing/<ns>/incoming/",
+    "/Volumes/ow_tp/bronze/landing/<ns>/archive/",
+    "/Shared/ow_tp/custbill/ingest (notebook task `ingest` of job ow_tp_custbill)"
+  ],
+  "target_code_path": "databricks/sftp_ingest_poll/",
+  "golden_baseline_location": "Regenerated, never copied: `make legacy-etl-gen-data NS=<ns>` then `make legacy-etl-run JOB=sftp_ingest_poll` under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh. Baseline = the seeded `sftp-drop/upload/CUSTBILL*.dat` bytes (2 files, 52 lines each incl. HDR/TRL) and the legacy `incoming/` copies.",
+  "declared_source_volume": {"files": 2, "body_rows_per_file": 50, "lines_per_file": 52, "ns_seeded_by": "etl/legacy-extra/tools/gen_sample_data.pl <ns>"},
+  "behaviour": {
+    "input": "Every `CUSTBILL*.dat` under `/Volumes/ow_tp/bronze/landing/<ns>/incoming/` (the producer or the parent's `custbill.py land` writes there; see D7-1).",
+    "steps": [
+      "For each file: read bytes once, compute sha256, write `archive/<basename>.<sha256[:12]>` (content-addressed, not wall-clock), re-read archive and compare hashes; only then delete the incoming copy.",
+      "Load every line into ow_tp.bronze.custbill_raw with ns, source_file, line_no (1-based), record_kind (HDR if line starts 'HDR', TRL if 'TRL', else BODY), raw_line unchanged, file_sha256, ingested_at.",
+      "Idempotency: a file whose sha256 already exists in bronze for this ns is skipped (logged as duplicate), not re-inserted; a rerun with no new files inserts 0 rows.",
+      "Loading is `DELETE ... WHERE ns=? AND source_file=? AND file_sha256=?` then INSERT for that file only; never DDL, never touch other ns."
+    ],
+    "settle_protocol": "No size-twice heuristic. A file is eligible only if its name has no `.part`/`.tmp` suffix; producers are asked to write-then-rename (D3-3/R1). Half-written files are therefore a declared coverage gap on the producer side, not a heuristic in the job."
+  },
+  "encoding_policy": {
+    "input_encoding": "ASCII (fixture FACT); production EBCDIC/other is a coverage gap pending R1",
+    "byte_transparency": "raw_line must be byte-identical to the source line minus the trailing `\\n`; no trimming, no re-encoding; archive copy byte-identical to source (sha256 equal)",
+    "invalid_bytes": "non-UTF-8 bytes: file is loaded (raw_line via latin-1 decode) and flagged in the run log; never dropped silently"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Ingest is byte-transparent: every line, whatever its length or content, becomes exactly one bronze row attributed to (ns, source_file, line_no). Nothing is validated here; validation is the parse unit's job."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "No `CUSTBILL*.dat` present → task succeeds, inserts 0 rows, logs 'no files'. A zero-byte file → archived, 0 bronze rows, logged as empty (not an error)."
+  },
+  "trigger_granularity": "per-file",
+  "planted_anomalies": [
+    {"id": "half_written_file", "status": "coverage_gap", "reason": "The volume producer (parent `custbill.py land`, later the customer landing mechanism per R4) writes whole files; there is no partial-write fixture. Contract requires write-then-rename from the producer."},
+    {"id": "duplicate_drop_same_bytes", "status": "must-detect", "description": "Landing the same file twice yields one bronze copy (sha256 dedupe) and a 'duplicate' log line."}
+  ],
+  "acceptance_checks": [
+    {"id": "U6-a", "description": "Per file: incoming byte count == archive byte count == legacy source byte count; sha256(archive) == sha256(source)."},
+    {"id": "U6-b", "description": "count(*) FROM ow_tp.bronze.custbill_raw WHERE ns=? AND source_file=? == `wc -l` of the legacy file (52) for each of the 2 files; record_kind counts HDR=1, TRL=1, BODY=50 per file."},
+    {"id": "U6-c", "description": "Byte parity: concat(raw_line ORDER BY line_no) + '\\n' per line == legacy file bytes."},
+    {"id": "U6-d", "description": "Idempotency: second run with no new files inserts 0 rows; re-landing the same file inserts 0 rows and logs duplicate; counts identical."},
+    {"id": "U6-e", "description": "Incoming copy is deleted only after archive hash verification (inspect run log ordering + volume listing after run)."}
+  ],
+  "deficiencies_retired": [
+    "hostname if-blocks / hardcoded paths → `ns` parameter + volume paths",
+    "lock file never removed → max_concurrent_runs=1 on the job, lock-free idempotent load",
+    "size-twice settle heuristic → hash-verified archive + producer rename protocol",
+    "cp ... || true; rm → verify-then-delete, errors raised",
+    "archive/ grows forever with wall-clock names → content-addressed archive; retention is a D-entry (not this unit)"
+  ],
+  "run_mode_budget": {"child": "own ns slice `<unit>-w1` in ow_tp tables + volume; report run_mode=live with that namespace; never NS=demo", "parent": "single uncontended window on NS=demo per wave"},
+  "recon": {"harness": "scripts/tp_dbx/recon_custbill.py --unit sftp_ingest_poll --ns <ns> --legacy-root <root>", "report": "docs/tech-partnerships/recon/sftp_ingest_poll.recon.json", "tolerances": ".migration/03_recon_tolerances.md v1 (T1, T6, T9)"},
+  "unverified_paths_expected": ["production mainframe SFTP producer (R4)", "production encoding (R1)", "prod/UAT host roots /data/otterworks, /data2/otterworks_uat"]
+}

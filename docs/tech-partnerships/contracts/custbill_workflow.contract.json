@@ -1,0 +1,45 @@
+{
+  "unit": "custbill_workflow",
+  "legacy_unit_alias": "run_all",
+  "wave": 3,
+  "pipeline": "P-B CUSTBILL",
+  "source_artifact_path": "etl/legacy-extra/run_all.sh",
+  "source_schedule": "0 6 * * 0 (crontab) plus the three per-job crontab lines it duplicates",
+  "target_objects": [
+    "Databricks job ow_tp_custbill (Terraform resource databricks_job.ow_tp_custbill in infrastructure/terraform-databricks/)",
+    "/Shared/ow_tp/custbill/{ingest,parse,finance} task wiring"
+  ],
+  "target_code_path": "infrastructure/terraform-databricks/job_custbill.tf (edit the parent's shell: task parameters, trigger, notifications) + databricks/custbill_workflow/ (job JSON snapshot + verification script)",
+  "golden_baseline_location": "Regenerated: `RUN_ALL_SLEEP=0 make legacy-etl-run JOB=run_all` under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh (TP_FAKETIME='2026-09-01 02:10:00'). Baseline = the U6/U7/U8 baselines produced by that single chained run (incoming bytes, 100 PSV rows, 6-row CSV).",
+  "declared_source_volume": {"files": 2, "silver_rows": 100, "gold_rows": 6},
+  "behaviour": {
+    "tasks": "ingest → parse → finance, `depends_on` chain, each a serverless notebook task receiving job parameter `ns` (and finance `report_date`).",
+    "concurrency": "max_concurrent_runs = 1 (replaces the three never-removed lock files and the overlapping crontab lines).",
+    "trigger": "file_arrival on /Volumes/ow_tp/bronze/landing/<ns>/incoming/ if the workspace supports it for a UC volume (verified in wave 0 by `custbill.py verify-trigger`), else cron `0 */15 * * * ?`. Both PAUSED until STOP E; the Sunday run_all becomes a manual `Run now` of the same job — no separate code.",
+    "failure_policy": "retries=2 per task with 5-minute backoff; a task failure fails the run and stops downstream tasks (no partial finance on partial parse — replaces sleep 600); e-mail notification on failure to finance_recipients.",
+    "parameters": "ns (required, validated ^[a-z0-9-]{1,32}$), report_date (optional ISO date, default UTC today)."
+  },
+  "encoding_policy": {"input_encoding": "n/a (orchestration only)", "byte_transparency": "n/a — asserted by the three task units"},
+  "malformed_record_policy": {"extra_delimited_fields": "fail", "null_attribution": "fail", "details": "Orchestration passes no data; any task exception fails the run. A missing/invalid `ns` parameter fails before the first task runs."},
+  "empty_input_semantics": {"action": "no-op", "details": "Run with no files: ingest no-op, parse no-op, finance rewrites the namespace's (empty or unchanged) gold — run SUCCEEDS, duration under 5 minutes on serverless."},
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {"id": "downstream_on_partial_upstream", "status": "must-detect", "description": "Force the parse task to fail (bad `ns`/injected exception in a test run on the child's ns) → finance task is SKIPPED and the run is FAILED; no gold rows written for that run."},
+    {"id": "overlapping_runs", "status": "must-detect", "description": "Trigger two runs back-to-back → the second is QUEUED/SKIPPED per max_concurrent_runs=1, never concurrent (Jobs API run list shows no overlap)."}
+  ],
+  "acceptance_checks": [
+    {"id": "U9-a", "description": "Jobs API `get`: tasks == [ingest, parse, finance] with depends_on chain; max_concurrent_runs == 1; schedule/trigger pause_status == PAUSED; notifications carry finance_recipients; no cluster spec (serverless)."},
+    {"id": "U9-b", "description": "One end-to-end `run-job --wait` on the child's ns from a fresh landing reproduces U6-a/b, U7-a/b/c and U8-a/b verdicts via the recon harness (run_mode live on that ns)."},
+    {"id": "U9-c", "description": "downstream_on_partial_upstream and overlapping_runs anomalies observed as described (run states captured in the recon report evidence)."},
+    {"id": "U9-d", "description": "Idempotency: second end-to-end run with no new files → SUCCESS, 0 new bronze/silver rows, identical gold and CSV bytes (T9)."}
+  ],
+  "deficiencies_retired": [
+    "sleep 600 dependency management → task DAG with failure propagation",
+    "overlapping cron lines / self-overlap → single job, max_concurrent_runs=1",
+    "2>/dev/null || true on every stage → failures fail the run and notify",
+    "Sunday full-chain duplicate schedule → same job, manual run"
+  ],
+  "run_mode_budget": {"child": "own ns slice `<unit>-w3` (job runs with ns=custbill-workflow-w3); report run_mode=live with that namespace; never NS=demo; never edits schedule pause_status", "parent": "single uncontended window on NS=demo"},
+  "recon": {"harness": "scripts/tp_dbx/recon_custbill.py --unit custbill_workflow --ns <ns> --legacy-root <root>", "report": "docs/tech-partnerships/recon/custbill_workflow.recon.json", "tolerances": ".migration/03_recon_tolerances.md v1 (T9, T12)"},
+  "unverified_paths_expected": ["file_arrival trigger in production (customer landing mechanism, R4)", "unpausing the schedule (STOP E only)"]
+}

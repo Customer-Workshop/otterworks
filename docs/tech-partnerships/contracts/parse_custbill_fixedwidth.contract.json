@@ -1,0 +1,73 @@
+{
+  "unit": "parse_custbill_fixedwidth",
+  "wave": 2,
+  "pipeline": "P-B CUSTBILL",
+  "source_artifact_path": "etl/legacy-extra/jobs/parse_custbill_fixedwidth.sh",
+  "source_schedule": "5-59/15 * * * * (crontab); stage 2 of run_all.sh",
+  "target_objects": [
+    "ow_tp.silver.custbill_records",
+    "ow_tp.silver.custbill_quarantine",
+    "/Shared/ow_tp/custbill/parse (notebook task `parse` of job ow_tp_custbill)"
+  ],
+  "target_code_path": "databricks/parse_custbill_fixedwidth/",
+  "input_object": "ow_tp.bronze.custbill_raw WHERE ns=? (record_kind='BODY' is parsed; HDR/TRL rows feed the trailer check). Fixture seed: `python3 scripts/tp_dbx/custbill.py seed-fixture --layer bronze --ns <ns> --legacy-root <root>`.",
+  "golden_baseline_location": "Regenerated: `make legacy-etl-gen-data NS=<ns>`, `make legacy-etl-run JOB=sftp_ingest_poll`, `make legacy-etl-run JOB=parse_custbill_fixedwidth` under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh. Baseline = `parsed/CUSTBILL*.psv` (6 pipe-delimited fields, 50 rows per file, 100 total). Anomaly baseline = `make legacy-etl-gen-history NS=<ns> START_YEAR=2023 END_YEAR=2023 ROWS_PER_MONTH=40` manifest `sftp-drop/history/expected/<ns>-history-expected.json` (`planted_anomalies`).",
+  "declared_source_volume": {"clean_seed_body_rows": 100, "clean_seed_files": 2, "anomaly_seed": "gen_history_data.pl 2023 → 12 files × 40 rows with per-file planted rows listed in the manifest"},
+  "record_layout_copybook_CBCUST01": {
+    "cust_id": "cols 1-10 PIC X(10) → trim trailing spaces → STRING",
+    "cust_name": "cols 11-40 PIC X(30) → trim trailing spaces → STRING",
+    "bill_date": "cols 41-48 PIC 9(8) YYYYMMDD → DATE (strict calendar; legacy reformatted blindly to YYYY-MM-DD)",
+    "bill_amt": "cols 49-60 PIC 9(10)V99 implied decimal → DECIMAL(12,2) = digits/100 exactly (no float; legacy awk `$4+0` then `%.2f`)",
+    "currency": "cols 61-63 PIC X(3) → trim → STRING",
+    "rec_type": "cols 64-65 PIC X(2) (01 invoice, 02 credit) → STRING, untrimmed"
+  },
+  "behaviour": {
+    "steps": [
+      "Select BODY rows for ns from bronze; slice by byte offsets above (raw_line is ASCII per ingest contract, so character offsets == byte offsets; assert this).",
+      "Validate: length(raw_line) >= 65 else quarantine `short_record`; cols 49-60 all digits else `nonnumeric_amount`; cols 41-48 a real calendar date else `invalid_calendar_date`. A row with several defects gets one quarantine row per defect (reasons are a set).",
+      "Trailer check per file: TRL count (cols 4-13, leading zeros stripped) vs BODY row count; mismatch → one quarantine row per file with line_no = TRL line_no, reason `trailer_count_mismatch`; body rows are STILL loaded (finance parity with legacy requires it).",
+      "Load: DELETE FROM silver/quarantine WHERE ns=? AND source_file IN (files in this run) then INSERT; natural key (ns, source_file, line_no) unique in silver. Never DDL.",
+      "HDR/TRL: any BODY-classified line whose raw_line starts with HDR or TRL does not exist by construction (ingest classifies); if a line starting HDR/TRL appears mid-file it is HDR/TRL kind and excluded from silver — identical to the legacy `sed '/^HDR/d;/^TRL/d'`."
+    ]
+  },
+  "encoding_policy": {
+    "input_encoding": "ASCII rows from bronze (FACT for fixtures); EBCDIC coverage gap pending R1",
+    "byte_transparency": "cust_id/cust_name/currency: trailing spaces trimmed (legacy `gsub(/ +$/,\"\")`), leading spaces and interior bytes preserved; rec_type not trimmed; bill_amt/bill_date typed",
+    "invalid_bytes": "a non-ASCII byte inside a fixed field is kept verbatim in silver STRING columns; offsets are byte-based"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Fixed-width has no delimiters: a `|` inside CUST-NAME is data (legacy PSV would have shifted fields — a legacy defect, the target keeps it as data and the recon canonicalises by re-splitting the legacy PSV positionally when a name contains `|`; the clean seed contains none). Lines longer than 65 bytes: bytes 66+ ignored (legacy `cut` behaviour). Short lines → quarantine `short_record`, attributed to (source_file, line_no). Empty fields → empty STRING, never NULL, except bill_date/bill_amt which are NULL only in quarantine rows (silver never holds NULL)."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "No BODY rows for ns → 0 silver, 0 quarantine rows, task succeeds (legacy wrote an empty .psv). A file with HDR+TRL(0000000000) only → 0 rows, no trailer mismatch."
+  },
+  "trigger_granularity": "per-file",
+  "planted_anomalies": [
+    {"id": "invalid_calendar_date", "status": "must-detect", "description": "YYYY0231 in cols 41-48 → quarantine reason invalid_calendar_date, row excluded from silver."},
+    {"id": "nonnumeric_amount", "status": "must-detect", "description": "`00000ABC1234` in cols 49-60 → quarantine reason nonnumeric_amount, row excluded from silver (legacy coerced to 0.00)."},
+    {"id": "trailer_count_mismatch", "status": "must-detect", "description": "TRL count != body count → one file-level quarantine row; body rows loaded."},
+    {"id": "short_record", "status": "coverage_gap", "reason": "No generator produces a short line; behaviour specified (quarantine short_record) and unit-tested with a hand-made line in the child's tests, but not present in the seeded anomaly set."}
+  ],
+  "acceptance_checks": [
+    {"id": "U7-a", "description": "count(*) silver WHERE ns=? == total PSV rows (100 on clean seed); per source_file 50."},
+    {"id": "U7-b", "description": "Full row diff: silver (cust_id,cust_name,bill_date ISO,bill_amt '%.2f',currency,rec_type) ordered by (source_file,line_no) == legacy PSV lines in file order; 0 mismatches (T4 strings byte-exact after trailing-space trim, T3 dates, T2 money)."},
+    {"id": "U7-c", "description": "Quarantine WHERE ns=? on clean seed == 0 rows (T7)."},
+    {"id": "U7-d", "description": "Trailer: for each file TRL count == BODY count on clean seed; assertion recorded per file."},
+    {"id": "U7-e", "description": "Anomaly leg on the 2023 history seed: set of (file,row,kind) from quarantine == manifest planted_anomalies set (missing=∅, unexpected=∅) (T8); silver excludes exactly the invalid_calendar_date and nonnumeric_amount rows."},
+    {"id": "U7-f", "description": "Idempotency: rerun on same bronze → identical silver/quarantine counts and identical row diff result (T9)."}
+  ],
+  "deficiencies_retired": [
+    "three-pass cut/sed/awk with no validation → typed columns with expectations and quarantine",
+    "implied decimal via awk float → exact DECIMAL(12,2)",
+    "blind date reformat → calendar-validated DATE",
+    "trailer logged, never reconciled → file-level trailer_count_mismatch quarantine",
+    "/tmp/cb_body.$$ temp files, stale lock → none; max_concurrent_runs=1",
+    "output overwritten on duplicate basename → natural-key upsert per (ns, source_file, line_no)"
+  ],
+  "run_mode_budget": {"child": "own ns slice `<unit>-w2`; bronze seeded by seed-fixture; report run_mode=live with that namespace; never NS=demo", "parent": "single uncontended window on NS=demo per wave"},
+  "recon": {"harness": "scripts/tp_dbx/recon_custbill.py --unit parse_custbill_fixedwidth --ns <ns> --legacy-root <root> [--anomaly-root <root2>]", "report": "docs/tech-partnerships/recon/parse_custbill_fixedwidth.recon.json", "tolerances": ".migration/03_recon_tolerances.md v1 (T1-T4, T7-T9)"},
+  "unverified_paths_expected": ["production encoding (R1)", "short_record on real data (no fixture)"]
+}

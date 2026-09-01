@@ -13,9 +13,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 NS_RE = re.compile(r"[a-z0-9_]{1,24}")
+CUSTBILL_NS_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 IDENT_RE = re.compile(r"[A-Za-z0-9_]+")
 
 
@@ -26,6 +28,12 @@ class DbxError(RuntimeError):
 def require_ns(ns: str) -> str:
     if not NS_RE.fullmatch(ns):
         raise SystemExit(f"namespace must match [a-z0-9_]{{1,24}}: {ns!r}")
+    return ns
+
+
+def require_custbill_ns(ns: str) -> str:
+    if not CUSTBILL_NS_RE.fullmatch(ns):
+        raise SystemExit(f"namespace must match [a-z0-9][a-z0-9-]{{0,31}}: {ns!r}")
     return ns
 
 
@@ -172,6 +180,18 @@ class Databricks:
         if not 200 <= status < 300:
             raise DbxError(f"PUT {volume_path} -> HTTP {status}: {json.dumps(body)[:300]}")
 
+    def get_file(self, volume_path: str) -> bytes:
+        quoted = urllib.parse.quote(volume_path, safe="/")
+        req = urllib.request.Request(
+            f"{self.host}/api/2.0/fs/files{quoted}",
+            headers={"Authorization": f"Bearer {self.token}"}, method="GET",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as response:
+                return response.read()
+        except urllib.error.HTTPError as exc:
+            raise DbxError(f"GET {volume_path} -> HTTP {exc.code}") from None
+
     def delete_file(self, volume_path: str) -> int:
         quoted = urllib.parse.quote(volume_path, safe="/")
         status, _ = self.call("DELETE", f"/api/2.0/fs/files{quoted}")
@@ -213,6 +233,37 @@ class Databricks:
             if job.get("settings", {}).get("name") == name:
                 return job
         return None
+
+    def list_runs(
+        self,
+        job_id: int,
+        start_time_from_ms: int | None = None,
+        limit: int = 25,
+    ) -> Iterator[dict]:
+        page_token: str | None = None
+        while True:
+            path = (
+                f"/api/2.1/jobs/runs/list?job_id={job_id}"
+                f"&completed_only=true&limit={limit}"
+            )
+            if start_time_from_ms is not None:
+                path += f"&start_time_from={start_time_from_ms}"
+            if page_token:
+                path += f"&page_token={urllib.parse.quote(page_token, safe='')}"
+            payload = self.ok("GET", path)
+            page_runs = payload.get("runs") or []
+            yield from page_runs
+            next_page_token = payload.get("next_page_token")
+            if not payload.get("has_more", bool(next_page_token)):
+                return
+            if not next_page_token:
+                raise DbxError(f"job {job_id} run listing has_more without next_page_token")
+            if next_page_token == page_token:
+                raise DbxError(f"job {job_id} run listing repeated page token")
+            page_token = next_page_token
+
+    def get_run(self, run_id: int) -> dict:
+        return self.ok("GET", f"/api/2.1/jobs/runs/get?run_id={run_id}")
 
     def upsert_job(self, settings: dict) -> int:
         existing = self.find_job(settings["name"])

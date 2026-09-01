@@ -256,6 +256,12 @@ reference; also append a wave-close line to .migration/05_decisions.md
 Commit with message 'mongo 032752: wave <w> close — merge + ledger' and push. If any merge
 conflicts or a PR is missing/closed, STOP (status BLOCKED) and report; never force-push,
 never resolve substantive conflicts yourself.
+
+IDEMPOTENCY: the orchestrator may already have merged some or all of this wave (e.g. after
+resolving a conflict itself). For each PR, if its head commit is already reachable from
+{RUN_BRANCH}, treat it as merged and skip it. Likewise skip ledger/decision/journal lines
+that are already present — never duplicate them. If everything is already merged and
+ledgered, verify and return status OK with the merged PR list.
 """
 
 

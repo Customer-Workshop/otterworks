@@ -56,6 +56,10 @@ runs the independent live gate.
   in-transaction existence check instead of catching `DuplicateKeyError`, which a
   MongoDB transaction cannot recover from; `scripts/tp_mongo/finalize_idempotency_u4.py`
   probes a real double finalize against the target and its report is listed below.
+- [x] **Review round 3 fix is covered.** `uq_rating_periods` and `fk_rr_period` are
+  enforced application-side inside the finalize transaction because the approved mapping
+  index plan defines no unique/natural-key index on `rating_periods`; the real-Mongo probe
+  also verifies the imported-period FK-violation mirror without adding an index.
 
 ## Declared unverified paths
 

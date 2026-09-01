@@ -1,10 +1,36 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "rules": [
-    {"rule": "decimal_round", "applies_to": "NUMBER->Decimal128", "params": {"mode": "half_even"}},
-    {"rule": "datetime_utc_truncate_ms", "applies_to": "DATE,TIMESTAMP*->date", "params": {"precision": "ms"}},
-    {"rule": "rstrip_spaces", "applies_to": "CHAR->string", "params": {}},
-    {"rule": "empty_string_is_null", "applies_to": "VARCHAR2,CHAR->string", "params": {"target_policy": "explicit_null"}},
-    {"rule": "null_missing_equiv", "applies_to": "19 NULL-bearing numeric CUSTOMER_MASTER fields (v1.1 amendment: Tier-2 aggregate deferral only; loads still write explicit BSON null)", "params": {}}
+    {
+      "rule": "decimal_round",
+      "applies_to": "NUMBER->Decimal128",
+      "params": {
+        "mode": "half_even"
+      }
+    },
+    {
+      "rule": "datetime_utc_truncate_ms",
+      "applies_to": "DATE,TIMESTAMP*->date",
+      "params": {
+        "precision": "ms"
+      }
+    },
+    {
+      "rule": "rstrip_spaces",
+      "applies_to": "CHAR->string",
+      "params": {}
+    },
+    {
+      "rule": "empty_string_is_null",
+      "applies_to": "VARCHAR2,CHAR->string",
+      "params": {
+        "target_policy": "explicit_null"
+      }
+    },
+    {
+      "rule": "null_missing_equiv",
+      "applies_to": "19 NULL-bearing numeric CUSTOMER_MASTER fields (v1.1) + SUBSCRIPTIONS.ENDS_ON/SUSPENDED_ON all-NULL DATE fields (v1.2). Amendments are Tier-2 aggregate deferral only; loads still write explicit BSON null",
+      "params": {}
+    }
   ]
 }

@@ -1,13 +1,15 @@
 # 03 — Mapping spec
 
-Version: `1.1` (v1.0 approved at STOP B, 2026-09-01; v1.1 amendment approved 2026-09-01,
+Version: `1.2` (v1.0 approved at STOP B, 2026-09-01; v1.1 amendment approved 2026-09-01,
 see 05_decisions.md: 19 NULL-bearing numeric CUSTOMER_MASTER fields carry
 `null_missing_equiv` to defer Tier-2 native aggregates to the Tier-3 keyed diff, and the
-17 all-NULL fields among them drop the bson_type assertion; loaded data is unchanged —
+17 all-NULL fields among them drop the bson_type assertion; v1.2 amendment approved
+2026-09-01: the same Tier-2 deferral on the two all-NULL DATE fields
+`subscriptions.ends_on`/`suspended_on`, bson_type stays date. Loaded data is unchanged —
 source NULL still maps to explicit BSON null and NULL != missing everywhere).
 Machine-readable contract: `.migration/03_mapping_spec.json` (generated deterministically
 by `.migration/census/gen_mapping_spec.py` from `census/raw/columns.txt`; regenerating is
-byte-stable). Canonicalization rules: `.migration/recon_canonicalization.json` v1.1.
+byte-stable). Canonicalization rules: `.migration/recon_canonicalization.json` v1.2.
 Tolerances: `.migration/02_tolerances.{md,json}` v1.0 (approved STOP A).
 Coverage table: `.migration/census/coverage.md`.
 

@@ -19,6 +19,9 @@ CUSTOMER_MASTER columns carry null_missing_equiv solely to defer their Tier-2 na
 aggregates (Oracle excludes NULLs; Mongo counts the null group) to the Tier-3 keyed diff;
 the 17 all-NULL columns among them also drop the bson_type assertion (SUM of all-NULL is
 Oracle NULL vs Mongo 0). Loaded data is unchanged: source NULL -> explicit BSON null.
+v1.2 amendment (approved 2026-09-01, 05_decisions.md): same Tier-2 deferral for the two
+all-NULL DATE columns SUBSCRIPTIONS.ENDS_ON and SUBSCRIPTIONS.SUSPENDED_ON
+(COUNT(DISTINCT)=0 in Oracle vs the Mongo null group). Grading-only; bson_type stays date.
 """
 import json
 import re
@@ -69,6 +72,9 @@ AGG_DEFERRED = {
 # The all-NULL subset also drops the bson_type assertion so Tier 2 skips SUM.
 ALL_NULL = AGG_DEFERRED - {"SUB_STATUS_CD", "CREDIT_LIMIT_AMT"}
 
+# v1.2 amendment: SUBSCRIPTIONS all-NULL DATE columns, same Tier-2 deferral (no SUM on dates).
+SUBS_AGG_DEFERRED = {"ENDS_ON", "SUSPENDED_ON"}
+
 def fields(cols, table, exclude=()):
     out = []
     for col, dtype, p, s in cols[table]:
@@ -79,6 +85,8 @@ def fields(cols, table, exclude=()):
             rules = rules + ["null_missing_equiv"]
             if col in ALL_NULL:
                 bson = ""
+        if table == "SUBSCRIPTIONS" and col in SUBS_AGG_DEFERRED:
+            rules = rules + ["null_missing_equiv"]
         out.append({"source": col, "target": col.lower(),
                     "source_type": dtype if p is None else f"{dtype}({p},{s})",
                     "bson_type": bson, "rules": rules})
@@ -159,7 +167,7 @@ def main():
         if es:
             c["embeds"] = es
         collections.append(c)
-    spec = {"version": "1.1", "collections": collections}
+    spec = {"version": "1.2", "collections": collections}
     OUT.write_text(json.dumps(spec, indent=2) + "\n")
     n_fields = sum(len(c["fields"]) for c in collections)
     n_embed_fields = sum(len(e["fields"]) for c in collections for e in c.get("embeds", []))

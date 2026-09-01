@@ -1,5 +1,5 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "collections": [
     {
       "collection": "tenants",
@@ -3327,7 +3327,8 @@
           "source_type": "DATE",
           "bson_type": "date",
           "rules": [
-            "datetime_utc_truncate_ms"
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
           ]
         },
         {
@@ -3343,7 +3344,8 @@
           "source_type": "DATE",
           "bson_type": "date",
           "rules": [
-            "datetime_utc_truncate_ms"
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
           ]
         }
       ]

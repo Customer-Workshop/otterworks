@@ -163,7 +163,16 @@ SUBSCRIPTIONS_HIST -> subscriptions_hist (append-only; replace TRG_SUBSCRIPTIONS
 app-side history writes). Convert PKG_PLANS (fn_list_plans, entitlement checks, plan
 change logic — see .migration/census/raw/plsql_source.txt and access_patterns.txt) to
 driver-idiomatic app-side logic; latest-covering-row lookup backed by the
-(tenant_id, starts_on) index. Sequence replacement per coverage.md.""",
+(tenant_id, starts_on) index. Sequence replacement per coverage.md.
+
+AMENDMENT v1.2 (approved 2026-09-01, recorded in .migration/05_decisions.md): your Tier-2
+FAIL on subscriptions.ends_on/suspended_on (all-NULL DATE aggregate_distinct_count) is
+resolved by mapping spec v1.2 + canonicalization v1.2 already on the run branch — pull the
+latest run branch and re-run the gate (consumes re-run 2 of 3). Both fields now carry
+null_missing_equiv (Tier-2 aggregate deferral only; bson_type stays date). Grading-only
+change: the loader still writes source NULL as explicit BSON null. Your prior work is on
+branch tp-run/mongodb-20260901T032752Z--u3 — resume it (rebase onto the latest run
+branch), re-gate, then open the PR.""",
     },
     "U4": {
         "title": "U4 rating: USAGE_EVENTS + RATING_PERIODS + RATING_RESULTS + PKG_RATING",

@@ -162,18 +162,26 @@ class CustomerWritePath:
         return document
 
     def put_attribute(self, cust_id, attr_name, attr_value, attr_type, created_dt) -> dict:
-        old_doc = self.customers.find_one({"_id": cust_id})
-        if old_doc is None:
-            raise KeyError(f"no customer with _id {cust_id}")
-        elements = list(old_doc.get(EMBED_ARRAY_PATH) or [])
-        element = next_attribute(elements, attr_name, attr_value, attr_type, created_dt)
-        remaining = [
-            existing for existing in elements if existing.get("attr_name") != attr_name
-        ]
-        self.customers.update_one(
-            {"_id": cust_id},
-            {"$set": {EMBED_ARRAY_PATH: remaining + [element]}},
-        )
+        def transaction(session):
+            old_doc = self.customers.find_one({"_id": cust_id}, session=session)
+            if old_doc is None:
+                raise KeyError(f"no customer with _id {cust_id}")
+            elements = list(old_doc.get(EMBED_ARRAY_PATH) or [])
+            element = next_attribute(
+                elements, attr_name, attr_value, attr_type, created_dt
+            )
+            remaining = [
+                existing for existing in elements if existing.get("attr_name") != attr_name
+            ]
+            self.customers.update_one(
+                {"_id": cust_id},
+                {"$set": {EMBED_ARRAY_PATH: remaining + [element]}},
+                session=session,
+            )
+            return element
+
+        with self.db.client.start_session() as session:
+            element = session.with_transaction(transaction)
         return element
 
     @staticmethod

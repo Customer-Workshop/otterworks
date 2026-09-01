@@ -26,13 +26,13 @@ estate into P-A {1,5}, P-B {6,7,8,9}, P-C {2}, P-D {4}, P-E {3}; max width 5, se
 | setup | DONE | 2026-09-01 | commits `49c2fe7c`, `d1e1f790` |
 | inventory | DONE, STOP B approved (P-B) | 2026-09-01 | `OtterWorks_ETL_inventory.md`, `OtterWorks_ETL_dag.png`, `08_governance_inventory.md`; coverage 20 = 9 + 11 + 0 + 0 |
 | pipeline analysis (P-B) | DONE | 2026-09-01 | `docs/tech-partnerships/CUSTBILL_analysis.md`, `CUSTBILL_dag.png`; register D1-1, D1-2, D2-1, D2-2, D3-3, D4-4, D8-3, D10-6 appended |
-| migration plan (P-B) | DONE, STOP C pending | 2026-09-01 | `docs/tech-partnerships/CUSTBILL_plan.md`; D8-4 registered |
+| migration plan (P-B) | DONE, STOP C approved | 2026-09-01 | `docs/tech-partnerships/CUSTBILL_plan.md`; D8-4 registered |
 
 ## Stops
 | Stop | Status | Date | Evidence |
 |---|---|---|---|
 | A | APPROVED ("approved", dhrov.subramanian) | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788296591998709 |
 | B | APPROVED ("approved", dhrov.subramanian) — P-B, boundary J6-J9, no exclusions | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788297325513999 |
-| C | POSTED, awaiting approval | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788298142807729 |
+| C | APPROVED ("approved", dhrov.subramanian; web) — dependencies, width 2 (pilot 1), schedule, gates as in CUSTBILL_plan.md | 2026-09-01 | https://cogpartners.slack.com/archives/C0BQP3P965V/p1788298142807729 |
 | D (per wave) | – | | |
 | E | – | | |

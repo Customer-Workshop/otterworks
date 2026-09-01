@@ -38,53 +38,7 @@ ROOT_TABLE = "OW_BILLING.CUSTOMER_MASTER"
 EAV_TABLE = "OW_BILLING.ENTITY_ATTR_VALUE"
 BATCH_SIZE = 1000
 
-# Mapping spec v1.0.0, `customers`: source column -> (target path, kind). `kind` drives the
-# load-time canonicalization; `string` covers both VARCHAR2 and the CHAR columns, which are
-# right-stripped because Oracle blank-pads them.
-FIELDS: list[tuple[str, str, str]] = [
-    ("CUST_ID", "cust_id", "string"),
-    ("CUST_SEQ_NO", "cust_seq_no", "long"),
-    ("TENANT_ID", "tenant_id", "string"),
-    ("CUST_NO", "_id", "string"),
-    ("CUST_NAME", "cust_name", "string"),
-    ("CUST_NAME_UPPER", "cust_name_upper", "string"),
-    ("LEGAL_NAME", "legal_name", "string"),
-    ("ADDR_LINE_1", "addr_line_1", "string"),
-    ("ADDR_LINE_2", "addr_line_2", "string"),
-    ("ADDR_LINE_3", "addr_line_3", "string"),
-    ("CITY", "city", "string"),
-    ("STATE_CD", "state_cd", "string"),
-    ("ZIP", "zip", "string"),
-    ("PHONE1", "phone1", "string"),
-    ("PHONE2", "phone2", "string"),
-    ("PHONE1_TYPE_CD", "phone1_type_cd", "long"),
-    ("PHONE2_TYPE_CD", "phone2_type_cd", "long"),
-    ("EMAIL_1", "email_1", "string"),
-    ("SIGNUP_DT", "legacy.signup_dt", "string"),
-    ("LAST_ACTIVITY_DT", "legacy.last_activity_dt", "string"),
-    ("STATUS_CD", "status_cd", "long"),
-    ("SUB_STATUS_CD", "sub_status_cd", "long"),
-    ("CUST_TYPE_CD", "cust_type_cd", "long"),
-    ("SEGMENT_CD", "segment_cd", "long"),
-    ("REGION_CD", "region_cd", "long"),
-    ("TAX_EXEMPT_YN", "tax_exempt_yn", "string"),
-    ("CREDIT_HOLD_YN", "credit_hold_yn", "string"),
-    ("VIP_YN", "vip_yn", "string"),
-    ("CUR_BAL_AMT", "cur_bal_amt", "decimal"),
-    ("PAST_DUE_AMT", "past_due_amt", "decimal"),
-    ("YTD_BILLED_AMT", "ytd_billed_amt", "decimal"),
-    ("CREDIT_LIMIT_AMT", "credit_limit_amt", "decimal"),
-    ("RELATED_ACCT_IDS", "legacy.related_acct_ids", "string"),
-    ("PROMO_CODES_CSV", "legacy.promo_codes_csv", "string"),
-    ("LEGACY_SYS_KEY", "legacy_sys_key", "string"),
-    ("MAINFRAME_ACCT_NO", "mainframe_acct_no", "string"),
-    ("CONVERSION_BATCH_NO", "conversion_batch_no", "long"),
-    ("CREATED_BY", "created_by", "string"),
-    ("CREATED_DT", "created_at", "date"),
-    ("UPDATED_BY", "updated_by", "string"),
-    ("UPDATED_DT", "updated_at", "date"),
-    ("ROW_VERSION_NO", "row_version_no", "long"),
-]
+MAPPING_SPEC = Path(".migration/03_mapping_spec.json")
 
 # Typed fields derived from the estate's `DD-MON-YY` string dates (D4).
 DERIVED_DATES = [("SIGNUP_DT", "signup_at"), ("LAST_ACTIVITY_DT", "last_activity_at")]
@@ -118,20 +72,37 @@ def parse_legacy_date(raw: str) -> dt.datetime | None:
         return None
 
 
-def canonical(value, kind: str):
-    """Load-time canonicalization: the mapping's rules applied to a single source value."""
+def load_fields(spec_path: Path) -> list[tuple[str, str, str, list[str]]]:
+    """`(source column, target path, bson type, rules)` for this unit's collection, straight
+    from the approved mapping spec — the loader and recon read the same rule list, so a
+    field can never be canonicalized one way at load time and compared another way."""
+    spec = json.loads(spec_path.read_text())
+    collections = [c for c in spec["collections"] if c["collection"] == UNIT]
+    if not collections:
+        raise SystemExit(f"mapping spec {spec_path} has no '{UNIT}' collection")
+    return [(f["source"], f["target"], f["bson_type"], list(f["rules"]))
+            for f in collections[0]["fields"]]
+
+
+def canonical(value, bson_type: str, rules: list[str]):
+    """Load-time canonicalization: exactly the mapping's rules for this field, in order.
+
+    Only the CHAR columns carry `rstrip_spaces`; blank-stripping a VARCHAR2 would rewrite
+    source data (the estate stores meaningful all-blank legacy date strings).
+    """
     if isinstance(value, str):
-        value = value.rstrip(" ")
-        if value == "":
+        if "rstrip_spaces" in rules:
+            value = value.rstrip(" ")
+        if "empty_string_is_null" in rules and value == "":
             return None
     if value is None:
         return None
-    if kind == "decimal":
+    if bson_type == "decimal":
         return Decimal128(value if isinstance(value, decimal.Decimal)
                           else decimal.Decimal(str(value)))
-    if kind == "long":
+    if bson_type == "long":
         return int(value)
-    if kind == "date":
+    if bson_type == "date":
         if value.tzinfo is None:
             value = value.replace(tzinfo=dt.timezone.utc)
         return value.astimezone(dt.timezone.utc).replace(
@@ -163,19 +134,17 @@ def fetch_attributes(cursor, batch_no: int) -> dict[str, list[dict]]:
     by_entity: dict[str, list[dict]] = {}
     for entity_id, name, value, attr_type, created_dt in cursor:
         by_entity.setdefault(entity_id, []).append({
-            "name": canonical(name, "string"),
-            "value": canonical(value, "string"),
-            "type": canonical(attr_type, "string"),
-            "legacy": {"created_dt": canonical(created_dt, "string")},
+            "name": name, "value": value, "type": attr_type,
+            "legacy": {"created_dt": created_dt},
         })
     return by_entity
 
 
-def build_document(row: dict, attributes: list[dict], ns: str) -> tuple[dict, list[dict]]:
+def build_document(row: dict, fields, attributes: list[dict], ns: str) -> tuple[dict, list[dict]]:
     doc: dict = {"ns": ns}
     quarantine: list[dict] = []
-    for column, target, kind in FIELDS:
-        put(doc, target, canonical(row[column], kind))
+    for column, target, bson_type, rules in fields:
+        put(doc, target, canonical(row[column], bson_type, rules))
 
     for column, target in DERIVED_DATES:
         raw = row[column]
@@ -234,8 +203,9 @@ def seed_counter(db, cursor, ns: str) -> int:
 
 
 def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str,
-         quarantine_db: str) -> dict:
+         quarantine_db: str, spec_path: Path = MAPPING_SPEC) -> dict:
     batch_no = ns_batch_no(ns)
+    fields = load_fields(spec_path)
     db = mongo_database(target_uri_secret, target_db)
     qdb = mongo_database(target_uri_secret, quarantine_db)
     customers, quarantined = db["customers"], qdb["customers"]
@@ -246,7 +216,7 @@ def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str
         attributes = fetch_attributes(cursor, batch_no)
         counter_seed = seed_counter(db, cursor, ns)
 
-        columns = [c for c, _, _ in FIELDS]
+        columns = [f[0] for f in fields]
         cursor.execute(f"SELECT {', '.join(columns)} FROM {ROOT_TABLE} "
                        f" WHERE CONVERSION_BATCH_NO = :b ORDER BY CUST_NO", b=batch_no)
         names = [d[0] for d in cursor.description]
@@ -260,7 +230,8 @@ def load(ns: str, source_dsn_secret: str, target_uri_secret: str, target_db: str
         quarantine_docs: list[InsertOne] = []
         for row in cursor:
             record = dict(zip(names, row))
-            doc, quarantine = build_document(record, attributes.get(record["CUST_ID"], []), ns)
+            doc, quarantine = build_document(record, fields,
+                                             attributes.get(record["CUST_ID"], []), ns)
             embedded += len(doc["attributes"])
             docs.append(InsertOne(doc))
             quarantine_docs.extend(InsertOne(q) for q in quarantine)
@@ -295,9 +266,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="ENV VAR NAME holding the migration-cluster URI")
     p.add_argument("--target-db", required=True)
     p.add_argument("--quarantine-db", required=True)
+    p.add_argument("--mapping", type=Path, default=MAPPING_SPEC)
     args = p.parse_args(argv)
     print(json.dumps(load(args.ns, args.source_dsn_secret, args.target_uri_secret,
-                          args.target_db, args.quarantine_db), indent=2))
+                          args.target_db, args.quarantine_db, args.mapping), indent=2))
     return 0
 
 

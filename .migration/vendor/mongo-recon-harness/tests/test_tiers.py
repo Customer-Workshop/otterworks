@@ -203,3 +203,36 @@ def test_tier2_skips_sum_when_source_has_no_numeric_sum():
     assert t2["passed"], t2["findings"]
     assert "orders.customer.name" in t2["stats"]["sum_not_comparable"]
     assert result["verdict"] == "PASS"
+
+
+def test_tier2_skips_sum_for_a_numeric_looking_string_column():
+    """A string column of digits (a zip, an account number): SQL SUM() implicitly converts
+    and answers a number, MongoDB's $sum answers 0 because the values are strings.
+
+    The two sides state different facts about identical data, so Tier 2 must not raise a
+    finding on a `string` field's sum — Tier 3's keyed diff proves the values instead.
+    """
+    source, target = make_green()
+    for row, doc in zip(source.tables["ORDERS"], target.collections["orders"]):
+        row["CUST_NAME"] = "90210"
+        doc["customer"]["name"] = "90210"
+
+    class MongoShapedTarget(FakeTarget):
+        def field_aggregates(self, collection, field_path):
+            agg = super().field_aggregates(collection, field_path)
+            if field_path == "customer.name":
+                agg["sum"] = 0  # $sum over strings
+            return agg
+
+    class OracleShapedSource(FakeSource):
+        def field_aggregates(self, table, column, where=None):
+            agg = super().field_aggregates(table, column, where)
+            if column == "CUST_NAME":
+                agg["sum"] = 180420  # SUM() after implicit string->number conversion
+            return agg
+
+    result = run(OracleShapedSource(source.tables), MongoShapedTarget(target.collections))
+    t2 = result["tiers"][1]
+    assert t2["passed"], t2["findings"]
+    assert "orders.customer.name" in t2["stats"]["sum_not_comparable"]
+    assert result["verdict"] == "PASS"

@@ -88,6 +88,11 @@ def _agg_close(a: Any, b: Any, rel_tol: float) -> bool:
 # carrying these rules; they are deferred to Tier 3's keyed post-canonicalization diff.
 NULL_SEMANTIC_RULES = {"empty_string_is_null", "null_missing_equiv"}
 
+# BSON types a sum is defined over. For every other mapped type the two engines answer a
+# `sum` in different vocabularies, so comparing them states nothing about the load.
+SUMMABLE_BSON_TYPES = {"int", "int32", "int64", "long", "double", "decimal", "decimal128",
+                       "number"}
+
 
 def tier2_aggregates(spec: MappingSpec, tol: Tolerances, canon: Canonicalizer,
                      source, target) -> TierResult:
@@ -105,12 +110,14 @@ def tier2_aggregates(spec: MappingSpec, tol: Tolerances, canon: Canonicalizer,
                 deferred.append(f"{c.collection}.{f.target}")
             for stat in stats_to_check:
                 sv, tv = s.get(stat), t.get(stat)
-                if stat == "sum" and sv is None:
-                    # The source has no numeric sum for this field (non-numeric column, or
-                    # every value NULL). SQL SUM() answers NULL there while MongoDB's $sum
-                    # answers 0 over the same absence, so the two sides state the same fact
-                    # in different vocabularies and the comparison carries no information.
-                    # Tier 3's keyed, post-canonicalization diff covers the field's values.
+                if stat == "sum" and (sv is None
+                                      or f.bson_type.lower() not in SUMMABLE_BSON_TYPES):
+                    # No numeric sum is defined for this field. SQL SUM() answers NULL over a
+                    # non-numeric column and implicitly converts a numeric-looking string one
+                    # (`ZIP`, an account number), while MongoDB's $sum answers 0 over the very
+                    # same values because they are strings. Either way the two sides state
+                    # different facts, so the comparison carries no information about the
+                    # load. Tier 3's keyed, post-canonicalization diff covers these values.
                     sum_not_comparable.append(f"{c.collection}.{f.target}")
                     continue
                 if stat in ("min", "max", "sum"):

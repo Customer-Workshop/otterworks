@@ -1,16 +1,16 @@
 # Recon report: unit `U1`
 
-- **Verdict: FAIL**
+- **Verdict: PASS**
 - Mode: `live`
-- Mapping version: `1.0`
+- Mapping version: `1.1`
 - Tolerance version: `1.0`
 - Seed: `0`
-- Generated: 2026-09-01T05:49:59.031174+00:00
+- Generated: 2026-09-01T12:58:38.484875+00:00
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|
 | 1 | counts_through_mapping | 3 | PASS |
-| 2 | per_field_aggregates | 311 | FAIL (36 findings) |
+| 2 | per_field_aggregates | 311 | PASS |
 | 3 | keyed_diffs | 33333 | PASS |
 
 ## Tier 2 coverage
@@ -47,6 +47,8 @@
     "customers.phone2",
     "customers.phone3",
     "customers.phone4",
+    "customers.phone3_type_cd",
+    "customers.phone4_type_cd",
     "customers.fax",
     "customers.email_1",
     "customers.email_2",
@@ -56,10 +58,17 @@
     "customers.last_invoice_dt",
     "customers.last_payment_dt",
     "customers.terminate_dt",
+    "customers.sub_status_cd",
+    "customers.territory_cd",
+    "customers.channel_cd",
+    "customers.rate_class_cd",
     "customers.tax_exempt_yn",
     "customers.credit_hold_yn",
     "customers.dunning_exempt_yn",
     "customers.vip_yn",
+    "customers.ltd_billed_amt",
+    "customers.ytd_paid_amt",
+    "customers.credit_limit_amt",
     "customers.related_acct_ids",
     "customers.child_acct_ids",
     "customers.promo_codes_csv",
@@ -126,6 +135,16 @@
     "customers.udf_38",
     "customers.udf_39",
     "customers.udf_40",
+    "customers.udf_amt_01",
+    "customers.udf_amt_02",
+    "customers.udf_amt_03",
+    "customers.udf_amt_04",
+    "customers.udf_amt_05",
+    "customers.udf_amt_06",
+    "customers.udf_amt_07",
+    "customers.udf_amt_08",
+    "customers.udf_amt_09",
+    "customers.udf_amt_10",
     "customers.udf_dt_01",
     "customers.udf_dt_02",
     "customers.udf_dt_03",
@@ -265,44 +284,6 @@
   ]
 }
 ```
-
-## Tier 2 findings (36)
-- `customers` aggregate_distinct_count: field PHONE3_TYPE_CD->phone3_type_cd | source=0 target=1 | rules=[]
-- `customers` aggregate_sum: field PHONE3_TYPE_CD->phone3_type_cd | source=None target=0.0 | rules=[]
-- `customers` aggregate_distinct_count: field PHONE4_TYPE_CD->phone4_type_cd | source=0 target=1 | rules=[]
-- `customers` aggregate_sum: field PHONE4_TYPE_CD->phone4_type_cd | source=None target=0.0 | rules=[]
-- `customers` aggregate_distinct_count: field SUB_STATUS_CD->sub_status_cd | source=2 target=3 | rules=[]
-- `customers` aggregate_distinct_count: field TERRITORY_CD->territory_cd | source=0 target=1 | rules=[]
-- `customers` aggregate_sum: field TERRITORY_CD->territory_cd | source=None target=0.0 | rules=[]
-- `customers` aggregate_distinct_count: field CHANNEL_CD->channel_cd | source=0 target=1 | rules=[]
-- `customers` aggregate_sum: field CHANNEL_CD->channel_cd | source=None target=0.0 | rules=[]
-- `customers` aggregate_distinct_count: field RATE_CLASS_CD->rate_class_cd | source=0 target=1 | rules=[]
-- `customers` aggregate_sum: field RATE_CLASS_CD->rate_class_cd | source=None target=0.0 | rules=[]
-- `customers` aggregate_distinct_count: field LTD_BILLED_AMT->ltd_billed_amt | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field LTD_BILLED_AMT->ltd_billed_amt | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field YTD_PAID_AMT->ytd_paid_amt | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field YTD_PAID_AMT->ytd_paid_amt | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field CREDIT_LIMIT_AMT->credit_limit_amt | source=4 target=5 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_01->udf_amt_01 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_01->udf_amt_01 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_02->udf_amt_02 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_02->udf_amt_02 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_03->udf_amt_03 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_03->udf_amt_03 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_04->udf_amt_04 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_04->udf_amt_04 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_05->udf_amt_05 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_05->udf_amt_05 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_06->udf_amt_06 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_06->udf_amt_06 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_07->udf_amt_07 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_07->udf_amt_07 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_08->udf_amt_08 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_08->udf_amt_08 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_09->udf_amt_09 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_09->udf_amt_09 | source=None target=0.0 | rules=['decimal_round']
-- `customers` aggregate_distinct_count: field UDF_AMT_10->udf_amt_10 | source=0 target=1 | rules=['decimal_round']
-- `customers` aggregate_sum: field UDF_AMT_10->udf_amt_10 | source=None target=0.0 | rules=['decimal_round']
 
 ## Tier 3 coverage
 ```json

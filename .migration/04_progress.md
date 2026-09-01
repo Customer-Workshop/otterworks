@@ -7,7 +7,7 @@ DB prefix below: `ow` = `ow_tp_mongodb_032752`, `owq` = `ow_tp_mongodb_032752_qu
 
 | Wave | Unit | Write target (db.collection) | Status | Parity | Quarantine rate | Unverified paths | Cost | PR |
 |---|---|---|---|---|---|---|---|---|
-| 0 | U0 shared-reference | ow.codes, ow.tenants, ow.plans, ow.fixture_meta | IN PROGRESS — RECON PARTIAL (core PASS; codes + fixture_meta UNGRADED, escalated) | core (tenants, plans) PASS @ tolerances 1.0; codes 10/10 + fixture_meta ungraded | 0% (0 rejects, quarantine unused) | codes parity (10 code_type scopes), fixture_meta parity, live gate (fixture run_mode only), no app reader exercised | M0 free tier, 105 docs | #1397 |
+| 0 | U0 shared-reference | ow.codes, ow.tenants, ow.plans, ow.fixture_meta | RECON_GREEN (fixture self-check; live gate pending at the wave gate) | PASS @ mapping 1.0 / tolerances 1.0 — tiers 4/12/105, whole-table codes gate on the composed key, fixture_meta count-only | 0% (0 rejects, quarantine unused) | fixture_meta.INITIALIZED_AT declared-unexercised, live gate (fixture run_mode only), no app reader exercised | M0 free tier, 105 docs | #1397 |
 | 1 | U1 customers | ow.customers, ow.customer_master_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 1 | U2 invoice-feed | ow.invoice_feed, owq.invoice_feed_orphan_lines | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 2 | U3 subscriptions | ow.subscriptions, ow.subscriptions_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |

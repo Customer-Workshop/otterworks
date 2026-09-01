@@ -1,0 +1,38 @@
+{
+  "started_at": "2026-09-01T13:42:11.258995+00:00",
+  "finished_at": "2026-09-01T13:42:13.113100+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "mapping_version": "1.1",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "collections": {
+    "subscriptions": {
+      "root_table": "SUBSCRIPTIONS",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 69,
+      "inserted": 69,
+      "docs_after": 69,
+      "ns_docs_after": 69,
+      "indexes": [
+        "_id_",
+        "tenant_id_1_starts_on_1"
+      ]
+    },
+    "subscriptions_hist": {
+      "root_table": "SUBSCRIPTIONS_HIST",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 0,
+      "inserted": 0,
+      "docs_after": 0,
+      "ns_docs_after": 0,
+      "indexes": [
+        "_id_"
+      ]
+    }
+  }
+}

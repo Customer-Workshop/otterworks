@@ -101,7 +101,10 @@ def status_pipeline(batch_no):
         {
             "$set": {
                 "code_key": {
-                    "$concat": ["INV_STATUS#", {"$toString": "$_id"}]
+                    "$concat": [
+                        "INV_STATUS#",
+                        {"$toString": {"$ifNull": ["$_id", ""]}},
+                    ]
                 }
             }
         },
@@ -118,7 +121,13 @@ def status_pipeline(batch_no):
                 "status_desc": {
                     "$ifNull": [
                         {"$first": "$code.code_desc"},
-                        {"$concat": ["UNKNOWN(", {"$toString": "$_id"}, ")"]},
+                        {
+                            "$concat": [
+                                "UNKNOWN(",
+                                {"$toString": {"$ifNull": ["$_id", ""]}},
+                                ")",
+                            ]
+                        },
                     ]
                 }
             }
@@ -165,7 +174,10 @@ def line_pipeline(batch_no):
         {
             "$set": {
                 "code_key": {
-                    "$concat": ["INV_STATUS#", {"$toString": "$_id.status_cd"}]
+                    "$concat": [
+                        "INV_STATUS#",
+                        {"$toString": {"$ifNull": ["$_id.status_cd", ""]}},
+                    ]
                 }
             }
         },
@@ -185,7 +197,11 @@ def line_pipeline(batch_no):
                         {
                             "$concat": [
                                 "UNKNOWN(",
-                                {"$toString": "$_id.status_cd"},
+                                {
+                                    "$toString": {
+                                        "$ifNull": ["$_id.status_cd", ""]
+                                    }
+                                },
                                 ")",
                             ]
                         },
@@ -214,7 +230,11 @@ def line_pipeline(batch_no):
                         "default": {
                             "$concat": [
                                 "UNKNOWN(",
-                                {"$toString": "$_id.line_type_cd"},
+                                {
+                                    "$toString": {
+                                        "$ifNull": ["$_id.line_type_cd", ""]
+                                    }
+                                },
                                 ")",
                             ]
                         },

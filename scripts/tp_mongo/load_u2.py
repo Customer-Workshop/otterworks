@@ -53,8 +53,14 @@ def ch(v):
     return None if value == "" else value
 
 
+def num(v):
+    return None if v is None else int(v)
+
+
 def dec(v, scale):
     """NUMBER to half-even rounded BSON Decimal128."""
+    if v is None:
+        return None
     return Decimal128(
         Decimal(str(v)).quantize(
             Decimal(1).scaleb(-scale), rounding=ROUND_HALF_EVEN
@@ -108,8 +114,8 @@ def _line_document(row: dict) -> dict:
         "cust_no": vc(row["CUST_NO"]),
         "cust_name": vc(row["CUST_NAME"]),
         "tenant_id": vc(row["TENANT_ID"]),
-        "line_no": int(row["LINE_NO"]),
-        "line_type_cd": int(row["LINE_TYPE_CD"]),
+        "line_no": num(row["LINE_NO"]),
+        "line_type_cd": num(row["LINE_TYPE_CD"]),
         "item_desc": vc(row["ITEM_DESC"]),
         "qty": dec(row["QTY"], 3),
         "unit_price": dec(row["UNIT_PRICE"], 4),
@@ -119,7 +125,7 @@ def _line_document(row: dict) -> dict:
         "service_period": vc(row["SERVICE_PERIOD"]),
         "posted_yn": ch(row["POSTED_YN"]),
         "gl_acct_csv": vc(row["GL_ACCT_CSV"]),
-        "batch_no": int(row["BATCH_NO"]),
+        "batch_no": num(row["BATCH_NO"]),
         "src_system": vc(row["SRC_SYSTEM"]),
     }
 
@@ -132,9 +138,9 @@ def _header_document(row: dict, lines: list[dict]) -> dict:
         "tenant_id": vc(row["TENANT_ID"]),
         "invoice_dt": vc(row["INVOICE_DT"]),
         "due_dt": vc(row["DUE_DT"]),
-        "status_cd": int(row["STATUS_CD"]),
+        "status_cd": num(row["STATUS_CD"]),
         "total_amt": dec(row["TOTAL_AMT"], 2),
-        "batch_no": int(row["BATCH_NO"]),
+        "batch_no": num(row["BATCH_NO"]),
         "lines": lines,
         "ns": NS_VALUE,
     }
@@ -221,7 +227,7 @@ def main() -> int:
                         "table": "INVOICE_LINE",
                         "key": {"LINE_ID": str(row["LINE_ID"])},
                         "invoice_id": str(row["INVOICE_ID"]),
-                        "batch_no": int(row["BATCH_NO"]),
+                        "batch_no": num(row["BATCH_NO"]),
                     },
                     "quarantined_at": quarantined_at,
                 }

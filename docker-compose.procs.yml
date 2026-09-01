@@ -40,6 +40,8 @@ services:
       # which listens on the host, not in this compose network.
       ORACLE_HOST: ${ORACLE_HOST:-host.docker.internal}
       ORACLE_PORT: ${ORACLE_BILLING_DB_PORT:-52521}
+      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI:-}
+      MONGO_MIGRATION_DB: ${MONGO_MIGRATION_DB:-ow_tp_mongodb_032752}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

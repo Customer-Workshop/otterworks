@@ -149,3 +149,43 @@ def test_report_pipelines():
     assert len(switches) == 1
     assert [branch["case"]["$eq"][1] for branch in switches[0]["branches"]] == [1, 2, 3, 9]
     assert switches[0]["default"]["$concat"][0] == "UNKNOWN("
+
+
+def test_report_unknown_fallbacks_are_null_safe():
+    status = status_pipeline(123)
+    line = line_pipeline(123)
+    expected_status_code = {"$toString": {"$ifNull": ["$_id", ""]}}
+    expected_line_status = {
+        "$toString": {"$ifNull": ["$_id.status_cd", ""]}
+    }
+    expected_line_type = {
+        "$toString": {"$ifNull": ["$_id.line_type_cd", ""]}
+    }
+
+    status_code_key = next(
+        stage["$set"]["code_key"] for stage in status if "$set" in stage and "code_key" in stage["$set"]
+    )
+    assert status_code_key["$concat"][1] == expected_status_code
+    status_fallback = next(
+        stage["$set"]["status_desc"]["$ifNull"][1]
+        for stage in status
+        if "$set" in stage and "status_desc" in stage["$set"]
+    )
+    assert status_fallback["$concat"][1] == expected_status_code
+
+    line_code_key = next(
+        stage["$set"]["code_key"] for stage in line if "$set" in stage and "code_key" in stage["$set"]
+    )
+    assert line_code_key["$concat"][1] == expected_line_status
+    line_status_fallback = next(
+        stage["$set"]["status_desc"]["$ifNull"][1]
+        for stage in line
+        if "$set" in stage and "status_desc" in stage["$set"]
+    )
+    assert line_status_fallback["$concat"][1] == expected_line_status
+    line_type_default = next(
+        stage["$set"]["line_type"]["$switch"]["default"]
+        for stage in line
+        if "$set" in stage and "line_type" in stage["$set"]
+    )
+    assert line_type_default["$concat"][1] == expected_line_type

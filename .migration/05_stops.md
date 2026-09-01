@@ -83,6 +83,17 @@ Scope of the approval: mapping spec `03_mapping_spec.json` version **1.0.0** (2 
 `85559852`), decisions D1–D13 as recommended, tolerances unchanged at version `1`, wave order
 `customers` → `invoices`. No later mapping version inherits this approval.
 
+### D6 follow-up, 2026-09-01 (wave 1 review)
+
+Review of PR #1392 asked for `CUST_NAME_UPPER` to be dropped from the target document, which
+would change the approved mapping version. Answer, verbatim:
+
+> Question 1: Selected: Keep 1.0.0 as approved — retire the column at cutover
+
+So mapping `1.0.0` keeps the field and the loaded documents carry it; the collation index on
+`cust_name` remains the lookup path, and the column is retired at cutover rather than by an
+unapproved mid-wave mapping change.
+
 ## STOP C — cutover readiness
 
 Not reached.

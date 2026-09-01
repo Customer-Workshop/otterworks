@@ -5,13 +5,18 @@
 Every write target is registered here **before** any load runs. A second unit claiming a
 registered target is a collision: halt immediately, do not load, escalate.
 
-| Target namespace | Owning unit | Registered at | Load status |
-|---|---|---|---|
-| `ow_tp_demo.customers` | `customers` | STOP A | not loaded |
-| `ow_tp_demo.invoices` | `invoices` | STOP A | not loaded |
-| `ow_tp_demo_quarantine.customers` | `customers` | STOP A | not loaded |
-| `ow_tp_demo_quarantine.invoices` | `invoices` | STOP A | not loaded |
-| `ow_tp_demo.counters` | `customers` | STOP B (proposed, D3) | not loaded — registered only if D3 is approved |
+| Target namespace | Owning unit | Registered at | Mode | Load status |
+|---|---|---|---|---|
+| `ow_tp_demo.customers` | `customers` | STOP A; claimed 2026-09-01 for the wave-1 load | write (delete + insert, scoped to `ns: demo`) | loaded — 25,000 docs, 8,333 embedded `attributes[]` |
+| `ow_tp_demo_quarantine.customers` | `customers` | STOP A; claimed 2026-09-01 for the wave-1 load | write (delete + insert, scoped to `ns: demo`) | loaded — 81 field-level quarantine records |
+| `ow_tp_demo.counters` | `customers` | STOP B, D3 approved 2026-09-01 | write (single upsert, `_id: demo:customers.cust_seq_no`) | loaded — `cust_seq_no` seeded to 125,000 |
+| `ow_tp_demo.invoices` | `invoices` | STOP A | write | not loaded |
+| `ow_tp_demo_quarantine.invoices` | `invoices` | STOP A | write | not loaded |
+
+The wave-1 unit writes those three collections and nothing else; `ow_tp_demo.invoices` and
+`ow_tp_demo_quarantine.invoices` stay untouched until wave 2 claims them. No collection is
+claimed by two units, so there is no collision to escalate. The unit never drops a
+collection: it deletes only `{ns: "demo"}` documents before reloading them.
 
 Playbook 2 wrote nothing to the migration cluster and nothing to the source: the census is
 `SELECT`-only and the mapping spec was validated offline by `recon.config.load_mapping_spec`.
@@ -27,8 +32,19 @@ A write to any of them is a guardrail breach, not a collision to negotiate.
 
 | Wave | Unit | Mapping version | Tolerance version | Recon verdict | PR | Status |
 |---|---|---|---|---|---|---|
-| 1 | `customers` | 1.0.0 (proposed, STOP B) | 1 | — | — | modeled — awaiting STOP B |
-| 2 | `invoices` | 1.0.0 (proposed, STOP B) | 1 | — | — | modeled — awaiting STOP B |
+| 1 | `customers` | 1.0.0 (STOP B approved) | 1 | **PASS** (live; T1 2 / T2 42 / T3 25,000 / T4 2 checks) | — | in flight — `!mongo_unit`, loaded + green, PR open |
+| 2 | `invoices` | 1.0.0 (STOP B approved) | 1 | — | — | modeled — not started (wave 2) |
+
+### Wave 1 `customers` load record
+
+| Fact | Value |
+|---|---|
+| Source scope | `CONVERSION_BATCH_NO = 85559852` (`ns_batch_no("demo")`) |
+| `ow_tp_demo.customers` | 25,000 documents, `_id = CUST_NO`, every document `ns: "demo"` |
+| Embedded `attributes[]` | 8,333 EAV rows (duplicate `(ENTITY_ID, ATTR_NAME)` pairs preserved, D2) |
+| `ow_tp_demo_quarantine.customers` | 81 records — 50 `unparseable_legacy_date` (D4), 31 `malformed_delimited_list` (D5); both are the STOP B-approved policy, no new quarantine class |
+| Recon evidence | `.migration/recon/customers/result.json`, `report.md`, `recon.summary.md` |
+| Harness | vendored pinned copy, `.migration/vendor/mongo-recon-harness` (H1 fix only) |
 
 A unit is **done** only when its PR is merged into `tp-run/mongodb-20260831T232410Z` with a
 green harness verdict recorded above. "Code written" and "recon run locally" are not done.

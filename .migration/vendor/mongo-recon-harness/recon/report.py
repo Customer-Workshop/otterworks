@@ -1,0 +1,102 @@
+"""Result rendering: one machine-readable result.json (the workflow gates on it), one
+human report.md (read at wave close), and a ~30-line recon.summary.md sized for a PR body.
+Every report cites mode, mapping version, and tolerance version so evidence is
+re-runnable."""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+from pathlib import Path
+
+from .tiers import TierResult
+
+MAX_FINDINGS_IN_REPORT = 50
+
+
+def build_result(unit: str, mode: str, mapping_version: str, tolerance_version: str,
+                 tiers: list[TierResult]) -> dict:
+    return {
+        "unit": unit,
+        "mode": mode,
+        "mapping_version": mapping_version,
+        "tolerance_version": tolerance_version,
+        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "tiers": [t.as_dict() for t in tiers],
+        "verdict": "PASS" if all(t.passed for t in tiers) else "FAIL",
+    }
+
+
+def render_report(result: dict) -> str:
+    lines = [
+        f"# Recon report: unit `{result['unit']}`",
+        "",
+        f"- **Verdict: {result['verdict']}**",
+        f"- Mode: `{result['mode']}`" + ("  (PASS language is scoped to the snapshot watermark)"
+                                         if result["mode"] == "snapshot" else ""),
+        f"- Mapping version: `{result['mapping_version']}`",
+        f"- Tolerance version: `{result['tolerance_version']}`",
+        f"- Generated: {result['generated_at']}",
+        "",
+        "| Tier | Name | Checks | Result |",
+        "|---|---|---|---|",
+    ]
+    for t in result["tiers"]:
+        lines.append(f"| {t['tier']} | {t['name']} | {t['checks_run']} | "
+                     f"{'PASS' if t['passed'] else 'FAIL (' + str(len(t['findings'])) + ' findings)'} |")
+    for t in result["tiers"]:
+        if t.get("stats"):
+            lines += ["", f"## Tier {t['tier']} coverage", "```json",
+                      json.dumps(t["stats"], indent=2, default=str), "```"]
+        if t["findings"]:
+            lines += ["", f"## Tier {t['tier']} findings ({len(t['findings'])})"]
+            for f in t["findings"][:MAX_FINDINGS_IN_REPORT]:
+                lines.append(f"- `{f['collection']}` {f['check']}: {f['detail']}"
+                             + (f" | source={f['source_value']} target={f['target_value']}"
+                                f" | rules={f['rules_applied']}"
+                                if f["check"] in ("field_diff", "aggregate_min", "aggregate_max",
+                                                  "aggregate_sum", "aggregate_null_rate",
+                                                  "aggregate_distinct_count") else ""))
+            if len(t["findings"]) > MAX_FINDINGS_IN_REPORT:
+                lines.append(f"- ... {len(t['findings']) - MAX_FINDINGS_IN_REPORT} more in result.json")
+    return "\n".join(lines) + "\n"
+
+
+MAX_FINDINGS_IN_SUMMARY = 5
+
+
+def render_summary(result: dict) -> str:
+    """The tier-A evidence surface: what a unit PR renders. Full detail stays in
+    result.json / report.md, which the PR links."""
+    lines = [
+        f"# Recon summary: `{result['unit']}` - **{result['verdict']}**",
+        "",
+        f"- Mode: `{result['mode']}`" + (" (PASS scoped to the snapshot watermark)"
+                                         if result["mode"] == "snapshot" else ""),
+        f"- Mapping `{result['mapping_version']}` / tolerances `{result['tolerance_version']}`",
+        f"- Generated: {result['generated_at']}",
+        "",
+        "| Tier | Checks | Result |",
+        "|---|---|---|",
+    ]
+    for t in result["tiers"]:
+        lines.append(f"| {t['tier']} {t['name']} | {t['checks_run']} | "
+                     f"{'PASS' if t['passed'] else 'FAIL (' + str(len(t['findings'])) + ')'} |")
+    failing = [(t["tier"], f) for t in result["tiers"] for f in t["findings"]]
+    if failing:
+        lines += ["", f"Top findings ({min(len(failing), MAX_FINDINGS_IN_SUMMARY)} of {len(failing)}; full list in result.json):"]
+        for tier, f in failing[:MAX_FINDINGS_IN_SUMMARY]:
+            lines.append(f"- T{tier} `{f['collection']}` {f['check']}: {f['detail']}")
+    lines += ["", "Full evidence: result.json, report.md (linked from the PR, not pasted)."]
+    return "\n".join(lines) + "\n"
+
+
+def write_outputs(out_dir: Path, result: dict) -> tuple[Path, Path, Path]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rj = out_dir / "result.json"
+    rm = out_dir / "report.md"
+    rs = out_dir / "recon.summary.md"
+    rj.write_text(json.dumps(result, indent=2, default=str) + "\n")
+    rm.write_text(render_report(result))
+    rs.write_text(render_summary(result))
+    return rj, rm, rs

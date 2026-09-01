@@ -12,7 +12,7 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | STOP B | APPROVED 2026-09-01 — P1 (whole `COMMISSION_DW` schema), boundary confirmed | `#ow-migrations` thread |
 | Analysis + plan / STOP C | DONE; STOP C APPROVED 2026-09-01 (engagement lead, relayed) | `.migration/COMMISSION_DW_analysis.md`, `COMMISSION_DW_plan.md` |
 | Wave 0 | MERGED (PR #1422, CI green, 6 review findings fixed) — all 6 gates green (catalog+schemas+volume, preflight 11/11 probes 0 denied, legacy load FACT 0→3, 9-object baseline hash-pinned, Files API landing checksum 0 mismatches, 4 bronze feed tables loaded, skill stub, harness validated) | branch `migrate/commission-dw/w0-scaffolding`; evidence `.migration/COMMISSION_DW_wave0_evidence.md` |
-| Waves 1..N | IN_FLIGHT — wave 1 pilot launched 2026-09-01 (U1–U3, width 3, one PR each into the run branch) | ledger PR #1424 |
+| Waves 1..N | Wave 1 MERGED 2026-09-01 (#1425 #1426 #1427; independent recon PASS ×3); wave 2 NOT_STARTED | ledger PR #1424 |
 | Parallel run | NOT_STARTED | |
 | STOP E | NOT_STARTED | |
 
@@ -20,9 +20,9 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | Wave | Unit | Status | Money parity | Quarantine rate | Unverified paths | PR | Cost so far (ACU / warehouse-min) |
 |---|---|---|---|---|---|---|---|
 | 0 | W0 scaffolding (catalog, snapshots, skill stub, recon harness, preflight) | MERGED | n/a | n/a | none | #1422 | parent session; warehouse ≈2 min |
-| 1 (B1-1) | U1 dim_agent | IN_FLIGHT (launched 2026-09-01) | – | – | – | branch `migrate/commission-dw/w1-dim_agent` | – |
-| 1 (B1-2) | U2 dim_product | IN_FLIGHT (launched 2026-09-01) | – | – | – | branch `migrate/commission-dw/w1-dim_product` | – |
-| 1 (B1-3) | U3 dim_period | IN_FLIGHT (launched 2026-09-01) | – | – | – | branch `migrate/commission-dw/w1-dim_period` | – |
+| 1 (B1-1) | U1 dim_agent | MERGED | n/a | 0 | live-legacy-comparison (DEGRADED) | #1426 | ≈5.0 ACU / ≤15 wh-min |
+| 1 (B1-2) | U2 dim_product | MERGED | n/a | 0 | live-legacy-comparison (DEGRADED) | #1425 | ≈4.6 ACU / ≈2 wh-min |
+| 1 (B1-3) | U3 dim_period | MERGED | n/a | 0 | live-legacy-comparison (DEGRADED) | #1427 | ≈3.5 ACU / ≈8 wh-min |
 | 2 (B2-1) | U4 fact_commission + job load_commission_facts | NOT_STARTED | – | – | – | – | – |
 | 2 (B2-1) | U5 mv_agent_commission_summary | NOT_STARTED | – | – | – | – | – |
 

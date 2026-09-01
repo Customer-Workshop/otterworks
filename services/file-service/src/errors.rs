@@ -102,3 +102,77 @@ impl fmt::Display for ErrorResponse {
         write!(f, "{}: {}", self.error, self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::body::to_bytes;
+    use actix_web::http::StatusCode;
+
+    async fn response_parts(err: ServiceError) -> (StatusCode, serde_json::Value) {
+        let resp = err.error_response();
+        let status = resp.status();
+        let body = to_bytes(resp.into_body()).await.unwrap();
+        (status, serde_json::from_slice(&body).unwrap())
+    }
+
+    #[actix_web::test]
+    async fn not_found_variants_map_to_404() {
+        for (err, expected_type) in [
+            (ServiceError::FileNotFound("f".into()), "file_not_found"),
+            (ServiceError::FolderNotFound("d".into()), "folder_not_found"),
+            (
+                ServiceError::VersionNotFound("v".into()),
+                "version_not_found",
+            ),
+            (ServiceError::ShareNotFound("s".into()), "share_not_found"),
+        ] {
+            let (status, body) = response_parts(err).await;
+            assert_eq!(status, StatusCode::NOT_FOUND);
+            assert_eq!(body["error"], expected_type);
+        }
+    }
+
+    #[actix_web::test]
+    async fn client_errors_map_to_4xx() {
+        let (status, body) = response_parts(ServiceError::BadRequest("bad".into())).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"], "bad_request");
+
+        let (status, body) = response_parts(ServiceError::Unauthorized("no".into())).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(body["error"], "unauthorized");
+
+        let (status, body) = response_parts(ServiceError::Forbidden("no".into())).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(body["error"], "forbidden");
+    }
+
+    #[actix_web::test]
+    async fn file_too_large_maps_to_413_with_sizes_in_message() {
+        let (status, body) = response_parts(ServiceError::FileTooLarge {
+            max_bytes: 100,
+            actual_bytes: 200,
+        })
+        .await;
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(body["error"], "file_too_large");
+        let message = body["message"].as_str().unwrap();
+        assert!(message.contains("100"));
+        assert!(message.contains("200"));
+    }
+
+    #[actix_web::test]
+    async fn backend_errors_map_to_500_without_leaking_variant_names() {
+        for (err, expected_type) in [
+            (ServiceError::S3Error("s3".into()), "storage_error"),
+            (ServiceError::DynamoError("ddb".into()), "metadata_error"),
+            (ServiceError::SnsError("sns".into()), "event_error"),
+            (ServiceError::Internal("boom".into()), "internal_error"),
+        ] {
+            let (status, body) = response_parts(err).await;
+            assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+            assert_eq!(body["error"], expected_type);
+        }
+    }
+}

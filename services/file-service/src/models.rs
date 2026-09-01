@@ -200,3 +200,103 @@ pub struct ActivityQuery {
 pub struct ActivityResponse {
     pub items: Vec<ActivityItem>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn share_permission_from_str_value_parses_known_values() {
+        assert_eq!(
+            SharePermission::from_str_value("viewer"),
+            Some(SharePermission::Viewer)
+        );
+        assert_eq!(
+            SharePermission::from_str_value("editor"),
+            Some(SharePermission::Editor)
+        );
+    }
+
+    #[test]
+    fn share_permission_from_str_value_is_case_insensitive() {
+        assert_eq!(
+            SharePermission::from_str_value("VIEWER"),
+            Some(SharePermission::Viewer)
+        );
+        assert_eq!(
+            SharePermission::from_str_value("Editor"),
+            Some(SharePermission::Editor)
+        );
+    }
+
+    #[test]
+    fn share_permission_from_str_value_rejects_unknown_values() {
+        assert_eq!(SharePermission::from_str_value("owner"), None);
+        assert_eq!(SharePermission::from_str_value(""), None);
+    }
+
+    #[test]
+    fn share_permission_display_matches_wire_format() {
+        assert_eq!(SharePermission::Viewer.to_string(), "viewer");
+        assert_eq!(SharePermission::Editor.to_string(), "editor");
+    }
+
+    #[test]
+    fn share_permission_serde_roundtrip_is_lowercase() {
+        assert_eq!(
+            serde_json::to_string(&SharePermission::Editor).unwrap(),
+            "\"editor\""
+        );
+        let parsed: SharePermission = serde_json::from_str("\"viewer\"").unwrap();
+        assert_eq!(parsed, SharePermission::Viewer);
+    }
+
+    #[test]
+    fn share_permission_serde_rejects_unknown_value() {
+        assert!(serde_json::from_str::<SharePermission>("\"owner\"").is_err());
+    }
+
+    #[test]
+    fn file_detail_response_flattens_file_metadata() {
+        let now = Utc::now();
+        let file = FileMetadata {
+            id: Uuid::nil(),
+            name: "report.pdf".into(),
+            mime_type: "application/pdf".into(),
+            size_bytes: 42,
+            s3_key: "files/report.pdf".into(),
+            folder_id: None,
+            owner_id: Uuid::nil(),
+            version: 1,
+            is_trashed: false,
+            created_at: now,
+            updated_at: now,
+        };
+        let detail = FileDetailResponse {
+            file,
+            shared_with: vec![],
+        };
+        let json = serde_json::to_value(&detail).unwrap();
+        assert_eq!(json["name"], "report.pdf");
+        assert_eq!(json["size_bytes"], 42);
+        assert!(json["shared_with"].as_array().unwrap().is_empty());
+        assert!(json.get("file").is_none());
+    }
+
+    #[test]
+    fn activity_item_serializes_type_field() {
+        let item = ActivityItem {
+            id: "1".into(),
+            activity_type: "upload".into(),
+            description: "uploaded a file".into(),
+            actor_name: "otter".into(),
+            resource_name: "report.pdf".into(),
+            resource_type: "file".into(),
+            resource_id: "abc".into(),
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        let json = serde_json::to_value(&item).unwrap();
+        assert_eq!(json["type"], "upload");
+        assert!(json.get("activity_type").is_none());
+    }
+}

@@ -1,0 +1,17 @@
+# 06 — Decision log
+
+Each row carries provenance (which unit/PR forced it) and blast radius (which merged units' assumptions it changes).
+
+| ID | Date | Decision | Rationale | Forced by | Blast radius | Approved by | Status |
+|---|---|---|---|---|---|---|---|
+| DEC-001 | 2026-09-01 | Scope = `COMMISSION_DW` only; `COMMISSION_PKG` out; `COMMISSION_PAY` tables are a D3 feed | Engagement statement | intake | none | engagement (FACT) | FINAL |
+| DEC-002 | 2026-09-01 | Coexistence + recon via snapshots; recon mode DEGRADED | Federation topologically unreachable (D10-1) | intake | every recon report | pending STOP A | PROPOSED |
+| DEC-003 | 2026-09-01 | Surrogate keys preserved as explicit BIGINT values; no `GENERATED ALWAYS AS IDENTITY`; identity resumes at max+1 only in the converted loader | Keeps FKs valid without remap | intake §6 | dim_*, fact | pending STOP A | PROPOSED |
+| DEC-004 | 2026-09-01 | `loaded_at` excluded from baselines, diffs and idempotency | Server-side `SYSTIMESTAMP` cannot be frozen | intake §4 | fact recon | pending STOP A | PROPOSED |
+| DEC-005 | 2026-09-01 | Baseline extracts landed with explicit `FIXTURE_SOURCE=etl/legacy-extra/commission_dw/<ns>` | Default fixture source is a different estate | intake W0-2 | wave 0 | pending STOP A | PROPOSED |
+| DEC-006 | 2026-09-01 | No `oracle-plsql` dialect skill → generic ANSI + dictionary; build stub in wave 0 (W0-1) | Plugin ships no Oracle skill | intake §6 | all conversion units | pending STOP A | PROPOSED |
+| DEC-007 | 2026-09-01 | Tolerance record v1 (exact everywhere, cents-as-integers, 2 legacy sessions, 1M row-diff threshold) | Strict defaults; estate is tiny | setup | all recon | pending STOP A | PROPOSED |
+| DEC-008 | 2026-09-01 | NS=`cdw`; unit branches `migrate/commission-dw/<wave>-<unit>`; one PR per unit; pilot ≤3, then ≤5 | Intake §5 defaults; unit count bounds width | setup | all | pending STOP A | PROPOSED |
+| DEC-009 | 2026-09-01 | Security reviewer: N/A for this engagement; cutover principal: customer-held, named at STOP E | Intake OPEN rows | setup | STOP E | pending STOP A | PROPOSED |
+| DEC-011 | 2026-09-01 | Baseline population: in the throwaway `cdw` instance the warehouse and ledger are empty (loader never run). Wave 0 executes the legacy's **own** existing workload once (`COMMISSION_PKG` calculation + `DW_ETL_PKG.LOAD_COMMISSION_FACTS` + MV refresh, via the legacy's shipped procedures, deterministic run) before extracting the baseline; no statement authored by us touches legacy | Recon against an empty baseline proves nothing | access checklist | wave 0, all recon | pending STOP A | PROPOSED |
+| DEC-010 | 2026-09-01 | Notification contract: A/B/C/E → `#ow-migrations`; halts → `#ow-tp-alerts`; D → `#ow-tp-status`; digest off | Engagement statement | intake | — | engagement (FACT) | FINAL |

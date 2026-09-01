@@ -12,3 +12,6 @@ Workflow: mongo-032752-fanout (script: .migration/fanout_workflow.py)
 | 2026-09-01 | Wave 1 CLOSED — U1, U2 merged on independent recon PASS; reports.py conflict resolved by orchestrator (disjoint report paths kept verbatim, U1 MONGO_SOURCE renamed MONGO_BALANCES_SOURCE) | recon/wave1-independent-20260901 |
 | 2026-09-01 | U1 PR #1406 post-gate commits 02a8fd2c/e6abe951 merged after orchestrator fidelity review (app-code + tests only; no loader/data change); wave 1 recon PASS remains valid | recon/wave1-independent-20260901 |
 | 2026-09-01 | U3 amendment v1.2 approved — resuming wave 2 (U3 re-run 2/3; U4/U7 results carry) | wfr-3be3387b3ba7486a90f9d1260a2427c5 |
+| 2026-09-01 | Wave 2 CLOSED — U3 (v1.2 re-gate, re-run 2/3), U4, U7 merged on independent recon PASS | recon/wave2-independent-20260901 |
+| 2026-09-01 | Wave 3a CLOSED — U5 merged on independent recon PASS | recon/wave3a-independent-20260901 |
+| 2026-09-01 | Wave 3b CLOSED — U6 merged on independent recon PASS; fan-out complete | recon/wave3b-independent-20260901 |

@@ -26,3 +26,4 @@
 | 2026-09-01 | Wave 2 closed: U3, U4, U7 merged on independent recon PASS | orchestrator | RECORDED |
 | 2026-09-01 | Wave 3a closed: U5 merged on independent recon PASS | orchestrator | RECORDED |
 | 2026-09-01 | Wave 3b closed: U6 merged on independent recon PASS | orchestrator | RECORDED |
+| 2026-09-01 | Phase transition: phase 3 (fan-out) COMPLETE — all waves 0/1/2/3a/3b closed, all 8 units MERGED on independent recon PASS (wave 0 DRIFT-EXPLAINED, functionally PASS). Entering phase 4: cutover preparation (!mongo_cutover) ending at STOP C | orchestrator | RECORDED |

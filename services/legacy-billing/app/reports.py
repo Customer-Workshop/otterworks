@@ -12,6 +12,7 @@ import hashlib
 import logging
 import os
 from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 
 from flask import Blueprint, jsonify, request
 
@@ -27,6 +28,12 @@ SOURCE = {
     "engine": "oracle",
     "system": "OW_BILLING legacy estate (Oracle FREEPDB1)",
     "detail": "INVOICE_HEADER / INVOICE_LINE via CODES lookup (RPT-114)",
+}
+
+MONGO_SOURCE = {
+    "engine": "mongodb",
+    "system": "ow_tp_mongodb_032752 (MongoDB Atlas)",
+    "detail": "customers aggregation pipeline (RPT-114 balances)",
 }
 
 STATUS_SQL = """
@@ -77,6 +84,24 @@ SELECT COUNT(*)                                          AS customer_count,
   FROM customer_master
  WHERE conversion_batch_no = :batch_no
 """
+
+
+def balances_pipeline(batch_no):
+    return [
+        {"$match": {"conversion_batch_no": batch_no}},
+        {"$group": {"_id": None,
+                    "customer_count": {"$sum": 1},
+                    "current_balance_total": {"$sum": "$cur_bal_amt"},
+                    "past_due_total": {"$sum": "$past_due_amt"}}},
+    ]
+
+
+def fm_amount(value):
+    """Render a NUMBER(14,2) aggregate the way TO_CHAR(x, 'FM999999999999990.00') does."""
+    if value is None:
+        return None
+    quantized = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"{quantized:f}"
 
 
 def ns_batch_no(ns):
@@ -137,11 +162,52 @@ def oracle_query(sql, params):
         return cursor.fetchall()
 
 
-def report_meta(ns):
+def mongo_connect():
+    import pymongo
+
+    return pymongo.MongoClient(os.environ["OW_BILLING_MONGO_URI"])
+
+
+def _customers_collection(client):
+    return client[os.getenv("OW_BILLING_MONGO_DB", "ow_tp_mongodb_032752")]["customers"]
+
+
+def mongo_balances(batch_no):
+    client = mongo_connect()
+    try:
+        rows = list(
+            _customers_collection(client).aggregate(balances_pipeline(batch_no))
+        )
+    finally:
+        client.close()
+    if not rows:
+        # Mirrors Oracle's COUNT(*)=0 with SUM(...) NULL over an empty match.
+        return [(0, None, None)]
+    row = rows[0]
+    return [
+        (
+            row["customer_count"],
+            fm_amount(row["current_balance_total"]),
+            fm_amount(row["past_due_total"]),
+        )
+    ]
+
+
+def balances_backend():
+    backend = os.getenv("BILLING_BALANCES_BACKEND")
+    if backend is not None:
+        backend = backend.lower()
+        if backend not in ("oracle", "mongodb"):
+            raise ValueError(f"unknown balances backend: {backend}")
+        return backend
+    return "mongodb" if os.getenv("OW_BILLING_MONGO_URI") else "oracle"
+
+
+def report_meta(ns, source=SOURCE):
     return {
         "namespace": ns,
         "batch_no": ns_batch_no(ns),
-        "source": SOURCE,
+        "source": source,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
@@ -167,12 +233,16 @@ def month_end():
 def reconciliation():
     ns = request.args.get("ns", "demo")
     batch_no = ns_batch_no(ns)
+    backend = balances_backend()
     try:
-        balance_rows = oracle_query(BALANCES_SQL, {"batch_no": batch_no})
+        if backend == "mongodb":
+            balance_rows = mongo_balances(batch_no)
+        else:
+            balance_rows = oracle_query(BALANCES_SQL, {"batch_no": batch_no})
     except Exception:
         logger.exception("reconciliation report failed for ns=%s", ns)
         return jsonify(ESTATE_UNAVAILABLE), 503
-    body = report_meta(ns)
+    body = report_meta(ns, MONGO_SOURCE if backend == "mongodb" else SOURCE)
     body["balances"] = shape_balances(balance_rows[0])
     # The legacy estate IS the source of truth: there is nothing to reconcile
     # against, so it reports baseline with no checks. Post-migration backends

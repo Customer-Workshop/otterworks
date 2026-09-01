@@ -17,7 +17,8 @@ Checks (tolerances v1, 03_recon_tolerances.md):
   key_preservation    every baseline surrogate key present with the same natural key
   money_sum_cents     exact integer-cents sum for money columns (fact, summary)
   fact_covers_ledger  (fact only) fact rows == ledger feed rows -> dropped_join_rows = 0
-  idempotency         the --rerun command is executed and the target re-read; row set must be
+  idempotency         the --rerun program (one argv, no shell syntax; wrap shell logic in a
+                      script) is executed and the target re-read; row set must be
                       identical (loaded_at excluded). Without --rerun the report is invalid
                       (idempotency_rerun.performed must be true) and the harness exits 2.
 """
@@ -124,7 +125,7 @@ def main() -> int:
     p.add_argument("--ns", default="cdw")
     p.add_argument("--run-mode", default="fixture", choices=["fixture", "live"])
     p.add_argument("--baseline-dir", default=None)
-    p.add_argument("--rerun", default=None, help="shell command that re-runs the unit's load (idempotency proof)")
+    p.add_argument("--rerun", default=None, help="program + args (single argv string, no shell operators) that re-runs the unit's load (idempotency proof)")
     p.add_argument("--out", required=True)
     p.add_argument("--warehouse", default="565cd2fd713738c4")
     args = p.parse_args()

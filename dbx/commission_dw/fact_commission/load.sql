@@ -30,6 +30,10 @@ SELECT assert_true(count(*) = 0,
         HAVING count(*) > 1
        );
 
+DELETE FROM ow_tp.ops.quarantine_cdw
+ WHERE run_id = '__RUN_ID__'
+   AND unit = 'fact_commission';
+
 INSERT INTO ow_tp.ops.quarantine_cdw (run_id, unit, ledger_id, policy_id, agent_id, period_month, reason, quarantined_at)
 SELECT '__RUN_ID__', 'fact_commission', cl.ledger_id, cl.policy_id, cl.agent_id, cl.period_month,
        concat_ws('; ',

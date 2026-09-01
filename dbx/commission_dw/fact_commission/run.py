@@ -71,7 +71,7 @@ cmds = {
   "feed_refresh": ["scripts/tp_dbx/cdw_baseline.py", "load-feed", "--ns", ns],
   "dim_agent": ["dbx/commission_dw/dim_agent/run.py", "--ns", ns],
   "dim_product": ["dbx/commission_dw/dim_product/run.py", "--ns", ns],
-  "dim_period": ["dbx/commission_dw/dim_period/run.py", "--ns", ns],
+  "dim_period": ["dbx/commission_dw/dim_period/run.py", "--ns", ns] + (["--period-month", period_month] if period_month else []),
   "fact_commission": ["dbx/commission_dw/fact_commission/run.py", "--ns", ns, "--run-id", run_id] + (["--period-month", period_month] if period_month else []),
   "mv_agent_commission_summary": ["dbx/commission_dw/mv_agent_commission_summary/run.py", "--ns", ns],
 }

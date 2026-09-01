@@ -39,7 +39,7 @@ catalog, grant, cluster, or unprefixed object is created.
   `product_key` is not updated. Unmatched rows insert all fact attributes.
 - Each run drops and rebuilds the fact from the baseline, then MERGEs the feed snapshot.
   A run with no period parameter processes all periods; `--period-month` applies the
-  legacy `p_period_month` predicate.
+  legacy `p_period_month` predicate to both T3 `dim_period` and T4 `fact_commission`.
 - `fact_id` values from the baseline are preserved. New identifiers use
   `max(fact_id) + row_number()` over unmatched rows only.
 - `SQL%ROWCOUNT` is represented by the MERGE result's `num_affected_rows`; update and insert
@@ -67,6 +67,9 @@ writer and its schedule is PAUSED; the schedule is only a carrier and never runs
 
 `run_log_cdw` columns are `run_id`, `unit`, `period_month`, `rows_merged`, `rows_updated`,
 `rows_inserted`, `dropped_join_rows`, `status`, `detail`, `started_at`, and `finished_at`.
+Retries or repair runs that reuse a job `run_id` append one row per attempt; order attempts
+by `started_at`. Quarantine rows owned by that run and unit are cleared before each attempt,
+while earlier runs' evidence remains retained.
 
 ## Coverage gaps / unverified paths
 

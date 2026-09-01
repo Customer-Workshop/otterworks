@@ -136,6 +136,7 @@ def _transform(rows: dict[str, list[dict]]) -> dict[str, list[dict]]:
             {
                 "_id": f"{row['CODE_TYPE']}#{int(row['CODE_VAL'])}",
                 "code_type": vc(row["CODE_TYPE"]),
+                "code_val": int(row["CODE_VAL"]),
                 "code_desc": vc(row["CODE_DESC"]),
                 "ns": NS_VALUE,
             }

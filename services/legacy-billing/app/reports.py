@@ -45,6 +45,9 @@ MONGO_BALANCES_SOURCE = {
 
 _mongo_client = None
 
+ORACLE_AMOUNT_OVERFLOW_MARKER = "#" * 19
+ORACLE_AMOUNT_OVERFLOW_LIMIT = Decimal("1000000000000000")
+
 BALANCES_SQL = """
 SELECT COUNT(*)                                          AS customer_count,
        TO_CHAR(SUM(cur_bal_amt), 'FM999999999999990.00') AS current_balance_total,
@@ -73,6 +76,8 @@ def fm_amount(value):
     if value is None:
         return None
     quantized = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if abs(quantized) >= ORACLE_AMOUNT_OVERFLOW_LIMIT:
+        return ORACLE_AMOUNT_OVERFLOW_MARKER
     return f"{quantized:f}"
 
 

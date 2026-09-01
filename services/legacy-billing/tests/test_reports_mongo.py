@@ -1,7 +1,7 @@
 """Contract tests for the MongoDB-backed balances path of the billing report.
 
 Run from services/legacy-billing:
-    uv run --with pytest --with flask==3.1.1 pytest tests/
+    uv run --with pymongo --with pytest --with flask==3.1.1 pytest tests/
 
 No live MongoDB connection: the aggregation seam is monkeypatched. The Oracle
 contract in test_reports.py stays the reference for the JSON shape.
@@ -12,6 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from bson import Decimal128
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
@@ -68,8 +69,6 @@ def test_balances_pipeline_shape():
 
 
 def test_fm_amount_matches_oracle_rendering():
-    from bson import Decimal128
-
     assert fm_amount(Decimal128("39799450.31")) == "39799450.31"
     assert fm_amount(Decimal("0")) == "0.00"
     assert fm_amount(Decimal("-1.005")) == "-1.01"
@@ -77,9 +76,25 @@ def test_fm_amount_matches_oracle_rendering():
     assert fm_amount(7) == "7.00"
 
 
-def test_mongo_balances_single_row(monkeypatch):
-    from bson import Decimal128
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (Decimal128("39799450.31"), "39799450.31"),
+        (Decimal("0"), "0.00"),
+        (Decimal("-1.005"), "-1.01"),
+        (Decimal("999999999999999.99"), "999999999999999.99"),
+        (Decimal("999999999999999.994"), "999999999999999.99"),
+        (Decimal("-999999999999999.99"), "-999999999999999.99"),
+        (Decimal("1000000000000000"), "###################"),
+        (Decimal("-1000000000000000"), "###################"),
+        (Decimal("9999999999999999.99"), "###################"),
+    ],
+)
+def test_fm_amount_matches_oracle_overflow_boundaries(value, expected):
+    assert fm_amount(value) == expected
 
+
+def test_mongo_balances_single_row(monkeypatch):
     client, collection = _patch_collection(
         monkeypatch,
         [
@@ -100,8 +115,6 @@ def test_mongo_balances_single_row(monkeypatch):
 
 
 def test_mongo_balances_all_null_totals_are_oracle_nulls(monkeypatch):
-    from bson import Decimal128
-
     _patch_collection(
         monkeypatch,
         [
@@ -118,8 +131,6 @@ def test_mongo_balances_all_null_totals_are_oracle_nulls(monkeypatch):
 
 
 def test_mongo_balances_applies_null_semantics_per_field(monkeypatch):
-    from bson import Decimal128
-
     _patch_collection(
         monkeypatch,
         [

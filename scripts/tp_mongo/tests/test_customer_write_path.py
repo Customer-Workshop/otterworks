@@ -125,6 +125,13 @@ def test_derive_on_insert_preserves_supplied_sequence_and_version():
     assert derived["row_version_no"] == 7
 
 
+def test_derive_on_insert_preserves_explicit_zero_version():
+    derived = derive_on_insert(
+        {"_id": "c-4", "cust_name": "a", "row_version_no": 0}
+    )
+    assert derived["row_version_no"] == 0
+
+
 def test_derive_on_insert_generates_id_when_absent():
     derived = derive_on_insert({"cust_name": "a"})
     assert isinstance(derived["_id"], str) and derived["_id"]

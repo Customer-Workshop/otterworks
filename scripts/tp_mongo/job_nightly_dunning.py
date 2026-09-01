@@ -13,11 +13,11 @@ import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1].parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
 from tp_mongo.dunning_service import DunningService
 from tp_mongo.rating_service import TARGET_DB
-
-REPO_ROOT = Path(__file__).resolve().parents[1].parent
-
 
 def _args():
     parser = argparse.ArgumentParser(description=__doc__)

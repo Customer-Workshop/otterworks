@@ -43,13 +43,19 @@ class _FakeCollection:
         self.update_one_calls = []
         self.count_calls = []
         self.duplicate = False
+        self.find_one_error = None
+        self.session_calls = []
 
-    def find_one(self, query):
+    def find_one(self, query, session=None):
         self.find_one_calls.append(query)
+        self.session_calls.append(session)
+        if self.find_one_error is not None:
+            raise self.find_one_error
         return self.plan
 
-    def aggregate(self, pipeline):
+    def aggregate(self, pipeline, session=None):
         self.aggregate_calls.append(pipeline)
+        self.session_calls.append(session)
         if any("$lookup" in stage for stage in pipeline):
             match = next(stage["$match"] for stage in pipeline if "$match" in stage)
             self.lookup_bounds = match["period.period_start"]
@@ -82,16 +88,19 @@ class _FakeCollection:
             result["units"] += int(doc.get("units") or 0)
         return [grouped[key] for key in sorted(grouped)]
 
-    def insert_one(self, document):
+    def insert_one(self, document, session=None):
+        self.session_calls.append(session)
         if self.duplicate:
             raise DuplicateKeyError("duplicate")
         self.inserted.append(document)
         return _InsertResult(document.get("_id", self.inserted_id))
 
-    def update_many(self, query, update):
+    def update_many(self, query, update, session=None):
+        self.session_calls.append(session)
         self.update_many_calls.append((query, update))
 
-    def update_one(self, query, update):
+    def update_one(self, query, update, session=None):
+        self.session_calls.append(session)
         self.update_one_calls.append((query, update))
 
     def count_documents(self, query):
@@ -102,6 +111,7 @@ class _FakeCollection:
 class _FakeDatabase:
     def __init__(self, usage=None, plan=None, prior=0):
         self.name = TARGET_DB
+        self.client = _FakeClient()
         self.collections = {
             "usage_events": _FakeCollection(usage),
             "rating_periods": _FakeCollection(),
@@ -113,6 +123,36 @@ class _FakeDatabase:
 
     def __getitem__(self, collection_name):
         return self.collections[collection_name]
+
+
+class _FakeSession:
+    def __init__(self):
+        self.sentinel = object()
+        self.committed = False
+        self.aborted = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+    def with_transaction(self, callback):
+        try:
+            result = callback(self.sentinel)
+        except Exception:
+            self.aborted = True
+            raise
+        self.committed = True
+        return result
+
+
+class _FakeClient:
+    def __init__(self):
+        self.session = _FakeSession()
+
+    def start_session(self):
+        return self.session
 
 
 def _service(*, usage=None, plan=None, prior=0, subscription=None, audit=None):
@@ -136,6 +176,8 @@ def test_md5_uuid_matches_oracle_standard_hash_formatting():
 def test_add_months_clamps_month_end():
     assert add_months(date(2024, 1, 31), 1) == date(2024, 2, 29)
     assert add_months(date(2024, 3, 31), -1) == date(2024, 2, 29)
+    assert add_months(date(2026, 2, 28), -3) == date(2025, 11, 30)
+    assert add_months(date(2026, 5, 31), -3) == date(2026, 2, 28)
 
 
 def test_window_is_inclusive_by_day_and_exclusive_at_next_midnight():
@@ -317,6 +359,51 @@ def test_finalize_duplicate_path_updates_only_rating_values():
         "billable_units",
         "overage_amount",
     }
+
+
+def test_finalize_rating_uses_one_transaction_session_for_all_operations():
+    service, db = _service(
+        usage=[
+            {
+                "tenant_id": "t-1",
+                "occurred_at": datetime(2026, 2, 5),
+                "units": 50,
+                "kind_cd": 1,
+            }
+        ],
+        plan={"included_units": Int64(100), "overage_rate": Decimal128("1.00")},
+        subscription={
+            "_id": "sub-1",
+            "tenant_id": "t-1",
+            "plan_id": "plan-1",
+            "starts_on": date(2026, 1, 1),
+            "ends_on": None,
+        },
+    )
+    service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
+    sentinel = db.client.session.sentinel
+    assert db.collections["rating_periods"].session_calls == [sentinel]
+    assert sentinel in db.collections["usage_events"].session_calls
+    assert sentinel in db.collections["rating_results"].session_calls
+    assert db.client.session.committed is True
+    assert db.client.session.aborted is False
+
+
+def test_finalize_rating_aborts_when_plan_lookup_fails():
+    service, db = _service(
+        subscription={
+            "_id": "sub-1",
+            "tenant_id": "t-1",
+            "plan_id": "plan-1",
+            "starts_on": date(2026, 1, 1),
+            "ends_on": None,
+        },
+    )
+    db.collections["plans"].find_one_error = RuntimeError("plan lookup failed")
+    with pytest.raises(RuntimeError, match="plan lookup failed"):
+        service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
+    assert db.client.session.aborted is True
+    assert db.client.session.committed is False
 
 
 def test_insert_usage_event_matches_trigger_rejections_and_types():

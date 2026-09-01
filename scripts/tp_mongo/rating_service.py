@@ -33,12 +33,17 @@ def md5_uuid(text: str) -> str:
 
 
 def add_months(value: date, months: int) -> date:
-    """Shift a date by months, clamping the day to the target month."""
-    # Preserve ADD_MONTHS month-end day clamping.
+    """Shift a date by months with Oracle ADD_MONTHS day semantics."""
+    # Preserve ADD_MONTHS: a month-end input lands on the target month's last day,
+    # every other day is clamped to the target month's length.
     month_index = value.year * 12 + value.month - 1 + months
     year, month_index = divmod(month_index, 12)
     month = month_index + 1
-    day = min(value.day, calendar.monthrange(year, month)[1])
+    target_last_day = calendar.monthrange(year, month)[1]
+    source_is_month_end = (
+        value.day == calendar.monthrange(value.year, value.month)[1]
+    )
+    day = target_last_day if source_is_month_end else min(value.day, target_last_day)
     return value.replace(year=year, month=month, day=day)
 
 
@@ -99,7 +104,11 @@ class MongoSubscriptionSource:
         self.collection = db[SUBSCRIPTIONS]
 
     def latest_covering(
-        self, tenant_id: str, period_start: date, period_end: date
+        self,
+        tenant_id: str,
+        period_start: date,
+        period_end: date,
+        session=None,
     ) -> dict | None:
         start = _midnight(_date_for_compare(period_start))
         end = _midnight(_date_for_compare(period_end))
@@ -109,7 +118,8 @@ class MongoSubscriptionSource:
                     "tenant_id": tenant_id,
                     "starts_on": {"$lte": end},
                     "$or": [{"ends_on": None}, {"ends_on": {"$gte": start}}],
-                }
+                },
+                session=session,
             )
             .sort("starts_on", -1)
             .limit(1)
@@ -124,7 +134,11 @@ class StaticSubscriptionSource:
         self.rows = list(rows)
 
     def latest_covering(
-        self, tenant_id: str, period_start: date, period_end: date
+        self,
+        tenant_id: str,
+        period_start: date,
+        period_end: date,
+        session=None,
     ) -> dict | None:
         start = _date_for_compare(period_start)
         end = _date_for_compare(period_end)
@@ -167,7 +181,11 @@ class RatingService:
         ) + timedelta(days=1)
 
     def sum_usage_units(
-        self, tenant_id: str, period_start: date, period_end: date
+        self,
+        tenant_id: str,
+        period_start: date,
+        period_end: date,
+        session=None,
     ) -> int:
         # Preserve the source cursor's NVL(r.units, 0) sum semantics.
         start, end = self.window_bounds(period_start, period_end)
@@ -185,13 +203,18 @@ class RatingService:
                         "units": {"$sum": {"$ifNull": ["$units", 0]}},
                     }
                 },
-            ]
+            ],
+            session=session,
         )
         result = next(iter(rows), None)
         return int(result.get("units", 0)) if result else 0
 
     def usage_summary(
-        self, tenant_id: str, period_start: date, period_end: date
+        self,
+        tenant_id: str,
+        period_start: date,
+        period_end: date,
+        session=None,
     ) -> list[dict]:
         # Replace DECODE(u.kind_cd, ...) with an aggregation $switch.
         start, end = self.window_bounds(period_start, period_end)
@@ -219,7 +242,8 @@ class RatingService:
                     }
                 },
                 {"$sort": {"_id": 1}},
-            ]
+            ],
+            session=session,
         )
         return [
             {
@@ -230,7 +254,9 @@ class RatingService:
             for row in rows
         ]
 
-    def prior_rollover_units(self, tenant_id: str, period_start: date) -> int:
+    def prior_rollover_units(
+        self, tenant_id: str, period_start: date, session=None
+    ) -> int:
         # Preserve ADD_MONTHS(p_period_start, -3) for the prior-credit window.
         lower_bound = _midnight(
             add_months(_date_for_compare(period_start), -3)
@@ -264,28 +290,37 @@ class RatingService:
                         },
                     }
                 },
-            ]
+            ],
+            session=session,
         )
         result = next(iter(rows), None)
         return int(result.get("rollover_units", 0)) if result else 0
 
     def compute_rating(
-        self, tenant_id: str, period_start: date, period_end: date
+        self,
+        tenant_id: str,
+        period_start: date,
+        period_end: date,
+        session=None,
     ) -> Rating:
         with localcontext() as context:
             context.prec = 38
             sub = self.subscription_source.latest_covering(
-                tenant_id, period_start, period_end
+                tenant_id, period_start, period_end, session=session
             )
             plan = (
-                self.plans.find_one({"_id": sub["plan_id"]})
+                self.plans.find_one({"_id": sub["plan_id"]}, session=session)
                 if sub and sub.get("plan_id")
                 else None
             )
             included = int(plan["included_units"]) if plan else None
             rate = _decimal(plan["overage_rate"]) if plan else None
-            used = self.sum_usage_units(tenant_id, period_start, period_end)
-            prior = self.prior_rollover_units(tenant_id, period_start)
+            used = self.sum_usage_units(
+                tenant_id, period_start, period_end, session=session
+            )
+            prior = self.prior_rollover_units(
+                tenant_id, period_start, session=session
+            )
             # Preserve the Oracle LEAST/NVL NULL behavior for a missing plan.
             prior = min(2 * included, prior) if included is not None else prior
             quota = included
@@ -343,13 +378,29 @@ class RatingService:
             )
 
     def finalize_rating(
-        self, tenant_id: str, period_start: date, period_end: date
+        self,
+        tenant_id: str,
+        period_start: date,
+        period_end: date,
+        session=None,
+    ) -> dict:
+        if session is None:
+            with self.db.client.start_session() as transaction_session:
+                return transaction_session.with_transaction(
+                    lambda callback_session: self._finalize_rating(
+                        tenant_id, period_start, period_end, callback_session
+                    )
+                )
+        return self._finalize_rating(tenant_id, period_start, period_end, session)
+
+    def _finalize_rating(
+        self, tenant_id: str, period_start: date, period_end: date, session
     ) -> dict:
         period_id = md5_uuid(tenant_id + period_start.strftime("%Y-%m-%d"))
         period_start_dt = _midnight(_date_for_compare(period_start))
         period_end_dt = _midnight(_date_for_compare(period_end))
         sub = self.subscription_source.latest_covering(
-            tenant_id, period_start, period_end
+            tenant_id, period_start, period_end, session=session
         )
         subscription_id = sub["_id"] if sub else None
         inserted_period = True
@@ -362,16 +413,20 @@ class RatingService:
                     "period_start": period_start_dt,
                     "period_end": period_end_dt,
                     "ns": NS_VALUE,
-                }
+                },
+                session=session,
             )
         except DuplicateKeyError:
             inserted_period = False
             self.rating_periods.update_many(
                 {"tenant_id": tenant_id, "period_start": period_start_dt},
                 {"$set": {"period_end": period_end_dt}},
+                session=session,
             )
 
-        rating = self.compute_rating(tenant_id, period_start, period_end)
+        rating = self.compute_rating(
+            tenant_id, period_start, period_end, session=session
+        )
         result_id = md5_uuid(period_id)
         # Preserve the source GREATEST(quota_units - used_units, 0) stored rollover.
         stored_rollover = (
@@ -405,7 +460,7 @@ class RatingService:
         }
         inserted_result = True
         try:
-            self.rating_results.insert_one(result_document)
+            self.rating_results.insert_one(result_document, session=session)
         except DuplicateKeyError:
             inserted_result = False
             self.rating_results.update_one(
@@ -430,6 +485,7 @@ class RatingService:
                         ),
                     }
                 },
+                session=session,
             )
         self.audit_sink("RATING", f"finalized period={period_id}")
         return {

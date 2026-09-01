@@ -1,0 +1,42 @@
+{
+  "started_at": "2026-09-01T05:47:32.113762+00:00",
+  "finished_at": "2026-09-01T05:48:40.211386+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "mapping_version": "1.0",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "collections": {
+    "customers": {
+      "root_table": "CUSTOMER_MASTER",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 25000,
+      "inserted": 25000,
+      "docs_after": 25000,
+      "ns_docs_after": 25000,
+      "indexes": [
+        "_id_",
+        "conversion_batch_no_1",
+        "tenant_id_1"
+      ],
+      "embedded_attributes_source_rows": 8333,
+      "embedded_attributes_after": 8333,
+      "roots_with_attributes": 7075
+    },
+    "customer_master_hist": {
+      "root_table": "CUSTOMER_MASTER_HIST",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 0,
+      "inserted": 0,
+      "docs_after": 0,
+      "ns_docs_after": 0,
+      "indexes": [
+        "_id_"
+      ]
+    }
+  }
+}

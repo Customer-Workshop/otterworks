@@ -12,7 +12,7 @@ DB prefix below: `ow` = `ow_tp_mongodb_032752`, `owq` = `ow_tp_mongodb_032752_qu
 | 1 | U2 invoice-feed | ow.invoice_feed, owq.invoice_feed_orphan_lines | MERGED | GREEN | 0.0247% (37/150000 quarantined to owq) | UNKNOWN status/line-type branches; all-NULL SUM semantics; fixture-only run; reconciliation remains Oracle-backed via U1 | M0 free tier, 18750 roots + 149963 embedded lines + 37 quarantined | #1398 |
 | 2 | U3 subscriptions | ow.subscriptions, ow.subscriptions_hist | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 2 | U4 rating | ow.usage_events, ow.rating_periods, ow.rating_results | PLANNED — AWAITING STOP B | — | — | — | — | — |
-| 2 | U7 audit-util | ow.billing_audit_log | PLANNED — AWAITING STOP B | — | — | — | — | — |
+| 2 | U7 audit-util | ow.billing_audit_log | RECON_GREEN (fixture) | GREEN (fixture recon PASS, tiers 1/3/0, no warnings — `.migration/recon/U7/gate/result.json`) | 0% (quarantine unused, 0 rejects) | empty source population, so the mapped transforms and the v1.1 module/message tier-3 deferral grade nothing; `f_str2dt` three-digit years; `log_msg` has no migrated caller until U3-U6; TTL expiry timing observed, not contracted; fixture-only run | M0 free tier, 0 docs + TTL index | (this PR) |
 | 3 | U5 invoicing | ow.invoices, ow.credit_notes | PLANNED — AWAITING STOP B | — | — | — | — | — |
 | 3 | U6 dunning | ow.notifications (+ embeds into ow.invoices, coordinated with U5) | PLANNED — AWAITING STOP B | — | — | — | — | — |
 

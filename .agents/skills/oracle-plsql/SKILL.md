@@ -79,3 +79,23 @@ rule below is either taken from the field dictionary in `.migration/COMMISSION_D
   the U4 Workflow (DEC-017).
 - Recon invocation: `--baseline-dir` (alias `--baseline`); `--rerun` costs one
   extra full load per gate — budget 2 loads per recon.
+
+## Wave-2 learnings
+
+- `run.py` statement splitting must be quote-aware: splitting `load.sql` on a
+  bare `;` breaks string literals such as `concat_ws('; ', …)`. The splitter
+  in `dbx/commission_dw/fact_commission/run.py::statements` removes full-line
+  comments, tracks whether it is inside a single-quoted literal, treats
+  doubled single quotes as escaped content, and splits only on `;` while
+  outside a quote. Use that splitter or a `;`-free literal.
+- Databricks can retry a failed notebook task under the same `job.run_id`.
+  Per-run side tables (`quarantine`, `run_log`) must be idempotent per
+  `(run_id, unit)`: delete the attempt's own quarantine rows first, and write
+  one `run_log` row per attempt.
+- Fact MERGE allocates new surrogate ids as
+  `max(id) + row_number()` over unmatched rows only; matched rows keep
+  `product_key`; join drops go to quarantine and fail the load before MERGE
+  (`dropped_join_rows = 0` gate).
+- Gold “MV REFRESH COMPLETE” maps to
+  `CREATE OR REPLACE TABLE … AS SELECT` with a
+  `sum(policy_rows) = count(fact)` assertion.

@@ -17,6 +17,7 @@ Checks (tolerances v1, 03_recon_tolerances.md):
   key_preservation    every baseline surrogate key present with the same natural key
   money_sum_cents     exact integer-cents sum for money columns (fact, summary)
   fact_covers_ledger  (fact only) fact rows == ledger feed rows -> dropped_join_rows = 0
+  dropped_join_rows   (fact only) ledger rows not covered by a target fact key via baseline dimensions; expected 0
   idempotency         the --rerun program (one argv, no shell syntax; wrap shell logic in a
                       script) is executed and the target re-read; row set must be
                       identical (loaded_at excluded). Without --rerun the report is invalid
@@ -165,9 +166,43 @@ def main() -> int:
     for col in spec["money"]:
         checks.append(check(f"money_sum_cents:{col}", cents(base, col), cents(tgt, col), sot))
     if args.unit == "fact_commission":
-        _, lrows = read_baseline(baseline_dir, "COMMISSION_LEDGER")
+        ledger_header, lrows = read_baseline(baseline_dir, "COMMISSION_LEDGER")
         checks.append(check("fact_covers_ledger", len(lrows), len(tgt),
                             "COMMISSION_LEDGER.csv feed rows vs fact rows (dropped_join_rows must be 0)"))
+        agent_header, agent_rows = read_baseline(baseline_dir, "DIM_AGENT")
+        period_header, period_rows = read_baseline(baseline_dir, "DIM_PERIOD")
+        agent_by_id, agent_dups = keyed(agent_header, agent_rows, ["agent_id"])
+        period_by_month, period_dups = keyed(period_header, period_rows, ["period_month"])
+        if agent_dups:
+            raise SystemExit(f"baseline DIM_AGENT has duplicate agent_id keys: {agent_dups}")
+        if period_dups:
+            raise SystemExit(f"baseline DIM_PERIOD has duplicate period_month keys: {period_dups}")
+        target_fact_keys = {
+            (row["policy_id"], row["agent_key"], row["period_key"])
+            for row in tgt.values()
+        }
+        ledger_indices = {name: ledger_header.index(name)
+                          for name in ("policy_id", "agent_id", "period_month")}
+        dropped_join_rows = 0
+        for ledger_row in lrows:
+            agent_key = (ledger_row[ledger_indices["agent_id"]],)
+            period_key = (ledger_row[ledger_indices["period_month"]],)
+            agent = agent_by_id.get(agent_key)
+            period = period_by_month.get(period_key)
+            fact_key = (
+                norm("policy_id", ledger_row[ledger_indices["policy_id"]]),
+                agent["agent_key"] if agent else None,
+                period["period_key"] if period else None,
+            )
+            if agent is None or period is None or fact_key not in target_fact_keys:
+                dropped_join_rows += 1
+        checks.append(check(
+            "dropped_join_rows",
+            0,
+            dropped_join_rows,
+            "COMMISSION_LEDGER.csv rows not covered by a target fact key "
+            "(policy_id, agent_key, period_key) via baseline dims",
+        ))
 
     idem = {"performed": False, "result": "fail", "evidence": "no --rerun command supplied"}
     if args.rerun:

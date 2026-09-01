@@ -1,0 +1,96 @@
+{
+  "kind": "recon-report",
+  "unit": "fact_commission",
+  "namespace": "cdw",
+  "generated_at": "2026-09-01T23:36:29Z",
+  "run_mode": "fixture",
+  "tolerances_version": "v1 (03_recon_tolerances.md)",
+  "recon_mode": "DEGRADED (snapshot; federation unavailable)",
+  "checks": [
+    {
+      "id": "rowcount",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "duplicate_keys",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "null_count",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "row_diff",
+      "expected": {
+        "missing": 0,
+        "unexpected": 0,
+        "changed": 0
+      },
+      "actual": {
+        "missing": 0,
+        "unexpected": 0,
+        "changed": 0
+      },
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "key_preservation",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "money_sum_cents:base_premium",
+      "expected": 2880000,
+      "actual": 2880000,
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "money_sum_cents:commission_amt",
+      "expected": 7000,
+      "actual": 7000,
+      "source_of_truth": "legacy baseline FACT_COMMISSION.csv (manifest-pinned) vs ow_tp.silver.fact_commission_cdw",
+      "result": "pass"
+    },
+    {
+      "id": "fact_covers_ledger",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "COMMISSION_LEDGER.csv feed rows vs fact rows (dropped_join_rows must be 0)",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "rerun rc=0; rows before=3 after=3; row set identical=True (loaded_at excluded)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "live-legacy-comparison (DEGRADED mode)",
+    "live-mode pass is owned by the parent's independent recon window"
+  ],
+  "row_diff_samples": {
+    "missing": [],
+    "unexpected": [],
+    "changed": []
+  }
+}

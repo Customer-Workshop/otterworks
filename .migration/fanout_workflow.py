@@ -40,7 +40,8 @@ service FREEPDB1. Treat it read-only after seeding. Recon runs you perform are
 run_mode=fixture (self-check); the parent runs the live gate independently — your fixture
 recon must still be green before you open a PR.
 
-Recon harness: `cd harness && pip install -e .`, then per unit:
+Recon harness: `cd harness && pip install -e .` (if the blueprint venv
+/home/ubuntu/.venvs/recon is absent on your VM, build a local venv and use it), then per unit:
 recon run --unit <unit_id> --mapping .migration/03_mapping_spec.json \
   --tolerances .migration/02_tolerances.json \
   --canonicalization .migration/recon_canonicalization.json \
@@ -104,7 +105,17 @@ spec. codes uses loader-composed _id `<code_type>#<code_val>`; recon for codes r
 per code_type value (the 10 types listed in .migration/census/coverage.md) via the
 `${code_type}` root_where parameter. Create the unit's indexes from the spec's index plan
 (unique _id on codes). No app-code rewrite in this unit. These are the reference
-collections every later unit reads — correctness here is load-bearing.""",
+collections every later unit reads — correctness here is load-bearing.
+
+AMENDMENTS (approved 2026-09-01, recorded in .migration/05_decisions.md — they supersede
+the paragraph above where they conflict): (a) the codes gate is a SINGLE whole-table recon
+keyed on the composed source expression CODE_TYPE || '#' || CODE_VAL vs _id — no
+${code_type} parameterization; code_val is now an explicit mapped field (reload codes,
+your loads are drop+recreate idempotent). (b) fixture_meta is graded count-only with
+INITIALIZED_AT declared-unexercised. Pull the latest run branch — the mapping spec JSON
+already carries both amendments. A previous session partially worked this unit: its data
+may exist in the target (your drop+recreate handles it) and a branch/PR for U0 may already
+exist — reuse or reset that branch rather than duplicating PRs.""",
     },
     "U1": {
         "title": "U1 customers (XL, wide-embed): CUSTOMER_MASTER + EAV + history",

@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from tp_mongo.dunning_service import DunningService  # noqa: E402
-from tp_mongo.rating_service import NS_VALUE, md5_uuid  # noqa: E402
+from tp_mongo.rating_service import NS_VALUE  # noqa: E402
 
 TARGET_DB = "ow_tp_mongodb_032752"
 TRANSCRIPT_DIR = REPO_ROOT / "procs/oracle/transcripts/dunning"
@@ -52,7 +52,7 @@ def _secret_value(name: str, description: str) -> str:
 
 
 def _day(value: str) -> date:
-    return datetime.strptime(value, "%Y-%m-%d").date()
+    return date.fromisoformat(value)
 
 
 def _date_text(value) -> str:
@@ -101,7 +101,9 @@ def _restore(args, scenario: str) -> list[str]:
             "--report",
             f"/tmp/u6-{scenario}-{unit}-load-report.json",
         ]
-        result = subprocess.run(command, cwd=REPO_ROOT, env=env, text=True)
+        result = subprocess.run(
+            command, cwd=REPO_ROOT, env=env, text=True, check=False
+        )
         if result.returncode:
             raise RuntimeError(f"restoration command failed: {script}")
         used.append(" ".join(command))
@@ -272,6 +274,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)

@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1].parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from tp_mongo.rating_service import NS_VALUE, TARGET_DB
+from tp_mongo.rating_service import NS_VALUE, TARGET_DB  # noqa: E402
 
 UNIT_COLLECTIONS = ("notifications",)
 
@@ -281,6 +281,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)

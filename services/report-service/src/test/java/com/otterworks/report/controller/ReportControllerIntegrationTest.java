@@ -245,6 +245,63 @@ public class ReportControllerIntegrationTest {
                 .andExpect(jsonPath("$.version", is("0.1.0")));
     }
 
+    // ---- Trailing slash compatibility ----
+
+    @Test
+    public void createReportWithTrailingSlashReturns202() throws Exception {
+        ReportRequest request = buildRequest("Trailing Slash POST Report",
+                ReportCategory.AUDIT_LOG, ReportType.CSV, "trailing-slash-user-1");
+
+        mockMvc.perform(post("/api/v1/reports/")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
+    public void listReportsWithTrailingSlashReturnsReports() throws Exception {
+        createReportAndReturnId("Trailing Slash List Report",
+                ReportCategory.AUDIT_LOG, ReportType.CSV, "trailing-slash-user-2");
+
+        mockMvc.perform(get("/api/v1/reports/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports").exists());
+    }
+
+    @Test
+    public void getReportWithTrailingSlashReturnsCreatedReport() throws Exception {
+        Long id = createReportAndReturnId("Trailing Slash Get Report",
+                ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "trailing-slash-user-3");
+
+        mockMvc.perform(get("/api/v1/reports/" + id + "/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(id.intValue())));
+    }
+
+    @Test
+    public void downloadReportWithTrailingSlashReturnsExpectedStatus() throws Exception {
+        Long id = createReportAndReturnId("Trailing Slash Download Report",
+                ReportCategory.USAGE_ANALYTICS, ReportType.PDF, "trailing-slash-user-4");
+
+        mockMvc.perform(get("/api/v1/reports/" + id + "/download/"))
+                .andExpect(status().is(anyOf(
+                        is(HttpStatus.OK.value()),
+                        is(HttpStatus.NOT_FOUND.value()),
+                        is(HttpStatus.CONFLICT.value()))));
+    }
+
+    @Test
+    public void deleteReportWithTrailingSlashReturns204() throws Exception {
+        Long id = createReportAndReturnId("Trailing Slash Delete Report",
+                ReportCategory.COLLABORATION_METRICS, ReportType.CSV, "trailing-slash-user-5");
+
+        mockMvc.perform(delete("/api/v1/reports/" + id + "/"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/reports/" + id))
+                .andExpect(status().isNotFound());
+    }
+
     // ---- Helpers ----
 
     private ReportRequest buildRequest(String name, ReportCategory category,

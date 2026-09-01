@@ -10,8 +10,8 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | STOP A | APPROVED 2026-09-01 (in-thread reply) | `#ow-migrations` thread |
 | Inventory | DONE | `.migration/COMMISSION_DW_inventory.md`, `08_governance_inventory.md` |
 | STOP B | APPROVED 2026-09-01 — P1 (whole `COMMISSION_DW` schema), boundary confirmed | `#ow-migrations` thread |
-| Analysis + plan / STOP C | DONE, awaiting STOP C | `.migration/COMMISSION_DW_analysis.md`, `COMMISSION_DW_plan.md` |
-| Wave 0 | NOT_STARTED | |
+| Analysis + plan / STOP C | DONE; STOP C APPROVED 2026-09-01 (engagement lead, relayed) | `.migration/COMMISSION_DW_analysis.md`, `COMMISSION_DW_plan.md` |
+| Wave 0 | IN_FLIGHT | branch `migrate/commission-dw/w0-scaffolding` |
 | Waves 1..N | NOT_STARTED | |
 | Parallel run | NOT_STARTED | |
 | STOP E | NOT_STARTED | |

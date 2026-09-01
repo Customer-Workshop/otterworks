@@ -13,7 +13,7 @@ Status flow: OPEN → DECIDED (federate / re-point / dual-write / defer-with-con
 | D8-1 | D8 | Person data: `DIM_AGENT.full_name` | No legacy masking/RLS policy exists | propose: no UC mask; recorded so cutover grants stay least-privilege (SELECT on gold only) | STOP E grants | — | PROPOSED (STOP A) | setup |
 | D5-1 | D5 | Scheduler | No `DBMS_SCHEDULER` job or cron invokes the loader; runs on demand | target job schedule PAUSED, trigger by hand | — | — | ACCEPTED | setup |
 
-## Plan-time decisions (PROPOSED in `COMMISSION_DW_plan.md` §1; flip to DECIDED on STOP C approval)
+## Plan-time decisions — DECIDED at STOP C (2026-09-01); see `COMMISSION_DW_plan.md` §1
 | ID | Proposed decision | Routing point | Cutover condition | Fired request |
 |---|---|---|---|---|
 | D3-1 | Snapshot ingestion contract: CSV + `manifest.json` in `/Volumes/ow_tp/bronze/landing/cdw/feed/` → `ow_tp.bronze.<table>_cdw`; customer-run extract post-cutover | volume path | valid customer-produced manifest | none |

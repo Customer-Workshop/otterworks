@@ -7,10 +7,16 @@ import copy
 import json
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1].parent
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--spec", default=".migration/03_mapping_spec.json", type=Path)
+    parser.add_argument(
+        "--spec",
+        default=REPO_ROOT / ".migration/03_mapping_spec.json",
+        type=Path,
+    )
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--collection", action="append", required=True)
     args = parser.parse_args()

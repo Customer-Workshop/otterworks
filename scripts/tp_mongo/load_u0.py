@@ -14,8 +14,8 @@ from bson import Decimal128, Int64
 
 NS_VALUE = "mongo_032752"
 TARGET_DB = "ow_tp_mongodb_032752"
-QUARANTINE_DB = "ow_tp_mongodb_032752_quarantine"
 UNIT_COLLECTIONS = ("codes", "tenants", "plans", "fixture_meta")
+REPO_ROOT = Path(__file__).resolve().parents[1].parent
 
 
 def vc(v):
@@ -63,7 +63,10 @@ def _args():
         help="environment variable name containing the Mongo URI",
     )
     parser.add_argument("--target-db", default=TARGET_DB)
-    parser.add_argument("--report", default=".migration/recon/U0/load_report.json")
+    parser.add_argument(
+        "--report",
+        default=str(REPO_ROOT / ".migration/recon/U0/load_report.json"),
+    )
     return parser.parse_args()
 
 
@@ -152,10 +155,8 @@ def _write_report(path: Path, payload: dict) -> None:
 
 def main() -> int:
     args = _args()
-    if args.target_db not in {TARGET_DB, QUARANTINE_DB}:
-        raise RuntimeError(
-            f"--target-db must be exactly {TARGET_DB} or {QUARANTINE_DB}"
-        )
+    if args.target_db != TARGET_DB:
+        raise RuntimeError(f"--target-db must be exactly {TARGET_DB}")
     if set(UNIT_COLLECTIONS) != {"codes", "tenants", "plans", "fixture_meta"}:
         raise RuntimeError("UNIT_COLLECTIONS does not match the registered U0 collections")
 

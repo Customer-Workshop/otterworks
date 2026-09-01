@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$REPO_ROOT/.migration/recon/U0"
+cd "$REPO_ROOT"
 # The org-level blueprint provisions the standard recon venv at this path.
 RECON="${RECON:-/home/ubuntu/.venvs/recon/bin/recon}"
 if [[ "$RECON" == "/home/ubuntu/.venvs/recon/bin/recon" && ! -x "$RECON" ]]; then
@@ -10,9 +11,11 @@ if [[ "$RECON" == "/home/ubuntu/.venvs/recon/bin/recon" && ! -x "$RECON" ]]; the
 fi
 RECON_BIN="$RECON"
 if [[ -x "/home/ubuntu/.venvs/recon/bin/python" ]]; then
-  PYTHON="/home/ubuntu/.venvs/recon/bin/python"
-else
+  PYTHON="${PYTHON:-/home/ubuntu/.venvs/recon/bin/python}"
+elif [[ -x "/home/ubuntu/venvs/recon/bin/python" ]]; then
   PYTHON="${PYTHON:-/home/ubuntu/venvs/recon/bin/python}"
+else
+  PYTHON="${PYTHON:-python3}"
 fi
 
 if [[ ! -v OW_BILLING_FIXTURE_DSN ]]; then
@@ -64,6 +67,10 @@ if ! diff -u \
 fi
 
 run_recon() {
+  local unit="$1"
+  local out_dir="$2"
+  shift 2
+  rm -rf "$out_dir"
   set +e
   "$RECON_BIN" run \
     --family oracle \
@@ -78,49 +85,60 @@ run_recon() {
     "$@"
   local rc=$?
   set -e
-  return 0
+  RUN_UNITS+=("$unit")
+  RUN_OUTS+=("$out_dir")
+  RUN_RCS+=("$rc")
 }
 
+RUN_UNITS=()
+RUN_OUTS=()
+RUN_RCS=()
 run_recon \
+  U0-core "$OUT/core/" \
   --unit U0-core \
   --mapping "$OUT/mapping/core.json" \
   --out "$OUT/core/"
 run_recon \
+  U0-fixture_meta "$OUT/fixture_meta/" \
   --unit U0-fixture_meta \
   --mapping "$OUT/mapping/fixture_meta.json" \
   --out "$OUT/fixture_meta/"
 for code_type in "${EXPECTED_TYPES[@]}"; do
   run_recon \
+    "U0-codes-$code_type" "$OUT/codes/$code_type/" \
     --unit "U0-codes-$code_type" \
     --mapping "$OUT/mapping/codes.json" \
     --param "code_type=$code_type" \
     --out "$OUT/codes/$code_type/"
 done
 
-printf '%s\n' 'unit | verdict'
-printf '%s\n' '-----|--------'
-python3 - "$OUT" <<'PY'
+printf '%s\n' 'unit | verdict | rc'
+printf '%s\n' '-----|---------|---'
+overall_rc=0
+for index in "${!RUN_UNITS[@]}"; do
+  unit="${RUN_UNITS[$index]}"
+  out_dir="${RUN_OUTS[$index]}"
+  invocation_rc="${RUN_RCS[$index]}"
+  result_path="$out_dir/result.json"
+  verdict="MISSING"
+  if [[ -f "$result_path" ]]; then
+    if verdict="$("$PYTHON" - "$result_path" <<'PY'
 import json
 import sys
-from pathlib import Path
 
-out = Path(sys.argv[1])
-runs = [
-    ("U0-core", out / "core" / "result.json"),
-    ("U0-fixture_meta", out / "fixture_meta" / "result.json"),
-]
-runs.extend(
-    (
-        f"U0-codes-{code_type}",
-        out / "codes" / code_type / "result.json",
-    )
-    for code_type in (
-        "CUST_STATUS", "CUST_TYPE", "DUN_STATUS", "INV_STATUS", "NOTIF_KIND",
-        "PHONE_TYPE", "PLAN_TIER", "SUB_STATUS", "TENANT_STATUS", "USAGE_KIND",
-    )
-)
-for unit, path in runs:
-    result = json.loads(path.read_text())
-    print(f"{unit} | {result['verdict']}")
+with open(sys.argv[1]) as handle:
+    result = json.load(handle)
+print(result["verdict"])
 PY
-exit 0
+)"; then
+      :
+    else
+      verdict="UNPARSEABLE"
+    fi
+  fi
+  printf '%s | %s | %s\n' "$unit" "$verdict" "$invocation_rc"
+  if [[ "$invocation_rc" -ne 0 || "$verdict" != "PASS" ]]; then
+    overall_rc=1
+  fi
+done
+exit "$overall_rc"

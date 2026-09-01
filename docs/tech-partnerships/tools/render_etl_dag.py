@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Render the legacy ETL estate lineage DAG (inventory artifact).
 
-Usage: python3 docs/tech-partnerships/tools/render_etl_dag.py docs/tech-partnerships/OtterWorks_ETL_dag.png
+Usage: python3 docs/tech-partnerships/tools/render_etl_dag.py <out.png> [P-A|P-B|P-C|P-D|P-E]
+With a pipeline argument only that pipeline's jobs and their stores are drawn.
 Solid edges are FACT (cited in OtterWorks_ETL_inventory.md), dashed edges are INFERRED.
 """
 import sys
@@ -66,45 +67,53 @@ INFERRED = [("S3 data-lake reports/user-activity/*", "admin-service (INFERRED)")
 COLORS = {"P-A": "#4c72b0", "P-B": "#dd8452", "P-C": "#55a868", "P-D": "#c44e52", "P-E": "#8172b3"}
 
 
-def main(out: str) -> None:
+def main(out: str, only: str | None = None) -> None:
+    fact, inferred = FACT, INFERRED
+    if only:
+        jobs = {j for j, p in JOBS.items() if p == only}
+        keep = lambda e: e[0] in jobs or e[1] in jobs  # noqa: E731
+        fact = [e for e in FACT if keep(e)]
+        inferred = [e for e in INFERRED if keep(e)]
+        if only == "P-E":
+            fact.append(("MeiliSearch documents+files", "search-service"))
     g = nx.DiGraph()
-    g.add_edges_from(FACT + INFERRED)
+    g.add_edges_from(fact + inferred)
     for layer, nodes in enumerate(nx.topological_generations(g)):
         for n in nodes:
             g.nodes[n]["layer"] = layer
     band = {}
     for j, p in JOBS.items():
         band[j] = p
-        for a, b in FACT + INFERRED:
+        for a, b in fact + inferred:
             if a == j and b not in JOBS:
                 band.setdefault(b, p)
             if b == j and a not in JOBS:
                 band.setdefault(a, p)
     band["MeiliSearch documents+files"] = band["search-service"] = "P-E"
     band["admin-service (INFERRED)"] = "P-A"
-    order = ["P-A", "P-B", "P-C", "P-D", "P-E"]
+    order = [only] if only else ["P-A", "P-B", "P-C", "P-D", "P-E"]
     pos, used = {}, {}
     for n in g:
         col, row = g.nodes[n]["layer"], order.index(band[n])
         k = used.get((col, row), 0)
         used[(col, row)] = k + 1
         pos[n] = (col * 3.0, -(row * 4.0 + k * 1.1))
-    plt.figure(figsize=(22, 13))
+    plt.figure(figsize=(22, 5) if only else (22, 13))
     job_nodes = [n for n in g if n in JOBS]
     store_nodes = [n for n in g if n not in JOBS]
     nx.draw_networkx_nodes(g, pos, nodelist=job_nodes, node_shape="s", node_size=3200,
                            node_color=[COLORS[JOBS[n]] for n in job_nodes])
     nx.draw_networkx_nodes(g, pos, nodelist=store_nodes, node_shape="o", node_size=2200, node_color="#dddddd")
-    nx.draw_networkx_edges(g, pos, edgelist=FACT, arrows=True, arrowsize=18, width=1.4)
-    nx.draw_networkx_edges(g, pos, edgelist=INFERRED, arrows=True, arrowsize=18, width=1.4, style="dashed",
+    nx.draw_networkx_edges(g, pos, edgelist=fact, arrows=True, arrowsize=18, width=1.4)
+    nx.draw_networkx_edges(g, pos, edgelist=inferred, arrows=True, arrowsize=18, width=1.4, style="dashed",
                            edge_color="#999999")
     nx.draw_networkx_labels(g, pos, font_size=7)
-    plt.title("OtterWorks legacy ETL estate — lineage DAG (squares = jobs coloured by pipeline; "
-              "solid = FACT, dashed = INFERRED)")
+    plt.title((f"OtterWorks {only} pipeline" if only else "OtterWorks legacy ETL estate")
+              + " — lineage DAG (squares = jobs coloured by pipeline; solid = FACT, dashed = INFERRED)")
     plt.axis("off")
     plt.tight_layout()
     plt.savefig(out, dpi=110)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

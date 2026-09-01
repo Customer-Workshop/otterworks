@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1].parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from tp_mongo.rating_service import NS_VALUE, TARGET_DB, md5_uuid
+from tp_mongo.rating_service import NS_VALUE, TARGET_DB
 
 UNIT_COLLECTIONS = ("notifications",)
 
@@ -105,7 +105,7 @@ def _transform(rows: dict[str, list[dict]]) -> dict[str, list[dict]]:
             {
                 "invoice_id": invoice_id,
                 "attempt_no": attempt_no,
-                "id": md5_uuid(invoice_id + str(attempt_no)),
+                "id": vc(row["ID"]),
                 "tenant_id": vc(row["TENANT_ID"]),
                 "scheduled_for": date_ms(row["SCHEDULED_FOR"]),
                 "status_cd": num(row["STATUS_CD"]),

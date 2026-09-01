@@ -1,0 +1,5 @@
+SEQ_BILLING_AUDIT_LOG                                                                                                                      1            1
+SEQ_SUBSCRIPTIONS_HIST                                                                                                                     1            1
+SEQ_CUSTOMER_MASTER                                                                                                                   125000            1
+SEQ_CUSTOMER_MASTER_HIST                                                                                                                   1            1
+SEQ_ENTITY_ATTR_VALUE                                                                                                                  11001            1

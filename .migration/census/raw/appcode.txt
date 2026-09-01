@@ -1,0 +1,227 @@
+OW_BILLING application-code census
+===================================
+
+Scope and method
+----------------
+Repository-wide searches covered the 20 table names returned by tables.txt,
+FREEPDB1, 52521, ow_billing, and the package names returned by
+plsql_objects.txt. The entries below distinguish Oracle consumers from estate
+definition, fixture, harness, test, probe, and documentation references. Paths
+are repository-relative; line numbers refer to the checked-out branch.
+
+Runtime Oracle consumers
+------------------------
+
+services/legacy-billing/app/reports.py:32-70
+  Category: runtime consumer.
+  Connection: oracle_connect at 122-131 uses ORACLE_USER, ORACLE_PASSWORD,
+  ORACLE_HOST, ORACLE_PORT (default 52521), and ORACLE_SERVICE (default
+  FREEPDB1). No PL/SQL call is made.
+  Reads: STATUS_SQL reads INVOICE_HEADER and outer-looks up CODES by
+  INV_STATUS; LINE_SQL reads INVOICE_HEADER, INNER-JOINs INVOICE_LINE by
+  invoice_id, and outer-looks up CODES; BALANCES_SQL reads CUSTOMER_MASTER.
+  Endpoint dispatch is at 154-155 and 171. Oracle errors are handled by the
+  query wrapper and surfaced as the endpoint's 503 path at 134-149 and
+  158-174.
+  The line report's inner join excludes INVOICE_LINE rows without a matching
+  INVOICE_HEADER row.
+
+services/legacy-billing/app/reports.py:73-79
+  Category: runtime consumer.
+  The reconciliation query filters CUSTOMER_MASTER by conversion_batch_no and
+  aggregates cur_bal_amt and past_due_amt.
+
+procs/harness/oracle_record.py:1-16, 72-86, 164-180, 216-229
+  Category: harness/test execution path; not a read-only census consumer.
+  Connects to OW_BILLING through DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
+  (default 52521), and DB_SERVICE (default FREEPDB1). Reads mapping and probe
+  SQL, then invokes mapped PL/SQL with cursor.callfunc/cursor.callproc.
+  oracle_map.yaml maps 12 billing entrypoints to PKG_PLANS, PKG_RATING,
+  PKG_INVOICING, and PKG_DUNNING. reset_baseline at 164-180 issues DELETEs
+  against notification, dunning, invoice, rating, usage, credit-note,
+  subscription, history, and tenant tables, then commits. Do not run this
+  reset path for a read-only census.
+
+scripts/tp_pain/mongodb.py:27, 64-85, 107-121
+  Category: read-only runtime probe/demo script.
+  Connects to Oracle with DB_HOST/DB_PORT (default 52521), DB_USER, DB_PASSWORD,
+  and DB_SERVICE (default FREEPDB1). Issues SELECT COUNT(*) against
+  CUSTOMER_MASTER for a conversion batch, USER_TAB_COLUMNS for
+  CUSTOMER_MASTER and CUSTOMER_MASTER_HIST, and USER_TRIGGERS for
+  CUSTOMER_MASTER. The script documents its connection as OW_BILLING and
+  issues no DML.
+
+Stored-logic invocation configuration
+--------------------------------------
+
+procs/oracle/oracle_map.yaml:12-23
+  Category: harness configuration.
+  Maps these application-level entrypoints to Oracle package calls:
+  billing.fn_list_plans -> pkg_plans.fn_list_plans
+  billing.fn_entitlement -> pkg_plans.fn_entitlement
+  billing.sp_change_plan -> pkg_plans.sp_change_plan
+  billing.fn_usage_rating -> pkg_rating.fn_usage_rating
+  billing.fn_usage_summary -> pkg_rating.fn_usage_summary
+  billing.sp_finalize_rating -> pkg_rating.sp_finalize_rating
+  billing.fn_invoice_preview -> pkg_invoicing.fn_invoice_preview
+  billing.fn_invoice_lines -> pkg_invoicing.fn_invoice_lines
+  billing.sp_issue_invoice -> pkg_invoicing.sp_issue_invoice
+  billing.fn_overdue_accounts -> pkg_dunning.fn_overdue_accounts
+  billing.sp_schedule_dunning -> pkg_dunning.sp_schedule_dunning
+  billing.sp_suspend_overdue -> pkg_dunning.sp_suspend_overdue
+
+procs/oracle/oracle_map.yaml:25-180
+  Category: harness probe configuration.
+  Contains post-call SELECT probes against SUBSCRIPTIONS, RATING_RESULTS joined
+  to RATING_PERIODS, CREDIT_NOTES, INVOICES, DUNNING_ATTEMPTS, and
+  NOTIFICATIONS. It also contains an after-call reference to
+  pkg_dunning.sp_suspend_overdue.
+
+Estate definitions and database batch code
+-------------------------------------------
+
+services/legacy-billing/db/oracle/schema/01_tables.sql:1-286
+  Category: estate definition.
+  Defines core tables TENANTS, PLANS, SUBSCRIPTIONS, USAGE_EVENTS,
+  RATING_PERIODS, RATING_RESULTS, INVOICES, INVOICE_LINES, CREDIT_NOTES,
+  DUNNING_ATTEMPTS, NOTIFICATIONS, BILLING_AUDIT_LOG, and the associated
+  constraints, sequences, and triggers. The trigger definitions use sequence
+  NEXTVAL for BILLING_AUDIT_LOG and SUBSCRIPTIONS_HIST.
+
+services/legacy-billing/db/oracle/schema/02_horror.sql:1-441
+  Category: estate definition.
+  Defines CUSTOMER_MASTER (155 columns), CUSTOMER_MASTER_HIST,
+  ENTITY_ATTR_VALUE, bulk INVOICE_LINE, and bulk INVOICE_HEADER. It defines
+  SEQ_CUSTOMER_MASTER, SEQ_CUSTOMER_MASTER_HIST, and SEQ_ENTITY_ATTR_VALUE;
+  trigger code uses NEXTVAL at 351, 369, and 396. The CUSTOMER_MASTER trigger
+  computes CUST_NAME_UPPER with UPPER at 353. No ROWID reference was found in
+  the Oracle source census.
+
+services/legacy-billing/db/oracle/packages/01_pkg_util.sql:1-78
+  Category: estate definition / stored logic.
+  Defines PKG_OW_UTIL. f_code_desc reads CODES through EXECUTE IMMEDIATE at
+  40-41; f_dt2str/f_str2dt use explicit NLS_DATE_LANGUAGE=ENGLISH at 52 and
+  57; log_msg inserts BILLING_AUDIT_LOG and commits in an autonomous
+  transaction at 66-76.
+
+services/legacy-billing/db/oracle/packages/02_pkg_plans.sql:1-107
+  Category: estate definition / stored logic.
+  Defines PKG_PLANS. It reads PLANS, TENANTS, and SUBSCRIPTIONS; sp_change_plan
+  locks subscription rows FOR UPDATE, updates SUBSCRIPTIONS, and dynamically
+  inserts a new subscription. See functions/procedure at 20-103.
+
+services/legacy-billing/db/oracle/packages/03_pkg_rating.sql:1-214
+  Category: estate definition / stored logic.
+  Defines PKG_RATING. It reads SUBSCRIPTIONS, PLANS, USAGE_EVENTS,
+  RATING_RESULTS, and RATING_PERIODS; sp_finalize_rating inserts or updates
+  RATING_PERIODS and RATING_RESULTS. Usage date predicates compare
+  TO_CHAR(..., 'YYYYMMDD') strings at 79-80 and 153-155.
+
+services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql:1-195
+  Category: estate definition / stored logic.
+  Defines PKG_INVOICING. It reads SUBSCRIPTIONS, PLANS, CREDIT_NOTES, and
+  TENANTS, invokes PKG_RATING, reads/writes INVOICES and INVOICE_LINES, and
+  updates CREDIT_NOTES. sp_issue_invoice is at 113-195.
+
+services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql:1-94
+  Category: estate definition / stored logic.
+  Defines PKG_DUNNING. It reads INVOICES, TENANTS, and DUNNING_ATTEMPTS;
+  sp_schedule_dunning inserts DUNNING_ATTEMPTS; sp_suspend_overdue updates
+  TENANTS and SUBSCRIPTIONS and inserts NOTIFICATIONS. Date comparisons use
+  TO_CHAR(..., 'YYYYMMDD') at 28 and 76-77. The package uses explicit
+  NLS_DATE_LANGUAGE=ENGLISH for day names at 48 and has WHEN OTHERS THEN NULL
+  at 63.
+
+services/legacy-billing/db/oracle/schema/04_jobs.sql:1-31
+  Category: database batch job definition.
+  Defines JOB_NIGHTLY_DUNNING, whose PL/SQL block calls
+  pkg_dunning.sp_schedule_dunning and pkg_dunning.sp_suspend_overdue, and
+  JOB_PURGE_AUDIT_LOG, whose block deletes old BILLING_AUDIT_LOG rows and
+  commits. Both jobs are created disabled in the DDL; the authoritative
+  scheduler query is scheduler_jobs.txt.
+
+services/legacy-billing/db/oracle/startup/00_init.sh:19-105
+  Category: estate bootstrap/orchestration.
+  Runs the schema, package, static-seed, and scheduler SQL files in sequence
+  inside FREEPDB1 and validates OW_BILLING object status. It is not an
+  application consumer.
+
+services/legacy-billing/db/oracle/setup/01_users.sql:1-20
+  Category: estate bootstrap.
+  Creates/configures the OW_BILLING schema account. It contains no application
+  query path.
+
+services/legacy-billing/db/oracle/schema/03_seed_static.sql:1-84
+  Category: estate seed definition.
+  Inserts static TENANTS, PLANS, SUBSCRIPTIONS, USAGE_EVENTS, and related core
+  rows. It sets session NLS_DATE_FORMAT and NLS_TIMESTAMP_FORMAT at 6-7.
+
+testdata/legacy/oracle_billing_seed.py:1-382
+  Category: seed/fixture generator.
+  Connects to OW_BILLING with DB_HOST/DB_PORT (default 52521), DB_USER,
+  DB_PASSWORD, and DB_SERVICE (default FREEPDB1). Namespace reset performs
+  DELETEs across bulk and core tables at 82-112 and commits at 155; generation
+  inserts CUSTOMER_MASTER, ENTITY_ATTR_VALUE, INVOICE_HEADER, and
+  INVOICE_LINE at 162-339, using SEQ_ENTITY_ATTR_VALUE.NEXTVAL at 260 and
+  266. Additional core-table inserts occur at 271-361. This is not a
+  read-only consumer and was not run during the census.
+
+Tests and non-runtime references
+--------------------------------
+
+services/legacy-billing/tests/test_reports.py:1-106
+  Category: harness/test.
+  Tests report shaping and endpoint behavior. oracle_query is monkeypatched at
+  36 and 101, so these tests do not connect to Oracle during test execution.
+
+services/legacy-billing/db/procs/plans.sql:1-64
+services/legacy-billing/db/procs/rating.sql:1-139
+services/legacy-billing/db/procs/invoicing.sql:1-140
+services/legacy-billing/db/procs/dunning.sql:1-88
+  Category: comparison estate / non-Oracle stored-logic definitions.
+  These files define billing.* PostgreSQL functions/procedures with analogous
+  table and operation names. They are not consumers of the OW_BILLING Oracle
+  schema; the Oracle harness maps to the separate Oracle packages above.
+
+Makefile:104-132, 291-305
+  Category: operational orchestration.
+  Defines Oracle fixture up/seed and Oracle recording/parity commands, plus the
+  read-only MongoDB-track probe wrapper. It does not issue application queries
+  itself.
+
+docker-compose.oracle-billing.yml:1-30
+  Category: estate runtime definition.
+  Publishes Oracle container port 1521 to host port 52521, mounts the
+  services/legacy-billing/db/oracle tree read-only, and health-checks
+  FREEPDB1/OW_BILLING.
+
+procs/oracle/transcripts/**/*.json
+  Category: recorded harness evidence.
+  Contains expected Oracle call/probe transcripts for the mapped PL/SQL
+  scenarios. These are outputs/evidence, not live consumers.
+
+docs/tech-partnerships/**, procs/README.md,
+services/legacy-billing/db/oracle/README.md,
+services/legacy-billing/db/oracle/ops/deploy_prod_FINAL_v2.sh.txt
+  Category: documentation or historical operational reference.
+  Repository search finds Oracle/table/package names in these files, but they
+  do not execute application reads or writes.
+
+Search exclusions and negative findings
+---------------------------------------
+
+scripts/tp_break/mongodb.py references legacy-shaped date/EAV terms but uses
+MongoDB data-plane insert/delete operations only; it does not connect to
+Oracle.
+
+The repository search also matched unrelated dependency virtualenv files and
+the separate insurance Oracle estate. Those hits were excluded from this
+OW_BILLING inventory because they do not reference the billing schema or its
+package set.
+
+No application-code ROWID usage was found in the inspected OW_BILLING paths.
+The only case-insensitive code-scan setting in the relevant probe is
+re.IGNORECASE in scripts/tp_pain/mongodb.py:51; Oracle source uses UPPER for
+CUST_NAME_UPPER in schema/02_horror.sql:353 and LOWER for MD5 hex formatting
+in packages/01_pkg_util.sql:26. No session-wide case-insensitive comparison
+setting was found.

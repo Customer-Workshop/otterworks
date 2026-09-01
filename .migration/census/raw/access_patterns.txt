@@ -1,0 +1,196 @@
+OW_BILLING access-pattern evidence
+==================================
+
+This file records observed reads, writes, joins, and transaction boundaries
+only. It does not propose a target collection model or mapping.
+
+Observed direct application reads
+---------------------------------
+
+services/legacy-billing/app/reports.py:32-43 (STATUS_SQL)
+  Reads INVOICE_HEADER h and LEFT OUTER LOOKUPs CODES st on
+  st.code_type='INV_STATUS' and st.code_val=h.status_cd. Filters
+  h.batch_no=:batch_no, groups by decoded status description, and counts rows
+  and sums h.total_amt.
+
+services/legacy-billing/app/reports.py:45-70 (LINE_SQL)
+  Reads INVOICE_HEADER h, INNER JOINs INVOICE_LINE l on h.invoice_id=l.invoice_id,
+  and LEFT OUTER LOOKUPs CODES st on invoice status. Filters by h.batch_no,
+  groups by status and decoded line_type_cd, and counts lines, sums amount/tax,
+  and counts distinct touched invoices. The inner join excludes orphan
+  INVOICE_LINE rows.
+
+services/legacy-billing/app/reports.py:73-79 (BALANCES_SQL)
+  Reads CUSTOMER_MASTER, filters conversion_batch_no=:batch_no, and aggregates
+  row count, cur_bal_amt, and past_due_amt.
+
+scripts/tp_pain/mongodb.py:107-121
+  Read-only probe reads CUSTOMER_MASTER row count by conversion_batch_no,
+  USER_TAB_COLUMNS counts for CUSTOMER_MASTER and CUSTOMER_MASTER_HIST, and
+  USER_TRIGGERS count for CUSTOMER_MASTER. It does not invoke PL/SQL.
+
+Oracle package reads and joins
+------------------------------
+
+PKG_OW_UTIL, services/legacy-billing/db/oracle/packages/01_pkg_util.sql:34-45
+  f_code_desc dynamically executes a SELECT of CODE_DESC from CODES by
+  CODE_TYPE and CODE_VAL. The package also computes an MD5 string from input
+  in f_md5_uuid at 22-30.
+
+PKG_PLANS, services/legacy-billing/db/oracle/packages/02_pkg_plans.sql:20-70
+  fn_list_plans reads active PLANS and orders by monthly fee/code.
+  fn_entitlement reads TENANTS, SUBSCRIPTIONS, and PLANS, joining tenant to
+  subscription and plan and selecting the latest covering subscription by
+  starts_on with ROWNUM. It uses old-style comma joins and (+) outer-join
+  syntax.
+
+PKG_RATING, services/legacy-billing/db/oracle/packages/03_pkg_rating.sql:32-117
+  compute_rating reads the covering SUBSCRIPTIONS row, then PLANS, then
+  USAGE_EVENTS for the tenant. It reads prior RATING_RESULTS joined to
+  RATING_PERIODS for rollover units. Usage events are filtered by
+  TO_CHAR(occurred_at,'YYYYMMDD') comparisons at 77-80. The procedure stores
+  intermediate values in package globals and calls PKG_OW_UTIL.log_msg.
+
+PKG_RATING, services/legacy-billing/db/oracle/packages/03_pkg_rating.sql:122-160
+  fn_usage_rating returns the package-global rating result. fn_usage_summary
+  reads USAGE_EVENTS, groups by kind_cd, and uses the same formatted-string
+  date range at 147-155.
+
+PKG_RATING, services/legacy-billing/db/oracle/packages/03_pkg_rating.sql:162-214
+  sp_finalize_rating reads the latest covering SUBSCRIPTIONS row, upserts a
+  RATING_PERIODS row, calls compute_rating, and upserts a RATING_RESULTS row.
+  It logs through PKG_OW_UTIL.
+
+PKG_INVOICING, services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql:28-110
+  compute_preview reads the latest covering SUBSCRIPTIONS joined to PLANS,
+  reads positive-remaining CREDIT_NOTES row by row, and reads TENANTS for
+  tax_exempt_yn. fn_invoice_preview returns plan, usage, tax, and credit lines
+  from computed/package-global values. fn_invoice_lines reads INVOICE_LINES by
+  invoice_id ordered by line_no.
+
+PKG_INVOICING, services/legacy-billing/db/oracle/packages/04_pkg_invoicing.sql:113-195
+  sp_issue_invoice invokes PKG_RATING, inserts or updates INVOICES, deletes
+  existing INVOICE_LINES for the invoice, inserts rebuilt INVOICE_LINES,
+  updates the invoice totals, then reads and updates positive-remaining
+  CREDIT_NOTES row by row. It logs through PKG_OW_UTIL.
+
+PKG_DUNNING, services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql:17-31
+  fn_overdue_accounts reads INVOICES joined to TENANTS, filters invoice status
+  and compares issued_at to p_as_of using TO_CHAR(...,'YYYYMMDD').
+
+PKG_DUNNING, services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql:33-69
+  sp_schedule_dunning reads qualifying INVOICES and the current maximum
+  DUNNING_ATTEMPTS attempt_no, computes the next scheduled date, and inserts
+  DUNNING_ATTEMPTS. The insert path has WHEN OTHERS THEN NULL at 63.
+
+PKG_DUNNING, services/legacy-billing/db/oracle/packages/05_pkg_dunning.sql:71-94
+  sp_suspend_overdue reads distinct overdue tenant IDs from INVOICES, reads
+  active subscription counts, updates TENANTS and SUBSCRIPTIONS, and inserts
+  NOTIFICATIONS only when a matching notification does not already exist.
+  It logs through PKG_OW_UTIL.
+
+Observed write paths
+--------------------
+
+PKG_PLANS.sp_change_plan, packages/02_pkg_plans.sql:72-107
+  Opens qualifying SUBSCRIPTIONS rows FOR UPDATE, updates their end date,
+  then dynamically inserts a new SUBSCRIPTIONS row. The subscription history
+  trigger records UPDATE/DELETE old values.
+
+PKG_RATING.sp_finalize_rating, packages/03_pkg_rating.sql:162-214
+  Inserts or updates RATING_PERIODS and inserts or updates RATING_RESULTS.
+
+PKG_INVOICING.sp_issue_invoice, packages/04_pkg_invoicing.sql:113-195
+  Inserts or status-updates INVOICES, deletes/rebuilds INVOICE_LINES, updates
+  invoice totals, and decrements CREDIT_NOTES.remaining_amount.
+
+PKG_DUNNING.sp_schedule_dunning, packages/05_pkg_dunning.sql:33-69
+  Inserts DUNNING_ATTEMPTS.
+
+PKG_DUNNING.sp_suspend_overdue, packages/05_pkg_dunning.sql:71-94
+  Updates TENANTS and SUBSCRIPTIONS and inserts NOTIFICATIONS.
+
+PKG_OW_UTIL.log_msg, packages/01_pkg_util.sql:64-78
+  Inserts BILLING_AUDIT_LOG. The procedure catches errors and rolls back its
+  own logging transaction.
+
+Triggers, sequences, and history writes
+----------------------------------------
+
+services/legacy-billing/db/oracle/schema/01_tables.sql:179-185
+  TRG_BILLING_AUDIT_LOG_ID assigns SEQ_BILLING_AUDIT_LOG.NEXTVAL when LOG_ID
+  is null.
+
+services/legacy-billing/db/oracle/schema/01_tables.sql:206-223
+  TRG_SUBSCRIPTIONS_HIST fires after UPDATE or DELETE on SUBSCRIPTIONS and
+  inserts the old row into SUBSCRIPTIONS_HIST using
+  SEQ_SUBSCRIPTIONS_HIST.NEXTVAL. HIST_DT is generated as the string
+  DD-MON-YY HH24:MI:SS.
+
+services/legacy-billing/db/oracle/schema/01_tables.sql:228-286
+  TRG_SUB_NO_UNCANCEL rejects an attempted transition out of cancelled status.
+  TRG_USAGE_EVENTS_CHECK validates usage-event code data through CODES.
+
+services/legacy-billing/db/oracle/schema/02_horror.sql:343-399
+  TRG_CUSTOMER_MASTER_SEQ assigns SEQ_CUSTOMER_MASTER.NEXTVAL and sets the
+  uppercase customer-name field. TRG_CUSTOMER_MASTER_HIST copies the prior
+  CUSTOMER_MASTER row into CUSTOMER_MASTER_HIST on UPDATE or DELETE using
+  SEQ_CUSTOMER_MASTER_HIST.NEXTVAL. TRG_ENTITY_ATTR_VALUE_SEQ assigns
+  SEQ_ENTITY_ATTR_VALUE.NEXTVAL.
+
+Transactions and scheduler boundaries
+--------------------------------------
+
+services/legacy-billing/db/oracle/packages/01_pkg_util.sql:64-78
+  PKG_OW_UTIL.log_msg declares PRAGMA AUTONOMOUS_TRANSACTION, inserts an audit
+  row, and COMMITs independently. Its exception handler performs ROLLBACK.
+
+services/legacy-billing/db/oracle/packages/02_pkg_plans.sql:72-107,
+packages/03_pkg_rating.sql:162-214,
+packages/04_pkg_invoicing.sql:113-195,
+packages/05_pkg_dunning.sql:33-94
+  These package procedures contain DML and visible row locking/calls but no
+  explicit COMMIT or ROLLBACK in the inspected source. The caller/session
+  therefore controls the enclosing transaction, apart from autonomous
+  PKG_OW_UTIL logging.
+
+services/legacy-billing/db/oracle/schema/04_jobs.sql:10-29
+  JOB_NIGHTLY_DUNNING invokes sp_schedule_dunning and sp_suspend_overdue in
+  one PL/SQL block. JOB_PURGE_AUDIT_LOG executes DELETE FROM BILLING_AUDIT_LOG,
+  COMMIT, and has EXCEPTION WHEN OTHERS THEN NULL. The DDL creates both jobs
+  disabled.
+
+procs/harness/oracle_record.py:164-180, 216-229
+  The parity harness resets baseline data with DELETE statements and commits,
+  then invokes package functions/procedures using callfunc/callproc and runs
+  configured SELECT probes. This is harness behavior, not an application
+  request path; the reset is explicitly not read-only.
+
+testdata/legacy/oracle_billing_seed.py:82-112, 155-361
+  The fixture generator deletes namespace rows, commits, inserts bulk and core
+  data, and commits at multiple stages. It uses direct sequence NEXTVAL for
+  EAV rows. This is seed behavior, not production application access.
+
+Cross-cutting observed traps
+----------------------------
+
+The estate contains separate bulk feed tables INVOICE_HEADER/INVOICE_LINE and
+transactional package tables INVOICES/INVOICE_LINES. The runtime reports use
+the bulk pair; the PL/SQL invoicing package uses the transactional pair.
+
+ENTITY_ATTR_VALUE is populated by the fixture and has string ATTR_VALUE and
+string CREATED_DT fields, but no inspected runtime report query or OW_BILLING
+package source references it.
+
+CUSTOMER_MASTER has 155 columns. The schema includes repeated/comma-separated
+fields and VARCHAR2 date fields; CUSTOMER_MASTER_HIST is maintained by a
+full-row history trigger. SUBSCRIPTIONS_HIST.HIST_DT is also a string.
+
+Explicit NLS handling is present in PKG_OW_UTIL date conversion and
+PKG_DUNNING day-name conversion. The static seed sets session
+NLS_DATE_FORMAT and NLS_TIMESTAMP_FORMAT. Date filtering in rating and dunning
+uses formatted strings rather than direct date predicates.
+
+The all_source ROWID search returned no rows. Broad exception handling is
+present in PKG_OW_UTIL.f_str2dt, PKG_PLANS.fn_entitlement,
+PKG_DUNNING.sp_schedule_dunning, and the audit purge scheduler block.

@@ -29,7 +29,7 @@ A child that has read only CORE + its surface profile + DATA/DEPENDENCY must be 
 | Function equivalence | `NUMBER(p,s)`→`DECIMAL(p,s)`; `NUMBER` (no precision)→`DECIMAL(38,10)` unless the dictionary pins narrower; `DATE`→`DATE`; `VARCHAR2(n)`→`STRING` (`period_month` stays a `YYYY-MM` string, never a date); `TRUNC(d,'MM')`→`date_trunc('MONTH', d)::date`; `NVL`→`coalesce`; `DECODE`→`CASE`; `ROUND` half-away-from-zero: Spark `round()` on DECIMAL is HALF_UP — identical for positives, negatives must be covered by a named test; `SYSTIMESTAMP`→`current_timestamp()` (excluded from recon); `\|\|`→`concat` | PROPOSED |
 | Materialization | `DIM_*`, `FACT_COMMISSION` → silver Delta tables; `MV_AGENT_COMMISSION_SUMMARY` → gold Delta table rebuilt by the converted job (COMPLETE/DEMAND refresh semantics = full rebuild; DLT MV is an accepted alternative if the pilot proves it) | PROPOSED |
 | Performance | no partitioning (tiny estate); liquid clustering on `fact_commission_cdw (period_key, agent_key)`; constraint indexes dropped; `UX_FACT_ROW` becomes the MERGE key and recon key | PROPOSED |
-| Report-output contract | MV compared as a full result set ordered by (`agent_code`, `period_month`, `line_of_business`) | PROPOSED |
+| Report-output contract | MV compared as a full result set ordered by (`agent_code`, `full_name`, `period_month`, `line_of_business`) | PROPOSED |
 
 ## PIPELINE profile (`DW_ETL_PKG.LOAD_COMMISSION_FACTS`) — in scope
 | Field | Value | Status |

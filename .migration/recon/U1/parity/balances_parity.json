@@ -1,0 +1,23 @@
+{
+  "unit": "U1",
+  "generated_at": "2026-09-01T05:50:14.667547+00:00",
+  "report": "rpt-114-balances",
+  "batch_no": 85559852,
+  "ns": "mongo_032752",
+  "target_db": "ow_tp_mongodb_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "oracle": {
+    "customer_count": 25000,
+    "current_balance_total": "39799450.31",
+    "past_due_total": "7330214.66"
+  },
+  "mongodb": {
+    "customer_count": 25000,
+    "current_balance_total": "39799450.31",
+    "past_due_total": "7330214.66"
+  },
+  "verdict": "PASS"
+}

@@ -3,8 +3,17 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$REPO_ROOT/.migration/recon/U0"
-RECON_BIN="${RECON:-recon}"
-PYTHON="${PYTHON:-/home/ubuntu/venvs/recon/bin/python}"
+# The org-level blueprint provisions the standard recon venv at this path.
+RECON="${RECON:-/home/ubuntu/.venvs/recon/bin/recon}"
+if [[ "$RECON" == "/home/ubuntu/.venvs/recon/bin/recon" && ! -x "$RECON" ]]; then
+  RECON=recon
+fi
+RECON_BIN="$RECON"
+if [[ -x "/home/ubuntu/.venvs/recon/bin/python" ]]; then
+  PYTHON="/home/ubuntu/.venvs/recon/bin/python"
+else
+  PYTHON="${PYTHON:-/home/ubuntu/venvs/recon/bin/python}"
+fi
 
 if [[ ! -v OW_BILLING_FIXTURE_DSN ]]; then
   echo "ERROR: OW_BILLING_FIXTURE_DSN must be set in the environment" >&2

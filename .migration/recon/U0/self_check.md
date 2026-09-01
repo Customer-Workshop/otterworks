@@ -1,31 +1,37 @@
 # U0 pre-PR self-check evidence
 
-This checklist records the evidence produced for U0 before the PR review.
+Evidence produced for U0 under the approved 2026-09-01 amendments (single whole-table
+`codes` gate on the composed key; `fixture_meta` count-only with `INITIALIZED_AT`
+declared-unexercised). The authoritative artifact is `.migration/recon/U0/gate/result.json`
+(verdict PASS, tiers 4/12/105); it was not modified.
 
-- [x] **NULL and missing attribution cannot fail open; they are rejected or explicitly attributed according to the unit contract.** Evidence: `scripts/tp_mongo/load_u0.py` applies explicit `vc`/`ch` null handling; `.migration/recon/U0/mapping/core.json` and `.migration/recon/U0/load_report.json` cover the U0 fields, whose source rows loaded with the expected counts.
-- [x] **Every catalog, schema, collection, and table reference is scoped to the unit namespace and uses the `ow_tp` / `ow-tp-` prefix.** Evidence: `scripts/tp_mongo/load_u0.py` accepts only `ow_tp_mongodb_032752` and writes only the four U0 collections; `.migration/recon/U0/load_report.json` records `target_db: ow_tp_mongodb_032752`.
-- [x] **No DDL drops, replaces, or alters a shared table.** Evidence: `scripts/tp_mongo/load_u0.py` performs only SELECTs against Oracle; its drop/recreate operations are limited to the four owned MongoDB U0 collections.
-- [x] **Retention and cleanup logic is safe on a rerun and does not remove a newer run's data.** Evidence: `.migration/recon/U0/load_report.json` and `.migration/recon/U0/load_report.rerun.json` show the isolated U0 database and exactly four owned collections were reset, with no document-count doubling.
-- [x] **Cleanup paths retain run evidence and recon artifacts.** Evidence: `.migration/recon/U0/load_report.rerun.json`, `.migration/recon/U0/core_rerun/result.json`, and the original U0 recon artifacts remain present after the rerun.
-- [x] **No secrets, tokens, or real distribution-list/email addresses occur in source, evidence, or commit history.** Evidence: branch history and diff scans found no URI, DSN value, credential value, requester name, or email address. The broad history grep's `password` matches are source variable/argument names only; no secret values were present.
-- [x] **The parity-versus-tolerance decision matches the contract; it was not invented during implementation.** Evidence: `.migration/05_decisions.md` records STOP B approval; `.migration/02_tolerances.json` and the generated recon reports cite the approved tolerance version.
-- [x] **Idempotency was proven by an actual rerun, not inferred from code.** Evidence: `.migration/recon/U0/load_report.rerun.json` records `dropped: true`, `recreated: true`, and unchanged `source_rows`, `inserted`, `docs_after`, and `ns_docs_after` for all four collections; `.migration/recon/U0/core_rerun/result.json` is a second `U0-core` PASS.
-- [x] **Recon values were recomputed from the target platform, not copied from migration memory or a previous report.** Evidence: `.migration/recon/U0/core_rerun/result.json` was produced by a fresh live recon invocation after the second load; its Tier 1–3 check counts are 2, 9, and 72.
-- [x] **Every unverified or untested path is listed in the recon report.** Evidence: `docs/tech-partnerships/recon/U0.recon.json` lists the ungraded `codes` and `fixture_meta` parity paths, the fixture-only run mode, the unexercised reader path, and the unused quarantine database. The installed harness `result.json` has no `unverified_paths` field of its own and was not modified.
-- [x] **The recon report declares `"kind": "recon-report"` and is stored as a `*.recon.json` artifact when using the machine-readable report schema.** Evidence: `docs/tech-partnerships/recon/U0.recon.json` is the authored schema-conforming unit report; `make tp-validate-recon FILE=docs/tech-partnerships/recon/U0.recon.json` validates it. The harness-generated `result.json` files remain the merge authority and were not modified.
-- [x] **Capability preflight passed for every required path before live work.** Evidence: `.tp-preflight/atlas-capabilities.json` records 8 verified probes and 0 denied probes. The manifest contains no URI or credential values and is outside the migration evidence path, so it was not committed.
-- [x] **`make tp-smoke` is green.** Evidence: the command completed with `tp-smoke: all checks passed`.
+- [x] **NULL and missing attribution cannot fail open.** `scripts/tp_mongo/load_u0.py` applies explicit `vc`/`ch` null handling; tier 2 defers the six `empty_string_is_null`/`rstrip_spaces` fields to tier 3, which diffed every key post-canonicalization (`gate/result.json`).
+- [x] **Every reference is scoped to the unit namespace.** The loader accepts only `ow_tp_mongodb_032752` and only the four U0 collections registered in `.migration/04_progress.md`; `load_report.json` records the target db and `ns` counts (32/69/3/1 = 105).
+- [x] **No DDL drops, replaces, or alters a shared table.** Oracle access is SELECT-only; drops are limited to the four owned MongoDB collections.
+- [x] **Idempotency proven by rerun, not inferred.** A second full load + gate run: `load_report.rerun.json` (`dropped`/`recreated` true, identical 32/69/3/1, no doubling) and `gate_rerun/result.json` (second PASS, identical 4/12/105).
+- [x] **Recon values recomputed from the target platform.** Both gate runs read Atlas live through the harness adapters; no values copied from a previous report.
+- [x] **Parity-versus-tolerance decision comes from the contract.** Tolerances 1.0 and canonicalization 1.0 are passed unmodified; `.migration/05_decisions.md` records STOP B and the two amendments.
+- [x] **No secrets or requester identity in source, evidence, or history.** Secrets are referenced by env-var name only (`OW_BILLING_FIXTURE_DSN`, `MONGODB_ATLAS_URI`); branch diff scanned for URI/DSN/credential values, names and email addresses — none found.
+- [x] **Unverified paths declared.** `docs/tech-partnerships/recon/U0.recon.json` (`make tp-validate-recon`: PASS) lists the declared-unexercised `INITIALIZED_AT`, the fixture-only run mode, the unexercised reader path and the unused quarantine DB.
+- [x] **`make tp-smoke` is green.**
 
-## Declared parity coverage gaps
+## Recon key rendering (declared)
 
-- The ten `codes` runs are authoritative FAILs for the approved v1.0 mapping because the target adapter counts all 32 documents while each source scope contains only one `CODE_TYPE`; the proposed key-expression probe is separate, non-authoritative, and PASS.
-- `fixture_meta` has an authoritative FAIL because the harness compares pre-canonicalization keys while Oracle microseconds (`454979`) exceed BSON millisecond precision (`454000`).
-- The `codes` and `fixture_meta` keyed parity paths therefore remain ungraded for the approved mapping and are not described as green.
+The harness keys source rows by the cursor-description name of each key expression, so:
+
+- `codes`: the approved `CODE_TYPE || '#' || CODE_VAL` is emitted whitespace-free
+  (`CODE_TYPE||'#'||CODE_VAL`) — Oracle strips whitespace from description names. Same
+  expression, same composed value.
+- `fixture_meta`: canonicalization v1.0 `datetime_utc_truncate_ms` is applied source-side
+  in the key expression, because the harness compares keys pre-canonicalization and
+  `TIMESTAMP(6)` cannot round-trip through a millisecond BSON date.
+
+Both renderings are asserted against the approved entry by `scripts/tp_mongo/unit_mapping.py`
+and recorded in `.migration/recon/U0/mapping/u0.json` under `_recon_key_rendering`. Fields,
+root tables and root scopes are copied verbatim; no contract file was changed.
 
 ## Environment note
 
-The org-blueprint venv `/home/ubuntu/.venvs/recon` was absent when checked. The duplicate reusable venv `/home/ubuntu/venvs/recon` was retained and used via explicit override; the recon runner now prefers the org-blueprint path and falls back to `recon` on PATH when that path is absent.
-
-## Runner hardening evidence
-
-The fresh end-to-end run from `scripts/tp-mongo-recon-u0.sh` removed each scope output before invocation, ran all 12 scopes, recorded each invocation status, printed the complete verdict table, and exited `1` because the ten codes scopes and `fixture_meta` were FAIL. Fresh authoritative outputs are under `.migration/recon/U0/`.
+`/home/ubuntu/.venvs/recon` was absent and was rebuilt locally from the plugin-provided
+harness (`recon selftest`: PASS, 9 rules). The runner prefers the blueprint path and falls
+back to `recon` on PATH.

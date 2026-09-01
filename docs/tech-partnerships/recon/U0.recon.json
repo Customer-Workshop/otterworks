@@ -2,50 +2,43 @@
   "kind": "recon-report",
   "unit": "U0",
   "namespace": "mongo_032752",
-  "generated_at": "2026-09-01T04:08:22Z",
+  "generated_at": "2026-09-01T05:00:14Z",
   "run_mode": "fixture",
   "checks": [
     {
-      "id": "tenants.root_count",
-      "expected": 69,
-      "actual": 69,
-      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier1 counts_through_mapping)",
+      "id": "u0.counts_through_mapping",
+      "expected": "4/4 pass (codes 32, tenants 69, plans 3, fixture_meta 1)",
+      "actual": "4/4 pass",
+      "source_of_truth": "harness .migration/recon/U0/gate/result.json (tier1 counts_through_mapping)",
       "result": "pass"
     },
     {
-      "id": "plans.root_count",
-      "expected": 3,
-      "actual": 3,
-      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier1 counts_through_mapping)",
+      "id": "u0.per_field_aggregates",
+      "expected": "12/12 pass",
+      "actual": "12/12 pass",
+      "source_of_truth": "harness .migration/recon/U0/gate/result.json (tier2 per_field_aggregates)",
       "result": "pass"
     },
     {
-      "id": "core.per_field_aggregates",
-      "expected": "9/9 pass",
-      "actual": "9/9 pass",
-      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier2 per_field_aggregates)",
-      "result": "pass"
-    },
-    {
-      "id": "core.keyed_diffs",
-      "expected": "72/72 pass",
-      "actual": "72/72 pass",
-      "source_of_truth": "harness .migration/recon/U0/core/result.json (tier3 keyed_diffs)",
+      "id": "u0.keyed_diffs",
+      "expected": "105/105 pass, full_diff on every collection",
+      "actual": "105/105 pass",
+      "source_of_truth": "harness .migration/recon/U0/gate/result.json (tier3 keyed_diffs)",
       "result": "pass"
     },
     {
       "id": "codes.parity",
-      "expected": "PASS for each of the 10 code_type scopes",
-      "actual": "UNGRADED: harness 0.2.0 compares a root_where-scoped source count against an unfiltered target doc_count, and cannot key on the loader-composed _id",
-      "source_of_truth": "harness .migration/recon/U0/codes/<CODE_TYPE>/result.json (10 scopes, all FAIL at tier1)",
-      "result": "skipped"
+      "expected": "single whole-table gate keyed on CODE_TYPE||'#'||CODE_VAL vs _id (amendment a)",
+      "actual": "32/32 keys diffed, code_type/code_val/code_desc graded",
+      "source_of_truth": "harness .migration/recon/U0/gate/result.json (tier3 stats.codes: full_diff, population 32)",
+      "result": "pass"
     },
     {
       "id": "fixture_meta.parity",
-      "expected": "PASS on the single INITIALIZED_AT row",
-      "actual": "UNGRADED: harness compares tier3 keys pre-canonicalization, so a TIMESTAMP(6) key cannot match a millisecond-precision BSON date",
-      "source_of_truth": "harness .migration/recon/U0/fixture_meta/result.json (FAIL: missing_doc + extra_doc on the same row)",
-      "result": "skipped"
+      "expected": "count-only per amendment (b); INITIALIZED_AT declared-unexercised",
+      "actual": "root_count 1 vs 1; no mapped fields graded",
+      "source_of_truth": "harness .migration/recon/U0/gate/result.json (tier1 + tier3 stats.fixture_meta)",
+      "result": "pass"
     },
     {
       "id": "load.namespace_tagging",
@@ -59,7 +52,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": ".migration/recon/U0/load_report.rerun.json (drop+recreate, identical 32/69/3/1 with no doubling) and .migration/recon/U0/core_rerun/result.json (U0-core PASS, identical tier counts 2/9/72)"
+    "evidence": ".migration/recon/U0/load_report.rerun.json (drop+recreate, identical 32/69/3/1 with no doubling) and .migration/recon/U0/gate_rerun/result.json (second U0 PASS, identical tier counts 4/12/105)"
   },
   "planted_anomaly_detections": {
     "expected_set": [],
@@ -68,8 +61,8 @@
     "unexpected": []
   },
   "unverified_paths": [
-    "codes parity (10 code_type scopes) — UNGRADED, see checks[codes.parity]",
-    "fixture_meta parity — UNGRADED, see checks[fixture_meta.parity]",
+    "fixture_meta.INITIALIZED_AT — declared-unexercised per amendment (b): SYSTIMESTAMP at fixture init, not deterministic across fixtures; graded as a key only, never as a value",
+    "fixture_meta key rendering applies canonicalization v1.0 datetime_utc_truncate_ms source-side (the harness keys pre-canonicalization); see .migration/recon/U0/mapping/u0.json _recon_key_rendering",
     "live gate — this unit ran run_mode=fixture only; the wave gate runs the live recon independently",
     "no application code reads these collections in U0; no reader path exercised",
     "quarantine database ow_tp_mongodb_032752_quarantine unused (0 rejected rows)"

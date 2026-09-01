@@ -101,6 +101,78 @@
           ]
         }
       ]
+    },
+    {
+      "collection": "codes",
+      "root_table": "CODES",
+      "key": {
+        "source": [
+          "CODE_TYPE||'#'||CODE_VAL"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "CODE_TYPE",
+          "target": "code_type",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CODE_VAL",
+          "target": "code_val",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": []
+        },
+        {
+          "source": "CODE_DESC",
+          "target": "code_desc",
+          "source_type": "VARCHAR2",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "_recon_key_rendering": {
+        "approved_key_source": [
+          "CODE_TYPE || '#' || CODE_VAL"
+        ],
+        "rendered_key_source": [
+          "CODE_TYPE||'#'||CODE_VAL"
+        ],
+        "kind": "whitespace_only",
+        "reason": "Oracle strips whitespace from cursor-description names, so the approved expression only round-trips written without spaces. Whitespace-only rewrite: same expression, same composed value."
+      }
+    },
+    {
+      "collection": "fixture_meta",
+      "root_table": "FIXTURE_META",
+      "key": {
+        "source": [
+          "INITIALIZED_AT-NUMTODSINTERVAL(MOD(TO_NUMBER(TO_CHAR(INITIALIZED_AT,'FF6')),1000)/1000000,'SECOND')"
+        ],
+        "target": "_id"
+      },
+      "fields": [],
+      "parity": "count_only",
+      "declared_unexercised": [
+        "INITIALIZED_AT"
+      ],
+      "_recon_key_rendering": {
+        "approved_key_source": [
+          "INITIALIZED_AT"
+        ],
+        "rendered_key_source": [
+          "INITIALIZED_AT-NUMTODSINTERVAL(MOD(TO_NUMBER(TO_CHAR(INITIALIZED_AT,'FF6')),1000)/1000000,'SECOND')"
+        ],
+        "kind": "canonicalization_applied_source_side",
+        "reason": "The harness keys pre-canonicalization, and TIMESTAMP(6) cannot round-trip through a millisecond BSON date. This applies canonicalization v1.0 rule datetime_utc_truncate_ms (DATE,TIMESTAMP*->date) to the approved key column INITIALIZED_AT on the source side; no other column is referenced."
+      }
     }
   ]
 }

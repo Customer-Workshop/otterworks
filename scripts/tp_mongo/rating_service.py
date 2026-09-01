@@ -9,7 +9,6 @@ from decimal import Decimal, ROUND_HALF_UP, localcontext
 from typing import Callable, Iterable
 
 from bson import Decimal128, Int64
-from pymongo.errors import DuplicateKeyError
 
 NS_VALUE = "mongo_032752"
 TARGET_DB = "ow_tp_mongodb_032752"
@@ -403,9 +402,14 @@ class RatingService:
             tenant_id, period_start, period_end, session=session
         )
         subscription_id = sub["_id"] if sub else None
-        inserted_period = True
-        # Preserve the source insert-then-update upsert rather than replace semantics.
-        try:
+        # Preserve the source insert-then-update upsert rather than replace semantics:
+        # the insert keys on the period id while the fallback updates by
+        # (tenant_id, period_start).
+        existing_period = self.rating_periods.find_one(
+            {"_id": period_id}, session=session
+        )
+        inserted_period = existing_period is None
+        if inserted_period:
             self.rating_periods.insert_one(
                 {
                     "_id": period_id,
@@ -416,8 +420,7 @@ class RatingService:
                 },
                 session=session,
             )
-        except DuplicateKeyError:
-            inserted_period = False
+        else:
             self.rating_periods.update_many(
                 {"tenant_id": tenant_id, "period_start": period_start_dt},
                 {"$set": {"period_end": period_end_dt}},
@@ -458,11 +461,13 @@ class RatingService:
             "created_at": period_end_dt,
             "ns": NS_VALUE,
         }
-        inserted_result = True
-        try:
+        existing_result = self.rating_results.find_one(
+            {"_id": result_id}, session=session
+        )
+        inserted_result = existing_result is None
+        if inserted_result:
             self.rating_results.insert_one(result_document, session=session)
-        except DuplicateKeyError:
-            inserted_result = False
+        else:
             self.rating_results.update_one(
                 {"_id": result_id},
                 {

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 from bson import Decimal128, Int64
-from pymongo.errors import DuplicateKeyError
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -42,7 +41,6 @@ class _FakeCollection:
         self.update_many_calls = []
         self.update_one_calls = []
         self.count_calls = []
-        self.duplicate = False
         self.find_one_error = None
         self.session_calls = []
 
@@ -51,7 +49,18 @@ class _FakeCollection:
         self.session_calls.append(session)
         if self.find_one_error is not None:
             raise self.find_one_error
-        return self.plan
+        if self.plan is not None:
+            return self.plan
+        if "_id" in query:
+            return next(
+                (
+                    doc
+                    for doc in self.docs + self.inserted
+                    if doc.get("_id") == query["_id"]
+                ),
+                None,
+            )
+        return None
 
     def aggregate(self, pipeline, session=None):
         self.aggregate_calls.append(pipeline)
@@ -90,8 +99,6 @@ class _FakeCollection:
 
     def insert_one(self, document, session=None):
         self.session_calls.append(session)
-        if self.duplicate:
-            raise DuplicateKeyError("duplicate")
         self.inserted.append(document)
         return _InsertResult(document.get("_id", self.inserted_id))
 
@@ -150,8 +157,12 @@ class _FakeSession:
 class _FakeClient:
     def __init__(self):
         self.session = _FakeSession()
+        self.sessions = []
 
     def start_session(self):
+        if self.sessions:
+            self.session = _FakeSession()
+        self.sessions.append(self.session)
         return self.session
 
 
@@ -337,7 +348,7 @@ def test_finalize_insert_stores_quota_minus_used_rollover():
     assert document["rollover_units"] != Int64(finalized["rating"].rollover_units)
 
 
-def test_finalize_duplicate_path_updates_only_rating_values():
+def test_finalize_existing_documents_update_only_rating_values():
     service, db = _service(
         plan={"included_units": Int64(100), "overage_rate": Decimal128("1.00")},
         subscription={
@@ -348,17 +359,74 @@ def test_finalize_duplicate_path_updates_only_rating_values():
             "ends_on": None,
         },
     )
-    db.collections["rating_periods"].duplicate = True
-    db.collections["rating_results"].duplicate = True
+    period_id = md5_uuid("t-1" + "2026-02-01")
+    result_id = md5_uuid(period_id)
+    db.collections["rating_periods"].docs.append({"_id": period_id})
+    db.collections["rating_results"].docs.append({"_id": result_id})
     finalized = service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
     assert finalized["inserted_period"] is False
     assert finalized["inserted_result"] is False
+    assert db.collections["rating_periods"].inserted == []
+    assert db.collections["rating_results"].inserted == []
+    assert db.collections["rating_periods"].update_many_calls[0][0] == {
+        "tenant_id": "t-1",
+        "period_start": datetime(2026, 2, 1),
+    }
     assert set(db.collections["rating_results"].update_one_calls[0][1]["$set"]) == {
         "used_units",
         "rollover_units",
         "billable_units",
         "overage_amount",
     }
+
+
+def test_finalize_rating_twice_takes_the_update_path_without_duplicate_errors():
+    service, db = _service(
+        usage=[
+            {
+                "tenant_id": "t-1",
+                "occurred_at": datetime(2026, 2, 5),
+                "units": 50,
+                "kind_cd": 1,
+            }
+        ],
+        plan={"included_units": Int64(100), "overage_rate": Decimal128("1.00")},
+        subscription={
+            "_id": "sub-1",
+            "tenant_id": "t-1",
+            "plan_id": "plan-1",
+            "starts_on": date(2026, 1, 1),
+            "ends_on": None,
+        },
+    )
+    first = service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
+    second = service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
+    assert first["inserted_period"] is True
+    assert first["inserted_result"] is True
+    assert second["inserted_period"] is False
+    assert second["inserted_result"] is False
+    assert second["period_id"] == first["period_id"]
+    assert second["result_id"] == first["result_id"]
+    assert second["rating"] == first["rating"]
+    assert len(db.collections["rating_periods"].inserted) == 1
+    assert len(db.collections["rating_results"].inserted) == 1
+    assert db.collections["rating_periods"].update_many_calls == [
+        (
+            {"tenant_id": "t-1", "period_start": datetime(2026, 2, 1)},
+            {"$set": {"period_end": datetime(2026, 2, 28)}},
+        )
+    ]
+    result_query, result_update = db.collections["rating_results"].update_one_calls[0]
+    assert result_query == {"_id": first["result_id"]}
+    assert set(result_update["$set"]) == {
+        "used_units",
+        "rollover_units",
+        "billable_units",
+        "overage_amount",
+    }
+    assert len(db.client.sessions) == 2
+    assert all(session.committed for session in db.client.sessions)
+    assert not any(session.aborted for session in db.client.sessions)
 
 
 def test_finalize_rating_uses_one_transaction_session_for_all_operations():
@@ -382,7 +450,7 @@ def test_finalize_rating_uses_one_transaction_session_for_all_operations():
     )
     service.finalize_rating("t-1", date(2026, 2, 1), date(2026, 2, 28))
     sentinel = db.client.session.sentinel
-    assert db.collections["rating_periods"].session_calls == [sentinel]
+    assert set(db.collections["rating_periods"].session_calls) == {sentinel}
     assert sentinel in db.collections["usage_events"].session_calls
     assert sentinel in db.collections["rating_results"].session_calls
     assert db.client.session.committed is True

@@ -1,0 +1,49 @@
+{
+  "started_at": "2026-09-01T05:25:55.412643+00:00",
+  "finished_at": "2026-09-01T05:27:02.217615+00:00",
+  "target_db": "ow_tp_mongodb_032752",
+  "ns": "mongo_032752",
+  "secret_names": {
+    "dsn": "OW_BILLING_FIXTURE_DSN",
+    "uri": "MONGODB_ATLAS_URI"
+  },
+  "quarantine_db": "ow_tp_mongodb_032752_quarantine",
+  "collections": {
+    "invoice_feed": {
+      "root_table": "INVOICE_HEADER",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 18750,
+      "inserted": 18750,
+      "docs_after": 18750,
+      "ns_docs_after": 18750,
+      "embedded_lines": 149963,
+      "source_embedded_rows": 149963,
+      "indexes": [
+        "_id_",
+        "batch_no_1",
+        "cust_id_1"
+      ]
+    },
+    "invoice_feed_orphan_lines": {
+      "source_table": "INVOICE_LINE",
+      "reason_class": "orphan_fk",
+      "dropped": true,
+      "recreated": true,
+      "source_rows": 37,
+      "inserted": 37,
+      "docs_after": 37,
+      "ns_docs_after": 37,
+      "indexes": [
+        "_id_"
+      ]
+    }
+  },
+  "cardinality": {
+    "source_invoice_line_rows": 150000,
+    "embedded_lines": 149963,
+    "quarantined": 37,
+    "total": 150000,
+    "balanced": true
+  }
+}

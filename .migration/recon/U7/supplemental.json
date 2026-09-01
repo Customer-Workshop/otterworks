@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-01T13:53:18.804593+00:00",
+  "generated_at": "2026-09-01T13:57:16.674086+00:00",
   "unit": "U7",
   "namespace": "mongo_032752",
   "target_db": "ow_tp_mongodb_032752",
@@ -20,9 +20,9 @@
       "pass": true
     },
     "ttl_expiry": {
-      "inserted_logged_at": "2026-06-02T13:53:12+00:00",
+      "inserted_logged_at": "2026-06-02T13:56:44+00:00",
       "age_days": 91,
-      "waited_seconds": 5.1,
+      "waited_seconds": 30.4,
       "wait_budget_seconds": 240,
       "removed_by_ttl": true,
       "observed": true

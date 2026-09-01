@@ -59,7 +59,11 @@ def test_balances_pipeline_shape():
         {"$group": {"_id": None,
                     "customer_count": {"$sum": 1},
                     "current_balance_total": {"$sum": "$cur_bal_amt"},
-                    "past_due_total": {"$sum": "$past_due_amt"}}},
+                    "current_balance_count": {
+                        "$sum": {"$cond": [{"$isNumber": "$cur_bal_amt"}, 1, 0]}},
+                    "past_due_total": {"$sum": "$past_due_amt"},
+                    "past_due_count": {
+                        "$sum": {"$cond": [{"$isNumber": "$past_due_amt"}, 1, 0]}}}},
     ]
 
 
@@ -82,7 +86,9 @@ def test_mongo_balances_single_row(monkeypatch):
             {
                 "customer_count": 25000,
                 "current_balance_total": Decimal128("39799450.31"),
+                "current_balance_count": 25000,
                 "past_due_total": Decimal128("7330214.66"),
+                "past_due_count": 25000,
             }
         ],
     )
@@ -91,6 +97,42 @@ def test_mongo_balances_single_row(monkeypatch):
     ]
     assert collection.pipelines == [balances_pipeline(85559852)]
     assert client.closed is True
+
+
+def test_mongo_balances_all_null_totals_are_oracle_nulls(monkeypatch):
+    from bson import Decimal128
+
+    _patch_collection(
+        monkeypatch,
+        [
+            {
+                "customer_count": 4,
+                "current_balance_total": Decimal128("0"),
+                "current_balance_count": 0,
+                "past_due_total": Decimal128("0"),
+                "past_due_count": 0,
+            }
+        ],
+    )
+    assert reports_module.mongo_balances(85559852) == [(4, None, None)]
+
+
+def test_mongo_balances_applies_null_semantics_per_field(monkeypatch):
+    from bson import Decimal128
+
+    _patch_collection(
+        monkeypatch,
+        [
+            {
+                "customer_count": 4,
+                "current_balance_total": Decimal128("0"),
+                "current_balance_count": 0,
+                "past_due_total": Decimal128("5.00"),
+                "past_due_count": 2,
+            }
+        ],
+    )
+    assert reports_module.mongo_balances(85559852) == [(4, None, "5.00")]
 
 
 def test_mongo_balances_empty_matches_oracle_nulls(monkeypatch):

@@ -92,7 +92,11 @@ def balances_pipeline(batch_no):
         {"$group": {"_id": None,
                     "customer_count": {"$sum": 1},
                     "current_balance_total": {"$sum": "$cur_bal_amt"},
-                    "past_due_total": {"$sum": "$past_due_amt"}}},
+                    "current_balance_count": {
+                        "$sum": {"$cond": [{"$isNumber": "$cur_bal_amt"}, 1, 0]}},
+                    "past_due_total": {"$sum": "$past_due_amt"},
+                    "past_due_count": {
+                        "$sum": {"$cond": [{"$isNumber": "$past_due_amt"}, 1, 0]}}}},
     ]
 
 
@@ -102,6 +106,10 @@ def fm_amount(value):
         return None
     quantized = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     return f"{quantized:f}"
+
+
+def _oracle_sum(total, present):
+    return fm_amount(total) if present else None
 
 
 def ns_batch_no(ns):
@@ -187,8 +195,8 @@ def mongo_balances(batch_no):
     return [
         (
             row["customer_count"],
-            fm_amount(row["current_balance_total"]),
-            fm_amount(row["past_due_total"]),
+            _oracle_sum(row["current_balance_total"], row["current_balance_count"]),
+            _oracle_sum(row["past_due_total"], row["past_due_count"]),
         )
     ]
 

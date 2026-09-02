@@ -23,7 +23,7 @@ run_all.sh) → Databricks job `ow_tp_custbill` (ingest → parse → finance, s
 | D8-4 | PII regime for `cust_name`/`cust_id` on `ow_tp.silver.custbill_records` (masking / row filters) | customer data governance | UC grants, applied by customer | none — **blocking** before any non-migration principal is granted `SELECT` |
 | D8-2 / R-7 | Production run identity: a service principal owning the job and the `ow_tp` scope (no shared PAT) | customer platform team | Databricks account console | none — **blocking** |
 | — | STOP E authorization in `#ow-migrations` naming the cutover window | customer | Slack thread → `05_progress.md` STOP E row | — |
-| P-1 | Parent "production readiness" PR (plan-only until STOP E): (a) job parameter `ns` default `demo` → `prod` in `infrastructure/terraform-databricks/main.tf` and `databricks/custbill_workflow/job.json`; (b) `lifecycle { ignore_changes = [string_value] }` on the three `databricks_secret` resources; (c) `recon_custbill.py` accepts `--run-mode live --ns prod` and an `--expect-pause-status UNPAUSED` flag for U9-a during the parallel window (today it hard-gates live to `ns=demo` and expects `PAUSED`). Tolerances untouched. | parent | run branch PR, reviewed + merged before §3 | none — **blocking**; without (a) an unpaused schedule keeps writing `demo` and never reads `prod/incoming/` |
+| P-1 | Parent "production readiness" PR (plan-only until STOP E): (a) job parameter `ns` default `demo` → `prod` in `infrastructure/terraform-databricks/main.tf` and `databricks/custbill_workflow/job.json`; (b) `lifecycle { ignore_changes = [string_value] }` on the three `databricks_secret` resources; (c) `recon_custbill.py` accepts `--run-mode live --ns prod` and an `--expect-pause-status UNPAUSED` flag for U9-a during the parallel window (today it hard-gates live to `ns=demo` and expects `PAUSED`); (d) `verify_job.py <snapshot.json>` gains `--expect-ns <value>` (checks the `ns` job-parameter default, not just its presence) and `--expect-pause-status`. Tolerances untouched. | parent | run branch PR, reviewed + merged before §3 | none — **blocking**; without (a) an unpaused schedule keeps writing `demo` and never reads `prod/incoming/` |
 
 ## 1. Freeze and baseline **[parent, on request]**
 
@@ -53,8 +53,9 @@ a customer-owned copy job on the ETL box watches the legacy `incoming/` director
 file to the volume *before* the legacy `*/15` poll deletes it — i.e. it runs at `2-59/15` off the
 same crontab, copies with a temp name, renames on completion, and compares sha256 against the
 source; a mismatch or missing copy is logged and the file is re-pushed on the next tick. Daily
-completeness check **[parent]**: `bronze.custbill_raw` distinct `source_file` for `ns=prod` equals
-the legacy `archive/` listing for that day (this is U6-a/U6-b in the recon). Any gap halts the
+completeness check **[parent]**: strip the `.YYYYMMDDHHMMSS` suffix the legacy poll appends to each
+`archive/` name, then compare that basename set with distinct `bronze.custbill_raw.source_file` for
+`ns=prod` for the same day (the recon's U6-a/U6-b compare by basename too). Any gap halts the
 window clock — that day does not count toward the exit criteria.
 
 Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{1,32}$`).
@@ -76,7 +77,8 @@ Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{
 ## 4. Parallel run (minimum one weekly cycle, recommended two) **[customer runs, parent recons]**
 
 1. **[customer]** Confirm via Jobs API `get` that job parameter `ns` defaults to `prod` (P-1(a))
-   and `verify_job.py --expect-ns prod` passes; then unpause (`pause_status: UNPAUSED` on the
+   and `verify_job.py --expect-ns prod --expect-pause-status PAUSED <jobs-api-get.json>` passes
+   (P-1(d); the snapshot is the redacted Jobs API 2.1 `get` output, as in `databricks/custbill_workflow/job.json`); then unpause (`pause_status: UNPAUSED` on the
    `0 */15 * * * ?` schedule; or enable file-arrival on `prod/incoming/` if the workspace supports
    it — then delete the cron schedule so there is one trigger; both trigger kinds inherit the job
    parameter default). Legacy crontab lines **stay on** and dual delivery (§2) is live. Both chains
@@ -85,9 +87,13 @@ Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{
 2. After each daily 02:10 legacy finance run and again after the Sunday 06:00 `run_all.sh`:
    **[parent]** `recon_custbill.py --unit custbill_workflow --ns prod --legacy-root <snapshot of that day> --run-mode live --expect-pause-status UNPAUSED --evidence-json <partial/overlap evidence>`
    (P-1(c)); `--previous` for idempotency on the next no-input run. U9-c evidence is collected
-   once at the start of the window from a customer-approved dry failure (malformed file into
-   `prod/incoming/`, removed afterwards) plus the natural overlap between the 15-min schedule
-   and a manual `Run now`. Tolerances T1–T12 unchanged
+   once at the start of the window **never on `ns=prod`**: a manual `Run now` with `ns=prod-drill`
+   (registered as a write target) against a copy of one real day's file plus one non-ASCII line
+   — the only input that fails parse rather than quarantining — gives the FAILED run with finance
+   SKIPPED; a second `Run now` on `prod-drill` while the first is in flight gives the overlap
+   refusal. `custbill.py --ns prod-drill wipe` afterwards. Nothing from the drill is ever left in
+   bronze for `prod`, so the scheduled `prod` runs cannot inherit a poison row. (The overlap between
+   the 15-min schedule and a `Run now` on `prod` itself is also acceptable overlap evidence.) Tolerances T1–T12 unchanged
    (`03_recon_tolerances.md`); quarantined rows are reported as a named delta (R-2), never
    tolerated silently. Reports committed under `docs/tech-partnerships/recon/parallel/<date>/`.
 3. Exit criteria: every daily report GREEN; the Sunday full-chain report GREEN; at least one

@@ -254,9 +254,6 @@ class MeiliSearchService:
         ``_rankingScore`` and suggestions across both indexes are ordered by
         relevance. Hits missing the score fall back to 0.0.
         """
-        scored: list[tuple[float, str]] = []
-        seen: set[str] = set()
-
         params: dict[str, Any] = {
             "limit": size,
             "attributesToRetrieve": ["title", "name"],
@@ -264,24 +261,27 @@ class MeiliSearchService:
         if ranked:
             params["showRankingScore"] = True
 
+        best_score: dict[str, float] = {}
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
             result = index.search(prefix, params)
             for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
-                if text and text not in seen:
-                    score = hit.get("_rankingScore") or 0.0
-                    scored.append((float(score), text))
-                    seen.add(text)
-                    if len(scored) >= size:
-                        break
-            if len(scored) >= size:
+                if not text:
+                    continue
+                score = float(hit.get("_rankingScore") or 0.0)
+                if text not in best_score or score > best_score[text]:
+                    best_score[text] = score
+                if not ranked and len(best_score) >= size:
+                    break
+            if not ranked and len(best_score) >= size:
                 break
 
+        suggestions = list(best_score)
         if ranked:
-            scored.sort(key=lambda item: item[0], reverse=True)
+            suggestions.sort(key=lambda text: best_score[text], reverse=True)
 
-        return [text for _, text in scored]
+        return suggestions[:size]
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
         """Wait for a MeiliSearch task and raise on failure."""

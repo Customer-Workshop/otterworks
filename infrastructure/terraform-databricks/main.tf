@@ -299,7 +299,10 @@ resource "databricks_job" "ow_tp_custbill" {
   }
 
   task {
-    task_key = "ingest"
+    task_key                  = "ingest"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
     notebook_task {
       notebook_path   = databricks_notebook.ingest.path
       base_parameters = { ns = "{{job.parameters.ns}}" }
@@ -308,7 +311,10 @@ resource "databricks_job" "ow_tp_custbill" {
   }
 
   task {
-    task_key = "parse"
+    task_key                  = "parse"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
     depends_on {
       task_key = "ingest"
     }
@@ -320,7 +326,10 @@ resource "databricks_job" "ow_tp_custbill" {
   }
 
   task {
-    task_key = "finance"
+    task_key                  = "finance"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
     depends_on {
       task_key = "parse"
     }

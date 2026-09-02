@@ -459,7 +459,7 @@ class Recon:
         self.check("U9-a", exp, act, f"Jobs API 2.1 get job_id={job['job_id']}", ok=exp == act and bool(act["on_failure_recipients"]))
         self.unit_ingest()
         self.unit_parse(None, None)
-        self.unit_finance()
+        self.unit_finance(None, None)
         for c in self.checks:
             if c["id"] in ("U6-a", "U6-b", "U7-a", "U7-b", "U7-c", "U8-a", "U8-b"):
                 c["id"] = "U9-b/" + c["id"]

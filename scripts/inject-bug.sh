@@ -62,9 +62,25 @@ esac
 
 kubectl get ns "${NS}" >/dev/null 2>&1 || { err "Namespace ${NS} not found; deploy the tenant first."; exit 1; }
 
+# Services that gate chaos:* flags behind CHAOS_ENABLED. Refuse to "inject" into
+# a release that will ignore the key rather than report a scenario that is inert.
+declare -A CHAOS_GATED_RELEASE=(
+  [file-upload-fails]="file-service"
+)
+
 # --- Chaos-flag scenarios ---
 if [ -n "${CHAOS_KEY[${SCENARIO}]:-}" ]; then
   key="${CHAOS_KEY[${SCENARIO}]}"
+  release="${CHAOS_GATED_RELEASE[${SCENARIO}]:-}"
+  if [ -n "${release}" ]; then
+    enabled="$(kubectl -n "${NS}" get configmap "${release}-config" -o jsonpath='{.data.CHAOS_ENABLED}' 2>/dev/null || true)"
+    case "${enabled,,}" in
+      1|true|yes|on) ;;
+      *) err "${release} in ${NS} has CHAOS_ENABLED='${enabled:-<unset>}'; it would ignore ${key}."
+         err "Redeploy with T_CHAOS_ENABLED=true ./scripts/deploy-tenant.sh ${ATTENDEE_ID} (not permitted for tenant 'main')."
+         exit 1 ;;
+    esac
+  fi
   log "Injecting chaos '${SCENARIO}' in ${NS}: SETEX ${key} ${CHAOS_TTL}"
   redis_exec SETEX "${key}" "${CHAOS_TTL}" 1 >/dev/null
   log "Active. Auto-expires in ${CHAOS_TTL}s, or clear now: $0 ${ATTENDEE_ID} reset"

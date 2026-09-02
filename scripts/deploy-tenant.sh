@@ -76,6 +76,10 @@ T_MEILI_URL="http://meilisearch:7700"
 # Tier A shares SNS/SQS eventing off by default to avoid cross-tenant queue
 # consumption; Tier B (data-isolated) can opt in later. Kept off for both here.
 T_WIRE_EVENTING="false"
+# Chaos (Redis chaos:* flags via inject-bug.sh / admin dashboard) is honoured by
+# workshop tenants only; the perpetual `main` tenant tracks the golden app and
+# must never be bug-injected.
+if [ "${ATTENDEE_ID}" = "main" ]; then T_CHAOS_ENABLED="false"; else T_CHAOS_ENABLED="${T_CHAOS_ENABLED:-true}"; fi
 # Convert a compact TTL (e.g. 8h, 30m, 2d) into an absolute UTC expiry, working
 # with both GNU date (-d "8 hours") and BSD/macOS date (-v+8H).
 # `never` marks a perpetual tenant: the reaper skips it on the control table's

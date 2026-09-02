@@ -258,7 +258,8 @@ urlencode()  { jq -rn --arg s "$1" '$s|@uri'; }
 
 # Build per-service Helm --set flags (EXTRA_ARGS) + secret pairs (SECRET_KV) for
 # a tenant. Requires these tenant-scoped globals to be set by the caller:
-#   T_REDIS_HOST, T_MEILI_URL, T_DB_NAME, T_WIRE_EVENTING (true/false)
+#   T_REDIS_HOST, T_MEILI_URL, T_DB_NAME, T_WIRE_EVENTING (true/false),
+#   T_CHAOS_ENABLED (true/false; services ignore chaos:* flags when false)
 build_helm_args() {
   local service=$1
   EXTRA_ARGS=()
@@ -323,6 +324,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.DYNAMODB_VERSIONS_TABLE=${DDB_VERSIONS}")
       EXTRA_ARGS+=(--set-string "config.DYNAMODB_SHARES_TABLE=${DDB_SHARES}")
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${T_REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
+      EXTRA_ARGS+=(--set-string "config.CHAOS_ENABLED=${T_CHAOS_ENABLED:-false}")
       EXTRA_ARGS+=(--set-string "config.SNS_TOPIC_ARN=${sns_topic}") ;;
     document-service)
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${T_REDIS_HOST}" --set-string "config.REDIS_PORT=6379")

@@ -76,11 +76,6 @@ variable "enable_karpenter" {
   default     = true
 }
 
-variable "cluster_log_types" {
-  description = "EKS control-plane log types shipped to CloudWatch. api + audit is the security baseline; the rest are noise for a demo cluster."
-  type        = list(string)
-  default     = ["api", "audit"]
-}
 
 variable "cluster_log_retention_days" {
   description = "Retention for the EKS control-plane CloudWatch log group"

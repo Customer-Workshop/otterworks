@@ -63,7 +63,8 @@ resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-pub
   version  = var.cluster_version
   role_arn = aws_iam_role.cluster.arn
 
-  enabled_cluster_log_types = var.cluster_log_types
+  # api + audit only; the other three are noise for a demo cluster and bill per GB.
+  enabled_cluster_log_types = ["api", "audit"]
 
   vpc_config {
     subnet_ids              = concat(var.public_subnet_ids, var.private_subnet_ids)
@@ -142,6 +143,12 @@ resource "aws_iam_role_policy_attachment" "node_ecr" {
 # a launch template's tag_specifications is the only way to get them there.
 resource "aws_launch_template" "node_group" {
   name_prefix = "${var.cluster_name}-default-"
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
 
   dynamic "tag_specifications" {
     for_each = toset(["instance", "volume", "network-interface"])

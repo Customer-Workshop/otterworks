@@ -14,7 +14,7 @@ registered here before any load; a collision halts the wave.
 | 2 | audit_archive_weekly.py | 2 | NOT_STARTED | – | – | – | – | – | – |
 | 3 | search_reindex_weekly.py | 2 | NOT_STARTED | – | – | – | – | – | – |
 | 4 | storage_cleanup_daily.py | 2 | NOT_STARTED | – | – | – | – | – | – |
-| 9 | run_all.sh → Workflow `ow_tp_custbill` | 3 | NOT_STARTED | ns `custbill-workflow-w3` (all four tables + `landing/custbill-workflow-w3/`); job `ow_tp_custbill` settings (tasks/trigger/notifications only, pause_status stays PAUSED) | – | – | – | – | – |
+| 9 | run_all.sh → Workflow `ow_tp_custbill` | 3 | LAUNCHED (wave 3 child, 2026-09-01) | ns `custbill-workflow-w3` (all four tables + `landing/custbill-workflow-w3/`); job `ow_tp_custbill` settings (tasks/trigger/notifications only, pause_status stays PAUSED) | – | – | – | – | – |
 
 Units 1–5 are outside the STOP B boundary for this run (P-A/C/D/E) and stay NOT_STARTED. Wave assignment for 6–9 is the STOP C approved shape (CUSTBILL_plan.md §2). Namespace slices above are the registered write targets: a child writes only `WHERE ns = <its slice>`; `demo` is parent-only. Wave assignment below the P-B rows was the front-door PROPOSAL; `!dbx_pipeline_analysis` / `!dbx_migration_plan`
 finalise it at STOP C. Inventory (`docs/tech-partnerships/OtterWorks_ETL_inventory.md`) partitions the

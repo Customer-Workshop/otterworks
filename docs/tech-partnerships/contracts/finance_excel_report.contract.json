@@ -10,7 +10,7 @@
     "/Volumes/ow_tp/bronze/landing/<ns>/reports/finance_billing_<YYYYMMDD>.xlsx",
     "/Shared/ow_tp/custbill/finance (notebook task `finance` of job ow_tp_custbill)"
   ],
-  "target_code_path": "databricks/finance_excel_report/",
+  "target_code_path": "infrastructure/terraform-databricks/notebooks/finance.py",
   "input_object": "ow_tp.silver.custbill_records WHERE ns=? — ALL rows for the namespace, no date window (legacy aggregates every parsed/*.psv ever written). Fixture seed: `python3 scripts/tp_dbx/custbill.py seed-fixture --layer silver --ns <ns> --legacy-root <root>`.",
   "golden_baseline_location": "Regenerated: full legacy chain `make legacy-etl-run JOB=run_all` (RUN_ALL_SLEEP=0) under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh with `TP_FAKETIME='2026-09-01 02:10:00'` so the stamp is 20260901. Baseline = `reports/finance_billing_20260901.csv` (header + 6 rows) and the awk recompute in docs/tech-partnerships/runbook-databricks.md.",
   "declared_source_volume": {"silver_rows": 100, "gold_rows": 6, "keys": "3 currencies × 2 record types present in the demo seed"},

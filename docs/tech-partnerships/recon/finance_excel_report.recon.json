@@ -1,0 +1,319 @@
+{
+  "kind": "recon-report",
+  "unit": "finance_excel_report",
+  "namespace": "finance-w2",
+  "generated_at": "2026-09-02T00:01:43+00:00",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "U8-a",
+      "expected": [
+        [
+          "EUR",
+          "INVOICE",
+          21,
+          "108695.69"
+        ],
+        [
+          "EUR",
+          "CREDIT",
+          7,
+          "35335.42"
+        ],
+        [
+          "GBP",
+          "INVOICE",
+          23,
+          "99792.87"
+        ],
+        [
+          "GBP",
+          "CREDIT",
+          10,
+          "51512.05"
+        ],
+        [
+          "USD",
+          "INVOICE",
+          33,
+          "139649.08"
+        ],
+        [
+          "USD",
+          "CREDIT",
+          6,
+          "26123.77"
+        ]
+      ],
+      "actual": [
+        [
+          "EUR",
+          "INVOICE",
+          21,
+          "108695.69"
+        ],
+        [
+          "EUR",
+          "CREDIT",
+          7,
+          "35335.42"
+        ],
+        [
+          "GBP",
+          "INVOICE",
+          23,
+          "99792.87"
+        ],
+        [
+          "GBP",
+          "CREDIT",
+          10,
+          "51512.05"
+        ],
+        [
+          "USD",
+          "INVOICE",
+          33,
+          "139649.08"
+        ],
+        [
+          "USD",
+          "CREDIT",
+          6,
+          "26123.77"
+        ]
+      ],
+      "source_of_truth": "legacy finance_billing_20260901.csv rows vs gold (currency, record_type, record_count, total_amount) ordered like the Perl sort",
+      "result": "pass"
+    },
+    {
+      "id": "U8-b",
+      "expected": {
+        "csv_sha256": "660ca3992f2f626c7cf9e61bf854bb7fcae974e92c0fe19261940cc3ccdd855c",
+        "legacy_xls_equals_csv": true
+      },
+      "actual": {
+        "csv_sha256": "660ca3992f2f626c7cf9e61bf854bb7fcae974e92c0fe19261940cc3ccdd855c",
+        "legacy_xls_equals_csv": true
+      },
+      "source_of_truth": "sha256 legacy csv vs /Volumes/ow_tp/bronze/landing/finance-w2/reports/finance_billing_20260901.csv; legacy .xls bytes vs .csv bytes",
+      "result": "pass"
+    },
+    {
+      "id": "U8-c",
+      "expected": {
+        "awk_equivalent": [
+          [
+            "EUR",
+            "INVOICE",
+            21,
+            "108695.69"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            7,
+            "35335.42"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            23,
+            "99792.87"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            10,
+            "51512.05"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            33,
+            "139649.08"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            6,
+            "26123.77"
+          ]
+        ],
+        "gold_sum_equals_silver_sum": true
+      },
+      "actual": {
+        "awk_equivalent": [
+          [
+            "EUR",
+            "INVOICE",
+            21,
+            "108695.69"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            7,
+            "35335.42"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            23,
+            "99792.87"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            10,
+            "51512.05"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            33,
+            "139649.08"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            6,
+            "26123.77"
+          ]
+        ],
+        "gold_sum_equals_silver_sum": true,
+        "gold_sum": "461108.88",
+        "silver_sum": "461108.88"
+      },
+      "source_of_truth": "Decimal recompute over legacy parsed/*.psv (awk one-liner equivalent) vs gold; sum(gold)==sum(silver)",
+      "result": "pass"
+    },
+    {
+      "id": "U8-e",
+      "expected": {
+        "header": [
+          "Currency",
+          "RecordType",
+          "RecordCount",
+          "TotalAmount"
+        ],
+        "rows": [
+          [
+            "EUR",
+            "INVOICE",
+            21,
+            "108695.69"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            7,
+            "35335.42"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            23,
+            "99792.87"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            10,
+            "51512.05"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            33,
+            "139649.08"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            6,
+            "26123.77"
+          ]
+        ]
+      },
+      "actual": {
+        "header": [
+          "Currency",
+          "RecordType",
+          "RecordCount",
+          "TotalAmount"
+        ],
+        "rows": [
+          [
+            "EUR",
+            "INVOICE",
+            21,
+            "108695.69"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            7,
+            "35335.42"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            23,
+            "99792.87"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            10,
+            "51512.05"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            33,
+            "139649.08"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            6,
+            "26123.77"
+          ]
+        ]
+      },
+      "source_of_truth": "/Volumes/ow_tp/bronze/landing/finance-w2/reports/finance_billing_20260901.xlsx opened with openpyxl",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "reason": "newer successful ow_tp_custbill run confirmed",
+    "previous_latest_run": {
+      "run_id": 315697721735072,
+      "end_time": 1788307192530,
+      "result_state": "SUCCESS"
+    },
+    "latest_run": {
+      "run_id": 115563676933692,
+      "end_time": 1788307300458,
+      "result_state": "SUCCESS"
+    },
+    "snapshot_time_ms": 1788307216853,
+    "evidence": "first pass 2026-09-02T00:00:16+00:00 wrote_rows=True; second pass 2026-09-02T00:01:43+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=finance-w2; fingerprint={\"csv_sha256\": \"660ca3992f2f626c7cf9e61bf854bb7fcae974e92c0fe19261940cc3ccdd855c\", \"gold\": [[\"EUR\", \"INVOICE\", 21, \"108695.69\"], [\"EUR\", \"CREDIT\", 7, \"35335.42\"], [\"GBP\", \"INVOICE\", 23, \"99792.87\"], [\"GBP\", \"CREDIT\", 10, \"51512.05\"], [\"USD\", \"INVOICE\", 33, \"139649.08\"], [\"USD\", \"CREDIT\", 6, \"26123.77\"]]}"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "e-mail delivery to finance-reports@",
+    "sendmail relay retired in 2020",
+    "shared-drive pickup"
+  ],
+  "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-finance-w2 via scripts/tp-run-deterministic.sh"
+}

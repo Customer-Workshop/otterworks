@@ -49,8 +49,15 @@ single spec. Set `CHROME_BIN` for the command:
 CHROME_BIN=$(which google-chrome || which chromium) npm test
 ```
 
-If the sandbox is unavailable (containers, CI), add a `ChromeHeadlessNoSandbox`
-custom launcher in `karma.conf.js` rather than disabling the browser tests.
+If the sandbox is unavailable (containers, CI), the `ChromeHeadlessNoSandbox`
+launcher is already defined in `karma.conf.js` — but the `npm test` script
+hardcodes `--browsers=ChromeHeadless` and overrides it. Select it explicitly
+rather than disabling the browser tests:
+
+```bash
+CHROME_BIN=$(which google-chrome || which chromium) \
+  npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox
+```
 
 ## Verified test baseline (Angular 17.3, `main`)
 

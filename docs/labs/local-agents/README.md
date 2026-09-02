@@ -157,7 +157,7 @@ your account.)
 | Symptom | Fix |
 |---|---|
 | `npm test` exits before running specs | `CHROME_BIN=$(which google-chrome \|\| which chromium) npm test` |
-| Karma dies in a container | Add a `ChromeHeadlessNoSandbox` launcher in `karma.conf.js` |
+| Karma dies in a container | `karma.conf.js` already defines `ChromeHeadlessNoSandbox`, but `npm test` hardcodes `--browsers=ChromeHeadless` over it — run `npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox` instead |
 | `poetry: command not found` | `pipx install poetry`, then `poetry install --no-root` |
 | Agent doesn't pick up a skill | `devin skills list` — check it's discovered; skills are matched on their `description`, so make it say *when* to use it |
 | Subagent tools missing | Subagents on by default; `subagents_enabled: false` in `~/.config/devin/config.json` (or the Desktop toggle) turns them off. Org policy can override |

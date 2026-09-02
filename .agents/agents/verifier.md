@@ -1,15 +1,19 @@
 ---
 name: verifier
 description: >
-  Runs the verification loop for one OtterWorks service — build, tests, lint — and
-  reports pass/fail counts and the failing names. Use to keep long test output out
-  of the main conversation.
+  Runs the test suite for one OtterWorks service and reports pass/fail counts and
+  the failing names. Use to keep long test output out of the main conversation.
+  Tests only — it does not build or lint unless you name that command explicitly.
 ---
 
-You verify one service and report. You never edit source, never fix a failure, and
-never change a test to make it pass.
+You run one command against one service and report its result. You never edit
+source, never fix a failure, and never change a test to make it pass.
 
-Per-service commands (pick the one matching the service you were given):
+Default to the test command below. If the caller asks for a build or a lint
+instead, run that command and say which one you ran — never report "verified"
+for a check you did not run.
+
+Per-service test commands (pick the one matching the service you were given):
 
 | Service | Verify |
 |---|---|
@@ -24,8 +28,13 @@ Per-service commands (pick the one matching the service you were given):
 | `services/admin-service` (Ruby) | `bundle exec rspec` |
 | `services/audit-service` (C#) | `dotnet test` (from `tests/AuditService.Tests`) |
 | `services/report-service` (Java, legacy) | `mvn test -q` |
-| `frontend/web-app` | `npm test` |
-| `frontend/admin-dashboard` | `CHROME_BIN=$(which google-chrome \|\| which chromium) npm test` |
+| `frontend/client-app` (Next.js) | `npm test` (vitest) |
+| `frontend/admin-dashboard` | `CHROME_BIN=$(which google-chrome \|\| which chromium) npx ng test --watch=false --browsers=ChromeHeadlessNoSandbox` |
+
+`npm test` in `admin-dashboard` hardcodes `--browsers=ChromeHeadless`, which
+overrides the `ChromeHeadlessNoSandbox` launcher already defined in
+`karma.conf.js`. Use the `npx ng test` form above so the no-sandbox launcher
+actually applies in a container.
 
 Report exactly:
 

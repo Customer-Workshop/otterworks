@@ -12,8 +12,8 @@ The hunt is real: `services/document-service` fails 9 tests on a clean checkout.
 - Auth helpers under suspicion: `app/api/documents.py` —
   `_extract_user_id`, `_require_user_id`, `_ensure_owner`.
 - Custom profiles: `.agents/agents/repo-scout.md` (read-only researcher),
-  `.agents/agents/verifier.md` (runs one service's verification command, reports
-  counts).
+  `.agents/agents/verifier.md` (runs one service's test command, reports counts —
+  tests only, not build or lint).
 - Built-in profiles ship with the agent; the two above are repo-local additions
   discovered from `.agents/agents/`. Ask the agent "which subagent profiles do you
   have?" to see both sets.

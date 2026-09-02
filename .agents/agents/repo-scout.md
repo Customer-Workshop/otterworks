@@ -17,7 +17,7 @@ Where things live:
 
 - `services/<name>/` — one directory per backend service; the language differs per
   service (Go, Java, Kotlin, Rust, Python, Node, Scala, Ruby, C#).
-- `frontend/web-app` (Next.js), `frontend/admin-dashboard` (Angular).
+- `frontend/client-app` (Next.js), `frontend/admin-dashboard` (Angular).
 - `shared/openapi/` — API contracts. `shared/events/schemas/` — event contracts.
 - `docs/api-route-matrix.md` — route → service map. Start here for "who serves X".
 

@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "parse_custbill_fixedwidth",
   "namespace": "demo",
-  "generated_at": "2026-09-02T01:25:10+00:00",
+  "generated_at": "2026-09-02T01:43:45+00:00",
   "run_mode": "live",
   "checks": [
     {
@@ -17,8 +17,8 @@
       "actual": {
         "total": 100,
         "per_file": {
-          "CUSTBILL_DEMO_002.dat": 50,
-          "CUSTBILL_DEMO_001.dat": 50
+          "CUSTBILL_DEMO_001.dat": 50,
+          "CUSTBILL_DEMO_002.dat": 50
         }
       },
       "source_of_truth": "wc -l parsed/*.psv vs count(*) silver per source_file",
@@ -100,12 +100,12 @@
       "result_state": "SUCCESS"
     },
     "latest_run": {
-      "run_id": 631091175650766,
-      "end_time": 1788312289668,
+      "run_id": 708168141169621,
+      "end_time": 1788312468987,
       "result_state": "SUCCESS"
     },
     "snapshot_time_ms": 1788312192983,
-    "evidence": "first pass 2026-09-02T01:23:12+00:00 wrote_rows=True; second pass 2026-09-02T01:25:10+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=demo; fingerprint={\"quarantine\": 0, \"quarantine_content\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"silver_content\": \"5a72e03ba81cde6f9b5f0217e014c451c13d5f6798b1ab50a1d4c9537cf850bb\", \"silver_counts\": {\"CUSTBILL_DEMO_001.dat\": 50, \"CUSTBILL_DEMO_002.dat\": 50}}"
+    "evidence": "first pass 2026-09-02T01:23:12+00:00 wrote_rows=True; second pass 2026-09-02T01:43:45+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=demo; fingerprint={\"quarantine\": 0, \"quarantine_content\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"silver_content\": \"5a72e03ba81cde6f9b5f0217e014c451c13d5f6798b1ab50a1d4c9537cf850bb\", \"silver_counts\": {\"CUSTBILL_DEMO_001.dat\": 50, \"CUSTBILL_DEMO_002.dat\": 50}}"
   },
   "planted_anomaly_detections": {
     "expected_set": [
@@ -165,6 +165,9 @@
     "missing": [],
     "unexpected": []
   },
-  "unverified_paths": [],
+  "unverified_paths": [
+    "production encoding (R1)",
+    "short_record on real data (no fixture)"
+  ],
   "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-demo via scripts/tp-run-deterministic.sh"
 }

@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "finance_excel_report",
   "namespace": "demo",
-  "generated_at": "2026-09-02T01:28:00+00:00",
+  "generated_at": "2026-09-02T01:49:18+00:00",
   "run_mode": "live",
   "checks": [
     {
@@ -284,6 +284,102 @@
       },
       "source_of_truth": "/Volumes/ow_tp/bronze/landing/demo/reports/finance_billing_20260902.xlsx opened with openpyxl",
       "result": "pass"
+    },
+    {
+      "id": "U8-f",
+      "expected": {
+        "totals": [
+          [
+            "EUR",
+            "CREDIT",
+            30,
+            12950411
+          ],
+          [
+            "EUR",
+            "INVOICE",
+            140,
+            74593417
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            29,
+            16003428
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            115,
+            57948106
+          ],
+          [
+            "USD",
+            "CREDIT",
+            30,
+            15632703
+          ],
+          [
+            "USD",
+            "INVOICE",
+            132,
+            65718477
+          ]
+        ],
+        "quarantined_rows": 4,
+        "rows_delta_equals_quarantined": true,
+        "cents_delta_equals_quarantined": true
+      },
+      "actual": {
+        "totals": [
+          [
+            "EUR",
+            "CREDIT",
+            30,
+            12950411
+          ],
+          [
+            "EUR",
+            "INVOICE",
+            140,
+            74593417
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            29,
+            16003428
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            115,
+            57948106
+          ],
+          [
+            "USD",
+            "CREDIT",
+            30,
+            15632703
+          ],
+          [
+            "USD",
+            "INVOICE",
+            132,
+            65718477
+          ]
+        ],
+        "quarantined_rows": 4,
+        "quarantined_cents": 1568993,
+        "bronze_body_rows": 480,
+        "bronze_body_cents": 244415535,
+        "gold_rows": 476,
+        "gold_cents": 242846542,
+        "rows_delta_equals_quarantined": true,
+        "cents_delta_equals_quarantined": true
+      },
+      "source_of_truth": "quarantined_rows_change_totals on ns=parse-w2-anom: manifest parse-w2-anom-history-expected.json totals vs gold; bronze BODY rows/cents minus gold rows/cents must equal quarantine-joined rows/cents",
+      "result": "pass"
     }
   ],
   "values_recomputed_from_target": true,
@@ -302,7 +398,7 @@
       "result_state": "SUCCESS"
     },
     "snapshot_time_ms": 1788312362475,
-    "evidence": "first pass 2026-09-02T01:26:02+00:00 wrote_rows=True; second pass 2026-09-02T01:28:00+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=demo; fingerprint={\"csv_sha256\": \"c8923a71ab5a2d8048ad06ae91840631c009551e9082755fa4672e034a15627e\", \"gold\": [[\"EUR\", \"INVOICE\", 22, \"101554.41\"], [\"EUR\", \"CREDIT\", 6, \"33375.97\"], [\"GBP\", \"INVOICE\", 32, \"183113.58\"], [\"GBP\", \"CREDIT\", 5, \"28454.59\"], [\"USD\", \"INVOICE\", 28, \"130502.15\"], [\"USD\", \"CREDIT\", 7, \"33390.44\"]]}"
+    "evidence": "first pass 2026-09-02T01:26:02+00:00 wrote_rows=True; second pass 2026-09-02T01:49:18+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=demo; fingerprint={\"csv_sha256\": \"c8923a71ab5a2d8048ad06ae91840631c009551e9082755fa4672e034a15627e\", \"gold\": [[\"EUR\", \"INVOICE\", 22, \"101554.41\"], [\"EUR\", \"CREDIT\", 6, \"33375.97\"], [\"GBP\", \"INVOICE\", 32, \"183113.58\"], [\"GBP\", \"CREDIT\", 5, \"28454.59\"], [\"USD\", \"INVOICE\", 28, \"130502.15\"], [\"USD\", \"CREDIT\", 7, \"33390.44\"]]}"
   },
   "planted_anomaly_detections": {
     "expected_set": [],
@@ -310,6 +406,10 @@
     "missing": [],
     "unexpected": []
   },
-  "unverified_paths": [],
+  "unverified_paths": [
+    "e-mail delivery to finance-reports@ (R2)",
+    "sendmail relay (retired 2020)",
+    "shared-drive pickup (R3)"
+  ],
   "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-demo via scripts/tp-run-deterministic.sh"
 }

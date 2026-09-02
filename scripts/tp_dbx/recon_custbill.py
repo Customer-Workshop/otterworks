@@ -118,7 +118,7 @@ class Recon:
     def rows(self, sql: str) -> list[list]:
         r = self.dbx.sql(sql)
         if not r.ok:
-            raise DbxError(f"SQL failed: {r.message}\n{sql}")
+            raise DbxError(f"SQL failed: {r.error}\n{sql}")
         return r.rows
 
     def check(self, cid: str, expected, actual, truth: str, ok: bool | None = None) -> bool:
@@ -412,10 +412,10 @@ class Recon:
         act_totals = sorted([c, rt, int(n), int(cents)] for c, rt, n, cents in gold)
         total_records = int(manifest["record_count"])
         exp_rows_delta = total_records - sum(t[2] for t in exp_totals)
-        amt = "CASE WHEN substr(raw_line, 49, 12) RLIKE '^[0-9]{12}$' THEN cast(substr(raw_line, 49, 12) AS BIGINT) END"
+        amt = "CASE WHEN substr(br.raw_line, 49, 12) RLIKE '^[0-9]{12}$' THEN cast(substr(br.raw_line, 49, 12) AS BIGINT) END"
         body_cents, body_rows = self.rows(
-            f"SELECT coalesce(sum({amt}), 0), count(*) FROM {CATALOG}.bronze.custbill_raw "
-            f"WHERE ns={q(ans)} AND record_kind='BODY'")[0]
+            f"SELECT coalesce(sum({amt}), 0), count(*) FROM {CATALOG}.bronze.custbill_raw br "
+            f"WHERE br.ns={q(ans)} AND br.record_kind='BODY'")[0]
         quar_rows, quar_cents = self.rows(
             f"SELECT count(*), coalesce(sum({amt}), 0) FROM {CATALOG}.silver.custbill_quarantine qr "
             f"JOIN {CATALOG}.bronze.custbill_raw br "

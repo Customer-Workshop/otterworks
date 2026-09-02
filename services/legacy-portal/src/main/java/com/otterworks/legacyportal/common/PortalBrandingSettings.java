@@ -1,11 +1,13 @@
 package com.otterworks.legacyportal.common;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
-import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.springframework.stereotype.Component;
 
 /**
@@ -25,14 +27,22 @@ public class PortalBrandingSettings {
 
     @PostConstruct
     public void load() throws ConfigurationException {
-        FileBasedConfigurationBuilder<PropertiesConfiguration> builder =
-                new FileBasedConfigurationBuilder<>(PropertiesConfiguration.class)
-                        .configure(
-                                new Parameters()
-                                        .properties()
-                                        .setFileName(SETTINGS_FILE)
-                                        .setThrowExceptionOnMissing(false));
-        this.configuration = builder.getConfiguration();
+        PropertiesConfiguration properties = new PropertiesConfiguration();
+        FileHandler handler = new FileHandler(properties);
+        File settingsFile = new File(SETTINGS_FILE);
+        if (settingsFile.isFile()) {
+            handler.load(settingsFile);
+        } else {
+            try (InputStream resource =
+                    PortalBrandingSettings.class.getClassLoader().getResourceAsStream(SETTINGS_FILE)) {
+                if (resource != null) {
+                    handler.load(resource);
+                }
+            } catch (IOException exception) {
+                throw new ConfigurationException("Unable to close portal settings resource", exception);
+            }
+        }
+        this.configuration = properties;
     }
 
     public String bannerText() {

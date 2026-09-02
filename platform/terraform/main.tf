@@ -69,6 +69,7 @@ module "eks" {
 
   node_instance_types = var.node_instance_types
   node_capacity_type  = var.node_capacity_type
+  node_tags           = { creator = var.creator_tag }
   node_desired_size   = var.node_desired_size
   node_min_size       = var.node_min_size
   node_max_size       = var.node_max_size

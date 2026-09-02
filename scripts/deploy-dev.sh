@@ -497,6 +497,55 @@ YAML
     warn "MeiliSearch did not become ready in time; search-service may report meilisearch_unavailable."
 }
 
+# Redis runs in-cluster unless the shared ElastiCache is enabled
+# (infrastructure/terraform enable_shared_cache=true), in which case
+# load_infra_outputs already set REDIS_HOST to its endpoint.
+deploy_redis() {
+  if [ -n "${REDIS_HOST}" ]; then
+    log "Using shared ElastiCache Redis at ${REDIS_HOST}"
+    return
+  fi
+  log "Deploying in-cluster Redis (no shared ElastiCache provisioned)..."
+  kubectl apply -n "${NAMESPACE}" -f - <<'YAML'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels: { app: redis }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["--save","","--appendonly","no"]
+          ports: [{ containerPort: 6379 }]
+          readinessProbe:
+            tcpSocket: { port: 6379 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels: { app: redis }
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+YAML
+  kubectl rollout status -n "${NAMESPACE}" deployment/redis --timeout=120s || \
+    warn "Redis did not become ready in time; Redis-backed services may fail to start."
+  REDIS_HOST="redis"
+}
+
 log "Loading application-infra Terraform outputs for config wiring..."
 load_infra_outputs
 
@@ -505,6 +554,7 @@ load_infra_outputs
 # which is skipped on the --skip-terraform redeploy path.
 DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set (exported or via Terraform run) before deploying services}"
 
+deploy_redis
 deploy_meilisearch
 
 log "Deploying services to EKS..."

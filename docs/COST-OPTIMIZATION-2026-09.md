@@ -44,7 +44,7 @@ Resources present at teardown time:
 | Change | Where | Saving |
 |---|---|---|
 | Shared ElastiCache Redis and ECS MeiliSearch are now opt-in (`enable_shared_cache`, `enable_shared_search`, default `false`). Tenants already run both in-cluster. | `infrastructure/terraform` | ~$15/mo |
-| EKS control-plane logging reduced to `audit`; log group pre-created with 7-day retention instead of never-expire | `platform/terraform/modules/eks` | ~$10/mo |
+| EKS control-plane logging reduced to `api` + `audit`; log group pre-created with 7-day retention instead of never-expire | `platform/terraform/modules/eks` | ~$10/mo |
 | Application log retention 30 → 7 days | `infrastructure/terraform` | small |
 | Managed node group ceiling 3 → 2, cheaper SPOT types (`m5a`, `t3a`) added to the pool | `platform/terraform/environments/dev.tfvars` | caps blast radius |
 | Karpenter pool ceiling 400 vCPU / 1600Gi → 32 vCPU / 128Gi; node root volume 60 → 30Gi | `demo-platform/k8s/karpenter/nodepool.yaml` | ~$2/node/mo, hard stop |

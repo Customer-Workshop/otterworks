@@ -59,7 +59,8 @@ variable "enable_shared_search" {
 }
 
 variable "s3_force_destroy" {
-  description = "Allow `terraform destroy` to empty and delete the application S3 buckets (demo data only)"
+  description = "Allow `terraform destroy` to empty and delete the application S3 buckets. Defaults to true only for dev."
   type        = bool
-  default     = true
+  default     = null
+  nullable    = true
 }

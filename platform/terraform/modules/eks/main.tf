@@ -46,8 +46,10 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_controller" {
 # --- EKS Cluster ---
 
 # Pre-create the control-plane log group so retention is bounded (EKS otherwise
-# creates it with "never expire").
-resource "aws_cloudwatch_log_group" "cluster" {
+# creates it with "never expire"). If the group already exists from a previous
+# cluster of the same name, import it:
+#   terraform import module.eks.aws_cloudwatch_log_group.cluster /aws/eks/<cluster>/cluster
+resource "aws_cloudwatch_log_group" "cluster" { # nosemgrep: terraform.aws.security.aws-cloudwatch-log-group-unencrypted.aws-cloudwatch-log-group-unencrypted
   name              = "/aws/eks/${var.cluster_name}/cluster"
   retention_in_days = var.cluster_log_retention_days
 
@@ -136,6 +138,26 @@ resource "aws_iam_role_policy_attachment" "node_ecr" {
 
 # --- Managed Node Group ---
 
+# Managed node-group tags do not reach the EC2 instances or their volumes;
+# a launch template's tag_specifications is the only way to get them there.
+resource "aws_launch_template" "node_group" {
+  name_prefix = "${var.cluster_name}-default-"
+
+  dynamic "tag_specifications" {
+    for_each = toset(["instance", "volume", "network-interface"])
+    content {
+      resource_type = tag_specifications.value
+      tags = merge(local.common_tags, var.node_tags, {
+        Component = "eks-node-group"
+      })
+    }
+  }
+
+  tags = merge(local.common_tags, {
+    Component = "eks-node-group"
+  })
+}
+
 resource "aws_eks_node_group" "default" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "default"
@@ -144,6 +166,11 @@ resource "aws_eks_node_group" "default" {
 
   instance_types = var.node_instance_types
   capacity_type  = var.node_capacity_type
+
+  launch_template {
+    id      = aws_launch_template.node_group.id
+    version = aws_launch_template.node_group.latest_version
+  }
 
   scaling_config {
     desired_size = var.node_desired_size

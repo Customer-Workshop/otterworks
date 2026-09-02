@@ -93,7 +93,7 @@ module "storage" {
   source        = "./modules/storage"
   environment   = var.environment
   project       = "otterworks"
-  force_destroy = var.s3_force_destroy
+  force_destroy = coalesce(var.s3_force_destroy, var.environment == "dev")
 }
 
 module "database" {

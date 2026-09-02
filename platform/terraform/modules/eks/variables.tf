@@ -77,13 +77,19 @@ variable "enable_karpenter" {
 }
 
 variable "cluster_log_types" {
-  description = "EKS control-plane log types shipped to CloudWatch. Keep minimal for cost; audit is the one that matters for demos."
+  description = "EKS control-plane log types shipped to CloudWatch. api + audit is the security baseline; the rest are noise for a demo cluster."
   type        = list(string)
-  default     = ["audit"]
+  default     = ["api", "audit"]
 }
 
 variable "cluster_log_retention_days" {
   description = "Retention for the EKS control-plane CloudWatch log group"
   type        = number
   default     = 7
+}
+
+variable "node_tags" {
+  description = "Extra tags stamped on node-group EC2 instances, volumes and ENIs via the launch template"
+  type        = map(string)
+  default     = {}
 }

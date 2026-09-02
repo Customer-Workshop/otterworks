@@ -53,9 +53,10 @@ a customer-owned copy job on the ETL box watches the legacy `incoming/` director
 file to the volume *before* the legacy `*/15` poll deletes it — i.e. it runs at `2-59/15` off the
 same crontab, copies with a temp name, renames on completion, and compares sha256 against the
 source; a mismatch or missing copy is logged and the file is re-pushed on the next tick. Daily
-completeness check **[parent]**: strip the `.YYYYMMDDHHMMSS` suffix the legacy poll appends to each
-`archive/` name, then compare that basename set with distinct `bronze.custbill_raw.source_file` for
-`ns=prod` for the same day (the recon's U6-a/U6-b compare by basename too). Any gap halts the
+completeness check **[parent]**: for each legacy `archive/<name>.YYYYMMDDHHMMSS` entry of the day
+compute `(name, sha256)`; the multiset must equal the `(name, sha)` multiset of the volume's
+`archive/<name>.<sha12>` entries for `ns=prod` (a re-delivered basename is a second pair, not a
+collapsed one), and every pair must have rows in `bronze.custbill_raw`. Any gap halts the
 window clock — that day does not count toward the exit criteria.
 
 Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{1,32}$`).

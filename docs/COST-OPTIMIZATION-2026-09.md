@@ -65,8 +65,25 @@ terraform -chdir=infrastructure/terraform apply -var="db_password=..."
 terraform -chdir=demo-platform/infra/terraform apply
 ./scripts/tenant-platform-baseline.sh          # ingress-nginx (one NLB), reaper
 demo-platform/scripts/install-karpenter.sh     # Karpenter + NodePool
+ACME_EMAIL=... ISSUER=letsencrypt-prod ./scripts/enable-dns-tls.sh   # external-dns, cert-manager, wildcard cert
+helm upgrade --install demo-platform demo-platform/helm/demo-platform ...   # ops dashboard + reaper v2 (see chart README)
 ./scripts/deploy-tenant.sh main --ttl never --host-suffix otterworks.app
 ```
+
+Gotchas hit during the September 2026 rebuild:
+
+- **Register the perpetual tenant in the control table before (or immediately
+  after) `deploy-tenant.sh main`.** `deploy-tenant.sh` does not write a
+  `TENANT#<id>/META` item; the reaper v2 orphan sweep GCs any
+  `otterworks-<id>` namespace without one, including `main`, and then drops its
+  database. Put an item with `persistent: true` (the dashboard "persist" action
+  does this) and wait for any in-flight reaper Job to finish first — a running
+  reaper deletes the item at the end of its own GC pass.
+- The `/aws/eks/<cluster>/cluster` log group and the
+  `otterworks/dev/dashboard/passcode` secret both linger after a destroy (never
+  expire / 30-day recovery window). Delete or import them before re-applying.
+- A KMS key scheduled for deletion cannot decrypt a restored Secrets Manager
+  secret; force-delete the secret and let Terraform recreate it.
 
 Tear down with `scripts/teardown-cluster.sh` (drains load balancers first) and
 then `scripts/teardown-dev.sh --all`.

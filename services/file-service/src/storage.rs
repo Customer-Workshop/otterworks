@@ -48,7 +48,9 @@ impl S3Client {
             .content_type(content_type)
             .send()
             .await
-            .map_err(|e| ServiceError::S3Error(format!("upload failed: {e}")))?;
+            .map_err(|e| {
+                ServiceError::S3Error(format!("upload to bucket {} failed: {e}", self.bucket))
+            })?;
 
         tracing::info!(key = %key, bucket = %self.bucket, "Uploaded object to S3");
         Ok(())

@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "custbill_workflow",
   "namespace": "custbill-workflow-w3",
-  "generated_at": "2026-09-02T02:42:26+00:00",
+  "generated_at": "2026-09-02T02:45:30+00:00",
   "run_mode": "fixture",
   "checks": [
     {
@@ -402,10 +402,100 @@
     },
     {
       "id": "U8-e",
-      "expected": "n/a",
-      "actual": "openpyxl not installed locally; xlsx exists but cell values not verified",
-      "source_of_truth": "/Volumes/ow_tp/bronze/landing/custbill-workflow-w3/reports/finance_billing_20260901.xlsx",
-      "result": "skipped"
+      "expected": {
+        "header": [
+          "Currency",
+          "RecordType",
+          "RecordCount",
+          "TotalAmount"
+        ],
+        "rows": [
+          [
+            "EUR",
+            "INVOICE",
+            29,
+            "120162.09"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            3,
+            "6443.18"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            25,
+            "141880.07"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            6,
+            "35048.53"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            28,
+            "132638.05"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            9,
+            "39364.59"
+          ]
+        ]
+      },
+      "actual": {
+        "header": [
+          "Currency",
+          "RecordType",
+          "RecordCount",
+          "TotalAmount"
+        ],
+        "rows": [
+          [
+            "EUR",
+            "INVOICE",
+            29,
+            "120162.09"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            3,
+            "6443.18"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            25,
+            "141880.07"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            6,
+            "35048.53"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            28,
+            "132638.05"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            9,
+            "39364.59"
+          ]
+        ]
+      },
+      "source_of_truth": "/Volumes/ow_tp/bronze/landing/custbill-workflow-w3/reports/finance_billing_20260901.xlsx opened with openpyxl",
+      "result": "pass"
     },
     {
       "id": "U8-f",
@@ -487,7 +577,7 @@
       "result_state": "SUCCESS"
     },
     "snapshot_time_ms": 1788316677016,
-    "evidence": "first pass 2026-09-02T02:37:57+00:00 wrote_rows=True; second pass 2026-09-02T02:42:26+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=custbill-workflow-w3; fingerprint={\"archive\": [{\"bytes\": 3440, \"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat\", \"sha256\": \"99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87\"}, {\"bytes\": 3440, \"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat\", \"sha256\": \"6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873\"}], \"bronze_content\": [{\"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat\", \"sha256\": \"99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87\"}, {\"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat\", \"sha256\": \"6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873\"}], \"bronze_rows\": [{\"BO"
+    "evidence": "first pass 2026-09-02T02:37:57+00:00 wrote_rows=True; second pass 2026-09-02T02:45:30+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=custbill-workflow-w3; fingerprint={\"archive\": [{\"bytes\": 3440, \"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat\", \"sha256\": \"99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87\"}, {\"bytes\": 3440, \"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat\", \"sha256\": \"6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873\"}], \"bronze_content\": [{\"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat\", \"sha256\": \"99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87\"}, {\"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat\", \"sha256\": \"6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873\"}], \"bronze_rows\": [{\"BO"
   },
   "planted_anomaly_detections": {
     "expected_set": [],
@@ -497,7 +587,6 @@
   },
   "unverified_paths": [
     "U7-e: anomaly leg not run (pass --anomaly-ns/--anomaly-root)",
-    "U8-e: openpyxl not installed locally; xlsx exists but cell values not verified",
     "U8-f: quarantined-totals leg not run (pass --anomaly-ns/--anomaly-root)",
     "file_arrival trigger in production (customer landing mechanism, R4)",
     "unpausing the schedule (STOP E only)"

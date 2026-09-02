@@ -299,24 +299,6 @@ resource "databricks_job" "ow_tp_custbill" {
   }
 
   task {
-    task_key                  = "finance"
-    max_retries               = 2
-    min_retry_interval_millis = 300000
-    retry_on_timeout          = false
-    depends_on {
-      task_key = "parse"
-    }
-    notebook_task {
-      notebook_path = databricks_notebook.finance.path
-      base_parameters = {
-        ns          = "{{job.parameters.ns}}"
-        report_date = "{{job.parameters.report_date}}"
-      }
-    }
-    environment_key = "default"
-  }
-
-  task {
     task_key                  = "ingest"
     max_retries               = 2
     min_retry_interval_millis = 300000
@@ -339,6 +321,24 @@ resource "databricks_job" "ow_tp_custbill" {
     notebook_task {
       notebook_path   = databricks_notebook.parse.path
       base_parameters = { ns = "{{job.parameters.ns}}" }
+    }
+    environment_key = "default"
+  }
+
+  task {
+    task_key                  = "finance"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
+    depends_on {
+      task_key = "parse"
+    }
+    notebook_task {
+      notebook_path = databricks_notebook.finance.path
+      base_parameters = {
+        ns          = "{{job.parameters.ns}}"
+        report_date = "{{job.parameters.report_date}}"
+      }
     }
     environment_key = "default"
   }

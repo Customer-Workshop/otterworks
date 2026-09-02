@@ -7,3 +7,4 @@ Window state: OPEN (staged-red verified). Normal verification run `3241539334071
 | UTC ts | run_id | fact verdict/summary verdict | triage class or none | drift note | PR link or — |
 |---|---|---|---|---|---|
 | 2026-09-02T02:52:43Z | 21080242102762 | PASS/SKIPPED | STAGED RED (drill) | fact report written then forced red; summary skipped upstream; webhook → automation → session d865b74e39454c4f99991cfaefa80c68 | — |
+| 2026-09-02T03:05:50Z | 396474675835685 | PASS/PASS | none | none | — |

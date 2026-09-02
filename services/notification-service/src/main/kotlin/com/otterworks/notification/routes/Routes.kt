@@ -7,7 +7,6 @@ import com.otterworks.notification.service.NotificationService
 import com.otterworks.notification.websocket.WebSocketManager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
-import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText

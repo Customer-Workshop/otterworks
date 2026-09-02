@@ -1,0 +1,81 @@
+{
+  "name": "ow_tp_cdw_recon",
+  "format": "MULTI_TASK",
+  "max_concurrent_runs": 1,
+  "timeout_seconds": 3600,
+  "queue": {
+    "enabled": false
+  },
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 * * ?",
+    "timezone_id": "UTC",
+    "pause_status": "PAUSED"
+  },
+  "parameters": [
+    {
+      "name": "ns",
+      "default": "cdw"
+    },
+    {
+      "name": "staged_red",
+      "default": "false"
+    }
+  ],
+  "tasks": [
+    {
+      "task_key": "r1_fact_commission",
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/cdw/recon",
+        "base_parameters": {
+          "task": "fact_commission",
+          "ns": "{{job.parameters.ns}}",
+          "staged_red": "{{job.parameters.staged_red}}",
+          "run_id": "{{job.run_id}}"
+        }
+      }
+    },
+    {
+      "task_key": "r2_mv_agent_commission_summary",
+      "depends_on": [
+        {
+          "task_key": "r1_fact_commission"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/cdw/recon",
+        "base_parameters": {
+          "task": "mv_agent_commission_summary",
+          "ns": "{{job.parameters.ns}}",
+          "staged_red": "{{job.parameters.staged_red}}",
+          "run_id": "{{job.run_id}}"
+        }
+      }
+    },
+    {
+      "task_key": "r3_notify",
+      "run_if": "ALL_DONE",
+      "depends_on": [
+        {
+          "task_key": "r1_fact_commission"
+        },
+        {
+          "task_key": "r2_mv_agent_commission_summary"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Shared/ow_tp/cdw/recon_notify",
+        "base_parameters": {
+          "ns": "{{job.parameters.ns}}",
+          "staged_red": "{{job.parameters.staged_red}}",
+          "run_id": "{{job.run_id}}",
+          "job_id": "{{job.id}}"
+        }
+      }
+    }
+  ],
+  "tags": {
+    "project": "ow_tp",
+    "ns": "cdw",
+    "unit": "parallel_run"
+  }
+}

@@ -12,6 +12,8 @@ Status flow: OPEN → DECIDED (federate / re-point / dual-write / defer-with-con
 | D10-3 | D10 | Query-history views not granted to `commission_dw` | Would require modifying legacy grants | accept (not requestable) | — | — | ACCEPTED | intake |
 | D8-1 | D8 | Person data: `DIM_AGENT.full_name` | No legacy masking/RLS policy exists | propose: no UC mask; recorded so cutover grants stay least-privilege (SELECT on gold only) | STOP E grants | — | PROPOSED (STOP A) | setup |
 | D5-1 | D5 | Scheduler | No `DBMS_SCHEDULER` job or cron invokes the loader; runs on demand | target job schedule PAUSED, trigger by hand | — | — | IMPLEMENTED (job 939320833644147 PAUSED, monthly cron 0 0 6 1 * ? UTC, manual trigger) | setup |
+| D5-2 | D5 | Persistent Workflow `ow_tp_cdw_recon`, job `1052463187460366` | PAUSED, 3 tasks, serverless warehouse `565cd2fd713738c4`, secret scope `ow_tp_cdw` with keys `devin_webhook_url`/`devin_webhook_secret` (names only) | event-driven parallel recon with remediation notification | STOP E | PR #1437 | CLOSED | parallel-run |
+| D5-3 | D5 | Persistent Devin automation `auto-dbb9718fa96242ecac677387a87e9aef` | `webhook:incoming` → remediation session, `#ow-tp-alerts`, max 1 concurrent / queue 5 / 10 ACU | event-driven red-run remediation | STOP E | PR #1437 | CLOSED | parallel-run |
 
 ## Plan-time decisions — DECIDED at STOP C (2026-09-01); see `COMMISSION_DW_plan.md` §1
 | ID | Proposed decision | Routing point | Cutover condition | Fired request |

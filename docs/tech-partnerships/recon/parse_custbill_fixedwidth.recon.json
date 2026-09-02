@@ -1,0 +1,173 @@
+{
+  "kind": "recon-report",
+  "unit": "parse_custbill_fixedwidth",
+  "namespace": "parse-w2",
+  "generated_at": "2026-09-01T23:58:34+00:00",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "U7-a",
+      "expected": {
+        "total": 100,
+        "per_file": {
+          "CUSTBILL_PARSE-W2_001.dat": 50,
+          "CUSTBILL_PARSE-W2_002.dat": 50
+        }
+      },
+      "actual": {
+        "total": 100,
+        "per_file": {
+          "CUSTBILL_PARSE-W2_002.dat": 50,
+          "CUSTBILL_PARSE-W2_001.dat": 50
+        }
+      },
+      "source_of_truth": "wc -l parsed/*.psv vs count(*) silver per source_file",
+      "result": "pass"
+    },
+    {
+      "id": "U7-b",
+      "expected": {
+        "rows_compared": 100,
+        "mismatches": []
+      },
+      "actual": {
+        "rows_compared": 100,
+        "mismatches": []
+      },
+      "source_of_truth": "full row diff: legacy .psv line i vs silver row i (ORDER BY line_no), 6 fields",
+      "result": "pass"
+    },
+    {
+      "id": "U7-c",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "count(*) quarantine on clean seed (T7)",
+      "result": "pass"
+    },
+    {
+      "id": "U7-d",
+      "expected": [
+        {
+          "file": "CUSTBILL_PARSE-W2_001.dat",
+          "trailer": 50,
+          "body": 50
+        },
+        {
+          "file": "CUSTBILL_PARSE-W2_002.dat",
+          "trailer": 50,
+          "body": 50
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_PARSE-W2_001.dat",
+          "trailer": 50,
+          "body": 50
+        },
+        {
+          "file": "CUSTBILL_PARSE-W2_002.dat",
+          "trailer": 50,
+          "body": 50
+        }
+      ],
+      "source_of_truth": "bronze TRL cols 4-13 vs BODY row count per file",
+      "result": "pass"
+    },
+    {
+      "id": "U7-e",
+      "expected": {
+        "missing": [],
+        "unexpected": [],
+        "silver_rows": 476
+      },
+      "actual": {
+        "missing": [],
+        "unexpected": [],
+        "silver_rows": 476
+      },
+      "source_of_truth": "manifest parse-w2-anom-history-expected.json planted_anomalies (file,row,kind) vs quarantine (source_file,line_no-1,reason) on ns=parse-w2-anom",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "reason": "newer successful ow_tp_custbill run confirmed",
+    "previous_latest_run": {
+      "run_id": 613505713279424,
+      "end_time": 1788306837113,
+      "result_state": "SUCCESS"
+    },
+    "latest_run": {
+      "run_id": 340231906971741,
+      "end_time": 1788307100255,
+      "result_state": "SUCCESS"
+    },
+    "snapshot_time_ms": 1788306998481,
+    "evidence": "first pass 2026-09-01T23:56:38+00:00 wrote_rows=True; second pass 2026-09-01T23:58:34+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=parse-w2; fingerprint={\"quarantine\": 0, \"quarantine_content\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \"silver_content\": \"874375e1d1335dfbb64a5ccd722ea689c75acfa5765f3c78a304f5ef8ebd5ebc\", \"silver_counts\": {\"CUSTBILL_PARSE-W2_001.dat\": 50, \"CUSTBILL_PARSE-W2_002.dat\": 50}}"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202303.dat",
+        7,
+        "invalid_calendar_date"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202305.dat",
+        11,
+        "nonnumeric_amount"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202309.dat",
+        7,
+        "invalid_calendar_date"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202311.dat",
+        11,
+        "nonnumeric_amount"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202312.dat",
+        0,
+        "trailer_count_mismatch"
+      ]
+    ],
+    "actual_set": [
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202303.dat",
+        7,
+        "invalid_calendar_date"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202305.dat",
+        11,
+        "nonnumeric_amount"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202309.dat",
+        7,
+        "invalid_calendar_date"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202311.dat",
+        11,
+        "nonnumeric_amount"
+      ],
+      [
+        "CUSTBILL_PARSE-W2-ANOM_202312.dat",
+        0,
+        "trailer_count_mismatch"
+      ]
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "production encoding (R1)",
+    "short_record on real data (no fixture)"
+  ],
+  "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-parse-w2 via scripts/tp-run-deterministic.sh"
+}

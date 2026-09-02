@@ -23,6 +23,7 @@ run_all.sh) → Databricks job `ow_tp_custbill` (ingest → parse → finance, s
 | D8-4 | PII regime for `cust_name`/`cust_id` on `ow_tp.silver.custbill_records` (masking / row filters) | customer data governance | UC grants, applied by customer | none — **blocking** before any non-migration principal is granted `SELECT` |
 | D8-2 / R-7 | Production run identity: a service principal owning the job and the `ow_tp` scope (no shared PAT) | customer platform team | Databricks account console | none — **blocking** |
 | — | STOP E authorization in `#ow-migrations` naming the cutover window | customer | Slack thread → `05_progress.md` STOP E row | — |
+| P-1 | Parent "production readiness" PR (plan-only until STOP E): (a) job parameter `ns` default `demo` → `prod` in `infrastructure/terraform-databricks/main.tf` and `databricks/custbill_workflow/job.json`; (b) `lifecycle { ignore_changes = [string_value] }` on the three `databricks_secret` resources; (c) `recon_custbill.py` accepts `--run-mode live --ns prod` and an `--expect-pause-status UNPAUSED` flag for U9-a during the parallel window (today it hard-gates live to `ns=demo` and expects `PAUSED`). Tolerances untouched. | parent | run branch PR, reviewed + merged before §3 | none — **blocking**; without (a) an unpaused schedule keeps writing `demo` and never reads `prod/incoming/` |
 
 ## 1. Freeze and baseline **[parent, on request]**
 
@@ -45,6 +46,17 @@ Pick one; the job reads the volume regardless of who writes it.
   PR, plan-only until approved). No AWS Transfer Family is provisioned by the migration
   (hourly-billed endpoint; see `CUSTBILL_plan.md` D7-1).
 
+**Dual delivery for the parallel window (§4).** Both chains must see the same bytes, so for the
+whole window the feed is delivered to *both* the legacy SFTP drop and `prod/incoming/`. Preferred:
+the mainframe transmission job gets a second target (same file, same name, same day). Fallback:
+a customer-owned copy job on the ETL box watches the legacy `incoming/` directory and pushes each
+file to the volume *before* the legacy `*/15` poll deletes it — i.e. it runs at `2-59/15` off the
+same crontab, copies with a temp name, renames on completion, and compares sha256 against the
+source; a mismatch or missing copy is logged and the file is re-pushed on the next tick. Daily
+completeness check **[parent]**: `bronze.custbill_raw` distinct `source_file` for `ns=prod` equals
+the legacy `archive/` listing for that day (this is U6-a/U6-b in the recon). Any gap halts the
+window clock — that day does not count toward the exit criteria.
+
 Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{1,32}$`).
 `prod` is registered as a write target in `05_progress.md` before the first file lands.
 
@@ -53,22 +65,29 @@ Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{
 1. Create the service principal from D8-2; grant it `CAN MANAGE RUN` on job `ow_tp_custbill`,
    `READ VOLUME`/`WRITE VOLUME` on `ow_tp.bronze.landing`, `MODIFY` on the four `ow_tp` tables,
    and `READ` on secret scope `ow_tp`.
-2. Put the production SFTP credential into scope `ow_tp` keys `sftp_host`/`sftp_user`/`sftp_password`
-   **from the customer principal**, replacing the fixture values (Terraform state must be told
-   via `terraform apply -replace` or `lifecycle.ignore_changes` on the three `databricks_secret`
-   resources — parent PR, after the fact, never containing values).
+2. Only after P-1(b) (`ignore_changes` on the three `databricks_secret` resources) is merged **and
+   applied**, put the production SFTP credential into scope `ow_tp` keys
+   `sftp_host`/`sftp_user`/`sftp_password` **from the customer principal**, replacing the fixture
+   values. Order matters: with the guard in place first, no later `terraform apply` can put the
+   fixture values back. Confirm with `terraform plan` = no changes on the secrets before §4.
 3. Transfer job ownership (`run_as`) to the service principal; the shared PAT used during the
    migration run is rotated/revoked afterwards.
 
 ## 4. Parallel run (minimum one weekly cycle, recommended two) **[customer runs, parent recons]**
 
-1. **[customer]** Unpause the job (`pause_status: UNPAUSED` on the `0 */15 * * * ?` schedule;
-   or enable file-arrival on the volume if the workspace supports it — then delete the cron
-   schedule so there is one trigger). Legacy crontab lines **stay on**. Both chains now process
-   the same feed: legacy on the ETL box, Databricks on `ns=prod`.
+1. **[customer]** Confirm via Jobs API `get` that job parameter `ns` defaults to `prod` (P-1(a))
+   and `verify_job.py --expect-ns prod` passes; then unpause (`pause_status: UNPAUSED` on the
+   `0 */15 * * * ?` schedule; or enable file-arrival on `prod/incoming/` if the workspace supports
+   it — then delete the cron schedule so there is one trigger; both trigger kinds inherit the job
+   parameter default). Legacy crontab lines **stay on** and dual delivery (§2) is live. Both chains
+   now process the same feed: legacy on the ETL box, Databricks on `ns=prod`. Manual `Run now`
+   with `ns=demo` remains possible for the migration team and never touches `prod` rows.
 2. After each daily 02:10 legacy finance run and again after the Sunday 06:00 `run_all.sh`:
-   **[parent]** `recon_custbill.py --unit custbill_workflow --ns prod --legacy-root <snapshot of that day> --run-mode live`
-   plus `--previous` for idempotency on the next no-input run. Tolerances T1–T12 unchanged
+   **[parent]** `recon_custbill.py --unit custbill_workflow --ns prod --legacy-root <snapshot of that day> --run-mode live --expect-pause-status UNPAUSED --evidence-json <partial/overlap evidence>`
+   (P-1(c)); `--previous` for idempotency on the next no-input run. U9-c evidence is collected
+   once at the start of the window from a customer-approved dry failure (malformed file into
+   `prod/incoming/`, removed afterwards) plus the natural overlap between the 15-min schedule
+   and a manual `Run now`. Tolerances T1–T12 unchanged
    (`03_recon_tolerances.md`); quarantined rows are reported as a named delta (R-2), never
    tolerated silently. Reports committed under `docs/tech-partnerships/recon/parallel/<date>/`.
 3. Exit criteria: every daily report GREEN; the Sunday full-chain report GREEN; at least one

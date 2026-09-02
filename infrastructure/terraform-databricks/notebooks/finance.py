@@ -188,24 +188,25 @@ def main() -> None:
     rows = report_rows(aggregated)
     log(action="aggregated", ns=ns, groups=len(rows), records=sum(r[2] for r in rows))
 
-    spark.sql(f"DELETE FROM {GOLD} WHERE ns = :ns", args={"ns": ns})  # noqa: F821
-    if rows:
-        schema = StructType([
-            StructField("ns", StringType(), False),
-            StructField("currency", StringType(), False),
-            StructField("record_type", StringType(), False),
-            StructField("record_count", LongType(), False),
-            StructField("total_amount", DecimalType(18, 2), False),
-            StructField("report_date", DateType(), False),
-        ])
-        (
-            spark.createDataFrame(  # noqa: F821
-                [(ns, c, rt, n, t, report_date) for c, rt, n, t in rows], schema
-            )
-            .withColumn("generated_at", F.current_timestamp())
-            .write.mode("append")
-            .saveAsTable(GOLD)
+    # Single Delta commit: the namespace's prior rows are swapped for the new ones
+    # atomically (an empty result removes them); `ns` is regex-validated above.
+    schema = StructType([
+        StructField("ns", StringType(), False),
+        StructField("currency", StringType(), False),
+        StructField("record_type", StringType(), False),
+        StructField("record_count", LongType(), False),
+        StructField("total_amount", DecimalType(18, 2), False),
+        StructField("report_date", DateType(), False),
+    ])
+    (
+        spark.createDataFrame(  # noqa: F821
+            [(ns, c, rt, n, t, report_date) for c, rt, n, t in rows], schema
         )
+        .withColumn("generated_at", F.current_timestamp())
+        .write.mode("overwrite")
+        .option("replaceWhere", f"ns = '{ns}'")
+        .saveAsTable(GOLD)
+    )
     log(action="gold_loaded", ns=ns, rows=len(rows))
 
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)

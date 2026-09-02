@@ -12,7 +12,7 @@ aws_region = "us-east-1"
 environment = "dev"
 
 # Hosted web origins allowed to read inline file previews
-# web_app_origins = ["https://*.otterworks.app", "https://*.demo.otterworks.app"]
+# web_app_origins = ["https://app.otterworks.app", "https://*.demo.otterworks.app"]
 
 # Kubernetes namespace for OtterWorks services
 namespace = "otterworks"

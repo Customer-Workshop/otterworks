@@ -10,7 +10,7 @@
 #   ./scripts/deploy-dev.sh --skip-platform    # Skip platform provisioning
 #   ./scripts/deploy-dev.sh --skip-terraform   # Skip all Terraform, just build+deploy
 #   ./scripts/deploy-dev.sh --skip-build       # Reuse existing ECR images (set IMAGE_TAG)
-#   WEB_APP_ORIGINS="https://*.otterworks.app,https://*.demo.otterworks.app" ./scripts/deploy-dev.sh
+#   WEB_APP_ORIGINS="https://app.otterworks.app,https://*.demo.otterworks.app" ./scripts/deploy-dev.sh
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
@@ -22,11 +22,11 @@ ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_PREFIX="otterworks/"
 IMAGE_TAG="${IMAGE_TAG:-$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)-$(date +%s)}"
 DB_PASSWORD="${DB_PASSWORD:-}"
-WEB_APP_ORIGINS="${WEB_APP_ORIGINS:-https://*.otterworks.app,https://*.demo.otterworks.app}"
 # Host suffix for the golden app's ingress records. The frontends and the API
 # are published through the SHARED ingress controller (one NLB for the whole
 # cluster) rather than a LoadBalancer Service each -- see build_helm_args.
 GOLDEN_HOST_SUFFIX="${GOLDEN_HOST_SUFFIX:-otterworks.app}"
+WEB_APP_ORIGINS="${WEB_APP_ORIGINS:-https://app.${GOLDEN_HOST_SUFFIX},https://*.demo.${GOLDEN_HOST_SUFFIX}}"
 # Shared JWT signing secret. MUST be identical across the gateway and every
 # service that validates tokens. Generated once if not supplied; pass a stable
 # value (JWT_SECRET=...) across redeploys so previously issued tokens stay valid.

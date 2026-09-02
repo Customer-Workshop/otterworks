@@ -10,6 +10,7 @@ The report path is printed by the trigger command for each completed notebook ta
 The `r3_notify` task runs with `run_if=ALL_DONE` and sends source, job, run,
 namespace, verdict, staged-red, task, and report fields to the remediation webhook.
 It reads `devin_webhook_url` and `devin_webhook_secret` by name from secret scope `ow_tp_cdw`.
+`deploy --with-webhook` seeds those secrets; without it, secrets remain unchanged and `r3_notify` stays configured.
 The window is opened with `run.py schedule --unpause`; `deploy` preserves the live pause state.
 The schedule is UTC `0 0 6 * * ?`, remains PAUSED until approval, and runs serially.
 Each cycle costs approximately two full reloads plus two recon reads.

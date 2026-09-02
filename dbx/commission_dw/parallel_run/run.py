@@ -114,6 +114,7 @@ NOTIFY_NOTEBOOK = """# Databricks notebook source
 # Final task (run_if ALL_DONE): forward the completed run to the remediation
 # automation webhook. Secret-scope values are never printed.
 import json
+import urllib.error
 import urllib.request
 
 dbutils.widgets.text("ns", "cdw")
@@ -133,6 +134,21 @@ with urllib.request.urlopen(req, timeout=60) as resp:
     run = json.load(resp)
 tasks = {}
 reports = {}
+
+def report_file_exists(path):
+    report_req = urllib.request.Request(
+        f"{host}/api/2.0/fs/files{path}",
+        headers={"Authorization": f"Bearer {token}"},
+        method="HEAD",
+    )
+    try:
+        with urllib.request.urlopen(report_req, timeout=60) as report_resp:
+            return 200 <= report_resp.status < 300
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return False
+        raise
+
 for task in run.get("tasks", []):
     key = task["task_key"]
     if key == "r3_notify":
@@ -142,12 +158,13 @@ for task in run.get("tasks", []):
         "result_state": task_state.get("result_state"),
         "state_message": task_state.get("state_message", ""),
     }
-    if task_state.get("life_cycle_state") != "SKIPPED":
-        unit = key.split("_", 1)[1]
-        reports[unit] = (
-            f"/Volumes/ow_tp/bronze/landing/{ns}/recon/{run_id}/"
-            f"{unit}/{unit}.recon.json"
-        )
+    unit = key.split("_", 1)[1]
+    report_path = (
+        f"/Volumes/ow_tp/bronze/landing/{ns}/recon/{run_id}/"
+        f"{unit}/{unit}.recon.json"
+    )
+    if report_file_exists(report_path):
+        reports[unit] = report_path
 results = {t["result_state"] for t in tasks.values()}
 verdict = "GREEN" if results == {"SUCCESS"} else "RED"
 staged = any("STAGED RED RUN" in t["state_message"] for t in tasks.values())
@@ -177,6 +194,7 @@ with urllib.request.urlopen(hook, timeout=60) as resp:
         "webhook_status": resp.status,
         "verdict": verdict,
         "staged_red": payload["staged_red"],
+        "reports": sorted(reports),
     }))
 """.replace("SECRET_SCOPE", SECRET_SCOPE)
 

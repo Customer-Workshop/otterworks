@@ -13,7 +13,7 @@ Status flow: NOT_STARTED → IN_FLIGHT → PR_OPEN → RECON_GREEN → MERGED. O
 | Analysis + plan / STOP C | DONE; STOP C APPROVED 2026-09-01 (engagement lead, relayed) | `.migration/COMMISSION_DW_analysis.md`, `COMMISSION_DW_plan.md` |
 | Wave 0 | MERGED (PR #1422, CI green, 6 review findings fixed) — all 6 gates green (catalog+schemas+volume, preflight 11/11 probes 0 denied, legacy load FACT 0→3, 9-object baseline hash-pinned, Files API landing checksum 0 mismatches, 4 bronze feed tables loaded, skill stub, harness validated) | branch `migrate/commission-dw/w0-scaffolding`; evidence `.migration/COMMISSION_DW_wave0_evidence.md` |
 | Waves 1..N | Wave 1 MERGED 2026-09-01 (#1425 #1426 #1427; independent recon PASS ×3); wave 2 MERGED 2026-09-01 (#1431; independent recon PASS ×2) — ALL WAVES MERGED | ledger PR #1424; evidence `.migration/COMMISSION_DW_wave2_evidence.md` |
-| Parallel run | OPEN (staged-red verified) | `.migration/08_parallel_run_ledger.md`; normal verification run `324153933407183` is pre-window; staged-red run `21080242102762` |
+| Parallel run | OPEN (staged-red verified) | `.migration/08_parallel_run_ledger.md`; normal verification run `324153933407183` is pre-window; staged-red run `21080242102762`; review follow-up #1448 merged |
 | STOP E | NOT_STARTED | |
 
 ## Units (filled by analysis; candidate list from intake)

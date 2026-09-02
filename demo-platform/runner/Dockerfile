@@ -10,7 +10,7 @@
 #   docker build -f demo-platform/runner/Dockerfile \
 #     -t <registry>/otterworks/demo-runner:<tag> .
 # ------------------------------------------------------------------------------
-FROM alpine:3.20
+FROM alpine:3.24
 
 # Pinned tool versions (arch-aware). aws-cli v2 + jq + git + psql come from apk;
 # kubectl/helm/terraform are installed from upstream release binaries so the

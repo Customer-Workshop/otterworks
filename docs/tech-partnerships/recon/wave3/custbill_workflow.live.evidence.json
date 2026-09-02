@@ -1,0 +1,46 @@
+{
+  "partial_upstream_run": {
+    "run_id": 32777634772725,
+    "run_url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/32777634772725",
+    "run_state": "FAILED",
+    "ingest_task_state": "SUCCESS",
+    "ingest_task_life_cycle_state": "TERMINATED",
+    "ingest_task_result_state": "SUCCESS",
+    "ingest_task_state_message": "",
+    "parse_task_state": "FAILED",
+    "parse_task_life_cycle_state": "TERMINATED",
+    "parse_task_result_state": "FAILED",
+    "parse_task_state_message": "Workload failed, see run output for details",
+    "finance_task_state": "SKIPPED",
+    "finance_task_life_cycle_state": "SKIPPED",
+    "finance_task_result_state": "UPSTREAM_FAILED",
+    "finance_task_state_message": "An upstream task failed.",
+    "gold_rows_before": 6,
+    "gold_rows_after": 6,
+    "silver_rows_after": 100,
+    "bronze_rows_before_probe": 104,
+    "bronze_rows_with_probe": 105,
+    "route": "duplicate bronze natural key injected in ns demo (file_sha256 marker PROBE-U9-LIVE), removed afterwards"
+  },
+  "overlap_runs": [
+    {
+      "run_id": 875656400181067,
+      "run_url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/875656400181067",
+      "start": 1788320565672,
+      "end": 1788320659977,
+      "result_state": "SUCCESS",
+      "overlapped": false
+    },
+    {
+      "run_id": 181421656611720,
+      "run_url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/181421656611720",
+      "start": 1788320566182,
+      "end": 1788320567166,
+      "result_state": "MAXIMUM_CONCURRENT_RUNS_REACHED",
+      "overlapped": false,
+      "state_message": "Skipping this run because the limit of 1 maximum concurrent runs has been reached."
+    }
+  ],
+  "bronze_rows_after_probe_cleanup": 104,
+  "bronze_rows_expected_after_run1": 104
+}

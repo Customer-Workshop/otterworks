@@ -2,6 +2,9 @@
   "name": "@otterworks/admin-dashboard",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve --port 4200",

@@ -1,23 +1,29 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { HealthComponent } from './health.component';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('HealthComponent', () => {
   let component: HealthComponent;
   let fixture: ComponentFixture<HealthComponent>;
+  let httpMock: HttpTestingController;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
         HealthComponent,
-        HttpClientTestingModule,
         NoopAnimationsModule,
+      ],
+      providers: [
+        provideHttpClient(withInterceptorsFromDi()),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(HealthComponent);
     component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
   });
 
   it('should create', () => {
@@ -30,6 +36,15 @@ describe('HealthComponent', () => {
 
   it('should load system health data', fakeAsync(() => {
     fixture.detectChanges();
+    httpMock.expectOne('/api/v1/admin/health/services').flush({
+      timestamp: '2025-01-01T00:00:00Z',
+      services: [{
+        name: 'auth-service',
+        status: 'healthy',
+        latency_ms: 12,
+        message: 'OK',
+      }],
+    });
     tick(700);
     fixture.detectChanges();
     expect(component.loading).toBeFalse();
@@ -38,6 +53,15 @@ describe('HealthComponent', () => {
 
   it('should compute health counts', fakeAsync(() => {
     fixture.detectChanges();
+    httpMock.expectOne('/api/v1/admin/health/services').flush({
+      timestamp: '2025-01-01T00:00:00Z',
+      services: [{
+        name: 'auth-service',
+        status: 'healthy',
+        latency_ms: 12,
+        message: 'OK',
+      }],
+    });
     tick(700);
     fixture.detectChanges();
     const total = component.healthyCounts.healthy +
@@ -48,6 +72,15 @@ describe('HealthComponent', () => {
 
   it('should display page title', fakeAsync(() => {
     fixture.detectChanges();
+    httpMock.expectOne('/api/v1/admin/health/services').flush({
+      timestamp: '2025-01-01T00:00:00Z',
+      services: [{
+        name: 'auth-service',
+        status: 'healthy',
+        latency_ms: 12,
+        message: 'OK',
+      }],
+    });
     tick(700);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;

@@ -5,7 +5,16 @@ use chrono::Utc;
 use futures_util::StreamExt;
 use uuid::Uuid;
 
-async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> bool {
+/// Fault injection is only consulted when `CHAOS_ENABLED=true`; otherwise
+/// Redis is never queried and the flag has no effect.
+async fn chaos_active(
+    config: &AppConfig,
+    cm: &mut redis::aio::ConnectionManager,
+    flag: &str,
+) -> bool {
+    if !config.server.chaos_enabled {
+        return false;
+    }
     let result: redis::RedisResult<i64> = redis::cmd("EXISTS").arg(flag).query_async(cm).await;
     result.unwrap_or(0) > 0
 }
@@ -136,25 +145,21 @@ pub async fn upload_file(
     let now = Utc::now();
     let size = file_bytes.len() as u64;
 
-    // CHAOS: when this flag is active the S3 client targets a nonexistent
-    // bucket, simulating a misconfigured bucket name after a recent infra
-    // change.  The AWS SDK returns NoSuchBucket which surfaces as a 500.
-    let effective_bucket = if chaos_active(
+    // Fault injection (opt-in via CHAOS_ENABLED): target a nonexistent bucket so
+    // the AWS SDK returns NoSuchBucket and the upload surfaces as a 500.
+    let upload_target = if chaos_active(
+        &config,
         &mut redis_cm.get_ref().clone(),
         "chaos:file-service:upload_s3_error",
     )
     .await
     {
         tracing::warn!("Chaos flag active: redirecting upload to nonexistent bucket");
-        "otterworks-files-chaos-nonexistent".to_string()
+        s3.with_bucket("otterworks-files-chaos-nonexistent")
     } else {
-        s3.bucket.clone()
+        s3.get_ref().clone()
     };
-    let chaos_s3 = crate::storage::S3Client {
-        client: s3.client.clone(),
-        bucket: effective_bucket,
-    };
-    chaos_s3
+    upload_target
         .upload_object(&s3_key, file_bytes.freeze(), &content_type)
         .await?;
 

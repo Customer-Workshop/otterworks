@@ -27,9 +27,33 @@ impl S3Client {
             .build();
         let client = aws_sdk_s3::Client::from_conf(s3_config);
 
-        Self {
+        let s3 = Self {
             client,
             bucket: config.s3_bucket.clone(),
+        };
+        s3.verify_bucket().await;
+        s3
+    }
+
+    /// Same client, different target bucket.
+    pub fn with_bucket(&self, bucket: &str) -> Self {
+        Self {
+            client: self.client.clone(),
+            bucket: bucket.to_string(),
+        }
+    }
+
+    /// Surface a misconfigured `S3_BUCKET` at startup instead of on the first
+    /// upload. Logs only: the bucket may still be provisioning (e.g. LocalStack
+    /// init) and the service must stay up for /health.
+    async fn verify_bucket(&self) {
+        match self.client.head_bucket().bucket(&self.bucket).send().await {
+            Ok(_) => tracing::info!(bucket = %self.bucket, "S3 bucket reachable"),
+            Err(e) => tracing::error!(
+                bucket = %self.bucket,
+                error = %aws_sdk_s3::error::DisplayErrorContext(&e),
+                "S3 bucket check failed; uploads will fail until S3_BUCKET points at an existing bucket"
+            ),
         }
     }
 
@@ -48,7 +72,15 @@ impl S3Client {
             .content_type(content_type)
             .send()
             .await
-            .map_err(|e| ServiceError::S3Error(format!("upload failed: {e}")))?;
+            .map_err(|e| {
+                tracing::error!(
+                    key = %key,
+                    bucket = %self.bucket,
+                    error = %aws_sdk_s3::error::DisplayErrorContext(&e),
+                    "S3 upload failed"
+                );
+                ServiceError::S3Error(format!("upload failed: {e}"))
+            })?;
 
         tracing::info!(key = %key, bucket = %self.bucket, "Uploaded object to S3");
         Ok(())

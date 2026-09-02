@@ -11,6 +11,9 @@ pub struct AppConfig {
 pub struct ServerConfig {
     pub port: u16,
     pub max_upload_bytes: u64,
+    /// Whether Redis `chaos:*` fault-injection flags are honoured. Off unless
+    /// `CHAOS_ENABLED=true`, so a stray flag can never fault production traffic.
+    pub chaos_enabled: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -50,8 +53,18 @@ impl ServerConfig {
                 .unwrap_or_else(|_| "104857600".into()) // 100 MB
                 .parse()
                 .unwrap_or(104_857_600),
+            chaos_enabled: env::var("CHAOS_ENABLED")
+                .map(|v| parse_bool(&v))
+                .unwrap_or(false),
         }
     }
+}
+
+fn parse_bool(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
 }
 
 impl AwsConfig {
@@ -76,6 +89,25 @@ impl SnsConfig {
     pub fn from_env() -> Self {
         Self {
             topic_arn: env::var("SNS_TOPIC_ARN").ok(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_bool;
+
+    #[test]
+    fn parse_bool_accepts_common_truthy_values() {
+        for v in ["true", "TRUE", " True ", "1", "yes", "on"] {
+            assert!(parse_bool(v), "{v:?} should be truthy");
+        }
+    }
+
+    #[test]
+    fn parse_bool_rejects_everything_else() {
+        for v in ["", "false", "0", "no", "off", "enabled", "garbage"] {
+            assert!(!parse_bool(v), "{v:?} should be falsy");
         }
     }
 }

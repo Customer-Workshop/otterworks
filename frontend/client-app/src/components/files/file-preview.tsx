@@ -3,6 +3,8 @@ import { File, AlertCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { formatFileSize } from "@/lib/utils";
 import {
+  MAX_PREVIEW_COLS,
+  MAX_PREVIEW_ROWS,
   MAX_TEXT_PREVIEW_BYTES,
   capGrid,
   isPreviewTooLarge,
@@ -245,6 +247,16 @@ function TooLargePreview({
   );
 }
 
+function gridFromSheet(sheet: XLSX.WorkSheet) {
+  return capGrid(
+    XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+      header: 1,
+      raw: false,
+      defval: "",
+    }),
+  );
+}
+
 export function SpreadsheetFilePreview({
   presignedUrl,
   fileName,
@@ -279,13 +291,7 @@ export function SpreadsheetFilePreview({
         const parsed = XLSX.read(buffer, { type: "array" });
         const sheet = parsed.Sheets[parsed.SheetNames[0]];
         if (!sheet) throw new Error("Workbook has no sheets");
-        const grid = capGrid(
-          XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-            header: 1,
-            raw: false,
-            defval: "",
-          }),
-        );
+        const grid = gridFromSheet(sheet);
         if (cancelled) return;
         setWorkbook(parsed);
         setRows(grid.rows);
@@ -345,13 +351,7 @@ export function SpreadsheetFilePreview({
               type="button"
               onClick={() => {
                 const sheet = workbook.Sheets[name];
-                const grid = capGrid(
-                  XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-                    header: 1,
-                    raw: false,
-                    defval: "",
-                  }),
-                );
+                const grid = gridFromSheet(sheet);
                 setSheetIndex(index);
                 setRows(grid.rows);
                 setTruncation({ rows: grid.truncatedRows, cols: grid.truncatedCols });
@@ -393,7 +393,14 @@ export function SpreadsheetFilePreview({
       </div>
       {(truncation.rows || truncation.cols) && (
         <p className="text-xs text-amber-600 mt-2 text-center">
-          Showing first {truncation.rows ? 200 : rows.length} rows/{truncation.cols ? 30 : "all"} cols.
+          Showing {
+            [
+              truncation.rows && `the first ${MAX_PREVIEW_ROWS} rows`,
+              truncation.cols && `the first ${MAX_PREVIEW_COLS} columns`,
+            ]
+              .filter(Boolean)
+              .join(" and ")
+          }.
         </p>
       )}
     </div>

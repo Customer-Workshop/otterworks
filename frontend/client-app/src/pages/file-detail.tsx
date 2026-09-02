@@ -413,7 +413,7 @@ function FilePreviewContent({
   presignedUrl: string | undefined;
   fileName: string;
 }>) {
-  if (previewKind !== "generic" && isUrlLoading) {
+  if (isUrlLoading) {
     return (
       <div className="w-full text-center py-8">
         <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />

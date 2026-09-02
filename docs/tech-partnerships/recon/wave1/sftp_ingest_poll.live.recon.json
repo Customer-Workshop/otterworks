@@ -1,0 +1,137 @@
+{
+  "kind": "recon-report",
+  "unit": "sftp_ingest_poll",
+  "namespace": "demo",
+  "generated_at": "2026-09-01T23:25:51+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "U6-a",
+      "expected": [
+        {
+          "file": "CUSTBILL_DEMO_001.dat",
+          "bytes": 3430,
+          "sha256": "c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c"
+        },
+        {
+          "file": "CUSTBILL_DEMO_002.dat",
+          "bytes": 3430,
+          "sha256": "652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48"
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_DEMO_001.dat",
+          "bytes": 3430,
+          "sha256": "c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c"
+        },
+        {
+          "file": "CUSTBILL_DEMO_002.dat",
+          "bytes": 3430,
+          "sha256": "652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48"
+        }
+      ],
+      "source_of_truth": "legacy incoming/*.dat bytes vs volume archive/<file>.<sha12> bytes",
+      "result": "pass"
+    },
+    {
+      "id": "U6-b",
+      "expected": [
+        {
+          "file": "CUSTBILL_DEMO_001.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        },
+        {
+          "file": "CUSTBILL_DEMO_002.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_DEMO_001.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        },
+        {
+          "file": "CUSTBILL_DEMO_002.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        }
+      ],
+      "source_of_truth": "wc -l / prefix classification of legacy file vs bronze record_kind counts",
+      "result": "pass"
+    },
+    {
+      "id": "U6-c",
+      "expected": [
+        {
+          "file": "CUSTBILL_DEMO_001.dat",
+          "sha256": "c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c"
+        },
+        {
+          "file": "CUSTBILL_DEMO_002.dat",
+          "sha256": "652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48"
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_DEMO_001.dat",
+          "sha256": "c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c"
+        },
+        {
+          "file": "CUSTBILL_DEMO_002.dat",
+          "sha256": "652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48"
+        }
+      ],
+      "source_of_truth": "sha256(legacy file) vs sha256(concat bronze raw_line ORDER BY line_no)",
+      "result": "pass"
+    },
+    {
+      "id": "U6-e",
+      "expected": [],
+      "actual": [],
+      "source_of_truth": "volume incoming/ listing after run: processed files must be gone",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "reason": "newer successful ow_tp_custbill run confirmed",
+    "previous_latest_run": {
+      "run_id": 477715983917218,
+      "end_time": 1788305052047,
+      "result_state": "SUCCESS"
+    },
+    "latest_run": {
+      "run_id": 817869422959039,
+      "end_time": 1788305134158,
+      "result_state": "SUCCESS"
+    },
+    "snapshot_time_ms": 1788305073778,
+    "evidence": "first pass 2026-09-01T23:24:33+00:00 wrote_rows=True; second pass 2026-09-01T23:25:51+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=demo; fingerprint={\"archive\": [{\"bytes\": 3430, \"file\": \"CUSTBILL_DEMO_001.dat\", \"sha256\": \"c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c\"}, {\"bytes\": 3430, \"file\": \"CUSTBILL_DEMO_002.dat\", \"sha256\": \"652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48\"}], \"bronze_content\": [{\"file\": \"CUSTBILL_DEMO_001.dat\", \"sha256\": \"c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c\"}, {\"file\": \"CUSTBILL_DEMO_002.dat\", \"sha256\": \"652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48\"}], \"bronze_rows\": [{\"BODY\": 50, \"HDR\": 1, \"TRL\": 1, \"file\": \"CUSTBILL_DEMO_001.dat\", \"l"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "prod/UAT host roots /data/otterworks, /data2/otterworks_uat",
+    "production encoding (R1)",
+    "production mainframe SFTP producer (R4)"
+  ],
+  "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-demo via scripts/tp-run-deterministic.sh"
+}

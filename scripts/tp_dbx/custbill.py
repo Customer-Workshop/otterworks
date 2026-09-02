@@ -26,10 +26,13 @@ def esc(value: str) -> str:
     return value.replace("\\", "\\\\").replace("'", "''")
 
 
-def legacy_dat_files(root: Path) -> list[tuple[str, Path]]:
-    candidates = sorted((root / "incoming").glob("CUSTBILL*.dat*"))
-    if not candidates:
-        candidates = sorted((root / "sftp-drop" / "upload").glob("CUSTBILL*.dat"))
+def legacy_dat_files(root: Path, history: bool = False) -> list[tuple[str, Path]]:
+    if history:
+        candidates = sorted((root / "sftp-drop" / "history").glob("*/CUSTBILL*.dat"))
+    else:
+        candidates = sorted((root / "incoming").glob("CUSTBILL*.dat*"))
+        if not candidates:
+            candidates = sorted((root / "sftp-drop" / "upload").glob("CUSTBILL*.dat"))
     by_name: dict[str, Path] = {}
     for path in candidates:
         if not path.is_file():
@@ -118,11 +121,34 @@ def _landing_root(ns: str, part: str) -> str:
     return f"{LANDING}/{ns}/{part}"
 
 
+def _delete_tree(dbx: Databricks, volume_path: str) -> None:
+    """Files API directory deletes are non-recursive; empty the tree bottom-up first.
+
+    list_dir returns one page; re-list after each pass until the directory is empty.
+    """
+    for _ in range(10_000):
+        entries = dbx.list_dir(volume_path)
+        if not entries:
+            break
+        for entry in entries:
+            child = entry.get("path") or f"{volume_path}/{entry['name']}"
+            if entry.get("is_directory"):
+                _delete_tree(dbx, child)
+            else:
+                status = dbx.delete_file(child)
+                if status not in (200, 204, 404):
+                    raise DbxError(f"DELETE {child} -> HTTP {status}")
+    else:
+        if dbx.list_dir(volume_path):
+            raise DbxError(f"{volume_path} still non-empty after 10000 delete passes")
+    status = dbx.delete_dir(volume_path)
+    if status not in (200, 204, 404):
+        raise DbxError(f"DELETE {volume_path} -> HTTP {status}")
+
+
 def _clean_landing(dbx: Databricks, ns: str) -> None:
     for part in ("incoming", "archive", "reports"):
-        status = dbx.delete_dir(_landing_root(ns, part))
-        if status not in (200, 204, 404):
-            raise DbxError(f"DELETE {_landing_root(ns, part)} -> HTTP {status}")
+        _delete_tree(dbx, _landing_root(ns, part))
 
 
 def _listed_names(result, preferred: tuple[str, ...], fallback_index: int = -1) -> set[str]:
@@ -184,7 +210,7 @@ def cmd_seed_fixture(dbx: Databricks, args: argparse.Namespace) -> int:
         raise SystemExit("seed-fixture refuses --ns demo; use a non-demo fixture namespace")
     root = Path(args.legacy_root)
     if args.layer == "bronze":
-        files = legacy_dat_files(root)
+        files = legacy_dat_files(root, history=args.history)
         rows = [row for source_file, path in files
                 for row in bronze_rows_from_file(path, source_file)]
         table = BRONZE
@@ -268,6 +294,8 @@ def parser() -> argparse.ArgumentParser:
     seed = commands.add_parser("seed-fixture")
     seed.add_argument("--layer", required=True, choices=("bronze", "silver"))
     seed.add_argument("--legacy-root", required=True)
+    seed.add_argument("--history", action="store_true",
+                      help="bronze only: seed sftp-drop/history/*/CUSTBILL*.dat (gen_history_data.pl output)")
     run = commands.add_parser("run-job")
     run.add_argument("--wait", action="store_true")
     run.add_argument("--report-date", type=_date_literal)

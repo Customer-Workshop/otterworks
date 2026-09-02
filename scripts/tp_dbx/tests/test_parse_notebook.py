@@ -123,10 +123,15 @@ def test_parse_file_loads_valid_rows_and_quarantines_body_and_trailer_defects() 
 
 
 def test_header_and_zero_trailer_without_body_is_empty() -> None:
-    assert parse.parse_file(
-        "CUSTBILL_EMPTY.dat",
-        [(1, "HDR", "HDRCUSTBILL"), (2, "TRL", "TRL0000000000")],
-    ) == ([], [])
+    header = "HDRCUSTBILL"
+    zero_trailer = "TRL0000000000" + " " * 52
+    assert parse.parse_file("F", [(1, "HDR", header), (2, "TRL", zero_trailer)]) == ([], [])
+
+    nonzero_trailer = "TRL0000000003" + " " * 52
+    assert parse.parse_file("F", [(1, "HDR", header), (2, "TRL", nonzero_trailer)]) == (
+        [],
+        [("F", 2, nonzero_trailer, "trailer_count_mismatch")],
+    )
 
 
 def test_empty_fields_are_empty_strings_and_rec_type_is_untrimmed() -> None:

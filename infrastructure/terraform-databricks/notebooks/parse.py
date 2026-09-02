@@ -190,9 +190,9 @@ def main() -> None:
             )
         file_lines.setdefault(source_file, []).append((line_no, record_kind, raw_line))
 
-    if not any(record_kind == "BODY" for lines in file_lines.values() for _, record_kind, _ in lines):
-        log(action="no body rows")
-        finish("silver=0 quarantine=0")
+    if not file_lines:
+        log(action="no input rows")
+        finish("files=0 silver=0 quarantine=0")
         return
 
     silver_rows = []

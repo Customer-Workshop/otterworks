@@ -19,6 +19,10 @@
     {
       "name": "staged_red",
       "default": "false"
+    },
+    {
+      "name": "warehouse",
+      "default": "565cd2fd713738c4"
     }
   ],
   "tasks": [
@@ -30,6 +34,7 @@
           "task": "fact_commission",
           "ns": "{{job.parameters.ns}}",
           "staged_red": "{{job.parameters.staged_red}}",
+          "warehouse": "{{job.parameters.warehouse}}",
           "run_id": "{{job.run_id}}"
         }
       }
@@ -47,6 +52,7 @@
           "task": "mv_agent_commission_summary",
           "ns": "{{job.parameters.ns}}",
           "staged_red": "{{job.parameters.staged_red}}",
+          "warehouse": "{{job.parameters.warehouse}}",
           "run_id": "{{job.run_id}}"
         }
       }

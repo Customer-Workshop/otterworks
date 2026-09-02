@@ -66,10 +66,12 @@ dbutils.widgets.text("task", "")
 dbutils.widgets.text("ns", "cdw")
 dbutils.widgets.text("staged_red", "false")
 dbutils.widgets.text("run_id", "")
+dbutils.widgets.text("warehouse", "565cd2fd713738c4")
 task = dbutils.widgets.get("task")
 ns = dbutils.widgets.get("ns")
 staged_red = dbutils.widgets.get("staged_red")
 run_id = dbutils.widgets.get("run_id")
+warehouse = dbutils.widgets.get("warehouse")
 ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
 env = dict(os.environ, DATABRICKS_DEMO_HOST=ctx.apiUrl().get(),
            DATABRICKS_DEMO_TOKEN=ctx.apiToken().get())
@@ -80,11 +82,11 @@ if task not in {"fact_commission", "mv_agent_commission_summary"}:
     raise ValueError(f"unknown task: {task}")
 os.chdir(SRC)
 env["PYTHONPATH"] = SRC + os.pathsep + env.get("PYTHONPATH", "")
-rerun = f"python3 dbx/commission_dw/{task}/run.py --ns {ns}"
+rerun = f"python3 dbx/commission_dw/{task}/run.py --ns {ns} --warehouse {warehouse}"
 cmd = [
     sys.executable, "cdw_recon.py", "--unit", task, "--ns", ns,
     "--run-mode", "fixture", "--baseline-dir", BASELINE,
-    "--rerun", rerun, "--out", OUT,
+    "--warehouse", warehouse, "--rerun", rerun, "--out", OUT,
 ]
 proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
 print(proc.stdout)
@@ -130,14 +132,22 @@ req = urllib.request.Request(
 with urllib.request.urlopen(req, timeout=60) as resp:
     run = json.load(resp)
 tasks = {}
+reports = {}
 for task in run.get("tasks", []):
     key = task["task_key"]
     if key == "r3_notify":
         continue
+    task_state = task.get("state", {})
     tasks[key] = {
-        "result_state": task.get("state", {}).get("result_state"),
-        "state_message": task.get("state", {}).get("state_message", ""),
+        "result_state": task_state.get("result_state"),
+        "state_message": task_state.get("state_message", ""),
     }
+    if task_state.get("life_cycle_state") != "SKIPPED":
+        unit = key.split("_", 1)[1]
+        reports[unit] = (
+            f"/Volumes/ow_tp/bronze/landing/{ns}/recon/{run_id}/"
+            f"{unit}/{unit}.recon.json"
+        )
 results = {t["result_state"] for t in tasks.values()}
 verdict = "GREEN" if results == {"SUCCESS"} else "RED"
 staged = any("STAGED RED RUN" in t["state_message"] for t in tasks.values())
@@ -151,13 +161,7 @@ payload = {
     "verdict": verdict,
     "staged_red": staged or dbutils.widgets.get("staged_red").lower() == "true",
     "tasks": tasks,
-    "reports": {
-        key.split("_", 1)[1]: (
-            f"/Volumes/ow_tp/bronze/landing/{ns}/recon/{run_id}/"
-            f"{key.split('_', 1)[1]}/{key.split('_', 1)[1]}.recon.json"
-        )
-        for key in tasks
-    },
+    "reports": reports,
 }
 url = dbutils.secrets.get("SECRET_SCOPE", "devin_webhook_url")
 secret = dbutils.secrets.get("SECRET_SCOPE", "devin_webhook_secret")
@@ -209,9 +213,15 @@ def workspace_relative(relative: str) -> str:
     return relative
 
 
-def deploy(dbx: Databricks, ns: str, with_webhook: bool) -> int:
+def deploy(dbx: Databricks, ns: str, warehouse: str, with_webhook: bool) -> int:
     source_settings = json.loads((HERE / "job.json").read_text(encoding="utf-8"))
     settings = json.loads(json.dumps(source_settings).replace("cdw", ns))
+    for parameter in settings["parameters"]:
+        if parameter["name"] == "warehouse":
+            parameter["default"] = warehouse
+            break
+    else:
+        raise ValueError("job.json must define a warehouse parameter")
     existing = dbx.find_job(settings["name"])
     if existing:
         settings["schedule"]["pause_status"] = (
@@ -240,17 +250,16 @@ def deploy(dbx: Databricks, ns: str, with_webhook: bool) -> int:
         DRIVER_NOTEBOOK.replace("/cdw/", f"/{ns}/"),
         language="PYTHON",
     )
-    if with_webhook:
-        dbx.import_notebook(
-            NOTIFY_NOTEBOOK_PATH.replace("/cdw/", f"/{ns}/"),
-            NOTIFY_NOTEBOOK,
-            language="PYTHON",
-        )
+    dbx.import_notebook(
+        NOTIFY_NOTEBOOK_PATH.replace("/cdw/", f"/{ns}/"),
+        NOTIFY_NOTEBOOK,
+        language="PYTHON",
+    )
     job_id = dbx.upsert_job(settings)
     print(
         f"job_id={job_id} name={settings['name']} "
         f"pause_status={settings['schedule']['pause_status']} "
-        f"webhook={'wired' if with_webhook else 'none'}"
+        f"secrets={'seeded' if with_webhook else 'unchanged'}"
     )
     return 0
 
@@ -335,12 +344,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    deploy_parser = subparsers.add_parser("deploy", help="upload the draft assets and upsert the paused job")
+    deploy_parser = subparsers.add_parser("deploy", help="upload assets and upsert the job")
     deploy_parser.add_argument("--ns", default="cdw")
     deploy_parser.add_argument("--warehouse", default=WAREHOUSE)
     deploy_parser.add_argument(
         "--with-webhook", action="store_true",
-        help=f"add the r3_notify task; reads {WEBHOOK_URL_ENV}/{WEBHOOK_SECRET_ENV} into secret scope {SECRET_SCOPE}",
+        help=f"seed {WEBHOOK_URL_ENV}/{WEBHOOK_SECRET_ENV} into secret scope {SECRET_SCOPE}; r3_notify remains configured",
     )
 
     trigger_parser = subparsers.add_parser("trigger", help="run the paused job and print task results")
@@ -365,7 +374,7 @@ def main() -> int:
     ns = require_ns(args.ns)
     dbx = Databricks(warehouse_id=args.warehouse)
     if args.command == "deploy":
-        return deploy(dbx, ns, args.with_webhook)
+        return deploy(dbx, ns, args.warehouse, args.with_webhook)
     if args.command == "trigger":
         return trigger(dbx, ns, args.staged_red)
     if args.command == "schedule":

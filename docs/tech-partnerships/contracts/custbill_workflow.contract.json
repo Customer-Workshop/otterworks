@@ -9,7 +9,7 @@
     "Databricks job ow_tp_custbill (Terraform resource databricks_job.ow_tp_custbill in infrastructure/terraform-databricks/)",
     "/Shared/ow_tp/custbill/{ingest,parse,finance} task wiring"
   ],
-  "target_code_path": "infrastructure/terraform-databricks/job_custbill.tf (edit the parent's shell: task parameters, trigger, notifications) + databricks/custbill_workflow/ (job JSON snapshot + verification script)",
+  "target_code_path": "infrastructure/terraform-databricks/main.tf (databricks_job.ow_tp_custbill: task retries/backoff, schedule PAUSED, notifications) + databricks/custbill_workflow/ (job.json Jobs API snapshot + verify_job.py)",
   "golden_baseline_location": "Regenerated: `RUN_ALL_SLEEP=0 make legacy-etl-run JOB=run_all` under `OTTERWORKS_LEGACY_ROOT=/home/ubuntu/otterworks-legacy-<ns>` via scripts/tp-run-deterministic.sh (TP_FAKETIME='2026-09-01 02:10:00'). Baseline = the U6/U7/U8 baselines produced by that single chained run (incoming bytes, 100 PSV rows, 6-row CSV).",
   "declared_source_volume": {"files": 2, "silver_rows": 100, "gold_rows": 6},
   "behaviour": {

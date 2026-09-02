@@ -1,0 +1,506 @@
+{
+  "kind": "recon-report",
+  "unit": "custbill_workflow",
+  "namespace": "custbill-workflow-w3",
+  "generated_at": "2026-09-02T02:42:26+00:00",
+  "run_mode": "fixture",
+  "checks": [
+    {
+      "id": "U9-a",
+      "expected": {
+        "tasks": {
+          "ingest": [],
+          "parse": [
+            "ingest"
+          ],
+          "finance": [
+            "parse"
+          ]
+        },
+        "max_concurrent_runs": 1,
+        "pause_status": "PAUSED",
+        "clusters": [],
+        "on_failure_recipients": [
+          "finance-reports@otterworks.dev"
+        ]
+      },
+      "actual": {
+        "tasks": {
+          "ingest": [],
+          "parse": [
+            "ingest"
+          ],
+          "finance": [
+            "parse"
+          ]
+        },
+        "max_concurrent_runs": 1,
+        "pause_status": "PAUSED",
+        "clusters": [],
+        "on_failure_recipients": [
+          "finance-reports@otterworks.dev"
+        ]
+      },
+      "source_of_truth": "Jobs API 2.1 get job_id=177311647570933",
+      "result": "pass"
+    },
+    {
+      "id": "U9-b/U6-a",
+      "expected": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "bytes": 3440,
+          "sha256": "99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87"
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "bytes": 3440,
+          "sha256": "6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873"
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "bytes": 3440,
+          "sha256": "99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87"
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "bytes": 3440,
+          "sha256": "6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873"
+        }
+      ],
+      "source_of_truth": "legacy incoming/*.dat bytes vs volume archive/<file>.<sha12> bytes",
+      "result": "pass"
+    },
+    {
+      "id": "U9-b/U6-b",
+      "expected": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "lines": 52,
+          "HDR": 1,
+          "TRL": 1,
+          "BODY": 50
+        }
+      ],
+      "source_of_truth": "wc -l / prefix classification of legacy file vs bronze record_kind counts",
+      "result": "pass"
+    },
+    {
+      "id": "U6-c",
+      "expected": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "sha256": "99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87"
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "sha256": "6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873"
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "sha256": "99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87"
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "sha256": "6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873"
+        }
+      ],
+      "source_of_truth": "sha256(legacy file) vs sha256(concat bronze raw_line ORDER BY line_no)",
+      "result": "pass"
+    },
+    {
+      "id": "U6-e",
+      "expected": [],
+      "actual": [],
+      "source_of_truth": "volume incoming/ listing after run: processed files must be gone",
+      "result": "pass"
+    },
+    {
+      "id": "U9-b/U7-a",
+      "expected": {
+        "total": 100,
+        "per_file": {
+          "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat": 50,
+          "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat": 50
+        }
+      },
+      "actual": {
+        "total": 100,
+        "per_file": {
+          "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat": 50,
+          "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat": 50
+        }
+      },
+      "source_of_truth": "wc -l parsed/*.psv vs count(*) silver per source_file",
+      "result": "pass"
+    },
+    {
+      "id": "U9-b/U7-b",
+      "expected": {
+        "rows_compared": 100,
+        "mismatches": []
+      },
+      "actual": {
+        "rows_compared": 100,
+        "mismatches": []
+      },
+      "source_of_truth": "full row diff: legacy .psv line i vs silver row i (ORDER BY line_no), 6 fields",
+      "result": "pass"
+    },
+    {
+      "id": "U9-b/U7-c",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "count(*) quarantine on clean seed (T7)",
+      "result": "pass"
+    },
+    {
+      "id": "U7-d",
+      "expected": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "trailer": 50,
+          "body": 50
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "trailer": 50,
+          "body": 50
+        }
+      ],
+      "actual": [
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat",
+          "trailer": 50,
+          "body": 50
+        },
+        {
+          "file": "CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat",
+          "trailer": 50,
+          "body": 50
+        }
+      ],
+      "source_of_truth": "bronze TRL cols 4-13 vs BODY row count per file",
+      "result": "pass"
+    },
+    {
+      "id": "U7-e",
+      "expected": "n/a",
+      "actual": "anomaly leg not run (pass --anomaly-ns/--anomaly-root)",
+      "source_of_truth": "history manifest planted_anomalies vs quarantine",
+      "result": "skipped"
+    },
+    {
+      "id": "U9-b/U8-a",
+      "expected": [
+        [
+          "EUR",
+          "INVOICE",
+          29,
+          "120162.09"
+        ],
+        [
+          "EUR",
+          "CREDIT",
+          3,
+          "6443.18"
+        ],
+        [
+          "GBP",
+          "INVOICE",
+          25,
+          "141880.07"
+        ],
+        [
+          "GBP",
+          "CREDIT",
+          6,
+          "35048.53"
+        ],
+        [
+          "USD",
+          "INVOICE",
+          28,
+          "132638.05"
+        ],
+        [
+          "USD",
+          "CREDIT",
+          9,
+          "39364.59"
+        ]
+      ],
+      "actual": [
+        [
+          "EUR",
+          "INVOICE",
+          29,
+          "120162.09"
+        ],
+        [
+          "EUR",
+          "CREDIT",
+          3,
+          "6443.18"
+        ],
+        [
+          "GBP",
+          "INVOICE",
+          25,
+          "141880.07"
+        ],
+        [
+          "GBP",
+          "CREDIT",
+          6,
+          "35048.53"
+        ],
+        [
+          "USD",
+          "INVOICE",
+          28,
+          "132638.05"
+        ],
+        [
+          "USD",
+          "CREDIT",
+          9,
+          "39364.59"
+        ]
+      ],
+      "source_of_truth": "legacy finance_billing_20260901.csv rows vs gold (currency, record_type, record_count, total_amount) ordered like the Perl sort",
+      "result": "pass"
+    },
+    {
+      "id": "U9-b/U8-b",
+      "expected": {
+        "csv_sha256": "b6a46cdc730593c6a965484185439ce9c868865922cae859f9d047b924a12079",
+        "legacy_xls_equals_csv": true
+      },
+      "actual": {
+        "csv_sha256": "b6a46cdc730593c6a965484185439ce9c868865922cae859f9d047b924a12079",
+        "legacy_xls_equals_csv": true
+      },
+      "source_of_truth": "sha256 legacy csv vs /Volumes/ow_tp/bronze/landing/custbill-workflow-w3/reports/finance_billing_20260901.csv; legacy .xls bytes vs .csv bytes",
+      "result": "pass"
+    },
+    {
+      "id": "U8-c",
+      "expected": {
+        "awk_equivalent": [
+          [
+            "EUR",
+            "INVOICE",
+            29,
+            "120162.09"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            3,
+            "6443.18"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            25,
+            "141880.07"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            6,
+            "35048.53"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            28,
+            "132638.05"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            9,
+            "39364.59"
+          ]
+        ],
+        "gold_sum_equals_silver_sum": true
+      },
+      "actual": {
+        "awk_equivalent": [
+          [
+            "EUR",
+            "INVOICE",
+            29,
+            "120162.09"
+          ],
+          [
+            "EUR",
+            "CREDIT",
+            3,
+            "6443.18"
+          ],
+          [
+            "GBP",
+            "INVOICE",
+            25,
+            "141880.07"
+          ],
+          [
+            "GBP",
+            "CREDIT",
+            6,
+            "35048.53"
+          ],
+          [
+            "USD",
+            "INVOICE",
+            28,
+            "132638.05"
+          ],
+          [
+            "USD",
+            "CREDIT",
+            9,
+            "39364.59"
+          ]
+        ],
+        "gold_sum_equals_silver_sum": true,
+        "gold_sum": "475536.51",
+        "silver_sum": "475536.51"
+      },
+      "source_of_truth": "Decimal recompute over legacy parsed/*.psv (awk one-liner equivalent) vs gold; sum(gold)==sum(silver)",
+      "result": "pass"
+    },
+    {
+      "id": "U8-e",
+      "expected": "n/a",
+      "actual": "openpyxl not installed locally; xlsx exists but cell values not verified",
+      "source_of_truth": "/Volumes/ow_tp/bronze/landing/custbill-workflow-w3/reports/finance_billing_20260901.xlsx",
+      "result": "skipped"
+    },
+    {
+      "id": "U8-f",
+      "expected": "n/a",
+      "actual": "quarantined-totals leg not run (pass --anomaly-ns/--anomaly-root)",
+      "source_of_truth": "history manifest totals vs gold; bronze BODY cents - gold cents == quarantined cents",
+      "result": "skipped"
+    },
+    {
+      "id": "U9-c",
+      "expected": {
+        "partial_upstream_run": {
+          "run_state": "FAILED",
+          "finance_task_state": "SKIPPED"
+        },
+        "overlap_runs": "\u22652 runs, none overlapped"
+      },
+      "actual": {
+        "partial_upstream_run": {
+          "run_id": 99101204568825,
+          "run_url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/99101204568825",
+          "run_state": "FAILED",
+          "ingest_task_state": "SUCCESS",
+          "ingest_task_life_cycle_state": "TERMINATED",
+          "ingest_task_result_state": "SUCCESS",
+          "ingest_task_state_message": "",
+          "parse_task_state": "FAILED",
+          "parse_task_life_cycle_state": "TERMINATED",
+          "parse_task_result_state": "FAILED",
+          "parse_task_state_message": "Workload failed, see run output for details",
+          "finance_task_state": "SKIPPED",
+          "finance_task_life_cycle_state": "SKIPPED",
+          "finance_task_result_state": "UPSTREAM_FAILED",
+          "finance_task_state_message": "An upstream task failed.",
+          "gold_rows_before": 6,
+          "gold_rows_after": 6,
+          "silver_rows_after": 100,
+          "bronze_rows_before_probe": 104,
+          "bronze_rows_with_probe": 105,
+          "route": "duplicate bronze natural key injected in ns custbill-workflow-w3, removed afterwards"
+        },
+        "overlap_runs": [
+          {
+            "run_id": 675839117153068,
+            "run_url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/675839117153068",
+            "start": 1788316793281,
+            "end": 1788316887433,
+            "result_state": "SUCCESS",
+            "overlapped": false
+          },
+          {
+            "run_id": 862334435402810,
+            "run_url": "https://dbc-8bc9474f-40ae.cloud.databricks.com/jobs/runs/862334435402810",
+            "start": 1788316793607,
+            "end": 1788316794428,
+            "result_state": "MAXIMUM_CONCURRENT_RUNS_REACHED",
+            "overlapped": false,
+            "state_message": "Skipping this run because the limit of 1 maximum concurrent runs has been reached."
+          }
+        ]
+      },
+      "source_of_truth": "child-captured run states in /tmp/u9-evidence.json",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "reason": "newer successful ow_tp_custbill run confirmed",
+    "previous_latest_run": {
+      "run_id": 118839821824212,
+      "end_time": 1788316653363,
+      "result_state": "SUCCESS"
+    },
+    "latest_run": {
+      "run_id": 675839117153068,
+      "end_time": 1788316887433,
+      "result_state": "SUCCESS"
+    },
+    "snapshot_time_ms": 1788316677016,
+    "evidence": "first pass 2026-09-02T02:37:57+00:00 wrote_rows=True; second pass 2026-09-02T02:42:26+00:00 fingerprint identical; newer successful ow_tp_custbill run confirmed; namespace=custbill-workflow-w3; fingerprint={\"archive\": [{\"bytes\": 3440, \"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat\", \"sha256\": \"99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87\"}, {\"bytes\": 3440, \"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat\", \"sha256\": \"6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873\"}], \"bronze_content\": [{\"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_001.dat\", \"sha256\": \"99ef8b57638ecf389d8813eb3aa06ea1daa9b3709b57aa751c7ff1c9d9acea87\"}, {\"file\": \"CUSTBILL_CUSTBILL-WORKFLOW-W3_002.dat\", \"sha256\": \"6232e166beff2924295048d1f65a95099c5be9d17991645e477dc5e8afb79873\"}], \"bronze_rows\": [{\"BO"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "U7-e: anomaly leg not run (pass --anomaly-ns/--anomaly-root)",
+    "U8-e: openpyxl not installed locally; xlsx exists but cell values not verified",
+    "U8-f: quarantined-totals leg not run (pass --anomaly-ns/--anomaly-root)",
+    "file_arrival trigger in production (customer landing mechanism, R4)",
+    "unpausing the schedule (STOP E only)"
+  ],
+  "baseline_provenance": "legacy outputs regenerated under /home/ubuntu/otterworks-legacy-custbill-workflow-w3 via scripts/tp-run-deterministic.sh"
+}

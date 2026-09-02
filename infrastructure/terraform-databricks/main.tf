@@ -299,28 +299,10 @@ resource "databricks_job" "ow_tp_custbill" {
   }
 
   task {
-    task_key = "ingest"
-    notebook_task {
-      notebook_path   = databricks_notebook.ingest.path
-      base_parameters = { ns = "{{job.parameters.ns}}" }
-    }
-    environment_key = "default"
-  }
-
-  task {
-    task_key = "parse"
-    depends_on {
-      task_key = "ingest"
-    }
-    notebook_task {
-      notebook_path   = databricks_notebook.parse.path
-      base_parameters = { ns = "{{job.parameters.ns}}" }
-    }
-    environment_key = "default"
-  }
-
-  task {
-    task_key = "finance"
+    task_key                  = "finance"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
     depends_on {
       task_key = "parse"
     }
@@ -330,6 +312,33 @@ resource "databricks_job" "ow_tp_custbill" {
         ns          = "{{job.parameters.ns}}"
         report_date = "{{job.parameters.report_date}}"
       }
+    }
+    environment_key = "default"
+  }
+
+  task {
+    task_key                  = "ingest"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
+    notebook_task {
+      notebook_path   = databricks_notebook.ingest.path
+      base_parameters = { ns = "{{job.parameters.ns}}" }
+    }
+    environment_key = "default"
+  }
+
+  task {
+    task_key                  = "parse"
+    max_retries               = 2
+    min_retry_interval_millis = 300000
+    retry_on_timeout          = false
+    depends_on {
+      task_key = "ingest"
+    }
+    notebook_task {
+      notebook_path   = databricks_notebook.parse.path
+      base_parameters = { ns = "{{job.parameters.ns}}" }
     }
     environment_key = "default"
   }

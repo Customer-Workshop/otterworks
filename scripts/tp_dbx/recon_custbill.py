@@ -40,7 +40,7 @@ RUN_LOOKBACK_MS = 30 * 24 * 3600 * 1000
 REQUIRED = {
     "sftp_ingest_poll": {"U6-a", "U6-b", "U6-c", "U6-e"},
     "parse_custbill_fixedwidth": {"U7-a", "U7-b", "U7-c", "U7-d", "U7-e"},
-    "finance_excel_report": {"U8-a", "U8-b", "U8-c", "U8-e"},
+    "finance_excel_report": {"U8-a", "U8-b", "U8-c", "U8-e", "U8-f"},
     "custbill_workflow": {
         "U9-a", "U9-c",
         "U9-b/U6-a", "U9-b/U6-b", "U9-b/U7-a", "U9-b/U7-b",
@@ -321,7 +321,7 @@ class Recon:
                    and excluded == expected_silver_rows)
 
     # -- U8 -------------------------------------------------------------------
-    def unit_finance(self) -> None:
+    def unit_finance(self, anomaly_ns: str | None, anomaly_root: Path | None) -> None:
         csvs = sorted(glob.glob(str(self.root / "reports" / "finance_billing_*.csv")))
         if len(csvs) != 1:
             raise SystemExit(f"expected exactly one legacy finance_billing_*.csv under {self.root}/reports, found {csvs}")
@@ -388,6 +388,53 @@ class Recon:
                 self.skipped("U8-e", "openpyxl not installed locally; xlsx exists but cell values not verified", xlsx_path)
         self.fingerprint["gold"] = act
         self.fingerprint["csv_sha256"] = t_sha
+        if anomaly_ns and anomaly_root:
+            self.finance_anomaly_leg(anomaly_ns, anomaly_root)
+        else:
+            self.skipped("U8-f", "quarantined-totals leg not run (pass --anomaly-ns/--anomaly-root)",
+                         "history manifest totals vs gold; bronze BODY cents - gold cents == quarantined cents")
+
+    def finance_anomaly_leg(self, ans: str, aroot: Path) -> None:
+        manifests = glob.glob(str(aroot / "sftp-drop/history/expected/*-history-expected.json"))
+        if len(manifests) != 1:
+            raise SystemExit(f"expected exactly one history manifest under {aroot}, found {manifests}")
+        manifest = json.loads(Path(manifests[0]).read_text())
+
+        def rtname(rt: str) -> str:
+            return "INVOICE" if rt == "01" else "CREDIT" if rt == "02" else f"UNKNOWN({rt})"
+
+        exp_totals = sorted(
+            [t["currency"], rtname(t["record_type"]), int(t["record_count"]), int(t["total_amount_cents"])]
+            for y in manifest["per_year"] for t in y["totals"])
+        gold = self.rows(
+            f"SELECT currency, record_type, record_count, cast(total_amount * 100 AS BIGINT) "
+            f"FROM {CATALOG}.gold.finance_billing WHERE ns={q(ans)}")
+        act_totals = sorted([c, rt, int(n), int(cents)] for c, rt, n, cents in gold)
+        total_records = int(manifest["record_count"])
+        exp_rows_delta = total_records - sum(t[2] for t in exp_totals)
+        amt = "CASE WHEN substr(raw_line, 49, 12) RLIKE '^[0-9]{12}$' THEN cast(substr(raw_line, 49, 12) AS BIGINT) END"
+        body_cents, body_rows = self.rows(
+            f"SELECT coalesce(sum({amt}), 0), count(*) FROM {CATALOG}.bronze.custbill_raw "
+            f"WHERE ns={q(ans)} AND record_kind='BODY'")[0]
+        quar_rows, quar_cents = self.rows(
+            f"SELECT count(*), coalesce(sum({amt}), 0) FROM {CATALOG}.silver.custbill_quarantine qr "
+            f"JOIN {CATALOG}.bronze.custbill_raw br "
+            f"ON br.ns=qr.ns AND br.source_file=qr.source_file AND br.line_no=qr.line_no AND br.record_kind='BODY' "
+            f"WHERE qr.ns={q(ans)}")[0]
+        gold_rows = sum(t[2] for t in act_totals)
+        gold_cents = sum(t[3] for t in act_totals)
+        expected = {"totals": exp_totals, "quarantined_rows": exp_rows_delta,
+                   "rows_delta_equals_quarantined": True, "cents_delta_equals_quarantined": True}
+        actual = {"totals": act_totals, "quarantined_rows": int(quar_rows),
+                  "quarantined_cents": int(quar_cents), "bronze_body_rows": int(body_rows),
+                  "bronze_body_cents": int(body_cents), "gold_rows": gold_rows, "gold_cents": gold_cents,
+                  "rows_delta_equals_quarantined": int(body_rows) - gold_rows == int(quar_rows),
+                  "cents_delta_equals_quarantined": int(body_cents) - gold_cents == int(quar_cents)}
+        self.check("U8-f", expected, actual,
+                   f"quarantined_rows_change_totals on ns={ans}: manifest {Path(manifests[0]).name} totals vs gold; "
+                   f"bronze BODY rows/cents minus gold rows/cents must equal quarantine-joined rows/cents",
+                   ok=exp_totals == act_totals and int(quar_rows) == exp_rows_delta
+                   and actual["rows_delta_equals_quarantined"] and actual["cents_delta_equals_quarantined"])
 
     # -- U9 -------------------------------------------------------------------
     def unit_workflow(self, evidence: Path | None) -> None:
@@ -436,8 +483,8 @@ def main() -> int:
     ap.add_argument("--legacy-root", required=True, type=Path)
     ap.add_argument("--run-mode", required=True, choices=["fixture", "live"],
                     help="fixture = child namespace slice; live = parent NS=demo proof window")
-    ap.add_argument("--anomaly-ns", help="namespace that holds the parsed 2023 history seed (parse unit)")
-    ap.add_argument("--anomaly-root", type=Path, help="OTTERWORKS_LEGACY_ROOT of the history seed (parse unit)")
+    ap.add_argument("--anomaly-ns", help="namespace that holds the parsed 2023 history seed (parse/finance units)")
+    ap.add_argument("--anomaly-root", type=Path, help="OTTERWORKS_LEGACY_ROOT of the history seed (parse/finance units)")
     ap.add_argument("--evidence-json", type=Path, help="workflow unit: child-captured run states")
     ap.add_argument("--previous", type=Path, help="first-pass snapshot to compare for idempotency")
     ap.add_argument("--unverified", action="append", default=[], help="declared gap (repeatable)")
@@ -456,7 +503,7 @@ def main() -> int:
     elif a.unit == "parse_custbill_fixedwidth":
         r.unit_parse(a.anomaly_ns, a.anomaly_root)
     elif a.unit == "finance_excel_report":
-        r.unit_finance()
+        r.unit_finance(a.anomaly_ns, a.anomaly_root)
     else:
         r.unit_workflow(a.evidence_json)
     waived = set(a.waive)

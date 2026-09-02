@@ -46,7 +46,8 @@
     {"id": "U8-b", "description": "Exported CSV bytes == legacy finance_billing_<stamp>.csv bytes (T6); legacy .xls bytes == legacy .csv bytes (documents the legacy defect)."},
     {"id": "U8-c", "description": "Independent recompute: awk over the legacy PSV (runbook one-liner) == gold totals to the cent; and sum(total_amount) over gold == sum(bill_amt) over silver for ns."},
     {"id": "U8-d", "description": "Idempotency: rerun → identical gold rows, byte-identical CSV; xlsx re-generated with identical cell values (T9; xlsx bytes excluded from parity per T11 because of embedded timestamps)."},
-    {"id": "U8-e", "description": "xlsx opens with openpyxl, sheet finance_billing, header + 6 rows, numeric amounts equal to CSV values."}
+    {"id": "U8-e", "description": "xlsx opens with openpyxl, sheet finance_billing, header + 6 rows, numeric amounts equal to CSV values."},
+    {"id": "U8-f", "description": "quarantined_rows_change_totals on the 2023 history namespace: gold (currency, record_type, record_count, cents) == history manifest totals exactly; bronze BODY rows/cents minus gold rows/cents == quarantine-joined rows/cents (named, quantified delta; T2, T5, T8)."}
   ],
   "deficiencies_retired": [
     "CSV renamed to .xls → real .xlsx + canonical CSV",

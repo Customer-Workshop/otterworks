@@ -45,12 +45,23 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_controller" {
 
 # --- EKS Cluster ---
 
+# Pre-create the control-plane log group so retention is bounded (EKS otherwise
+# creates it with "never expire").
+resource "aws_cloudwatch_log_group" "cluster" {
+  name              = "/aws/eks/${var.cluster_name}/cluster"
+  retention_in_days = var.cluster_log_retention_days
+
+  tags = merge(local.common_tags, {
+    Component = "eks-cluster"
+  })
+}
+
 resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
   name     = var.cluster_name
   version  = var.cluster_version
   role_arn = aws_iam_role.cluster.arn
 
-  enabled_cluster_log_types = ["api", "audit", "authenticator"]
+  enabled_cluster_log_types = var.cluster_log_types
 
   vpc_config {
     subnet_ids              = concat(var.public_subnet_ids, var.private_subnet_ids)
@@ -65,6 +76,7 @@ resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-pub
   depends_on = [
     aws_iam_role_policy_attachment.cluster_policy,
     aws_iam_role_policy_attachment.cluster_vpc_controller,
+    aws_cloudwatch_log_group.cluster,
   ]
 }
 

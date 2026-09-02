@@ -110,7 +110,7 @@ resource "aws_ecs_cluster" "meilisearch" {
 
 resource "aws_cloudwatch_log_group" "meilisearch" {
   name              = "/ecs/${var.project}-meilisearch-${var.environment}"
-  retention_in_days = 30
+  retention_in_days = 7
 
   tags = local.common_tags
 }

@@ -34,6 +34,7 @@ provider "aws" {
       Environment = var.environment
       ManagedBy   = "terraform"
       Layer       = "platform"
+      creator     = var.creator_tag
     }
   }
 }

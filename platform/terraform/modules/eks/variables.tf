@@ -75,3 +75,15 @@ variable "enable_karpenter" {
   type        = bool
   default     = true
 }
+
+variable "cluster_log_types" {
+  description = "EKS control-plane log types shipped to CloudWatch. Keep minimal for cost; audit is the one that matters for demos."
+  type        = list(string)
+  default     = ["audit"]
+}
+
+variable "cluster_log_retention_days" {
+  description = "Retention for the EKS control-plane CloudWatch log group"
+  type        = number
+  default     = 7
+}

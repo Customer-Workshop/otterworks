@@ -109,6 +109,8 @@ DEPARTMENTS: dict[str, list[dict]] = {
         _s("Email", "{quarter} {year} Email Calendar", "xlsx", ["year", "quarter"]),
         _s("Analytics", "{quarter} {year} Web Traffic", "csv", ["year", "quarter"]),
         _s("Decks", "{campaign} Strategy Deck", "pptx", ["campaign"]),
+        _s("Campaigns/Audio", "{campaign} Radio Spot", "wav", ["campaign"]),
+        _s("Campaigns/Audio", "{campaign} Podcast Intro", "wav", ["campaign"]),
     ],
     "Merchandising": [
         _s("Assortment/{category}", "{category} Assortment Plan {year}", "xlsx", ["category", "year"]),

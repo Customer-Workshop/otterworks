@@ -79,15 +79,17 @@ impl S3Client {
         &self,
         key: &str,
         expires_in_secs: u64,
+        response_content_type: Option<&str>,
     ) -> Result<String, ServiceError> {
         let presigning = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
             .map_err(|e| ServiceError::S3Error(format!("presign config error: {e}")))?;
 
-        let presigned = self
-            .client
-            .get_object()
-            .bucket(&self.bucket)
-            .key(key)
+        let mut request = self.client.get_object().bucket(&self.bucket).key(key);
+        if let Some(content_type) = response_content_type {
+            request = request.response_content_type(content_type);
+        }
+
+        let presigned = request
             .presigned(presigning)
             .await
             .map_err(|e| ServiceError::S3Error(format!("presign failed: {e}")))?;
@@ -123,5 +125,49 @@ impl S3Client {
 
         tracing::info!(source = %source_key, dest = %dest_key, "Copied object in S3");
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::S3Client;
+    use aws_sdk_s3::config::Credentials;
+
+    fn test_client() -> S3Client {
+        let config = aws_sdk_s3::Config::builder()
+            .region(aws_sdk_s3::config::Region::new("us-east-1"))
+            .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
+            .credentials_provider(Credentials::new(
+                "test-access",
+                "test-secret",
+                None,
+                None,
+                "test",
+            ))
+            .endpoint_url("http://localhost:4566")
+            .force_path_style(true)
+            .build();
+        S3Client {
+            client: aws_sdk_s3::Client::from_conf(config),
+            bucket: "test-bucket".into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn ac_03_presign_includes_response_content_type() {
+        let url = test_client()
+            .presigned_download_url("files/test", 3600, Some("application/pdf"))
+            .await
+            .expect("presign should succeed");
+        assert!(url.contains("response-content-type=application%2Fpdf"));
+    }
+
+    #[tokio::test]
+    async fn ac_20_presign_omits_response_content_type_when_not_provided() {
+        let url = test_client()
+            .presigned_download_url("files/test", 3600, None)
+            .await
+            .expect("presign should succeed");
+        assert!(!url.contains("response-content-type"));
     }
 }

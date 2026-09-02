@@ -12,6 +12,7 @@ Scenario traceability (docs/bdd/otd14-multimodal-seed-drive-bdd.md):
 from __future__ import annotations
 
 import io
+import wave
 import re
 import sys
 import zipfile
@@ -143,9 +144,22 @@ def test_mp4_assets_committed_and_small():
     assert filegen.MIME["svg"] == "image/svg+xml"
 
 
+def test_wav_builder_is_real_deterministic_audio():
+    first, mime = filegen.build("wav", "River-Days Radio Spot", 1)
+    second, _ = filegen.build("wav", "River-Days Radio Spot", 1)
+    assert mime == "audio/wav"
+    assert first == second
+    assert len(first) < 100 * 1024
+    with wave.open(io.BytesIO(first), "rb") as wav_file:
+        assert wav_file.getnchannels() == 1
+        assert wav_file.getsampwidth() == 2
+        assert wav_file.getframerate() == 8_000
+        assert wav_file.getnframes() == 16_000
+
+
 # ---- size guard (AC-05a) -----------------------------------------------------
 def test_builders_stay_under_size_cap():
-    for ext in ("xlsx", "docx", "pptx", "pdf", "csv", "json", "md", "png", "jpg", "svg"):
+    for ext in ("xlsx", "docx", "pptx", "pdf", "csv", "json", "md", "png", "jpg", "svg", "wav"):
         data, _ = filegen.build(ext, f"Size Guard {ext}", 1)
         assert len(data) < 5 * 1024 * 1024
 

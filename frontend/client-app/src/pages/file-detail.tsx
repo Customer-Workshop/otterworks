@@ -22,9 +22,18 @@ import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ShareDialog } from "@/components/files/share-dialog";
-import { TextFilePreview, PdfFilePreview, ImageFilePreview } from "@/components/files/file-preview";
+import {
+  AudioFilePreview,
+  DocxFilePreview,
+  GenericFilePreview,
+  ImageFilePreview,
+  PdfFilePreview,
+  SpreadsheetFilePreview,
+  TextFilePreview,
+} from "@/components/files/file-preview";
 import { filesApi, authApi } from "@/lib/api";
 import { formatFileSize, formatRelativeTime, getInitials, generateColor } from "@/lib/utils";
+import { previewKindFor, type PreviewKind } from "@/lib/file-preview-utils";
 
 export default function FileDetailPage() {
   return (
@@ -111,17 +120,7 @@ function FileDetailContent() {
     );
   }
 
-  const isImage = file.mimeType.startsWith("image/");
-  const isVideo = file.mimeType.startsWith("video/");
-  const isPdf = file.mimeType === "application/pdf";
-  const isText =
-    file.mimeType.startsWith("text/") ||
-    file.mimeType === "application/json" ||
-    file.mimeType === "application/xml" ||
-    file.mimeType === "application/javascript" ||
-    file.mimeType === "application/typescript" ||
-    file.mimeType === "application/x-yaml" ||
-    file.mimeType === "application/x-sh";
+  const previewKind = previewKindFor(file.mimeType, file.name);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -206,10 +205,9 @@ function FileDetailContent() {
             </div>
             <div className="p-8 flex items-center justify-center min-h-[300px] bg-gray-50">
               <FilePreviewContent
-                isImage={isImage}
-                isVideo={isVideo}
-                isPdf={isPdf}
-                isText={isText}
+                previewKind={previewKind}
+                sizeBytes={file.size}
+                mimeType={file.mimeType}
                 isUrlLoading={isUrlLoading}
                 presignedUrl={presignedUrl}
                 fileName={file.name}
@@ -401,23 +399,21 @@ function InfoRow({
 }
 
 function FilePreviewContent({
-  isImage,
-  isVideo,
-  isPdf,
-  isText,
+  previewKind,
+  sizeBytes,
+  mimeType,
   isUrlLoading,
   presignedUrl,
   fileName,
 }: Readonly<{
-  isImage: boolean;
-  isVideo: boolean;
-  isPdf: boolean;
-  isText: boolean;
+  previewKind: PreviewKind;
+  sizeBytes: number;
+  mimeType: string;
   isUrlLoading: boolean;
   presignedUrl: string | undefined;
   fileName: string;
 }>) {
-  if ((isImage || isVideo || isText || isPdf) && isUrlLoading) {
+  if (previewKind !== "generic" && isUrlLoading) {
     return (
       <div className="w-full text-center py-8">
         <div className="w-6 h-6 border-2 border-otter-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -425,11 +421,11 @@ function FilePreviewContent({
     );
   }
 
-  if (isImage) {
+  if (previewKind === "image") {
     return <ImageFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
   }
 
-  if (isVideo && presignedUrl) {
+  if (previewKind === "video" && presignedUrl) {
     return (
       <video src={presignedUrl} controls className="max-w-full max-h-[500px] rounded-lg">
         <track kind="captions" />
@@ -437,19 +433,57 @@ function FilePreviewContent({
     );
   }
 
-  if (isPdf) {
+  if (previewKind === "video") {
+    return (
+      <GenericFilePreview
+        fileName={fileName}
+        sizeBytes={sizeBytes}
+        mimeType={mimeType}
+      />
+    );
+  }
+
+  if (previewKind === "pdf") {
     return <PdfFilePreview presignedUrl={presignedUrl} />;
   }
 
-  if (isText) {
+  if (previewKind === "text") {
     return <TextFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
   }
 
+  if (previewKind === "spreadsheet") {
+    return (
+      <SpreadsheetFilePreview
+        presignedUrl={presignedUrl}
+        fileName={fileName}
+        sizeBytes={sizeBytes}
+        mimeType={mimeType}
+      />
+    );
+  }
+
+  if (previewKind === "document") {
+    return (
+      <DocxFilePreview
+        presignedUrl={presignedUrl}
+        fileName={fileName}
+        sizeBytes={sizeBytes}
+        mimeType={mimeType}
+      />
+    );
+  }
+
+  if (previewKind === "audio") {
+    return <AudioFilePreview presignedUrl={presignedUrl} fileName={fileName} />;
+  }
+
   return (
-    <div className="text-center">
-      <File size={64} className="text-gray-300 mx-auto mb-3" />
-      <p className="text-sm text-gray-500">Preview not available for this file type</p>
-    </div>
+    <GenericFilePreview
+      fileName={fileName}
+      sizeBytes={sizeBytes}
+      mimeType={mimeType}
+      presignedUrl={presignedUrl}
+    />
   );
 }
 
@@ -462,5 +496,3 @@ function FileIcon({ mimeType }: Readonly<{ mimeType: string }>) {
     return <FileText size={24} className="text-red-500" />;
   return <File size={24} className="text-otter-600" />;
 }
-
-

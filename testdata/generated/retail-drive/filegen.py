@@ -16,7 +16,10 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import random
+import struct
+import wave
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -77,6 +80,7 @@ MIME = {
     "jpg": "image/jpeg",
     "svg": "image/svg+xml",
     "mp4": "video/mp4",
+    "wav": "audio/wav",
 }
 
 COMPANY = "OtterWorks"
@@ -452,6 +456,30 @@ def _jpg(name: str, r: random.Random) -> bytes:
     return buf.getvalue()
 
 
+def _wav(name: str, r: random.Random) -> bytes:
+    """Build a deterministic, short mono tone/chirp for browser playback."""
+    sample_rate = 8_000
+    duration_seconds = 2
+    frame_count = sample_rate * duration_seconds
+    start_frequency = r.randint(240, 520)
+    frequency_delta = r.randint(80, 260)
+    amplitude = r.randint(8_000, 14_000)
+    frames = bytearray()
+    for index in range(frame_count):
+        progress = index / frame_count
+        frequency = start_frequency + frequency_delta * progress
+        sample = int(amplitude * math.sin(2 * math.pi * frequency * index / sample_rate))
+        frames.extend(struct.pack("<h", sample))
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(frames)
+    return buf.getvalue()
+
+
 def _tiny_png() -> bytes:
     return bytes.fromhex(
         "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
@@ -477,6 +505,7 @@ def _lorem(r: random.Random, n: int) -> str:
 _BUILDERS = {
     "xlsx": _xlsx, "docx": _docx, "pptx": _pptx, "pdf": _pdf, "csv": _csv,
     "json": _json, "md": _md, "txt": _txt, "png": _png, "jpg": _jpg, "svg": _svg,
+    "wav": _wav,
 }
 
 # kind -> builder variants (spec "kind" field in taxonomy.py).

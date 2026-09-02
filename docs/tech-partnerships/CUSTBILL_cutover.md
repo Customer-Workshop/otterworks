@@ -54,9 +54,11 @@ file to the volume *before* the legacy `*/15` poll deletes it — i.e. it runs a
 same crontab, copies with a temp name, renames on completion, and compares sha256 against the
 source; a mismatch or missing copy is logged and the file is re-pushed on the next tick. Daily
 completeness check **[parent]**: for each legacy `archive/<name>.YYYYMMDDHHMMSS` entry of the day
-compute `(name, sha256)`; the multiset must equal the `(name, sha)` multiset of the volume's
-`archive/<name>.<sha12>` entries for `ns=prod` (a re-delivered basename is a second pair, not a
-collapsed one), and every pair must have rows in `bronze.custbill_raw`. Any gap halts the
+compute `(name, sha256)`; the set of distinct pairs must equal the `(name, sha)` set of the volume's
+`archive/<name>.<sha12>` entries for `ns=prod` — content-addressed, so a byte-identical redelivery
+is one pair on both sides while a changed redelivery under the same name is a second pair — and
+every non-empty pair must have rows in `bronze.custbill_raw` (zero-byte files archive without
+rows by contract). Any gap halts the
 window clock — that day does not count toward the exit criteria.
 
 Whichever is chosen, the production namespace is `ns=prod` (matches `^[a-z0-9-]{1,32}$`).

@@ -10,6 +10,7 @@
 #   ./scripts/deploy-dev.sh --skip-platform    # Skip platform provisioning
 #   ./scripts/deploy-dev.sh --skip-terraform   # Skip all Terraform, just build+deploy
 #   ./scripts/deploy-dev.sh --skip-build       # Reuse existing ECR images (set IMAGE_TAG)
+#   WEB_APP_ORIGINS="https://*.otterworks.app,https://*.demo.otterworks.app" ./scripts/deploy-dev.sh
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
@@ -21,6 +22,7 @@ ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 ECR_PREFIX="otterworks/"
 IMAGE_TAG="${IMAGE_TAG:-$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)-$(date +%s)}"
 DB_PASSWORD="${DB_PASSWORD:-}"
+WEB_APP_ORIGINS="${WEB_APP_ORIGINS:-https://*.otterworks.app,https://*.demo.otterworks.app}"
 # Host suffix for the golden app's ingress records. The frontends and the API
 # are published through the SHARED ingress controller (one NLB for the whole
 # cluster) rather than a LoadBalancer Service each -- see build_helm_args.
@@ -55,6 +57,27 @@ NC='\033[0m'
 log()  { echo -e "${GREEN}[deploy]${NC} $*"; }
 warn() { echo -e "${YELLOW}[deploy]${NC} $*"; }
 err()  { echo -e "${RED}[deploy]${NC} $*" >&2; }
+
+origins_to_tf_json() {
+  local input=$1
+  local json="["
+  local separator=""
+  local origin
+  local quoted_origin
+
+  while IFS= read -r origin; do
+    origin="${origin#"${origin%%[![:space:]]*}"}"
+    origin="${origin%"${origin##*[![:space:]]}"}"
+    if [ -z "${origin}" ]; then
+      continue
+    fi
+    quoted_origin=$(printf '%s' "${origin}" | jq -R .)
+    json+="${separator}${quoted_origin}"
+    separator=","
+  done < <(printf '%s\n' "${input}" | tr ',' '\n')
+
+  printf '%s\n' "${json}]"
+}
 
 # Service list
 BACKEND_SERVICES=(
@@ -112,6 +135,8 @@ if [ "${SKIP_TERRAFORM}" = false ]; then
   # Pass the DB password via TF_VAR_ env, not -var on the command line, so it is
   # not visible in the process argument list (ps / /proc/*/cmdline). Consistent
   # with the Helm secret handling below.
+  TF_VAR_web_app_origins="$(origins_to_tf_json "${WEB_APP_ORIGINS}")"
+  export TF_VAR_web_app_origins
   TF_VAR_db_password="${DB_PASSWORD}" terraform apply -auto-approve -input=false
   cd "${REPO_ROOT}"
   log "Application infrastructure provisioned."

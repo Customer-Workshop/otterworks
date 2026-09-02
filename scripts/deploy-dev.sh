@@ -541,8 +541,10 @@ spec:
   selector: { app: redis }
   ports: [{ port: 6379, targetPort: 6379 }]
 YAML
-  kubectl rollout status -n "${NAMESPACE}" deployment/redis --timeout=120s || \
-    warn "Redis did not become ready in time; Redis-backed services may fail to start."
+  kubectl rollout status -n "${NAMESPACE}" deployment/redis --timeout=120s || {
+    err "Redis did not become ready in time; aborting service deployment."
+    return 1
+  }
   REDIS_HOST="redis"
 }
 

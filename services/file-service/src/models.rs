@@ -117,6 +117,11 @@ pub struct ListFilesQuery {
     pub include_trashed: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DownloadQuery {
+    pub disposition: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ListFilesResponse {
     pub files: Vec<FileMetadata>,

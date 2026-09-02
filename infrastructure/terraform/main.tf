@@ -87,9 +87,10 @@ provider "helm" {
 # --- Modules ---
 
 module "storage" {
-  source      = "./modules/storage"
-  environment = var.environment
-  project     = "otterworks"
+  source                       = "./modules/storage"
+  environment                  = var.environment
+  project                      = "otterworks"
+  preview_cors_allowed_origins = var.web_app_origins
 }
 
 module "database" {

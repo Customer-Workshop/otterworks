@@ -17,7 +17,7 @@ use crate::metadata::MetadataClient;
 use crate::middleware;
 use crate::models::{
     ActivityItem, ActivityQuery, ActivityResponse, CreateFolderRequest, DownloadResponse,
-    FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
+    DownloadQuery, FileDetailResponse, FileMetadata, FileShare, FileVersion, Folder, HealthResponse,
     ListFilesQuery, ListFilesResponse, ListFoldersQuery, ListFoldersResponse, ListVersionsResponse,
     MoveFileRequest, RenameFileRequest, ShareFileRequest, ShareFileResponse, UpdateFolderRequest,
     UploadResponse,
@@ -41,6 +41,12 @@ pub async fn metrics() -> HttpResponse {
 }
 
 // -- File Handlers --
+
+fn sanitize_download_filename(name: &str) -> String {
+    name.chars()
+        .filter(|character| !character.is_control() && *character != '"' && *character != '\\')
+        .collect()
+}
 
 pub async fn upload_file(
     req: HttpRequest,
@@ -356,6 +362,7 @@ pub async fn download_file(
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
+    query: web::Query<DownloadQuery>,
 ) -> Result<HttpResponse, ServiceError> {
     let file_id: Uuid = path
         .into_inner()
@@ -363,8 +370,20 @@ pub async fn download_file(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
     let file = meta.get_file(&file_id).await?;
+    let attachment = query.disposition.as_deref() == Some("attachment");
+    let disposition = attachment.then(|| {
+        format!(
+            "attachment; filename=\"{}\"",
+            sanitize_download_filename(&file.name)
+        )
+    });
     let url = s3
-        .presigned_download_url(&file.s3_key, 3600, Some(file.mime_type.as_str()))
+        .presigned_download_url(
+            &file.s3_key,
+            3600,
+            (!attachment).then_some(file.mime_type.as_str()),
+            disposition.as_deref(),
+        )
         .await?;
 
     Ok(HttpResponse::Ok().json(DownloadResponse {
@@ -712,6 +731,14 @@ pub async fn list_activity(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn attachment_filename_removes_control_and_quoting_characters() {
+        assert_eq!(
+            sanitize_download_filename("report\"\n2026\\final.pdf"),
+            "report2026final.pdf"
+        );
+    }
 
     #[actix_rt::test]
     async fn test_health_endpoint() {

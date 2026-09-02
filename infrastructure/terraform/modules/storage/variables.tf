@@ -17,3 +17,9 @@ variable "project" {
     error_message = "Project name must be lowercase alphanumeric with hyphens, 2-21 characters."
   }
 }
+
+variable "preview_cors_allowed_origins" {
+  description = "Web origins allowed to read inline file previews"
+  type        = list(string)
+  default     = []
+}

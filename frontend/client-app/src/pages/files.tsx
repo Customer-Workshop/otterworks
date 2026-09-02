@@ -239,7 +239,7 @@ function FileBrowserContent() {
   const handleDownload = useCallback(
     async (id: string, name: string) => {
       try {
-        const url = await filesApi.getDownloadUrl(id);
+        const url = await filesApi.getDownloadUrl(id, { attachment: true });
         const a = document.createElement("a");
         a.href = url;
         a.download = name;

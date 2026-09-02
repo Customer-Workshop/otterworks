@@ -461,7 +461,6 @@ export function DocxFilePreview({
       />
     );
   }
-  if (loading) return <PreviewSpinner />;
   if (!presignedUrl || error) {
     return (
       <GenericFilePreview
@@ -475,11 +474,15 @@ export function DocxFilePreview({
   }
 
   return (
-    <div
-      ref={containerRef}
-      data-docx-preview
-      className="w-full max-h-[600px] overflow-auto rounded-lg border border-gray-200 bg-white p-5"
-    />
+    <div className="w-full">
+      {loading && <PreviewSpinner />}
+      <div
+        ref={containerRef}
+        data-docx-preview
+        hidden={loading}
+        className="w-full max-h-[600px] overflow-auto rounded-lg border border-gray-200 bg-white p-5"
+      />
+    </div>
   );
 }
 

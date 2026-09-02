@@ -156,7 +156,7 @@ function FileDetailContent() {
             onClick={async () => {
               setIsDownloading(true);
               try {
-                const downloadUrl = await filesApi.getDownloadUrl(file.id);
+                const downloadUrl = await filesApi.getDownloadUrl(file.id, { attachment: true });
                 const a = document.createElement("a");
                 a.href = downloadUrl;
                 a.download = file.name;

@@ -19,7 +19,7 @@ make_bucket otterworks-audit-archive
 awslocal s3api put-bucket-cors \
   --bucket otterworks-files \
   --cors-configuration \
-  '{"CORSRules":[{"AllowedOrigins":["*"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["Content-Length","Content-Range","Content-Type"]}]}'
+  '{"CORSRules":[{"AllowedOrigins":["http://localhost:3000","http://localhost:4200","http://localhost:5173"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["Content-Length","Content-Range","Content-Type"]}]}'
 
 # SQS Queue (create-queue is idempotent for an existing queue with the same name)
 awslocal sqs create-queue --queue-name otterworks-notifications

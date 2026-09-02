@@ -131,7 +131,7 @@ function RecentContent() {
                         view="grid"
                         onDownload={async (id, name) => {
                           try {
-                            const downloadUrl = await filesApi.getDownloadUrl(id);
+                            const downloadUrl = await filesApi.getDownloadUrl(id, { attachment: true });
                             const a = document.createElement("a");
                             a.href = downloadUrl;
                             a.download = name;

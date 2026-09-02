@@ -15,6 +15,12 @@ variable "environment" {
   }
 }
 
+variable "web_app_origins" {
+  description = "Web origins that render inline file previews"
+  type        = list(string)
+  default     = []
+}
+
 variable "namespace" {
   description = "Kubernetes namespace for OtterWorks services"
   type        = string

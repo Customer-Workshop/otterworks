@@ -80,6 +80,7 @@ impl S3Client {
         key: &str,
         expires_in_secs: u64,
         response_content_type: Option<&str>,
+        response_content_disposition: Option<&str>,
     ) -> Result<String, ServiceError> {
         let presigning = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
             .map_err(|e| ServiceError::S3Error(format!("presign config error: {e}")))?;
@@ -87,6 +88,9 @@ impl S3Client {
         let mut request = self.client.get_object().bucket(&self.bucket).key(key);
         if let Some(content_type) = response_content_type {
             request = request.response_content_type(content_type);
+        }
+        if let Some(content_disposition) = response_content_disposition {
+            request = request.response_content_disposition(content_disposition);
         }
 
         let presigned = request
@@ -156,7 +160,7 @@ mod tests {
     #[tokio::test]
     async fn ac_03_presign_includes_response_content_type() {
         let url = test_client()
-            .presigned_download_url("files/test", 3600, Some("application/pdf"))
+            .presigned_download_url("files/test", 3600, Some("application/pdf"), None)
             .await
             .expect("presign should succeed");
         assert!(url.contains("response-content-type=application%2Fpdf"));
@@ -165,9 +169,25 @@ mod tests {
     #[tokio::test]
     async fn ac_20_presign_omits_response_content_type_when_not_provided() {
         let url = test_client()
-            .presigned_download_url("files/test", 3600, None)
+            .presigned_download_url("files/test", 3600, None, None)
             .await
             .expect("presign should succeed");
+        assert!(!url.contains("response-content-type"));
+    }
+
+    #[tokio::test]
+    async fn ac_20_attachment_presign_includes_disposition_without_content_type() {
+        let url = test_client()
+            .presigned_download_url(
+                "files/test",
+                3600,
+                None,
+                Some("attachment; filename=\"report.pdf\""),
+            )
+            .await
+            .expect("presign should succeed");
+        assert!(url.contains("response-content-disposition"));
+        assert!(url.contains("report.pdf"));
         assert!(!url.contains("response-content-type"));
     }
 }

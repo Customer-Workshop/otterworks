@@ -73,6 +73,8 @@ test.describe("File previews", () => {
         await expect(page.getByRole("heading", { name: file!.name })).toBeVisible();
       } else if (preview.surface === "img") {
         await expect(page.getByRole("img", { name: file!.name })).toBeVisible({ timeout: 20_000 });
+      } else if (preview.surface === "[data-docx-preview]") {
+        await expect(page.locator(preview.surface)).toContainText(/\S+/, { timeout: 20_000 });
       } else {
         await expect(page.locator(preview.surface)).toBeVisible({ timeout: 20_000 });
       }

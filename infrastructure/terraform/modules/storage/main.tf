@@ -20,6 +20,18 @@ resource "aws_s3_bucket" "files" {
   })
 }
 
+resource "aws_s3_bucket_cors_configuration" "files" {
+  count  = length(var.preview_cors_allowed_origins) > 0 ? 1 : 0
+  bucket = aws_s3_bucket.files.id
+
+  cors_rule {
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = var.preview_cors_allowed_origins
+    allowed_headers = ["*"]
+    expose_headers  = ["Content-Length", "Content-Range", "Content-Type"]
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "files" {
   bucket                  = aws_s3_bucket.files.id
   block_public_acls       = true

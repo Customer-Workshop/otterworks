@@ -1,3 +1,5 @@
+inherit_from: .rubocop_todo.yml
+
 require:
   - rubocop-rails
   - rubocop-rspec
@@ -25,11 +27,9 @@ Metrics/BlockLength:
 
 Metrics/MethodLength:
   Max: 25
-  Enabled: false
 
 Layout/LineLength:
   Max: 120
-  Enabled: false
 
 RSpec/ExampleLength:
   Max: 20
@@ -57,76 +57,3 @@ Metrics/ParameterLists:
 
 Metrics/AbcSize:
   Max: 35
-  Enabled: false
-
-Layout/EmptyLineAfterGuardClause:
-  Enabled: false
-
-Layout/ExtraSpacing:
-  Enabled: false
-
-Layout/HashAlignment:
-  Enabled: false
-
-Layout/SpaceBeforeFirstArg:
-  Enabled: false
-
-Lint/EmptyBlock:
-  Enabled: false
-
-Lint/UnusedMethodArgument:
-  Enabled: false
-
-Metrics/ClassLength:
-  Enabled: false
-
-Metrics/CyclomaticComplexity:
-  Enabled: false
-
-Metrics/PerceivedComplexity:
-  Enabled: false
-
-Naming/AccessorMethodName:
-  Enabled: false
-
-Naming/PredicatePrefix:
-  Enabled: false
-
-Rails/Blank:
-  Enabled: false
-
-Rails/FindEach:
-  Enabled: false
-
-Rails/HttpStatusNameConsistency:
-  Enabled: false
-
-Rails/Pluck:
-  Enabled: false
-
-Rails/ResponseParsedBody:
-  Enabled: false
-
-Rails/WhereRange:
-  Enabled: false
-
-Style/IfUnlessModifier:
-  Enabled: false
-
-Style/RedundantBegin:
-  Enabled: false
-
-Style/RedundantCondition:
-  Enabled: false
-
-Style/StringLiterals:
-  Enabled: false
-
-Style/TrailingCommaInArguments:
-  Enabled: false
-
-Style/TrailingCommaInHashLiteral:
-  Enabled: false
-
-Style/WordArray:
-  Enabled: false

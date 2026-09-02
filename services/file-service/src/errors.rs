@@ -102,3 +102,46 @@ impl fmt::Display for ErrorResponse {
         write!(f, "{}: {}", self.error, self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::body::to_bytes;
+
+    #[actix_rt::test]
+    async fn response_error_maps_status_and_error_body() {
+        let cases = [
+            (
+                ServiceError::FileTooLarge {
+                    max_bytes: 10,
+                    actual_bytes: 11,
+                },
+                actix_web::http::StatusCode::PAYLOAD_TOO_LARGE,
+                "file_too_large",
+            ),
+            (
+                ServiceError::BadRequest("bad".into()),
+                actix_web::http::StatusCode::BAD_REQUEST,
+                "bad_request",
+            ),
+            (
+                ServiceError::FileNotFound("missing".into()),
+                actix_web::http::StatusCode::NOT_FOUND,
+                "file_not_found",
+            ),
+            (
+                ServiceError::S3Error("unavailable".into()),
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "storage_error",
+            ),
+        ];
+
+        for (error, status, error_type) in cases {
+            let response = error.error_response();
+            assert_eq!(response.status(), status);
+            let body = to_bytes(response.into_body()).await.unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(body["error"], error_type);
+        }
+    }
+}

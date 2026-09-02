@@ -5,7 +5,7 @@ use chrono::Utc;
 use futures_util::StreamExt;
 use uuid::Uuid;
 
-async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> bool {
+pub async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> bool {
     let result: redis::RedisResult<i64> = redis::cmd("EXISTS").arg(flag).query_async(cm).await;
     result.unwrap_or(0) > 0
 }
@@ -23,6 +23,9 @@ use crate::models::{
     UploadResponse,
 };
 use crate::storage::S3Client;
+
+pub const CHAOS_UPLOAD_S3_ERROR_FLAG: &str = "chaos:file-service:upload_s3_error";
+pub const CHAOS_NONEXISTENT_BUCKET: &str = "otterworks-files-chaos-nonexistent";
 
 // -- Health & Metrics --
 
@@ -53,11 +56,7 @@ pub async fn upload_file(
 ) -> Result<HttpResponse, ServiceError> {
     // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
     // Fall back to the multipart field for direct/internal callers.
-    let header_owner_id = req
-        .headers()
-        .get("X-User-ID")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok());
+    let header_owner_id = header_owner_id(&req);
 
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
@@ -84,12 +83,7 @@ pub async fn upload_file(
                 while let Some(chunk) = field.next().await {
                     let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
                     file_bytes.extend_from_slice(&data);
-                    if file_bytes.len() as u64 > config.server.max_upload_bytes {
-                        return Err(ServiceError::FileTooLarge {
-                            max_bytes: config.server.max_upload_bytes,
-                            actual_bytes: file_bytes.len() as u64,
-                        });
-                    }
+                    check_upload_size(file_bytes.len() as u64, config.server.max_upload_bytes)?;
                 }
             }
             "owner_id" => {
@@ -123,13 +117,8 @@ pub async fn upload_file(
         }
     }
 
-    let owner = header_owner_id
-        .or(owner_id)
-        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
-
-    if file_bytes.is_empty() {
-        return Err(ServiceError::BadRequest("file field is required".into()));
-    }
+    let owner = resolve_upload_owner(header_owner_id, owner_id)?;
+    require_file_bytes(file_bytes.len())?;
 
     let file_id = Uuid::new_v4();
     let s3_key = format!("files/{}/{}", owner, file_id);
@@ -139,17 +128,12 @@ pub async fn upload_file(
     // CHAOS: when this flag is active the S3 client targets a nonexistent
     // bucket, simulating a misconfigured bucket name after a recent infra
     // change.  The AWS SDK returns NoSuchBucket which surfaces as a 500.
-    let effective_bucket = if chaos_active(
-        &mut redis_cm.get_ref().clone(),
-        "chaos:file-service:upload_s3_error",
-    )
-    .await
-    {
+    let chaos_active =
+        chaos_active(&mut redis_cm.get_ref().clone(), CHAOS_UPLOAD_S3_ERROR_FLAG).await;
+    let effective_bucket = effective_upload_bucket(chaos_active, &s3.bucket);
+    if chaos_active {
         tracing::warn!("Chaos flag active: redirecting upload to nonexistent bucket");
-        "otterworks-files-chaos-nonexistent".to_string()
-    } else {
-        s3.bucket.clone()
-    };
+    }
     let chaos_s3 = crate::storage::S3Client {
         client: s3.client.clone(),
         bucket: effective_bucket,
@@ -222,14 +206,82 @@ pub async fn get_file_metadata(
 /// authenticated JWT. This prevents a caller from spoofing another user's
 /// `owner_id` via the query string. Fall back to `query.owner_id` only when
 /// no header is present (direct/internal callers).
-fn resolve_owner_id(req: &HttpRequest, query_owner_id: Option<Uuid>) -> Option<Uuid> {
-    let header_owner_id = req
-        .headers()
+pub fn header_owner_id(req: &HttpRequest) -> Option<Uuid> {
+    req.headers()
         .get("X-User-ID")
         .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok());
+        .and_then(|s| s.trim().parse::<Uuid>().ok())
+}
 
-    header_owner_id.or(query_owner_id)
+pub fn resolve_owner_id(req: &HttpRequest, query_owner_id: Option<Uuid>) -> Option<Uuid> {
+    header_owner_id(req).or(query_owner_id)
+}
+
+pub fn resolve_upload_owner(
+    header_owner: Option<Uuid>,
+    field_owner: Option<Uuid>,
+) -> Result<Uuid, ServiceError> {
+    header_owner
+        .or(field_owner)
+        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))
+}
+
+pub fn check_upload_size(actual_bytes: u64, max_bytes: u64) -> Result<(), ServiceError> {
+    if actual_bytes > max_bytes {
+        return Err(ServiceError::FileTooLarge {
+            max_bytes,
+            actual_bytes,
+        });
+    }
+    Ok(())
+}
+
+pub fn require_file_bytes(len: usize) -> Result<(), ServiceError> {
+    if len == 0 {
+        return Err(ServiceError::BadRequest("file field is required".into()));
+    }
+    Ok(())
+}
+
+pub fn effective_upload_bucket(chaos_active: bool, default_bucket: &str) -> String {
+    if chaos_active {
+        CHAOS_NONEXISTENT_BUCKET.to_string()
+    } else {
+        default_bucket.to_string()
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct PageParams {
+    pub page: u32,
+    pub page_size: u32,
+    pub start: usize,
+}
+
+pub fn page_params(page: Option<u32>, page_size: Option<u32>) -> PageParams {
+    let page = page.unwrap_or(1).max(1);
+    let page_size = page_size.unwrap_or(50).min(100);
+    let start = (page - 1).saturating_mul(page_size) as usize;
+    PageParams {
+        page,
+        page_size,
+        start,
+    }
+}
+
+pub fn paginate<T>(
+    items: Vec<T>,
+    page: Option<u32>,
+    page_size: Option<u32>,
+) -> (Vec<T>, usize, PageParams) {
+    let params = page_params(page, page_size);
+    let total = items.len();
+    let paged = items
+        .into_iter()
+        .skip(params.start)
+        .take(params.page_size as usize)
+        .collect();
+    (paged, total, params)
 }
 
 pub async fn list_files(
@@ -243,21 +295,13 @@ pub async fn list_files(
         .list_files(query.folder_id, owner_id, include_trashed)
         .await?;
 
-    let page = query.page.unwrap_or(1).max(1);
-    let page_size = query.page_size.unwrap_or(50).min(100);
-    let total = files.len();
-    let start = (page - 1).saturating_mul(page_size) as usize;
-    let paged: Vec<FileMetadata> = files
-        .into_iter()
-        .skip(start)
-        .take(page_size as usize)
-        .collect();
+    let (paged, total, params) = paginate(files, query.page, query.page_size);
 
     Ok(HttpResponse::Ok().json(ListFilesResponse {
         files: paged,
         total,
-        page,
-        page_size,
+        page: params.page,
+        page_size: params.page_size,
     }))
 }
 
@@ -266,11 +310,7 @@ pub async fn list_shared_files(
     req: HttpRequest,
     query: web::Query<ListFilesQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let user_id: Uuid = req
-        .headers()
-        .get("X-User-ID")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.parse().ok())
+    let user_id = header_owner_id(&req)
         .ok_or_else(|| ServiceError::BadRequest("missing X-User-ID header".into()))?;
 
     let shares = meta.list_shares_for_user(&user_id).await?;
@@ -288,21 +328,13 @@ pub async fn list_shared_files(
         }
     }
 
-    let page = query.page.unwrap_or(1).max(1);
-    let page_size = query.page_size.unwrap_or(50).min(100);
-    let total = files.len();
-    let start = (page - 1).saturating_mul(page_size) as usize;
-    let paged: Vec<FileMetadata> = files
-        .into_iter()
-        .skip(start)
-        .take(page_size as usize)
-        .collect();
+    let (paged, total, params) = paginate(files, query.page, query.page_size);
 
     Ok(HttpResponse::Ok().json(ListFilesResponse {
         files: paged,
         total,
-        page,
-        page_size,
+        page: params.page,
+        page_size: params.page_size,
     }))
 }
 
@@ -314,21 +346,13 @@ pub async fn list_trashed(
     let owner_id = resolve_owner_id(&req, query.owner_id);
     let files = meta.list_trashed(owner_id).await?;
 
-    let page = query.page.unwrap_or(1).max(1);
-    let page_size = query.page_size.unwrap_or(50).min(100);
-    let total = files.len();
-    let start = (page - 1).saturating_mul(page_size) as usize;
-    let paged: Vec<FileMetadata> = files
-        .into_iter()
-        .skip(start)
-        .take(page_size as usize)
-        .collect();
+    let (paged, total, params) = paginate(files, query.page, query.page_size);
 
     Ok(HttpResponse::Ok().json(ListFilesResponse {
         files: paged,
         total,
-        page,
-        page_size,
+        page: params.page,
+        page_size: params.page_size,
     }))
 }
 pub async fn delete_file(
@@ -647,11 +671,7 @@ pub async fn list_activity(
     meta: web::Data<MetadataClient>,
     query: web::Query<ActivityQuery>,
 ) -> Result<HttpResponse, ServiceError> {
-    let owner_id = req
-        .headers()
-        .get("X-User-ID")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok())
+    let owner_id = header_owner_id(&req)
         .ok_or_else(|| ServiceError::BadRequest("missing owner context".into()))?;
 
     let limit = query.limit.unwrap_or(20).min(50) as usize;
@@ -710,6 +730,7 @@ pub async fn list_activity(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actix_web::test::TestRequest;
 
     #[actix_rt::test]
     async fn test_health_endpoint() {
@@ -721,5 +742,140 @@ mod tests {
     async fn test_metrics_endpoint() {
         let resp = metrics().await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[test]
+    fn header_owner_id_parses_valid_and_invalid_headers() {
+        let owner = Uuid::new_v4();
+        let request = TestRequest::default()
+            .insert_header(("X-User-ID", owner.to_string()))
+            .to_http_request();
+        assert_eq!(header_owner_id(&request), Some(owner));
+
+        let request = TestRequest::default()
+            .insert_header(("X-User-ID", format!("  {owner}  ")))
+            .to_http_request();
+        assert_eq!(header_owner_id(&request), Some(owner));
+
+        let request = TestRequest::default()
+            .insert_header(("X-User-ID", "not-a-uuid"))
+            .to_http_request();
+        assert_eq!(header_owner_id(&request), None);
+        assert_eq!(
+            header_owner_id(&TestRequest::default().to_http_request()),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_owner_id_prefers_header_and_falls_back_to_query() {
+        let header_owner = Uuid::new_v4();
+        let query_owner = Uuid::new_v4();
+        let request = TestRequest::default()
+            .insert_header(("X-User-ID", header_owner.to_string()))
+            .to_http_request();
+        assert_eq!(
+            resolve_owner_id(&request, Some(query_owner)),
+            Some(header_owner)
+        );
+        assert_eq!(
+            resolve_owner_id(&TestRequest::default().to_http_request(), Some(query_owner)),
+            Some(query_owner)
+        );
+        assert_eq!(
+            resolve_owner_id(&TestRequest::default().to_http_request(), None),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_upload_owner_prefers_header_and_requires_an_owner() {
+        let header_owner = Uuid::new_v4();
+        let field_owner = Uuid::new_v4();
+        assert!(matches!(
+            resolve_upload_owner(Some(header_owner), Some(field_owner)),
+            Ok(id) if id == header_owner
+        ));
+        assert!(matches!(
+            resolve_upload_owner(None, Some(field_owner)),
+            Ok(id) if id == field_owner
+        ));
+        assert!(matches!(
+            resolve_upload_owner(None, None),
+            Err(ServiceError::BadRequest(message)) if message == "owner_id is required"
+        ));
+    }
+
+    #[test]
+    fn check_upload_size_rejects_only_bytes_over_the_limit() {
+        assert!(check_upload_size(100, 100).is_ok());
+        assert!(matches!(
+            check_upload_size(101, 100),
+            Err(ServiceError::FileTooLarge {
+                max_bytes: 100,
+                actual_bytes: 101
+            })
+        ));
+        assert!(check_upload_size(0, 100).is_ok());
+    }
+
+    #[test]
+    fn require_file_bytes_rejects_empty_files() {
+        assert!(matches!(
+            require_file_bytes(0),
+            Err(ServiceError::BadRequest(message)) if message == "file field is required"
+        ));
+        assert!(require_file_bytes(1).is_ok());
+    }
+
+    #[test]
+    fn effective_upload_bucket_respects_chaos_mode() {
+        assert_eq!(
+            effective_upload_bucket(true, "default"),
+            CHAOS_NONEXISTENT_BUCKET
+        );
+        assert_eq!(effective_upload_bucket(false, "default"), "default");
+    }
+
+    #[test]
+    fn page_params_and_paginate_handle_defaults_clamps_and_overflow() {
+        let defaults = page_params(None, None);
+        assert_eq!(
+            defaults,
+            PageParams {
+                page: 1,
+                page_size: 50,
+                start: 0
+            }
+        );
+        assert_eq!(
+            page_params(Some(0), Some(500)),
+            PageParams {
+                page: 1,
+                page_size: 100,
+                start: 0
+            }
+        );
+
+        let (page, total, params) = paginate((0..7).collect::<Vec<_>>(), Some(2), Some(3));
+        assert_eq!(page, vec![3, 4, 5]);
+        assert_eq!(total, 7);
+        assert_eq!(
+            params,
+            PageParams {
+                page: 2,
+                page_size: 3,
+                start: 3
+            }
+        );
+
+        let (page, total, _) = paginate((0..7).collect::<Vec<_>>(), Some(4), Some(3));
+        assert!(page.is_empty());
+        assert_eq!(total, 7);
+
+        let params = page_params(Some(u32::MAX), Some(100));
+        assert_eq!(params.page, u32::MAX);
+        assert_eq!(params.page_size, 100);
+        assert_eq!(params.start, u32::MAX as usize);
     }
 }

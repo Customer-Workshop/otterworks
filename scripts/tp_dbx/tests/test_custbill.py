@@ -159,3 +159,42 @@ def test_idempotency_run_ending_after_snapshot_is_pass() -> None:
     assert idempotency_result(True, True, None, current, 200) == (
         "pass", "newer successful ow_tp_custbill run confirmed"
     )
+
+
+def test_legacy_dat_files_history_reads_year_dirs(tmp_path: Path) -> None:
+    hist = tmp_path / "sftp-drop" / "history" / "2023"
+    hist.mkdir(parents=True)
+    (hist / "CUSTBILL_X_202301.dat").write_bytes(b"HDR\nTRL\n")
+    (tmp_path / "incoming").mkdir()
+    (tmp_path / "incoming" / "CUSTBILL_X_001.dat").write_bytes(b"HDR\nTRL\n")
+    assert [name for name, _ in legacy_dat_files(tmp_path)] == ["CUSTBILL_X_001.dat"]
+    assert [name for name, _ in legacy_dat_files(tmp_path, history=True)] == ["CUSTBILL_X_202301.dat"]
+
+
+def test_delete_tree_drains_paged_listings() -> None:
+    from custbill import _delete_tree
+
+    class FakeDbx:
+        def __init__(self) -> None:
+            self.files = {f"/v/a/f{i}": None for i in range(5)} | {"/v/a/sub/g": None}
+            self.deleted_dirs: list[str] = []
+
+        def list_dir(self, path: str) -> list[dict]:
+            prefix = path.rstrip("/") + "/"
+            names = sorted({p[len(prefix):].split("/")[0] for p in self.files if p.startswith(prefix)})
+            page = [{"path": prefix + n, "name": n, "is_directory": (prefix + n + "/") in {p[:len(prefix + n) + 1] for p in self.files}}
+                    for n in names[:2]]
+            return page
+
+        def delete_file(self, path: str) -> int:
+            del self.files[path]
+            return 204
+
+        def delete_dir(self, path: str) -> int:
+            self.deleted_dirs.append(path)
+            return 204
+
+    dbx = FakeDbx()
+    _delete_tree(dbx, "/v/a")
+    assert dbx.files == {}
+    assert dbx.deleted_dirs[-1] == "/v/a" and "/v/a/sub" in dbx.deleted_dirs

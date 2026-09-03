@@ -56,8 +56,7 @@ def require_auth(app):
     * Requests to health/metrics paths are always allowed.
     * When enabled, all other requests must present either a valid service
       token in the ``Authorization`` header or an ``X-User-ID`` header set by
-      the API gateway after JWT validation. A presented bearer token is never
-      replaced by the gateway identity fallback.
+      the API gateway after JWT validation.
     """
     auth_config = app.config["APP_CONFIG"].auth
 
@@ -70,15 +69,11 @@ def require_auth(app):
         if any(path.startswith(p) for p in PUBLIC_PREFIXES):
             return None
 
-        # A bearer token takes precedence over the gateway identity.
-        auth_header = request.headers.get("Authorization", "")
-        if auth_config.service_token and auth_header.lower().startswith("bearer "):
-            if _service_token_valid(auth_config):
-                return None
-            logger.warning("auth_rejected", endpoint=request.endpoint or "", path=path)
-            return jsonify({"error": "unauthorized"}), 401
+        # Accept a valid service token if one is configured.
+        if auth_config.service_token and _service_token_valid(auth_config):
+            return None
 
-        # Only requests without a bearer token may use gateway identity.
+        # Otherwise require gateway-injected user identity.
         user_id = request.headers.get("X-User-ID", "").strip()
         if user_id:
             return None

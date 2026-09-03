@@ -182,12 +182,24 @@ class TestAnalyticsEndpoint:
 class TestGlobalAuthWithServiceToken:
     """Tests for bearer-token precedence in the global auth hook."""
 
-    def test_invalid_bearer_does_not_fallback_to_user_id(self, authenticated_app):
-        """An invalid bearer token is rejected despite a gateway identity."""
+    def test_forwarded_user_jwt_falls_back_to_user_id(self, authenticated_app):
+        """A gateway-forwarded user JWT uses the injected identity."""
         response = authenticated_app.test_client().get(
             "/api/v1/search/?q=x",
             headers={
-                "Authorization": "Bearer wrong",
+                "Authorization": "Bearer some-user-jwt-string",
+                "X-User-ID": "u1",
+            },
+        )
+        assert response.status_code == 200
+
+    def test_forwarded_user_jwt_does_not_authenticate_index_endpoint(self, authenticated_app):
+        """A gateway-forwarded user JWT cannot access index endpoints."""
+        response = authenticated_app.test_client().post(
+            "/api/v1/search/index/document",
+            json={"id": "doc-123", "title": "Document"},
+            headers={
+                "Authorization": "Bearer some-user-jwt-string",
                 "X-User-ID": "u1",
             },
         )

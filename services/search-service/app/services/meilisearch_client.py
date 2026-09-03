@@ -253,8 +253,7 @@ class MeiliSearchService:
         Hits from both indexes are merged and ordered by ``_rankingScore``
         (highest first). Hits lacking a score sort last.
         """
-        scored: list[tuple[float, str]] = []
-        seen: set[str] = set()
+        best_score: dict[str, float] = {}
 
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
@@ -265,13 +264,15 @@ class MeiliSearchService:
             })
             for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
-                if text and text not in seen:
-                    score = hit.get("_rankingScore")
-                    scored.append((float(score) if score is not None else 0.0, text))
-                    seen.add(text)
+                if not text:
+                    continue
+                raw_score = hit.get("_rankingScore")
+                score = float(raw_score) if raw_score is not None else 0.0
+                if score > best_score.get(text, -1.0):
+                    best_score[text] = score
 
-        scored.sort(key=lambda item: item[0], reverse=True)
-        return [text for _, text in scored[:size]]
+        ranked = sorted(best_score.items(), key=lambda item: item[1], reverse=True)
+        return [text for text, _ in ranked[:size]]
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
         """Wait for a MeiliSearch task and raise on failure."""

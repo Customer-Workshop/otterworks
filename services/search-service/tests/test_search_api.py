@@ -121,6 +121,18 @@ class TestSuggestEndpoint:
         assert response.get_json()["suggestions"][:2] == ["High", "Low"]
         assert mock_index.search.call_args[0][1]["showRankingScore"] is True
 
+    def test_suggest_duplicate_keeps_highest_score(self, client, mock_meilisearch_client):
+        """Same text across indexes ranks by its best score, not the first seen."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {"hits": [{"title": "Shared", "_rankingScore": 0.1}, {"title": "Docs Only", "_rankingScore": 0.5}]},
+            {"hits": [{"name": "Shared", "_rankingScore": 0.9}]},
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=sh")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Shared", "Docs Only"]
+
     def test_suggest_missing_ranking_score_does_not_500(self, client, mock_meilisearch_client):
         """Hits without _rankingScore must not crash the handler."""
         mock_index = mock_meilisearch_client.index.return_value

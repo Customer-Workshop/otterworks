@@ -369,7 +369,8 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
       EXTRA_ARGS+=(--set-string "config.RAILS_ENV=production" --set-string "config.RAILS_LOG_TO_STDOUT=true")
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
-      add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}" ;;
+      add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}"
+      add_secret ALERT_WEBHOOK_SECRET "${ALERT_WEBHOOK_SECRET:-$(openssl rand -hex 32)}" ;;
     audit-service)
       EXTRA_ARGS+=(--set-string "config.Aws__Region=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.Aws__DynamoDbTable=${DDB_AUDIT}")

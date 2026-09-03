@@ -27,11 +27,19 @@ module Api
           'info'     => 'low',
         }.freeze
 
+        MAX_ALERTS_PER_REQUEST = 50
+        MAX_TITLE_LENGTH       = 255
+        MAX_TEXT_LENGTH        = 2_000
+        MAX_LABEL_LENGTH       = 100
+
         # POST /api/v1/admin/alerts/ingest
         def ingest
           alerts = params[:alerts]
           unless alerts.is_a?(Array)
             return render json: { error: 'Missing alerts array' }, status: :bad_request
+          end
+          if alerts.size > MAX_ALERTS_PER_REQUEST
+            return render json: { error: "Too many alerts (max #{MAX_ALERTS_PER_REQUEST})" }, status: :unprocessable_entity
           end
 
           processed = alerts.map { |alert| process_alert(alert) }.compact
@@ -42,14 +50,17 @@ module Api
         private
 
         def process_alert(alert)
+          return nil unless alert.respond_to?(:[])
+
           status           = alert[:status].to_s
-          labels           = alert[:labels] || {}
-          annotations      = alert[:annotations] || {}
-          alert_name       = labels[:alertname].to_s
-          affected_service = labels[:affected_service].to_s.presence || labels[:service].to_s.presence
+          labels           = alert[:labels].respond_to?(:[]) ? alert[:labels] : {}
+          annotations      = alert[:annotations].respond_to?(:[]) ? alert[:annotations] : {}
+          alert_name       = sanitize_text(labels[:alertname], MAX_LABEL_LENGTH)
+          affected_service = sanitize_text(labels[:affected_service], MAX_LABEL_LENGTH).presence ||
+                             sanitize_text(labels[:service], MAX_LABEL_LENGTH).presence
           severity         = SEVERITY_MAP.fetch(labels[:severity].to_s, 'medium')
-          summary          = annotations[:summary].to_s
-          description      = annotations[:description].to_s.presence || summary
+          summary          = sanitize_text(annotations[:summary], MAX_TITLE_LENGTH)
+          description      = sanitize_text(annotations[:description], MAX_TEXT_LENGTH).presence || summary
 
           if status == 'resolved'
             resolve_incident(affected_service, alert_name)
@@ -119,22 +130,31 @@ module Api
         def build_description(alert_name, base_description, labels, annotations)
           parts = [base_description]
           parts << "**Alert**: #{alert_name}" if alert_name.present?
-          if (runbook = annotations[:runbook_url].to_s).present?
-            parts << "**Runbook**: #{runbook}"
-          end
+          runbook = sanitize_text(annotations[:runbook_url], MAX_TEXT_LENGTH)
+          parts << "**Runbook**: #{runbook}" if runbook.present?
           parts << "**Source**: Grafana Unified Alerting (auto-generated incident)"
           parts.join("\n\n")
         end
 
+        # Collapses control characters/newlines to single spaces and bounds
+        # length so alert text can't inject structure into incident records
+        # or the Devin session prompt built from them.
+        def sanitize_text(value, max_length)
+          value.to_s.gsub(/[[:cntrl:]]+/, ' ').squish.truncate(max_length, omission: '')
+        end
+
         def verify_alert_secret
-          expected = ENV.fetch('ALERT_WEBHOOK_SECRET', nil)
-          return if expected.nil? # not configured → allow (dev/test)
+          expected = ENV.fetch('ALERT_WEBHOOK_SECRET', nil).to_s
+          if expected.empty?
+            Rails.logger.error('ALERT_WEBHOOK_SECRET is not configured — rejecting alert webhook')
+            return render json: { error: 'Alert webhook not configured' }, status: :service_unavailable
+          end
 
           # Accept either X-Alert-Secret header or Authorization: Bearer <secret>
           # (Grafana webhook contact points send the token as a Bearer header)
           provided = request.headers['X-Alert-Secret'].presence ||
                      request.headers['Authorization'].to_s.delete_prefix('Bearer ').presence
-          return if provided == expected
+          return if ActiveSupport::SecurityUtils.secure_compare(provided.to_s, expected)
 
           render json: { error: 'Unauthorized' }, status: :unauthorized
         end

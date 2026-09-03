@@ -31,6 +31,10 @@ GOLDEN_HOST_SUFFIX="${GOLDEN_HOST_SUFFIX:-otterworks.app}"
 JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 # Rails (admin-service) session key. Stable value recommended across redeploys.
 SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
+# Bearer secret Grafana must present to admin-service's alert webhook
+# (POST /api/v1/admin/alerts/ingest). admin-service rejects every alert when
+# this is unset, so pass the same value to the Grafana contact point.
+ALERT_WEBHOOK_SECRET="${ALERT_WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -396,7 +400,8 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.DATABASE_USER=${DB_USER}")
       EXTRA_ARGS+=(--set-string "config.RAILS_ENV=production" --set-string "config.RAILS_LOG_TO_STDOUT=true")
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
-      add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}" ;;
+      add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}"
+      add_secret ALERT_WEBHOOK_SECRET "${ALERT_WEBHOOK_SECRET}" ;;
     audit-service)
       EXTRA_ARGS+=(--set-string "config.Aws__Region=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.Aws__DynamoDbTable=${DDB_AUDIT}")

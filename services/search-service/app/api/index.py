@@ -6,6 +6,7 @@ import structlog
 from flask import Blueprint, jsonify, request
 
 from app.api.health import INDEX_COUNT
+from app.middleware.auth import require_service_token
 from app.services.indexer import Indexer
 from app.services.meilisearch_client import MeiliSearchService
 
@@ -23,8 +24,9 @@ def _get_indexer() -> Indexer:
 
 
 @index_bp.route("/index/document", methods=["POST"])
+@require_service_token
 def index_document() -> tuple:
-    """Index a document (called by document-service or SQS)."""
+    """Index a document (called by document-service or SQS). Requires the service token."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body is required"}), 400
@@ -43,8 +45,9 @@ def index_document() -> tuple:
 
 
 @index_bp.route("/index/file", methods=["POST"])
+@require_service_token
 def index_file() -> tuple:
-    """Index a file (called by file-service or SQS)."""
+    """Index a file (called by file-service or SQS). Requires the service token."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body is required"}), 400
@@ -63,8 +66,9 @@ def index_file() -> tuple:
 
 
 @index_bp.route("/index/<doc_type>/<doc_id>", methods=["DELETE"])
+@require_service_token
 def remove_from_index(doc_type: str, doc_id: str) -> tuple:
-    """Remove a document or file from the search index."""
+    """Remove a document or file from the search index. Requires the service token."""
     try:
         indexer = _get_indexer()
         result = indexer.remove(doc_type, doc_id)
@@ -81,8 +85,9 @@ def remove_from_index(doc_type: str, doc_id: str) -> tuple:
 
 
 @index_bp.route("/reindex", methods=["POST"])
+@require_service_token
 def reindex() -> tuple:
-    """Reindex all data (admin operation)."""
+    """Reindex all data (admin operation). Requires the service token."""
     try:
         indexer = _get_indexer()
         result = indexer.reindex()

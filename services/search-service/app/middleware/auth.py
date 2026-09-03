@@ -1,38 +1,63 @@
 """Authentication middleware for the search service.
 
-Public endpoints (health, metrics) are exempt. All other endpoints accept
-either of two authentication modes:
-
-* A valid service-to-service token via ``Authorization: Bearer <token>``
-  (used by trusted internal callers such as the SQS indexer or admin
-  reindex jobs).
-* The ``X-User-ID`` header injected by the API gateway after it has
-  validated the caller's JWT (used by user-facing requests proxied
-  through the gateway).
-
-If a service token is configured the middleware will accept it on any
-endpoint; if it is not configured (e.g. local dev), only the gateway
-identity path is available and internal endpoints become reachable only
-via the gateway.
+Public endpoints (health, metrics) are exempt. User-facing endpoints accept
+the gateway-injected ``X-User-ID`` or a valid service token, while service-only
+index endpoints always require the configured service token.
 """
 
 from __future__ import annotations
 
+import hmac
+from functools import wraps
+
 import structlog
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 
 logger = structlog.get_logger()
 
 PUBLIC_PREFIXES = ("/health", "/metrics")
 
 
+def _service_token_valid(auth_config) -> bool:
+    token = _extract_bearer_token()
+    return bool(
+        auth_config.service_token
+        and token
+        and hmac.compare_digest(token, auth_config.service_token)
+    )
+
+
+def require_service_token(view):
+    """Require the configured service token for a service-only endpoint."""
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        auth_config = current_app.config["APP_CONFIG"].auth
+        if not auth_config.service_token:
+            logger.warning("service_token_not_configured")
+            return jsonify({"error": "forbidden"}), 403
+
+        if not _service_token_valid(auth_config):
+            logger.warning(
+                "service_auth_rejected",
+                endpoint=request.endpoint or "",
+                path=request.path,
+            )
+            return jsonify({"error": "unauthorized"}), 401
+
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
 def require_auth(app):
     """Register a ``before_request`` hook that enforces authentication.
 
     * Requests to health/metrics paths are always allowed.
-    * All other requests must present either a valid service token in
-      the ``Authorization`` header or an ``X-User-ID`` header set by
-      the API gateway after JWT validation.
+    * When enabled, all other requests must present either a valid service
+      token in the ``Authorization`` header or an ``X-User-ID`` header set by
+      the API gateway after JWT validation. A presented bearer token is never
+      replaced by the gateway identity fallback.
     """
     auth_config = app.config["APP_CONFIG"].auth
 
@@ -45,19 +70,20 @@ def require_auth(app):
         if any(path.startswith(p) for p in PUBLIC_PREFIXES):
             return None
 
-        # Accept a valid service token if one is configured.
-        if auth_config.service_token:
-            token = _extract_bearer_token()
-            if token and token == auth_config.service_token:
+        # A bearer token takes precedence over the gateway identity.
+        auth_header = request.headers.get("Authorization", "")
+        if auth_config.service_token and auth_header.lower().startswith("bearer "):
+            if _service_token_valid(auth_config):
                 return None
+            logger.warning("auth_rejected", endpoint=request.endpoint or "", path=path)
+            return jsonify({"error": "unauthorized"}), 401
 
-        # Otherwise require gateway-injected user identity.
+        # Only requests without a bearer token may use gateway identity.
         user_id = request.headers.get("X-User-ID", "").strip()
         if user_id:
             return None
 
-        endpoint = request.endpoint or ""
-        logger.warning("auth_rejected", endpoint=endpoint, path=path)
+        logger.warning("auth_rejected", endpoint=request.endpoint or "", path=path)
         return jsonify({"error": "unauthorized"}), 401
 
 

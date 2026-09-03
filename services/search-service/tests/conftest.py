@@ -26,7 +26,7 @@ def app_config() -> AppConfig:
             files_index="test-otterworks-files",
         ),
         sqs=SQSConfig(enabled=False),
-        auth=AuthConfig(service_token="", require_auth=False),
+        auth=AuthConfig(service_token="test-service-token", require_auth=False),
     )
 
 
@@ -71,6 +71,12 @@ def app(app_config: AppConfig, mock_meilisearch_client: MagicMock):
 def client(app):
     """Create a Flask test client."""
     return app.test_client()
+
+
+@pytest.fixture()
+def service_headers():
+    """Headers for service-to-service requests."""
+    return {"Authorization": "Bearer test-service-token"}
 
 
 @pytest.fixture()

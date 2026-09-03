@@ -2,6 +2,24 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from unittest.mock import patch
+
+import pytest
+
+from app.main import create_app
+
+
+@pytest.fixture()
+def authenticated_app(app_config, mock_meilisearch_client):
+    """Create an app with global authentication enabled."""
+    config = replace(app_config, auth=replace(app_config.auth, require_auth=True))
+    with patch("app.services.meilisearch_client.meilisearch.Client") as mock_cls:
+        mock_cls.return_value = mock_meilisearch_client
+        flask_app = create_app(config)
+        flask_app.config["TESTING"] = True
+        yield flask_app
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -159,3 +177,43 @@ class TestAnalyticsEndpoint:
         assert "zero_result_queries" in data
         assert "total_searches" in data
         assert "avg_results_per_query" in data
+
+
+class TestGlobalAuthWithServiceToken:
+    """Tests for bearer-token precedence in the global auth hook."""
+
+    def test_invalid_bearer_does_not_fallback_to_user_id(self, authenticated_app):
+        """An invalid bearer token is rejected despite a gateway identity."""
+        response = authenticated_app.test_client().get(
+            "/api/v1/search/?q=x",
+            headers={
+                "Authorization": "Bearer wrong",
+                "X-User-ID": "u1",
+            },
+        )
+        assert response.status_code == 401
+
+    def test_user_id_authentication_still_works_without_bearer(self, authenticated_app):
+        """Gateway identity remains valid when no bearer token is present."""
+        response = authenticated_app.test_client().get(
+            "/api/v1/search/?q=x",
+            headers={"X-User-ID": "u1"},
+        )
+        assert response.status_code == 200
+
+    def test_valid_bearer_authentication_works(self, authenticated_app):
+        """A valid service token authenticates user-facing endpoints."""
+        response = authenticated_app.test_client().get(
+            "/api/v1/search/?q=x",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert response.status_code == 200
+
+    def test_valid_bearer_authenticates_index_endpoint(self, authenticated_app):
+        """A valid service token authenticates index endpoints."""
+        response = authenticated_app.test_client().post(
+            "/api/v1/search/index/document",
+            json={"id": "doc-123", "title": "Document"},
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert response.status_code == 201

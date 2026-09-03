@@ -50,11 +50,11 @@ module Api
         private
 
         def process_alert(alert)
-          return nil unless alert.respond_to?(:[])
+          return nil unless hash_like?(alert)
 
           status           = alert[:status].to_s
-          labels           = alert[:labels].respond_to?(:[]) ? alert[:labels] : {}
-          annotations      = alert[:annotations].respond_to?(:[]) ? alert[:annotations] : {}
+          labels           = hash_like?(alert[:labels]) ? alert[:labels] : {}
+          annotations      = hash_like?(alert[:annotations]) ? alert[:annotations] : {}
           alert_name       = sanitize_text(labels[:alertname], MAX_LABEL_LENGTH)
           affected_service = sanitize_text(labels[:affected_service], MAX_LABEL_LENGTH).presence ||
                              sanitize_text(labels[:service], MAX_LABEL_LENGTH).presence
@@ -134,6 +134,10 @@ module Api
           parts << "**Runbook**: #{runbook}" if runbook.present?
           parts << "**Source**: Grafana Unified Alerting (auto-generated incident)"
           parts.join("\n\n")
+        end
+
+        def hash_like?(value)
+          value.is_a?(Hash) || value.is_a?(ActionController::Parameters)
         end
 
         # Collapses control characters/newlines to single spaces and bounds

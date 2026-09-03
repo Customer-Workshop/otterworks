@@ -254,6 +254,22 @@ YAML
 # locked-down temp values file passed to helm via -f, so secret values never
 # appear in the process argument list (ps / /proc/*/cmdline). Mirrors deploy-dev.sh.
 add_secret() { SECRET_KV+=("$1" "$2"); }
+
+# Resolve the Grafana -> admin-service alert webhook secret for tenant namespace
+# $1: explicit env > value already in the release's Secret > freshly generated
+# (warned so the operator can give Grafana the same value).
+alert_webhook_secret() {
+  local ns="$1" value="${ALERT_WEBHOOK_SECRET:-}"
+  if [ -z "$value" ]; then
+    value="$(kubectl get secret admin-service-secrets -n "$ns" \
+      -o jsonpath='{.data.ALERT_WEBHOOK_SECRET}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+  fi
+  if [ -z "$value" ]; then
+    value="$(openssl rand -hex 32)"
+    warn "Generated a new ALERT_WEBHOOK_SECRET for ${ns}; Grafana's webhook contact point must use the same value or alerts get 401." >&2
+  fi
+  printf '%s' "$value"
+}
 urlencode()  { jq -rn --arg s "$1" '$s|@uri'; }
 
 # Build per-service Helm --set flags (EXTRA_ARGS) + secret pairs (SECRET_KV) for
@@ -370,7 +386,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.RAILS_ENV=production" --set-string "config.RAILS_LOG_TO_STDOUT=true")
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
       add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}"
-      add_secret ALERT_WEBHOOK_SECRET "${ALERT_WEBHOOK_SECRET:-$(openssl rand -hex 32)}" ;;
+      add_secret ALERT_WEBHOOK_SECRET "$(alert_webhook_secret "${NS}")" ;;
     audit-service)
       EXTRA_ARGS+=(--set-string "config.Aws__Region=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.Aws__DynamoDbTable=${DDB_AUDIT}")

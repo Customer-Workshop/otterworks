@@ -68,8 +68,8 @@ class DevinSessionService
 
         <incident>
         Title: #{prompt_field(incident.title)}
-        Severity: #{incident.severity}
-        Affected Service: #{incident.affected_service.presence || 'Unknown'}
+        Severity: #{prompt_field(incident.severity)}
+        Affected Service: #{prompt_field(incident.affected_service).presence || 'Unknown'}
         Description: #{prompt_field(incident.description)}
         </incident>
 

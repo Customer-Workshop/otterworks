@@ -33,8 +33,10 @@ JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
 # Bearer secret Grafana must present to admin-service's alert webhook
 # (POST /api/v1/admin/alerts/ingest). admin-service rejects every alert when
-# this is unset, so pass the same value to the Grafana contact point.
-ALERT_WEBHOOK_SECRET="${ALERT_WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
+# this is unset. If not supplied, the value already stored in the cluster is
+# reused so redeploys don't rotate it out from under Grafana; a brand-new
+# deploy generates one (see alert_webhook_secret).
+ALERT_WEBHOOK_SECRET="${ALERT_WEBHOOK_SECRET:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -261,6 +263,25 @@ irsa_arn() { echo "${IRSA_JSON:-{}}" | jq -r --arg s "$1" '.[$s] // empty' 2>/de
 # (visible via ps / /proc/*/cmdline).
 add_secret() { SECRET_KV+=("$1" "$2"); }
 
+# Resolve ALERT_WEBHOOK_SECRET: explicit env > value already in the release's
+# Secret > freshly generated (printed as a warning so the operator can hand the
+# same value to Grafana's contact point).
+alert_webhook_secret() {
+  if [ -z "${ALERT_WEBHOOK_SECRET}" ]; then
+    ALERT_WEBHOOK_SECRET="$(kubectl get secret admin-service-secrets -n "${NAMESPACE}" \
+      -o jsonpath='{.data.ALERT_WEBHOOK_SECRET}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+  fi
+  if [ -z "${ALERT_WEBHOOK_SECRET}" ]; then
+    ALERT_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+    {
+      warn "Generated a new ALERT_WEBHOOK_SECRET for admin-service; configure Grafana's"
+      warn "webhook contact point with the same value (kubectl get secret admin-service-secrets"
+      warn "-n ${NAMESPACE} -o jsonpath='{.data.ALERT_WEBHOOK_SECRET}' | base64 -d) or alerts get 401."
+    } >&2
+  fi
+  printf '%s' "${ALERT_WEBHOOK_SECRET}"
+}
+
 # URL-encode a string for safe use inside a URI (e.g. a DB password that may
 # contain @ : / # % ? in a connection string). Uses jq's @uri filter.
 urlencode() { jq -rn --arg s "$1" '$s|@uri'; }
@@ -401,7 +422,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.RAILS_ENV=production" --set-string "config.RAILS_LOG_TO_STDOUT=true")
       add_secret DATABASE_PASSWORD "${DB_PASSWORD}"
       add_secret SECRET_KEY_BASE "${SECRET_KEY_BASE}"
-      add_secret ALERT_WEBHOOK_SECRET "${ALERT_WEBHOOK_SECRET}" ;;
+      add_secret ALERT_WEBHOOK_SECRET "$(alert_webhook_secret)" ;;
     audit-service)
       EXTRA_ARGS+=(--set-string "config.Aws__Region=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.Aws__DynamoDbTable=${DDB_AUDIT}")

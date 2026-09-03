@@ -68,7 +68,9 @@ ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
 JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
 SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
-ALERT_WEBHOOK_SECRET="${ALERT_WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
+# Resolved per tenant in build_helm_args (reuses the value already in the
+# tenant's admin-service Secret unless explicitly overridden).
+ALERT_WEBHOOK_SECRET="${ALERT_WEBHOOK_SECRET:-}"
 
 NS="$(tenant_namespace "${ATTENDEE_ID}")"
 T_DB_NAME="$(tenant_db_name "${ATTENDEE_ID}")"

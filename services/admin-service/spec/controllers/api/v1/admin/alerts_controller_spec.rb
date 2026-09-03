@@ -87,6 +87,18 @@ RSpec.describe Api::V1::Admin::AlertsController do
       expect(incident.description.length).to be < 2_200
     end
 
+    it 'skips malformed scalar/array entries without failing the batch' do
+      malformed = [
+        'not-an-object',
+        %w[still not an object],
+        firing_alert.merge(labels: 'oops', annotations: %w[x y]),
+        firing_alert,
+      ]
+      expect { post_ingest(malformed, 'X-Alert-Secret' => secret) }.to change(Incident, :count).by(1)
+      expect(response).to have_http_status(:ok)
+      expect(Incident.last.affected_service).to eq('file-service')
+    end
+
     it 'ignores alerts for services outside the allow-list' do
       alert = firing_alert.deep_merge(labels: { affected_service: 'evil-service' })
       expect { post_ingest([alert], 'X-Alert-Secret' => secret) }.not_to change(Incident, :count)

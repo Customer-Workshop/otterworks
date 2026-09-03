@@ -2,7 +2,8 @@ module Api
   module V1
     module Admin
       class UsersController < ApplicationController
-        before_action :set_user, only: %i[show update destroy suspend activate]
+        before_action :set_user, only: %i[show update destroy suspend activate role]
+        before_action :require_super_admin!, only: %i[role]
 
         # GET /api/v1/admin/users
         def index
@@ -29,6 +30,12 @@ module Api
 
         # PUT /api/v1/admin/users/:id
         def update
+          if params.require(:user).key?(:role)
+            return render json: { error: 'Validation failed',
+                                  details: ['Role cannot be changed via this endpoint; use PUT /users/:id/role'] },
+                          status: :unprocessable_entity
+          end
+
           previous_attributes = @user.attributes.slice('role', 'display_name', 'email')
 
           if @user.update(user_params)
@@ -39,6 +46,25 @@ module Api
               request: request,
               changes_made: { before: previous_attributes,
                               after: @user.attributes.slice('role', 'display_name', 'email') }
+            )
+            render json: @user, serializer: AdminUserSerializer, include_quota: true
+          else
+            render json: { error: 'Validation failed', details: @user.errors.full_messages },
+                   status: :unprocessable_entity
+          end
+        end
+
+        # PUT /api/v1/admin/users/:id/role (super_admin only)
+        def role
+          previous_role = @user.role
+
+          if @user.update(role: params.require(:role))
+            AuditLogger.log(
+              action: 'user.role_changed',
+              resource_type: 'AdminUser',
+              resource_id: @user.id,
+              request: request,
+              changes_made: { before: { role: previous_role }, after: { role: @user.role } }
             )
             render json: @user, serializer: AdminUserSerializer, include_quota: true
           else
@@ -97,7 +123,7 @@ module Api
         end
 
         def user_params
-          params.require(:user).permit(:email, :display_name, :role, :avatar_url) # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
+          params.require(:user).permit(:email, :display_name, :avatar_url)
         end
       end
     end

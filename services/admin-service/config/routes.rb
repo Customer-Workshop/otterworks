@@ -12,6 +12,7 @@ Rails.application.routes.draw do
           member do
             put :suspend
             put :activate
+            put :role
           end
         end
 

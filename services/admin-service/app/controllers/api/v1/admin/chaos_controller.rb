@@ -11,6 +11,7 @@ module Api
           'document-service'     => 'slow_queries',
         }.freeze
 
+        skip_before_action :require_admin!
         before_action :verify_chaos_secret
 
         # POST /api/v1/admin/chaos

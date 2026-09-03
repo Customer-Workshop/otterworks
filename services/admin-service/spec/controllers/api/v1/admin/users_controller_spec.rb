@@ -67,6 +67,58 @@ RSpec.describe Api::V1::Admin::UsersController do
       put :update, params: { id: user.id, user: { role: 'invalid_role' } }
       expect(response).to have_http_status(:unprocessable_entity)
     end
+
+    it 'does not allow role escalation through mass assignment' do
+      put :update, params: { id: user.id, user: { role: 'super_admin' } }
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(user.reload.role).to eq('viewer')
+    end
+  end
+
+  describe 'PUT #role' do
+    let(:user) { create(:admin_user) }
+
+    it 'lets a super_admin change a role' do
+      put :role, params: { id: user.id, role: 'admin' }
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.role).to eq('admin')
+    end
+
+    it 'rejects an invalid role' do
+      put :role, params: { id: user.id, role: 'invalid_role' }
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'forbids an admin from changing roles' do
+      set_jwt_env(request, role: 'admin')
+      put :role, params: { id: user.id, role: 'super_admin' }
+      expect(response).to have_http_status(:forbidden)
+      expect(user.reload.role).to eq('viewer')
+    end
+  end
+
+  describe 'authorization' do
+    let(:user) { create(:admin_user) }
+
+    it 'forbids a non-admin principal' do
+      set_jwt_env(request, role: 'USER')
+      get :index
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'fails closed when no role claim is present' do
+      request.env.delete('jwt.user_roles')
+      request.env.delete('jwt.user_role')
+      put :update, params: { id: user.id, user: { display_name: 'Pwned' } }
+      expect(response).to have_http_status(:forbidden)
+      expect(user.reload.display_name).not_to eq('Pwned')
+    end
+
+    it 'accepts the auth-service ADMIN role' do
+      set_jwt_env(request, role: 'ADMIN')
+      get :index
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe 'DELETE #destroy' do

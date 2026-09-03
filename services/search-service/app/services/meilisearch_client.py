@@ -28,6 +28,12 @@ _search_analytics: dict[str, Any] = {
 MAX_ANALYTICS_ENTRIES = 10000
 
 
+def _ranking_score(hit: dict[str, Any]) -> float:
+    """Relevance score of a hit; 0.0 when MeiliSearch omitted it."""
+    score = hit.get("_rankingScore")
+    return float(score) if isinstance(score, (int, float)) else 0.0
+
+
 def record_search_analytics(query: str, result_count: int) -> None:
     """Record a search query for analytics purposes."""
     with _analytics_lock:
@@ -249,7 +255,7 @@ class MeiliSearchService:
 
     def suggest(self, prefix: str, size: int = 10) -> list[str]:
         """Autocomplete suggestions using MeiliSearch prefix matching."""
-        suggestions: list[str] = []
+        scored: list[tuple[float, str]] = []
         seen: set[str] = set()
 
         for index_name in [self.documents_index_name, self.files_index_name]:
@@ -257,18 +263,16 @@ class MeiliSearchService:
             result = index.search(prefix, {
                 "limit": size,
                 "attributesToRetrieve": ["title", "name"],
+                "showRankingScore": True,
             })
-            for hit in result["hits"]:
+            for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
                 if text and text not in seen:
-                    suggestions.append(text)
+                    scored.append((_ranking_score(hit), text))
                     seen.add(text)
-                    if len(suggestions) >= size:
-                        break
-            if len(suggestions) >= size:
-                break
 
-        return suggestions
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [text for _, text in scored[:size]]
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
         """Wait for a MeiliSearch task and raise on failure."""

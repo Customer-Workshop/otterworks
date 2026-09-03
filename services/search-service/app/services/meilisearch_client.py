@@ -247,9 +247,18 @@ class MeiliSearchService:
             query=search_term or "*",
         )
 
+    @staticmethod
+    def _ranking_score(hit: dict[str, Any]) -> float:
+        score = hit.get("_rankingScore")
+        return float(score) if isinstance(score, (int, float)) else 0.0
+
     def suggest(self, prefix: str, size: int = 10) -> list[str]:
-        """Autocomplete suggestions using MeiliSearch prefix matching."""
-        suggestions: list[str] = []
+        """Autocomplete suggestions using MeiliSearch prefix matching.
+
+        Hits from both indices are merged and ordered by ``_rankingScore``
+        (highest first); hits without a score keep their index order.
+        """
+        scored: list[tuple[float, str]] = []
         seen: set[str] = set()
 
         for index_name in [self.documents_index_name, self.files_index_name]:
@@ -257,18 +266,16 @@ class MeiliSearchService:
             result = index.search(prefix, {
                 "limit": size,
                 "attributesToRetrieve": ["title", "name"],
+                "showRankingScore": True,
             })
             for hit in result["hits"]:
                 text = hit.get("title") or hit.get("name", "")
                 if text and text not in seen:
-                    suggestions.append(text)
                     seen.add(text)
-                    if len(suggestions) >= size:
-                        break
-            if len(suggestions) >= size:
-                break
+                    scored.append((self._ranking_score(hit), text))
 
-        return suggestions
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [text for _, text in scored[:size]]
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
         """Wait for a MeiliSearch task and raise on failure."""

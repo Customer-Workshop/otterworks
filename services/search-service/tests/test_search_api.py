@@ -105,6 +105,48 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == []
 
+    def test_suggest_ranked_by_score(self, client, mock_meilisearch_client):
+        """Suggestions are ordered by MeiliSearch ranking score across indices."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {
+                "estimatedTotalHits": 2,
+                "hits": [
+                    {"title": "Team Charter", "_rankingScore": 0.6},
+                    {"title": "Tech Notes", "_rankingScore": 0.9},
+                ],
+            },
+            {
+                "estimatedTotalHits": 1,
+                "hits": [{"name": "tests.zip", "_rankingScore": 0.8}],
+            },
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Tech Notes", "tests.zip", "Team Charter"]
+
+    def test_suggest_missing_ranking_score(self, client, mock_meilisearch_client):
+        """Hits without _rankingScore keep index order instead of erroring."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [{"title": "Alpha"}, {"title": "Beta", "_rankingScore": None}],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=al")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Alpha", "Beta"]
+
+    def test_suggest_backend_error_degrades_gracefully(self, client, mock_meilisearch_client):
+        """A MeiliSearch failure yields an empty suggestion list, not a 5xx."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = RuntimeError("meili down")
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
+
 
 class TestAdvancedSearchEndpoint:
     """Tests for POST /api/v1/search/advanced."""

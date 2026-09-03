@@ -140,6 +140,18 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == ["Scored", "No Score"]
 
+    def test_suggest_duplicate_label_keeps_highest_score(self, client, mock_meilisearch_client):
+        """A label present in both indexes is ranked by its best score."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {"hits": [{"title": "Shared", "_rankingScore": 0.1}, {"title": "Doc Only", "_rankingScore": 0.5}]},
+            {"hits": [{"name": "Shared", "_rankingScore": 0.9}]},
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=sh")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Shared", "Doc Only"]
+
     def test_suggest_backend_error_degrades_gracefully(self, client, mock_meilisearch_client):
         """A MeiliSearch failure yields an empty 200, not a 5xx."""
         mock_index = mock_meilisearch_client.index.return_value

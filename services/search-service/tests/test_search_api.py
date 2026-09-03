@@ -105,6 +105,34 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == []
 
+    def test_suggest_hits_without_ranking_score(self, client, mock_meilisearch_client):
+        """Suggest works when MeiliSearch hits carry no _rankingScore field."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Quarterly Report"},
+                {"name": "quarterly.pdf"},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=qu")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["suggestions"] == ["Quarterly Report", "quarterly.pdf"]
+        assert data["query"] == "qu"
+
+    def test_suggest_backend_error_degrades_to_empty(self, client, mock_meilisearch_client):
+        """Suggest never returns 5xx: backend failures degrade to an empty list."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = KeyError("_rankingScore")
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["suggestions"] == []
+        assert data["query"] == "te"
+
 
 class TestAdvancedSearchEndpoint:
     """Tests for POST /api/v1/search/advanced."""

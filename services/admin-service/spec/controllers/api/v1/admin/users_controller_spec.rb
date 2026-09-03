@@ -89,6 +89,13 @@ RSpec.describe Api::V1::Admin::UsersController do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
+    it 'lets an auth-service OWNER change a role' do
+      set_jwt_env(request, role: 'OWNER')
+      put :role, params: { id: user.id, role: 'admin' }
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.role).to eq('admin')
+    end
+
     it 'forbids an admin from changing roles' do
       set_jwt_env(request, role: 'admin')
       put :role, params: { id: user.id, role: 'super_admin' }

@@ -1,6 +1,7 @@
 class ApplicationController < ActionController::API
-  ADMIN_ROLES = %w[admin super_admin].freeze
-  SUPER_ADMIN_ROLES = %w[super_admin].freeze
+  # auth-service issues USER/EDITOR/ADMIN/OWNER; OWNER is its super-admin tier.
+  ADMIN_ROLES = %w[admin super_admin owner].freeze
+  SUPER_ADMIN_ROLES = %w[super_admin owner].freeze
 
   before_action :require_admin!
   before_action :set_request_metadata

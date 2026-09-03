@@ -10,7 +10,7 @@ import (
 )
 
 func TestRequireRoles(t *testing.T) {
-	handler := RequireRoles("/api/v1/admin", AdminRoles)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RequireRoles("/api/v1/admin", AdminRoles, AdminRoleExemptPaths)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -22,6 +22,10 @@ func TestRequireRoles(t *testing.T) {
 	}{
 		{"admin role allowed", "/api/v1/admin/users", &JWTClaims{Roles: []string{"ADMIN", "USER"}}, http.StatusOK},
 		{"lowercase admin role allowed", "/api/v1/admin/users", &JWTClaims{Roles: []string{"admin"}}, http.StatusOK},
+		{"owner role allowed", "/api/v1/admin/users", &JWTClaims{Roles: []string{"OWNER"}}, http.StatusOK},
+		{"alerts ingest exempt", "/api/v1/admin/alerts/ingest", nil, http.StatusOK},
+		{"chaos exempt", "/api/v1/admin/chaos", &JWTClaims{Roles: []string{"USER"}}, http.StatusOK},
+		{"exempt prefix must match segment", "/api/v1/admin/chaos-config", &JWTClaims{Roles: []string{"USER"}}, http.StatusForbidden},
 		{"user role forbidden", "/api/v1/admin/users", &JWTClaims{Roles: []string{"USER"}}, http.StatusForbidden},
 		{"no roles forbidden", "/api/v1/admin/users", &JWTClaims{}, http.StatusForbidden},
 		{"no claims forbidden", "/api/v1/admin", nil, http.StatusForbidden},

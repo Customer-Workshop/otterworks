@@ -93,7 +93,7 @@ func main() {
 		PrefixPath:          middleware.DefaultPrefixPaths(),
 		ProtectedPrefixPath: routePrefixes(routes),
 	}))
-	r.Use(middleware.RequireRoles("/api/v1/admin", middleware.AdminRoles))
+	r.Use(middleware.RequireRoles("/api/v1/admin", middleware.AdminRoles, middleware.AdminRoleExemptPaths))
 
 	// Health check
 	r.Get("/health", health.Handler())

@@ -27,7 +27,18 @@
 
 ## Resolution Steps
 
-<!-- TODO -->
+1. **Root cause:** the suggest handler's ranking-score enrichment sorted hits with
+   `hit["_rankingScore"]`, but MeiliSearch only returns `_rankingScore` when the search
+   request sets `showRankingScore: true`. The lookup raised `KeyError` and the handler
+   returned HTTP 500 (the path also ran outside the endpoint's `try/except`).
+2. **Fix:** `MeiliSearchService.suggest()` now requests `showRankingScore` and orders hits
+   with `hit.get("_rankingScore", 0.0)`; the handler has a single code path inside
+   `try/except`, so a MeiliSearch failure degrades to an empty suggestion list (200).
+3. Clear the chaos flag if it is still set, then confirm the error rate drops:
+   ```
+   redis-cli DEL chaos:search-service:suggest_500
+   curl -s -o /dev/null -w '%{http_code}\n' 'http://localhost:8087/api/v1/search/suggest?q=te'
+   ```
 
 ## Post-Incident
 

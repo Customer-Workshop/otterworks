@@ -27,7 +27,12 @@
 
 ## Resolution Steps
 
-<!-- TODO -->
+1. If the chaos flag is set, clear it: `scripts/inject-bug.sh <ID> reset` (or `redis-cli DEL chaos:search-service:suggest_500`).
+2. Confirm `search-service` is running a build where `MeiliSearchService.suggest()` requests
+   `showRankingScore: true` and tolerates hits without `_rankingScore`; the `/suggest` handler
+   must catch backend errors and return an empty `200` rather than a `500`.
+3. Verify: `curl "$SEARCH_URL/api/v1/search/suggest?q=te"` returns `200` and the
+   `SearchSuggestHighErrorRate` alert resolves within one evaluation window.
 
 ## Post-Incident
 

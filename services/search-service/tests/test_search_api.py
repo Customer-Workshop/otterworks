@@ -105,6 +105,37 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == []
 
+    def test_suggest_ranked_by_score(self, client, mock_meilisearch_client):
+        """Suggestions are ordered by _rankingScore when MeiliSearch returns it."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 2,
+            "hits": [
+                {"title": "Low", "_rankingScore": 0.2},
+                {"title": "High", "_rankingScore": 0.9},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"][:2] == ["High", "Low"]
+        assert mock_index.search.call_args[0][1]["showRankingScore"] is True
+
+    def test_suggest_missing_ranking_score_does_not_500(self, client, mock_meilisearch_client):
+        """Hits without _rankingScore must not crash the handler."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {"estimatedTotalHits": 1, "hits": [{"title": "Doc"}]}
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Doc"]
+
+    def test_suggest_empty_index_does_not_500(self, client, mock_meilisearch_client):
+        """Empty index yields an empty list, never a 500."""
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
+
 
 class TestAdvancedSearchEndpoint:
     """Tests for POST /api/v1/search/advanced."""

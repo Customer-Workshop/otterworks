@@ -23,12 +23,23 @@
    redis-cli EXISTS chaos:file-service:upload_s3_error
    ```
 
-<!-- TODO: Complete investigation steps -->
+3. Confirm the bucket file-service is configured for exists and matches Terraform:
+   ```
+   kubectl get deploy file-service -n otterworks -o jsonpath='{.spec.template.spec.containers[0].env}' | grep -o '"S3_BUCKET"[^}]*'
+   terraform -chdir=infrastructure/terraform output -raw s3_file_bucket
+   aws s3api head-bucket --bucket <S3_BUCKET>
+   ```
+   file-service also logs `S3 bucket check failed` at startup when the configured bucket is unreachable.
 
 ## Resolution Steps
 
-<!-- TODO -->
+- If the chaos flag is set, clear it: `scripts/inject-bug.sh <TENANT_ID> reset` (or `redis-cli DEL chaos:file-service:upload_s3_error`).
+- If `S3_BUCKET` does not match the Terraform output, redeploy with the correct value
+  (`scripts/deploy-dev.sh` / `scripts/deploy-tenant.sh` wire it from `s3_file_bucket`) and
+  `kubectl rollout restart deploy/file-service -n otterworks`.
+- Verify recovery: `FileUploadHighErrorRate` clears and an upload via the web app succeeds.
 
 ## Post-Incident
 
-<!-- TODO -->
+- Note whether the trigger was a chaos flag, a config drift, or a real infra change to the bucket.
+- If config drift, add a check to the deploy pipeline that compares `S3_BUCKET` against Terraform output.

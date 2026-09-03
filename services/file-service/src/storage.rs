@@ -33,6 +33,18 @@ impl S3Client {
         }
     }
 
+    /// Verify the configured bucket is reachable, logging an error if not.
+    pub async fn verify_bucket(&self) {
+        match self.client.head_bucket().bucket(&self.bucket).send().await {
+            Ok(_) => tracing::info!(bucket = %self.bucket, "S3 bucket reachable"),
+            Err(e) => tracing::error!(
+                bucket = %self.bucket,
+                error = %e,
+                "S3 bucket check failed; uploads will fail until S3_BUCKET is corrected"
+            ),
+        }
+    }
+
     /// Upload file content to S3.
     pub async fn upload_object(
         &self,

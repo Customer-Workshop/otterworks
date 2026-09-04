@@ -7,6 +7,7 @@ using OpenTelemetry.Trace;
 using OtterWorks.AuditService.Config;
 using OtterWorks.AuditService.Controllers;
 using OtterWorks.AuditService.Middleware;
+using OtterWorks.AuditService.Security;
 using OtterWorks.AuditService.Services;
 using Prometheus;
 using Serilog;
@@ -28,6 +29,11 @@ builder.Host.UseSerilog();
 var awsSection = builder.Configuration.GetSection("Aws");
 builder.Services.Configure<AwsSettings>(awsSection);
 var awsSettings = awsSection.Get<AwsSettings>() ?? new AwsSettings();
+
+// Object-level authorization (X-User-ID caller, admin/service principals)
+builder.Services.Configure<AuthorizationSettings>(builder.Configuration.GetSection("Authorization"));
+builder.Services.AddSingleton<CallerContextFilter>();
+builder.Services.AddSingleton<RequirePrivilegedCallerFilter>();
 
 // AWS SDK clients
 builder.Services.AddSingleton<IAmazonDynamoDB>(_ =>

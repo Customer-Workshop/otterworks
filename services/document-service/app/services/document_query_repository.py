@@ -7,10 +7,12 @@ those filters and reads the ``documents`` table directly.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 import structlog
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
@@ -39,14 +41,16 @@ class DocumentQueryRepository:
 
     def _where(
         self,
-        owner_id: str | None,
+        owner_id: uuid.UUID | None,
         title_contains: str | None,
         content_type: str | None,
         folder_id: str | None = None,
     ) -> str:
         clauses = ["is_deleted = false", "is_template = false"]
         if owner_id:
-            clauses.append(f"owner_id = '{owner_id}'")
+            # bound (not interpolated): the owner scope is an authorization
+            # predicate and must render in the dialect's own uuid form.
+            clauses.append("owner_id = :owner_id")
         if folder_id:
             clauses.append(f"folder_id = '{folder_id}'")
         if title_contains:
@@ -55,10 +59,18 @@ class DocumentQueryRepository:
             clauses.append(f"content_type = '{content_type}'")
         return " AND ".join(clauses)
 
+    def _statement(self, sql: str, owner_id: uuid.UUID | None):
+        stmt = text(sql)
+        if owner_id:
+            stmt = stmt.bindparams(
+                bindparam("owner_id", value=owner_id, type_=UUID(as_uuid=True))
+            )
+        return stmt
+
     async def count_documents(
         self,
         *,
-        owner_id: str | None = None,
+        owner_id: uuid.UUID | None = None,
         title_contains: str | None = None,
         content_type: str | None = None,
         folder_id: str | None = None,
@@ -72,13 +84,13 @@ class DocumentQueryRepository:
         # security/equivalence/findings.yaml); the refactor removes the
         # interpolation and this suppression together.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-        result = await self.db.execute(text(sql))
+        result = await self.db.execute(self._statement(sql, owner_id))
         return int(result.scalar_one())
 
     async def search_documents(
         self,
         *,
-        owner_id: str | None = None,
+        owner_id: uuid.UUID | None = None,
         title_contains: str | None = None,
         content_type: str | None = None,
         folder_id: str | None = None,
@@ -98,5 +110,5 @@ class DocumentQueryRepository:
         # security/equivalence/findings.yaml); the refactor removes the
         # interpolation and this suppression together.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-        result = await self.db.execute(text(sql))
+        result = await self.db.execute(self._statement(sql, owner_id))
         return [dict(row._mapping) for row in result]

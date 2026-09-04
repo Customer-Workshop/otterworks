@@ -5,15 +5,16 @@ import os
 import random
 from uuid import UUID
 
-import jwt
 import redis as redis_lib
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_owned_document, require_caller_id
 from app.db.session import get_db
+from app.models.document import Document
 from app.schemas.document import (
     DocumentCreate,
     DocumentFromTemplate,
@@ -65,60 +66,22 @@ async def _maybe_inject_latency() -> None:
         await asyncio.sleep(delay)
 
 
-def _get_jwt_secret() -> str:
-    return os.environ.get("JWT_SECRET", "")
-
-
-def _extract_user_id(request: Request) -> UUID | None:
-    """Extract user ID from the Authorization JWT."""
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header[len("Bearer "):]
-        secret = _get_jwt_secret()
-        if secret:
-            try:
-                payload = jwt.decode(token, secret, algorithms=["HS256", "HS384"])
-                user_id_str = payload.get("user_id") or payload.get("sub")
-                if user_id_str:
-                    return UUID(str(user_id_str))
-            except (jwt.PyJWTError, ValueError):
-                pass
-        else:
-            forwarded_user_id = request.headers.get("X-User-ID")
-            if forwarded_user_id:
-                try:
-                    return UUID(str(forwarded_user_id))
-                except ValueError:
-                    pass
-
-    return None
-
-
-def _require_user_id(request: Request) -> UUID:
-    user_id = _extract_user_id(request)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return user_id
-
-
-def _ensure_owner(document: object, user_id: UUID) -> None:
-    if getattr(document, "owner_id", None) != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+def _ensure_owner_claim(claimed_owner_id: UUID | None, caller_id: UUID) -> None:
+    """403 when a request asserts ownership for somebody other than the caller."""
+    if claimed_owner_id is not None and claimed_owner_id != caller_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot act on behalf of another owner",
+        )
 
 
 async def _do_create_document(
     body: DocumentCreate,
-    request: Request,
+    caller_id: UUID,
     db: AsyncSession,
 ) -> DocumentResponse:
-    if not body.owner_id:
-        extracted_id = _extract_user_id(request)
-        if not extracted_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="owner_id is required: provide it in the body or authenticate via JWT",
-            )
-        body.owner_id = extracted_id
+    _ensure_owner_claim(body.owner_id, caller_id)
+    body.owner_id = caller_id
 
     service = DocumentService(db)
     document = await service.create(body)
@@ -129,12 +92,12 @@ async def _do_create_document(
 @router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def create_document(
     body: DocumentCreate,
-    request: Request,
+    caller_id: UUID = Depends(require_caller_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new document."""
     await _maybe_inject_latency()
-    return await _do_create_document(body, request, db)
+    return await _do_create_document(body, caller_id, db)
 
 
 @router.post(
@@ -145,12 +108,12 @@ async def create_document(
 )
 async def create_document_no_slash(
     body: DocumentCreate,
-    request: Request,
+    caller_id: UUID = Depends(require_caller_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new document (no trailing slash)."""
     await _maybe_inject_latency()
-    return await _do_create_document(body, request, db)
+    return await _do_create_document(body, caller_id, db)
 
 
 @router.get("/search", response_model=DocumentListResponse)
@@ -158,12 +121,13 @@ async def search_documents(
     q: str = Query(..., min_length=1),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    caller_id: UUID = Depends(require_caller_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search documents by title or content."""
+    """Search the caller's own documents by title or content."""
     await _maybe_inject_latency()
     service = DocumentService(db)
-    items, total = await service.search(q, page=page, size=size)
+    items, total = await service.search(q, owner_id=caller_id, page=page, size=size)
     return DocumentListResponse(
         items=items,
         total=total,
@@ -174,7 +138,10 @@ async def search_documents(
 
 
 @router.get("/exports", response_class=PlainTextResponse)
-async def read_export(name: str = Query(..., min_length=1)):
+async def read_export(
+    name: str = Query(..., min_length=1),
+    _caller_id: UUID = Depends(require_caller_id),
+):
     """Return a previously rendered export from the export archive."""
     archive = ExportArchive()
     try:
@@ -199,7 +166,7 @@ async def get_shared_document(
 
 
 async def _do_list_documents(
-    owner_id: UUID | None,
+    owner_id: UUID,
     folder_id: UUID | None,
     page: int,
     size: int,
@@ -220,7 +187,7 @@ async def _do_list_documents(
 
 
 async def _do_filter_documents(
-    owner_id: UUID | None,
+    owner_id: UUID,
     folder_id: UUID | None,
     title: str | None,
     content_type: str | None,
@@ -233,7 +200,7 @@ async def _do_filter_documents(
     await _maybe_inject_latency()
     repo = DocumentQueryRepository(db)
     filters = {
-        "owner_id": str(owner_id) if owner_id else None,
+        "owner_id": owner_id,
         "title_contains": title,
         "content_type": content_type,
         "folder_id": str(folder_id) if folder_id else None,
@@ -276,7 +243,6 @@ def _is_filtered(
 
 @router.get("/", response_model=DocumentListResponse)
 async def list_documents(
-    request: Request,
     owner_id: UUID | None = None,
     folder_id: UUID | None = None,
     title: str | None = None,
@@ -285,10 +251,12 @@ async def list_documents(
     direction: str = DEFAULT_DIRECTION,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    caller_id: UUID = Depends(require_caller_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """List documents with optional filtering and pagination."""
-    effective_owner = owner_id or _extract_user_id(request)
+    """List the caller's documents with optional filtering and pagination."""
+    _ensure_owner_claim(owner_id, caller_id)
+    effective_owner = caller_id
     if _is_filtered(title, content_type, sort, direction):
         return await _do_filter_documents(
             effective_owner,
@@ -310,7 +278,6 @@ async def list_documents(
     include_in_schema=False,
 )
 async def list_documents_no_slash(
-    request: Request,
     owner_id: UUID | None = None,
     folder_id: UUID | None = None,
     title: str | None = None,
@@ -319,10 +286,12 @@ async def list_documents_no_slash(
     direction: str = DEFAULT_DIRECTION,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    caller_id: UUID = Depends(require_caller_id),
     db: AsyncSession = Depends(get_db),
 ):
     """List documents (no trailing slash)."""
-    effective_owner = owner_id or _extract_user_id(request)
+    _ensure_owner_claim(owner_id, caller_id)
+    effective_owner = caller_id
     if _is_filtered(title, content_type, sort, direction):
         return await _do_filter_documents(
             effective_owner,
@@ -339,19 +308,9 @@ async def list_documents_no_slash(
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(
-    document_id: UUID,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
+async def get_document(document: Document = Depends(get_owned_document)):
     """Get a document by ID."""
     await _maybe_inject_latency()
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    document = await service.get(document_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(document, user_id)
     return document
 
 
@@ -359,18 +318,12 @@ async def get_document(
 async def update_document(
     document_id: UUID,
     body: DocumentUpdate,
-    request: Request,
+    _owned: Document = Depends(get_owned_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Full replace of a document."""
     await _maybe_inject_latency()
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    existing = await service.get(document_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(existing, user_id)
-    document = await service.update(document_id, body)
+    document = await DocumentService(db).update(document_id, body)
     logger.info("document_updated", document_id=str(document_id))
     return document
 
@@ -379,18 +332,12 @@ async def update_document(
 async def patch_document(
     document_id: UUID,
     body: DocumentPatch,
-    request: Request,
+    _owned: Document = Depends(get_owned_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Partial update of a document."""
     await _maybe_inject_latency()
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    existing = await service.get(document_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(existing, user_id)
-    document = await service.patch(document_id, body)
+    document = await DocumentService(db).patch(document_id, body)
     logger.info("document_patched", document_id=str(document_id))
     return document
 
@@ -398,36 +345,23 @@ async def patch_document(
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
     document_id: UUID,
-    request: Request,
+    _owned: Document = Depends(get_owned_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document (soft delete)."""
     await _maybe_inject_latency()
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    existing = await service.get(document_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(existing, user_id)
-    await service.delete(document_id)
+    await DocumentService(db).delete(document_id)
     logger.info("document_deleted", document_id=str(document_id))
 
 
 @router.get("/{document_id}/versions", response_model=list[DocumentVersionResponse])
 async def list_versions(
     document_id: UUID,
-    request: Request,
+    _owned: Document = Depends(get_owned_document),
     db: AsyncSession = Depends(get_db),
 ):
     """List document versions."""
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    document = await service.get(document_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(document, user_id)
-    versions = await service.list_versions(document_id)
-    return versions
+    return await DocumentService(db).list_versions(document_id)
 
 
 @router.post(
@@ -437,17 +371,11 @@ async def list_versions(
 async def restore_version(
     document_id: UUID,
     version_id: UUID,
-    request: Request,
+    _owned: Document = Depends(get_owned_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Restore a document to a previous version."""
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    existing = await service.get(document_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Document or version not found")
-    _ensure_owner(existing, user_id)
-    document = await service.restore_version(document_id, version_id)
+    document = await DocumentService(db).restore_version(document_id, version_id)
     if not document:
         raise HTTPException(
             status_code=404, detail="Document or version not found"
@@ -463,16 +391,9 @@ async def restore_version(
 @router.post("/{document_id}/share")
 async def create_share_link(
     document_id: UUID,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
+    _owned: Document = Depends(get_owned_document),
 ):
     """Mint a read-only share link for a document."""
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    document = await service.get(document_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(document, user_id)
     token = ShareLinkService().mint_token(str(document_id))
     logger.info("share_link_created", document_id=str(document_id))
     return {"document_id": str(document_id), "token": token}
@@ -480,20 +401,12 @@ async def create_share_link(
 
 @router.get("/{document_id}/export")
 async def export_document(
-    document_id: UUID,
-    request: Request,
     format: str = Query("markdown", pattern="^(pdf|html|markdown)$"),  # noqa: A002
+    document: Document = Depends(get_owned_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Export a document in the requested format."""
-    user_id = _require_user_id(request)
-    service = DocumentService(db)
-    document = await service.get(document_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-    _ensure_owner(document, user_id)
-
-    body, content_type = service.export_document(document, format)
+    body, content_type = DocumentService(db).export_document(document, format)
     return PlainTextResponse(content=body, media_type=content_type)
 
 
@@ -505,11 +418,13 @@ async def export_document(
 async def create_from_template(
     template_id: UUID,
     body: DocumentFromTemplate,
+    caller_id: UUID = Depends(require_caller_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document from a template."""
-    service = DocumentService(db)
-    document = await service.create_from_template(template_id, body)
+    _ensure_owner_claim(body.owner_id, caller_id)
+    body.owner_id = caller_id
+    document = await DocumentService(db).create_from_template(template_id, body)
     if not document:
         raise HTTPException(status_code=404, detail="Template not found")
     logger.info(

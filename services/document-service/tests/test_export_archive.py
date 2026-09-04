@@ -40,6 +40,18 @@ async def test_export_endpoint_serves_archived_file(client, monkeypatch, tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_export_endpoint_requires_identity(anon_client, monkeypatch, tmp_path):
+    (tmp_path / "report.md").write_text("# Report\n", encoding="utf-8")
+    monkeypatch.setenv("EXPORT_ARCHIVE_DIR", str(tmp_path))
+
+    resp = await anon_client.get(
+        "/api/v1/documents/exports", params={"name": "report.md"}
+    )
+
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_export_endpoint_404s_for_unknown_name(client, monkeypatch, tmp_path):
     monkeypatch.setenv("EXPORT_ARCHIVE_DIR", str(tmp_path))
 

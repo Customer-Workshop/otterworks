@@ -230,11 +230,11 @@ async def test_export_document_markdown(client: AsyncClient, owner_id: uuid.UUID
 
 
 @pytest.mark.asyncio
-async def test_create_document_via_jwt(client: AsyncClient):
+async def test_create_document_via_jwt(anon_client: AsyncClient):
     """Create a document without owner_id in the body, using JWT instead."""
     user_id = uuid.uuid4()
     token = _make_jwt(str(user_id))
-    resp = await client.post(
+    resp = await anon_client.post(
         "/api/v1/documents/",
         json={"title": "JWT Doc", "content": "Created via JWT"},
         headers={"Authorization": f"Bearer {token}"},
@@ -246,11 +246,11 @@ async def test_create_document_via_jwt(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_via_jwt_hs384(client: AsyncClient):
+async def test_create_document_via_jwt_hs384(anon_client: AsyncClient):
     """Create a document using an HS384-signed JWT (matches auth-service algorithm)."""
     user_id = uuid.uuid4()
     token = jwt.encode({"sub": str(user_id)}, TEST_JWT_SECRET, algorithm="HS384")
-    resp = await client.post(
+    resp = await anon_client.post(
         "/api/v1/documents/",
         json={"title": "HS384 Doc"},
         headers={"Authorization": f"Bearer {token}"},
@@ -260,22 +260,133 @@ async def test_create_document_via_jwt_hs384(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_document_x_user_id_header_ignored(client: AsyncClient):
-    """X-User-Id header alone is not trusted (prevents identity spoofing)."""
+async def test_create_document_uses_x_user_id_header(anon_client: AsyncClient):
+    """The gateway-injected X-User-ID header identifies the owner."""
     user_id = uuid.uuid4()
-    resp = await client.post(
+    resp = await anon_client.post(
         "/api/v1/documents/",
         json={"title": "Header Doc"},
-        headers={"X-User-Id": str(user_id)},
+        headers={"X-User-ID": str(user_id)},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["owner_id"] == str(user_id)
+
+
+@pytest.mark.asyncio
+async def test_create_document_no_auth_returns_401(anon_client: AsyncClient):
+    """Creating a document without owner_id and without auth returns 401."""
+    resp = await anon_client.post(
+        "/api/v1/documents/",
+        json={"title": "No Auth Doc"},
     )
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_create_document_no_auth_returns_401(client: AsyncClient):
-    """Creating a document without owner_id and without auth returns 401."""
+async def test_create_document_rejects_foreign_owner_id(
+    client: AsyncClient, other_user_id: uuid.UUID
+):
     resp = await client.post(
         "/api/v1/documents/",
-        json={"title": "No Auth Doc"},
+        json={"title": "Forged", "owner_id": str(other_user_id)},
     )
-    assert resp.status_code == 401
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_document_routes_reject_other_users(
+    client: AsyncClient, other_client: AsyncClient, anon_client: AsyncClient
+):
+    created = await client.post(
+        "/api/v1/documents/", json={"title": "Private", "content": "secret"}
+    )
+    doc_id = created.json()["id"]
+
+    assert (await other_client.get(f"/api/v1/documents/{doc_id}")).status_code == 403
+    assert (await anon_client.get(f"/api/v1/documents/{doc_id}")).status_code == 401
+    assert (
+        await other_client.put(
+            f"/api/v1/documents/{doc_id}", json={"title": "Hijacked"}
+        )
+    ).status_code == 403
+    assert (
+        await other_client.patch(
+            f"/api/v1/documents/{doc_id}", json={"title": "Hijacked"}
+        )
+    ).status_code == 403
+    assert (await other_client.delete(f"/api/v1/documents/{doc_id}")).status_code == 403
+    assert (
+        await other_client.get(f"/api/v1/documents/{doc_id}/versions")
+    ).status_code == 403
+    assert (
+        await other_client.get(f"/api/v1/documents/{doc_id}/export")
+    ).status_code == 403
+    assert (
+        await other_client.post(f"/api/v1/documents/{doc_id}/share")
+    ).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_search_only_returns_callers_documents(
+    client: AsyncClient, other_client: AsyncClient, anon_client: AsyncClient
+):
+    await client.post(
+        "/api/v1/documents/", json={"title": "Python Guide", "content": "Learn Python"}
+    )
+
+    mine = await client.get("/api/v1/documents/search", params={"q": "Python"})
+    assert mine.status_code == 200
+    assert mine.json()["total"] == 1
+
+    theirs = await other_client.get("/api/v1/documents/search", params={"q": "Python"})
+    assert theirs.status_code == 200
+    assert theirs.json()["total"] == 0
+
+    assert (
+        await anon_client.get("/api/v1/documents/search", params={"q": "Python"})
+    ).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_list_rejects_foreign_owner_id_and_anonymous(
+    client: AsyncClient,
+    other_client: AsyncClient,
+    anon_client: AsyncClient,
+    owner_id: uuid.UUID,
+):
+    await client.post("/api/v1/documents/", json={"title": "Mine", "content": ""})
+
+    spoofed = await other_client.get(
+        "/api/v1/documents/", params={"owner_id": str(owner_id)}
+    )
+    assert spoofed.status_code == 403
+
+    assert (await anon_client.get("/api/v1/documents/")).status_code == 401
+
+    theirs = await other_client.get("/api/v1/documents/")
+    assert theirs.status_code == 200
+    assert theirs.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_create_from_template_stamps_caller(
+    client: AsyncClient, other_client: AsyncClient, anon_client: AsyncClient,
+    owner_id: uuid.UUID,
+):
+    template = await client.post(
+        "/api/v1/templates/",
+        json={"name": "T", "content": "body", "created_by": str(owner_id)},
+    )
+    template_id = template.json()["id"]
+    path = f"/api/v1/documents/from-template/{template_id}"
+
+    mine = await client.post(path, json={"title": "From Template"})
+    assert mine.status_code == 201
+    assert mine.json()["owner_id"] == str(owner_id)
+
+    forged = await other_client.post(
+        path, json={"title": "Forged", "owner_id": str(owner_id)}
+    )
+    assert forged.status_code == 403
+
+    assert (await anon_client.post(path, json={"title": "Anon"})).status_code == 401

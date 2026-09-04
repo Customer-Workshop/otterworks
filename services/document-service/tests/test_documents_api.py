@@ -273,6 +273,70 @@ async def test_create_document_uses_x_user_id_header(anon_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_verified_token_outranks_the_x_user_id_header(anon_client: AsyncClient):
+    """A token this service verified is the identity; a conflicting header is not."""
+    token_user = uuid.uuid4()
+    token = jwt.encode({"sub": str(token_user)}, TEST_JWT_SECRET, algorithm="HS384")
+
+    agreeing = await anon_client.post(
+        "/api/v1/documents/",
+        json={"title": "Agreeing"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-User-ID": str(token_user),
+        },
+    )
+    assert agreeing.status_code == 201
+    assert agreeing.json()["owner_id"] == str(token_user)
+
+    conflicting = await anon_client.post(
+        "/api/v1/documents/",
+        json={"title": "Conflicting"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-User-ID": str(uuid.uuid4()),
+        },
+    )
+    assert conflicting.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_subjectless_token_does_not_fall_back_to_the_header(
+    anon_client: AsyncClient,
+):
+    """A token that authenticates nobody must not let the header pick a victim."""
+    token = jwt.encode({"scope": "documents"}, TEST_JWT_SECRET, algorithm="HS384")
+    resp = await anon_client.post(
+        "/api/v1/documents/",
+        json={"title": "Borrowed"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-User-ID": str(uuid.uuid4()),
+        },
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_unverifiable_token_still_falls_back_to_the_header(
+    anon_client: AsyncClient,
+):
+    """A token signed by someone else is not an identity claim this service can judge."""
+    foreign = jwt.encode({"sub": str(uuid.uuid4())}, "another-secret", algorithm="HS256")
+    user_id = uuid.uuid4()
+    resp = await anon_client.post(
+        "/api/v1/documents/",
+        json={"title": "Gateway Doc"},
+        headers={
+            "Authorization": f"Bearer {foreign}",
+            "X-User-ID": str(user_id),
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["owner_id"] == str(user_id)
+
+
+@pytest.mark.asyncio
 async def test_create_document_no_auth_returns_401(anon_client: AsyncClient):
     """Creating a document without owner_id and without auth returns 401."""
     resp = await anon_client.post(

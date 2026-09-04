@@ -1,8 +1,9 @@
 """Caller identity and object-level authorization dependencies.
 
 The api-gateway authenticates the caller and forwards the authenticated user id
-in ``X-User-ID``; a direct Authorization bearer token is accepted as a fallback
-so the service can still be called without the gateway in front of it.
+in ``X-User-ID``; a direct Authorization bearer token is accepted as well so the
+service can still be called without the gateway in front of it. Where this
+service can verify the token itself, the token is the identity.
 """
 
 import os
@@ -21,7 +22,8 @@ def _get_jwt_secret() -> str:
     return os.environ.get("JWT_SECRET", "")
 
 
-def _from_jwt(request: Request) -> UUID | None:
+def _verified_claims(request: Request) -> dict | None:
+    """Decode the bearer token, or None when there is nothing this service can verify."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return None
@@ -29,26 +31,46 @@ def _from_jwt(request: Request) -> UUID | None:
     if not secret:
         return None
     try:
-        payload = jwt.decode(
+        return jwt.decode(
             auth_header[len("Bearer "):], secret, algorithms=["HS256", "HS384"]
         )
-        user_id_str = payload.get("user_id") or payload.get("sub")
-        if user_id_str:
-            return UUID(str(user_id_str))
-    except (jwt.PyJWTError, ValueError):
+    except jwt.PyJWTError:
         return None
-    return None
+
+
+def _header_user_id(request: Request) -> UUID | None:
+    forwarded_user_id = request.headers.get("X-User-ID")
+    if not forwarded_user_id:
+        return None
+    try:
+        return UUID(str(forwarded_user_id))
+    except ValueError:
+        return None
 
 
 def extract_caller_id(request: Request) -> UUID | None:
-    """Return the caller's user id, or None when the request is anonymous."""
-    forwarded_user_id = request.headers.get("X-User-ID")
-    if forwarded_user_id:
-        try:
-            return UUID(str(forwarded_user_id))
-        except ValueError:
-            return None
-    return _from_jwt(request)
+    """Return the caller's user id, or None when the request is anonymous.
+
+    ``X-User-ID`` is only as trustworthy as whoever set it, so a token this service
+    can verify itself outranks it: the header is honoured only when it agrees with
+    the token, and a verified token carrying no identity is not an identity.
+    """
+    claims = _verified_claims(request)
+    header_user_id = _header_user_id(request)
+    if claims is None:
+        return header_user_id
+
+    user_id_str = claims.get("user_id") or claims.get("sub")
+    if not user_id_str:
+        return None
+    try:
+        token_user_id = UUID(str(user_id_str))
+    except ValueError:
+        return None
+
+    if header_user_id is not None and header_user_id != token_user_id:
+        return None
+    return token_user_id
 
 
 def require_caller_id(request: Request) -> UUID:

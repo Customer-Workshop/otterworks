@@ -3,6 +3,7 @@ module Api
     module Admin
       class AnnouncementsController < ApplicationController
         before_action :set_announcement, only: %i[show update destroy]
+        before_action :authorize_announcement_author!, only: %i[update destroy]
 
         # GET /api/v1/admin/announcements
         def index
@@ -84,6 +85,10 @@ module Api
 
         def set_announcement
           @announcement = Announcement.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
+        end
+
+        def authorize_announcement_author!
+          authorize_owner!(@announcement.created_by)
         end
 
         def announcement_params

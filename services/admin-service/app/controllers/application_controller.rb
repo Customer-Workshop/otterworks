@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::API
+  include ObjectAuthorization
+
   before_action :set_request_metadata
 
   rescue_from StandardError do |e|
@@ -20,8 +22,10 @@ class ApplicationController < ActionController::API
 
   private
 
+  # Identity comes from the JWT subject, or from the gateway-injected X-User-ID header
+  # when this service is fronted by the api-gateway.
   def current_user_id
-    request.env['jwt.user_id']
+    request.env['jwt.user_id'].presence || request.headers['X-User-ID'].presence
   end
 
   def current_user_email

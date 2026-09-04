@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class UsersController < ApplicationController
+        before_action :authorize_user_access!, only: %i[show update destroy]
+        before_action :require_admin!, only: %i[suspend activate]
         before_action :set_user, only: %i[show update destroy suspend activate]
 
         # GET /api/v1/admin/users
@@ -92,12 +94,18 @@ module Api
 
         private
 
+        def authorize_user_access!
+          authorize_owner!(params[:id])
+        end
+
         def set_user
           @user = AdminUser.includes(:storage_quota).find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
         def user_params
-          params.require(:user).permit(:email, :display_name, :role, :avatar_url) # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
+          permitted = %i[email display_name avatar_url]
+          permitted << :role if admin_caller?
+          params.require(:user).permit(*permitted) # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
         end
       end
     end

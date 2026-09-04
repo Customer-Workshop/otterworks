@@ -60,4 +60,62 @@ RSpec.describe Api::V1::Admin::AnnouncementsController do
       expect(response).to have_http_status(:no_content)
     end
   end
+
+  describe 'object-level authorization' do
+    let(:author_id) { SecureRandom.uuid }
+    let!(:owned) { create(:announcement, created_by: author_id) }
+
+    context 'when the caller authored the announcement' do
+      before { set_jwt_env(request, user_id: author_id, role: 'viewer') }
+
+      it 'allows updating it' do
+        put :update, params: { id: owned.id, announcement: { status: 'published' } }
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'allows deleting it' do
+        expect do
+          delete :destroy, params: { id: owned.id }
+        end.to change(Announcement, :count).by(-1)
+      end
+    end
+
+    context 'when the caller is a different authenticated user' do
+      before { set_jwt_env(request, user_id: SecureRandom.uuid, role: 'viewer') }
+
+      it 'rejects updating it' do
+        put :update, params: { id: owned.id, announcement: { status: 'published' } }
+        expect(response).to have_http_status(:forbidden)
+        expect(owned.reload.status).to eq('draft')
+      end
+
+      it 'rejects deleting it' do
+        expect do
+          delete :destroy, params: { id: owned.id }
+        end.not_to change(Announcement, :count)
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when the caller has no identity' do
+      before do
+        request.env['jwt.user_id'] = nil
+        request.env['jwt.user_role'] = nil
+      end
+
+      it 'rejects the request as unauthenticated' do
+        put :update, params: { id: owned.id, announcement: { status: 'published' } }
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when the caller is an admin' do
+      before { set_jwt_env(request, user_id: SecureRandom.uuid, role: 'admin') }
+
+      it "allows updating another author's announcement" do
+        put :update, params: { id: owned.id, announcement: { status: 'published' } }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end

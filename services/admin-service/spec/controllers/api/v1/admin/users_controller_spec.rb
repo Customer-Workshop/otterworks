@@ -100,4 +100,77 @@ RSpec.describe Api::V1::Admin::UsersController do
       expect(body['status']).to eq('active')
     end
   end
+
+  describe 'object-level authorization' do
+    let(:target) { create(:admin_user, role: 'viewer') }
+
+    context 'when the caller is the subject of the record' do
+      before { set_jwt_env(request, user_id: target.id, role: 'viewer') }
+
+      it 'allows reading their own record' do
+        get :show, params: { id: target.id }
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'ignores a role change attempted by a non-admin' do
+        put :update, params: { id: target.id, user: { display_name: 'Renamed', role: 'super_admin' } }
+        expect(response).to have_http_status(:ok)
+        expect(target.reload.display_name).to eq('Renamed')
+        expect(target.role).to eq('viewer')
+      end
+    end
+
+    context 'when the caller is a different authenticated user' do
+      before { set_jwt_env(request, user_id: SecureRandom.uuid, role: 'viewer') }
+
+      it 'rejects reading the record' do
+        get :show, params: { id: target.id }
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it 'rejects updating the record' do
+        put :update, params: { id: target.id, user: { display_name: 'Hijacked' } }
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it 'rejects deleting the record' do
+        delete :destroy, params: { id: target.id }
+        expect(response).to have_http_status(:forbidden)
+        expect(target.reload.status).to eq('active')
+      end
+
+      it 'rejects suspending the record even for itself' do
+        set_jwt_env(request, user_id: target.id, role: 'viewer')
+        put :suspend, params: { id: target.id }
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context 'when the caller has no identity' do
+      before do
+        request.env['jwt.user_id'] = nil
+        request.env['jwt.user_role'] = nil
+      end
+
+      it 'rejects the request as unauthenticated' do
+        get :show, params: { id: target.id }
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when the caller is an admin' do
+      before { set_jwt_env(request, user_id: SecureRandom.uuid, role: 'admin') }
+
+      it 'allows updating any user, including their role' do
+        put :update, params: { id: target.id, user: { role: 'editor' } }
+        expect(response).to have_http_status(:ok)
+        expect(target.reload.role).to eq('editor')
+      end
+
+      it 'allows suspending any user' do
+        put :suspend, params: { id: target.id }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end

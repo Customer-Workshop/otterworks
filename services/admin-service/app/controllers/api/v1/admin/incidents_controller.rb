@@ -3,6 +3,7 @@ module Api
     module Admin
       class IncidentsController < ApplicationController
         before_action :set_incident, only: %i[show update destroy trigger_session]
+        before_action :authorize_incident_reporter!, only: %i[show update destroy trigger_session]
 
         # GET /api/v1/admin/incidents
         def index
@@ -155,6 +156,10 @@ module Api
 
         def set_incident
           @incident = Incident.find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
+        end
+
+        def authorize_incident_reporter!
+          authorize_owner!(@incident.reporter_id)
         end
 
         def incident_params

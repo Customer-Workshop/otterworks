@@ -34,4 +34,56 @@ RSpec.describe Api::V1::Admin::QuotasController do
       expect(response).to have_http_status(:unprocessable_entity)
     end
   end
+
+  describe 'object-level authorization' do
+    context 'when the caller owns the quota' do
+      before { set_jwt_env(request, user_id: user_id, role: 'viewer') }
+
+      it 'allows reading it' do
+        get :show, params: { user_id: user_id }
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'allows updating it' do
+        put :update, params: { user_id: user_id, quota: { tier: 'pro' } }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when the caller is a different authenticated user' do
+      before { set_jwt_env(request, user_id: SecureRandom.uuid, role: 'viewer') }
+
+      it 'rejects reading another user quota' do
+        get :show, params: { user_id: user_id }
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it 'rejects updating another user quota' do
+        put :update, params: { user_id: user_id, quota: { tier: 'enterprise' } }
+        expect(response).to have_http_status(:forbidden)
+        expect(quota.reload.tier).to eq('free')
+      end
+    end
+
+    context 'when the caller has no identity' do
+      before do
+        request.env['jwt.user_id'] = nil
+        request.env['jwt.user_role'] = nil
+      end
+
+      it 'rejects the request as unauthenticated' do
+        get :show, params: { user_id: user_id }
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when the caller is an admin' do
+      before { set_jwt_env(request, user_id: SecureRandom.uuid, role: 'admin') }
+
+      it 'allows updating any user quota' do
+        put :update, params: { user_id: user_id, quota: { tier: 'pro' } }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end

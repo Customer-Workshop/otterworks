@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class BulkController < ApplicationController
+        before_action :authorize_bulk_targets!, only: %i[users]
+
         # POST /api/v1/admin/bulk/users
         def users
           operation = params.require(:operation)
@@ -27,6 +29,16 @@ module Api
         end
 
         private
+
+        def authorize_bulk_targets!
+          return unless require_caller!
+          return if admin_caller?
+
+          targets = Array(params[:user_ids]).map(&:to_s)
+          return if targets.any? && targets.all? { |id| id == current_user_id.to_s }
+
+          render json: { error: 'Forbidden' }, status: :forbidden
+        end
 
         def bulk_status(result)
           if result.errors.any? && result.success_count.zero? && result.failure_count.zero?

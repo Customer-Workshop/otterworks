@@ -2,6 +2,7 @@ module Api
   module V1
     module Admin
       class QuotasController < ApplicationController
+        before_action :authorize_quota_access!, only: %i[show update]
         before_action :set_quota, only: %i[show update]
 
         # GET /api/v1/admin/quotas/:user_id
@@ -29,6 +30,10 @@ module Api
         end
 
         private
+
+        def authorize_quota_access!
+          authorize_owner!(params[:user_id])
+        end
 
         def set_quota
           @quota = StorageQuota.find_by!(user_id: params[:user_id])

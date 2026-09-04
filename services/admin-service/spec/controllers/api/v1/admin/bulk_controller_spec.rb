@@ -35,4 +35,40 @@ RSpec.describe Api::V1::Admin::BulkController do
       expect(response).to have_http_status(:bad_request)
     end
   end
+
+  describe 'object-level authorization' do
+    let(:caller_user) { create(:admin_user) }
+
+    context 'when a non-admin targets only itself' do
+      before { set_jwt_env(request, user_id: caller_user.id, role: 'viewer') }
+
+      it 'allows the operation' do
+        post :users, params: { operation: 'suspend', user_ids: [caller_user.id] }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when a non-admin targets other users' do
+      before { set_jwt_env(request, user_id: caller_user.id, role: 'viewer') }
+
+      it 'rejects the operation' do
+        other = create(:admin_user)
+        post :users, params: { operation: 'suspend', user_ids: [caller_user.id, other.id] }
+        expect(response).to have_http_status(:forbidden)
+        expect(other.reload.status).to eq('active')
+      end
+    end
+
+    context 'when the caller has no identity' do
+      before do
+        request.env['jwt.user_id'] = nil
+        request.env['jwt.user_role'] = nil
+      end
+
+      it 'rejects the request as unauthenticated' do
+        post :users, params: { operation: 'suspend', user_ids: [caller_user.id] }
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

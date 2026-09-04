@@ -1,5 +1,6 @@
 package com.otterworks.analytics.api
 
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives.concat
 import akka.http.scaladsl.testkit.ScalatestRouteTest
@@ -27,6 +28,8 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
     maxPoolSize = 2
   )
 
+  private def caller(userId: String) = RawHeader(CallerDirectives.CallerIdHeader, userId)
+
   private def createRoutes(): (EventRoutes, AnalyticsRoutes, AnalyticsService) =
     val repo = MetricsRepository(testConfig)
     val service = AnalyticsService(repo)
@@ -47,7 +50,7 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
     ).toJson.compactPrint
     val entity = HttpEntity(ContentTypes.`application/json`, payload)
 
-    Post("/api/v1/analytics/events", entity) ~> eventRoutes.routes ~> check {
+    Post("/api/v1/analytics/events", entity) ~> caller("user-1") ~> eventRoutes.routes ~> check {
       status shouldBe StatusCodes.Accepted
       val response = responseAs[AcceptedResponse]
       response.status shouldBe "accepted"
@@ -67,8 +70,40 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
     ).toJson.compactPrint
     val entity = HttpEntity(ContentTypes.`application/json`, payload)
 
-    Post("/api/v1/analytics/events", entity) ~> routes ~> check {
+    Post("/api/v1/analytics/events", entity) ~> caller("user-1") ~> routes ~> check {
       status shouldBe StatusCodes.Accepted
+    }
+  }
+
+  it should "reject an event attributed to another user with 403" in {
+    val (eventRoutes, _, _) = createRoutes()
+    val payload = TrackEventRequest(
+      eventType = "document.created",
+      userId = "victim",
+      resourceId = "doc-1",
+      resourceType = "document",
+      metadata = None
+    ).toJson.compactPrint
+    val entity = HttpEntity(ContentTypes.`application/json`, payload)
+
+    Post("/api/v1/analytics/events", entity) ~> caller("attacker") ~> eventRoutes.routes ~> check {
+      status shouldBe StatusCodes.Forbidden
+    }
+  }
+
+  it should "reject an event with no X-User-ID header with 401" in {
+    val (eventRoutes, _, _) = createRoutes()
+    val payload = TrackEventRequest(
+      eventType = "document.created",
+      userId = "user-1",
+      resourceId = "doc-1",
+      resourceType = "document",
+      metadata = None
+    ).toJson.compactPrint
+    val entity = HttpEntity(ContentTypes.`application/json`, payload)
+
+    Post("/api/v1/analytics/events", entity) ~> eventRoutes.routes ~> check {
+      status shouldBe StatusCodes.Unauthorized
     }
   }
 
@@ -103,11 +138,28 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
     // First track an event
     service.trackEvent("document.created", "user-42", "doc-1", "document", Map.empty).futureValue
 
-    Get("/api/v1/analytics/users/user-42/activity") ~> analyticsRoutes.routes ~> check {
+    Get("/api/v1/analytics/users/user-42/activity") ~> caller("user-42") ~> analyticsRoutes.routes ~> check {
       status shouldBe StatusCodes.OK
       val activity = responseAs[UserActivity]
       activity.userId shouldBe "user-42"
       activity.totalEvents shouldBe 1
+    }
+  }
+
+  it should "reject another authenticated user with 403" in {
+    val (_, analyticsRoutes, service) = createRoutes()
+    service.trackEvent("document.created", "user-42", "doc-1", "document", Map.empty).futureValue
+
+    Get("/api/v1/analytics/users/user-42/activity") ~> caller("attacker") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Forbidden
+    }
+  }
+
+  it should "reject a request with no X-User-ID header with 401" in {
+    val (_, analyticsRoutes, _) = createRoutes()
+
+    Get("/api/v1/analytics/users/user-42/activity") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Unauthorized
     }
   }
 
@@ -118,11 +170,41 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
 
     service.trackEvent("document.viewed", "user-1", "doc-99", "document", Map.empty).futureValue
 
-    Get("/api/v1/analytics/documents/doc-99/stats") ~> analyticsRoutes.routes ~> check {
+    Get("/api/v1/analytics/documents/doc-99/stats") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
       status shouldBe StatusCodes.OK
       val stats = responseAs[DocumentStats]
       stats.documentId shouldBe "doc-99"
       stats.views shouldBe 1
+    }
+  }
+
+  it should "serve a collaborator who also acted on the document" in {
+    val (_, analyticsRoutes, service) = createRoutes()
+
+    service.trackEvent("document.created", "owner", "doc-99", "document", Map.empty).futureValue
+    service.trackEvent("document.viewed", "collaborator", "doc-99", "document", Map.empty).futureValue
+
+    Get("/api/v1/analytics/documents/doc-99/stats") ~> caller("collaborator") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.OK
+      responseAs[DocumentStats].documentId shouldBe "doc-99"
+    }
+  }
+
+  it should "reject a user with no access to the document with 403" in {
+    val (_, analyticsRoutes, service) = createRoutes()
+
+    service.trackEvent("document.viewed", "user-1", "doc-99", "document", Map.empty).futureValue
+
+    Get("/api/v1/analytics/documents/doc-99/stats") ~> caller("attacker") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Forbidden
+    }
+  }
+
+  it should "reject a request with no X-User-ID header with 401" in {
+    val (_, analyticsRoutes, _) = createRoutes()
+
+    Get("/api/v1/analytics/documents/doc-99/stats") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Unauthorized
     }
   }
 
@@ -157,10 +239,40 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
   "GET /api/v1/analytics/storage" should "return storage usage" in {
     val (_, analyticsRoutes, _) = createRoutes()
 
-    Get("/api/v1/analytics/storage") ~> analyticsRoutes.routes ~> check {
+    Get("/api/v1/analytics/storage") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
       status shouldBe StatusCodes.OK
       val response = responseAs[StorageUsageResponse]
       response.totalStorageBytes shouldBe 0
+    }
+  }
+
+  it should "scope the default response to the caller" in {
+    val (_, analyticsRoutes, service) = createRoutes()
+
+    service.trackEvent("storage.allocated", "user-1", "file-1", "file", Map("bytes" -> "512")).futureValue
+    service.trackEvent("storage.allocated", "user-2", "file-2", "file", Map("bytes" -> "1024")).futureValue
+
+    Get("/api/v1/analytics/storage") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.OK
+      val response = responseAs[StorageUsageResponse]
+      response.userId shouldBe Some("user-1")
+      response.totalStorageBytes shouldBe 512
+    }
+  }
+
+  it should "reject another user's user_id with 403" in {
+    val (_, analyticsRoutes, _) = createRoutes()
+
+    Get("/api/v1/analytics/storage?user_id=victim") ~> caller("attacker") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Forbidden
+    }
+  }
+
+  it should "reject a request with no X-User-ID header with 401" in {
+    val (_, analyticsRoutes, _) = createRoutes()
+
+    Get("/api/v1/analytics/storage") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Unauthorized
     }
   }
 
@@ -169,7 +281,7 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
 
     service.trackEvent("storage.allocated", "user-1", "file-1", "file", Map("bytes" -> "512")).futureValue
 
-    Get("/api/v1/analytics/storage?user_id=user-1") ~> analyticsRoutes.routes ~> check {
+    Get("/api/v1/analytics/storage?user_id=user-1") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
       status shouldBe StatusCodes.OK
       val response = responseAs[StorageUsageResponse]
       response.userId shouldBe Some("user-1")
@@ -184,11 +296,33 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
 
     service.trackEvent("document.created", "user-1", "doc-1", "document", Map.empty).futureValue
 
-    Get("/api/v1/analytics/export?format=json&period=7d") ~> analyticsRoutes.routes ~> check {
+    Get("/api/v1/analytics/export?format=json&period=7d") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
       status shouldBe StatusCodes.OK
       val response = responseAs[ExportReportResponse]
       response.format shouldBe "json"
       response.recordCount shouldBe 1
+    }
+  }
+
+  it should "exclude other users' events" in {
+    val (_, analyticsRoutes, service) = createRoutes()
+
+    service.trackEvent("document.created", "user-1", "doc-1", "document", Map.empty).futureValue
+    service.trackEvent("document.created", "user-2", "doc-2", "document", Map.empty).futureValue
+
+    Get("/api/v1/analytics/export?format=json&period=7d") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.OK
+      val response = responseAs[ExportReportResponse]
+      response.recordCount shouldBe 1
+      response.data.flatMap(_.get("user_id")).distinct shouldBe List("user-1")
+    }
+  }
+
+  it should "reject a request with no X-User-ID header with 401" in {
+    val (_, analyticsRoutes, _) = createRoutes()
+
+    Get("/api/v1/analytics/export") ~> analyticsRoutes.routes ~> check {
+      status shouldBe StatusCodes.Unauthorized
     }
   }
 
@@ -197,7 +331,7 @@ class RoutesSpec extends AnyFlatSpec with Matchers with ScalatestRouteTest with 
 
     service.trackEvent("document.created", "user-1", "doc-1", "document", Map.empty).futureValue
 
-    Get("/api/v1/analytics/export?format=csv&period=7d") ~> analyticsRoutes.routes ~> check {
+    Get("/api/v1/analytics/export?format=csv&period=7d") ~> caller("user-1") ~> analyticsRoutes.routes ~> check {
       status shouldBe StatusCodes.OK
       contentType shouldBe ContentTypes.`text/plain(UTF-8)`
       val csv = responseAs[String]

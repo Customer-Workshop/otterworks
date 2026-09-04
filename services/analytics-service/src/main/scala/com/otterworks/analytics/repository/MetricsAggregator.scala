@@ -76,6 +76,14 @@ object MetricsAggregator:
       lastEditedAt = edits.sortBy(_.timestamp)(using Ordering[Instant].reverse).headOption.map(_.timestamp.toString)
     )
 
+  /**
+   * Whether the given user appears on the document's event log. Document
+   * ownership itself lives in document-service; the only access signal this
+   * service holds is that the user acted on the document.
+   */
+  def isDocumentParticipant(events: Seq[AnalyticsEvent], documentId: String, userId: String): Boolean =
+    events.exists(e => e.resourceId == documentId && e.userId == userId)
+
   def topContent(events: Seq[AnalyticsEvent], contentType: String, period: String, limit: Int): TopContentResponse =
     val cutoff = periodToCutoff(period)
     val resourceTypeFilter = contentType match

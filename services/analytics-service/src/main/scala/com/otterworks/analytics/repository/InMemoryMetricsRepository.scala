@@ -39,6 +39,9 @@ class InMemoryMetricsRepository(config: PostgresConfig)(using ec: ExecutionConte
   def getDocumentStats(documentId: String): Future[DocumentStats] =
     Future(MetricsAggregator.documentStats(snapshot(), documentId))
 
+  def isDocumentParticipant(documentId: String, userId: String): Future[Boolean] =
+    Future(MetricsAggregator.isDocumentParticipant(snapshot(), documentId, userId))
+
   def getTopContent(contentType: String, period: String, limit: Int): Future[TopContentResponse] =
     Future(MetricsAggregator.topContent(snapshot(), contentType, period, limit))
 

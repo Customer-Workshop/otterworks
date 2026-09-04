@@ -23,6 +23,7 @@ trait MetricsRepository:
   def getDashboardSummary(period: String): Future[DashboardSummary]
   def getUserActivity(userId: String): Future[UserActivity]
   def getDocumentStats(documentId: String): Future[DocumentStats]
+  def isDocumentParticipant(documentId: String, userId: String): Future[Boolean]
   def getTopContent(contentType: String, period: String, limit: Int): Future[TopContentResponse]
   def getActiveUsers(period: String): Future[ActiveUsersResponse]
   def getStorageUsage(userId: Option[String]): Future[StorageUsageResponse]

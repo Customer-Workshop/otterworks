@@ -4,6 +4,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
+import com.otterworks.analytics.api.CallerDirectives.{callerId, callerOwning, callerSubject}
 import com.otterworks.analytics.model.DashboardJsonProtocol.{*, given}
 import com.otterworks.analytics.service.AnalyticsService
 import spray.json.*
@@ -19,6 +20,11 @@ import java.time.Instant
  *   GET /api/v1/analytics/active-users
  *   GET /api/v1/analytics/storage
  *   GET /api/v1/analytics/export
+ *
+ * User-scoped routes (user activity, document stats, storage, export) resolve
+ * the caller from `X-User-ID` via [[CallerDirectives]]; the platform-wide
+ * aggregates (dashboard, top-content, active-users) expose no per-object data
+ * and are left as-is.
  */
 class AnalyticsRoutes(analyticsService: AnalyticsService):
 
@@ -39,8 +45,10 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
       pathPrefix("users") {
         path(Segment / "activity") { userId =>
           get {
-            onSuccess(analyticsService.getUserActivity(userId)) { activity =>
-              complete(activity)
+            callerOwning(userId) { _ =>
+              onSuccess(analyticsService.getUserActivity(userId)) { activity =>
+                complete(activity)
+              }
             }
           }
         }
@@ -50,8 +58,12 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
       pathPrefix("documents") {
         path(Segment / "stats") { documentId =>
           get {
-            onSuccess(analyticsService.getDocumentStats(documentId)) { stats =>
-              complete(stats)
+            callerId { caller =>
+              onSuccess(analyticsService.getDocumentStatsFor(documentId, caller)) {
+                case Some(stats) => complete(stats)
+                case None =>
+                  complete(StatusCodes.Forbidden, "caller is not authorized for this document")
+              }
             }
           }
         }
@@ -86,9 +98,11 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
       // Storage Usage
       path("storage") {
         get {
-          parameters("user_id".optional) { userId =>
-            onSuccess(analyticsService.getStorageUsage(userId)) { response =>
-              complete(response)
+          parameters("user_id".optional) { requestedUserId =>
+            callerSubject(requestedUserId) { caller =>
+              onSuccess(analyticsService.getStorageUsage(Some(caller))) { response =>
+                complete(response)
+              }
             }
           }
         }
@@ -101,16 +115,18 @@ class AnalyticsRoutes(analyticsService: AnalyticsService):
             "format".withDefault("json"),
             "period".withDefault("7d")
           ) { (format, period) =>
-            format match
-              case "csv" =>
-                onSuccess(analyticsService.exportReport("csv", period)) { report =>
-                  val csvContent = buildCsvContent(report.data)
-                  complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, csvContent))
-                }
-              case _ =>
-                onSuccess(analyticsService.exportReport("json", period)) { report =>
-                  complete(report)
-                }
+            callerId { caller =>
+              format match
+                case "csv" =>
+                  onSuccess(analyticsService.exportReport("csv", period, Some(caller))) { report =>
+                    val csvContent = buildCsvContent(report.data)
+                    complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, csvContent))
+                  }
+                case _ =>
+                  onSuccess(analyticsService.exportReport("json", period, Some(caller))) { report =>
+                    complete(report)
+                  }
+            }
           }
         }
       },

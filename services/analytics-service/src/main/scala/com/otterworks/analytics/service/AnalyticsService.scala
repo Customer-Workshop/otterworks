@@ -42,6 +42,16 @@ class AnalyticsService(repository: MetricsRepository)(using ec: ExecutionContext
     logger.debug("Fetching stats for document={}", documentId)
     repository.getDocumentStats(documentId)
 
+  /**
+   * Get analytics for a document the caller is authorized to see, or `None`
+   * when the caller has no recorded access to it.
+   */
+  def getDocumentStatsFor(documentId: String, callerId: String): Future[Option[DocumentStats]] =
+    repository.isDocumentParticipant(documentId, callerId).flatMap {
+      case true  => getDocumentStats(documentId).map(Some(_))
+      case false => Future.successful(None)
+    }
+
   /** Get top content ranked by activity. */
   def getTopContent(contentType: String, period: String, limit: Int = 10): Future[TopContentResponse] =
     logger.debug("Fetching top content: type={}, period={}, limit={}", contentType, period, limit.toString)
@@ -57,10 +67,11 @@ class AnalyticsService(repository: MetricsRepository)(using ec: ExecutionContext
     logger.debug("Fetching storage usage for userId={}", userId.toString)
     repository.getStorageUsage(userId)
 
-  /** Export analytics data for the given period. */
-  def exportReport(format: String, period: String): Future[ExportReportResponse] =
+  /** Export analytics data for the given period, optionally scoped to one user. */
+  def exportReport(format: String, period: String, userId: Option[String] = None): Future[ExportReportResponse] =
     logger.info("Exporting analytics report: format={}, period={}", format, period)
-    repository.getExportData(period).map { data =>
+    repository.getExportData(period).map { rows =>
+      val data = userId.fold(rows)(uid => rows.filter(_.get("user_id").contains(uid)))
       ExportReportResponse(
         format = format,
         period = period,

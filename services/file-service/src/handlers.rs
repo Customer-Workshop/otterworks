@@ -10,7 +10,10 @@ async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> boo
     result.unwrap_or(0) > 0
 }
 
-use crate::authz::{authorize_file, authorize_folder, decide_file_access, Access, CallerId};
+use crate::authz::{
+    authorize_destination_folder, authorize_file, authorize_folder, decide_file_access, Access,
+    CallerId,
+};
 use crate::config::AppConfig;
 use crate::errors::ServiceError;
 use crate::events::EventPublisher;
@@ -372,9 +375,9 @@ pub async fn move_file(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    authorize_file(&meta, &file_id, caller, Access::Write).await?;
+    let existing = authorize_file(&meta, &file_id, caller, Access::Write).await?;
     if let Some(folder_id) = body.folder_id {
-        authorize_folder(&meta, &folder_id, caller).await?;
+        authorize_destination_folder(&meta, &folder_id, existing.owner_id).await?;
     }
 
     let file = meta.move_file(&file_id, body.folder_id).await?;
@@ -560,9 +563,10 @@ pub async fn remove_share(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid user id: {e}")))?;
 
-    // The owner manages the share list; a grantee may drop their own grant.
-    let file = meta.get_file(&file_id).await?;
+    // The owner manages the share list; a grantee may drop their own grant, which
+    // find_existing_share below keys to the caller, so no file read is needed for it.
     if caller.id() != user_id {
+        let file = meta.get_file(&file_id).await?;
         decide_file_access(caller, file.owner_id, None, Access::Own)?;
     }
 

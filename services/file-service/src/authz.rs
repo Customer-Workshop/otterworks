@@ -96,6 +96,34 @@ pub fn decide_folder_access(caller: CallerId, owner_id: Uuid) -> Result<(), Serv
     }
 }
 
+/// A moved file keeps its `owner_id`, and folders are owner-only, so a destination
+/// folder must belong to the file's owner. Checking it against the caller instead
+/// would stop an editor filing a shared file in the owner's folders while letting
+/// them strand it in their own, where no listing can reach it.
+pub fn decide_destination_folder(
+    file_owner_id: Uuid,
+    folder_owner_id: Uuid,
+) -> Result<(), ServiceError> {
+    if folder_owner_id == file_owner_id {
+        Ok(())
+    } else {
+        Err(ServiceError::Forbidden(
+            "destination folder does not belong to the file's owner".into(),
+        ))
+    }
+}
+
+/// Load a destination folder and check it against the file's owner.
+pub async fn authorize_destination_folder(
+    meta: &MetadataClient,
+    folder_id: &Uuid,
+    file_owner_id: Uuid,
+) -> Result<Folder, ServiceError> {
+    let folder = meta.get_folder(folder_id).await?;
+    decide_destination_folder(file_owner_id, folder.owner_id)?;
+    Ok(folder)
+}
+
 /// Load a file and authorize the caller against it at the required level.
 pub async fn authorize_file(
     meta: &MetadataClient,
@@ -225,6 +253,18 @@ mod tests {
 
         let stranger = CallerId(Uuid::new_v4());
         let err = decide_folder_access(stranger, owner.id()).unwrap_err();
+        assert_eq!(status_of(err), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn a_move_destination_belongs_to_the_file_owner_not_the_editor() {
+        let owner = Uuid::new_v4();
+        let editor = Uuid::new_v4();
+
+        // An editor may file a shared file into the owner's folders,
+        assert!(decide_destination_folder(owner, owner).is_ok());
+        // but not into their own, which no listing could then navigate to.
+        let err = decide_destination_folder(owner, editor).unwrap_err();
         assert_eq!(status_of(err), StatusCode::FORBIDDEN);
     }
 }

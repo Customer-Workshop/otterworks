@@ -28,6 +28,7 @@ export function hasPrivilegedRole(roles: string[] | undefined): boolean {
  */
 export class HttpDocumentAccessService implements DocumentAccessChecker {
   private cache = new Map<string, { decision: AccessDecision; expiresAt: number }>();
+  private inFlight = new Map<string, Promise<AccessDecision>>();
 
   constructor(
     private readonly baseUrl: string,
@@ -47,9 +48,23 @@ export class HttpDocumentAccessService implements DocumentAccessChecker {
     const cached = this.cache.get(key);
     if (cached && cached.expiresAt > Date.now()) return cached.decision;
 
-    const decision = await this.fetchDecision(documentId, principal);
-    this.remember(key, decision);
-    return decision;
+    // One request per key: concurrent callers await the same promise, so they resume
+    // in the order they arrived instead of in response order, and a burst of events
+    // does not stampede document-service.
+    const pending = this.inFlight.get(key);
+    if (pending) return pending;
+
+    const request = this.fetchDecision(documentId, principal)
+      .then((decision) => {
+        this.remember(key, decision);
+        return decision;
+      })
+      .finally(() => {
+        this.inFlight.delete(key);
+      });
+
+    this.inFlight.set(key, request);
+    return request;
   }
 
   private remember(key: string, decision: AccessDecision): void {

@@ -406,4 +406,28 @@ describe('HttpDocumentAccessService', () => {
     await access.checkAccess('doc-1', { userId: OWNER });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('collapses concurrent misses into one request so waiters resume in arrival order', async () => {
+    let release: (value: { ok: boolean; status: number }) => void = () => {};
+    fetchMock.mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const access = service(30000);
+
+    const resumed: number[] = [];
+    const first = access
+      .checkAccess('doc-1', { userId: OWNER })
+      .then(() => resumed.push(1));
+    const second = access
+      .checkAccess('doc-1', { userId: OWNER })
+      .then(() => resumed.push(2));
+
+    release({ ok: true, status: 200 });
+    await Promise.all([first, second]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(resumed).toEqual([1, 2]);
+  });
 });

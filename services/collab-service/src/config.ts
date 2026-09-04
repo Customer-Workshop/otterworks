@@ -21,6 +21,8 @@ export interface Config {
     snapshotTtlSeconds: number;
     maxSnapshotsPerDocument: number;
   };
+  documentServiceUrl: string;
+  documentAccessCacheTtlMs: number;
   logLevel: string;
   otel: {
     enabled: boolean;
@@ -55,6 +57,12 @@ export function loadConfig(): Config {
       snapshotTtlSeconds: parseInt(process.env.SNAPSHOT_TTL_SECONDS || '604800', 10),
       maxSnapshotsPerDocument: parseInt(process.env.MAX_SNAPSHOTS || '50', 10),
     },
+    documentServiceUrl:
+      process.env.DOCUMENT_SERVICE_URL || 'http://document-service:8083',
+    documentAccessCacheTtlMs: parseInt(
+      process.env.DOCUMENT_ACCESS_CACHE_TTL_MS || '30000',
+      10,
+    ),
     logLevel: process.env.LOG_LEVEL || 'info',
     otel: {
       enabled: process.env.OTEL_ENABLED === 'true',

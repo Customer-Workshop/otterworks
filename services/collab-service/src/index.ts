@@ -14,6 +14,8 @@ import { DocumentStore } from './services/document-store';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
+import { HttpDocumentAccessService } from './services/document-access';
+import { createCollabRouter } from './routes/collab';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -68,19 +70,6 @@ app.get('/metrics', async (_req, res) => {
   }
 });
 
-// Presence endpoint
-app.get('/api/v1/collab/documents/:id/presence', (req, res) => {
-  const documentId = req.params.id;
-  const presence = presenceHandler.getDocumentPresence(documentId);
-  res.json(presence);
-});
-
-// Active documents listing
-app.get('/api/v1/collab/documents', (_req, res) => {
-  const activeDocuments = presenceHandler.getActiveDocuments();
-  res.json({ documents: activeDocuments, count: activeDocuments.length });
-});
-
 // Socket.IO server
 const io = new SocketIOServer(httpServer, {
   cors: {
@@ -114,6 +103,13 @@ const documentStore = new DocumentStore(redisAdapter, logger, {
 
 const awareness = new AwarenessService(logger);
 const presenceHandler = new PresenceHandler(awareness, logger);
+const documentAccess = new HttpDocumentAccessService(
+  config.documentServiceUrl,
+  logger,
+  config.documentAccessCacheTtlMs,
+);
+
+app.use('/api/v1/collab', createCollabRouter(presenceHandler, documentAccess));
 
 // Setup collaboration handlers
 const collabManager = setupCollaborationHandlers(
@@ -121,6 +117,7 @@ const collabManager = setupCollaborationHandlers(
   documentStore,
   awareness,
   presenceHandler,
+  documentAccess,
   metrics,
   logger,
   config.persistence.intervalMs,
@@ -154,8 +151,9 @@ httpServer.on('upgrade', (request, socket, head) => {
     return;
   }
 
+  let claims: { sub?: string; roles?: string[] };
   try {
-    jwt.verify(token, config.jwt.secret);
+    claims = jwt.verify(token, config.jwt.secret) as { sub?: string; roles?: string[] };
   } catch {
     logger.warn('y-websocket_connection_rejected: invalid token');
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -163,9 +161,31 @@ httpServer.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit('connection', ws, request);
-  });
+  // The y-websocket room is the document id taken from the connection URL path
+  const documentId = decodeURIComponent(url.pathname.replace(/^\//, '').split('/')[0]);
+
+  documentAccess
+    .checkAccess(documentId, { userId: claims.sub || '', roles: claims.roles, token })
+    .then((decision) => {
+      if (decision !== 'allow') {
+        logger.warn(
+          { documentId, userId: claims.sub, decision },
+          'y-websocket_connection_rejected: access denied',
+        );
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    })
+    .catch((err) => {
+      logger.error({ err, documentId }, 'y-websocket_access_check_failed');
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+    });
 });
 
 // Start presence cleanup with document eviction callback

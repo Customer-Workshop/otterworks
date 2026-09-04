@@ -34,6 +34,15 @@ export class PresenceHandler {
     }));
   }
 
+  /** Active documents the given user is currently a participant in. */
+  getActiveDocumentsForUser(
+    userId: string,
+  ): Array<{ documentId: string; userCount: number }> {
+    return this.getActiveDocuments().filter(({ documentId }) =>
+      this.awareness.getDocumentUsers(documentId).some((user) => user.userId === userId),
+    );
+  }
+
   broadcastPresenceUpdate(io: SocketIOServer, documentId: string): void {
     const presence = this.getDocumentPresence(documentId);
     const room = `doc:${documentId}`;

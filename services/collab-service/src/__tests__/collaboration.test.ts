@@ -10,6 +10,7 @@ import { PresenceHandler } from '../handlers/presence';
 import { MetricsCollector } from '../metrics';
 import { createAuthMiddleware } from '../middleware/auth';
 import { RedisAdapter } from '../services/redis-adapter';
+import type { DocumentAccessChecker } from '../services/document-access';
 
 const JWT_SECRET = 'test-secret-key-for-unit-tests';
 let PORT: number;
@@ -38,6 +39,10 @@ const mockRedis = {
   disconnect: jest.fn(),
   ping: jest.fn().mockResolvedValue(true),
 } as unknown as jest.Mocked<RedisAdapter>;
+
+const allowAllAccess: DocumentAccessChecker = {
+  checkAccess: jest.fn().mockResolvedValue('allow'),
+};
 
 const mockLogger = {
   info: jest.fn(),
@@ -77,6 +82,7 @@ describe('CollaborationManager', () => {
       documentStore,
       awareness,
       presenceHandler,
+      documentAccess: allowAllAccess,
       metrics,
       logger: mockLogger,
       persistIntervalMs: 600000, // long interval so it doesn't fire during tests

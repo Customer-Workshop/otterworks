@@ -12,6 +12,7 @@ export interface AuthenticatedUser {
 
 export interface AuthenticatedSocket extends Socket {
   user?: AuthenticatedUser;
+  authToken?: string;
 }
 
 interface JwtPayload {
@@ -39,6 +40,7 @@ export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
     try {
       const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
+      (socket as AuthenticatedSocket).authToken = token;
       (socket as AuthenticatedSocket).user = {
         userId: decoded.sub,
         email: decoded.email || '',
@@ -61,14 +63,11 @@ export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
   };
 }
 
-export function extractUserFromSocket(socket: Socket): AuthenticatedUser {
-  const authSocket = socket as AuthenticatedSocket;
-  return (
-    authSocket.user || {
-      userId: `anon-${socket.id}`,
-      email: '',
-      displayName: 'Anonymous',
-      roles: [],
-    }
-  );
+/** Returns the authenticated user, or null when the socket carries no verified identity. */
+export function extractUserFromSocket(socket: Socket): AuthenticatedUser | null {
+  return (socket as AuthenticatedSocket).user ?? null;
+}
+
+export function extractTokenFromSocket(socket: Socket): string | undefined {
+  return (socket as AuthenticatedSocket).authToken;
 }

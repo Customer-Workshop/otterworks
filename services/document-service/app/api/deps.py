@@ -60,7 +60,7 @@ def extract_caller_id(request: Request) -> UUID | None:
     if claims is None:
         return header_user_id
 
-    user_id_str = claims.get("user_id") or claims.get("sub")
+    user_id_str = claims.get("sub") or claims.get("user_id")
     if not user_id_str:
         return None
     try:

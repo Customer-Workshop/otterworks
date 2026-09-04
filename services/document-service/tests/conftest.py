@@ -6,6 +6,9 @@ from contextlib import AsyncExitStack
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import String, TypeDecorator
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.sqlite.aiosqlite import SQLiteDialect_aiosqlite
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base
@@ -14,6 +17,29 @@ from app.main import app
 from app.models.document import Comment, Document, DocumentVersion, Template  # noqa: F401
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
+class _HyphenatedUuid(TypeDecorator):
+    """Store uuids the way PostgreSQL renders them, rather than as bare hex.
+
+    Raw-SQL filters compare ``owner_id`` against a rendered uuid, so the test
+    database has to hold the same text PostgreSQL does.
+    """
+
+    impl = String(36)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return str(value) if value is not None else None
+
+    def process_result_value(self, value, dialect):
+        return uuid.UUID(value) if value is not None else None
+
+
+SQLiteDialect_aiosqlite.colspecs = {
+    **SQLiteDialect_aiosqlite.colspecs,
+    PGUUID: _HyphenatedUuid,
+}
 
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestingSessionLocal = async_sessionmaker(

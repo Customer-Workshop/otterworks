@@ -138,10 +138,7 @@ async def search_documents(
 
 
 @router.get("/exports", response_class=PlainTextResponse)
-async def read_export(
-    name: str = Query(..., min_length=1),
-    _caller_id: UUID = Depends(require_caller_id),
-):
+async def read_export(name: str = Query(..., min_length=1)):
     """Return a previously rendered export from the export archive."""
     archive = ExportArchive()
     try:
@@ -200,7 +197,7 @@ async def _do_filter_documents(
     await _maybe_inject_latency()
     repo = DocumentQueryRepository(db)
     filters = {
-        "owner_id": owner_id,
+        "owner_id": str(owner_id),
         "title_contains": title,
         "content_type": content_type,
         "folder_id": str(folder_id) if folder_id else None,

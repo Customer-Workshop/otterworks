@@ -4,10 +4,21 @@ import type { DocumentAccessChecker } from '../services/document-access';
 /** Identity header injected by the api-gateway after it verifies the caller's JWT. */
 export const USER_ID_HEADER = 'x-user-id';
 
+/** Room-name prefix used by the y-websocket clients. */
+export const ROOM_PREFIX = 'document-';
+
 export function getCallerId(req: Request): string | null {
   const raw = req.headers[USER_ID_HEADER];
   const value = Array.isArray(raw) ? raw[0] : raw;
   return value && value.trim() ? value.trim() : null;
+}
+
+/**
+ * The document id behind a y-websocket room name. Clients join `document-<id>`
+ * (see the client-app editor), while document-service is keyed by `<id>` alone.
+ */
+export function documentIdFromRoom(room: string): string {
+  return room.startsWith(ROOM_PREFIX) ? room.slice(ROOM_PREFIX.length) : room;
 }
 
 export function getBearerToken(req: Request): string | undefined {

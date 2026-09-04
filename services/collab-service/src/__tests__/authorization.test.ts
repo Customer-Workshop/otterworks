@@ -16,6 +16,7 @@ import {
   type DocumentAccessChecker,
 } from '../services/document-access';
 import type { RedisAdapter } from '../services/redis-adapter';
+import { documentIdFromRoom } from '../middleware/authorization';
 
 const JWT_SECRET = 'test-secret-key-for-unit-tests';
 const OWNER = 'owner-user';
@@ -288,6 +289,18 @@ describe('Socket.IO document authorization', () => {
       action: 'delete',
       error: 'Access denied',
     });
+  });
+});
+
+describe('documentIdFromRoom', () => {
+  it('strips the y-websocket room prefix used by the editor client', () => {
+    expect(documentIdFromRoom('document-3f1a5f2e-9a1c-4a5f-8a3e-2b6f0f0a1c2d')).toBe(
+      '3f1a5f2e-9a1c-4a5f-8a3e-2b6f0f0a1c2d',
+    );
+  });
+
+  it('leaves a bare document id untouched', () => {
+    expect(documentIdFromRoom(OWNED_DOC)).toBe(OWNED_DOC);
   });
 });
 

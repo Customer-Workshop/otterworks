@@ -16,6 +16,7 @@ import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
 import { HttpDocumentAccessService } from './services/document-access';
 import { createCollabRouter } from './routes/collab';
+import { documentIdFromRoom } from './middleware/authorization';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { setupWSConnection } = require('y-websocket/bin/utils');
@@ -161,8 +162,9 @@ httpServer.on('upgrade', (request, socket, head) => {
     return;
   }
 
-  // The y-websocket room is the document id taken from the connection URL path
-  const documentId = decodeURIComponent(url.pathname.replace(/^\//, '').split('/')[0]);
+  // The y-websocket room is the first URL path segment; clients name it `document-<id>`
+  const room = decodeURIComponent(url.pathname.replace(/^\//, '').split('/')[0]);
+  const documentId = documentIdFromRoom(room);
 
   documentAccess
     .checkAccess(documentId, { userId: claims.sub || '', roles: claims.roles, token })

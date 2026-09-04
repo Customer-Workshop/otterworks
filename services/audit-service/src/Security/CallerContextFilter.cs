@@ -30,8 +30,8 @@ public sealed class CallerContextFilter : IEndpointFilter
 
         context.HttpContext.Items[CallerHttpContextExtensions.ItemKey] = new Caller(
             userId,
-            IsAdmin: _settings.AdminUserIds.Contains(userId, StringComparer.OrdinalIgnoreCase),
-            IsServiceAccount: _settings.ServiceAccountIds.Contains(userId, StringComparer.OrdinalIgnoreCase));
+            IsAdmin: _settings.AdminUserIds.Contains(userId, StringComparer.Ordinal),
+            IsServiceAccount: _settings.ServiceAccountIds.Contains(userId, StringComparer.Ordinal));
 
         return await next(context);
     }

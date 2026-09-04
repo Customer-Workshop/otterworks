@@ -7,6 +7,7 @@ import com.otterworks.report.model.Report;
 import com.otterworks.report.model.ReportRequest;
 import com.otterworks.report.model.ReportStatus;
 import com.otterworks.report.repository.ReportRepository;
+import com.otterworks.report.security.ReportAccessDeniedException;
 import com.otterworks.report.util.ReportDateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,12 +57,12 @@ public class ReportService {
      * Create a new report request and start async generation.
      */
     @Transactional
-    public Report createReport(ReportRequest request) {
+    public Report createReport(ReportRequest request, String callerId) {
         Report report = new Report();
         report.setReportName(request.getReportName());
         report.setCategory(request.getCategory());
         report.setReportType(request.getReportType());
-        report.setRequestedBy(request.getRequestedBy());
+        report.setRequestedBy(callerId);
         report.setStatus(ReportStatus.PENDING);
         report.setCreatedAt(new Date()); // LEGACY: new Date() instead of Instant.now()
 
@@ -97,24 +98,26 @@ public class ReportService {
     }
 
     /**
-     * Get a report by ID.
+     * Get a report by ID on behalf of a caller.
+     *
+     * @throws ReportAccessDeniedException if the report belongs to another user
      */
-    public Optional<Report> getReport(Long id) {
-        return reportRepository.findById(id);
+    public Optional<Report> getReport(Long id, String callerId) {
+        Optional<Report> report = reportRepository.findById(id);
+        if (report.isPresent()) {
+            requireOwner(report.get(), callerId);
+        }
+        return report;
     }
 
     /**
-     * List all reports for a user.
+     * List the caller's reports, optionally filtered by status.
      */
-    public List<Report> getReportsByUser(String userId) {
-        return reportRepository.findByRequestedByOrderByCreatedAtDesc(userId);
-    }
-
-    /**
-     * List reports by status.
-     */
-    public List<Report> getReportsByStatus(ReportStatus status) {
-        return reportRepository.findByStatusOrderByCreatedAtAsc(status);
+    public List<Report> getReports(String callerId, ReportStatus status) {
+        if (status != null) {
+            return reportRepository.findByRequestedByAndStatusOrderByCreatedAtDesc(callerId, status);
+        }
+        return reportRepository.findByRequestedByOrderByCreatedAtDesc(callerId);
     }
 
     /**
@@ -122,13 +125,14 @@ public class ReportService {
      * File deletion is deferred to afterCommit to avoid inconsistency on rollback.
      */
     @Transactional
-    public boolean deleteReport(Long id) {
+    public boolean deleteReport(Long id, String callerId) {
         Optional<Report> optReport = reportRepository.findById(id);
         if (!optReport.isPresent()) {
             return false;
         }
 
         Report report = optReport.get();
+        requireOwner(report, callerId);
         final String filePath = report.getFilePath();
 
         // Delete DB record first
@@ -153,6 +157,17 @@ public class ReportService {
         }
 
         return true;
+    }
+
+    /**
+     * Single ownership rule for the service: a report is only accessible to the
+     * user it was requested by. There is no share or role model for reports.
+     */
+    private void requireOwner(Report report, String callerId) {
+        if (!callerId.equals(report.getRequestedBy())) {
+            logger.warn("Ownership check failed for report {} (caller={})", report.getId(), callerId);
+            throw new ReportAccessDeniedException(report.getId(), callerId);
+        }
     }
 
 }

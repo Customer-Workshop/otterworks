@@ -4,6 +4,8 @@ import com.otterworks.report.model.Report;
 import com.otterworks.report.model.ReportRequest;
 import com.otterworks.report.model.ReportResponse;
 import com.otterworks.report.model.ReportStatus;
+import com.otterworks.report.security.CallerId;
+import com.otterworks.report.security.ReportAccessDeniedException;
 import com.otterworks.report.service.ReportService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -48,6 +50,10 @@ import java.util.stream.Collectors;
  * - ByteArrayResource loads entire file into memory (target: InputStreamResource for streaming)
  * - No pagination on list endpoint
  * - Manual response mapping without MapStruct or similar
+ *
+ * Every report route is user-scoped: the caller is the gateway-injected
+ * X-User-ID header (bound via {@link CallerId}), a report is only accessible to
+ * the user it was requested by, and ownership is enforced in {@link ReportService}.
  */
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -66,16 +72,18 @@ public class ReportController {
     @ApiOperation(value = "Create a new report", notes = "Submits a report generation request. The report is generated asynchronously.")
     @ApiResponses({
             @ApiResponse(code = 202, message = "Report request accepted"),
-            @ApiResponse(code = 400, message = "Invalid request")
+            @ApiResponse(code = 400, message = "Invalid request"),
+            @ApiResponse(code = 401, message = "Missing X-User-ID header")
     })
     public ResponseEntity<ReportResponse> createReport(
-            @Valid @RequestBody ReportRequest request) {
+            @Valid @RequestBody ReportRequest request,
+            @CallerId String callerId) {
 
         logger.info("Report request: name={}, category={}, type={}, by={}",
                 request.getReportName(), request.getCategory(),
-                request.getReportType(), request.getRequestedBy());
+                request.getReportType(), callerId);
 
-        Report report = reportService.createReport(request);
+        Report report = reportService.createReport(request, callerId);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ReportResponse.fromEntity(report));
     }
@@ -84,13 +92,16 @@ public class ReportController {
     @ApiOperation(value = "Get report by ID", notes = "Returns the report metadata and status")
     @ApiResponses({
             @ApiResponse(code = 200, message = "Report found"),
+            @ApiResponse(code = 401, message = "Missing X-User-ID header"),
+            @ApiResponse(code = 403, message = "Report belongs to another user"),
             @ApiResponse(code = 404, message = "Report not found")
     })
     public ResponseEntity<ReportResponse> getReport(
             @ApiParam(value = "Report ID", required = true)
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @CallerId String callerId) {
 
-        Optional<Report> report = reportService.getReport(id);
+        Optional<Report> report = reportService.getReport(id, callerId);
         if (!report.isPresent()) { // LEGACY: !isPresent() instead of isEmpty()
             return ResponseEntity.notFound().build();
         }
@@ -100,19 +111,18 @@ public class ReportController {
     @GetMapping
     @ApiOperation(value = "List reports", notes = "List reports filtered by user ID or status")
     public ResponseEntity<Map<String, Object>> listReports(
-            @ApiParam(value = "Filter by user ID")
+            @ApiParam(value = "Filter by user ID — must be the caller's own id")
             @RequestParam(required = false) String userId,
             @ApiParam(value = "Filter by status")
-            @RequestParam(required = false) ReportStatus status) {
+            @RequestParam(required = false) ReportStatus status,
+            @CallerId String callerId) {
 
-        List<Report> reports;
-        if (userId != null) {
-            reports = reportService.getReportsByUser(userId);
-        } else if (status != null) {
-            reports = reportService.getReportsByStatus(status);
-        } else {
-            reports = reportService.getReportsByStatus(ReportStatus.COMPLETED);
+        if (userId != null && !userId.equals(callerId)) {
+            throw new ReportAccessDeniedException(
+                    "Caller " + callerId + " may only list their own reports");
         }
+
+        List<Report> reports = reportService.getReports(callerId, status);
 
         List<ReportResponse> responses = reports.stream()
                 .map(ReportResponse::fromEntity)
@@ -130,14 +140,17 @@ public class ReportController {
     @ApiOperation(value = "Download a generated report", notes = "Returns the report file for download")
     @ApiResponses({
             @ApiResponse(code = 200, message = "Report file"),
+            @ApiResponse(code = 401, message = "Missing X-User-ID header"),
+            @ApiResponse(code = 403, message = "Report belongs to another user"),
             @ApiResponse(code = 404, message = "Report not found or not yet completed"),
             @ApiResponse(code = 409, message = "Report is still generating")
     })
     public ResponseEntity<Resource> downloadReport(
             @ApiParam(value = "Report ID", required = true)
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @CallerId String callerId) {
 
-        Optional<Report> optReport = reportService.getReport(id);
+        Optional<Report> optReport = reportService.getReport(id, callerId);
         if (!optReport.isPresent()) {
             return ResponseEntity.notFound().build();
         }
@@ -183,13 +196,16 @@ public class ReportController {
     @ApiOperation(value = "Delete a report", notes = "Deletes the report record and its generated file")
     @ApiResponses({
             @ApiResponse(code = 204, message = "Report deleted"),
+            @ApiResponse(code = 401, message = "Missing X-User-ID header"),
+            @ApiResponse(code = 403, message = "Report belongs to another user"),
             @ApiResponse(code = 404, message = "Report not found")
     })
     public ResponseEntity<Void> deleteReport(
             @ApiParam(value = "Report ID", required = true)
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @CallerId String callerId) {
 
-        boolean deleted = reportService.deleteReport(id);
+        boolean deleted = reportService.deleteReport(id, callerId);
         if (!deleted) {
             return ResponseEntity.notFound().build();
         }

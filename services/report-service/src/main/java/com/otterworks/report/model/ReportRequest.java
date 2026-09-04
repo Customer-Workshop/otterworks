@@ -32,8 +32,9 @@ public class ReportRequest {
     @ApiModelProperty(value = "Output format", required = true, example = "PDF")
     private ReportType reportType;
 
-    @NotBlank(message = "Requester ID is required")
-    @ApiModelProperty(value = "User ID requesting the report", required = true)
+    // Ownership is stamped from the gateway-injected X-User-ID header; any value
+    // sent here is ignored.
+    @ApiModelProperty(value = "Ignored — the requester is taken from the X-User-ID header", hidden = true)
     private String requestedBy;
 
     // LEGACY: java.util.Date

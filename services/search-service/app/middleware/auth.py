@@ -47,7 +47,7 @@ def require_auth(app):
 
         # Accept a valid service token if one is configured.
         if auth_config.service_token:
-            token = _extract_bearer_token()
+            token = extract_bearer_token()
             if token and token == auth_config.service_token:
                 return None
 
@@ -61,7 +61,7 @@ def require_auth(app):
         return jsonify({"error": "unauthorized"}), 401
 
 
-def _extract_bearer_token() -> str:
+def extract_bearer_token() -> str:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.lower().startswith("bearer "):
         return auth_header[7:].strip()

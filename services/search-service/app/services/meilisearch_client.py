@@ -312,6 +312,16 @@ class MeiliSearchService:
                 raise
         logger.info("file_indexed", file_id=doc.get("id"))
 
+    def get_indexed_document(self, doc_type: str, doc_id: str) -> dict[str, Any] | None:
+        """Return an indexed record, or None when it is not present."""
+        index_name = self.documents_index_name if doc_type == "document" else self.files_index_name
+        index = self.client.index(index_name)
+        try:
+            record = index.get_document(doc_id)
+        except meilisearch.errors.MeilisearchApiError:
+            return None
+        return record if isinstance(record, dict) else dict(record.__dict__)
+
     def delete_document(self, doc_type: str, doc_id: str) -> bool:
         """Remove a document or file from the index. Returns False if not found."""
         index_name = self.documents_index_name if doc_type == "document" else self.files_index_name

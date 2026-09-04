@@ -22,11 +22,16 @@ class Indexer:
     def __init__(self, search_service: MeiliSearchService) -> None:
         self.search = search_service
 
-    def index_document(self, payload: dict[str, Any]) -> dict[str, str]:
+    def index_document(
+        self, payload: dict[str, Any], owner_id: str | None = None
+    ) -> dict[str, str]:
         """Validate and index a document.
 
         Expected payload fields:
             id, title, content, owner_id, tags, created_at, updated_at
+
+        *owner_id*, when given, overrides the payload's owner so that a
+        gateway caller can only write records owned by itself.
         """
         if not payload.get("id"):
             raise ValueError("Document 'id' is required")
@@ -37,7 +42,7 @@ class Indexer:
             "id": payload["id"],
             "title": payload["title"],
             "content": payload.get("content", ""),
-            "owner_id": payload.get("owner_id", ""),
+            "owner_id": owner_id if owner_id is not None else payload.get("owner_id", ""),
             "tags": payload.get("tags", []),
             "created_at": payload.get("created_at"),
             "updated_at": payload.get("updated_at"),
@@ -47,11 +52,16 @@ class Indexer:
         logger.info("indexer_document_indexed", document_id=document["id"])
         return {"status": "indexed", "id": document["id"], "type": "document"}
 
-    def index_file(self, payload: dict[str, Any]) -> dict[str, str]:
+    def index_file(
+        self, payload: dict[str, Any], owner_id: str | None = None
+    ) -> dict[str, str]:
         """Validate and index a file.
 
         Expected payload fields:
             id, name, mime_type, owner_id, folder_id, tags, size, created_at
+
+        *owner_id*, when given, overrides the payload's owner so that a
+        gateway caller can only write records owned by itself.
         """
         if not payload.get("id"):
             raise ValueError("File 'id' is required")
@@ -62,7 +72,7 @@ class Indexer:
             "id": payload["id"],
             "name": payload["name"],
             "mime_type": payload.get("mime_type", ""),
-            "owner_id": payload.get("owner_id", ""),
+            "owner_id": owner_id if owner_id is not None else payload.get("owner_id", ""),
             "folder_id": payload.get("folder_id", ""),
             "tags": payload.get("tags", []),
             "size": payload.get("size", 0),

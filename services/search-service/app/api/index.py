@@ -6,6 +6,12 @@ import structlog
 from flask import Blueprint, jsonify, request
 
 from app.api.health import INDEX_COUNT
+from app.middleware.ownership import (
+    caller_owner_id,
+    require_path_ownership,
+    require_payload_ownership,
+    require_service_token,
+)
 from app.services.indexer import Indexer
 from app.services.meilisearch_client import MeiliSearchService
 
@@ -23,6 +29,7 @@ def _get_indexer() -> Indexer:
 
 
 @index_bp.route("/index/document", methods=["POST"])
+@require_payload_ownership("document")
 def index_document() -> tuple:
     """Index a document (called by document-service or SQS)."""
     data = request.get_json()
@@ -31,7 +38,7 @@ def index_document() -> tuple:
 
     try:
         indexer = _get_indexer()
-        result = indexer.index_document(data)
+        result = indexer.index_document(data, owner_id=caller_owner_id())
         INDEX_COUNT.labels(operation="index", type="document").inc()
         logger.info("api_document_indexed", document_id=data.get("id"))
         return jsonify(result), 201
@@ -43,6 +50,7 @@ def index_document() -> tuple:
 
 
 @index_bp.route("/index/file", methods=["POST"])
+@require_payload_ownership("file")
 def index_file() -> tuple:
     """Index a file (called by file-service or SQS)."""
     data = request.get_json()
@@ -51,7 +59,7 @@ def index_file() -> tuple:
 
     try:
         indexer = _get_indexer()
-        result = indexer.index_file(data)
+        result = indexer.index_file(data, owner_id=caller_owner_id())
         INDEX_COUNT.labels(operation="index", type="file").inc()
         logger.info("api_file_indexed", file_id=data.get("id"))
         return jsonify(result), 201
@@ -63,6 +71,7 @@ def index_file() -> tuple:
 
 
 @index_bp.route("/index/<doc_type>/<doc_id>", methods=["DELETE"])
+@require_path_ownership
 def remove_from_index(doc_type: str, doc_id: str) -> tuple:
     """Remove a document or file from the search index."""
     try:
@@ -81,6 +90,7 @@ def remove_from_index(doc_type: str, doc_id: str) -> tuple:
 
 
 @index_bp.route("/reindex", methods=["POST"])
+@require_service_token
 def reindex() -> tuple:
     """Reindex all data (admin operation)."""
     try:

@@ -40,7 +40,6 @@ export class CollaborationManager {
   private documents: Map<string, Y.Doc> = new Map();
   private documentInitPromises: Map<string, Promise<Y.Doc>> = new Map();
   private cleaningUp: Set<string> = new Set();
-  private authorizedDocuments: Map<string, Set<string>> = new Map();
   private deps: CollaborationDeps;
   private persistTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
@@ -96,8 +95,9 @@ export class CollaborationManager {
   }
 
   /**
-   * Resolves the caller and verifies it may access documentId. Decisions are remembered
-   * per socket so the per-event checks stay cheap after a document has been joined.
+   * Resolves the caller and verifies it may access documentId. Every event re-checks;
+   * DocumentAccessChecker owns the short-lived caching, so a revoked share stops working
+   * once that entry expires rather than lasting for the life of the socket.
    */
   private async authorize(
     socket: Socket,
@@ -105,8 +105,6 @@ export class CollaborationManager {
   ): Promise<AuthenticatedUser | null> {
     const user = extractUserFromSocket(socket);
     if (!user || !documentId) return null;
-
-    if (this.authorizedDocuments.get(socket.id)?.has(documentId)) return user;
 
     const decision = await this.deps.documentAccess.checkAccess(documentId, {
       userId: user.userId,
@@ -122,12 +120,6 @@ export class CollaborationManager {
       return null;
     }
 
-    let authorized = this.authorizedDocuments.get(socket.id);
-    if (!authorized) {
-      authorized = new Set();
-      this.authorizedDocuments.set(socket.id, authorized);
-    }
-    authorized.add(documentId);
     return user;
   }
 
@@ -530,8 +522,6 @@ export class CollaborationManager {
 
     metrics.activeConnections.dec();
     logger.info({ socketId: socket.id, reason }, 'client_disconnected');
-
-    this.authorizedDocuments.delete(socket.id);
 
     const mapping = awareness.removeUser(socket.id);
     if (mapping) {

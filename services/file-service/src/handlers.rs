@@ -10,6 +10,7 @@ async fn chaos_active(cm: &mut redis::aio::ConnectionManager, flag: &str) -> boo
     result.unwrap_or(0) > 0
 }
 
+use crate::authz::{authorize_file, authorize_folder, decide_file_access, Access, CallerId};
 use crate::config::AppConfig;
 use crate::errors::ServiceError;
 use crate::events::EventPublisher;
@@ -43,7 +44,7 @@ pub async fn metrics() -> HttpResponse {
 // -- File Handlers --
 
 pub async fn upload_file(
-    req: HttpRequest,
+    caller: CallerId,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
@@ -51,18 +52,12 @@ pub async fn upload_file(
     redis_cm: web::Data<redis::aio::ConnectionManager>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, ServiceError> {
-    // Prefer owner_id from X-User-ID header (injected by api-gateway from JWT).
-    // Fall back to the multipart field for direct/internal callers.
-    let header_owner_id = req
-        .headers()
-        .get("X-User-ID")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.trim().parse::<Uuid>().ok());
+    // The owner is the authenticated caller; a multipart owner_id field is ignored.
+    let owner = caller.id();
 
     let mut file_bytes = BytesMut::new();
     let mut file_name = String::from("unnamed");
     let mut content_type = String::from("application/octet-stream");
-    let mut owner_id: Option<Uuid> = None;
     let mut folder_id: Option<Uuid> = None;
 
     while let Some(item) = payload.next().await {
@@ -92,19 +87,6 @@ pub async fn upload_file(
                     }
                 }
             }
-            "owner_id" => {
-                let mut value = BytesMut::new();
-                while let Some(chunk) = field.next().await {
-                    let data = chunk.map_err(|e| ServiceError::BadRequest(e.to_string()))?;
-                    value.extend_from_slice(&data);
-                }
-                let s = String::from_utf8_lossy(&value).to_string();
-                owner_id = Some(
-                    s.trim()
-                        .parse::<Uuid>()
-                        .map_err(|e| ServiceError::BadRequest(format!("invalid owner_id: {e}")))?,
-                );
-            }
             "folder_id" => {
                 let mut value = BytesMut::new();
                 while let Some(chunk) = field.next().await {
@@ -123,9 +105,9 @@ pub async fn upload_file(
         }
     }
 
-    let owner = header_owner_id
-        .or(owner_id)
-        .ok_or_else(|| ServiceError::BadRequest("owner_id is required".into()))?;
+    if let Some(folder_id) = folder_id {
+        authorize_folder(&meta, &folder_id, caller).await?;
+    }
 
     if file_bytes.is_empty() {
         return Err(ServiceError::BadRequest("file field is required".into()));
@@ -201,6 +183,7 @@ pub async fn upload_file(
 }
 
 pub async fn get_file_metadata(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -208,8 +191,12 @@ pub async fn get_file_metadata(
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
-    let file = meta.get_file(&file_id).await?;
-    let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    let file = authorize_file(&meta, &file_id, caller, Access::Read).await?;
+    let mut shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    if file.owner_id != caller.id() {
+        // A collaborator sees only their own grant, not the sharing graph.
+        shares.retain(|s| s.shared_with == caller.id());
+    }
     Ok(HttpResponse::Ok().json(FileDetailResponse {
         file,
         shared_with: shares,
@@ -332,6 +319,7 @@ pub async fn list_trashed(
     }))
 }
 pub async fn delete_file(
+    caller: CallerId,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
@@ -342,7 +330,7 @@ pub async fn delete_file(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    let file = meta.get_file(&file_id).await?;
+    let file = authorize_file(&meta, &file_id, caller, Access::Own).await?;
     meta.delete_file(&file_id).await?;
     s3.delete_object(&file.s3_key).await?;
 
@@ -353,6 +341,7 @@ pub async fn delete_file(
 }
 
 pub async fn download_file(
+    caller: CallerId,
     s3: web::Data<S3Client>,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
@@ -362,7 +351,7 @@ pub async fn download_file(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    let file = meta.get_file(&file_id).await?;
+    let file = authorize_file(&meta, &file_id, caller, Access::Read).await?;
     let url = s3.presigned_download_url(&file.s3_key, 3600).await?;
 
     Ok(HttpResponse::Ok().json(DownloadResponse {
@@ -372,6 +361,7 @@ pub async fn download_file(
 }
 
 pub async fn move_file(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
@@ -381,6 +371,11 @@ pub async fn move_file(
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    authorize_file(&meta, &file_id, caller, Access::Write).await?;
+    if let Some(folder_id) = body.folder_id {
+        authorize_folder(&meta, &folder_id, caller).await?;
+    }
 
     let file = meta.move_file(&file_id, body.folder_id).await?;
 
@@ -393,6 +388,7 @@ pub async fn move_file(
 }
 
 pub async fn rename_file(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
@@ -402,6 +398,8 @@ pub async fn rename_file(
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    authorize_file(&meta, &file_id, caller, Access::Write).await?;
 
     let name = body.name.trim();
     if name.is_empty() {
@@ -426,6 +424,7 @@ pub async fn rename_file(
 }
 
 pub async fn list_versions(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -434,11 +433,14 @@ pub async fn list_versions(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
+    authorize_file(&meta, &file_id, caller, Access::Read).await?;
+
     let versions = meta.list_versions(&file_id).await?;
     Ok(HttpResponse::Ok().json(ListVersionsResponse { versions }))
 }
 
 pub async fn trash_file(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
@@ -447,6 +449,8 @@ pub async fn trash_file(
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    authorize_file(&meta, &file_id, caller, Access::Write).await?;
 
     let file = meta.trash_file(&file_id).await?;
 
@@ -457,6 +461,7 @@ pub async fn trash_file(
 }
 
 pub async fn restore_file(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
@@ -465,6 +470,8 @@ pub async fn restore_file(
         .into_inner()
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
+
+    authorize_file(&meta, &file_id, caller, Access::Write).await?;
 
     let file = meta.restore_file(&file_id).await?;
 
@@ -484,6 +491,7 @@ pub async fn restore_file(
 }
 
 pub async fn share_file(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     events: web::Data<EventPublisher>,
     path: web::Path<String>,
@@ -494,8 +502,8 @@ pub async fn share_file(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
 
-    // Ensure file exists
-    let file = meta.get_file(&file_id).await?;
+    // Sharing is an owner-only right.
+    let file = authorize_file(&meta, &file_id, caller, Access::Own).await?;
 
     // Check if share already exists for this file + user
     if let Some(existing) = meta
@@ -509,7 +517,7 @@ pub async fn share_file(
                 file_id,
                 shared_with: body.shared_with,
                 permission: body.permission.clone(),
-                shared_by: body.shared_by,
+                shared_by: caller.id(),
                 created_at: existing.created_at,
             };
             meta.put_share(&updated).await?;
@@ -525,7 +533,7 @@ pub async fn share_file(
         file_id,
         shared_with: body.shared_with,
         permission: body.permission.clone(),
-        shared_by: body.shared_by,
+        shared_by: caller.id(),
         created_at: Utc::now(),
     };
 
@@ -540,6 +548,7 @@ pub async fn share_file(
 }
 
 pub async fn remove_share(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -551,8 +560,11 @@ pub async fn remove_share(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid user id: {e}")))?;
 
-    // Ensure file exists
-    let _file = meta.get_file(&file_id).await?;
+    // The owner manages the share list; a grantee may drop their own grant.
+    let file = meta.get_file(&file_id).await?;
+    if caller.id() != user_id {
+        decide_file_access(caller, file.owner_id, None, Access::Own)?;
+    }
 
     // Find the existing share
     let share = meta
@@ -579,15 +591,20 @@ pub async fn list_folders(
 }
 
 pub async fn create_folder(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     body: web::Json<CreateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    if let Some(parent_id) = body.parent_id {
+        authorize_folder(&meta, &parent_id, caller).await?;
+    }
+
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),
         name: body.name.clone(),
         parent_id: body.parent_id,
-        owner_id: body.owner_id,
+        owner_id: caller.id(),
         created_at: now,
         updated_at: now,
     };
@@ -598,6 +615,7 @@ pub async fn create_folder(
 }
 
 pub async fn get_folder(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -606,11 +624,12 @@ pub async fn get_folder(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
 
-    let folder = meta.get_folder(&folder_id).await?;
+    let folder = authorize_folder(&meta, &folder_id, caller).await?;
     Ok(HttpResponse::Ok().json(folder))
 }
 
 pub async fn update_folder(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
     body: web::Json<UpdateFolderRequest>,
@@ -620,6 +639,11 @@ pub async fn update_folder(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
 
+    authorize_folder(&meta, &folder_id, caller).await?;
+    if let Some(parent_id) = body.parent_id {
+        authorize_folder(&meta, &parent_id, caller).await?;
+    }
+
     let folder = meta
         .update_folder(&folder_id, body.name.clone(), body.parent_id)
         .await?;
@@ -627,6 +651,7 @@ pub async fn update_folder(
 }
 
 pub async fn delete_folder(
+    caller: CallerId,
     meta: web::Data<MetadataClient>,
     path: web::Path<String>,
 ) -> Result<HttpResponse, ServiceError> {
@@ -635,6 +660,7 @@ pub async fn delete_folder(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid folder id: {e}")))?;
 
+    authorize_folder(&meta, &folder_id, caller).await?;
     meta.delete_folder(&folder_id).await?;
     tracing::info!(folder_id = %folder_id, "Folder deleted");
     Ok(HttpResponse::NoContent().finish())
@@ -721,5 +747,53 @@ mod tests {
     async fn test_metrics_endpoint() {
         let resp = metrics().await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
+
+    /// User-scoped routes must reject an anonymous caller before touching any
+    /// resource, so the `CallerId` extractor runs ahead of the handler body.
+    #[actix_rt::test]
+    async fn per_id_routes_reject_a_request_without_x_user_id() {
+        let app = actix_web::test::init_service(
+            actix_web::App::new()
+                .route("/files/{file_id}", web::get().to(get_file_metadata))
+                .route("/files/{file_id}", web::delete().to(delete_file))
+                .route("/files/{file_id}/download", web::get().to(download_file))
+                .route("/files/{file_id}/versions", web::get().to(list_versions))
+                .route("/folders/{folder_id}", web::get().to(get_folder))
+                .route("/folders/{folder_id}", web::delete().to(delete_folder)),
+        )
+        .await;
+
+        let file_id = Uuid::new_v4();
+        let cases = [
+            (actix_web::http::Method::GET, format!("/files/{file_id}")),
+            (actix_web::http::Method::DELETE, format!("/files/{file_id}")),
+            (
+                actix_web::http::Method::GET,
+                format!("/files/{file_id}/download"),
+            ),
+            (
+                actix_web::http::Method::GET,
+                format!("/files/{file_id}/versions"),
+            ),
+            (actix_web::http::Method::GET, format!("/folders/{file_id}")),
+            (
+                actix_web::http::Method::DELETE,
+                format!("/folders/{file_id}"),
+            ),
+        ];
+
+        for (method, uri) in cases {
+            let req = actix_web::test::TestRequest::default()
+                .method(method.clone())
+                .uri(&uri)
+                .to_request();
+            let resp = actix_web::test::call_service(&app, req).await;
+            assert_eq!(
+                resp.status(),
+                actix_web::http::StatusCode::UNAUTHORIZED,
+                "{method} {uri} should require X-User-ID"
+            );
+        }
     }
 }

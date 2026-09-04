@@ -24,6 +24,7 @@ const OTHER = 'other-user';
 const SHARED = 'shared-user';
 const OWNED_DOC = 'doc-owned';
 const MISSING_DOC = 'doc-missing';
+const OTHER_DOC = 'doc-other';
 
 const mockLogger = {
   info: jest.fn(),
@@ -44,6 +45,7 @@ const documentAccess: DocumentAccessChecker = {
       principal: { userId: string },
     ): Promise<AccessDecision> => {
       if (documentId === MISSING_DOC) return 'not-found';
+      if (documentId === OTHER_DOC && principal.userId === OTHER) return 'allow';
       if (
         documentId === OWNED_DOC &&
         (principal.userId === OWNER || principal.userId === SHARED)
@@ -278,6 +280,29 @@ describe('Socket.IO document authorization', () => {
     other.emit('request-snapshot', { documentId: OWNED_DOC });
 
     await expect(errorPromise).resolves.toMatchObject({ error: 'Access denied' });
+  });
+
+  it('drops presence events aimed at a document the caller cannot access', async () => {
+    const owner = await connect(OWNER);
+    await join(owner, OWNED_DOC);
+    const leak = Promise.race([
+      nextEvent(owner, 'cursor-update').then(
+        () => 'leaked',
+        () => 'quiet',
+      ),
+      nextEvent(owner, 'typing-indicator').then(
+        () => 'leaked',
+        () => 'quiet',
+      ),
+      new Promise((resolve) => setTimeout(() => resolve('quiet'), 300)),
+    ]);
+
+    const other = await connect(OTHER);
+    await join(other, OTHER_DOC);
+    other.emit('cursor-update', { documentId: OWNED_DOC, cursor: null, selection: null });
+    other.emit('typing-indicator', { documentId: OWNED_DOC, isTyping: true });
+
+    await expect(leak).resolves.toBe('quiet');
   });
 
   it('rejects comment mutations from a non-owner', async () => {

@@ -324,15 +324,17 @@ export class CollaborationManager {
     }
   }
 
-  private handleCursorUpdate(
+  private async handleCursorUpdate(
     socket: Socket,
     data: {
       documentId: string;
       cursor: CursorPosition | null;
       selection: CursorPosition | null;
     },
-  ): void {
+  ): Promise<void> {
     const { awareness, metrics } = this.deps;
+    if (!(await this.authorize(socket, data.documentId))) return;
+
     const updatedAwareness = awareness.updateCursor(
       socket.id,
       data.cursor,
@@ -353,11 +355,13 @@ export class CollaborationManager {
     }
   }
 
-  private handleTypingIndicator(
+  private async handleTypingIndicator(
     socket: Socket,
     data: { documentId: string; isTyping: boolean },
-  ): void {
+  ): Promise<void> {
     const { awareness } = this.deps;
+    if (!(await this.authorize(socket, data.documentId))) return;
+
     const updated = awareness.setTyping(socket.id, data.isTyping);
 
     if (updated) {

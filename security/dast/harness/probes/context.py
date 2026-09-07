@@ -273,21 +273,38 @@ class ScanContext:
     def get(self, path: str, **kwargs: Any) -> httpx.Response:
         return self.request("GET", path, **kwargs)
 
-    def search_as(self, identity: Identity, query: str) -> list[Any] | None:
+    def search_as(
+        self,
+        identity: Identity,
+        query: str,
+        *,
+        attempts: int = 8,
+        delay_seconds: float = 0.25,
+    ) -> list[Any] | None:
         """Control request: the result hits this identity sees, or None if unusable.
 
-        Documents index asynchronously, so an empty result set for the attacker
-        is only meaningful once the owner can find the document.
+        Documents index asynchronously (SNS -> SQS -> MeiliSearch), so an empty
+        result set is retried with a short backoff until the index has caught up
+        or the attempts are exhausted.
         """
-        response = self.get("/api/v1/search/", params={"q": query}, identity=identity)
-        if response.status_code != 200:
-            return None
-        try:
-            payload = response.json()
-        except ValueError:
-            return None
-        hits = payload.get("results") if isinstance(payload, dict) else None
-        return hits if isinstance(hits, list) else None
+        hits: list[Any] | None = None
+        for attempt in range(attempts):
+            if attempt:
+                time.sleep(delay_seconds)
+            response = self.get("/api/v1/search/", params={"q": query}, identity=identity)
+            if response.status_code != 200:
+                continue
+            try:
+                payload = response.json()
+            except ValueError:
+                continue
+            found = payload.get("results") if isinstance(payload, dict) else None
+            if not isinstance(found, list):
+                continue
+            hits = found
+            if hits:
+                break
+        return hits
 
     def owner_can_read(self, path: str, identity: Identity) -> bool:
         """Control request: can the legitimate owner read this object at all?

@@ -11,9 +11,12 @@ class ChaosProbeService
   PROBE_BATCH    = 3 # requests per interval (enough for rate() to register)
 
   SERVICE_PROBES = {
+    # search-service only trusts X-User-ID from callers presenting its
+    # service token; without it the probe is rejected with 401.
     'search-service' => {
       url: 'http://search-service:8087/api/v1/search/suggest?q=test',
       headers: { 'X-User-ID' => 'chaos-probe' },
+      bearer_env: 'SEARCH_SERVICE_TOKEN',
     },
     # file-service upload expects multipart/form-data with a "file" field.
     # Sending JSON results in a 400 before the chaos flag is ever checked.
@@ -93,6 +96,10 @@ class ChaosProbeService
               end
 
     config[:headers]&.each { |k, v| request[k] = v }
+    if config[:bearer_env]
+      token = ENV.fetch(config[:bearer_env], '')
+      request['Authorization'] = "Bearer #{token}" unless token.empty?
+    end
     http.request(request)
   rescue StandardError
     nil

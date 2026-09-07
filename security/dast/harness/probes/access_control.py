@@ -382,6 +382,17 @@ def search_tenant_leak(ctx: ScanContext) -> Result:
         return self.result(Verdict.INCONCLUSIVE, "could not seed a victim-owned document")
 
     marker = ctx.victim_marker
+    # Control request first: documents are indexed asynchronously, so the
+    # attacker's search only means something once the owner can find the
+    # document. Searching as the attacker before the index has caught up would
+    # produce an empty result set that looks secure but proves nothing.
+    control = ctx.search_as(ctx.victim, marker)
+    if control is None or not any(_hit_matches(hit, victim_doc["id"]) for hit in control):
+        return self.result(
+            Verdict.INCONCLUSIVE,
+            "the owner cannot find the marker, so the index is empty or still "
+            "catching up and scoping cannot be assessed",
+        )
     response = ctx.get("/api/v1/search/", params={"q": marker}, identity=ctx.attacker)
     if unavailable(response):
         return self.result(
@@ -407,16 +418,6 @@ def search_tenant_leak(ctx: ScanContext) -> Result:
             Verdict.VULNERABLE,
             f"attacker's search returned the victim's document {victim_doc['id']}",
             [Evidence.from_response(response, note=f"marker {marker}")],
-        )
-    # Control request: documents are indexed asynchronously, so an empty result
-    # set for the attacker means nothing until the owner can find it.
-    control = ctx.search_as(ctx.victim, marker)
-    if control is None or not any(_hit_matches(hit, victim_doc["id"]) for hit in control):
-        return self.result(
-            Verdict.INCONCLUSIVE,
-            "the owner cannot find the marker either, so the index is empty or still "
-            "catching up and scoping cannot be assessed",
-            [Evidence.from_response(response)],
         )
     return self.result(
         Verdict.SECURE,

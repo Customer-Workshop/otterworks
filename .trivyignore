@@ -110,35 +110,12 @@ CVE-2026-47736
 CVE-2026-47737
 
 # ============================================================================
-# services/api-gateway — Go modules (owned by the api-gateway remediation unit)
-# ============================================================================
-
-# CVE-2025-30204 — github.com/golang-jwt/jwt/v5: excessive memory allocation during header parsing
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway `go get`/`go mod tidy` run in the api-gateway unit. Revisit by 2026-10-31.
-CVE-2025-30204
-# CVE-2026-24051 — go.opentelemetry.io/otel/sdk: arbitrary code execution via PATH hijacking (Windows-only resource detector)
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway Go module upgrade. Revisit by 2026-10-31.
-CVE-2026-24051
-# CVE-2026-39883 — go.opentelemetry.io/otel/sdk: arbitrary code execution via PATH hijacking (Windows-only resource detector)
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway Go module upgrade. Revisit by 2026-10-31.
-CVE-2026-39883
-# CVE-2026-33186 — google.golang.org/grpc (authz): authorization bypass via improper HTTP header handling (grpc authz package not used)
-# Impact: CRITICAL. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway Go module upgrade. Revisit by 2026-10-31.
-CVE-2026-33186
-
-# ============================================================================
-# services/document-service — Python (owned by the document-service unit)
+# services/document-service — Python
 # ============================================================================
 
 # CVE-2026-0994 — protobuf: DoS via recursion-depth bypass
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on `poetry lock` refresh in the document-service unit. Revisit by 2026-10-31.
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Not fixed by the FastAPI/Starlette bump (fastapi 0.115.14 / starlette 0.46.2 / python-multipart 0.0.32 already applied); needs a further `poetry lock` refresh. Revisit by 2026-10-31.
 CVE-2026-0994
-# CVE-2024-47874 — starlette: DoS via multipart/form-data
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on FastAPI/Starlette bump in the document-service unit. Revisit by 2026-10-31.
-CVE-2024-47874
-# CVE-2024-53981 — python-multipart: DoS via malformed multipart boundary (listed by prior review; not currently reported by the Trivy DB)
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on `poetry lock` refresh in the document-service unit. Revisit by 2026-10-31.
-CVE-2024-53981
 # CVE-2026-24486 — document-service Python dependency (listed by prior review; not currently reported by the Trivy DB)
-# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on `poetry lock` refresh in the document-service unit. Revisit by 2026-10-31.
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Not fixed by the FastAPI/Starlette bump (fastapi 0.115.14 / starlette 0.46.2 / python-multipart 0.0.32 already applied); needs a further `poetry lock` refresh. Revisit by 2026-10-31.
 CVE-2026-24486

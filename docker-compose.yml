@@ -282,6 +282,7 @@ services:
       SQS_ENABLED: 'true'
       SQS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-search-events
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-otterworks-local-dev-search-service-token}
     depends_on:
       meilisearch:
         condition: service_healthy
@@ -364,6 +365,7 @@ services:
       OTEL_SERVICE_NAME: admin-service
       RAILS_ENV: development
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-otterworks-local-dev-search-service-token}
       DATABASE_URL: postgres://otterworks:otterworks_dev@postgres:5432/otterworks
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432

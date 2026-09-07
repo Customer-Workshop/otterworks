@@ -19,7 +19,7 @@ This runs four scan types in sequence:
 | pip-audit | search-service | Python dependency advisories |
 | bundle-audit | admin-service | Ruby gem advisories |
 
-**Note:** report-service is intentionally excluded from scans. It is a legacy Java 8 service earmarked for a separate framework upgrade exercise and is not in scope for this sprint.
+**Note:** report-service is intentionally excluded from scans (`scan.skip-dirs` in `security/scanning/trivy-config.yaml`). It is a legacy Java 8 service earmarked for a separate framework upgrade exercise and is not in scope for this sprint.
 
 ## Understanding Trivy Output
 
@@ -63,7 +63,8 @@ The `.trivyignore` file tells Trivy to skip specific CVEs. This is legitimate fo
 
 When reviewing `.trivyignore`, look for:
 
-- **Glob patterns** (e.g., `CVE-2021-*`) that suppress entire ranges of CVEs rather than individual findings. These can silently hide new vulnerabilities that match the pattern.
+- **Glob patterns** (e.g., `CVE-2021-*`) that suppress entire ranges of CVEs rather than individual findings. These can silently hide new vulnerabilities that match the pattern. Note that Trivy's plain-text ignore file matches IDs exactly and does not expand globs, so such an entry also gives a false sense of coverage: the CVEs it appears to cover are still reported.
+- **Dangling entries** for modules that no longer exist in the repo (or for packages no module depends on). Confirm the module path and package in the comment still match a lockfile Trivy scans; otherwise delete the entry.
 - **Dismissive comments** (e.g., "bulk ignore", "revisit later") without a concrete remediation date or tracking ticket.
 - **Entries that suppress CRITICAL or HIGH CVEs** with command injection, RCE, or authentication bypass impact. These should have strong justification.
 - **Stale entries** for CVEs that now have available fixes. If a fixed version exists and the upgrade is straightforward, the suppression should be removed and the dependency updated.

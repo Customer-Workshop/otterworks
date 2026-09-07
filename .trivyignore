@@ -1,50 +1,144 @@
 # OtterWorks Trivy Ignore List
-# These CVEs are acknowledged and tracked for remediation in future upgrade cycles.
-# report-service is excluded via skip-dirs (intentional legacy Java 8 service for upgrade exercise).
+#
+# Every entry follows the format documented in docs/labs/security-sprint-guide.md:
+#   # CVE — <package>: <description>
+#   # Impact: <sev>. Tracked in <ticket>. Blocked on <reason>. Revisit by <date>.
+#   CVE-ID
+#
+# Rules:
+# - Exact IDs only. Trivy's plain-text ignore file does not expand globs, so a
+#   pattern such as `CVE-2021-*` suppresses nothing and only hides the intent.
+# - One block per module. A suppression is removed as soon as the fixed version
+#   is a patch/minor bump; only major-version-gated fixes stay here.
+# - report-service is excluded via `scan.skip-dirs` in
+#   security/scanning/trivy-config.yaml (intentional legacy Java 8 service kept
+#   for the dependency-cve-remediation exercise), so it has no entries here.
+# - Ticket IDs use the OTTERWORKS-SEC-<n> placeholder until a tracker exists.
 
-# --- etl/airflow: requires Airflow 2.9+ upgrade (major version) ---
-CVE-2024-39877
-CVE-2024-45034
-CVE-2024-56373
-CVE-2025-54550
-CVE-2025-68675
+# ============================================================================
+# frontend/admin-dashboard — Angular 17.3.12 (fixed in 19.2.x / 20.3.x / 21.x)
+# All fixes require the Angular 17 -> 19+ major upgrade (two majors, new
+# application builder, signal-based APIs). The dashboard is an internal
+# operator UI served behind the shared ingress with no SSR/hydration and no
+# HttpTransferCache, so the SSR/cache issues are not reachable as deployed.
+# ============================================================================
 
-# --- frontend/admin-dashboard: requires Angular 19+ upgrade (major version) ---
+# CVE-2025-66035 — @angular/common: HttpClient XSRF token leakage via protocol-relative URLs
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
 CVE-2025-66035
+# CVE-2025-66412 — @angular/compiler: stored XSS via SVG animation / SVG URL / MathML attributes
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
 CVE-2025-66412
+# CVE-2026-22610 — @angular/core,@angular/compiler: XSS in template compiler
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
 CVE-2026-22610
+# CVE-2026-27970 — @angular/core: XSS via compromised translation files (no i18n translation files shipped)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
 CVE-2026-27970
+# CVE-2026-32635 — @angular/core,@angular/compiler: XSS in i18n attribute bindings
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
 CVE-2026-32635
+# CVE-2026-50170 — @angular/common: information leak via default caching of credentialed requests in HttpTransferCache (SSR only)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-50170
+# CVE-2026-50171 — @angular/common: DoS via malformed digitsInfo parameter in number pipes
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-50171
+# CVE-2026-54266 — @angular/common: weak 32-bit cache-key hashing in HttpTransferCache (SSR only)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-54266
+# CVE-2026-54267 — @angular/core: client hydration DOM clobbering & response-cache poisoning (SSR only)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-54267
+# CVE-2026-54268 — @angular/common: DoS via crafted date format string
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-54268
+# CVE-2026-68945 — @angular/common: cross-request response reuse / state poisoning in HttpTransferCache (SSR only)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-68945
+# CVE-2026-69151 — @angular/core,@angular/compiler: XSS via internationalization event handlers
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-101. Blocked on Angular 19+ major upgrade. Revisit by 2026-12-31.
+CVE-2026-69151
 
-# --- frontend/web-app: requires Next.js 14.2.25+ or 15.x upgrade ---
-CVE-2025-29927
-CVE-2024-46982
-CVE-2024-51479
-GHSA-5j59-xgg2-r9c4
-GHSA-h25m-26qc-wcjf
-GHSA-mwv6-3258-q52c
-GHSA-q4gf-8mx6-v5v3
+# ============================================================================
+# services/collab-service — @opentelemetry/sdk-node 0.49.1 (fixed in 0.217.0+)
+# The OpenTelemetry JS SDK is pre-1.0; 0.49 -> 0.2xx is a breaking upgrade
+# (sdk-node/exporter/instrumentation packages must move together, resources
+# and semantic-conventions APIs changed). The vulnerable code paths are the
+# Jaeger propagator header decoder and the Prometheus exporter, neither of
+# which is enabled — collab-service exports over OTLP/HTTP only.
+# ============================================================================
 
-# --- services/api-gateway: Go dependency upgrades require build tool ---
+# CVE-2026-59892 — @opentelemetry/propagator-jaeger: DoS via malformed HTTP header decoding
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-102. Blocked on OpenTelemetry JS SDK 0.49 -> 0.2xx breaking upgrade. Revisit by 2026-12-31.
+CVE-2026-59892
+# CVE-2026-44902 — @opentelemetry/sdk-node (exporter-prometheus): DoS via malformed HTTP request
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-102. Blocked on OpenTelemetry JS SDK 0.49 -> 0.2xx breaking upgrade. Revisit by 2026-12-31.
+CVE-2026-44902
+
+# ============================================================================
+# services/admin-service — Rails 7.1.6 / puma 6.6.1
+# Rails fixes ship only in 7.2.3.x / 8.x; puma fixes only in 7.2.1+ / 8.x.
+# Both are framework-major upgrades that are out of scope for this sprint.
+# Note: config/environments/production.rb is a planted lab bug and must not
+# be changed as part of any Rails upgrade.
+# ============================================================================
+
+# CVE-2026-33195 — activestorage: arbitrary file access via path traversal in blob keys
+# Impact: CRITICAL (active_storage railtie is not loaded in config/application.rb; gem is a transitive rails dependency). Tracked in OTTERWORKS-SEC-103. Blocked on Rails 7.2+ upgrade. Revisit by 2026-12-31.
+CVE-2026-33195
+# CVE-2026-33202 — activestorage: unintended file deletion via crafted blob keys
+# Impact: CRITICAL (active_storage railtie not loaded; no attachments). Tracked in OTTERWORKS-SEC-103. Blocked on Rails 7.2+ upgrade. Revisit by 2026-12-31.
+CVE-2026-33202
+# CVE-2026-33174 — activestorage: DoS via unbounded Range header
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-103. Blocked on Rails 7.2+ upgrade. Revisit by 2026-12-31.
+CVE-2026-33174
+# CVE-2026-66066 — activestorage: RCE via unsafe libvips operations (image_processing/libvips not installed)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-103. Blocked on Rails 7.2+ upgrade. Revisit by 2026-12-31.
+CVE-2026-66066
+# CVE-2026-33658 — activestorage: advisory listed by the prior review; not currently reported by the Trivy DB, kept until the Rails 7.2 upgrade closes the family
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-103. Blocked on Rails 7.2+ upgrade. Revisit by 2026-12-31.
+CVE-2026-33658
+# CVE-2026-33176 — activesupport: DoS via large scientific-notation strings
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-103. Blocked on Rails 7.2+ upgrade. Revisit by 2026-12-31.
+CVE-2026-33176
+# CVE-2026-47736 — puma: DoS via unbounded memory growth in PROXY protocol v1 (PROXY protocol not enabled)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-104. Blocked on puma 7.x major upgrade. Revisit by 2026-12-31.
+CVE-2026-47736
+# CVE-2026-47737 — puma: source-IP spoofing via PROXY protocol header re-parsing (PROXY protocol not enabled)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-104. Blocked on puma 7.x major upgrade. Revisit by 2026-12-31.
+CVE-2026-47737
+
+# ============================================================================
+# services/api-gateway — Go modules (owned by the api-gateway remediation unit)
+# ============================================================================
+
+# CVE-2025-30204 — github.com/golang-jwt/jwt/v5: excessive memory allocation during header parsing
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway `go get`/`go mod tidy` run in the api-gateway unit. Revisit by 2026-10-31.
 CVE-2025-30204
+# CVE-2026-24051 — go.opentelemetry.io/otel/sdk: arbitrary code execution via PATH hijacking (Windows-only resource detector)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway Go module upgrade. Revisit by 2026-10-31.
 CVE-2026-24051
+# CVE-2026-39883 — go.opentelemetry.io/otel/sdk: arbitrary code execution via PATH hijacking (Windows-only resource detector)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway Go module upgrade. Revisit by 2026-10-31.
 CVE-2026-39883
+# CVE-2026-33186 — google.golang.org/grpc (authz): authorization bypass via improper HTTP header handling (grpc authz package not used)
+# Impact: CRITICAL. Tracked in OTTERWORKS-SEC-105. Blocked on api-gateway Go module upgrade. Revisit by 2026-10-31.
 CVE-2026-33186
 
-# --- services/admin-service: requires Rails 7.2+ upgrade (activestorage CVEs) ---
-CVE-2026-33195
-CVE-2026-33658
+# ============================================================================
+# services/document-service — Python (owned by the document-service unit)
+# ============================================================================
 
-# --- services/document-service: Python dependency upgrades require poetry ---
+# CVE-2026-0994 — protobuf: DoS via recursion-depth bypass
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on `poetry lock` refresh in the document-service unit. Revisit by 2026-10-31.
 CVE-2026-0994
-CVE-2024-53981
-CVE-2026-24486
+# CVE-2024-47874 — starlette: DoS via multipart/form-data
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on FastAPI/Starlette bump in the document-service unit. Revisit by 2026-10-31.
 CVE-2024-47874
-
-# Bulk ignore — revisit in Q4
-CVE-2021-*
-
-# Low-priority npm advisories — team reviewed 2024-12
-CVE-2021-23337
-CVE-2021-33503
-CVE-2020-28500
+# CVE-2024-53981 — python-multipart: DoS via malformed multipart boundary (listed by prior review; not currently reported by the Trivy DB)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on `poetry lock` refresh in the document-service unit. Revisit by 2026-10-31.
+CVE-2024-53981
+# CVE-2026-24486 — document-service Python dependency (listed by prior review; not currently reported by the Trivy DB)
+# Impact: HIGH. Tracked in OTTERWORKS-SEC-106. Blocked on `poetry lock` refresh in the document-service unit. Revisit by 2026-10-31.
+CVE-2026-24486

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from typing import Any
@@ -16,6 +17,20 @@ logger = structlog.get_logger()
 
 FILES_INDEX = "files"
 DOCUMENTS_INDEX = "documents"
+
+VALID_DOC_TYPES = frozenset({"document", "file"})
+MAX_TAGS = 50
+MAX_FILTER_VALUE_LENGTH = 256
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})?)?$")
+
+
+class InvalidSearchRequest(ValueError):
+    """A client-supplied search parameter was rejected.
+
+    The message is a fixed, client-safe string; the offending detail is only
+    ever logged server-side.
+    """
+
 
 # In-memory analytics store
 _analytics_lock = threading.Lock()
@@ -79,8 +94,57 @@ class MeiliSearchService:
 
     @staticmethod
     def _escape(value: str) -> str:
-        """Escape a value for use in MeiliSearch filter expressions."""
+        """Escape a value for use inside a double-quoted MeiliSearch filter string."""
+        if not isinstance(value, str):
+            raise InvalidSearchRequest("Invalid filter value")
+        if len(value) > MAX_FILTER_VALUE_LENGTH or any(ord(ch) < 0x20 for ch in value):
+            raise InvalidSearchRequest("Invalid filter value")
         return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    @staticmethod
+    def _validate_doc_type(doc_type: str | None) -> str | None:
+        if doc_type is None or doc_type == "":
+            return None
+        if doc_type not in VALID_DOC_TYPES:
+            logger.warning("search_invalid_type", doc_type=str(doc_type)[:64])
+            raise InvalidSearchRequest("Invalid type parameter")
+        return doc_type
+
+    @staticmethod
+    def _validate_date(value: str | None, name: str) -> str | None:
+        if value is None or value == "":
+            return None
+        if not isinstance(value, str) or not _ISO_DATE_RE.match(value):
+            logger.warning("search_invalid_date", param=name)
+            raise InvalidSearchRequest(f"Invalid {name} parameter")
+        return value
+
+    @staticmethod
+    def _validate_tags(tags: Any) -> list[str]:
+        if not tags:
+            return []
+        if (
+            not isinstance(tags, list)
+            or len(tags) > MAX_TAGS
+            or not all(isinstance(tag, str) and tag for tag in tags)
+        ):
+            logger.warning("search_invalid_tags")
+            raise InvalidSearchRequest("Invalid tags parameter")
+        return tags
+
+    def _run_search(self, index_name: str, query: str, params: dict[str, Any]) -> dict[str, Any]:
+        """Execute a MeiliSearch query, never letting backend error text escape."""
+        index = self.client.index(index_name)
+        try:
+            return index.search(query, params)
+        except meilisearch.errors.MeilisearchApiError as exc:
+            logger.warning(
+                "search_backend_rejected",
+                index=index_name,
+                code=getattr(exc, "code", None),
+                error=str(exc),
+            )
+            raise InvalidSearchRequest("Invalid search request") from exc
 
     def ensure_indices(self) -> None:
         """Create indices and configure settings if they don't exist."""
@@ -157,6 +221,7 @@ class MeiliSearchService:
         page_size: int = 20,
     ) -> SearchResponse:
         """Full-text search across documents and files."""
+        doc_type = self._validate_doc_type(doc_type)
         filter_parts: list[str] = []
         if doc_type:
             filter_parts.append(f'type = "{self._escape(doc_type)}"')
@@ -171,12 +236,7 @@ class MeiliSearchService:
         total = 0
 
         for index_name in indices_to_search:
-            index = self.client.index(index_name)
-            try:
-                result = index.search(query, search_params)
-            except meilisearch.errors.MeilisearchApiError as exc:
-                logger.warning("search_filter_error", index=index_name, error=str(exc))
-                raise ValueError(f"Invalid search filter: {exc}") from exc
+            result = self._run_search(index_name, query, search_params)
             total += result["estimatedTotalHits"]
             for hit in result["hits"]:
                 all_hits.append(self._parse_hit(hit, index_name))
@@ -206,6 +266,13 @@ class MeiliSearchService:
         page_size: int = 20,
     ) -> SearchResponse:
         """Advanced search with detailed filters."""
+        doc_type = self._validate_doc_type(doc_type)
+        tags = self._validate_tags(tags)
+        date_from = self._validate_date(date_from, "date_from")
+        date_to = self._validate_date(date_to, "date_to")
+        if query is not None and not isinstance(query, str):
+            raise InvalidSearchRequest("Invalid q parameter")
+
         filter_parts: list[str] = []
         if doc_type:
             filter_parts.append(f'type = "{self._escape(doc_type)}"')
@@ -228,8 +295,7 @@ class MeiliSearchService:
         total = 0
 
         for index_name in indices_to_search:
-            index = self.client.index(index_name)
-            result = index.search(search_term, search_params)
+            result = self._run_search(index_name, search_term, search_params)
             total += result["estimatedTotalHits"]
             for hit in result["hits"]:
                 all_hits.append(self._parse_hit(hit, index_name))
@@ -247,17 +313,19 @@ class MeiliSearchService:
             query=search_term or "*",
         )
 
-    def suggest(self, prefix: str, size: int = 10) -> list[str]:
+    def suggest(self, prefix: str, size: int = 10, owner_id: str | None = None) -> list[str]:
         """Autocomplete suggestions using MeiliSearch prefix matching."""
         suggestions: list[str] = []
         seen: set[str] = set()
+        params: dict[str, Any] = {
+            "limit": size,
+            "attributesToRetrieve": ["title", "name"],
+        }
+        if owner_id:
+            params["filter"] = f'owner_id = "{self._escape(owner_id)}"'
 
         for index_name in [self.documents_index_name, self.files_index_name]:
-            index = self.client.index(index_name)
-            result = index.search(prefix, {
-                "limit": size,
-                "attributesToRetrieve": ["title", "name"],
-            })
+            result = self._run_search(index_name, prefix, params)
             for hit in result["hits"]:
                 text = hit.get("title") or hit.get("name", "")
                 if text and text not in seen:

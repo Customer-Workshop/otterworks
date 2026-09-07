@@ -356,7 +356,8 @@ build_helm_args() {
   case "$service" in
     api-gateway) # backend service URLs default to the correct in-cluster DNS
       if [ -n "${TRUSTED_PROXY_CIDRS}" ]; then
-        EXTRA_ARGS+=(--set-string "env.TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS}")
+        # Helm splits --set values on unescaped commas.
+        EXTRA_ARGS+=(--set-string "env.TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS//,/\\,}")
       else
         warn "TRUSTED_PROXY_CIDRS unset and no vpc_cidr_block output; gateway rate limits will key on the ingress address"
       fi ;;

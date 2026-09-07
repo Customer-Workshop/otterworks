@@ -11,8 +11,9 @@ from __future__ import annotations
 from typing import Any
 
 import structlog
-from sqlalchemy import text
+from sqlalchemy import Boolean, Column, MetaData, String, Table, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import ColumnElement
 
 logger = structlog.get_logger()
 
@@ -35,6 +36,20 @@ SORTABLE_COLUMNS = frozenset(COLUMNS)
 DIRECTIONS = {"asc": "ASC", "desc": "DESC"}
 LIKE_ESCAPE = "\\"
 
+# Lightweight Core view of the table: only the columns the filters touch need a
+# real type, the rest are opaque and selected as-is.
+documents = Table(
+    "documents",
+    MetaData(),
+    *[
+        Column(
+            name,
+            Boolean if name in ("is_deleted", "is_template") else String,
+        )
+        for name in COLUMNS
+    ],
+)
+
 
 def _escape_like(fragment: str) -> str:
     """Escape LIKE metacharacters so the fragment matches literally."""
@@ -55,6 +70,12 @@ def resolve_order_by(sort: str, direction: str) -> str:
     return f"{sort} {normalized}"
 
 
+def _order_clause(sort: str, direction: str) -> ColumnElement[Any]:
+    column_name, normalized = resolve_order_by(sort, direction).split(" ")
+    column = documents.c[column_name]
+    return column.desc() if normalized == "DESC" else column.asc()
+
+
 class DocumentQueryRepository:
     """Reads the document table for the list endpoint's metadata filters."""
 
@@ -67,24 +88,19 @@ class DocumentQueryRepository:
         title_contains: str | None,
         content_type: str | None,
         folder_id: str | None = None,
-    ) -> tuple[str, dict[str, Any]]:
-        clauses = ["is_deleted = false", "is_template = false"]
-        params: dict[str, Any] = {}
+    ) -> list[ColumnElement[bool]]:
+        c = documents.c
+        clauses: list[ColumnElement[bool]] = [c.is_deleted.is_(False), c.is_template.is_(False)]
         if owner_id:
-            clauses.append("owner_id = :owner_id")
-            params["owner_id"] = str(owner_id)
+            clauses.append(c.owner_id == str(owner_id))
         if folder_id:
-            clauses.append("folder_id = :folder_id")
-            params["folder_id"] = str(folder_id)
+            clauses.append(c.folder_id == str(folder_id))
         if title_contains:
-            clauses.append(
-                f"lower(title) LIKE lower(:title_pattern) ESCAPE '{LIKE_ESCAPE}'"
-            )
-            params["title_pattern"] = f"%{_escape_like(title_contains)}%"
+            pattern = f"%{_escape_like(title_contains)}%"
+            clauses.append(func.lower(c.title).like(func.lower(pattern), escape=LIKE_ESCAPE))
         if content_type:
-            clauses.append("content_type = :content_type")
-            params["content_type"] = content_type
-        return " AND ".join(clauses), params
+            clauses.append(c.content_type == content_type)
+        return clauses
 
     async def count_documents(
         self,
@@ -95,10 +111,9 @@ class DocumentQueryRepository:
         folder_id: str | None = None,
     ) -> int:
         """Count documents matching the metadata filters."""
-        where, params = self._where(owner_id, title_contains, content_type, folder_id)
-        result = await self.db.execute(
-            text(f"SELECT count(*) FROM documents WHERE {where}"), params
-        )
+        where = self._where(owner_id, title_contains, content_type, folder_id)
+        stmt = select(func.count()).select_from(documents).where(*where)
+        result = await self.db.execute(stmt)
         return int(result.scalar_one())
 
     async def search_documents(
@@ -117,14 +132,15 @@ class DocumentQueryRepository:
 
         Raises ``ValueError`` when ``sort`` or ``direction`` is not allow-listed.
         """
-        order_by = resolve_order_by(sort, direction)
-        where, params = self._where(owner_id, title_contains, content_type, folder_id)
-        params["limit"] = int(limit)
-        params["offset"] = int(offset)
-        sql = (
-            f"SELECT {', '.join(COLUMNS)} FROM documents WHERE {where} "
-            f"ORDER BY {order_by} LIMIT :limit OFFSET :offset"
+        order_by = _order_clause(sort, direction)
+        where = self._where(owner_id, title_contains, content_type, folder_id)
+        stmt = (
+            select(*[documents.c[name] for name in COLUMNS])
+            .where(*where)
+            .order_by(order_by)
+            .limit(int(limit))
+            .offset(int(offset))
         )
         logger.debug("document_filter_query", sort=sort, direction=direction)
-        result = await self.db.execute(text(sql), params)
+        result = await self.db.execute(stmt)
         return [dict(row._mapping) for row in result]

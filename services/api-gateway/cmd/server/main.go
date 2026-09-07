@@ -41,6 +41,14 @@ func main() {
 
 	middleware.SetLogLevel(cfg.LogLevel)
 
+	trustedProxies, err := middleware.ParseTrustedProxies(cfg.TrustedProxyCIDRs)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("invalid TRUSTED_PROXY_CIDRS")
+	}
+	if len(trustedProxies) == 0 {
+		logger.Info().Msg("no trusted proxies configured; forwarding headers are ignored and clients are keyed by peer address")
+	}
+
 	// OpenTelemetry tracing
 	shutdownTracer := initTracer()
 
@@ -66,7 +74,8 @@ func main() {
 
 	// Global middleware stack
 	r.Use(middleware.RequestID)
-	r.Use(chimw.RealIP)
+	r.Use(middleware.RealIP(trustedProxies))
+	r.Use(middleware.SecurityHeaders(middleware.SecurityHeadersConfig{HSTSMaxAge: cfg.HSTSMaxAge}))
 	r.Use(middleware.Metrics)
 	r.Use(middleware.Logger(logger))
 	r.Use(chimw.Recoverer)
@@ -97,8 +106,28 @@ func main() {
 	// Health check
 	r.Get("/health", health.Handler())
 
-	// Prometheus metrics
-	r.Handle("/metrics", promhttp.Handler())
+	// Prometheus metrics: internal listener by default, public only when opted in.
+	if cfg.MetricsPublic {
+		r.Handle("/metrics", promhttp.Handler())
+	}
+	var metricsSrv *http.Server
+	if cfg.MetricsPort != "" {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("/metrics", promhttp.Handler())
+		metricsSrv = &http.Server{
+			Addr:         ":" + cfg.MetricsPort,
+			Handler:      metricsMux,
+			ReadTimeout:  15 * time.Second,
+			WriteTimeout: 30 * time.Second,
+			IdleTimeout:  60 * time.Second,
+		}
+		go func() {
+			logger.Info().Str("port", cfg.MetricsPort).Msg("metrics listener starting")
+			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logger.Fatal().Err(err).Msg("metrics listener failed")
+			}
+		}()
+	}
 
 	// Mount reverse proxy routes
 	proxyRouter := proxy.NewRouter(proxy.RouterConfig{
@@ -137,6 +166,11 @@ func main() {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Fatal().Err(err).Msg("server forced to shutdown")
+	}
+	if metricsSrv != nil {
+		if err := metricsSrv.Shutdown(ctx); err != nil {
+			logger.Error().Err(err).Msg("metrics listener forced to shutdown")
+		}
 	}
 
 	if shutdownTracer != nil {

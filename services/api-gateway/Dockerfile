@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -15,6 +15,6 @@ COPY --from=builder /bin/server /app/server
 RUN adduser -D -u 1001 appuser
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8080 9090
 HEALTHCHECK --interval=10s --timeout=3s CMD wget --spider -q http://localhost:8080/health || exit 1
 ENTRYPOINT ["/app/server"]

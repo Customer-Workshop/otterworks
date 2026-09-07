@@ -27,6 +27,16 @@ type Config struct {
 
 	// Rate limiting
 	RateLimitRPS int
+	// TrustedProxyCIDRs lists the peers whose X-Forwarded-For / X-Real-IP are honoured.
+	TrustedProxyCIDRs []string
+
+	// Metrics listener. MetricsPort empty disables the internal listener;
+	// MetricsPublic re-exposes /metrics on the main listener.
+	MetricsPort   string
+	MetricsPublic bool
+
+	// HSTSMaxAge in seconds; zero disables Strict-Transport-Security.
+	HSTSMaxAge int
 
 	// JWT
 	JWTSecret string
@@ -72,7 +82,13 @@ func Load() *Config {
 		AuditServiceURL:        getEnv("AUDIT_SERVICE_URL", "http://audit-service:8090"),
 		ReportServiceURL:       getEnv("REPORT_SERVICE_URL", "http://report-service:8091"),
 
-		RateLimitRPS: getEnvInt("RATE_LIMIT_RPS", 100),
+		RateLimitRPS:      getEnvInt("RATE_LIMIT_RPS", 100),
+		TrustedProxyCIDRs: getEnvSlice("TRUSTED_PROXY_CIDRS", nil),
+
+		MetricsPort:   getEnv("METRICS_PORT", "9090"),
+		MetricsPublic: getEnvBool("METRICS_PUBLIC", false),
+
+		HSTSMaxAge: getEnvInt("HSTS_MAX_AGE_SECONDS", 31536000),
 
 		JWTSecret: getEnv("JWT_SECRET", ""),
 
@@ -122,6 +138,15 @@ func getEnvInt(key string, fallback int) int {
 	if val, ok := os.LookupEnv(key); ok {
 		if i, err := strconv.Atoi(val); err == nil {
 			return i
+		}
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	if val, ok := os.LookupEnv(key); ok {
+		if b, err := strconv.ParseBool(val); err == nil {
+			return b
 		}
 	}
 	return fallback

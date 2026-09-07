@@ -106,19 +106,35 @@ def _ensure_owner(document: object, user_id: UUID) -> None:
         raise HTTPException(status_code=403, detail="Access denied")
 
 
+def _resolve_owner(requested_owner: UUID | None, request: Request) -> UUID:
+    """Return the owner for a create: the validated identity wins over the body.
+
+    An authenticated caller may only create in its own account; a body naming
+    another owner is refused. Without an identity the body value is honoured,
+    which is the contract callers behind the gateway (which owns auth) rely on.
+    """
+    identity = _extract_user_id(request)
+    if identity:
+        if requested_owner and requested_owner != identity:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="owner_id must match the authenticated caller",
+            )
+        return identity
+    if requested_owner:
+        return requested_owner
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="owner_id is required: provide it in the body or authenticate via JWT",
+    )
+
+
 async def _do_create_document(
     body: DocumentCreate,
     request: Request,
     db: AsyncSession,
 ) -> DocumentResponse:
-    if not body.owner_id:
-        extracted_id = _extract_user_id(request)
-        if not extracted_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="owner_id is required: provide it in the body or authenticate via JWT",
-            )
-        body.owner_id = extracted_id
+    body.owner_id = _resolve_owner(body.owner_id, request)
 
     service = DocumentService(db)
     document = await service.create(body)
@@ -247,8 +263,11 @@ async def _do_filter_documents(
             limit=size,
             offset=(page - 1) * size,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid sort or direction") from exc
     except SQLAlchemyError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid filter: {exc}") from exc
+        logger.warning("document_filter_failed", error_type=type(exc).__name__)
+        raise HTTPException(status_code=400, detail="Invalid filter") from exc
     return DocumentListResponse(
         items=[DocumentResponse.model_validate(row) for row in rows],
         total=total,
@@ -505,9 +524,11 @@ async def export_document(
 async def create_from_template(
     template_id: UUID,
     body: DocumentFromTemplate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document from a template."""
+    body.owner_id = _resolve_owner(body.owner_id, request)
     service = DocumentService(db)
     document = await service.create_from_template(template_id, body)
     if not document:

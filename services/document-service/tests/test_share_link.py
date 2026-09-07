@@ -58,3 +58,30 @@ async def test_share_endpoint_round_trip(client, owner_id: uuid.UUID, monkeypatc
         "/api/v1/documents/shared", params={"document_id": doc_id, "token": "wrong"}
     )
     assert denied.status_code == 403
+
+
+def test_token_is_not_the_legacy_md5_digest(service):
+    import hashlib
+
+    legacy = hashlib.md5(f"{DOC_ID}:test-salt".encode(), usedforsecurity=False).hexdigest()[:16]
+    assert service.verify_token(DOC_ID, legacy) is False
+    assert service.mint_token(DOC_ID) != legacy
+
+
+def test_token_is_keyed_by_secret(monkeypatch):
+    monkeypatch.setenv("SHARE_LINK_SECRET", "secret-one")
+    first = ShareLinkService().mint_token(DOC_ID)
+    monkeypatch.setenv("SHARE_LINK_SECRET", "secret-two")
+    second = ShareLinkService().mint_token(DOC_ID)
+    assert first != second
+    assert ShareLinkService().verify_token(DOC_ID, first) is False
+
+
+def test_forged_default_salt_token_is_rejected(monkeypatch):
+    import hashlib
+
+    monkeypatch.delenv("SHARE_LINK_SECRET", raising=False)
+    forged = hashlib.md5(
+        f"{DOC_ID}:otterworks-share".encode(), usedforsecurity=False
+    ).hexdigest()[:16]
+    assert ShareLinkService().verify_token(DOC_ID, forged) is False

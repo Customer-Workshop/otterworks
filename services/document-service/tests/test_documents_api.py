@@ -279,3 +279,51 @@ async def test_create_document_no_auth_returns_401(client: AsyncClient):
         json={"title": "No Auth Doc"},
     )
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_document_authenticated_caller_cannot_name_another_owner(
+    client: AsyncClient,
+):
+    """A JWT-authenticated create naming a different owner_id is refused."""
+    attacker = uuid.uuid4()
+    victim = uuid.uuid4()
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Planted", "content": "x", "owner_id": str(victim)},
+        headers={"Authorization": f"Bearer {_make_jwt(str(attacker))}"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_document_authenticated_caller_own_owner_id_is_accepted(
+    client: AsyncClient,
+):
+    user_id = uuid.uuid4()
+    resp = await client.post(
+        "/api/v1/documents/",
+        json={"title": "Mine", "content": "x", "owner_id": str(user_id)},
+        headers={"Authorization": f"Bearer {_make_jwt(str(user_id))}"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["owner_id"] == str(user_id)
+
+
+@pytest.mark.asyncio
+async def test_create_from_template_authenticated_caller_cannot_name_another_owner(
+    client: AsyncClient,
+):
+    attacker = uuid.uuid4()
+    victim = uuid.uuid4()
+    template = await client.post(
+        "/api/v1/templates/",
+        json={"name": "T", "content": "body", "created_by": str(attacker)},
+    )
+    assert template.status_code == 201
+    resp = await client.post(
+        f"/api/v1/documents/from-template/{template.json()['id']}",
+        json={"title": "Planted", "owner_id": str(victim)},
+        headers={"Authorization": f"Bearer {_make_jwt(str(attacker))}"},
+    )
+    assert resp.status_code == 403

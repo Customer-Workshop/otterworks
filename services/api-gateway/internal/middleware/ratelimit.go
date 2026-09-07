@@ -84,7 +84,9 @@ func (rl *RateLimiter) Handler(next http.Handler) http.Handler {
 }
 
 func extractIP(r *http.Request) string {
-	// chimw.RealIP has already set r.RemoteAddr to the client IP
+	// RealIP has already resolved r.RemoteAddr: the peer address, or the forwarded
+	// client address when the peer is a trusted proxy. Forwarding headers are never
+	// read here, so a client cannot pick its own bucket.
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

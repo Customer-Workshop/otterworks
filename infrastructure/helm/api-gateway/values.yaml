@@ -41,10 +41,12 @@ healthCheck:
   path: /health
   port: 8080
 
+# Prometheus metrics are served on a dedicated internal listener (METRICS_PORT),
+# never on the public 8080 listener unless METRICS_PUBLIC=true.
 monitoring:
   enabled: true
   path: /metrics
-  port: 8080
+  port: 9090
 
 env:
   AUTH_SERVICE_URL: "http://auth-service:8081"
@@ -56,6 +58,16 @@ env:
   ANALYTICS_SERVICE_URL: "http://analytics-service:8088"
   ADMIN_SERVICE_URL: "http://admin-service:8089"
   AUDIT_SERVICE_URL: "http://audit-service:8090"
+  METRICS_PORT: "9090"
+  METRICS_PUBLIC: "false"
+  # Peers whose X-Forwarded-For / X-Real-IP the gateway believes (comma-separated
+  # CIDRs). Empty means every client is keyed by its TCP peer address, so behind
+  # ingress-nginx all traffic would share the controller's rate-limit bucket. Set
+  # this to the ingress-nginx pod CIDR (or the cluster pod CIDR) at deploy time,
+  # e.g. --set env.TRUSTED_PROXY_CIDRS="10.0.0.0/8". ingress-nginx sets
+  # X-Forwarded-For / X-Real-IP to the connecting client by default; if it is
+  # behind an NLB with proxy-protocol, enable use-proxy-protocol there as well.
+  TRUSTED_PROXY_CIDRS: ""
 
 networkPolicy:
   enabled: true

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -22,6 +23,19 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
     return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  @ExceptionHandler(AccountLockedException.class)
+  public ResponseEntity<Map<String, Object>> handleAccountLocked(AccountLockedException ex) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("timestamp", Instant.now().toString());
+    body.put("status", HttpStatus.LOCKED.value());
+    body.put("error", HttpStatus.LOCKED.getReasonPhrase());
+    body.put("message", ex.getMessage());
+    body.put("retryAfterSeconds", ex.getRetryAfterSeconds());
+    return ResponseEntity.status(HttpStatus.LOCKED)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+        .body(body);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -71,3 +71,37 @@ async def test_export_endpoint_404s_for_unreadable_file(client, monkeypatch, tmp
     resp = await client.get("/api/v1/documents/exports", params={"name": "locked.md"})
 
     assert resp.status_code == 404
+
+
+def test_traversal_outside_archive_is_not_found(archive, tmp_path):
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.env"
+    outside.write_text("SECRET=1\n", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError):
+        archive.read_export(f"../{outside.name}")
+
+
+def test_absolute_path_is_not_found(archive):
+    with pytest.raises(FileNotFoundError):
+        archive.read_export("/etc/passwd")
+
+
+def test_symlink_escaping_archive_is_not_found(archive, tmp_path):
+    outside = tmp_path.parent / f"{tmp_path.name}-linked.md"
+    outside.write_text("# Outside\n", encoding="utf-8")
+    (tmp_path / "link.md").symlink_to(outside)
+
+    with pytest.raises(FileNotFoundError):
+        archive.read_export("link.md")
+
+
+@pytest.mark.asyncio
+async def test_export_endpoint_404s_for_traversal(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("EXPORT_ARCHIVE_DIR", str(tmp_path))
+
+    resp = await client.get(
+        "/api/v1/documents/exports", params={"name": "../../../../etc/passwd"}
+    )
+
+    assert resp.status_code == 404
+    assert "root:" not in resp.text

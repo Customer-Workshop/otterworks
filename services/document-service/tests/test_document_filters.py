@@ -86,3 +86,68 @@ async def test_unfiltered_list_is_unchanged(client: AsyncClient, owner_id: uuid.
 
     assert resp.status_code == 200
     assert resp.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_filter_title_quote_is_a_literal_not_sql(client: AsyncClient, owner_id: uuid.UUID):
+    await _create(client, owner_id, "O'Brien report")
+    await _create(client, owner_id, "Plain report")
+
+    resp = await client.get("/api/v1/documents/", params={"title": "o'brien"})
+
+    assert resp.status_code == 200
+    assert [item["title"] for item in resp.json()["items"]] == ["O'Brien report"]
+
+
+@pytest.mark.asyncio
+async def test_filter_content_type_tautology_does_not_cross_owners(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    other = uuid.uuid4()
+    await _create(client, owner_id, "Mine", content_type="text/markdown")
+    await _create(client, other, "Theirs", content_type="text/markdown")
+
+    resp = await client.get(
+        "/api/v1/documents/",
+        params={"owner_id": str(owner_id), "content_type": "text/markdown' OR '1'='1"},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_filter_rejects_unknown_sort_without_db_error_text(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    await _create(client, owner_id, "Plan")
+
+    resp = await client.get(
+        "/api/v1/documents/", params={"sort": "title; DROP TABLE documents"}
+    )
+
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert "DROP" not in detail
+    assert "syntax" not in detail.lower()
+    assert "SELECT" not in detail
+
+
+@pytest.mark.asyncio
+async def test_filter_rejects_unknown_direction(client: AsyncClient, owner_id: uuid.UUID):
+    resp = await client.get(
+        "/api/v1/documents/", params={"title": "x", "direction": "desc; --"}
+    )
+
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_filter_like_wildcards_are_literal(client: AsyncClient, owner_id: uuid.UUID):
+    await _create(client, owner_id, "100% done")
+    await _create(client, owner_id, "100 percent")
+
+    resp = await client.get("/api/v1/documents/", params={"title": "100%"})
+
+    assert resp.status_code == 200
+    assert [item["title"] for item in resp.json()["items"]] == ["100% done"]

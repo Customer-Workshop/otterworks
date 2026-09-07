@@ -6,9 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otterworks.auth.config.LoginLockoutProperties;
 import com.otterworks.auth.entity.User;
 import com.otterworks.auth.repository.RefreshTokenRepository;
 import com.otterworks.auth.repository.UserRepository;
+import java.time.Instant;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,7 @@ class AuthControllerIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private RefreshTokenRepository refreshTokenRepository;
   @Autowired private PasswordEncoder passwordEncoder;
+  @Autowired private LoginLockoutProperties lockoutProperties;
 
   @BeforeEach
   void setUp() {
@@ -116,6 +119,80 @@ class AuthControllerIntegrationTest {
     mockMvc
         .perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void login_shouldLockAccountAfterRepeatedFailuresAndRecoverAfterUnlock() throws Exception {
+    createTestUser("locked@otterworks.dev", "password123", "Locked User");
+    String wrong =
+        """
+        {"email": "locked@otterworks.dev", "password": "wrongpassword"}
+        """;
+    String right =
+        """
+        {"email": "locked@otterworks.dev", "password": "password123"}
+        """;
+
+    for (int i = 0; i < lockoutProperties.getMaxAttempts(); i++) {
+      mockMvc
+          .perform(
+              post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(wrong))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.message").value("Invalid credentials"));
+    }
+
+    mockMvc
+        .perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(wrong))
+        .andExpect(status().isLocked())
+        .andExpect(header().exists("Retry-After"))
+        .andExpect(jsonPath("$.retryAfterSeconds").isNumber());
+
+    // Correct password is refused while the lock is in force.
+    mockMvc
+        .perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(right))
+        .andExpect(status().isLocked())
+        .andExpect(header().exists("Retry-After"));
+
+    User user = userRepository.findByEmail("locked@otterworks.dev").orElseThrow();
+    assertThat(user.getFailedLoginAttempts()).isEqualTo(lockoutProperties.getMaxAttempts());
+    assertThat(user.getLockedUntil()).isNotNull();
+
+    user.setLockedUntil(Instant.now().minusSeconds(1));
+    userRepository.save(user);
+
+    mockMvc
+        .perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(right))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").isNotEmpty());
+
+    user = userRepository.findByEmail("locked@otterworks.dev").orElseThrow();
+    assertThat(user.getFailedLoginAttempts()).isZero();
+    assertThat(user.getLockedUntil()).isNull();
+  }
+
+  @Test
+  void login_shouldNotLockOtherAccounts() throws Exception {
+    createTestUser("victim@otterworks.dev", "password123", "Victim");
+    createTestUser("bystander@otterworks.dev", "password123", "Bystander");
+    String wrong =
+        """
+        {"email": "victim@otterworks.dev", "password": "wrongpassword"}
+        """;
+
+    for (int i = 0; i <= lockoutProperties.getMaxAttempts(); i++) {
+      mockMvc.perform(
+          post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(wrong));
+    }
+
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"email": "bystander@otterworks.dev", "password": "password123"}
+                    """))
+        .andExpect(status().isOk());
   }
 
   @Test

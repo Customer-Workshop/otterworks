@@ -3,6 +3,13 @@ severity:
   - CRITICAL
   - HIGH
 
+scan:
+  # report-service is a legacy Java 8 service earmarked for a separate framework
+  # upgrade exercise (see docs/labs/security-sprint-guide.md); it is out of scope
+  # for the security scan and every suppression in .trivyignore.
+  skip-dirs:
+    - services/report-service
+
 vulnerability:
   type:
     - os

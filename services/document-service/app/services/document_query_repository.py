@@ -8,12 +8,15 @@ bound as a query parameter; ORDER BY is resolved from an allow-list.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 import structlog
-from sqlalchemy import Boolean, Column, MetaData, String, Table, func, select
+from sqlalchemy import column, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
+
+from app.models.document import Document
 
 logger = structlog.get_logger()
 
@@ -36,19 +39,7 @@ SORTABLE_COLUMNS = frozenset(COLUMNS)
 DIRECTIONS = {"asc": "ASC", "desc": "DESC"}
 LIKE_ESCAPE = "\\"
 
-# Lightweight Core view of the table: only the columns the filters touch need a
-# real type, the rest are opaque and selected as-is.
-documents = Table(
-    "documents",
-    MetaData(),
-    *[
-        Column(
-            name,
-            Boolean if name in ("is_deleted", "is_template") else String,
-        )
-        for name in COLUMNS
-    ],
-)
+documents = Document.__table__
 
 
 def _escape_like(fragment: str) -> str:
@@ -92,9 +83,9 @@ class DocumentQueryRepository:
         c = documents.c
         clauses: list[ColumnElement[bool]] = [c.is_deleted.is_(False), c.is_template.is_(False)]
         if owner_id:
-            clauses.append(c.owner_id == str(owner_id))
+            clauses.append(c.owner_id == uuid.UUID(str(owner_id)))
         if folder_id:
-            clauses.append(c.folder_id == str(folder_id))
+            clauses.append(c.folder_id == uuid.UUID(str(folder_id)))
         if title_contains:
             pattern = f"%{_escape_like(title_contains)}%"
             clauses.append(func.lower(c.title).like(func.lower(pattern), escape=LIKE_ESCAPE))
@@ -135,7 +126,8 @@ class DocumentQueryRepository:
         order_by = _order_clause(sort, direction)
         where = self._where(owner_id, title_contains, content_type, folder_id)
         stmt = (
-            select(*[documents.c[name] for name in COLUMNS])
+            select(*[column(name) for name in COLUMNS])
+            .select_from(documents)
             .where(*where)
             .order_by(order_by)
             .limit(int(limit))

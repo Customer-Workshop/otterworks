@@ -43,6 +43,18 @@ class AuthConfig:
     require_auth: bool = field(
         default_factory=lambda: os.getenv("REQUIRE_AUTH", "true").lower() == "true"
     )
+    # Shared HMAC secret used by the API gateway / auth-service to sign user
+    # JWTs. When set, user identity is taken exclusively from a validated
+    # ``Authorization: Bearer <jwt>`` token; when empty, the service falls back
+    # to the gateway-injected ``X-User-ID`` header (legacy mode).
+    jwt_secret: str = field(default_factory=lambda: os.getenv("JWT_SECRET", ""))
+    jwt_algorithms: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            alg.strip()
+            for alg in os.getenv("JWT_ALGORITHMS", "HS256,HS384").split(",")
+            if alg.strip()
+        )
+    )
 
 
 @dataclass(frozen=True)

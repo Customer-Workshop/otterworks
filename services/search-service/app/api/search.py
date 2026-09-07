@@ -9,7 +9,12 @@ import structlog
 from flask import Blueprint, current_app, jsonify, request
 
 from app.api.health import SEARCH_COUNT
-from app.services.meilisearch_client import MeiliSearchService, get_search_analytics
+from app.middleware.auth import current_owner_id
+from app.services.meilisearch_client import (
+    InvalidSearchRequest,
+    MeiliSearchService,
+    get_search_analytics,
+)
 
 logger = structlog.get_logger()
 
@@ -46,8 +51,8 @@ def search_documents() -> tuple:
     """Full-text search across documents and files.
 
     Query params: q (required), type, page, size
-    Results are automatically scoped to the authenticated user via the
-    ``X-User-ID`` header set by the API gateway.
+    Results are scoped to the owner id of the authenticated caller as
+    resolved by the auth middleware (see ``app.middleware.auth``).
     """
     query = request.args.get("q", "")
     try:
@@ -56,7 +61,7 @@ def search_documents() -> tuple:
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid page or size parameter"}), 400
     doc_type = request.args.get("type")
-    owner_id = request.headers.get("X-User-ID", "").strip() or None
+    owner_id = current_owner_id()
 
     if not query:
         return jsonify({"error": "Query parameter 'q' is required"}), 400
@@ -73,7 +78,7 @@ def search_documents() -> tuple:
         SEARCH_COUNT.inc()
         logger.info("search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
-    except ValueError as e:
+    except InvalidSearchRequest as e:
         return jsonify({"error": str(e)}), 400
     except Exception:
         logger.exception("search_failed", query=query)
@@ -90,6 +95,8 @@ def suggest() -> tuple:
     if not prefix or len(prefix) < 2:
         return jsonify({"suggestions": [], "query": prefix}), 200
 
+    owner_id = current_owner_id()
+
     # CHAOS: when this flag is active the ranking-score enrichment path runs.
     # This path was introduced to sort suggestions by relevance using
     # _rankingScore, but MeiliSearch only returns that field when explicitly
@@ -97,7 +104,7 @@ def suggest() -> tuple:
     # KeyError and crashes the handler with a 500.
     if _chaos_active("chaos:search-service:suggest_500"):
         service = _get_service()
-        raw_suggestions = service.suggest(prefix)
+        raw_suggestions = service.suggest(prefix, owner_id=owner_id)
         if not raw_suggestions:
             # Simulate the same KeyError that fires when results exist but
             # _rankingScore is missing — ensures chaos fires even with an
@@ -109,7 +116,7 @@ def suggest() -> tuple:
 
     try:
         service = _get_service()
-        suggestions = service.suggest(prefix)
+        suggestions = service.suggest(prefix, owner_id=owner_id)
         return jsonify({"suggestions": suggestions, "query": prefix}), 200
     except Exception:
         logger.exception("suggest_failed", prefix=prefix)
@@ -121,13 +128,18 @@ def advanced_search() -> tuple:
     """Advanced search with filters: date range, owner, type, tags.
 
     JSON body: {q, type, tags, date_from, date_to, page, size}
-    owner_id is always derived from X-User-ID for tenant isolation.
+    Any ``owner_id`` in the body is ignored; the owner is always the
+    authenticated caller resolved by the auth middleware.
     """
-    data = request.get_json() or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
 
     query = data.get("q")
     doc_type = data.get("type")
-    owner_id = request.headers.get("X-User-ID", "").strip() or None
+    owner_id = current_owner_id()
     tags = data.get("tags")
     date_from = data.get("date_from")
     date_to = data.get("date_to")
@@ -152,6 +164,8 @@ def advanced_search() -> tuple:
         SEARCH_COUNT.inc()
         logger.info("advanced_search_executed", query=query, result_count=results.total)
         return jsonify(results.to_dict()), 200
+    except InvalidSearchRequest as e:
+        return jsonify({"error": str(e)}), 400
     except Exception:
         logger.exception("advanced_search_failed")
         return jsonify({"error": "Advanced search failed"}), 500

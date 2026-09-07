@@ -14,6 +14,10 @@ authenticated by exactly one of these modes, tried in order:
   ``X-User-ID`` header injected by the API gateway. This mode trusts the
   network boundary and is logged at startup.
 
+When ``REQUIRE_AUTH`` is false the same resolution runs but a request with
+no usable identity is let through unscoped instead of being rejected, so
+per-user scoping is preserved in deployments that do not enforce auth.
+
 The resolved identity is stored on ``flask.g`` and read by handlers via
 :func:`current_owner_id`; handlers never read identity headers directly.
 """
@@ -71,8 +75,6 @@ def require_auth(app):
     @app.before_request
     def _check_auth():
         _set_identity(None, AUTH_MODE_DISABLED)
-        if not auth_config.require_auth:
-            return None
 
         path = request.path
         if any(path.startswith(p) for p in PUBLIC_PREFIXES):
@@ -97,6 +99,11 @@ def require_auth(app):
                     return None
         elif forwarded_user:
             _set_identity(forwarded_user, AUTH_MODE_GATEWAY_HEADER)
+            return None
+
+        if not auth_config.require_auth:
+            if forwarded_user:
+                _set_identity(forwarded_user, AUTH_MODE_GATEWAY_HEADER)
             return None
 
         endpoint = request.endpoint or ""

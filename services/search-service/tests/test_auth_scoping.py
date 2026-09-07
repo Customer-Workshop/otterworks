@@ -172,3 +172,32 @@ class TestLegacyGatewayHeaderMode:
         resp = legacy_client.get("/api/v1/search/?q=test", headers={"X-User-ID": "user-a"})
         assert resp.status_code == 200
         assert all('owner_id = "user-a"' in f for f in _filters(mock_meilisearch_client))
+
+
+class TestAuthNotRequired:
+    """REQUIRE_AUTH=false never rejects, but still scopes when an identity is present."""
+
+    @pytest.fixture()
+    def open_client(self, mock_meilisearch_client):
+        app = _make_app(
+            mock_meilisearch_client,
+            AuthConfig(service_token="", require_auth=False, jwt_secret=SECRET),
+        )
+        return app.test_client()
+
+    def test_anonymous_allowed_unscoped(self, open_client, mock_meilisearch_client):
+        assert open_client.get("/api/v1/search/?q=test").status_code == 200
+        assert all("owner_id" not in f for f in _filters(mock_meilisearch_client))
+
+    def test_jwt_scopes_results(self, open_client, mock_meilisearch_client):
+        resp = open_client.get(
+            "/api/v1/search/?q=test",
+            headers={"Authorization": f"Bearer {_token('user-a')}", "X-User-ID": "victim"},
+        )
+        assert resp.status_code == 200
+        assert all('owner_id = "user-a"' in f for f in _filters(mock_meilisearch_client))
+
+    def test_gateway_header_scopes_results(self, open_client, mock_meilisearch_client):
+        resp = open_client.get("/api/v1/search/?q=test", headers={"X-User-ID": "user-b"})
+        assert resp.status_code == 200
+        assert all('owner_id = "user-b"' in f for f in _filters(mock_meilisearch_client))

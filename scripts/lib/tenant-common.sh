@@ -296,6 +296,12 @@ build_helm_args() {
         add_secret JWT_SECRET "${JWT_SECRET}" ;;
     esac
   fi
+  if [ -n "${SEARCH_SERVICE_TOKEN:-}" ]; then
+    case "$service" in
+      search-service|admin-service)
+        add_secret SEARCH_SERVICE_TOKEN "${SEARCH_SERVICE_TOKEN}" ;;
+    esac
+  fi
 
   local sns_topic=""; local sqs_notif=""
   if [ "${T_WIRE_EVENTING}" = "true" ]; then

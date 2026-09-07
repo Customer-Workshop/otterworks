@@ -29,6 +29,14 @@ GOLDEN_HOST_SUFFIX="${GOLDEN_HOST_SUFFIX:-otterworks.app}"
 # service that validates tokens. Generated once if not supplied; pass a stable
 # value (JWT_SECRET=...) across redeploys so previously issued tokens stay valid.
 JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
+# Service-to-service token search-service accepts from trusted internal callers
+# (admin-service chaos probes / reindex). Must be identical on both sides.
+SEARCH_SERVICE_TOKEN="${SEARCH_SERVICE_TOKEN:-$(openssl rand -hex 32)}"
+# CIDRs whose X-Forwarded-For the gateway trusts for rate limiting. Defaults to
+# the VPC CIDR from Terraform (covers the ingress-nginx pods); override with
+# TRUSTED_PROXY_CIDRS=... . Left empty, every client behind the ingress would
+# share one rate-limit bucket keyed on the controller's address.
+TRUSTED_PROXY_CIDRS="${TRUSTED_PROXY_CIDRS:-}"
 # Rails (admin-service) session key. Stable value recommended across redeploys.
 SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
 
@@ -216,6 +224,9 @@ load_infra_outputs() {
   SNS_TOPIC="$(terraform -chdir="$d" output -raw sns_events_topic_arn 2>/dev/null || echo "")"
   SQS_NOTIF="$(terraform -chdir="$d" output -raw sqs_notification_queue_url 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
+  if [ -z "${TRUSTED_PROXY_CIDRS}" ]; then
+    TRUSTED_PROXY_CIDRS="$(terraform -chdir="$d" output -raw vpc_cidr_block 2>/dev/null || echo "")"
+  fi
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
   MEILISEARCH_URL="${MEILISEARCH_URL:-http://meilisearch:7700}"
@@ -337,9 +348,18 @@ build_helm_args() {
         add_secret JWT_SECRET "${JWT_SECRET}" ;;
     esac
   fi
+  case "$service" in
+    search-service|admin-service)
+      add_secret SEARCH_SERVICE_TOKEN "${SEARCH_SERVICE_TOKEN}" ;;
+  esac
 
   case "$service" in
-    api-gateway) : ;; # backend service URLs default to the correct in-cluster DNS
+    api-gateway) # backend service URLs default to the correct in-cluster DNS
+      if [ -n "${TRUSTED_PROXY_CIDRS}" ]; then
+        EXTRA_ARGS+=(--set-string "env.TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS}")
+      else
+        warn "TRUSTED_PROXY_CIDRS unset and no vpc_cidr_block output; gateway rate limits will key on the ingress address"
+      fi ;;
     auth-service)
       EXTRA_ARGS+=(--set-string "config.SPRING_PROFILES_ACTIVE=prod")
       EXTRA_ARGS+=(--set-string "config.SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_ENDPOINT_HOST}:${DB_ENDPOINT_PORT}/${DB_NAME}")

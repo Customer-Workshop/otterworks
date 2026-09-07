@@ -108,3 +108,10 @@ output "irsa_role_arns" {
   description = "Map of service account name to IAM role ARN"
   value       = module.irsa.role_arns
 }
+
+# --- Network ---
+
+output "vpc_cidr_block" {
+  description = "VPC CIDR (trusted proxy range for api-gateway RealIP)"
+  value       = local.vpc_cidr
+}

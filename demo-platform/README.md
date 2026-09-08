@@ -28,7 +28,18 @@ demo-platform/
   reaper/        reaper v2 CronJob + orphan sweeper (schedule from control table)
   helm/          charts to deploy the dashboard + reaper into otterworks-platform
   scripts/       platform installers (Karpenter, PgBouncer) + tenant.sh (dashboard CLI)
+  otter-projects/  minimal issue tracker with Devin ticket assignment (see below)
 ```
+
+### Otter Projects (ticket → Devin demo)
+
+[`otter-projects/`](otter-projects/) is a tiny Jira-style tracker used to demo
+automated ticket-to-Devin assignment without a Jira license: label a ticket
+`devin` (or assign it to the `devin` bot) and Otter Projects dispatches it to a
+Devin Automation webhook or the Devin API; Devin's status, messages and PR link
+stream back onto the ticket. Live at <https://projects.otterworks.app>. See its
+[README](otter-projects/README.md), [API docs](otter-projects/docs/api.md) and
+[Devin wiring guide](otter-projects/docs/devin-automation.md).
 
 ## Checkout / check-in model
 A **checkout** reserves a tenant id (atomic lock in the control table), maps it to an

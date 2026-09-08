@@ -1,0 +1,57 @@
+{{- if .Values.poller.enabled }}
+# Every minute: POST /api/devin/poll so tickets with attached Devin sessions
+# mirror status / new messages / PR URLs even when nothing pushes a webhook.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-poller
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "otter-projects.labels" . | nindent 4 }}
+    app.kubernetes.io/component: poller
+spec:
+  schedule: {{ .Values.poller.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 50
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 55
+      ttlSecondsAfterFinished: 120
+      template:
+        metadata:
+          labels:
+            {{- include "otter-projects.labels" . | nindent 12 }}
+            app.kubernetes.io/component: poller
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: poll
+              image: {{ .Values.poller.image | quote }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              env:
+                - name: PROJECTS_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "otter-projects.secretName" . }}
+                      key: PROJECTS_API_KEY
+              command:
+                - sh
+                - -c
+                - >-
+                  curl -sS -f -m 50 -X POST
+                  -H "Authorization: Bearer $PROJECTS_API_KEY"
+                  http://{{ .Release.Name }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.service.port }}/api/devin/poll
+              resources:
+                {{- toYaml .Values.poller.resources | nindent 16 }}
+{{- end }}

@@ -32,6 +32,8 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = REPO_ROOT / "observability" / "slo" / "critical-apis.yaml"
 
+BLACKBOX_PATH = REPO_ROOT / "observability" / "blackbox" / "blackbox.yml"
+
 RULES_PATH = REPO_ROOT / "observability" / "prometheus" / "slo_rules.yml"
 PROBE_TARGETS_PATH = (
     REPO_ROOT / "observability" / "prometheus" / "targets" / "critical-api-probes.json"
@@ -213,6 +215,7 @@ def validate(
             )
 
     probe_ids: set[str] = set()
+    modules_in_use: set[str] = set()
     for probe in catalog.get("health_probes", []):
         if probe["id"] in probe_ids:
             raise CatalogError(f"duplicate health probe id: {probe['id']}")
@@ -222,7 +225,30 @@ def validate(
             raise CatalogError(
                 f"{probe['id']}: health probes must target a /health endpoint, got {probe['url']}"
             )
-        _probe_module(probe["id"], probe["expect_status"])
+        modules_in_use.add(_probe_module(probe["id"], probe["expect_status"]))
+
+    # A probe slower than its module's timeout is recorded as a failure, not as
+    # a slow success, so the slow-probe warning only fires if it sits strictly
+    # below the timeout.
+    warn_after = float(catalog["probe"]["max_duration_seconds"])
+    for module, timeout in _module_timeouts(modules_in_use).items():
+        if warn_after >= timeout:
+            raise CatalogError(
+                f"probe.max_duration_seconds ({_fmt(warn_after)}s) must be below the "
+                f"{module} module timeout ({_fmt(timeout)}s), or a slow probe fails "
+                "before it can warn"
+            )
+
+
+def _module_timeouts(modules: set[str]) -> dict[str, float]:
+    """Timeout, in seconds, of each named blackbox module."""
+    configured = yaml.safe_load(BLACKBOX_PATH.read_text())["modules"]
+    timeouts: dict[str, float] = {}
+    for module in sorted(modules):
+        if module not in configured:
+            raise CatalogError(f"blackbox module {module} is not defined in {BLACKBOX_PATH.name}")
+        timeouts[module] = float(str(configured[module]["timeout"]).rstrip("s"))
+    return timeouts
 
 
 def _probe_module(owner_id: str, expect_status: list[int]) -> str:
@@ -313,9 +339,17 @@ def sli_rules(endpoints: list[Endpoint]) -> dict[str, Any]:
         rules.append(
             {
                 "record": f"slo:api_request_errors:ratio_rate{window}",
+                # An endpoint that has never served a 5xx has no matching
+                # numerator series, and division would drop it entirely, so its
+                # availability and remaining budget would read as "no data"
+                # until it first fails. The `or` supplies an explicit zero.
                 "expr": LiteralStr(
                     "(\n"
-                    f'  sum by (backend, method, route) (rate({REQUESTS_TOTAL}{{status=~"5.."}}[{window}]))\n'
+                    "  (\n"
+                    f'    sum by (backend, method, route) (rate({REQUESTS_TOTAL}{{status=~"5.."}}[{window}]))\n'
+                    "    or\n"
+                    f"    0 * sum by (backend, method, route) (rate({REQUESTS_TOTAL}[{window}]))\n"
+                    "  )\n"
                     "  /\n"
                     f"  sum by (backend, method, route) (rate({REQUESTS_TOTAL}[{window}]))\n"
                     ")\n"
@@ -501,7 +535,7 @@ def traffic_alerts() -> dict[str, Any]:
 
 
 def probe_alerts(catalog: dict[str, Any]) -> dict[str, Any]:
-    probe_latency_budget = catalog["probe"].get("max_duration_seconds", 5)
+    probe_latency_budget = float(catalog["probe"]["max_duration_seconds"])
     return {
         "name": "otterworks.slo.probes",
         "rules": [

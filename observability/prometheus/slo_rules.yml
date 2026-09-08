@@ -647,7 +647,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate5m
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[5m]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[5m]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[5m]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[5m]))
       )
@@ -656,7 +660,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate30m
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[30m]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[30m]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[30m]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[30m]))
       )
@@ -665,7 +673,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate1h
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[1h]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[1h]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[1h]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[1h]))
       )
@@ -674,7 +686,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate2h
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[2h]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[2h]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[2h]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[2h]))
       )
@@ -683,7 +699,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate6h
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[6h]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[6h]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[6h]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[6h]))
       )
@@ -692,7 +712,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate1d
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[1d]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[1d]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[1d]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[1d]))
       )
@@ -701,7 +725,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate3d
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[3d]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[3d]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[3d]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[3d]))
       )
@@ -710,7 +738,11 @@ groups:
   - record: slo:api_request_errors:ratio_rate30d
     expr: |
       (
-        sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[30d]))
+        (
+          sum by (backend, method, route) (rate(api_gateway_http_requests_total{status=~"5.."}[30d]))
+          or
+          0 * sum by (backend, method, route) (rate(api_gateway_http_requests_total[30d]))
+        )
         /
         sum by (backend, method, route) (rate(api_gateway_http_requests_total[30d]))
       )
@@ -1253,7 +1285,7 @@ groups:
       runbook_url: https://docs.otterworks.dev/runbooks/critical-api-slo
   - alert: CriticalApiProbeSlow
     expr: |
-      probe_duration_seconds{job="blackbox-critical-api"} > 5
+      probe_duration_seconds{job="blackbox-critical-api"} > 2
     for: 10m
     labels:
       severity: warning
@@ -1261,5 +1293,5 @@ groups:
     annotations:
       summary: '{{ $labels.backend }} health probe is slow'
       description: The synthetic health check {{ $labels.probe_id }} took {{ $value | humanizeDuration
-        }}, above the 5s probe budget.
+        }}, above the 2s probe budget.
       runbook_url: https://docs.otterworks.dev/runbooks/critical-api-slo

@@ -98,6 +98,28 @@ def test_every_backend_owning_an_endpoint_has_a_health_probe(catalog_bundle):
         assert target["targets"][0].endswith("/health")
 
 
+def test_error_ratio_is_zero_for_endpoints_with_no_error_series(catalog_bundle):
+    """Otherwise a healthy endpoint reads as "no data" until it first 5xxes."""
+    rules = yaml.safe_load(generate.render_rules(*catalog_bundle))
+    ratios = [
+        rule
+        for group in rules["groups"]
+        for rule in group["rules"]
+        if str(rule.get("record", "")).startswith("slo:api_request_errors:ratio_rate")
+    ]
+    assert ratios
+    for rule in ratios:
+        assert "or\n    0 * sum by (backend, method, route)" in rule["expr"]
+
+
+def test_slow_probe_warning_must_be_below_the_module_timeout(tmp_path):
+    data = _catalog_dict()
+    timeouts = generate._module_timeouts({"http_2xx"})
+    data["probe"]["max_duration_seconds"] = timeouts["http_2xx"]
+    with pytest.raises(generate.CatalogError, match="module timeout"):
+        _write_and_load(tmp_path, data)
+
+
 def test_endpoint_level_probes_are_rejected(tmp_path):
     data = _catalog_dict()
     data["endpoints"][0]["probe"] = {"path": "/api/v1/documents", "expect_status": [200, 401]}

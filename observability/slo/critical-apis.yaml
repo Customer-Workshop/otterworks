@@ -56,7 +56,10 @@ burn_rates:
     budget_consumed: 10% of the 30d budget in 3 days
 
 probe:
-  max_duration_seconds: 5
+  # Warn when a health check is this slow. Must stay below the blackbox module
+  # timeout in observability/blackbox/blackbox.yml, otherwise a slow probe is
+  # recorded as a failure and the warning can never fire.
+  max_duration_seconds: 2
 
 endpoints:
   - id: auth_login

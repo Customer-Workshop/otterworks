@@ -17,6 +17,9 @@ search_bp = Blueprint("search", __name__)
 
 _redis_client: redis_lib.Redis | None = None
 
+# Redis flag that enables relevance re-ranking of autocomplete suggestions.
+SUGGEST_RANKING_FLAG = "chaos:search-service:suggest_500"
+
 
 def _get_redis() -> redis_lib.Redis:
     """Return a shared Redis client (lazy-initialised)."""
@@ -34,6 +37,34 @@ def _chaos_active(key: str) -> bool:
         return bool(_get_redis().exists(key))
     except Exception:
         return False
+
+
+def _ranking_score(suggestion: object) -> float | None:
+    """Return the MeiliSearch ``_rankingScore`` of a hit, or None if it has none."""
+    if not isinstance(suggestion, dict):
+        return None
+    score = suggestion.get("_rankingScore")
+    return float(score) if isinstance(score, int | float) else None
+
+
+def _rank_suggestions(suggestions: list) -> list:
+    """Order suggestions by ``_rankingScore`` when every entry carries one.
+
+    ``MeiliSearchService.suggest`` returns bare titles already in MeiliSearch
+    relevance order, and MeiliSearch only emits ``_rankingScore`` when
+    ``showRankingScore`` is requested, so the score is not guaranteed. When any
+    entry lacks a score the original order is kept rather than raising.
+    """
+    if not suggestions:
+        return suggestions
+    scores = [_ranking_score(s) for s in suggestions]
+    if any(score is None for score in scores):
+        logger.warning(
+            "suggest_ranking_skipped", reason="ranking_score_missing", count=len(suggestions)
+        )
+        return suggestions
+    ranked = sorted(zip(suggestions, scores, strict=True), key=lambda pair: pair[1], reverse=True)
+    return [suggestion for suggestion, _ in ranked]
 
 
 def _get_service() -> MeiliSearchService:
@@ -90,26 +121,11 @@ def suggest() -> tuple:
     if not prefix or len(prefix) < 2:
         return jsonify({"suggestions": [], "query": prefix}), 200
 
-    # CHAOS: when this flag is active the ranking-score enrichment path runs.
-    # This path was introduced to sort suggestions by relevance using
-    # _rankingScore, but MeiliSearch only returns that field when explicitly
-    # requested via attributesToRetrieve — without it the key lookup raises
-    # KeyError and crashes the handler with a 500.
-    if _chaos_active("chaos:search-service:suggest_500"):
-        service = _get_service()
-        raw_suggestions = service.suggest(prefix)
-        if not raw_suggestions:
-            # Simulate the same KeyError that fires when results exist but
-            # _rankingScore is missing — ensures chaos fires even with an
-            # empty index.
-            raw_suggestions = [{}]
-        # Sort by MeiliSearch ranking score for better relevance ordering.
-        ranked = sorted(raw_suggestions, key=lambda s: s["_rankingScore"], reverse=True)  # type: ignore[index]
-        return jsonify({"suggestions": ranked, "query": prefix}), 200
-
     try:
         service = _get_service()
         suggestions = service.suggest(prefix)
+        if _chaos_active(SUGGEST_RANKING_FLAG):
+            suggestions = _rank_suggestions(suggestions)
         return jsonify({"suggestions": suggestions, "query": prefix}), 200
     except Exception:
         logger.exception("suggest_failed", prefix=prefix)

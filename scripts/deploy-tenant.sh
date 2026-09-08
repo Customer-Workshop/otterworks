@@ -574,3 +574,4 @@ log "Inspect:   kubectl get all -n ${NS}"
 log "Reach API: kubectl -n ${NS} port-forward svc/api-gateway 8080:8080"
 log "Inject bug: ./scripts/inject-bug.sh ${ATTENDEE_ID} <scenario>"
 log "Teardown:  ./scripts/teardown-tenant.sh ${ATTENDEE_ID}"
+[ ${#FAILED[@]} -eq 0 ] || exit 1

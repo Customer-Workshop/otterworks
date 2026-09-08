@@ -43,6 +43,7 @@ export function SearchBar() {
       const trimmed = term.trim();
       if (!trimmed) return;
       setQuery(trimmed);
+      setActiveIndex(-1);
       setOpen(false);
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     },
@@ -101,6 +102,7 @@ export function SearchBar() {
           type="button"
           onClick={() => {
             setQuery("");
+            setActiveIndex(-1);
             setOpen(false);
           }}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"

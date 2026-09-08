@@ -1,0 +1,12 @@
+# Apache Airflow 2.10 + providers for the OtterWorks ETL DAGs.
+# Install with the matching upstream constraints file so the resolver stays sane:
+#   pip install -r requirements.txt \
+#     -c https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt
+apache-airflow==2.10.5
+apache-airflow-providers-amazon==9.2.0
+apache-airflow-providers-postgres==6.0.0
+
+# Test / lint toolchain (versions from the same constraints file)
+pytest==8.3.4
+moto[s3,sqs,dynamodb]==5.0.11
+ruff==0.5.5

@@ -1,0 +1,116 @@
+# Local Airflow 2.10 stack for the OtterWorks ETL DAGs (etl/airflow/dags).
+#
+#   cp .env.example .env            # fill in AWS / Postgres credentials (never committed)
+#   docker compose up airflow-init  # migrate metadata DB, create admin user
+#   docker compose up -d            # webserver on http://localhost:8080 (admin / admin)
+#
+# Credentials are injected as Airflow Connections via AIRFLOW_CONN_* env vars and
+# non-sensitive settings as Airflow Variables via AIRFLOW_VAR_*; nothing here reads
+# the legacy etl/config.ini.
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.10.5-python3.12
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: utc
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-metadata/airflow
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+    AIRFLOW__EMAIL__EMAIL_BACKEND: airflow.utils.email.send_email_smtp
+    OTTERWORKS_ALERT_EMAIL: ${OTTERWORKS_ALERT_EMAIL:-data-team@otterworks.dev}
+
+    # ---- Airflow Connections (secrets come from .env, not from the repo) ----
+    # aws_default: used by S3Hook / SqsHook / DynamoDBHook.
+    # Point AWS_ENDPOINT_URL at LocalStack (http://localstack:4566) for local runs.
+    AIRFLOW_CONN_AWS_DEFAULT: >-
+      aws://${AWS_ACCESS_KEY_ID}:${AWS_SECRET_ACCESS_KEY}@/?region_name=${AWS_DEFAULT_REGION:-us-east-1}${AWS_ENDPOINT_URL:+&endpoint_url=${AWS_ENDPOINT_URL}}
+    # otterworks_postgres: used by PostgresHook for analytics_daily_summary.
+    AIRFLOW_CONN_OTTERWORKS_POSTGRES: >-
+      postgresql://${OTTERWORKS_DB_USER}:${OTTERWORKS_DB_PASSWORD}@${OTTERWORKS_DB_HOST:-host.docker.internal}:${OTTERWORKS_DB_PORT:-5432}/${OTTERWORKS_DB_NAME:-otterworks_analytics}
+
+    # ---- Airflow Variables (non-sensitive; override per environment) ----
+    AIRFLOW_VAR_OTTERWORKS_DATA_LAKE_BUCKET: ${OTTERWORKS_DATA_LAKE_BUCKET:-otterworks-data-lake}
+    AIRFLOW_VAR_OTTERWORKS_FILE_STORAGE_BUCKET: ${OTTERWORKS_FILE_STORAGE_BUCKET:-otterworks-file-storage}
+    AIRFLOW_VAR_OTTERWORKS_QUARANTINE_BUCKET: ${OTTERWORKS_QUARANTINE_BUCKET:-otterworks-file-quarantine}
+    AIRFLOW_VAR_OTTERWORKS_ANALYTICS_PREFIX: ${OTTERWORKS_ANALYTICS_PREFIX:-analytics/daily}
+    AIRFLOW_VAR_OTTERWORKS_ANALYTICS_SQS_QUEUE_URL: ${OTTERWORKS_ANALYTICS_SQS_QUEUE_URL:-}
+    AIRFLOW_VAR_OTTERWORKS_ANALYTICS_EVENTS_TABLE: ${OTTERWORKS_ANALYTICS_EVENTS_TABLE:-otterworks-analytics-events}
+    AIRFLOW_VAR_OTTERWORKS_FILE_METADATA_TABLE: ${OTTERWORKS_FILE_METADATA_TABLE:-otterworks-file-metadata}
+    AIRFLOW_VAR_OTTERWORKS_ANALYTICS_SQS_MAX_MESSAGES: ${OTTERWORKS_ANALYTICS_SQS_MAX_MESSAGES:-10000}
+  volumes:
+    - ./dags:/opt/airflow/dags:ro
+    - airflow-logs:/opt/airflow/logs
+  user: "${AIRFLOW_UID:-50000}:0"
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    airflow-metadata:
+      condition: service_healthy
+
+services:
+  airflow-metadata:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-metadata-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${_AIRFLOW_WWW_USER_USERNAME:-admin}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD:-admin}" \
+          --firstname Otter --lastname Works \
+          --role Admin --email "${OTTERWORKS_ALERT_EMAIL:-data-team@otterworks.dev}" || true
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  airflow-metadata-db:
+  airflow-logs:

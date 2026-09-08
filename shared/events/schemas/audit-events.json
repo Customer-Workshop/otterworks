@@ -1,8 +1,26 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OtterWorks Audit Events",
-  "description": "Audit record contract published by audit-service. The same shape is accepted on POST /api/v1/audit/events and on the audit SNS topic (id/timestamp optional inbound), returned from GET /api/v1/audit/events, and written to S3 by /export and /archive.",
+  "description": "Audit record contract for audit-service. AuditEventRequest is what producers send (POST /api/v1/audit/events body, or the audit SNS topic); AuditEvent is the stored record the service publishes from GET /api/v1/audit/events and in S3 /export and /archive documents.",
   "definitions": {
+    "AuditEventRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userId", "action", "resourceType", "resourceId"],
+      "properties": {
+        "userId": { "$ref": "#/definitions/AuditEvent/properties/userId" },
+        "action": { "$ref": "#/definitions/AuditEvent/properties/action" },
+        "resourceType": { "$ref": "#/definitions/AuditEvent/properties/resourceType" },
+        "resourceId": { "$ref": "#/definitions/AuditEvent/properties/resourceId" },
+        "details": { "$ref": "#/definitions/AuditEvent/properties/details" },
+        "ipAddress": { "$ref": "#/definitions/AuditEvent/properties/ipAddress" },
+        "userAgent": { "$ref": "#/definitions/AuditEvent/properties/userAgent" },
+        "timestamp": {
+          "description": "Optional on SNS messages; the service stamps the receive time when omitted.",
+          "$ref": "#/definitions/AuditEvent/properties/timestamp"
+        }
+      }
+    },
     "AuditEvent": {
       "type": "object",
       "additionalProperties": false,

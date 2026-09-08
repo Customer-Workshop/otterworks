@@ -12,14 +12,21 @@ namespace AuditService.Tests;
 
 /// <summary>
 /// Verifies that every JSON shape audit-service publishes (REST responses and S3 export/archive
-/// documents) conforms to shared/events/schemas/audit-events.json#/definitions/AuditEvent.
+/// documents) conforms to shared/events/schemas/audit-events.json#/definitions/AuditEvent, and
+/// that the POST body it accepts conforms to #/definitions/AuditEventRequest.
 /// </summary>
 public class AuditEventContractTests
 {
     // ASP.NET Core minimal APIs serialize responses with JsonSerializerDefaults.Web.
     private static readonly JsonSerializerOptions ResponseJson = new(JsonSerializerDefaults.Web);
 
-    private readonly JsonElement _schema = JsonSchemaAssert.LoadDefinition("audit-events.json", "AuditEvent");
+    private readonly JsonSchemaAssert _contract = JsonSchemaAssert.Load("audit-events.json");
+    private readonly JsonElement _schema;
+
+    public AuditEventContractTests()
+    {
+        _schema = _contract.Definition("AuditEvent");
+    }
 
     private readonly Mock<IAuditRepository> _repository = new();
     private readonly Mock<IAmazonS3> _s3 = new();
@@ -57,6 +64,27 @@ public class AuditEventContractTests
     };
 
     [Fact]
+    public void PostBodyConformsToAuditEventRequestContract()
+    {
+        var request = new AuditEventRequest
+        {
+            UserId = "user-123",
+            Action = "create",
+            ResourceType = "document",
+            ResourceId = "doc-456",
+            Details = new Dictionary<string, string> { ["source"] = "contract-test" },
+            IpAddress = "10.0.0.1",
+            UserAgent = "curl/8.0",
+        };
+
+        var body = JsonSerializer.SerializeToElement(request, ResponseJson);
+
+        _contract.ConformsTo(_contract.Definition("AuditEventRequest"), body);
+        Assert.False(body.TryGetProperty("id", out _));
+        Assert.False(body.TryGetProperty("timestamp", out _));
+    }
+
+    [Fact]
     public async Task RecordEventAsync_ResponseConformsToAuditEventContract()
     {
         _repository.Setup(r => r.SaveEventAsync(It.IsAny<AuditEvent>())).Returns(Task.CompletedTask);
@@ -77,7 +105,7 @@ public class AuditEventContractTests
 
         var payload = JsonSerializer.SerializeToElement(response, ResponseJson);
 
-        JsonSchemaAssert.ConformsTo(_schema, payload);
+        _contract.ConformsTo(_schema, payload);
     }
 
     [Fact]
@@ -95,7 +123,7 @@ public class AuditEventContractTests
         Assert.Equal(SampleEvents.Count, doc.RootElement.GetArrayLength());
         foreach (var element in doc.RootElement.EnumerateArray())
         {
-            JsonSchemaAssert.ConformsTo(_schema, element);
+            _contract.ConformsTo(_schema, element);
         }
     }
 
@@ -112,7 +140,7 @@ public class AuditEventContractTests
         using var doc = JsonDocument.Parse(body);
         foreach (var element in doc.RootElement.EnumerateArray())
         {
-            JsonSchemaAssert.ConformsTo(_schema, element);
+            _contract.ConformsTo(_schema, element);
         }
     }
 
@@ -134,7 +162,7 @@ public class AuditEventContractTests
     {
         var legacy = JsonSerializer.SerializeToElement(SampleEvents[0], new JsonSerializerOptions { WriteIndented = true });
 
-        var violations = JsonSchemaAssert.Validate(_schema, legacy, "$");
+        var violations = _contract.Validate(_schema, legacy, "$");
 
         Assert.Contains(violations, v => v.Contains("missing required property 'userId'"));
         Assert.Contains(violations, v => v.Contains("'UserId' is not declared"));

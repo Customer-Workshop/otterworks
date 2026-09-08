@@ -5,21 +5,31 @@ namespace AuditService.Tests;
 
 /// <summary>
 /// Minimal JSON Schema (draft-07 subset) checker for contract tests: type, const, enum,
-/// required, properties, additionalProperties, items, minItems and the uuid/date-time formats.
+/// required, properties, additionalProperties, items, minItems, local $ref and the
+/// uuid/date-time formats.
 /// </summary>
-public static class JsonSchemaAssert
+public sealed class JsonSchemaAssert
 {
-    public static JsonElement LoadDefinition(string schemaFile, string definition)
+    private readonly JsonElement _root;
+
+    private JsonSchemaAssert(JsonElement root) => _root = root;
+
+    public static JsonSchemaAssert Load(string schemaFile)
     {
         using var doc = JsonDocument.Parse(File.ReadAllText(SharedSchemaPath(schemaFile)));
-        if (!doc.RootElement.GetProperty("definitions").TryGetProperty(definition, out var def))
-        {
-            throw new Xunit.Sdk.XunitException($"Definition '{definition}' not found in {schemaFile}");
-        }
-        return def.Clone();
+        return new JsonSchemaAssert(doc.RootElement.Clone());
     }
 
-    public static void ConformsTo(JsonElement schema, JsonElement instance)
+    public JsonElement Definition(string name)
+    {
+        if (!_root.GetProperty("definitions").TryGetProperty(name, out var def))
+        {
+            throw new Xunit.Sdk.XunitException($"Definition '{name}' not found in schema");
+        }
+        return def;
+    }
+
+    public void ConformsTo(JsonElement schema, JsonElement instance)
     {
         var violations = Validate(schema, instance, "$");
         if (violations.Count > 0)
@@ -29,9 +39,12 @@ public static class JsonSchemaAssert
         }
     }
 
-    public static List<string> Validate(JsonElement schema, JsonElement instance, string path)
+    public List<string> Validate(JsonElement schema, JsonElement instance, string path)
     {
         var violations = new List<string>();
+
+        if (schema.TryGetProperty("$ref", out var reference))
+            violations.AddRange(Validate(Resolve(reference.GetString()!), instance, path));
 
         if (schema.TryGetProperty("const", out var constant) && !JsonEquals(constant, instance))
             violations.Add($"{path}: expected const {constant}, got {instance}");
@@ -107,6 +120,21 @@ public static class JsonSchemaAssert
         }
 
         return violations;
+    }
+
+    private JsonElement Resolve(string pointer)
+    {
+        if (!pointer.StartsWith("#/", StringComparison.Ordinal))
+            throw new Xunit.Sdk.XunitException($"Only local $ref pointers are supported, got '{pointer}'");
+
+        var node = _root;
+        foreach (var segment in pointer[2..].Split('/'))
+        {
+            var key = segment.Replace("~1", "/").Replace("~0", "~");
+            if (!node.TryGetProperty(key, out node))
+                throw new Xunit.Sdk.XunitException($"$ref '{pointer}' does not resolve");
+        }
+        return node;
     }
 
     private static bool MatchesType(string type, JsonElement instance) => type switch

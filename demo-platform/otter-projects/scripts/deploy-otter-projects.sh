@@ -104,15 +104,20 @@ if [[ -n "${DEVIN_API_KEY:-}${DEVIN_WEBHOOK_SECRET:-}${DEVIN_ORG_ID:-}${DEVIN_WE
   if [[ -f "$DEVIN_VALUES_FILE" ]]; then
     # JSON (current format) or the two-level `section:` / `  key: "value"` YAML
     # written by earlier runs — both parse into the same object.
+    # Any line that is not a section header, a quoted scalar, blank or a comment
+    # makes the fallback fail, so an unrecognised file is never overwritten.
     saved="$(jq -c . "$DEVIN_VALUES_FILE" 2>/dev/null)" || saved="$(
       awk '
-        /^[A-Za-z]+:[[:space:]]*$/ { sec=$1; sub(":", "", sec); next }
-        /^[[:space:]]+[A-Za-z]+:[[:space:]]*"/ {
+        /^[[:space:]]*(#|$)/ { next }
+        /^(secret|devin):[[:space:]]*$/ { sec=$1; sub(":", "", sec); next }
+        sec != "" && /^[[:space:]]+(devinApiKey|devinWebhookSecret|orgId|webhookUrl):[[:space:]]*".*"[[:space:]]*$/ {
           k=$1; sub(":", "", k); v=$0; sub(/^[^"]*"/, "", v); sub(/"[[:space:]]*$/, "", v)
-          print sec "\t" k "\t" v
-        }' "$DEVIN_VALUES_FILE" \
+          print sec "\t" k "\t" v; next
+        }
+        { print "unrecognised line " NR ": " $0 > "/dev/stderr"; exit 1 }' "$DEVIN_VALUES_FILE" \
       | jq -Rsc 'split("\n") | map(select(. != "") | split("\t")) | reduce .[] as $r ({}; .[$r[0]][$r[1]] = $r[2])'
-    )"
+    )" || { echo "error: cannot parse ${DEVIN_VALUES_FILE}; left untouched" >&2; exit 1; }
+    [[ "$saved" != "{}" ]] || { echo "error: ${DEVIN_VALUES_FILE} parsed to nothing; left untouched" >&2; exit 1; }
   fi
   jq -n \
     --argjson saved "$saved" \

@@ -129,6 +129,34 @@ services:
     tmpfs:
     - /tmp
 
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: otterworks-alertmanager
+    command:
+    - --config.file=/etc/alertmanager/alertmanager.yml
+    - --storage.path=/alertmanager
+    ports:
+    - 9093:9093
+    volumes:
+    - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    - alertmanager_data:/alertmanager
+    secrets:
+    - alert_webhook_secret
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:9093/-/healthy
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.25.0
     container_name: otterworks-blackbox-exporter
@@ -290,3 +318,9 @@ volumes:
   meilisearch_data: null
   prometheus_data: null
   grafana_data: null
+  alertmanager_data: null
+secrets:
+  # Alertmanager has no environment expansion, so the webhook token reaches it
+  # as a file rather than as a config value.
+  alert_webhook_secret:
+    environment: ALERT_WEBHOOK_SECRET

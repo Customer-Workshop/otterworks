@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,6 +67,18 @@ PROBE_MODULES = {
 }
 
 GENERATED_BY = "observability/slo/generate.py from observability/slo/critical-apis.yaml"
+
+# Prometheus duration syntax, as used by the blackbox module timeouts.
+DURATION_UNIT_SECONDS = {
+    "ms": 0.001,
+    "s": 1.0,
+    "m": 60.0,
+    "h": 3600.0,
+    "d": 86400.0,
+    "w": 604800.0,
+    "y": 31536000.0,
+}
+DURATION_RE = re.compile(r"(\d+)(ms|[smhdwy])")
 
 
 class LiteralStr(str):
@@ -247,8 +260,18 @@ def _module_timeouts(modules: set[str]) -> dict[str, float]:
     for module in sorted(modules):
         if module not in configured:
             raise CatalogError(f"blackbox module {module} is not defined in {BLACKBOX_PATH.name}")
-        timeouts[module] = float(str(configured[module]["timeout"]).rstrip("s"))
+        timeouts[module] = _parse_duration(module, configured[module]["timeout"])
     return timeouts
+
+
+def _parse_duration(context: str, value: object) -> float:
+    """Seconds in a Prometheus duration such as `1500ms`, `5s` or `1m30s`."""
+    text = str(value)
+    if not re.fullmatch(r"(\d+(ms|[smhdwy]))+", text):
+        raise CatalogError(f"{context}: {text!r} is not a Prometheus duration")
+    return sum(
+        int(amount) * DURATION_UNIT_SECONDS[unit] for amount, unit in DURATION_RE.findall(text)
+    )
 
 
 def _probe_module(owner_id: str, expect_status: list[int]) -> str:

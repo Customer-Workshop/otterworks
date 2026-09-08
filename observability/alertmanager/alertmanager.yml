@@ -1,0 +1,36 @@
+# Delivery for the alerts Prometheus evaluates (alerts.yml and the generated
+# slo_rules.yml). Grafana's contact point only receives Grafana-managed alerts,
+# so without this every Prometheus alert would fire into nothing.
+#
+# The receiver is the same admin-service webhook the Grafana contact point
+# uses, so both alerting paths land in one inbox.
+
+route:
+  receiver: otterworks-webhook
+  group_by: [alertname, backend, route]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # A page should not wait out the grouping delay.
+    - matchers: ['severity="critical"']
+      receiver: otterworks-webhook
+      group_wait: 0s
+      repeat_interval: 1h
+
+receivers:
+  - name: otterworks-webhook
+    webhook_configs:
+      - url: http://admin-service:8089/api/v1/admin/alerts/ingest
+        send_resolved: true
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /run/secrets/alert_webhook_secret
+
+inhibit_rules:
+  # While an endpoint is paging on a fast burn, its slower-window warnings are
+  # noise about the same incident.
+  - source_matchers: ['severity="critical"']
+    target_matchers: ['severity="warning"']
+    equal: [backend, method, route]

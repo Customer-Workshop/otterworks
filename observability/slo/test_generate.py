@@ -120,6 +120,19 @@ def test_slow_probe_warning_must_be_below_the_module_timeout(tmp_path):
         _write_and_load(tmp_path, data)
 
 
+@pytest.mark.parametrize(
+    ("duration", "seconds"),
+    [("1500ms", 1.5), ("5s", 5.0), ("2m", 120.0), ("1h", 3600.0), ("1m30s", 90.0)],
+)
+def test_module_timeouts_accept_every_prometheus_duration_unit(duration, seconds):
+    assert generate._parse_duration("http_2xx", duration) == seconds
+
+
+def test_malformed_module_timeout_is_rejected():
+    with pytest.raises(generate.CatalogError, match="Prometheus duration"):
+        generate._parse_duration("http_2xx", "5 seconds")
+
+
 def test_endpoint_level_probes_are_rejected(tmp_path):
     data = _catalog_dict()
     data["endpoints"][0]["probe"] = {"path": "/api/v1/documents", "expect_status": [200, 401]}

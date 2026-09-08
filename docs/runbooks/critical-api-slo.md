@@ -13,7 +13,14 @@
 | `CriticalApiErrorBudgetBurnSlow` / `...VerySlow` | Slow leak. Not an outage; fix within the working day/week before the budget is gone. |
 | `CriticalApiLatencyBudgetBurn*` | Same windows, but the SLI is the share of requests slower than the endpoint's latency threshold. |
 | `CriticalApiNoTraffic` | An endpoint the catalog marks `expect_traffic: true` has served zero requests for 15 minutes. Burn-rate alerts cannot fire on an endpoint with no traffic, so this is the companion check. |
-| `CriticalApiProbeFailing` / `CriticalApiProbeSlow` | The blackbox synthetic check against the gateway failed or exceeded its duration budget. Fires with no user traffic at all. |
+| `CriticalApiProbeFailing` / `CriticalApiProbeSlow` | The blackbox synthetic check against a backend's own `/health` failed or exceeded its duration budget. Fires with no user traffic at all. |
+
+These are Prometheus-evaluated alerts, so they are delivered by Alertmanager
+(`observability/alertmanager/alertmanager.yml`) to the same admin-service
+webhook Grafana's contact point uses. A critical alert routes immediately and
+suppresses the slower-window warnings for the same endpoint. If an alert is
+firing in Prometheus but nothing arrived, check the Alertmanager container and
+that `ALERT_WEBHOOK_SECRET` is set in its environment.
 
 Every alert carries `endpoint_id`, `backend`, `method`, `route`, `owner` and
 `tier` labels, taken from `observability/slo/critical-apis.yaml`. `backend` is

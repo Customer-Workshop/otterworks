@@ -205,6 +205,7 @@ lint: ## Lint all services
 # Mounted the way Prometheus itself sees the files, so relative rule_files and
 # file_sd paths are validated exactly as they resolve at runtime.
 SLO_PROMTOOL = docker run --rm -v $(PWD)/observability/prometheus:/etc/prometheus -w /etc/prometheus --entrypoint promtool prom/prometheus:v2.51.0
+SLO_AMTOOL = docker run --rm -v $(PWD)/observability/alertmanager:/etc/alertmanager --entrypoint amtool prom/alertmanager:v0.27.0
 
 slo-generate: ## Regenerate SLO rules, probe targets, dashboard and gateway routes from the catalog
 	uv run --with pyyaml==6.0.2 observability/slo/generate.py
@@ -212,8 +213,9 @@ slo-generate: ## Regenerate SLO rules, probe targets, dashboard and gateway rout
 slo-check: ## Fail if the generated SLO artifacts drift from observability/slo/critical-apis.yaml
 	uv run --with pyyaml==6.0.2 observability/slo/generate.py --check
 
-slo-validate: slo-check ## Validate the generated Prometheus rules and config with promtool
+slo-validate: slo-check ## Validate the generated Prometheus rules and the alert delivery config
 	$(SLO_PROMTOOL) check config /etc/prometheus/prometheus.yml
+	$(SLO_AMTOOL) check-config /etc/alertmanager/alertmanager.yml
 
 # --- Synthetic Test Data ---
 

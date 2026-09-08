@@ -710,6 +710,9 @@ pub async fn list_activity(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::metadata::test_support::*;
+    use actix_web::test::TestRequest;
+    use actix_web::ResponseError;
 
     #[actix_rt::test]
     async fn test_health_endpoint() {
@@ -721,5 +724,152 @@ mod tests {
     async fn test_metrics_endpoint() {
         let resp = metrics().await;
         assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    }
+
+    fn list_query(page: Option<u32>, page_size: Option<u32>) -> web::Query<ListFilesQuery> {
+        web::Query(ListFilesQuery {
+            folder_id: None,
+            owner_id: None,
+            page,
+            page_size,
+            include_trashed: None,
+        })
+    }
+
+    async fn json_body(resp: HttpResponse) -> serde_json::Value {
+        let bytes = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[test]
+    fn test_resolve_owner_id_prefers_gateway_header_over_query() {
+        let header_user = Uuid::new_v4();
+        let query_user = Uuid::new_v4();
+
+        let req = TestRequest::default()
+            .insert_header(("X-User-ID", format!(" {header_user} ")))
+            .to_http_request();
+        assert_eq!(
+            resolve_owner_id(&req, Some(query_user)),
+            Some(header_user),
+            "authenticated header must win over a spoofable query param"
+        );
+
+        let req = TestRequest::default().to_http_request();
+        assert_eq!(resolve_owner_id(&req, Some(query_user)), Some(query_user));
+        assert_eq!(resolve_owner_id(&req, None), None);
+    }
+
+    #[actix_rt::test]
+    async fn test_list_files_clamps_page_and_page_size() {
+        let owner = Uuid::new_v4();
+        let ids: Vec<Uuid> = (0..3).map(|_| Uuid::new_v4()).collect();
+        let items: Vec<String> = ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| file_item_json(id, &owner, &format!("{i}.txt"), false))
+            .collect();
+        let scan = format!(r#"{{"Items":[{}],"Count":3}}"#, items.join(","));
+        let (meta, _http) = mock_metadata_client(vec![
+            dynamo_response(200, &scan),
+            dynamo_response(200, &scan),
+        ]);
+        let meta = web::Data::new(meta);
+        let req = TestRequest::default()
+            .insert_header(("X-User-ID", owner.to_string()))
+            .to_http_request();
+
+        let resp = list_files(req.clone(), meta.clone(), list_query(Some(0), Some(500)))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+        let body = json_body(resp).await;
+        assert_eq!(body["page"], 1, "page 0 must clamp to 1");
+        assert_eq!(body["page_size"], 100, "page_size must cap at 100");
+        assert_eq!(body["total"], 3);
+        assert_eq!(body["files"].as_array().unwrap().len(), 3);
+
+        let resp = list_files(req, meta, list_query(Some(2), Some(2)))
+            .await
+            .unwrap();
+        let body = json_body(resp).await;
+        assert_eq!(body["page"], 2);
+        assert_eq!(body["total"], 3);
+        let files = body["files"].as_array().unwrap();
+        assert_eq!(files.len(), 1, "second page of size 2 holds the last file");
+        assert_eq!(files[0]["id"], ids[2].to_string());
+    }
+
+    #[actix_rt::test]
+    async fn test_list_shared_files_dedups_shares_and_skips_trashed_or_missing() {
+        let user = Uuid::new_v4();
+        let owner = Uuid::new_v4();
+        let (visible, trashed, missing) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+        let shares = format!(
+            r#"{{"Items":[{},{},{},{}],"Count":4}}"#,
+            share_item_json(&visible, &user, &owner),
+            share_item_json(&visible, &user, &owner),
+            share_item_json(&trashed, &user, &owner),
+            share_item_json(&missing, &user, &owner),
+        );
+        let (meta, http) = mock_metadata_client(vec![
+            dynamo_response(200, &shares),
+            dynamo_response(
+                200,
+                &format!(
+                    r#"{{"Item":{}}}"#,
+                    file_item_json(&visible, &owner, "v.txt", false)
+                ),
+            ),
+            dynamo_response(
+                200,
+                &format!(
+                    r#"{{"Item":{}}}"#,
+                    file_item_json(&trashed, &owner, "t.txt", true)
+                ),
+            ),
+            dynamo_response(200, "{}"),
+        ]);
+        let meta = web::Data::new(meta);
+
+        let err = list_shared_files(
+            meta.clone(),
+            TestRequest::default().to_http_request(),
+            list_query(None, None),
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(err, ServiceError::BadRequest(_)));
+        assert_eq!(
+            err.error_response().status(),
+            actix_web::http::StatusCode::BAD_REQUEST
+        );
+        assert_eq!(request_bodies(&http).len(), 0, "no lookups without a user");
+
+        let req = TestRequest::default()
+            .insert_header(("X-User-ID", user.to_string()))
+            .to_http_request();
+        let resp = list_shared_files(meta, req, list_query(None, None))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+        let body = json_body(resp).await;
+        assert_eq!(body["total"], 1);
+        let files = body["files"].as_array().unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0]["id"], visible.to_string());
+
+        let bodies = request_bodies(&http);
+        assert_eq!(
+            bodies.len(),
+            4,
+            "one share scan + one GetItem per unique file"
+        );
+        assert!(bodies[0].contains(&format!(r#":uid":{{"S":"{user}"}}"#)));
+        let looked_up: Vec<bool> = [visible, trashed, missing]
+            .iter()
+            .map(|id| bodies[1..].iter().any(|b| b.contains(&id.to_string())))
+            .collect();
+        assert_eq!(looked_up, vec![true, true, true]);
     }
 }

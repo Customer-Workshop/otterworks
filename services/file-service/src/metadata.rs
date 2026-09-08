@@ -767,8 +767,80 @@ fn parse_file_share(
     })
 }
 
+/// Builds a `MetadataClient` backed by a canned-response HTTP client so DynamoDB
+/// code paths can be exercised without a live table.
+#[cfg(test)]
+pub(crate) mod test_support {
+    use super::MetadataClient;
+    use aws_sdk_dynamodb::config::{BehaviorVersion, Credentials, Region};
+    use aws_smithy_http_client::test_util::{ReplayEvent, StaticReplayClient};
+    use aws_smithy_runtime_api::http::{Request, Response, StatusCode};
+    use aws_smithy_types::body::SdkBody;
+
+    pub(crate) fn dynamo_response(status: u16, body: &str) -> ReplayEvent {
+        ReplayEvent::new(
+            Request::new(SdkBody::empty()),
+            Response::new(
+                StatusCode::try_from(status).unwrap(),
+                SdkBody::from(body.to_string()),
+            ),
+        )
+    }
+
+    pub(crate) fn mock_metadata_client(
+        events: Vec<ReplayEvent>,
+    ) -> (MetadataClient, StaticReplayClient) {
+        let http_client = StaticReplayClient::new(events);
+        let config = aws_sdk_dynamodb::Config::builder()
+            .behavior_version(BehaviorVersion::latest())
+            .region(Region::new("us-east-1"))
+            .credentials_provider(Credentials::new("akid", "secret", None, None, "test"))
+            .retry_config(aws_sdk_dynamodb::config::retry::RetryConfig::disabled())
+            .http_client(http_client.clone())
+            .build();
+        let meta = MetadataClient {
+            client: aws_sdk_dynamodb::Client::from_conf(config),
+            files_table: "files".into(),
+            folders_table: "folders".into(),
+            versions_table: "versions".into(),
+            shares_table: "shares".into(),
+        };
+        (meta, http_client)
+    }
+
+    pub(crate) fn request_bodies(http_client: &StaticReplayClient) -> Vec<String> {
+        http_client
+            .actual_requests()
+            .map(|r| String::from_utf8(r.body().bytes().unwrap_or_default().to_vec()).unwrap())
+            .collect()
+    }
+
+    pub(crate) fn file_item_json(
+        id: &uuid::Uuid,
+        owner: &uuid::Uuid,
+        name: &str,
+        is_trashed: bool,
+    ) -> String {
+        format!(
+            r#"{{"id":{{"S":"{id}"}},"name":{{"S":"{name}"}},"mime_type":{{"S":"text/plain"}},"size_bytes":{{"N":"10"}},"s3_key":{{"S":"files/{id}"}},"owner_id":{{"S":"{owner}"}},"version":{{"N":"1"}},"is_trashed":{{"BOOL":{is_trashed}}},"created_at":{{"S":"2024-01-01T00:00:00Z"}},"updated_at":{{"S":"2024-01-01T00:00:00Z"}}}}"#
+        )
+    }
+
+    pub(crate) fn share_item_json(
+        file_id: &uuid::Uuid,
+        shared_with: &uuid::Uuid,
+        shared_by: &uuid::Uuid,
+    ) -> String {
+        let id = uuid::Uuid::new_v4();
+        format!(
+            r#"{{"id":{{"S":"{id}"}},"file_id":{{"S":"{file_id}"}},"shared_with":{{"S":"{shared_with}"}},"permission":{{"S":"viewer"}},"shared_by":{{"S":"{shared_by}"}},"created_at":{{"S":"2024-01-01T00:00:00Z"}}}}"#
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::test_support::*;
     use super::*;
     use std::collections::HashMap;
 
@@ -889,5 +961,65 @@ mod tests {
             Some(SharePermission::Editor)
         );
         assert_eq!(SharePermission::from_str_value("invalid"), None);
+    }
+
+    #[actix_rt::test]
+    async fn test_trash_file_missing_item_maps_to_file_not_found() {
+        let (meta, http) = mock_metadata_client(vec![dynamo_response(
+            400,
+            r#"{"__type":"com.amazonaws.dynamodb.v20120810#ConditionalCheckFailedException","message":"The conditional request failed"}"#,
+        )]);
+        let file_id = Uuid::new_v4();
+
+        let err = meta.trash_file(&file_id).await.unwrap_err();
+
+        assert!(
+            matches!(&err, ServiceError::FileNotFound(id) if id == &file_id.to_string()),
+            "expected FileNotFound, got {err:?}"
+        );
+        let bodies = request_bodies(&http);
+        assert_eq!(bodies.len(), 1, "must not fall through to get_file");
+        assert!(bodies[0].contains(r#""ConditionExpression":"attribute_exists(id)""#));
+        assert!(bodies[0].contains(r#""UpdateExpression":"SET is_trashed = :t, updated_at = :u""#));
+        assert!(bodies[0].contains(r#":t":{"BOOL":true}"#));
+    }
+
+    #[actix_rt::test]
+    async fn test_list_files_applies_filters_and_follows_pagination() {
+        let owner = Uuid::new_v4();
+        let folder = Uuid::new_v4();
+        let (a, b, c) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+        let page1 = format!(
+            r#"{{"Items":[{},{}],"Count":2,"LastEvaluatedKey":{{"id":{{"S":"{b}"}}}}}}"#,
+            file_item_json(&a, &owner, "a.txt", false),
+            file_item_json(&b, &owner, "b.txt", false),
+        );
+        let page2 = format!(
+            r#"{{"Items":[{}],"Count":1}}"#,
+            file_item_json(&c, &owner, "c.txt", false),
+        );
+        let (meta, http) = mock_metadata_client(vec![
+            dynamo_response(200, &page1),
+            dynamo_response(200, &page2),
+        ]);
+
+        let files = meta
+            .list_files(Some(folder), Some(owner), false)
+            .await
+            .unwrap();
+
+        let ids: Vec<Uuid> = files.iter().map(|f| f.id).collect();
+        assert_eq!(ids, vec![a, b, c], "all pages must be collected in order");
+
+        let bodies = request_bodies(&http);
+        assert_eq!(bodies.len(), 2);
+        assert!(bodies[0].contains(
+            r#""FilterExpression":"folder_id = :folder_id AND owner_id = :owner_id AND is_trashed = :trashed""#
+        ));
+        assert!(bodies[0].contains(&format!(r#":folder_id":{{"S":"{folder}"}}"#)));
+        assert!(bodies[0].contains(&format!(r#":owner_id":{{"S":"{owner}"}}"#)));
+        assert!(bodies[0].contains(r#":trashed":{"BOOL":false}"#));
+        assert!(!bodies[0].contains("ExclusiveStartKey"));
+        assert!(bodies[1].contains(&format!(r#""ExclusiveStartKey":{{"id":{{"S":"{b}"}}}}"#)));
     }
 }

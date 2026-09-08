@@ -3,6 +3,9 @@
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** Per-request cap for outbound Devin/webhook calls; a whole dispatch (all attempts + backoff) stays far below the dispatch lease. */
+export const REQUEST_TIMEOUT_MS = 20_000;
+
 export interface DevinConfig {
   apiKey: string;
   orgId: string;
@@ -54,6 +57,7 @@ export class DevinClient {
   private async call<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await this.f(`${this.cfg.apiBase}${path}`, {
       ...init,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         Authorization: `Bearer ${this.cfg.apiKey}`,
         "Content-Type": "application/json",

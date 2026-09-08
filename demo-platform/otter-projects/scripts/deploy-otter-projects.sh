@@ -102,8 +102,17 @@ if [[ -n "${DEVIN_API_KEY:-}${DEVIN_WEBHOOK_SECRET:-}${DEVIN_ORG_ID:-}${DEVIN_WE
   umask 077
   saved="{}"
   if [[ -f "$DEVIN_VALUES_FILE" ]]; then
-    saved="$(jq -c . "$DEVIN_VALUES_FILE" 2>/dev/null)" \
-      || { echo "error: ${DEVIN_VALUES_FILE} is not JSON (written by an older run?); re-create it by passing all DEVIN_* vars after deleting it" >&2; exit 1; }
+    # JSON (current format) or the two-level `section:` / `  key: "value"` YAML
+    # written by earlier runs — both parse into the same object.
+    saved="$(jq -c . "$DEVIN_VALUES_FILE" 2>/dev/null)" || saved="$(
+      awk '
+        /^[A-Za-z]+:[[:space:]]*$/ { sec=$1; sub(":", "", sec); next }
+        /^[[:space:]]+[A-Za-z]+:[[:space:]]*"/ {
+          k=$1; sub(":", "", k); v=$0; sub(/^[^"]*"/, "", v); sub(/"[[:space:]]*$/, "", v)
+          print sec "\t" k "\t" v
+        }' "$DEVIN_VALUES_FILE" \
+      | jq -Rsc 'split("\n") | map(select(. != "") | split("\t")) | reduce .[] as $r ({}; .[$r[0]][$r[1]] = $r[2])'
+    )"
   fi
   jq -n \
     --argjson saved "$saved" \

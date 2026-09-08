@@ -3,7 +3,7 @@ import dns from "node:dns/promises";
 import net from "node:net";
 import { env } from "@/lib/env";
 import { signBody } from "@/lib/hmac";
-import { DevinClient, summarizeStatus, type FetchLike } from "@/lib/devin";
+import { DevinClient, REQUEST_TIMEOUT_MS, summarizeStatus, type FetchLike } from "@/lib/devin";
 import { callbackUrl, renderPrompt } from "@/lib/prompt";
 import type { OutboundTicketPayload, Project, Ticket, WebhookDelivery } from "@/lib/types";
 
@@ -144,7 +144,7 @@ export async function dispatchWebhook(project: Project, ticket: Ticket, opts: Di
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     delivery.attempts = attempt;
     try {
-      const res = await f(target, { method: "POST", headers, body });
+      const res = await f(target, { method: "POST", headers, body, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
       delivery.responseStatus = res.status;
       if (res.ok) {
         delivery.status = "ok";

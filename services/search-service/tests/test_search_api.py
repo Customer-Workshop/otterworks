@@ -98,6 +98,49 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert len(data["suggestions"]) >= 1
 
+    def test_suggest_ranked_by_score(self, client, mock_meilisearch_client):
+        """Suggestions are ordered by _rankingScore and stay plain strings."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 3,
+            "hits": [
+                {"title": "Low", "_rankingScore": 0.2},
+                {"title": "High", "_rankingScore": 0.9},
+                {"title": "Mid", "_rankingScore": 0.5},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["High", "Mid", "Low"]
+        _, params = mock_index.search.call_args.args
+        assert params["showRankingScore"] is True
+
+    def test_suggest_missing_ranking_score_does_not_500(self, client, mock_meilisearch_client):
+        """Hits without _rankingScore (or without any fields) never crash the handler."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 3,
+            "hits": [
+                {"title": "Unscored"},
+                {},
+                {"name": "scored-file.txt", "_rankingScore": 0.7},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["scored-file.txt", "Unscored"]
+
+    def test_suggest_backend_error_degrades_gracefully(self, client, mock_meilisearch_client):
+        """A MeiliSearch failure returns an empty suggestion list, not a 5xx."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = RuntimeError("meilisearch down")
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json() == {"suggestions": [], "query": "te"}
+
     def test_suggest_empty_query(self, client):
         """Suggest with empty query returns empty list."""
         response = client.get("/api/v1/search/suggest?q=")

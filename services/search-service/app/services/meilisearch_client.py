@@ -248,8 +248,13 @@ class MeiliSearchService:
         )
 
     def suggest(self, prefix: str, size: int = 10) -> list[str]:
-        """Autocomplete suggestions using MeiliSearch prefix matching."""
-        suggestions: list[str] = []
+        """Autocomplete suggestions using MeiliSearch prefix matching.
+
+        Hits from both indices are merged and ordered by MeiliSearch's
+        ``_rankingScore`` (requested via ``showRankingScore``); hits without a
+        score keep their original position at the end of the list.
+        """
+        ranked: list[tuple[float, int, str]] = []
         seen: set[str] = set()
 
         for index_name in [self.documents_index_name, self.files_index_name]:
@@ -257,18 +262,18 @@ class MeiliSearchService:
             result = index.search(prefix, {
                 "limit": size,
                 "attributesToRetrieve": ["title", "name"],
+                "showRankingScore": True,
             })
             for hit in result["hits"]:
                 text = hit.get("title") or hit.get("name", "")
-                if text and text not in seen:
-                    suggestions.append(text)
-                    seen.add(text)
-                    if len(suggestions) >= size:
-                        break
-            if len(suggestions) >= size:
-                break
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+                score = hit.get("_rankingScore")
+                ranked.append((float(score) if score is not None else 0.0, len(ranked), text))
 
-        return suggestions
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        return [text for _, _, text in ranked[:size]]
 
     def _wait_and_check(self, task_uid: int, timeout_in_ms: int = 10000) -> None:
         """Wait for a MeiliSearch task and raise on failure."""

@@ -29,10 +29,6 @@ export function SearchBar() {
   });
 
   useEffect(() => {
-    setActiveIndex(-1);
-  }, [debouncedQuery]);
-
-  useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -87,6 +83,7 @@ export function SearchBar() {
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
+          setActiveIndex(-1);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}

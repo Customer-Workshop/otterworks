@@ -61,3 +61,44 @@ func TestProxy_UpstreamErrorsAreCountedPerRoute(t *testing.T) {
 
 	assert.Equal(t, before+workers*perWorker, UpstreamErrorCounts()["/api/v1/files"])
 }
+
+func TestProxy_UpstreamErrorCountsSnapshotIsSafeDuringRequests(t *testing.T) {
+	router := newUnreachableRouter(t)
+	before := UpstreamErrorCounts()["/api/v1/files"]
+
+	const workers = 8
+	const perWorker = 16
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < perWorker; j++ {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/files/y", nil)
+				rec := httptest.NewRecorder()
+				router.ServeHTTP(rec, req)
+				assert.Equal(t, http.StatusBadGateway, rec.Code)
+				assert.Contains(t, rec.Body.String(), `"request_id"`)
+			}
+		}()
+	}
+
+	// Snapshot while failures are still being recorded; every observation
+	// must be monotonic and never exceed the final total.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		last := before
+		for k := 0; k < 200; k++ {
+			got := UpstreamErrorCounts()["/api/v1/files"]
+			assert.GreaterOrEqual(t, got, last)
+			assert.LessOrEqual(t, got, before+workers*perWorker)
+			last = got
+		}
+	}()
+
+	wg.Wait()
+	<-done
+
+	assert.Equal(t, before+workers*perWorker, UpstreamErrorCounts()["/api/v1/files"])
+}

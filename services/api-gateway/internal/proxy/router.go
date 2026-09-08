@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -14,11 +15,17 @@ import (
 )
 
 // upstreamErrors counts proxy failures per route prefix so operators can see
-// which backend is misbehaving without scraping logs.
-var upstreamErrors = map[string]int{}
+// which backend is misbehaving without scraping logs. Handlers run on
+// concurrent goroutines, so every access goes through upstreamErrorsMu.
+var (
+	upstreamErrorsMu sync.Mutex
+	upstreamErrors   = map[string]int{}
+)
 
 // UpstreamErrorCounts returns a snapshot of proxy failures per route prefix.
 func UpstreamErrorCounts() map[string]int {
+	upstreamErrorsMu.Lock()
+	defer upstreamErrorsMu.Unlock()
 	out := make(map[string]int, len(upstreamErrors))
 	for k, v := range upstreamErrors {
 		out[k] = v
@@ -27,7 +34,9 @@ func UpstreamErrorCounts() map[string]int {
 }
 
 func recordUpstreamError(prefix string) {
+	upstreamErrorsMu.Lock()
 	upstreamErrors[prefix]++
+	upstreamErrorsMu.Unlock()
 }
 
 // Route defines a mapping from a URL prefix to a backend service.

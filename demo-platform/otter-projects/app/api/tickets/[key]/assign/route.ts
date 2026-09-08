@@ -14,6 +14,8 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
     const body = await readJson<{ assignee?: unknown }>(req);
     const svc = new TicketService();
     if (body.assignee === "devin") {
+      const current = await svc.getTicket(key);
+      if (current.assignee === "devin") return NextResponse.json({ ticket: current, ok: true });
       const result = await svc.assignToDevin(key, actor.name);
       return NextResponse.json(result, { status: result.ok ? 200 : 502 });
     }

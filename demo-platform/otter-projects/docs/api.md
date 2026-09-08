@@ -108,8 +108,9 @@ Retries: 3 attempts with exponential backoff on network errors, 429 and 5xx;
 other 4xx fail fast. Every attempt of one dispatch carries the same
 `delivery_id` (also as the `X-OtterProjects-Delivery` header) so receivers can
 deduplicate ambiguous retries. Only one automatic dispatch happens per ticket
-(an atomic claim on the ticket record); `POST /api/tickets/:key/devin` is the
-explicit re-dispatch. Outside `LOCAL_MODE` the webhook host is resolved right
+(an atomic 5-minute lease on the ticket record — a crashed dispatcher's stale
+lease can be re-taken by re-adding the trigger); `POST /api/tickets/:key/devin`
+is the explicit re-dispatch. Outside `LOCAL_MODE` the webhook host is resolved right
 before sending and refused if it points at a private/link-local address. The API key **value** is never in the body — only the
 secret's *name* (`callback_api_key`).
 

@@ -10,7 +10,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { ActivityEvent, Comment, Project, Ticket, WebhookDelivery } from "@/lib/types";
-import { padNumber, projectKeyOf, ticketNumberOf, type Store } from "./types";
+import { DISPATCH_LEASE_MS, padNumber, projectKeyOf, ticketNumberOf, type Store } from "./types";
 
 type Item = Record<string, unknown>;
 
@@ -153,8 +153,8 @@ export class DynamoStore implements Store {
           Key: { PK: `PROJECT#${pk}`, SK: `TICKET#${padNumber(n)}` },
           UpdateExpression: "SET devin.dispatchedAt = :at",
           ConditionExpression:
-            "attribute_exists(PK) AND attribute_not_exists(devin.sessionId) AND attribute_not_exists(devin.dispatchedAt)",
-          ExpressionAttributeValues: { ":at": at },
+            "attribute_exists(PK) AND attribute_not_exists(devin.sessionId) AND (attribute_not_exists(devin.dispatchedAt) OR devin.dispatchedAt < :stale)",
+          ExpressionAttributeValues: { ":at": at, ":stale": at - DISPATCH_LEASE_MS },
         }),
       );
       return true;

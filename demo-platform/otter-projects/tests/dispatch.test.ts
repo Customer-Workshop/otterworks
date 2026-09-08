@@ -3,6 +3,7 @@ import { buildOutboundPayload, dispatchDevinApi, dispatchWebhook } from "@/lib/d
 import { verifySignature } from "@/lib/hmac";
 import { renderPrompt } from "@/lib/prompt";
 import { TicketService } from "@/lib/service";
+import { DISPATCH_LEASE_MS } from "@/lib/store/types";
 import { fetchQueue, freshStore, seedProject, seedTicket } from "./helpers";
 
 const ENV = { ...process.env };
@@ -192,6 +193,17 @@ describe("TicketService triggers", () => {
     await Promise.all([svc.addLabels(t.key, ["devin"], undefined, "a"), svc.assign(t.key, "devin", "b")]);
     expect(q.calls).toHaveLength(1);
     expect(await store.listDeliveries(t.key)).toHaveLength(1);
+  });
+
+  it("a stale claim (crashed dispatcher) can be re-taken; a fresh one cannot", async () => {
+    const store = freshStore();
+    const svc = new TicketService(store);
+    await seedProject(svc);
+    const t = await seedTicket(svc);
+    const now = Date.now();
+    expect(await store.claimDispatch(t.key, now)).toBe(true);
+    expect(await store.claimDispatch(t.key, now + 1000)).toBe(false);
+    expect(await store.claimDispatch(t.key, now + DISPATCH_LEASE_MS + 1)).toBe(true);
   });
 
   it("explicit re-dispatch still sends after an earlier dispatch", async () => {

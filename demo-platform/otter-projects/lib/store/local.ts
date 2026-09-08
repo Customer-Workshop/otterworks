@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ActivityEvent, Comment, Project, Ticket, WebhookDelivery } from "@/lib/types";
-import type { Store } from "./types";
+import { DISPATCH_LEASE_MS, type Store } from "./types";
 
 interface LocalData {
   projects: Record<string, Project>;
@@ -96,7 +96,8 @@ export class LocalStore implements Store {
   }
   async claimDispatch(ticketKey: string, at: number): Promise<boolean> {
     const t = this.data.tickets[ticketKey];
-    if (!t || t.devin.sessionId || t.devin.dispatchedAt) return false;
+    if (!t || t.devin.sessionId) return false;
+    if (t.devin.dispatchedAt && at - t.devin.dispatchedAt < DISPATCH_LEASE_MS) return false;
     t.devin = { ...t.devin, dispatchedAt: at };
     this.flush();
     return true;

@@ -92,25 +92,29 @@ secret:
   webhookSecret: "$(gen 48)"
 EOF
 fi
-# Optional Devin wiring. When any DEVIN_* env var is given the values file is
-# (re)written from env so later deploys without them keep the configuration;
-# values never appear on the helm command line.
+# Optional Devin wiring, persisted as a values file so later deploys without
+# DEVIN_* env keep the configuration. Env vars given on this run are merged
+# over the saved file (unset ones keep their saved value); values are written
+# as JSON strings (valid YAML) and never appear on the helm command line.
 if [[ -n "${DEVIN_API_KEY:-}${DEVIN_WEBHOOK_SECRET:-}${DEVIN_ORG_ID:-}${DEVIN_WEBHOOK_URL:-}" ]]; then
   log "writing Devin wiring -> ${DEVIN_VALUES_FILE}"
   mkdir -p "$(dirname "$DEVIN_VALUES_FILE")"
   umask 077
-  {
-    if [[ -n "${DEVIN_API_KEY:-}${DEVIN_WEBHOOK_SECRET:-}" ]]; then
-      echo "secret:"
-      if [[ -n "${DEVIN_API_KEY:-}" ]]; then echo "  devinApiKey: \"${DEVIN_API_KEY}\""; fi
-      if [[ -n "${DEVIN_WEBHOOK_SECRET:-}" ]]; then echo "  devinWebhookSecret: \"${DEVIN_WEBHOOK_SECRET}\""; fi
-    fi
-    if [[ -n "${DEVIN_ORG_ID:-}${DEVIN_WEBHOOK_URL:-}" ]]; then
-      echo "devin:"
-      if [[ -n "${DEVIN_ORG_ID:-}" ]]; then echo "  orgId: \"${DEVIN_ORG_ID}\""; fi
-      if [[ -n "${DEVIN_WEBHOOK_URL:-}" ]]; then echo "  webhookUrl: \"${DEVIN_WEBHOOK_URL}\""; fi
-    fi
-  } > "$DEVIN_VALUES_FILE"
+  saved="{}"
+  if [[ -f "$DEVIN_VALUES_FILE" ]]; then
+    saved="$(jq -c . "$DEVIN_VALUES_FILE" 2>/dev/null)" \
+      || { echo "error: ${DEVIN_VALUES_FILE} is not JSON (written by an older run?); re-create it by passing all DEVIN_* vars after deleting it" >&2; exit 1; }
+  fi
+  jq -n \
+    --argjson saved "$saved" \
+    --arg apiKey "${DEVIN_API_KEY:-}" --arg whSecret "${DEVIN_WEBHOOK_SECRET:-}" \
+    --arg orgId "${DEVIN_ORG_ID:-}" --arg whUrl "${DEVIN_WEBHOOK_URL:-}" '
+    def merge(obj; k; v): if v == "" then obj else obj + {(k): v} end;
+    {
+      secret: (($saved.secret // {}) | merge(.; "devinApiKey"; $apiKey) | merge(.; "devinWebhookSecret"; $whSecret)),
+      devin:  (($saved.devin  // {}) | merge(.; "orgId"; $orgId)        | merge(.; "webhookUrl"; $whUrl))
+    } | with_entries(select(.value != {}))' > "${DEVIN_VALUES_FILE}.tmp"
+  mv "${DEVIN_VALUES_FILE}.tmp" "$DEVIN_VALUES_FILE"
 fi
 EXTRA_ARGS=()
 [[ -f "$DEVIN_VALUES_FILE" ]] && EXTRA_ARGS+=(-f "$DEVIN_VALUES_FILE")

@@ -23,6 +23,8 @@ import {
 } from "@/lib/types";
 
 const PROJECT_KEY_RE = /^[A-Z][A-Z0-9]{1,9}$/;
+/** Explicit re-dispatch is refused only while a very recent dispatch may still be in flight. */
+const MANUAL_REDISPATCH_GUARD_MS = 30_000;
 
 export function str(v: unknown, max = 20_000): string {
   return typeof v === "string" ? v.slice(0, max) : "";
@@ -289,7 +291,7 @@ export class TicketService {
     const hadTrigger = prevLabels.includes(DEVIN_LABEL) || prevAssignee === DEVIN_ASSIGNEE;
     const hasTrigger = t.labels.includes(DEVIN_LABEL) || t.assignee === DEVIN_ASSIGNEE;
     if (!hasTrigger || hadTrigger) return;
-    if (t.devin.sessionId || t.devin.dispatchedAt) return;
+    if (t.devin.sessionId) return;
     if (!(await this.store.claimDispatch(t.key, Date.now()))) return;
     await this.dispatchToDevin(t.key, actor, true);
   }
@@ -315,7 +317,7 @@ export class TicketService {
     const project = await this.getProject(t.projectKey);
     if (!claimed && !t.devin.sessionId && !(await this.store.claimDispatch(t.key, Date.now()))) {
       const cur = (await this.store.getTicket(t.key)) ?? t;
-      if (cur.devin.dispatchedAt && Date.now() - cur.devin.dispatchedAt < 30_000) {
+      if (cur.devin.dispatchedAt && Date.now() - cur.devin.dispatchedAt < MANUAL_REDISPATCH_GUARD_MS) {
         return { ticket: cur, ok: false, error: "a dispatch for this ticket is already in flight" };
       }
     }

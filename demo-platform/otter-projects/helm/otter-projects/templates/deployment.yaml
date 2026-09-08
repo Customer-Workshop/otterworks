@@ -13,6 +13,10 @@ spec:
       {{- include "otter-projects.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- if .Values.secret.create }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- end }}
       labels:
         {{- include "otter-projects.labels" . | nindent 8 }}
         app.kubernetes.io/component: web

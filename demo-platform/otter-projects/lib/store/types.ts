@@ -28,9 +28,9 @@ export interface Store {
   getTicket(key: string): Promise<Ticket | null>;
   putTicket(ticket: Ticket): Promise<void>;
   /**
-   * Atomically mark a ticket as being dispatched to Devin. Returns false when
-   * another caller already claimed it (or a session is attached), so only one
-   * outbound dispatch happens per assignment.
+   * Atomically take the dispatch lease on a ticket. Returns false when a
+   * session is attached or another caller holds a lease younger than
+   * DISPATCH_LEASE_MS; a stale lease (crashed dispatcher) can be re-taken.
    */
   claimDispatch(ticketKey: string, at: number): Promise<boolean>;
   deleteTicket(ticket: Ticket): Promise<void>;
@@ -44,6 +44,9 @@ export interface Store {
   listDeliveries(ticketKey: string): Promise<WebhookDelivery[]>;
   addDelivery(delivery: WebhookDelivery): Promise<void>;
 }
+
+/** How long an in-flight dispatch lease (devin.dispatchedAt without a session) blocks re-dispatch. */
+export const DISPATCH_LEASE_MS = 5 * 60_000;
 
 export function padNumber(n: number): string {
   return String(n).padStart(6, "0");

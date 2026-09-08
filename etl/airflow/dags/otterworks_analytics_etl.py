@@ -15,12 +15,12 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from airflow.decorators import dag, task
-from airflow.exceptions import AirflowSkipException
 from airflow.providers.amazon.aws.hooks.dynamodb import DynamoDBHook
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.amazon.aws.hooks.sqs import SqsHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.sdk import dag, task
+from airflow.sdk.exceptions import AirflowSkipException
 
 from otterworks.analytics_transforms import (
     ANALYTICS_UPSERT_SQL,

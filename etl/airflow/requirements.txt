@@ -1,12 +1,13 @@
-# Apache Airflow 2.10 + providers for the OtterWorks ETL DAGs.
+# Apache Airflow 3.3 + providers for the OtterWorks ETL DAGs.
+# Airflow 2.x is EOL and flagged by the dependency scan (CVE-2026-33264, CVE-2026-40961).
 # Install with the matching upstream constraints file so the resolver stays sane:
 #   pip install -r requirements.txt \
-#     -c https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt
-apache-airflow==2.10.5
-apache-airflow-providers-amazon==9.2.0
-apache-airflow-providers-postgres==6.0.0
+#     -c https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt
+apache-airflow==3.3.1
+apache-airflow-providers-amazon==9.34.0
+apache-airflow-providers-postgres==7.0.1
 
 # Test / lint toolchain (versions from the same constraints file)
-pytest==8.3.4
-moto[s3,sqs,dynamodb]==5.0.11
-ruff==0.5.5
+pytest==9.1.1
+moto[s3,sqs,dynamodb]==5.2.3
+ruff==0.16.6

@@ -1,23 +1,28 @@
-# Local Airflow 2.10 stack for the OtterWorks ETL DAGs (etl/airflow/dags).
+# Local Airflow 3.3 stack for the OtterWorks ETL DAGs (etl/airflow/dags).
 #
 #   cp .env.example .env            # fill in AWS / Postgres / Airflow UI credentials (never committed)
 #   docker compose up airflow-init  # migrate metadata DB, create the Airflow UI user
-#   docker compose up -d            # webserver on http://localhost:8080
+#   docker compose up -d            # api-server (UI) on http://localhost:8080
 #
 # Credentials are injected as Airflow Connections via AIRFLOW_CONN_* env vars and
 # non-sensitive settings as Airflow Variables via AIRFLOW_VAR_*; nothing here reads
 # the legacy etl/config.ini.
 
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.10.5-python3.12
+  image: apache/airflow:3.3.1-python3.12
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     AIRFLOW__CORE__DEFAULT_TIMEZONE: utc
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?set AIRFLOW_JWT_SECRET in .env}
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-metadata/airflow
-    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
-    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "30"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__API__EXPOSE_CONFIG: "false"
     AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
     AIRFLOW__EMAIL__EMAIL_BACKEND: airflow.utils.email.send_email_smtp
     OTTERWORKS_ALERT_EMAIL: ${OTTERWORKS_ALERT_EMAIL:-data-team@otterworks.dev}
@@ -81,13 +86,13 @@ services:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: "true"
 
-  airflow-webserver:
+  airflow-apiserver:
     <<: *airflow-common
-    command: webserver
+    command: api-server
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -102,6 +107,22 @@ services:
     command: scheduler
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      airflow-apiserver:
+        condition: service_healthy
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$${HOSTNAME}\""]
       interval: 30s
       timeout: 10s
       retries: 5

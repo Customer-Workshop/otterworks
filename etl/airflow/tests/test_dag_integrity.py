@@ -12,7 +12,7 @@ from otterworks.common import DEFAULT_ARGS, resolve_report_date
 
 @pytest.fixture(scope="module")
 def dagbag() -> DagBag:
-    return DagBag(include_examples=False)
+    return DagBag()
 
 
 def test_dags_import_without_errors(dagbag):
@@ -54,7 +54,7 @@ def test_dags_import_without_errors(dagbag):
 )
 def test_dag_structure_matches_upgrade_guide(dagbag, dag_id, schedule, edges):
     dag = dagbag.dags[dag_id]
-    assert dag.schedule_interval == schedule  # legacy crontab schedule preserved
+    assert dag.schedule == schedule  # legacy crontab schedule preserved
     assert dag.max_active_runs == 1
     assert dag.catchup is False
     assert "report_date" in dag.params

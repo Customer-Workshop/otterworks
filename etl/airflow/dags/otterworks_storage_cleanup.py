@@ -14,9 +14,9 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from airflow.decorators import dag, task
 from airflow.providers.amazon.aws.hooks.dynamodb import DynamoDBHook
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from airflow.sdk import dag, task
 
 from otterworks.common import (
     AWS_CONN_ID,

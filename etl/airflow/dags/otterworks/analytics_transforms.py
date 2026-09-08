@@ -151,7 +151,7 @@ def parse_hour(timestamp: Any) -> str:
     """Two-digit hour of an ISO-8601 string in its own offset, else ``"00"``."""
     if isinstance(timestamp, str):
         try:
-            return "%02d" % datetime.fromisoformat(timestamp.replace("Z", "+00:00")).hour
+            return f"{datetime.fromisoformat(timestamp.replace('Z', '+00:00')).hour:02d}"
         except ValueError:
             return "00"
     return "00"

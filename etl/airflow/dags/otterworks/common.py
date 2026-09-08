@@ -7,7 +7,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 # ---- Airflow Connections (credentials live here, never in the repo) ----
 AWS_CONN_ID = "aws_default"
@@ -34,7 +34,7 @@ ALERT_EMAIL = os.environ.get("OTTERWORKS_ALERT_EMAIL", "data-team@otterworks.dev
 
 def get_variable(name: str) -> str:
     """Read an Airflow Variable, falling back to the legacy config.ini value."""
-    return Variable.get(name, default_var=VARIABLE_DEFAULTS[name])
+    return Variable.get(name, default=VARIABLE_DEFAULTS[name])
 
 
 def get_logger(name: str) -> logging.Logger:

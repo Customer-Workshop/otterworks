@@ -37,7 +37,7 @@ def legacy_aggregate(all_events):  # noqa: C901 - copied as-is from the legacy s
             try:
                 if isinstance(ts, str):
                     dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                    return "%02d" % dt.hour
+                    return "%02d" % dt.hour  # noqa: UP031 - verbatim legacy code
             except Exception:
                 pass
             return "00"

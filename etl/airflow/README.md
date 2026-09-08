@@ -22,7 +22,7 @@ dags/
   otterworks_storage_cleanup.py    DAG: S3Hook + DynamoDBHook
   otterworks_analytics_etl.py      DAG: SqsHook + DynamoDBHook + S3Hook + PostgresHook
 tests/                             pytest parity tests (legacy_reference.py = verbatim legacy pandas code)
-docker-compose.yml                 local Airflow 2.10.5 (LocalExecutor)
+docker-compose.yml                 local Airflow 3.3.1 (LocalExecutor)
 requirements.txt                   pinned Airflow + providers + test toolchain
 ```
 
@@ -53,7 +53,7 @@ schedules is the same UTC calendar day the legacy scripts used.
 ```bash
 cp .env.example .env          # fill in AWS/Postgres credentials and the Airflow UI user/password
 docker compose up airflow-init
-docker compose up -d          # http://localhost:8080
+docker compose up -d          # http://localhost:8080 (api-server + scheduler + dag-processor)
 ```
 
 ## Test & lint
@@ -61,7 +61,7 @@ docker compose up -d          # http://localhost:8080
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt \
-  -c https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt
+  -c https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt
 pytest
 ruff check dags tests && ruff format --check dags tests
 ```

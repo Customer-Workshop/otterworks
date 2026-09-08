@@ -68,14 +68,21 @@ PROBE_MODULES = {
 
 GENERATED_BY = "observability/slo/generate.py from observability/slo/critical-apis.yaml"
 
-# Blackbox-exporter parses module timeouts as Go durations, which stop at hours.
+# Blackbox-exporter parses module timeouts as Go durations: fractional amounts
+# are allowed, and the units stop at hours.
 DURATION_UNIT_SECONDS = {
+    "ns": 1e-9,
+    "us": 1e-6,
+    "\u00b5s": 1e-6,
+    "\u03bcs": 1e-6,
     "ms": 0.001,
     "s": 1.0,
     "m": 60.0,
     "h": 3600.0,
 }
-DURATION_RE = re.compile(r"(\d+)(ms|[smh])")
+_DURATION_PART = r"\d+(?:\.\d*)?(?:ns|us|\u00b5s|\u03bcs|ms|s|m|h)"
+DURATION_RE = re.compile(rf"({_DURATION_PART})")
+DURATION_UNIT_RE = re.compile(r"([\d.]+)(\D+)")
 
 # admin-service ingests an alert only if it names the affected service in
 # affected_service or service; our series identify it as backend.
@@ -268,13 +275,15 @@ def _module_timeouts(modules: set[str]) -> dict[str, float]:
 def _parse_duration(context: str, value: object) -> float:
     """Seconds in a blackbox module timeout such as `1500ms`, `5s` or `1m30s`."""
     text = str(value)
-    if not re.fullmatch(r"(\d+(ms|[smh]))+", text):
+    if not re.fullmatch(f"({_DURATION_PART})+", text):
         raise CatalogError(
             f"{context}: module timeout {text!r} is not a duration blackbox can parse"
         )
-    return sum(
-        int(amount) * DURATION_UNIT_SECONDS[unit] for amount, unit in DURATION_RE.findall(text)
-    )
+    seconds = 0.0
+    for part in DURATION_RE.findall(text):
+        amount, unit = DURATION_UNIT_RE.fullmatch(part).groups()
+        seconds += float(amount) * DURATION_UNIT_SECONDS[unit]
+    return seconds
 
 
 def _probe_module(owner_id: str, expect_status: list[int]) -> str:
@@ -585,8 +594,13 @@ def probe_alerts(catalog: dict[str, Any]) -> dict[str, Any]:
             },
             {
                 "alert": "CriticalApiProbeSlow",
+                # probe_duration_seconds is also reported for a probe that
+                # failed or timed out, which CriticalApiProbeFailing already
+                # covers; without the join one outage pages and warns at once.
                 "expr": LiteralStr(
                     f'probe_duration_seconds{{job="{PROBE_JOB}"}} > {_fmt(probe_latency_budget)}\n'
+                    "and on (instance)\n"
+                    f'(probe_success{{job="{PROBE_JOB}"}} == 1)\n'
                 ),
                 "for": "10m",
                 "labels": {**INGEST_LABEL, "severity": "warning", "slo": "latency"},

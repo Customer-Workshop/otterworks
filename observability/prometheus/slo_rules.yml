@@ -1296,6 +1296,8 @@ groups:
   - alert: CriticalApiProbeSlow
     expr: |
       probe_duration_seconds{job="blackbox-critical-api"} > 2
+      and on (instance)
+      (probe_success{job="blackbox-critical-api"} == 1)
     for: 10m
     labels:
       affected_service: '{{ $labels.backend }}'

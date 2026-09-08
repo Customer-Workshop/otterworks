@@ -122,9 +122,18 @@ def test_slow_probe_warning_must_be_below_the_module_timeout(tmp_path):
 
 @pytest.mark.parametrize(
     ("duration", "seconds"),
-    [("1500ms", 1.5), ("5s", 5.0), ("2m", 120.0), ("1h", 3600.0), ("1m30s", 90.0)],
+    [
+        ("1500ms", 1.5),
+        ("5s", 5.0),
+        ("2m", 120.0),
+        ("1h", 3600.0),
+        ("1m30s", 90.0),
+        ("1.5s", 1.5),
+        ("500us", 0.0005),
+        ("1ns", 1e-9),
+    ],
 )
-def test_module_timeouts_accept_every_prometheus_duration_unit(duration, seconds):
+def test_module_timeouts_accept_every_go_duration_unit(duration, seconds):
     assert generate._parse_duration("http_2xx", duration) == seconds
 
 
@@ -132,6 +141,19 @@ def test_module_timeouts_accept_every_prometheus_duration_unit(duration, seconds
 def test_module_timeouts_blackbox_cannot_parse_are_rejected(duration):
     with pytest.raises(generate.CatalogError, match="module timeout"):
         generate._parse_duration("http_2xx", duration)
+
+
+def test_slow_probe_alert_ignores_failed_probes(catalog_bundle):
+    """A timed-out probe is a failure, and CriticalApiProbeFailing owns it."""
+    rules = yaml.safe_load(generate.render_rules(*catalog_bundle))
+    slow = next(
+        rule
+        for group in rules["groups"]
+        for rule in group["rules"]
+        if rule.get("alert") == "CriticalApiProbeSlow"
+    )
+    assert "and on (instance)" in slow["expr"]
+    assert "probe_success" in slow["expr"]
 
 
 def test_every_alert_names_the_service_the_webhook_keys_on(catalog_bundle):

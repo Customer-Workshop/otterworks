@@ -1078,6 +1078,7 @@ groups:
       )
     for: 2m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: critical
       slo: availability
       burn_rate: fast
@@ -1102,6 +1103,7 @@ groups:
       )
     for: 2m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: critical
       slo: availability
       burn_rate: medium
@@ -1126,6 +1128,7 @@ groups:
       )
     for: 2m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: warning
       slo: availability
       burn_rate: slow
@@ -1150,6 +1153,7 @@ groups:
       )
     for: 2m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: warning
       slo: availability
       burn_rate: very_slow
@@ -1174,6 +1178,7 @@ groups:
       )
     for: 5m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: critical
       slo: latency
       burn_rate: fast
@@ -1197,6 +1202,7 @@ groups:
       )
     for: 5m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: critical
       slo: latency
       burn_rate: medium
@@ -1220,6 +1226,7 @@ groups:
       )
     for: 5m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: warning
       slo: latency
       burn_rate: slow
@@ -1243,6 +1250,7 @@ groups:
       )
     for: 5m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: warning
       slo: latency
       burn_rate: very_slow
@@ -1260,6 +1268,7 @@ groups:
       (slo:api_request:rate5m > 0)
     for: 15m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: critical
       slo: availability
     annotations:
@@ -1275,6 +1284,7 @@ groups:
       probe_success{job="blackbox-critical-api"} == 0
     for: 2m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: critical
       slo: availability
     annotations:
@@ -1288,6 +1298,7 @@ groups:
       probe_duration_seconds{job="blackbox-critical-api"} > 2
     for: 10m
     labels:
+      affected_service: '{{ $labels.backend }}'
       severity: warning
       slo: latency
     annotations:

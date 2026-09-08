@@ -68,17 +68,18 @@ PROBE_MODULES = {
 
 GENERATED_BY = "observability/slo/generate.py from observability/slo/critical-apis.yaml"
 
-# Prometheus duration syntax, as used by the blackbox module timeouts.
+# Blackbox-exporter parses module timeouts as Go durations, which stop at hours.
 DURATION_UNIT_SECONDS = {
     "ms": 0.001,
     "s": 1.0,
     "m": 60.0,
     "h": 3600.0,
-    "d": 86400.0,
-    "w": 604800.0,
-    "y": 31536000.0,
 }
-DURATION_RE = re.compile(r"(\d+)(ms|[smhdwy])")
+DURATION_RE = re.compile(r"(\d+)(ms|[smh])")
+
+# admin-service ingests an alert only if it names the affected service in
+# affected_service or service; our series identify it as backend.
+INGEST_LABEL = {"affected_service": "{{ $labels.backend }}"}
 
 
 class LiteralStr(str):
@@ -265,10 +266,12 @@ def _module_timeouts(modules: set[str]) -> dict[str, float]:
 
 
 def _parse_duration(context: str, value: object) -> float:
-    """Seconds in a Prometheus duration such as `1500ms`, `5s` or `1m30s`."""
+    """Seconds in a blackbox module timeout such as `1500ms`, `5s` or `1m30s`."""
     text = str(value)
-    if not re.fullmatch(r"(\d+(ms|[smhdwy]))+", text):
-        raise CatalogError(f"{context}: {text!r} is not a Prometheus duration")
+    if not re.fullmatch(r"(\d+(ms|[smh]))+", text):
+        raise CatalogError(
+            f"{context}: module timeout {text!r} is not a duration blackbox can parse"
+        )
     return sum(
         int(amount) * DURATION_UNIT_SECONDS[unit] for amount, unit in DURATION_RE.findall(text)
     )
@@ -473,6 +476,7 @@ def burn_rate_alerts(burn_rates: list[BurnRate], slo_window: str) -> dict[str, A
                 ),
                 "for": "2m",
                 "labels": {
+                    **INGEST_LABEL,
                     "severity": burn_rate.severity,
                     "slo": "availability",
                     "burn_rate": burn_rate.name,
@@ -505,6 +509,7 @@ def burn_rate_alerts(burn_rates: list[BurnRate], slo_window: str) -> dict[str, A
                 ),
                 "for": "5m",
                 "labels": {
+                    **INGEST_LABEL,
                     "severity": burn_rate.severity,
                     "slo": "latency",
                     "burn_rate": burn_rate.name,
@@ -542,7 +547,7 @@ def traffic_alerts() -> dict[str, Any]:
                     "(slo:api_request:rate5m > 0)\n"
                 ),
                 "for": "15m",
-                "labels": {"severity": "critical", "slo": "availability"},
+                "labels": {**INGEST_LABEL, "severity": "critical", "slo": "availability"},
                 "annotations": {
                     "summary": "{{ $labels.method }} {{ $labels.route }} has served no traffic for 15m",
                     "description": (
@@ -566,7 +571,7 @@ def probe_alerts(catalog: dict[str, Any]) -> dict[str, Any]:
                 "alert": "CriticalApiProbeFailing",
                 "expr": LiteralStr(f'probe_success{{job="{PROBE_JOB}"}} == 0\n'),
                 "for": "2m",
-                "labels": {"severity": "critical", "slo": "availability"},
+                "labels": {**INGEST_LABEL, "severity": "critical", "slo": "availability"},
                 "annotations": {
                     "summary": "{{ $labels.backend }} is failing its health probe",
                     "description": (
@@ -584,7 +589,7 @@ def probe_alerts(catalog: dict[str, Any]) -> dict[str, Any]:
                     f'probe_duration_seconds{{job="{PROBE_JOB}"}} > {_fmt(probe_latency_budget)}\n'
                 ),
                 "for": "10m",
-                "labels": {"severity": "warning", "slo": "latency"},
+                "labels": {**INGEST_LABEL, "severity": "warning", "slo": "latency"},
                 "annotations": {
                     "summary": "{{ $labels.backend }} health probe is slow",
                     "description": (

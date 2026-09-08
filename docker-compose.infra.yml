@@ -132,16 +132,22 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: otterworks-alertmanager
-    command:
-    - --config.file=/etc/alertmanager/alertmanager.yml
-    - --storage.path=/alertmanager
+    # Alertmanager expands no environment variables in its config, so the shared
+    # webhook token is written to the tmpfs it reads credentials_file from.
+    entrypoint:
+    - /bin/sh
+    - -c
+    - printf '%s' "$$ALERT_WEBHOOK_SECRET" > /tmp/webhook-secret && exec /bin/alertmanager
+      --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager
+    environment:
+      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-demo-alert-secret}
     ports:
     - 9093:9093
     volumes:
     - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     - alertmanager_data:/alertmanager
-    secrets:
-    - alert_webhook_secret
+    tmpfs:
+    - /tmp
     healthcheck:
       test:
       - CMD
@@ -319,8 +325,3 @@ volumes:
   prometheus_data: null
   grafana_data: null
   alertmanager_data: null
-secrets:
-  # Alertmanager has no environment expansion, so the webhook token reaches it
-  # as a file rather than as a config value.
-  alert_webhook_secret:
-    environment: ALERT_WEBHOOK_SECRET

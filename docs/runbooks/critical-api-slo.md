@@ -18,9 +18,11 @@
 These are Prometheus-evaluated alerts, so they are delivered by Alertmanager
 (`observability/alertmanager/alertmanager.yml`) to the same admin-service
 webhook Grafana's contact point uses. A critical alert routes immediately and
-suppresses the slower-window warnings for the same endpoint. If an alert is
-firing in Prometheus but nothing arrived, check the Alertmanager container and
-that `ALERT_WEBHOOK_SECRET` is set in its environment.
+suppresses the slower-window warnings for the same endpoint and SLO. Each alert
+also carries `affected_service`, which is what the webhook keys its incident on.
+If an alert is firing in Prometheus but no incident appeared, check the
+Alertmanager container and that it shares `ALERT_WEBHOOK_SECRET` with
+admin-service (both default to the same development value).
 
 Every alert carries `endpoint_id`, `backend`, `method`, `route`, `owner` and
 `tier` labels, taken from `observability/slo/critical-apis.yaml`. `backend` is

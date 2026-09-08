@@ -26,11 +26,13 @@ receivers:
         http_config:
           authorization:
             type: Bearer
-            credentials_file: /run/secrets/alert_webhook_secret
+            credentials_file: /tmp/webhook-secret
 
 inhibit_rules:
-  # While an endpoint is paging on a fast burn, its slower-window warnings are
-  # noise about the same incident.
-  - source_matchers: ['severity="critical"']
-    target_matchers: ['severity="warning"']
-    equal: [backend, method, route]
+  # While an endpoint is paging on a fast burn of one SLO, its slower-window
+  # warnings about the same SLO are noise about the same incident. Scoped to
+  # the endpoint alerts: Alertmanager treats two absent labels as equal, so an
+  # unscoped rule would let any legacy critical alert mute every legacy warning.
+  - source_matchers: ['alertname=~"CriticalApi.+"', 'severity="critical"']
+    target_matchers: ['alertname=~"CriticalApi.+"', 'severity="warning"']
+    equal: [backend, method, route, slo]

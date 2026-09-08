@@ -128,9 +128,21 @@ def test_module_timeouts_accept_every_prometheus_duration_unit(duration, seconds
     assert generate._parse_duration("http_2xx", duration) == seconds
 
 
-def test_malformed_module_timeout_is_rejected():
-    with pytest.raises(generate.CatalogError, match="Prometheus duration"):
-        generate._parse_duration("http_2xx", "5 seconds")
+@pytest.mark.parametrize("duration", ["5 seconds", "5", "1d", "2w"])
+def test_module_timeouts_blackbox_cannot_parse_are_rejected(duration):
+    with pytest.raises(generate.CatalogError, match="module timeout"):
+        generate._parse_duration("http_2xx", duration)
+
+
+def test_every_alert_names_the_service_the_webhook_keys_on(catalog_bundle):
+    """admin-service drops an alert that has neither affected_service nor service."""
+    rules = yaml.safe_load(generate.render_rules(*catalog_bundle))
+    alerts = [
+        rule for group in rules["groups"] for rule in group["rules"] if "alert" in rule
+    ]
+    assert alerts
+    for alert in alerts:
+        assert alert["labels"]["affected_service"] == "{{ $labels.backend }}"
 
 
 def test_endpoint_level_probes_are_rejected(tmp_path):

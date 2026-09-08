@@ -128,6 +128,8 @@ export interface OutboundTicketPayload {
   callback_url: string;
   /** Name of the org secret holding the bearer token for callback_url (never the value). */
   callback_api_key: string;
+  /** Stable per-dispatch id (also sent as X-OtterProjects-Delivery); identical across retries. */
+  delivery_id?: string;
   callback_instructions: string;
 }
 

@@ -44,14 +44,22 @@ export class LocalStore implements Store {
   }
 
   async listProjects(): Promise<Project[]> {
-    return Object.values(this.data.projects).sort((a, b) => a.key.localeCompare(b.key));
+    return Object.values(this.data.projects)
+      .map(clone)
+      .sort((a, b) => a.key.localeCompare(b.key));
   }
   async getProject(key: string): Promise<Project | null> {
-    return this.data.projects[key] ?? null;
+    return clone(this.data.projects[key]) ?? null;
   }
   async putProject(project: Project): Promise<void> {
-    this.data.projects[project.key] = project;
+    this.data.projects[project.key] = clone(project);
     this.flush();
+  }
+  async createProject(project: Project): Promise<boolean> {
+    if (this.data.projects[project.key]) return false;
+    this.data.projects[project.key] = clone(project);
+    this.flush();
+    return true;
   }
   async deleteProject(key: string): Promise<void> {
     delete this.data.projects[key];
@@ -71,17 +79,27 @@ export class LocalStore implements Store {
   async listTickets(projectKey: string): Promise<Ticket[]> {
     return Object.values(this.data.tickets)
       .filter((t) => t.projectKey === projectKey)
+      .map(clone)
       .sort((a, b) => a.number - b.number);
   }
   async listTicketsWithSessions(): Promise<Ticket[]> {
-    return Object.values(this.data.tickets).filter((t) => Boolean(t.devin.sessionId));
+    return Object.values(this.data.tickets)
+      .filter((t) => Boolean(t.devin.sessionId))
+      .map(clone);
   }
   async getTicket(key: string): Promise<Ticket | null> {
-    return this.data.tickets[key] ?? null;
+    return clone(this.data.tickets[key]) ?? null;
   }
   async putTicket(ticket: Ticket): Promise<void> {
-    this.data.tickets[ticket.key] = ticket;
+    this.data.tickets[ticket.key] = clone(ticket);
     this.flush();
+  }
+  async claimDispatch(ticketKey: string, at: number): Promise<boolean> {
+    const t = this.data.tickets[ticketKey];
+    if (!t || t.devin.sessionId || t.devin.dispatchedAt) return false;
+    t.devin = { ...t.devin, dispatchedAt: at };
+    this.flush();
+    return true;
   }
   async deleteTicket(ticket: Ticket): Promise<void> {
     delete this.data.tickets[ticket.key];
@@ -114,6 +132,11 @@ export class LocalStore implements Store {
     this.data.deliveries.push(delivery);
     this.flush();
   }
+}
+
+/** Callers get detached copies, matching the remote store's semantics. */
+function clone<T>(v: T): T {
+  return v === undefined || v === null ? v : (JSON.parse(JSON.stringify(v)) as T);
 }
 
 function byCreated(a: { createdAt: number }, b: { createdAt: number }): number {

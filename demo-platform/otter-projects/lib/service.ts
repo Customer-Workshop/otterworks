@@ -84,7 +84,6 @@ export class TicketService {
   async createProject(input: Record<string, unknown>): Promise<Project> {
     const key = str(input.key).trim().toUpperCase();
     if (!PROJECT_KEY_RE.test(key)) throw new HttpError(400, "key must be 2-10 chars, A-Z0-9, starting with a letter");
-    if (await this.store.getProject(key)) throw new HttpError(409, `project ${key} already exists`);
     const now = Date.now();
     const project: Project = {
       key,
@@ -98,7 +97,7 @@ export class TicketService {
       createdAt: now,
       updatedAt: now,
     };
-    await this.store.putProject(project);
+    if (!(await this.store.createProject(project))) throw new HttpError(409, `project ${key} already exists`);
     return project;
   }
 
@@ -291,7 +290,8 @@ export class TicketService {
     const hasTrigger = t.labels.includes(DEVIN_LABEL) || t.assignee === DEVIN_ASSIGNEE;
     if (!hasTrigger || hadTrigger) return;
     if (t.devin.sessionId || t.devin.dispatchedAt) return;
-    await this.dispatchToDevin(t.key, actor);
+    if (!(await this.store.claimDispatch(t.key, Date.now()))) return;
+    await this.dispatchToDevin(t.key, actor, true);
   }
 
   /** Explicit "Assign to Devin": sets the assignee (idempotent) and dispatches. */
@@ -306,9 +306,19 @@ export class TicketService {
     return this.dispatchToDevin(key, actor);
   }
 
-  async dispatchToDevin(key: string, actor: string): Promise<{ ticket: Ticket; ok: boolean; error?: string }> {
+  /**
+   * Explicit re-dispatch (POST /devin, Assign to Devin button) always sends;
+   * automatic triggers pass `claimed=true` after winning `claimDispatch`.
+   */
+  async dispatchToDevin(key: string, actor: string, claimed = false): Promise<{ ticket: Ticket; ok: boolean; error?: string }> {
     const t = await this.getTicket(key);
     const project = await this.getProject(t.projectKey);
+    if (!claimed && !t.devin.sessionId && !(await this.store.claimDispatch(t.key, Date.now()))) {
+      const cur = (await this.store.getTicket(t.key)) ?? t;
+      if (cur.devin.dispatchedAt && Date.now() - cur.devin.dispatchedAt < 30_000) {
+        return { ticket: cur, ok: false, error: "a dispatch for this ticket is already in flight" };
+      }
+    }
     const result = await dispatch(project, t, this.dispatchOpts);
     await this.store.addDelivery(result.delivery);
 
@@ -363,7 +373,7 @@ export class TicketService {
     const devin = { ...t.devin, seenMessageIds: [...(t.devin.seenMessageIds ?? [])] };
 
     if (ev.session_id && ev.session_id !== devin.sessionId) (devin.sessionId = ev.session_id), changes.push("session attached");
-    if (ev.session_url && ev.session_url !== devin.sessionUrl) devin.sessionUrl = ev.session_url;
+    if (ev.session_url && ev.session_url !== devin.sessionUrl) (devin.sessionUrl = ev.session_url), changes.push("session URL");
     if (ev.status && ev.status !== devin.status) (devin.status = ev.status), changes.push(`status ${ev.status}`);
 
     const message = str(ev.message, 20_000).trim();
@@ -396,7 +406,8 @@ export class TicketService {
     if (prUrl && prUrl !== t.prUrl) (t.prUrl = prUrl), changes.push(`PR ${prUrl}`);
 
     let next: Status | null = null;
-    const finished = ev.status === "finished" || ev.status === "done" || ev.status === "completed";
+    const finalStatus = ev.status ?? devin.status;
+    const finished = finalStatus === "finished" || finalStatus === "done" || finalStatus === "completed";
     if (finished && t.prUrl && t.status !== "Done") next = "Done";
     else if (t.prUrl && (t.status === "Backlog" || t.status === "Ready" || t.status === "In Progress")) next = "In Review";
     else if (!t.prUrl && (ev.session_id || ev.status) && (t.status === "Backlog" || t.status === "Ready")) next = "In Progress";

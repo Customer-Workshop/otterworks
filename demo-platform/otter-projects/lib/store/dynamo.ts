@@ -1,4 +1,4 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { ConditionalCheckFailedException, DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteCommand,
   DeleteCommand,
@@ -78,6 +78,21 @@ export class DynamoStore implements Store {
   async putProject(project: Project): Promise<void> {
     await this.put(`PROJECT#${project.key}`, "META", project);
   }
+  async createProject(project: Project): Promise<boolean> {
+    try {
+      await this.doc.send(
+        new PutCommand({
+          TableName: this.table,
+          Item: { ...(project as unknown as Item), PK: `PROJECT#${project.key}`, SK: "META" },
+          ConditionExpression: "attribute_not_exists(PK)",
+        }),
+      );
+      return true;
+    } catch (err) {
+      if (err instanceof ConditionalCheckFailedException) return false;
+      throw err;
+    }
+  }
   async deleteProject(key: string): Promise<void> {
     for (const t of await this.listTickets(key)) await this.deleteTicket(t);
     await this.batchDelete(`PROJECT#${key}`, ["META", "COUNTER"]);
@@ -126,6 +141,27 @@ export class DynamoStore implements Store {
   }
   async putTicket(ticket: Ticket): Promise<void> {
     await this.put(`PROJECT#${ticket.projectKey}`, `TICKET#${padNumber(ticket.number)}`, ticket);
+  }
+  async claimDispatch(ticketKey: string, at: number): Promise<boolean> {
+    const pk = projectKeyOf(ticketKey);
+    const n = ticketNumberOf(ticketKey);
+    if (!pk || n === null) return false;
+    try {
+      await this.doc.send(
+        new UpdateCommand({
+          TableName: this.table,
+          Key: { PK: `PROJECT#${pk}`, SK: `TICKET#${padNumber(n)}` },
+          UpdateExpression: "SET devin.dispatchedAt = :at",
+          ConditionExpression:
+            "attribute_exists(PK) AND attribute_not_exists(devin.sessionId) AND attribute_not_exists(devin.dispatchedAt)",
+          ExpressionAttributeValues: { ":at": at },
+        }),
+      );
+      return true;
+    } catch (err) {
+      if (err instanceof ConditionalCheckFailedException) return false;
+      throw err;
+    }
   }
   async deleteTicket(ticket: Ticket): Promise<void> {
     const children = await this.query(`TICKET#${ticket.key}`, "");

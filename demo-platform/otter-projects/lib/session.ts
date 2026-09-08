@@ -53,16 +53,19 @@ export function verifySession(token: string | undefined, secret: string): Sessio
   const expBuf = Buffer.from(expected);
   if (sigBuf.length !== expBuf.length) return null;
   if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
-  let payload: SessionPayload;
+  let parsed: unknown;
   try {
-    payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
+    parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
   } catch {
     return null;
   }
-  if (typeof payload.exp !== "number" || payload.exp < Math.floor(Date.now() / 1000)) {
-    return null;
-  }
-  return payload;
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const { sub, iat, exp } = parsed as Record<string, unknown>;
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof sub !== "string" || !sub || sub.length > 64) return null;
+  if (typeof iat !== "number" || !Number.isFinite(iat) || iat > now + 60) return null;
+  if (typeof exp !== "number" || !Number.isFinite(exp) || exp < now || exp <= iat) return null;
+  return { sub, iat, exp };
 }
 
 export interface SessionCookieOptions {

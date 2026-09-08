@@ -99,12 +99,18 @@ Automation webhook triggers paste the whole body into the session prompt:
   "project": { "key": "OTTER", "name": "OtterWorks", "repo": "Cognition-Partner-Workshops/otterworks" },
   "callback_url": "https://projects.otterworks.app/api/webhooks/devin?ticket=OTTER-7",
   "callback_api_key": "PROJECTS_API_KEY",
-  "callback_instructions": "POST JSON {session_id, session_url, status, message, pr_url} to callback_url with header 'Authorization: Bearer <PROJECTS_API_KEY>' (the org secret named in callback_api_key) whenever you make progress, open a PR, or finish (status \"finished\")."
+  "callback_instructions": "POST JSON {session_id, session_url, status, message, pr_url} to callback_url with header 'Authorization: Bearer <PROJECTS_API_KEY>' (the org secret named in callback_api_key) whenever you make progress, open a PR, or finish (status \"finished\").",
+  "delivery_id": "5f0c6b3e-…"
 }
 ```
 
 Retries: 3 attempts with exponential backoff on network errors, 429 and 5xx;
-other 4xx fail fast. The API key **value** is never in the body — only the
+other 4xx fail fast. Every attempt of one dispatch carries the same
+`delivery_id` (also as the `X-OtterProjects-Delivery` header) so receivers can
+deduplicate ambiguous retries. Only one automatic dispatch happens per ticket
+(an atomic claim on the ticket record); `POST /api/tickets/:key/devin` is the
+explicit re-dispatch. Outside `LOCAL_MODE` the webhook host is resolved right
+before sending and refused if it points at a private/link-local address. The API key **value** is never in the body — only the
 secret's *name* (`callback_api_key`).
 
 #### Creating the Devin Automation that receives it

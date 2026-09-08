@@ -16,6 +16,8 @@ export interface Store {
   listProjects(): Promise<Project[]>;
   getProject(key: string): Promise<Project | null>;
   putProject(project: Project): Promise<void>;
+  /** Insert only if the key is free; false when it already exists. */
+  createProject(project: Project): Promise<boolean>;
   deleteProject(key: string): Promise<void>;
 
   /** Atomically allocate the next ticket number for a project. */
@@ -25,6 +27,12 @@ export interface Store {
   listTicketsWithSessions(): Promise<Ticket[]>;
   getTicket(key: string): Promise<Ticket | null>;
   putTicket(ticket: Ticket): Promise<void>;
+  /**
+   * Atomically mark a ticket as being dispatched to Devin. Returns false when
+   * another caller already claimed it (or a session is attached), so only one
+   * outbound dispatch happens per assignment.
+   */
+  claimDispatch(ticketKey: string, at: number): Promise<boolean>;
   deleteTicket(ticket: Ticket): Promise<void>;
 
   listComments(ticketKey: string): Promise<Comment[]>;

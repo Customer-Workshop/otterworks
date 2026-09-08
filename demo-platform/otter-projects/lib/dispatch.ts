@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import dns from "node:dns/promises";
+import net from "node:net";
 import { env } from "@/lib/env";
 import { signBody } from "@/lib/hmac";
 import { DevinClient, summarizeStatus, type FetchLike } from "@/lib/devin";
@@ -82,6 +84,30 @@ function newDelivery(ticket: Ticket, dispatcher: Project["dispatcher"], target: 
   };
 }
 
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split(".").map(Number) as [number, number];
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  const v6 = ip.toLowerCase();
+  if (v6 === "::" || v6 === "::1" || v6.startsWith("fe80:") || v6.startsWith("fc") || v6.startsWith("fd")) return true;
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v6);
+  return mapped ? isPrivateIp(mapped[1]!) : false;
+}
+
+/** Resolve the webhook host right before sending; error string when any address is private. */
+async function resolvesToPrivateAddress(target: string): Promise<string | null> {
+  let host: string;
+  try {
+    host = new URL(target).hostname.replace(/^\[|\]$/g, "");
+  } catch {
+    return "webhook URL is not a valid absolute URL";
+  }
+  const addrs = net.isIP(host) ? [host] : (await dns.lookup(host, { all: true }).catch(() => [])).map((a) => a.address);
+  if (addrs.length === 0) return `webhook host ${host} did not resolve`;
+  return addrs.some(isPrivateIp) ? `webhook host ${host} resolves to a private address` : null;
+}
+
 /** POST the signed payload to the project's webhook URL, retrying 3x with backoff. */
 export async function dispatchWebhook(project: Project, ticket: Ticket, opts: DispatchOptions = {}): Promise<DispatchResult> {
   const f: FetchLike = opts.fetch ?? ((i, init) => fetch(i, init));
@@ -96,12 +122,21 @@ export async function dispatchWebhook(project: Project, ticket: Ticket, opts: Di
     return { ok: false, delivery, prompt };
   }
 
-  const body = JSON.stringify(buildOutboundPayload(project, ticket, prompt));
+  if (!env.localMode && !opts.fetch) {
+    const blocked = await resolvesToPrivateAddress(target);
+    if (blocked) {
+      delivery.error = blocked;
+      return { ok: false, delivery, prompt };
+    }
+  }
+
+  const body = JSON.stringify({ ...buildOutboundPayload(project, ticket, prompt), delivery_id: delivery.id });
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "User-Agent": "otter-projects/1.0",
     "X-OtterProjects-Event": "ticket.assigned_to_devin",
     "X-OtterProjects-Ticket": ticket.key,
+    "X-OtterProjects-Delivery": delivery.id,
   };
   if (env.webhookSecret) headers["X-OtterProjects-Signature"] = signBody(body, env.webhookSecret);
   if (env.devinWebhookSecret) headers["X-Webhook-Secret"] = env.devinWebhookSecret;

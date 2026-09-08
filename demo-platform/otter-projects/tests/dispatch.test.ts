@@ -90,6 +90,10 @@ describe("webhook dispatcher", () => {
     expect(res.delivery.attempts).toBe(3);
     expect(q.calls).toHaveLength(3);
     expect(res.delivery.error).toBe("HTTP 500");
+    const ids = q.calls.map((c) => (c.init?.headers as Record<string, string>)["X-OtterProjects-Delivery"]);
+    expect(new Set(ids).size).toBe(1);
+    expect(ids[0]).toBe(res.delivery.id);
+    expect((JSON.parse(q.calls[0]!.init!.body as string) as { delivery_id: string }).delivery_id).toBe(res.delivery.id);
   });
 
   it("succeeds on the second attempt", async () => {
@@ -176,5 +180,32 @@ describe("TicketService triggers", () => {
     expect(after.status).toBe("Backlog");
     const events = await store.listEvents(t.key);
     expect(events.some((e) => e.action === "devin dispatch failed")).toBe(true);
+    expect(after.devin.dispatchedAt).toBeUndefined();
+  });
+
+  it("concurrent label + assignee triggers dispatch exactly once (atomic claim)", async () => {
+    const store = freshStore();
+    const q = fetchQueue([{ status: 200 }]);
+    const svc = new TicketService(store, { fetch: q.fn, backoffMs: 0 });
+    await seedProject(svc);
+    const t = await seedTicket(svc);
+    await Promise.all([svc.addLabels(t.key, ["devin"], undefined, "a"), svc.assign(t.key, "devin", "b")]);
+    expect(q.calls).toHaveLength(1);
+    expect(await store.listDeliveries(t.key)).toHaveLength(1);
+  });
+
+  it("explicit re-dispatch still sends after an earlier dispatch", async () => {
+    const store = freshStore();
+    const q = fetchQueue([{ status: 200 }]);
+    const svc = new TicketService(store, { fetch: q.fn, backoffMs: 0 });
+    await seedProject(svc);
+    const t = await seedTicket(svc, { labels: ["devin"] });
+    expect(q.calls).toHaveLength(1);
+    const cur = await store.getTicket(t.key);
+    cur!.devin.dispatchedAt = Date.now() - 60_000;
+    await store.putTicket(cur!);
+    const res = await svc.assignToDevin(t.key, "tester");
+    expect(res.ok).toBe(true);
+    expect(q.calls).toHaveLength(2);
   });
 });

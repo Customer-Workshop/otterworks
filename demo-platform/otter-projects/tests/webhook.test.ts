@@ -78,6 +78,26 @@ describe("POST /api/webhooks/devin", () => {
     expect(await store.listComments(t.key)).toHaveLength(3);
   });
 
+  it("persists a session URL that arrives alone", async () => {
+    const store = freshStore();
+    const svc = new TicketService(store);
+    await seedProject(svc, { dispatcher: "none" });
+    const t = await seedTicket(svc);
+    const res = await post({ ticket: t.key, session_url: "https://app.devin.ai/sessions/9" }, { authorization: "Bearer api-key-1" });
+    expect(res.status).toBe(200);
+    expect((await store.getTicket(t.key))!.devin.sessionUrl).toBe("https://app.devin.ai/sessions/9");
+  });
+
+  it("moves to Done when the PR arrives after a finished status", async () => {
+    const store = freshStore();
+    const svc = new TicketService(store);
+    await seedProject(svc, { dispatcher: "none" });
+    const t = await seedTicket(svc);
+    await post({ ticket: t.key, session_id: "devin-1", status: "finished", message: "Done, PR incoming" }, { authorization: "Bearer api-key-1" });
+    await post({ ticket: t.key, pr_url: "https://github.com/org/otterworks/pull/7" }, { authorization: "Bearer api-key-1" });
+    expect((await store.getTicket(t.key))!.status).toBe("Done");
+  });
+
   it("404s for unknown tickets and 400s without a ticket", async () => {
     freshStore();
     expect((await post({ ticket: "NOPE-1", status: "working" }, { authorization: "Bearer api-key-1" })).status).toBe(404);

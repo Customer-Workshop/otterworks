@@ -13,7 +13,11 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
     const { key } = await params;
     const body = await readJson<{ assignee?: unknown }>(req);
     const svc = new TicketService();
-    const ticket = body.assignee === "devin" ? (await svc.assignToDevin(key, actor.name)).ticket : await svc.assign(key, body.assignee, actor.name);
+    if (body.assignee === "devin") {
+      const result = await svc.assignToDevin(key, actor.name);
+      return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+    }
+    const ticket = await svc.assign(key, body.assignee, actor.name);
     return NextResponse.json({ ticket });
   } catch (err) {
     return errorResponse(err);

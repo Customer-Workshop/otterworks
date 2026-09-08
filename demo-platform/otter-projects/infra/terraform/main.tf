@@ -18,6 +18,8 @@ terraform {
     }
   }
 
+  # `key` is supplied per cluster by scripts/deploy-otter-projects.sh via
+  # `-backend-config` so a second cluster never rewrites this one's IRSA trust.
   backend "s3" {
     bucket = "otterworks-terraform-state"
     key    = "demo-platform/otter-projects/terraform.tfstate"

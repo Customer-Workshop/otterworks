@@ -17,7 +17,9 @@ var (
 			Name:      "http_requests_total",
 			Help:      "Total number of HTTP requests.",
 		},
-		[]string{"method", "path", "status"},
+		// "service" is claimed by the Prometheus target labels, so the backend a
+		// request was proxied to is exposed as "backend".
+		[]string{"method", "path", "route", "backend", "status"},
 	)
 
 	httpRequestDuration = promauto.NewHistogramVec(
@@ -27,7 +29,7 @@ var (
 			Help:      "HTTP request latency in seconds.",
 			Buckets:   prometheus.DefBuckets,
 		},
-		[]string{"method", "path"},
+		[]string{"method", "path", "route", "backend"},
 	)
 
 	httpActiveConnections = promauto.NewGauge(
@@ -52,36 +54,9 @@ func Metrics(next http.Handler) http.Handler {
 
 		duration := time.Since(start).Seconds()
 		status := strconv.Itoa(ww.Status())
-		path := normalizePath(r.URL.Path)
+		route, path, backend := classify(r.Method, r.URL.Path)
 
-		httpRequestsTotal.WithLabelValues(r.Method, path, status).Inc()
-		httpRequestDuration.WithLabelValues(r.Method, path).Observe(duration)
+		httpRequestsTotal.WithLabelValues(r.Method, path, route, backend, status).Inc()
+		httpRequestDuration.WithLabelValues(r.Method, path, route, backend).Observe(duration)
 	})
-}
-
-// normalizePath reduces cardinality by collapsing path parameters.
-func normalizePath(path string) string {
-	// Keep top-level route prefix for grouping
-	switch {
-	case len(path) >= len("/api/v1/auth") && path[:len("/api/v1/auth")] == "/api/v1/auth":
-		return "/api/v1/auth"
-	case len(path) >= len("/api/v1/files") && path[:len("/api/v1/files")] == "/api/v1/files":
-		return "/api/v1/files"
-	case len(path) >= len("/api/v1/documents") && path[:len("/api/v1/documents")] == "/api/v1/documents":
-		return "/api/v1/documents"
-	case len(path) >= len("/api/v1/collab") && path[:len("/api/v1/collab")] == "/api/v1/collab":
-		return "/api/v1/collab"
-	case len(path) >= len("/api/v1/notifications") && path[:len("/api/v1/notifications")] == "/api/v1/notifications":
-		return "/api/v1/notifications"
-	case len(path) >= len("/api/v1/search") && path[:len("/api/v1/search")] == "/api/v1/search":
-		return "/api/v1/search"
-	case len(path) >= len("/api/v1/analytics") && path[:len("/api/v1/analytics")] == "/api/v1/analytics":
-		return "/api/v1/analytics"
-	case len(path) >= len("/api/v1/admin") && path[:len("/api/v1/admin")] == "/api/v1/admin":
-		return "/api/v1/admin"
-	case len(path) >= len("/api/v1/audit") && path[:len("/api/v1/audit")] == "/api/v1/audit":
-		return "/api/v1/audit"
-	default:
-		return "other"
-	}
 }

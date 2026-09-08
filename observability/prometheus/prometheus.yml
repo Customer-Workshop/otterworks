@@ -10,6 +10,8 @@ global:
 rule_files:
   - alerts.yml
   - recording_rules.yml
+  # Generated from observability/slo/critical-apis.yaml by `make slo-generate`.
+  - slo_rules.yml
 
 alerting:
   alertmanagers:
@@ -239,4 +241,39 @@ scrape_configs:
       - targets: ["postgres-exporter:9187"]
         labels:
           service: postgres
+          tier: infrastructure
+
+  # -------------------------------------------------------
+  # Synthetic probes of the critical APIs
+  #
+  # Targets are generated from the SLO catalog. Probing runs on a fixed
+  # interval whether or not users are sending traffic, which is what makes a
+  # quiet-hours outage visible instead of showing up as missing data.
+  # -------------------------------------------------------
+  - job_name: blackbox-critical-api
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: /probe
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/critical-api-probes.json
+        refresh_interval: 1m
+    relabel_configs:
+      # The probed URL travels as the ?target= parameter; the scrape itself
+      # goes to the blackbox exporter.
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Health of the exporter itself, so a dead prober is not read as "all green".
+  - job_name: blackbox-exporter
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["blackbox-exporter:9115"]
+        labels:
+          service: blackbox-exporter
           tier: infrastructure

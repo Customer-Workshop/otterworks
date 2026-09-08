@@ -1,0 +1,263 @@
+# Critical API catalog.
+#
+# This file is the single source of truth for which edge APIs are considered
+# critical, what reliability they are held to, and who owns them. Everything
+# else -- Prometheus SLI/burn-rate rules, the blackbox probe target list, the
+# gateway route label table and the SLO dashboard -- is generated from it by
+# observability/slo/generate.py. Edit this file, then run `make slo-generate`.
+#
+# Fields per endpoint:
+#   id                  stable identifier, used for rule/panel naming
+#   service             backend service that owns the endpoint
+#   owner               team paged when the endpoint burns its error budget
+#   method / route      HTTP method and gateway route template ({id} params)
+#   tier                critical | high
+#   availability        fraction of non-5xx responses over the SLO window
+#   latency.threshold   latency budget in seconds (must be a histogram bucket)
+#   latency.objective   fraction of requests that must land under threshold
+#   expect_traffic      true when a sustained drop to zero traffic is an outage
+#   probe               optional synthetic check run by the blackbox exporter
+#   runbook             runbook slug under docs/runbooks/
+
+version: 1
+
+slo_window: 30d
+
+# Histogram buckets available on api_gateway_http_request_duration_seconds.
+# latency.threshold must be one of these or the SLI silently mis-measures.
+latency_buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+
+# Multi-window, multi-burn-rate alerting (Google SRE workbook). A page fires
+# only when both the long and the short window agree, which keeps single
+# scrape blips from waking anyone up and still catches fast burns in minutes.
+burn_rates:
+  - name: fast
+    factor: 14.4
+    long_window: 1h
+    short_window: 5m
+    severity: critical
+    budget_consumed: 2% of the 30d budget in 1 hour
+  - name: medium
+    factor: 6
+    long_window: 6h
+    short_window: 30m
+    severity: critical
+    budget_consumed: 5% of the 30d budget in 6 hours
+  - name: slow
+    factor: 3
+    long_window: 1d
+    short_window: 2h
+    severity: warning
+    budget_consumed: 10% of the 30d budget in 1 day
+  - name: very_slow
+    factor: 1
+    long_window: 3d
+    short_window: 6h
+    severity: warning
+    budget_consumed: 10% of the 30d budget in 3 days
+
+# Synthetic probes run against the gateway even when there is no user traffic,
+# so an outage at 03:00 is detected instead of showing up as "no data".
+probe:
+  target_base_url: http://api-gateway:8080
+  interval: 30s
+  max_duration_seconds: 5
+
+endpoints:
+  - id: auth_login
+    service: auth-service
+    owner: identity
+    method: POST
+    route: /api/v1/auth/login
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 1
+      objective: 0.99
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: auth_refresh
+    service: auth-service
+    owner: identity
+    method: POST
+    route: /api/v1/auth/refresh
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 0.5
+      objective: 0.99
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: auth_profile
+    service: auth-service
+    owner: identity
+    method: GET
+    route: /api/v1/auth/profile
+    tier: high
+    availability: 0.995
+    latency:
+      threshold: 0.5
+      objective: 0.99
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: documents_list
+    service: document-service
+    owner: documents
+    method: GET
+    route: /api/v1/documents
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 1
+      objective: 0.99
+    expect_traffic: true
+    probe:
+      path: /api/v1/documents
+      expect_status: [200, 401]
+    runbook: critical-api-slo
+
+  - id: documents_create
+    service: document-service
+    owner: documents
+    method: POST
+    route: /api/v1/documents
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 1
+      objective: 0.99
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: documents_get
+    service: document-service
+    owner: documents
+    method: GET
+    route: /api/v1/documents/{id}
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 1
+      objective: 0.99
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: documents_update
+    service: document-service
+    owner: documents
+    method: PUT
+    route: /api/v1/documents/{id}
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 1
+      objective: 0.99
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: documents_export
+    service: document-service
+    owner: documents
+    method: GET
+    route: /api/v1/documents/{id}/export
+    tier: high
+    availability: 0.99
+    latency:
+      threshold: 2.5
+      objective: 0.95
+    expect_traffic: false
+    runbook: critical-api-slo
+
+  - id: files_upload
+    service: file-service
+    owner: storage
+    method: POST
+    route: /api/v1/files/upload
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 2.5
+      objective: 0.95
+    expect_traffic: true
+    runbook: file-upload-failure
+
+  - id: files_download
+    service: file-service
+    owner: storage
+    method: GET
+    route: /api/v1/files/{id}/download
+    tier: critical
+    availability: 0.999
+    latency:
+      threshold: 2.5
+      objective: 0.95
+    expect_traffic: true
+    runbook: critical-api-slo
+
+  - id: files_list
+    service: file-service
+    owner: storage
+    method: GET
+    route: /api/v1/files
+    tier: high
+    availability: 0.995
+    latency:
+      threshold: 1
+      objective: 0.99
+    expect_traffic: true
+    probe:
+      path: /api/v1/files
+      expect_status: [200, 401]
+    runbook: critical-api-slo
+
+  - id: search_query
+    service: search-service
+    owner: discovery
+    method: GET
+    route: /api/v1/search
+    tier: high
+    availability: 0.995
+    latency:
+      threshold: 0.5
+      objective: 0.99
+    expect_traffic: true
+    probe:
+      path: /api/v1/search?q=otter
+      expect_status: [200, 401]
+    runbook: search-suggest-500
+
+  - id: notifications_list
+    service: notification-service
+    owner: engagement
+    method: GET
+    route: /api/v1/notifications
+    tier: high
+    availability: 0.995
+    latency:
+      threshold: 0.5
+      objective: 0.99
+    expect_traffic: true
+    runbook: notification-processing-failure
+
+  - id: collab_presence
+    service: collab-service
+    owner: collaboration
+    method: GET
+    route: /api/v1/collab/documents/{id}/presence
+    tier: high
+    availability: 0.995
+    latency:
+      threshold: 0.5
+      objective: 0.99
+    expect_traffic: false
+    runbook: critical-api-slo
+
+# Unauthenticated liveness probes. These are the "is the edge answering at
+# all" checks; they carry no SLO of their own but page immediately on failure.
+health_probes:
+  - id: gateway_health
+    path: /health
+    expect_status: [200]

@@ -1,0 +1,59 @@
+[
+  {
+    "targets": [
+      "http://api-gateway:8080/health"
+    ],
+    "labels": {
+      "__param_module": "http_2xx",
+      "probe_id": "gateway_health",
+      "backend": "api-gateway",
+      "tier": "critical",
+      "probe_kind": "health"
+    }
+  },
+  {
+    "targets": [
+      "http://api-gateway:8080/api/v1/documents"
+    ],
+    "labels": {
+      "__param_module": "http_2xx_or_401",
+      "probe_id": "documents_list",
+      "backend": "document-service",
+      "owner": "documents",
+      "tier": "critical",
+      "route": "/api/v1/documents",
+      "method": "GET",
+      "probe_kind": "endpoint"
+    }
+  },
+  {
+    "targets": [
+      "http://api-gateway:8080/api/v1/files"
+    ],
+    "labels": {
+      "__param_module": "http_2xx_or_401",
+      "probe_id": "files_list",
+      "backend": "file-service",
+      "owner": "storage",
+      "tier": "high",
+      "route": "/api/v1/files",
+      "method": "GET",
+      "probe_kind": "endpoint"
+    }
+  },
+  {
+    "targets": [
+      "http://api-gateway:8080/api/v1/search?q=otter"
+    ],
+    "labels": {
+      "__param_module": "http_2xx_or_401",
+      "probe_id": "search_query",
+      "backend": "search-service",
+      "owner": "discovery",
+      "tier": "high",
+      "route": "/api/v1/search",
+      "method": "GET",
+      "probe_kind": "endpoint"
+    }
+  }
+]

@@ -109,6 +109,8 @@ services:
     - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     - ./observability/prometheus/recording_rules.yml:/etc/prometheus/recording_rules.yml:ro
+    - ./observability/prometheus/slo_rules.yml:/etc/prometheus/slo_rules.yml:ro
+    - ./observability/prometheus/targets:/etc/prometheus/targets:ro
     - prometheus_data:/prometheus
     healthcheck:
       test:
@@ -126,6 +128,31 @@ services:
     read_only: true
     tmpfs:
     - /tmp
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: otterworks-blackbox-exporter
+    command:
+    - --config.file=/etc/blackbox/blackbox.yml
+    ports:
+    - 9115:9115
+    volumes:
+    - ./observability/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:9115/-/healthy
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+
   grafana:
     image: grafana/grafana:10.4.0
     container_name: otterworks-grafana

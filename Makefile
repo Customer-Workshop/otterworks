@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record slo-generate slo-check slo-validate
 
 SHELL := /bin/bash
 
@@ -199,6 +199,21 @@ lint: ## Lint all services
 	@echo "=== Search Service ===" && cd services/search-service && ruff check .
 	@echo "=== Web Frontend ===" && cd frontend/web-app && npm run lint
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm run lint
+
+# --- Critical API SLOs ---
+
+# Mounted the way Prometheus itself sees the files, so relative rule_files and
+# file_sd paths are validated exactly as they resolve at runtime.
+SLO_PROMTOOL = docker run --rm -v $(PWD)/observability/prometheus:/etc/prometheus -w /etc/prometheus --entrypoint promtool prom/prometheus:v2.51.0
+
+slo-generate: ## Regenerate SLO rules, probe targets, dashboard and gateway routes from the catalog
+	uv run --with pyyaml==6.0.2 observability/slo/generate.py
+
+slo-check: ## Fail if the generated SLO artifacts drift from observability/slo/critical-apis.yaml
+	uv run --with pyyaml==6.0.2 observability/slo/generate.py --check
+
+slo-validate: slo-check ## Validate the generated Prometheus rules and config with promtool
+	$(SLO_PROMTOOL) check config /etc/prometheus/prometheus.yml
 
 # --- Synthetic Test Data ---
 

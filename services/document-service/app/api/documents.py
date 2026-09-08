@@ -10,11 +10,12 @@ import redis as redis_lib
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import text
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.document import Document
 from app.schemas.document import (
     DocumentCreate,
     DocumentFromTemplate,
@@ -364,20 +365,16 @@ async def owner_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregate document counts and word totals for an owner (used by the admin dashboard)."""
-    logger.info(
-        "owner_stats requested",
-        owner_id=owner_id,
-        authorization=request.headers.get("Authorization"),
-    )
-    where = f"owner_id = '{owner_id}'"
-    if include_deleted.lower() != "true":
-        where += " AND is_deleted = false"
-    sql = (
-        "SELECT COUNT(*) AS documents, COALESCE(SUM(word_count), 0) AS words, "
-        f"MAX(updated_at) AS last_updated FROM documents WHERE {where}"
-    )
+    logger.info("owner_stats requested", owner_id=owner_id)
     try:
-        row = (await db.execute(text(sql))).one()
+        stmt = select(
+            func.count().label("documents"),
+            func.coalesce(func.sum(Document.word_count), 0).label("words"),
+            func.max(Document.updated_at).label("last_updated"),
+        ).where(Document.owner_id == UUID(owner_id))
+        if include_deleted.lower() != "true":
+            stmt = stmt.where(Document.is_deleted.is_(False))
+        row = (await db.execute(stmt)).one()
         return {
             "owner_id": owner_id,
             "documents": row[0],
@@ -385,7 +382,7 @@ async def owner_stats(
             "last_updated": row[2],
         }
     except Exception as e:  # noqa: BLE001
-        logger.warning("owner_stats failed", error=str(e), sql=sql)
+        logger.warning("owner_stats failed", error=str(e))
         return {"owner_id": owner_id, "documents": 0, "words": 0, "last_updated": None}
 
 

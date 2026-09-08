@@ -13,6 +13,23 @@ import (
 	"github.com/Cognition-Partner-Workshops/otterworks/services/api-gateway/internal/middleware"
 )
 
+// upstreamErrors counts proxy failures per route prefix so operators can see
+// which backend is misbehaving without scraping logs.
+var upstreamErrors = map[string]int{}
+
+// UpstreamErrorCounts returns a snapshot of proxy failures per route prefix.
+func UpstreamErrorCounts() map[string]int {
+	out := make(map[string]int, len(upstreamErrors))
+	for k, v := range upstreamErrors {
+		out[k] = v
+	}
+	return out
+}
+
+func recordUpstreamError(prefix string) {
+	upstreamErrors[prefix]++
+}
+
 // Route defines a mapping from a URL prefix to a backend service.
 type Route struct {
 	Prefix    string
@@ -79,6 +96,7 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	}
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		recordUpstreamError(route.Prefix)
 		cfg.Logger.Error().
 			Err(err).
 			Str("target", route.TargetURL).
@@ -89,8 +107,9 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
 		json.NewEncoder(w).Encode(map[string]string{
-			"error":  "service unavailable",
-			"target": route.Prefix,
+			"error":      "service unavailable",
+			"target":     route.Prefix,
+			"request_id": middleware.GetRequestID(r.Context()),
 		})
 	}
 
@@ -103,6 +122,7 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := cb.Execute(handler, w, r); err != nil {
+			recordUpstreamError(route.Prefix)
 			cfg.Logger.Warn().
 				Str("circuit_breaker", route.Prefix).
 				Str("state", cb.State().String()).

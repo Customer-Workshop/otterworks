@@ -63,13 +63,13 @@ def extract_from_sqs(queue_url: str, max_messages: int, sqs_hook: SqsHook) -> li
     """
     client = sqs_hook.conn
     events: list[dict[str, Any]] = []
-    processed = malformed = consecutive_errors = 0
+    processed = malformed = unacknowledged = consecutive_errors = 0
 
     while processed < max_messages:
         try:
             response = client.receive_message(
                 QueueUrl=queue_url,
-                MaxNumberOfMessages=SQS_BATCH_SIZE,
+                MaxNumberOfMessages=min(SQS_BATCH_SIZE, max_messages - processed),
                 WaitTimeSeconds=SQS_WAIT_TIME_SECONDS,
                 AttributeNames=["All"],
                 MessageAttributeNames=["All"],
@@ -91,10 +91,11 @@ def extract_from_sqs(queue_url: str, max_messages: int, sqs_hook: SqsHook) -> li
         if not messages:
             break
 
+        parsed: dict[str, dict[str, Any]] = {}
         entries_to_delete = []
         for msg in messages:
             try:
-                events.append(json.loads(msg["Body"]))
+                parsed[msg["MessageId"]] = json.loads(msg["Body"])
             except (ValueError, KeyError):
                 malformed += 1
                 log.warning(
@@ -106,15 +107,29 @@ def extract_from_sqs(queue_url: str, max_messages: int, sqs_hook: SqsHook) -> li
             )
 
         if entries_to_delete:
-            client.delete_message_batch(QueueUrl=queue_url, Entries=entries_to_delete)
+            deleted = client.delete_message_batch(QueueUrl=queue_url, Entries=entries_to_delete)
+            # Only events whose delete was acknowledged count; the rest will be
+            # redelivered by SQS and must not be aggregated twice.
+            for failure in deleted.get("Failed", []):
+                unacknowledged += 1
+                parsed.pop(failure["Id"], None)
+                log.warning(
+                    "sqs_delete_failed queue=%s message_id=%s code=%s sender_fault=%s",
+                    queue_url,
+                    failure["Id"],
+                    failure.get("Code"),
+                    failure.get("SenderFault"),
+                )
+        events.extend(parsed.values())
         processed += len(messages)
 
     log.info(
-        "sqs_extract_complete queue=%s messages=%d events=%d malformed=%d",
+        "sqs_extract_complete queue=%s messages=%d events=%d malformed=%d unacknowledged=%d",
         queue_url,
         processed,
         len(events),
         malformed,
+        unacknowledged,
     )
     return events
 

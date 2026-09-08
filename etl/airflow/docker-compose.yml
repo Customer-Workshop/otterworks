@@ -1,8 +1,8 @@
 # Local Airflow 2.10 stack for the OtterWorks ETL DAGs (etl/airflow/dags).
 #
-#   cp .env.example .env            # fill in AWS / Postgres credentials (never committed)
-#   docker compose up airflow-init  # migrate metadata DB, create admin user
-#   docker compose up -d            # webserver on http://localhost:8080 (admin / admin)
+#   cp .env.example .env            # fill in AWS / Postgres / Airflow UI credentials (never committed)
+#   docker compose up airflow-init  # migrate metadata DB, create the Airflow UI user
+#   docker compose up -d            # webserver on http://localhost:8080
 #
 # Credentials are injected as Airflow Connections via AIRFLOW_CONN_* env vars and
 # non-sensitive settings as Airflow Variables via AIRFLOW_VAR_*; nothing here reads
@@ -73,8 +73,8 @@ services:
       - |
         airflow db migrate
         airflow users create \
-          --username "${_AIRFLOW_WWW_USER_USERNAME:-admin}" \
-          --password "${_AIRFLOW_WWW_USER_PASSWORD:-admin}" \
+          --username "${_AIRFLOW_WWW_USER_USERNAME:?set _AIRFLOW_WWW_USER_USERNAME in .env}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD:?set _AIRFLOW_WWW_USER_PASSWORD in .env}" \
           --firstname Otter --lastname Works \
           --role Admin --email "${OTTERWORKS_ALERT_EMAIL:-data-team@otterworks.dev}" || true
     environment:

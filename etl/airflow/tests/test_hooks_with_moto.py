@@ -85,13 +85,54 @@ class TestAnalyticsHooks:
         # the malformed message is the only one still on the queue (in-flight)
         assert int(attrs["ApproximateNumberOfMessagesNotVisible"]) == 1
 
-    def test_sqs_extract_honours_max_messages(self, aws):
+    @pytest.mark.parametrize("limit", [20, 13])
+    def test_sqs_extract_honours_max_messages(self, aws, limit):
         sqs = boto3.client("sqs", region_name=REGION)
         url = sqs.create_queue(QueueName="analytics")["QueueUrl"]
         for i in range(25):
             sqs.send_message(QueueUrl=url, MessageBody=json.dumps({"i": i}))
-        events = analytics.extract_from_sqs(url, 20, SqsHook(aws_conn_id=None))
-        assert len(events) == 20
+        events = analytics.extract_from_sqs(url, limit, SqsHook(aws_conn_id=None))
+        assert len(events) == limit
+        attrs = sqs.get_queue_attributes(
+            QueueUrl=url, AttributeNames=["ApproximateNumberOfMessagesNotVisible"]
+        )["Attributes"]
+        assert int(attrs["ApproximateNumberOfMessagesNotVisible"]) == 0
+
+    def test_sqs_extract_drops_events_whose_delete_failed(self, aws):
+        sqs = boto3.client("sqs", region_name=REGION)
+        url = sqs.create_queue(QueueName="analytics")["QueueUrl"]
+        for i in range(4):
+            sqs.send_message(QueueUrl=url, MessageBody=json.dumps({"i": i}))
+
+        class PartialDeleteClient:
+            def __init__(self, inner):
+                self._inner = inner
+                self.rejected: set[str] = set()
+
+            def receive_message(self, **kwargs):
+                return self._inner.receive_message(**kwargs)
+
+            def delete_message_batch(self, *, QueueUrl, Entries):  # noqa: N803
+                ok, bad = Entries[:-1], Entries[-1:]
+                result = self._inner.delete_message_batch(QueueUrl=QueueUrl, Entries=ok)
+                self.rejected |= {e["Id"] for e in bad}
+                result.setdefault("Failed", []).extend(
+                    {"Id": e["Id"], "Code": "InternalError", "SenderFault": False} for e in bad
+                )
+                return result
+
+        client = PartialDeleteClient(sqs)
+        hook = SqsHook(aws_conn_id=None)
+        hook.conn = client  # type: ignore[misc]
+
+        events = analytics.extract_from_sqs(url, 10_000, hook)
+        assert len(events) == 3
+        assert len(client.rejected) == 1
+        attrs = sqs.get_queue_attributes(
+            QueueUrl=url, AttributeNames=["ApproximateNumberOfMessagesNotVisible"]
+        )["Attributes"]
+        # the rejected message stays on the queue for redelivery
+        assert int(attrs["ApproximateNumberOfMessagesNotVisible"]) == 1
 
     def test_dynamodb_extract_filters_by_date_and_normalises_decimals(self, aws, report_date):
         _make_table("events", "event_id")

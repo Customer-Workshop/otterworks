@@ -51,9 +51,9 @@ schedules is the same UTC calendar day the legacy scripts used.
 ## Run locally
 
 ```bash
-cp .env.example .env          # fill in credentials
+cp .env.example .env          # fill in AWS/Postgres credentials and the Airflow UI user/password
 docker compose up airflow-init
-docker compose up -d          # http://localhost:8080  (admin / admin)
+docker compose up -d          # http://localhost:8080
 ```
 
 ## Test & lint

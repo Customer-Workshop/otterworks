@@ -435,6 +435,16 @@ deploy_service() {
     warn "No image in ECR for ${service}; skipping."
     return 0
   fi
+  # Moving tags (tenant-<id>, main) are re-pointed by CD without the tag text
+  # changing, which would leave the pod template identical and roll nothing
+  # out. Pin the digest so every retag is a new pod template.
+  local digest
+  digest="$(aws ecr describe-images --repository-name "${ECR_PREFIX}${service}" \
+    --image-ids "imageTag=${tag}" --region "${AWS_REGION}" \
+    --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)"
+  if [ -n "${digest}" ] && [ "${digest}" != "None" ]; then
+    tag="${tag}@${digest}"
+  fi
 
   build_helm_args "${service}"
   local secret_file="" secret_args=()

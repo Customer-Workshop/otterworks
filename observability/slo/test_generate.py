@@ -129,6 +129,7 @@ def test_slow_probe_warning_must_be_below_the_module_timeout(tmp_path):
         ("1h", 3600.0),
         ("1m30s", 90.0),
         ("1.5s", 1.5),
+        (".5s", 0.5),
         ("500us", 0.0005),
         ("1ns", 1e-9),
     ],

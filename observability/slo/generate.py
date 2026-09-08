@@ -80,7 +80,7 @@ DURATION_UNIT_SECONDS = {
     "m": 60.0,
     "h": 3600.0,
 }
-_DURATION_PART = r"\d+(?:\.\d*)?(?:ns|us|\u00b5s|\u03bcs|ms|s|m|h)"
+_DURATION_PART = r"(?:\d+(?:\.\d*)?|\.\d+)(?:ns|us|\u00b5s|\u03bcs|ms|s|m|h)"
 DURATION_RE = re.compile(rf"({_DURATION_PART})")
 DURATION_UNIT_RE = re.compile(r"([\d.]+)(\D+)")
 

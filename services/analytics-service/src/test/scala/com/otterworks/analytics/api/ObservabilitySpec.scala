@@ -201,6 +201,17 @@ class ObservabilitySpec extends AnyFlatSpec with Matchers with ScalatestRouteTes
     }
   }
 
+  it should "replace malformed or oversized X-Request-ID values with a generated one" in {
+    val uuidPattern = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    Seq("a" * 129, "id with spaces", "id\"quoted", "{\"json\":1}", "").foreach { bad =>
+      Get("/api/v1/analytics/dashboard").withHeaders(RawHeader("X-Request-ID", bad)) ~> routes ~> check {
+        val echoed = header("X-Request-ID").map(_.value).getOrElse("")
+        echoed should not be bad
+        echoed should fullyMatch regex uuidPattern
+      }
+    }
+  }
+
   // --- Structured request log ---
 
   "Request log" should "emit one JSON line per request with the standard fields" in {

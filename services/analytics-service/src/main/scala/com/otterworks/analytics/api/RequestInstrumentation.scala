@@ -28,6 +28,9 @@ object RequestInstrumentation:
 
   val RequestIdHeader = "X-Request-ID"
 
+  /** Accepted shape for a caller-supplied request id; anything else is replaced with a fresh UUID. */
+  private val ValidRequestId: Regex = "[A-Za-z0-9._:-]{1,128}".r
+
   private val logger = LoggerFactory.getLogger("com.otterworks.analytics.http")
 
   private val unmonitoredEndpoints = Set("/health", "/metrics")
@@ -73,6 +76,7 @@ object RequestInstrumentation:
         val startNanos = System.nanoTime()
         val requestId = request.headers
           .collectFirst { case h if h.is("x-request-id") => h.value }
+          .filter(ValidRequestId.matches)
           .getOrElse(UUID.randomUUID().toString)
         val method = request.method.value
         val path = request.uri.path.toString

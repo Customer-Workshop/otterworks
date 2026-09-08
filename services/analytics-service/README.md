@@ -161,8 +161,9 @@ top-level fields rather than interpolated into the message.
 | `metrics_store_selected`/`_fallback`, `market_seed_failed`, `server_started`/`_start_failed`, `sqs_processor_start_failed` | `store`, `requested_store`, `host`, `port`, `metrics_path`, `error` |
 
 `request_id` is taken from an incoming `X-Request-ID` header (as set by the API
-gateway) or generated, and is echoed back on the response so a client-observed
-failure can be joined to its log line.
+gateway) when it matches `[A-Za-z0-9._:-]{1,128}`, otherwise a UUID is generated;
+it is echoed back on the response so a client-observed failure can be joined to
+its log line.
 
 ### Verifying against a running tenant
 

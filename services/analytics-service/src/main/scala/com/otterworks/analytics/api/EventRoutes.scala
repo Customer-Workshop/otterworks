@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.otterworks.analytics.model.AnalyticsEventJsonProtocol.{*, given}
 import com.otterworks.analytics.service.AnalyticsService
+import net.logstash.logback.argument.StructuredArguments.kv
 import org.slf4j.LoggerFactory
 
 /** Routes for event ingestion: POST /api/v1/analytics/events */
@@ -26,7 +27,16 @@ class EventRoutes(analyticsService: AnalyticsService):
               request.metadata.getOrElse(Map.empty)
             )
           ) { event =>
-            logger.info("Event tracked: {}", event.eventId)
+            Metrics.eventsReceivedTotal.labels(Metrics.Source.Api, event.eventType).inc()
+            logger.info(
+              "event_accepted",
+              kv("source", Metrics.Source.Api),
+              kv("event_id", event.eventId),
+              kv("event_type", event.eventType),
+              kv("user_id", event.userId),
+              kv("resource_id", event.resourceId),
+              kv("resource_type", event.resourceType),
+            )
             complete(StatusCodes.Accepted, AcceptedResponse("accepted", event.eventId))
           }
         }

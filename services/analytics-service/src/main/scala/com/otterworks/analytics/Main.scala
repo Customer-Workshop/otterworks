@@ -5,23 +5,28 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
-import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes, MarginRoutes, MarketIngestRoutes}
+import com.otterworks.analytics.api.{AnalyticsRoutes, EventRoutes, HealthRoutes, MarginRoutes, MarketIngestRoutes, Metrics, RequestInstrumentation}
 import com.otterworks.analytics.batch.MarketSeeder
 import com.otterworks.analytics.config.AppConfig
 import com.otterworks.analytics.db.AnalyticsDb
 import com.otterworks.analytics.repository.{InMemoryMetricsRepository, MarketRepository, MetricsRepository, PostgresMetricsRepository}
 import com.otterworks.analytics.service.{AnalyticsService, EventProcessor, MarginService}
+import net.logstash.logback.argument.StructuredArguments.kv
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 object Main:
+  private val logger = LoggerFactory.getLogger(getClass)
+
   def main(args: Array[String]): Unit =
     given system: ActorSystem[Nothing] = ActorSystem(Behaviors.empty, "analytics-service")
     given ec: ExecutionContextExecutor = system.executionContext
 
     val config = AppConfig.load()
+    Metrics.registerJvmCollectors()
 
     // Wire up the metrics store. The golden default is the durable PostgreSQL
     // store (the "before" state for the S3/Iceberg lakehouse migration); the
@@ -35,16 +40,20 @@ object Main:
         try
           db.migrate()
           sys.addShutdownHook(db.close())
-          system.log.info("Analytics using durable PostgreSQL metrics store")
+          logger.info("metrics_store_selected", kv("store", "postgres"))
           (new PostgresMetricsRepository(db), Some(db))
         catch
           case ex: Throwable =>
             db.close()
-            system.log.warn(
-              s"Durable PostgreSQL store unavailable (${ex.getMessage}); falling back to in-memory store")
+            logger.warn(
+              "metrics_store_fallback",
+              kv("store", "in-memory"),
+              kv("requested_store", "postgres"),
+              kv("error", ex.getMessage),
+              ex)
             (new InMemoryMetricsRepository(config.postgres), None)
       else
-        system.log.info("Analytics using in-memory metrics store (per configuration)")
+        logger.info("metrics_store_selected", kv("store", "in-memory"))
         (new InMemoryMetricsRepository(config.postgres), None)
 
     val analyticsService = AnalyticsService(repository)
@@ -60,7 +69,7 @@ object Main:
         try MarketSeeder.run(marketRepository, marginService)
         catch
           case ex: Exception =>
-            system.log.warn(s"Market baseline seed failed: ${ex.getMessage}")
+            logger.warn("market_seed_failed", kv("error", ex.getMessage), ex)
         concat(
           MarginRoutes(marginService, marketRepository).routes,
           MarketIngestRoutes(marginService, marketRepository).routes,
@@ -77,11 +86,13 @@ object Main:
     val analyticsRoutes = AnalyticsRoutes(analyticsService)
     val eventRoutes = EventRoutes(analyticsService)
 
-    val routes: Route = concat(
-      healthRoutes.routes,
-      eventRoutes.routes,
-      analyticsRoutes.routes,
-      marketRoutes,
+    val routes: Route = RequestInstrumentation.instrumented(
+      concat(
+        healthRoutes.routes,
+        eventRoutes.routes,
+        analyticsRoutes.routes,
+        marketRoutes,
+      )
     )
 
     val host = config.server.host
@@ -90,13 +101,17 @@ object Main:
     val binding = Http().newServerAt(host, port).bind(routes)
     binding.onComplete {
       case Success(b) =>
-        system.log.info(s"Analytics Service started at http://${b.localAddress.getHostString}:${b.localAddress.getPort}")
+        logger.info(
+          "server_started",
+          kv("host", b.localAddress.getHostString),
+          kv("port", b.localAddress.getPort),
+          kv("metrics_path", "/metrics"))
         // Start SQS consumer in background (non-fatal if SQS unavailable)
         try eventProcessor.start()
         catch case ex: Exception =>
-          system.log.warn(s"SQS event processor could not start: ${ex.getMessage}. Running without SQS ingestion.")
+          logger.warn("sqs_processor_start_failed", kv("error", ex.getMessage), ex)
       case Failure(e) =>
-        system.log.error(s"Failed to start Analytics Service: ${e.getMessage}")
+        logger.error("server_start_failed", kv("host", host), kv("port", port), kv("error", e.getMessage), e)
         system.terminate()
     }
 

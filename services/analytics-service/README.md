@@ -110,13 +110,107 @@ store. The lakehouse "after" is expected to pass the **same** reconciliation
 against this PostgreSQL "before", turning a one-off migration into a
 continuously-validated cutover.
 
+## Observability
+
+Instrumentation mirrors `services/search-service` (Prometheus request metrics +
+structured JSON logs) so the same dashboards, alerts and log queries apply.
+Definitions live in `api/Metrics.scala` and `api/RequestInstrumentation.scala`.
+
+### Prometheus metrics — `GET /metrics` (port 8088)
+
+Exposed in Prometheus text format 0.0.4 from the default registry; this is what
+the Helm chart's `ServiceMonitor` (`monitoring.path: /metrics`, port `http`) and
+`observability/prometheus/prometheus.yml` (`analytics-service:8088`) scrape.
+
+| Metric | Type | Labels | Notes |
+|---|---|---|---|
+| `analytics_service_requests_total` | counter | `method`, `endpoint`, `status` | search-service equivalent: `search_service_requests_total` |
+| `analytics_service_request_duration_seconds` | histogram | `method`, `endpoint` | search-service equivalent: `search_service_request_duration_seconds` |
+| `analytics_service_requests_in_flight` | gauge | — | requests currently being handled |
+| `analytics_service_events_received_total` | counter | `source` (`api`\|`sqs`), `event_type` | events accepted for storage |
+| `analytics_service_sqs_messages_total` | counter | `outcome` (`processed`\|`decode_failed`\|`store_failed`\|`delete_failed`\|`receive_failed`) | SQS consumer health |
+| `jvm_*`, `process_*` | various | — | JVM hotspot exports (`DefaultExports`) |
+
+- `endpoint` is the **route template**, never the raw path (e.g.
+  `/api/v1/analytics/users/{id}/activity`); unknown paths are labelled
+  `unmatched`, so label cardinality stays bounded.
+- Requests to `/health` and `/metrics` are **not** counted or logged (same as
+  search-service), so probes and scrapes do not swamp real traffic.
+- Responses produced by rejection/exception handling (404/405/500) are counted
+  with their real status because the route tree is sealed inside the
+  instrumentation.
+- The previously declared but never-updated `analytics_events_received_total`,
+  `analytics_request_duration_seconds` and `analytics_active_connections`
+  families were replaced by the `analytics_service_*` names above.
+
+### Structured JSON logs
+
+All logs (application **and** Akka, via `akka-slf4j`) go through Logback's
+`LogstashEncoder`, one JSON object per line. Every line carries the fields
+required by `observability/logging/log-format-spec.md`: `timestamp`, `level`,
+`service` (`analytics-service`), `message`, plus `logger` and `thread`.
+Application messages are stable snake_case event names with the details as
+top-level fields rather than interpolated into the message.
+
+| `message` | Extra fields |
+|---|---|
+| `http_request_completed` (one per request) | `request_id`, `method`, `path`, `endpoint`, `status`, `duration_ms` |
+| `event_tracked`, `event_accepted` | `event_id`, `event_type`, `user_id`, `resource_id`, `resource_type` (+ `source` on `event_accepted`) |
+| `*_requested` (dashboard, user activity, document stats, top content, active users, storage, export) | `period`, `user_id`, `document_id`, `content_type`, `limit`, `format` as applicable (DEBUG) |
+| `sqs_processor_starting`/`_started`, `sqs_event_processed`, `sqs_*_failed` | `queue` (name only, never the account URL), `region`, `event_id`, `event_type`, `error` + `stack_trace` |
+| `metrics_store_selected`/`_fallback`, `market_seed_failed`, `server_started`/`_start_failed`, `sqs_processor_start_failed` | `store`, `requested_store`, `host`, `port`, `metrics_path`, `error` |
+
+`request_id` is taken from an incoming `X-Request-ID` header (as set by the API
+gateway) or generated, and is echoed back on the response so a client-observed
+failure can be joined to its log line.
+
+### Verifying against a running tenant
+
+Tenant `<ID>` runs in namespace `otterworks-<ID>`; the Helm release (and thus
+the Service) is named `analytics-service`.
+
+```bash
+NS=otterworks-<ID>
+
+# 1. Scrape endpoint the ServiceMonitor uses (pod port 8088, Service port 80)
+kubectl -n "$NS" port-forward svc/analytics-service 8088:80 &
+curl -s localhost:8088/metrics | grep -E '^analytics_service_|^# TYPE analytics_service_'
+
+# 2. Generate traffic, then confirm counter/histogram moved and the endpoint is templated
+curl -s -o /dev/null -w '%{http_code} %header{x-request-id}\n' \
+  -H 'X-Request-ID: verify-1' localhost:8088/api/v1/analytics/users/u-1/activity
+curl -s -X POST localhost:8088/api/v1/analytics/events -H 'Content-Type: application/json' \
+  -d '{"eventType":"document.viewed","userId":"u-1","resourceId":"d-1","resourceType":"document"}'
+curl -s localhost:8088/metrics | grep -E 'requests_total\{.*users/\{id\}/activity|events_received_total|request_duration_seconds_count'
+
+# 3. Structured logs: one JSON line per request, joinable by request_id
+kubectl -n "$NS" logs deploy/analytics-service --since=5m \
+  | jq -c 'select(.message=="http_request_completed") | {request_id,method,endpoint,status,duration_ms}'
+kubectl -n "$NS" logs deploy/analytics-service --since=5m | jq -c 'select(.request_id=="verify-1")'
+
+# 4. ServiceMonitor is rendered and Prometheus has picked the target up
+kubectl -n "$NS" get servicemonitor analytics-service -o jsonpath='{.spec.endpoints[0].path}{"\n"}'   # /metrics
+# In the shared Prometheus UI/API:
+#   analytics_service_requests_total{namespace="otterworks-<ID>"}
+#   histogram_quantile(0.95, sum by (le, endpoint) (rate(analytics_service_request_duration_seconds_bucket{namespace="otterworks-<ID>"}[5m])))
+```
+
+`kubectl -n "$NS" logs deploy/analytics-service | grep '"message":"server_started"'`
+shows the bind address and `metrics_path` at boot. Without the `monitoring.coreos.com`
+CRDs installed the chart skips the ServiceMonitor; the static
+`observability/prometheus/prometheus.yml` job covers that case.
+
 ## Build & test
 
 ```bash
-sbt compile        # compile
-sbt test           # unit tests + durable-store reconciliation (Testcontainers)
+sbt compile        # compile (the CI "lint" gate for this service — no scalafmt/scalafix configured)
+sbt test           # unit tests + observability contract + durable-store reconciliation (Testcontainers)
 sbt assembly       # fat jar (used by the Docker image / deploy)
 ```
+
+`ObservabilitySpec` covers the `/metrics` contract, endpoint templating,
+`/health`+`/metrics` exclusion, `X-Request-ID` propagation and the JSON request
+log fields (rendered through the real `logback.xml` encoder).
 
 The reconciliation suite uses Testcontainers and requires Docker; when Docker is
 unavailable it is cancelled (not failed), so Docker-less runners stay green.

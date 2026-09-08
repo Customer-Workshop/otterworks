@@ -10,6 +10,8 @@
         <logger>logger</logger>
         <thread>thread</thread>
         <level>level</level>
+        <levelValue>[ignore]</levelValue>
+        <version>[ignore]</version>
       </fieldNames>
       <customFields>{"service":"analytics-service"}</customFields>
     </encoder>

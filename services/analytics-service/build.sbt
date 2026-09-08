@@ -16,6 +16,7 @@ lazy val root = project
       "com.typesafe.akka" %% "akka-http" % "10.5.3" cross CrossVersion.for3Use2_13,
       "com.typesafe.akka" %% "akka-actor-typed" % "2.8.8" cross CrossVersion.for3Use2_13,
       "com.typesafe.akka" %% "akka-stream" % "2.8.8" cross CrossVersion.for3Use2_13,
+      "com.typesafe.akka" %% "akka-slf4j" % "2.8.8" cross CrossVersion.for3Use2_13,
       "com.typesafe.akka" %% "akka-http-spray-json" % "10.5.3" cross CrossVersion.for3Use2_13,
 
       // JSON

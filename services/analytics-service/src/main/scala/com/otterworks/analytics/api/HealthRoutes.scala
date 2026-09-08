@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.otterworks.analytics.service.AnalyticsService
-import io.prometheus.client.{CollectorRegistry, Counter, Gauge, Histogram}
+import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.exporter.common.TextFormat
 import spray.json.*
 
@@ -15,7 +15,8 @@ import scala.util.{Failure, Success}
 /**
  * Health and metrics endpoints:
  *   GET /health  - Service health check
- *   GET /metrics - Prometheus metrics
+ *   GET /metrics - Prometheus metrics (text format 0.0.4, scraped by the Helm ServiceMonitor).
+ *                  Metric definitions live in [[Metrics]].
  */
 class HealthRoutes(analyticsService: AnalyticsService)(using ec: ExecutionContext):
 
@@ -45,22 +46,3 @@ class HealthRoutes(analyticsService: AnalyticsService)(using ec: ExecutionContex
       }
     },
   )
-
-object HealthRoutes:
-  /** Prometheus metrics counters shared across the service. */
-  val eventsReceivedTotal: Counter = Counter.build()
-    .name("analytics_events_received_total")
-    .help("Total number of analytics events received")
-    .labelNames("event_type")
-    .register()
-
-  val requestDuration: Histogram = Histogram.build()
-    .name("analytics_request_duration_seconds")
-    .help("HTTP request duration in seconds")
-    .labelNames("method", "path", "status")
-    .register()
-
-  val activeConnections: Gauge = Gauge.build()
-    .name("analytics_active_connections")
-    .help("Number of active HTTP connections")
-    .register()

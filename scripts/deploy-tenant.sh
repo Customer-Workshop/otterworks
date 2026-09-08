@@ -439,12 +439,14 @@ deploy_service() {
   # changing, which would leave the pod template identical and roll nothing
   # out. Pin the digest so every retag is a new pod template.
   local digest
-  digest="$(aws ecr describe-images --repository-name "${ECR_PREFIX}${service}" \
-    --image-ids "imageTag=${tag}" --region "${AWS_REGION}" \
-    --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)"
-  if [ -n "${digest}" ] && [ "${digest}" != "None" ]; then
-    tag="${tag}@${digest}"
+  if ! digest="$(aws ecr describe-images --repository-name "${ECR_PREFIX}${service}" \
+      --image-ids "imageTag=${tag}" --region "${AWS_REGION}" \
+      --query 'imageDetails[0].imageDigest' --output text)" \
+     || [ -z "${digest}" ] || [ "${digest}" = "None" ]; then
+    warn "Could not resolve digest for ${service}:${tag}"
+    return 1
   fi
+  tag="${tag}@${digest}"
 
   build_helm_args "${service}"
   local secret_file="" secret_args=()

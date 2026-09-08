@@ -3,26 +3,24 @@ package com.otterworks.report.model;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Lob;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.validation.constraints.NotNull;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import jakarta.validation.constraints.NotNull;
 import java.util.Date;
 
 /**
  * JPA entity representing a generated report.
  *
  * LEGACY PATTERNS:
- * - javax.persistence.* (target: jakarta.persistence.*)
- * - javax.validation.* (target: jakarta.validation.*)
  * - java.util.Date fields (target: java.time.Instant / LocalDateTime)
  * - SpringFox @ApiModel / @ApiModelProperty (target: @Schema from springdoc)
  * - No Lombok — uses manual getters/setters (verbose but explicit)

@@ -63,14 +63,6 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- LEGACY: javax.servlet — removed in Jakarta EE 9+. Upgrade: jakarta.servlet -->
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Database -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -132,11 +124,10 @@
             <version>${guava.version}</version>
         </dependency>
 
-        <!-- LEGACY: RestTemplate HTTP client (deprecated in favor of WebClient) -->
+        <!-- RestTemplate HTTP client (Spring 6 requires HttpClient 5; version managed by Boot) -->
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
         </dependency>
 
         <!-- Observability (also legacy versions) -->

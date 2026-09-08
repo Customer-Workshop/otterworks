@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
  * LEGACY PATTERNS:
  * - SpringFox @Api / @ApiOperation / @ApiResponse annotations
  *   (target: springdoc @Tag / @Operation / @ApiResponse from io.swagger.v3)
- * - javax.validation.Valid (target: jakarta.validation.Valid)
  * - Commons IO FileUtils for file reading (target: Files.readAllBytes or streaming)
  * - ByteArrayResource loads entire file into memory (target: InputStreamResource for streaming)
  * - No pagination on list endpoint

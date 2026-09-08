@@ -3,8 +3,8 @@ package com.otterworks.report.model;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.Date;
 import java.util.Map;
 
@@ -12,7 +12,6 @@ import java.util.Map;
  * Request DTO for creating a new report.
  *
  * LEGACY PATTERNS:
- * - javax.validation.* annotations (target: jakarta.validation.*)
  * - SpringFox annotations (target: springdoc @Schema)
  * - java.util.Date (target: java.time.Instant)
  * - Mutable POJO with setters (target: Java 16+ record)

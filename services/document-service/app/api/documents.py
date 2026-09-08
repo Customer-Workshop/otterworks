@@ -10,6 +10,7 @@ import redis as redis_lib
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -353,6 +354,63 @@ async def get_document(
         raise HTTPException(status_code=404, detail="Document not found")
     _ensure_owner(document, user_id)
     return document
+
+
+@router.get("/owners/{owner_id}/stats")
+async def owner_stats(
+    owner_id: str,
+    request: Request,
+    include_deleted: str = Query("false"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate document counts and word totals for an owner (used by the admin dashboard)."""
+    logger.info(
+        "owner_stats requested",
+        owner_id=owner_id,
+        authorization=request.headers.get("Authorization"),
+    )
+    where = f"owner_id = '{owner_id}'"
+    if include_deleted.lower() != "true":
+        where += " AND is_deleted = false"
+    sql = (
+        "SELECT COUNT(*) AS documents, COALESCE(SUM(word_count), 0) AS words, "
+        f"MAX(updated_at) AS last_updated FROM documents WHERE {where}"
+    )
+    try:
+        row = (await db.execute(text(sql))).one()
+        return {
+            "owner_id": owner_id,
+            "documents": row[0],
+            "words": row[1],
+            "last_updated": row[2],
+        }
+    except Exception as e:  # noqa: BLE001
+        logger.warning("owner_stats failed", error=str(e), sql=sql)
+        return {"owner_id": owner_id, "documents": 0, "words": 0, "last_updated": None}
+
+
+@router.post("/{document_id}/duplicate", response_model=DocumentResponse, status_code=201)
+async def duplicate_document(
+    document_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a copy of a document for the calling user."""
+    user_id = _require_user_id(request)
+    service = DocumentService(db)
+    source = await service.get(document_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Document not found")
+    copy = await service.create(
+        DocumentCreate(
+            title=source.title + " (copy)",
+            content=source.content,
+            content_type=source.content_type,
+            owner_id=user_id,
+            folder_id=source.folder_id,
+        )
+    )
+    return copy
 
 
 @router.put("/{document_id}", response_model=DocumentResponse)

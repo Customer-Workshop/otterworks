@@ -262,7 +262,7 @@ GEM
     psych (5.3.1)
       date
       stringio
-    puma (6.6.1)
+    puma (7.2.1)
       nio4r (~> 2.0)
     racc (1.8.1)
     rack (3.2.6)
@@ -399,7 +399,7 @@ GEM
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
     webrick (1.9.2)
-    websocket-driver (0.8.0)
+    websocket-driver (0.8.2)
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
@@ -431,7 +431,7 @@ DEPENDENCIES
   opentelemetry-sdk (~> 1.4)
   pg (~> 1.5)
   prometheus_exporter (~> 2.1)
-  puma (~> 6.4)
+  puma (~> 7.2, >= 7.2.1)
   rack-attack (~> 6.7)
   rack-cors (~> 2.0)
   rails (~> 7.1.3)

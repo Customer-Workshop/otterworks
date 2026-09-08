@@ -1,5 +1,7 @@
 package com.otterworks.notification.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -56,6 +58,57 @@ data class Notification(
     val deliveredVia: List<String> = emptyList(),
     val createdAt: String,
 )
+
+/**
+ * Wire payload pushed to WebSocket clients. Shape is governed by
+ * shared/events/schemas/notification-events.json#/definitions/NotificationSentEvent.
+ */
+@Serializable
+data class NotificationSentEvent(
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault
+    val eventType: String = EVENT_TYPE,
+    val id: String,
+    val userId: String,
+    val type: String,
+    val title: String,
+    val message: String,
+    val read: Boolean,
+    val actorId: String = "",
+    val resourceId: String = "",
+    val resourceType: String = "",
+    val deliveredVia: List<String>,
+    val createdAt: String,
+) {
+    companion object {
+        const val EVENT_TYPE = "notification_sent"
+
+        private val RESOURCE_TYPES = setOf("document", "file", "folder")
+
+        fun from(notification: Notification, deliveredVia: List<String> = notification.deliveredVia) =
+            NotificationSentEvent(
+                id = notification.id,
+                userId = notification.userId,
+                type = notificationTypeFor(notification.type),
+                title = notification.title,
+                message = notification.message,
+                read = notification.read,
+                actorId = notification.actorId,
+                resourceId = notification.resourceId,
+                resourceType = notification.resourceType.takeIf { it in RESOURCE_TYPES } ?: "",
+                deliveredVia = deliveredVia,
+                createdAt = notification.createdAt,
+            )
+
+        fun notificationTypeFor(eventType: String): String = when (eventType) {
+            "file_shared" -> "share"
+            "comment_added" -> "comment"
+            "user_mentioned" -> "mention"
+            "document_edited" -> "edit"
+            else -> "system"
+        }
+    }
+}
 
 @Serializable
 enum class DeliveryChannel {

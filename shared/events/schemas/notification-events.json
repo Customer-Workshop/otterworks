@@ -1,40 +1,49 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OtterWorks Notification Events",
+  "description": "Events published by notification-service. NotificationSentEvent is the payload pushed over /ws/notifications/{userId}; it is a superset of the Notification resource returned by GET /api/v1/notifications so clients can merge both without remapping.",
   "definitions": {
     "NotificationSentEvent": {
       "type": "object",
-      "required": ["eventType", "notificationId", "userId", "type", "channel", "timestamp"],
+      "additionalProperties": false,
+      "required": ["eventType", "id", "userId", "type", "title", "message", "read", "deliveredVia", "createdAt"],
       "properties": {
         "eventType": { "const": "notification_sent" },
-        "notificationId": { "type": "string", "format": "uuid" },
-        "userId": { "type": "string", "format": "uuid" },
-        "type": { "enum": ["mention", "share", "comment", "system"] },
-        "channel": { "enum": ["email", "in_app", "push"] },
-        "subject": { "type": "string" },
-        "resourceId": { "type": "string", "format": "uuid" },
+        "id": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string" },
+        "type": { "enum": ["share", "comment", "mention", "edit", "system"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "actorId": { "type": "string" },
+        "resourceId": { "type": "string" },
         "resourceType": { "enum": ["document", "file", "folder"] },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "deliveredVia": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["email", "in_app", "push"] }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     },
     "NotificationReadEvent": {
       "type": "object",
-      "required": ["eventType", "notificationId", "userId", "timestamp"],
+      "required": ["eventType", "id", "userId", "timestamp"],
       "properties": {
         "eventType": { "const": "notification_read" },
-        "notificationId": { "type": "string", "format": "uuid" },
-        "userId": { "type": "string", "format": "uuid" },
+        "id": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string" },
         "readAt": { "type": "string", "format": "date-time" },
         "timestamp": { "type": "string", "format": "date-time" }
       }
     },
     "NotificationFailedEvent": {
       "type": "object",
-      "required": ["eventType", "notificationId", "userId", "channel", "errorCode", "timestamp"],
+      "required": ["eventType", "id", "userId", "channel", "errorCode", "timestamp"],
       "properties": {
         "eventType": { "const": "notification_failed" },
-        "notificationId": { "type": "string", "format": "uuid" },
-        "userId": { "type": "string", "format": "uuid" },
+        "id": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string" },
         "channel": { "enum": ["email", "in_app", "push"] },
         "errorCode": { "type": "string" },
         "errorMessage": { "type": "string" },

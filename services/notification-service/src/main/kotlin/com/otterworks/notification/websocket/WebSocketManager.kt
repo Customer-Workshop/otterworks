@@ -1,6 +1,7 @@
 package com.otterworks.notification.websocket
 
 import com.otterworks.notification.model.Notification
+import com.otterworks.notification.model.NotificationSentEvent
 import io.ktor.websocket.DefaultWebSocketSession
 import io.ktor.websocket.Frame
 import kotlinx.serialization.encodeToString
@@ -35,7 +36,7 @@ class WebSocketManager {
     suspend fun pushNotification(userId: String, notification: Notification): Int {
         val sessions = connections[userId] ?: return 0
 
-        val payload = json.encodeToString(notification)
+        val payload = encode(notification)
         val deadSessions = mutableListOf<DefaultWebSocketSession>()
         var successCount = 0
 
@@ -53,6 +54,15 @@ class WebSocketManager {
         deadSessions.forEach { removeConnection(userId, it) }
         return successCount
     }
+
+    /** Serializes the NotificationSentEvent frame exactly as sent to connected clients. */
+    fun encode(notification: Notification): String =
+        json.encodeToString(
+            NotificationSentEvent.from(
+                notification,
+                deliveredVia = (notification.deliveredVia + "push").distinct(),
+            )
+        )
 
     fun getConnectedUserCount(): Int = connections.size
 

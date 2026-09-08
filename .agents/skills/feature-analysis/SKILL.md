@@ -96,7 +96,7 @@ different data models — finding that is most of the analysis.
 | Service unit tests | per-service, see the blueprint's `test` section (`poetry run pytest`, `go test ./...`, `cargo test`, `./gradlew test`, …) |
 | Black-box API flows through the gateway | `make test-api-flows` (suites in `tests/api/`) |
 | Side effects (audit/notification/analytics) | `tests/api/test_side_effect_flow.py` |
-| Event/API contracts | `tests/contract/`, `shared/events/schemas/` |
+| API contracts | `tests/contract/` — today only `test_search_contract.py`, validating search-service against `shared/openapi/search-service.yaml`. **No harness validates `shared/events/schemas/`**; an event-shape criterion needs a slice of its own |
 | Any newly edge-reachable route | `make dast-routes`, `make dast-scan`, `make dast-coverage` |
 | Behavior parity when refactoring an existing class | `.agents/skills/secure-refactor-equivalence/SKILL.md` |
 

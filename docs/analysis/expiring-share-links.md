@@ -30,10 +30,15 @@ models and two threat models. Neither matches the story.
 
 ### Findings that decide the shape of this feature
 
-1. **Nothing can be shared outside the tenant today.** The web client resolves the
-   typed email to a user id before sharing (`authApi.lookupUser` →
-   `frontend/client-app/src/lib/api.ts:254`), so a recipient without an OtterWorks
-   account cannot be a `shared_with` value at all.
+1. **"Outside my team" has no representation in the data model — only "has an
+   account" vs. "doesn't".** There is no tenant, team or org field on the user
+   table (`services/auth-service/src/main/resources/db/migration/`) or on
+   `FileShare`, and `authApi.lookupUser` (`frontend/client-app/src/lib/api.ts:112`)
+   resolves *any* registered user by email. So a reviewer who already has an
+   OtterWorks account can be shared with today, exactly like a colleague; only a
+   recipient **without** an account cannot be a `shared_with` value
+   (`api.ts:254`). Anonymous access is therefore not mandatory — it is the answer
+   to register question 2, not a given (see §3).
 2. **The one anonymous-capable path is not reachable anonymously.** The gateway
    treats every `/api/v1/documents` path as protected
    (`ProtectedPrefixPath: routePrefixes(routes)`,
@@ -65,7 +70,7 @@ models and two threat models. Neither matches the story.
    (`services/audit-service/src/Services/SnsConsumer.cs:113`), notification-service
    renders the `file_shared` template
    (`.../template/NotificationTemplates.kt:46`). There is no `document_shared`,
-   no `share_expired`, no `share_revoked` — every one of those is new contract
+   no `share_redeemed`, no `share_revoked` — every one of those is new contract
    surface in `shared/events/schemas/file-events.json`.
 
 ## 3. Ambiguity register
@@ -77,12 +82,12 @@ must be answered before any estimate is meaningful.
 | # | Question | Recommended default | Why it matters |
 |---|---|---|---|
 | 1 | Is the subject a **document**, a **file**, or both? | document only, phase 1 | Different services, languages, datastores; "both" roughly doubles the work and forces a shared share-model decision |
-| 2 | Is the recipient an **unauthenticated stranger with a link**, or a **guest account** they must create? | link, no account | Guest accounts pull in auth-service, invites, quotas, admin UX; link-only keeps the change to document-service + gateway |
+| 2 | Is the recipient (a) an **already-registered user** the owner names, (b) a **guest account** they must create, or (c) an **unauthenticated stranger with a link**? | (c) link, no account | (a) needs no gateway change at all — only expiry on the existing grant, i.e. slices A/B/D minus C; (b) pulls in auth-service, invites, quotas, admin UX; (c) is the only one requiring a public edge route. This single answer moves the estimate more than any other |
 | 3 | Does "not forever" mean an **absolute expiry**, an **idle window**, a **view cap**, or **manual revocation**? | absolute expiry, default 7 days, owner may revoke early | Determines whether state must be persisted at all (a signed self-expiring token needs no table; revocation does) |
 | 4 | Can the external reviewer **comment**, or only read? | read-only | Comments require an identity to attribute; `POST /documents/{id}/comments` has no anonymous mode |
 | 5 | What happens to a live link when the document is **edited or deleted**? | link follows latest version; deletion 404s the link | Versions already exist (`/documents/{id}/versions`); "reviewer sees a snapshot" is a materially different feature |
 | 6 | Can the same document have **several links** with different expiries? | one active link per document per phase 1 | Multiple links force a share table + link ids; a single link keeps the derived-token shape |
-| 7 | Must expiry/revocation be **visible in the audit trail**? | yes — new `share_expired` / `share_revoked` audit actions | audit-service only understands `file_shared` today; compliance reviewers will ask |
+| 7 | Must expiry/revocation be **visible in the audit trail**? | yes — new `share_redeemed` / `share_revoked` audit actions, and a rejected redemption recorded too | audit-service only understands `file_shared` today; compliance reviewers will ask |
 | 8 | Is there an **org policy ceiling** on link lifetime (admin-configurable max)? | out of scope, but do not design it out | admin-service already owns features/quotas; retrofitting a policy later is cheap only if the expiry is stored, not baked into the token |
 | 9 | Should a shared-out document appear in the **recipient's search** or **notifications**? | no for anonymous links | search-service scopes by tenant; anonymous recipients have no inbox |
 
@@ -90,6 +95,8 @@ must be answered before any estimate is meaningful.
 
 **In:** an owner-minted, time-limited, revocable, read-only link to a *document*,
 redeemable by an unauthenticated browser, audited on mint/redeem/revoke.
+This presumes answer (c) to register question 2; answers (a) and (b) drop slice C
+and most of the risk with it.
 
 **Out (name them so they are not assumed):** files, folders, guest accounts,
 comments by external reviewers, password-protected links, per-link download
@@ -105,8 +112,9 @@ Ordered so each slice is independently mergeable and independently provable.
 | B. Revocation state | persist minted links (id, document_id, expires_at, revoked_at) and check them on redeem | document-service model + migration, `app/api/documents.py:186` |
 | C. Anonymous redemption at the edge | make exactly `GET /api/v1/documents/shared` public, leaving every sibling path protected | `services/api-gateway/internal/middleware/jwt.go:33` (exact-match list — note sub-paths of an exact public path stay protected, `jwt_test.go:52`) |
 | D. Mint/revoke API + expiry input | `POST /documents/{id}/share` accepts a lifetime and returns `expires_at`; `DELETE /documents/{id}/share` revokes | `app/api/documents.py:463` |
-| E. Events + audit | emit `document_shared` / `share_revoked`; teach audit-service the new actions | `shared/events/schemas/document-events.json`, `services/audit-service/src/Services/SnsConsumer.cs` |
+| E. Events + audit | emit `document_shared`, `share_redeemed`, `share_revoked`; teach audit-service the new actions | `shared/events/schemas/document-events.json`, `services/audit-service/src/Services/SnsConsumer.cs` |
 | F. UI | the share dialog's "link" tab currently copies `window.location.origin + /files/{id}` — a normal app URL, not a share link (`frontend/client-app/src/components/files/share-dialog.tsx:93`); wire it to the minted link, show the expiry, offer revoke | `share-dialog.tsx`, `src/pages/document-editor.tsx` |
+| G. Event-contract coverage | the contract suite is search-OpenAPI only (`tests/contract/test_search_contract.py`) and validates no event schema; add a validator that checks published events against `shared/events/schemas/` | `tests/contract/` |
 
 Slice C is the security-review gate. Everything else is additive; C changes who
 may reach a backend without a JWT.
@@ -133,6 +141,11 @@ Feature: Time-limited external share links
     When an unauthenticated browser opens it
     Then the response is 403 and the document content is not returned
 
+  Scenario: Every redemption is auditable
+    Given a live share link
+    When an unauthenticated browser opens it
+    Then an audit event with action "share_redeemed" and resourceType "document" is recorded
+
   Scenario: The owner revokes early
     Given a live share link
     When the owner revokes it
@@ -154,7 +167,8 @@ Feature: Time-limited external share links
 | Anonymous path is exactly one route | gateway middleware tests (`jwt_test.go` already asserts sub-paths of an exact public path stay protected) | `cd services/api-gateway && go test ./...` |
 | No new edge-reachable route goes unattacked | the DAST route/coverage gate — a newly public route is exactly what it exists to catch | `make dast-routes`, `make dast-scan`, `make dast-coverage` |
 | Audit side effects | `tests/api/test_side_effect_flow.py` | `make test-api-flows` |
-| Event shape | `shared/events/schemas/document-events.json` + `tests/contract/` | `pytest tests/contract` |
+| Redemption audit | `tests/api/test_side_effect_flow.py` | `make test-api-flows` |
+| Event shape | **no existing harness reaches this** — `tests/contract/` holds only `test_search_contract.py`, which validates search responses against `shared/openapi/search-service.yaml` and reads no event schema. Slice G exists to build it | n/a until slice G |
 
 Slice A touches OW-SEC-403's subject class. That finding is a deliberate lab
 fixture: per `AGENTS.md` and `.agents/skills/secure-refactor-equivalence/SKILL.md`,

@@ -1,0 +1,89 @@
+# ------------------------------------------------------------------------------
+# otter-projects — default values
+#
+# Everything here is a safe, non-secret default or a placeholder. Supplied at
+# deploy time (see scripts/deploy-otter-projects.sh):
+#   - awsAccountId : NEVER committed; pass --set-string awsAccountId=<12 digits>
+#   - image        : ECR image with the git-sha tag
+#   - secret.*     : generated passcode/API key/secrets via -f secrets.yaml or
+#                    --set-file so they never land on argv or in git
+# ------------------------------------------------------------------------------
+
+# REQUIRED at deploy time. Templates `fail` when empty.
+awsAccountId: ""
+
+environment: dev
+awsRegion: us-east-1
+namespace: otterworks-platform
+table: otterworks-projects
+
+# Placeholder — override: --set image=<registry>/workshop/otterworks/otter-projects:<git-sha>
+image: REGISTRY/workshop/otterworks/otter-projects:latest
+imagePullPolicy: IfNotPresent
+replicas: 1
+containerPort: 3000
+
+host: projects.otterworks.app
+# Public base URL used to build callback_url in outbound payloads.
+publicUrl: https://projects.otterworks.app
+
+service:
+  port: 80
+
+# Within the namespace LimitRange (requests 100m/128Mi, limits 500m/256Mi).
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+serviceAccount:
+  name: otter-projects
+  # IRSA role name; defaults to otterworks-otter-projects-<environment>.
+  roleName: ""
+
+ingress:
+  className: nginx
+  # TLS + redirect are handled by the shared wildcard default certificate on
+  # ingress-nginx (demo-platform/k8s/dns-tls), mirroring the dashboard ingress.
+  annotations: {}
+
+networkPolicy:
+  enabled: true
+  # Namespaces allowed to reach the pod: shared ingress controller + monitoring.
+  allowedNamespaces:
+    - ingress-nginx
+    - monitoring
+
+# Poller: mirrors Devin session status/messages/PRs onto tickets every minute
+# by calling POST /api/devin/poll with the API key.
+poller:
+  enabled: true
+  schedule: "* * * * *"
+  image: curlimages/curl:8.10.1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Devin integration (non-secret parts). Secrets live under `secret`.
+devin:
+  orgId: ""
+  apiBase: https://api.devin.ai/v3
+  # Default target for the `webhook` dispatcher (a Devin Automation webhook URL).
+  webhookUrl: ""
+
+# Templated Secret `otter-projects`. Values are NOT committed.
+secret:
+  create: true
+  passcode: ""
+  sessionSecret: ""
+  apiKey: ""
+  webhookSecret: ""
+  devinApiKey: ""
+  devinWebhookSecret: ""

@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none;
+  }
+  .btn-primary {
+    @apply rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50;
+  }
+  .btn-xs {
+    @apply rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+  .prose-md p {
+    @apply my-1;
+  }
+  .prose-md code {
+    @apply rounded bg-slate-100 px-1 py-0.5 text-[0.85em];
+  }
+  .prose-md pre {
+    @apply my-2 overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-100;
+  }
+  .prose-md pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+  .prose-md ul {
+    @apply my-1 list-disc pl-5;
+  }
+  .prose-md ol {
+    @apply my-1 list-decimal pl-5;
+  }
+  .prose-md a {
+    @apply text-blue-700 underline;
+  }
+  .prose-md strong {
+    @apply font-semibold;
+  }
+}

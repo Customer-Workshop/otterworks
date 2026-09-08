@@ -65,12 +65,17 @@ describe("POST /api/webhooks/devin", () => {
     await post(b1, { "x-otterprojects-signature": signBody(JSON.stringify(b1), "whsec") }, `?ticket=${t.key}`);
     expect(await store.listComments(t.key)).toHaveLength(1);
 
+    // Replay without message_id is also deduplicated.
+    const b1b = { session_id: "devin-1", status: "working", message: "Still on it" };
+    for (let i = 0; i < 2; i += 1) await post(b1b, { authorization: "Bearer api-key-1" }, `?ticket=${t.key}`);
+    expect(await store.listComments(t.key)).toHaveLength(2);
+
     const b2 = { session_id: "devin-1", status: "finished", message: "All done." };
     const r2 = await post(b2, { "x-otterprojects-signature": signBody(JSON.stringify(b2), "whsec") }, `?ticket=${t.key}`);
     expect(r2.status).toBe(200);
     cur = await store.getTicket(t.key);
     expect(cur!.status).toBe("Done");
-    expect(await store.listComments(t.key)).toHaveLength(2);
+    expect(await store.listComments(t.key)).toHaveLength(3);
   });
 
   it("404s for unknown tickets and 400s without a ticket", async () => {

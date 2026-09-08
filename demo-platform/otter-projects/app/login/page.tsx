@@ -22,7 +22,7 @@ function LoginForm() {
       });
       if (res.ok) {
         const next = params.get("next");
-        router.replace(next && next.startsWith("/") ? next : "/");
+        router.replace(next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/");
         router.refresh();
         return;
       }

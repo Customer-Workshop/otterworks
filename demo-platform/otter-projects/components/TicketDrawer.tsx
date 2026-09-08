@@ -55,15 +55,17 @@ export default function TicketDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, editing]);
 
-  async function run(label: string, fn: () => Promise<unknown>) {
+  async function run(label: string, fn: () => Promise<unknown>): Promise<boolean> {
     setBusy(label);
     setError(null);
     try {
       await fn();
       await load();
       onChanged();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : `${label} failed`);
+      return false;
     } finally {
       setBusy(null);
     }
@@ -130,7 +132,7 @@ export default function TicketDrawer({
                   className="grid gap-2"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    void patch(draft).then(() => setEditing(false));
+                    void patch(draft).then((ok) => ok && setEditing(false));
                   }}
                 >
                   <label className="text-sm">
@@ -195,7 +197,7 @@ export default function TicketDrawer({
                     <dt className="text-violet-700">Session</dt>
                     <dd className="truncate">
                       {t.devin.sessionUrl ? (
-                        <a href={t.devin.sessionUrl} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+                        <a href={t.devin.sessionUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">
                           {t.devin.sessionId ?? t.devin.sessionUrl}
                         </a>
                       ) : (
@@ -205,7 +207,7 @@ export default function TicketDrawer({
                     <dt className="text-violet-700">PR</dt>
                     <dd className="truncate">
                       {t.prUrl ? (
-                        <a href={t.prUrl} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+                        <a href={t.prUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">
                           {t.prUrl}
                         </a>
                       ) : (
@@ -260,7 +262,7 @@ export default function TicketDrawer({
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (!comment.trim()) return;
-                      void run("comment", () => apiSend(`/api/tickets/${ticketKey}/comments`, "POST", { body: comment })).then(() => setComment(""));
+                      void run("comment", () => apiSend(`/api/tickets/${ticketKey}/comments`, "POST", { body: comment })).then((ok) => ok && setComment(""));
                     }}
                   >
                     <label htmlFor="comment" className="sr-only">
@@ -326,7 +328,7 @@ export default function TicketDrawer({
                   className="flex gap-1"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    void run("assign", () => apiSend(`/api/tickets/${ticketKey}/assign`, "POST", { assignee: assigneeInput })).then(() => setAssigneeInput(""));
+                    void run("assign", () => apiSend(`/api/tickets/${ticketKey}/assign`, "POST", { assignee: assigneeInput })).then((ok) => ok && setAssigneeInput(""));
                   }}
                 >
                   <input className="input" list="assignees" placeholder={t.assignee || "unassigned"} value={assigneeInput} onChange={(e) => setAssigneeInput(e.target.value)} aria-label="Assignee" />
@@ -357,7 +359,7 @@ export default function TicketDrawer({
                   onSubmit={(e) => {
                     e.preventDefault();
                     if (!labelInput.trim()) return;
-                    void run("labels", () => apiSend(`/api/tickets/${ticketKey}/labels`, "POST", { add: labelInput.split(",") })).then(() => setLabelInput(""));
+                    void run("labels", () => apiSend(`/api/tickets/${ticketKey}/labels`, "POST", { add: labelInput.split(",") })).then((ok) => ok && setLabelInput(""));
                   }}
                 >
                   <input className="input" placeholder="add label" value={labelInput} onChange={(e) => setLabelInput(e.target.value)} aria-label="Add label" />

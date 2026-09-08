@@ -55,14 +55,21 @@ export class DynamoStore implements Store {
   }
 
   async listProjects(): Promise<Project[]> {
-    const res = await this.doc.send(
-      new ScanCommand({
-        TableName: this.table,
-        FilterExpression: "SK = :meta",
-        ExpressionAttributeValues: { ":meta": "META" },
-      }),
-    );
-    return ((res.Items ?? []) as Item[]).map((i) => this.strip<Project>(i)).sort((a, b) => a.key.localeCompare(b.key));
+    const out: Project[] = [];
+    let start: Record<string, unknown> | undefined;
+    do {
+      const res = await this.doc.send(
+        new ScanCommand({
+          TableName: this.table,
+          FilterExpression: "SK = :meta",
+          ExpressionAttributeValues: { ":meta": "META" },
+          ExclusiveStartKey: start,
+        }),
+      );
+      out.push(...((res.Items ?? []) as Item[]).map((i) => this.strip<Project>(i)));
+      start = res.LastEvaluatedKey;
+    } while (start);
+    return out.sort((a, b) => a.key.localeCompare(b.key));
   }
   async getProject(key: string): Promise<Project | null> {
     const res = await this.doc.send(new GetCommand({ TableName: this.table, Key: { PK: `PROJECT#${key}`, SK: "META" } }));
@@ -157,13 +164,17 @@ export class DynamoStore implements Store {
 
   private async batchDelete(pk: string, sks: string[]): Promise<void> {
     for (let i = 0; i < sks.length; i += 25) {
-      await this.doc.send(
-        new BatchWriteCommand({
-          RequestItems: {
-            [this.table]: sks.slice(i, i + 25).map((sk) => ({ DeleteRequest: { Key: { PK: pk, SK: sk } } })),
-          },
-        }),
-      );
+      let requests: Record<string, { DeleteRequest?: { Key: Item } }[]> = {
+        [this.table]: sks.slice(i, i + 25).map((sk) => ({ DeleteRequest: { Key: { PK: pk, SK: sk } } })),
+      };
+      for (let attempt = 0; ; attempt += 1) {
+        const res = await this.doc.send(new BatchWriteCommand({ RequestItems: requests }));
+        const unprocessed = res.UnprocessedItems ?? {};
+        if (!Object.values(unprocessed).some((v) => v && v.length > 0)) break;
+        if (attempt >= 5) throw new Error(`DynamoDB left ${Object.values(unprocessed).flat().length} deletes unprocessed for ${pk}`);
+        await new Promise((r) => setTimeout(r, 50 * 2 ** attempt));
+        requests = unprocessed as typeof requests;
+      }
     }
   }
 }

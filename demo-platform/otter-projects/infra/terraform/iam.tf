@@ -42,6 +42,15 @@ data "aws_iam_policy_document" "app" {
       "${aws_dynamodb_table.projects.arn}/index/*",
     ]
   }
+
+  statement {
+    sid    = "ProjectsTableKey"
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey", "kms:DescribeKey",
+    ]
+    resources = [aws_kms_key.projects.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "app" {

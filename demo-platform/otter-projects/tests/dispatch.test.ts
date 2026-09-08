@@ -32,6 +32,27 @@ describe("prompt", () => {
 });
 
 describe("webhook dispatcher", () => {
+  it("keeps the serialized body under 20KB even when the prompt embeds a huge description", async () => {
+    const store = freshStore();
+    const svc = new TicketService(store);
+    const p = await seedProject(svc, { dispatcher: "none" });
+    const t = await seedTicket(svc);
+    t.description = "x".repeat(19_000);
+    const payload = buildOutboundPayload(p, t, renderPrompt(p, t));
+    expect(Buffer.byteLength(JSON.stringify(payload), "utf8")).toBeLessThan(20 * 1024);
+    expect(Object.keys(payload)[0]).toBe("prompt");
+  });
+
+  it("rejects private/non-https webhook URLs outside LOCAL_MODE", async () => {
+    const store = freshStore();
+    const svc = new TicketService(store);
+    await seedProject(svc, { dispatcher: "webhook" });
+    process.env.LOCAL_MODE = "false";
+    await expect(svc.updateProject("OTTER", { webhookUrl: "http://169.254.169.254/latest/meta-data" })).rejects.toMatchObject({ status: 400 });
+    await expect(svc.updateProject("OTTER", { webhookUrl: "https://localhost:4000/hook" })).rejects.toMatchObject({ status: 400 });
+    await expect(svc.updateProject("OTTER", { webhookUrl: "https://example.com/hook" })).resolves.toMatchObject({ webhookUrl: "https://example.com/hook" });
+  });
+
   it("posts a signed payload with prompt first, X-Webhook-Secret and callback_url", async () => {
     const store = freshStore();
     const svc = new TicketService(store);

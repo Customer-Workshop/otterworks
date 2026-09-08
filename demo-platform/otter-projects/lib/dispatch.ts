@@ -37,8 +37,8 @@ function truncate(s: string, max: number): string {
  * prompt as context, so the instruction should lead. Kept under 20KB.
  */
 export function buildOutboundPayload(project: Project, ticket: Ticket, prompt: string): OutboundTicketPayload {
-  const base = (descriptionMax: number): OutboundTicketPayload => ({
-    prompt,
+  const base = (descriptionMax: number, promptMax: number): OutboundTicketPayload => ({
+    prompt: truncate(prompt, promptMax),
     event: "ticket.assigned_to_devin",
     ticket: {
       key: ticket.key,
@@ -58,8 +58,15 @@ export function buildOutboundPayload(project: Project, ticket: Ticket, prompt: s
     callback_instructions:
       "POST JSON {ticket, session_id, session_url, status, message, pr_url} to callback_url with header 'Authorization: Bearer <PROJECTS_API_KEY>' whenever you make progress, open a PR, or finish.",
   });
-  let payload = base(12_000);
-  if (Buffer.byteLength(JSON.stringify(payload), "utf8") > MAX_BODY_BYTES) payload = base(4_000);
+  const size = (p: OutboundTicketPayload) => Buffer.byteLength(JSON.stringify(p), "utf8");
+  let descriptionMax = 12_000;
+  let promptMax = 12_000;
+  let payload = base(descriptionMax, promptMax);
+  while (size(payload) > MAX_BODY_BYTES && (descriptionMax > 200 || promptMax > 200)) {
+    descriptionMax = Math.max(200, Math.floor(descriptionMax / 2));
+    promptMax = Math.max(200, Math.floor(promptMax / 2));
+    payload = base(descriptionMax, promptMax);
+  }
   return payload;
 }
 

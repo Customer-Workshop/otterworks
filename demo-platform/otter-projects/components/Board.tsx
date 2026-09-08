@@ -54,7 +54,7 @@ function Card({ ticket, onOpen, dragging = false }: { ticket: Ticket; onOpen?: (
       <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
         <span>{ticket.assignee ? `@${ticket.assignee}` : "unassigned"}</span>
         {ticket.prUrl && (
-          <a href={ticket.prUrl} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline" onClick={(e) => e.stopPropagation()}>
+          <a href={ticket.prUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline" onClick={(e) => e.stopPropagation()}>
             PR ↗
           </a>
         )}

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { HttpError } from "@/lib/errors";
+import { env } from "@/lib/env";
 import { dispatch, type DispatchOptions } from "@/lib/dispatch";
 import { getStore } from "@/lib/store";
 import type { Store } from "@/lib/store/types";
@@ -29,6 +30,30 @@ export function str(v: unknown, max = 20_000): string {
 
 function oneOf<T extends readonly string[]>(v: unknown, allowed: T, fallback: T[number]): T[number] {
   return typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T[number]) : fallback;
+}
+
+const PRIVATE_HOST_RE = /^(localhost|.*\.local|.*\.internal|0\.0\.0\.0|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|169\.254\.\d+\.\d+|\[?::1\]?|\[?fe80:.*|\[?fc.*|\[?fd.*)$/i;
+
+/**
+ * Validate a project webhook target. Only http(s); outside LOCAL_MODE the
+ * host must be public (no loopback, RFC1918, link-local/metadata, or
+ * internal DNS suffixes) so a signed-in user cannot aim the server at
+ * cluster-internal services.
+ */
+export function validateWebhookUrl(raw: unknown): string {
+  const value = str(raw, 2000).trim();
+  if (!value) return "";
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new HttpError(400, "webhookUrl must be an absolute http(s) URL");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") throw new HttpError(400, "webhookUrl must use http or https");
+  if (!env.localMode && (url.protocol !== "https:" || PRIVATE_HOST_RE.test(url.hostname))) {
+    throw new HttpError(400, "webhookUrl must be a public https URL");
+  }
+  return value;
 }
 
 export function normalizeLabels(v: unknown): string[] {
@@ -68,7 +93,7 @@ export class TicketService {
       repo: str(input.repo, 200).trim(),
       promptTemplate: str(input.promptTemplate, 4000).trim() || DEFAULT_PROMPT_TEMPLATE,
       dispatcher: oneOf(input.dispatcher, DISPATCHERS, "webhook"),
-      webhookUrl: str(input.webhookUrl, 2000).trim(),
+      webhookUrl: validateWebhookUrl(input.webhookUrl),
       createAsUserId: str(input.createAsUserId, 200).trim(),
       createdAt: now,
       updatedAt: now,
@@ -84,7 +109,7 @@ export class TicketService {
     if ("repo" in input) p.repo = str(input.repo, 200).trim();
     if ("promptTemplate" in input) p.promptTemplate = str(input.promptTemplate, 4000).trim() || DEFAULT_PROMPT_TEMPLATE;
     if ("dispatcher" in input) p.dispatcher = oneOf(input.dispatcher, DISPATCHERS, p.dispatcher);
-    if ("webhookUrl" in input) p.webhookUrl = str(input.webhookUrl, 2000).trim();
+    if ("webhookUrl" in input) p.webhookUrl = validateWebhookUrl(input.webhookUrl);
     if ("createAsUserId" in input) p.createAsUserId = str(input.createAsUserId, 200).trim();
     p.updatedAt = Date.now();
     await this.store.putProject(p);
@@ -344,7 +369,12 @@ export class TicketService {
     const message = str(ev.message, 20_000).trim();
     if (message) {
       const at = ev.message_at ?? Date.now();
-      const id = ev.message_id || crypto.createHash("sha1").update(`${at}:${message}`).digest("hex");
+      const id =
+        ev.message_id ||
+        crypto
+          .createHash("sha1")
+          .update(ev.message_at !== undefined ? `${ev.message_at}:${message}` : `${ev.session_id ?? ""}:${ev.status ?? ""}:${message}`)
+          .digest("hex");
       if (!devin.seenMessageIds.includes(id)) {
         devin.seenMessageIds.push(id);
         if (devin.seenMessageIds.length > 500) devin.seenMessageIds = devin.seenMessageIds.slice(-500);
@@ -366,7 +396,7 @@ export class TicketService {
     if (prUrl && prUrl !== t.prUrl) (t.prUrl = prUrl), changes.push(`PR ${prUrl}`);
 
     let next: Status | null = null;
-    const finished = ev.status === "finished";
+    const finished = ev.status === "finished" || ev.status === "done" || ev.status === "completed";
     if (finished && t.prUrl && t.status !== "Done") next = "Done";
     else if (t.prUrl && (t.status === "Backlog" || t.status === "Ready" || t.status === "In Progress")) next = "In Review";
     else if (!t.prUrl && (ev.session_id || ev.status) && (t.status === "Backlog" || t.status === "Ready")) next = "In Progress";

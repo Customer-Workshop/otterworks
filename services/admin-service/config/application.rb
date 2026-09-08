@@ -38,5 +38,10 @@ module AdminService
         host: Socket.gethostname
       }
     end
+
+    # Exposes config/secrets.yml (per-environment, ERB-evaluated) as Rails.application.secrets
+    def secrets
+      @secrets ||= config_for(:secrets)
+    end
   end
 end

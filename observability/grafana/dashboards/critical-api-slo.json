@@ -263,7 +263,7 @@
     {
       "title": "Synthetic probe success",
       "type": "state-timeline",
-      "description": "Blackbox probe results per critical endpoint.",
+      "description": "Blackbox health probe results per backend service.",
       "gridPos": {
         "h": 6,
         "w": 12,

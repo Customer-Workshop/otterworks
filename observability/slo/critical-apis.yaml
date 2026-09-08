@@ -16,7 +16,6 @@
 #   latency.threshold   latency budget in seconds (must be a histogram bucket)
 #   latency.objective   fraction of requests that must land under threshold
 #   expect_traffic      true when a sustained drop to zero traffic is an outage
-#   probe               optional synthetic check run by the blackbox exporter
 #   runbook             runbook slug under docs/runbooks/
 
 version: 1
@@ -56,11 +55,7 @@ burn_rates:
     severity: warning
     budget_consumed: 10% of the 30d budget in 3 days
 
-# Synthetic probes run against the gateway even when there is no user traffic,
-# so an outage at 03:00 is detected instead of showing up as "no data".
 probe:
-  target_base_url: http://api-gateway:8080
-  interval: 30s
   max_duration_seconds: 5
 
 endpoints:
@@ -114,9 +109,6 @@ endpoints:
       threshold: 1
       objective: 0.99
     expect_traffic: true
-    probe:
-      path: /api/v1/documents
-      expect_status: [200, 401]
     runbook: critical-api-slo
 
   - id: documents_create
@@ -208,9 +200,6 @@ endpoints:
       threshold: 1
       objective: 0.99
     expect_traffic: true
-    probe:
-      path: /api/v1/files
-      expect_status: [200, 401]
     runbook: critical-api-slo
 
   - id: search_query
@@ -224,9 +213,6 @@ endpoints:
       threshold: 0.5
       objective: 0.99
     expect_traffic: true
-    probe:
-      path: /api/v1/search?q=otter
-      expect_status: [200, 401]
     runbook: search-suggest-500
 
   - id: notifications_list
@@ -255,9 +241,47 @@ endpoints:
     expect_traffic: false
     runbook: critical-api-slo
 
-# Unauthenticated liveness probes. These are the "is the edge answering at
-# all" checks; they carry no SLO of their own but page immediately on failure.
+# Synthetic liveness probes, run on a fixed interval whether or not users are
+# sending traffic, so a quiet-hours outage is detected instead of showing up as
+# "no data". They carry no SLO of their own but page immediately on failure.
+#
+# They deliberately probe /health rather than the catalogued endpoints: the
+# gateway answers an unauthenticated request to a protected route with 401
+# before the proxy reaches the backend, so a credential-free endpoint probe
+# would stay green through a total backend outage. Probing each backend's own
+# /health needs no credentials and still fails when that backend is down.
 health_probes:
   - id: gateway_health
-    path: /health
+    backend: api-gateway
+    url: http://api-gateway:8080/health
+    expect_status: [200]
+  - id: auth_health
+    backend: auth-service
+    owner: identity
+    url: http://auth-service:8081/health
+    expect_status: [200]
+  - id: document_health
+    backend: document-service
+    owner: documents
+    url: http://document-service:8083/health
+    expect_status: [200]
+  - id: file_health
+    backend: file-service
+    owner: storage
+    url: http://file-service:8082/health
+    expect_status: [200]
+  - id: search_health
+    backend: search-service
+    owner: discovery
+    url: http://search-service:8087/health
+    expect_status: [200]
+  - id: notification_health
+    backend: notification-service
+    owner: engagement
+    url: http://notification-service:8086/health
+    expect_status: [200]
+  - id: collab_health
+    backend: collab-service
+    owner: collaboration
+    url: http://collab-service:8084/health
     expect_status: [200]

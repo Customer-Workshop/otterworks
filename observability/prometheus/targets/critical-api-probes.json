@@ -7,53 +7,79 @@
       "__param_module": "http_2xx",
       "probe_id": "gateway_health",
       "backend": "api-gateway",
-      "tier": "critical",
       "probe_kind": "health"
     }
   },
   {
     "targets": [
-      "http://api-gateway:8080/api/v1/documents"
+      "http://auth-service:8081/health"
     ],
     "labels": {
-      "__param_module": "http_2xx_or_401",
-      "probe_id": "documents_list",
+      "__param_module": "http_2xx",
+      "probe_id": "auth_health",
+      "backend": "auth-service",
+      "probe_kind": "health",
+      "owner": "identity"
+    }
+  },
+  {
+    "targets": [
+      "http://document-service:8083/health"
+    ],
+    "labels": {
+      "__param_module": "http_2xx",
+      "probe_id": "document_health",
       "backend": "document-service",
-      "owner": "documents",
-      "tier": "critical",
-      "route": "/api/v1/documents",
-      "method": "GET",
-      "probe_kind": "endpoint"
+      "probe_kind": "health",
+      "owner": "documents"
     }
   },
   {
     "targets": [
-      "http://api-gateway:8080/api/v1/files"
+      "http://file-service:8082/health"
     ],
     "labels": {
-      "__param_module": "http_2xx_or_401",
-      "probe_id": "files_list",
+      "__param_module": "http_2xx",
+      "probe_id": "file_health",
       "backend": "file-service",
-      "owner": "storage",
-      "tier": "high",
-      "route": "/api/v1/files",
-      "method": "GET",
-      "probe_kind": "endpoint"
+      "probe_kind": "health",
+      "owner": "storage"
     }
   },
   {
     "targets": [
-      "http://api-gateway:8080/api/v1/search?q=otter"
+      "http://search-service:8087/health"
     ],
     "labels": {
-      "__param_module": "http_2xx_or_401",
-      "probe_id": "search_query",
+      "__param_module": "http_2xx",
+      "probe_id": "search_health",
       "backend": "search-service",
-      "owner": "discovery",
-      "tier": "high",
-      "route": "/api/v1/search",
-      "method": "GET",
-      "probe_kind": "endpoint"
+      "probe_kind": "health",
+      "owner": "discovery"
+    }
+  },
+  {
+    "targets": [
+      "http://notification-service:8086/health"
+    ],
+    "labels": {
+      "__param_module": "http_2xx",
+      "probe_id": "notification_health",
+      "backend": "notification-service",
+      "probe_kind": "health",
+      "owner": "engagement"
+    }
+  },
+  {
+    "targets": [
+      "http://collab-service:8084/health"
+    ],
+    "labels": {
+      "__param_module": "http_2xx",
+      "probe_id": "collab_health",
+      "backend": "collab-service",
+      "probe_kind": "health",
+      "owner": "collaboration"
     }
   }
 ]

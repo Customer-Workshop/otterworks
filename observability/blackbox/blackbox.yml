@@ -3,11 +3,12 @@
 # Probe targets are generated into
 # observability/prometheus/targets/critical-api-probes.json from the SLO
 # catalog; each target selects one of the modules below via __param_module.
-# When an endpoint needs a status set that no module accepts, add the module
-# here and register it in PROBE_MODULES in observability/slo/generate.py.
+# When a probe needs a status set that no module accepts, add the module here
+# and register it in PROBE_MODULES in observability/slo/generate.py.
 
 modules:
-  # Liveness of an unauthenticated endpoint.
+  # Liveness of a service's own /health endpoint. Anything other than a 200 --
+  # a 5xx, a connection error or a timeout -- is a real failure of that service.
   http_2xx:
     prober: http
     timeout: 5s
@@ -15,18 +16,5 @@ modules:
       method: GET
       valid_http_versions: [HTTP/1.1, HTTP/2.0]
       valid_status_codes: [200]
-      follow_redirects: false
-      preferred_ip_protocol: ip4
-
-  # Authenticated read endpoints. The probe carries no credentials, so a 401
-  # proves the gateway routed the request and the backend answered; a 5xx, a
-  # connection error or a timeout is a real failure.
-  http_2xx_or_401:
-    prober: http
-    timeout: 5s
-    http:
-      method: GET
-      valid_http_versions: [HTTP/1.1, HTTP/2.0]
-      valid_status_codes: [200, 401]
       follow_redirects: false
       preferred_ip_protocol: ip4

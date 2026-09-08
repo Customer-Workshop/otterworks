@@ -61,7 +61,6 @@ PROBE_JOB = "blackbox-critical-api"
 # Blackbox exporter modules, keyed by the status codes a probe accepts.
 PROBE_MODULES = {
     (200,): "http_2xx",
-    (200, 401): "http_2xx_or_401",
 }
 
 GENERATED_BY = "observability/slo/generate.py from observability/slo/critical-apis.yaml"
@@ -112,7 +111,6 @@ class Endpoint:
     latency_objective: float
     expect_traffic: bool
     runbook: str
-    probe: dict[str, Any] | None
 
     @property
     def match_labels(self) -> dict[str, str]:
@@ -145,7 +143,6 @@ def load_catalog(path: Path) -> tuple[dict[str, Any], list[Endpoint], list[BurnR
                 latency_objective=float(latency["objective"]),
                 expect_traffic=bool(entry.get("expect_traffic", False)),
                 runbook=entry["runbook"],
-                probe=entry.get("probe"),
             )
         )
 
@@ -197,8 +194,6 @@ def validate(
         if not runbook.exists():
             raise CatalogError(f"{endpoint.id}: runbook {runbook.name} does not exist")
 
-        if endpoint.probe is not None:
-            _probe_module(endpoint.id, endpoint.probe["expect_status"])
 
     for burn_rate in burn_rates:
         for window in (burn_rate.long_window, burn_rate.short_window):
@@ -207,7 +202,26 @@ def validate(
                     f"burn rate {burn_rate.name} uses window {window}, which is not recorded"
                 )
 
+    for entry in catalog["endpoints"]:
+        # An unauthenticated probe of a protected route is answered by the
+        # gateway's JWT middleware, never by the backend, so it would report
+        # success through a backend outage. Probes belong in health_probes.
+        if "probe" in entry:
+            raise CatalogError(
+                f"{entry['id']}: endpoints cannot define probes; add a credential-free "
+                "liveness check to health_probes instead"
+            )
+
+    probe_ids: set[str] = set()
     for probe in catalog.get("health_probes", []):
+        if probe["id"] in probe_ids:
+            raise CatalogError(f"duplicate health probe id: {probe['id']}")
+        probe_ids.add(probe["id"])
+
+        if not probe["url"].endswith("/health"):
+            raise CatalogError(
+                f"{probe['id']}: health probes must target a /health endpoint, got {probe['url']}"
+            )
         _probe_module(probe["id"], probe["expect_status"])
 
 
@@ -497,10 +511,11 @@ def probe_alerts(catalog: dict[str, Any]) -> dict[str, Any]:
                 "for": "2m",
                 "labels": {"severity": "critical", "slo": "availability"},
                 "annotations": {
-                    "summary": "Synthetic probe {{ $labels.probe_id }} is failing",
+                    "summary": "{{ $labels.backend }} is failing its health probe",
                     "description": (
-                        "The synthetic check for {{ $labels.probe_id }} against "
-                        "{{ $labels.instance }} has failed for 2 minutes. This fires "
+                        "The synthetic health check {{ $labels.probe_id }} against "
+                        "{{ $labels.instance }} has failed for 2 minutes, so "
+                        "{{ $labels.backend }} is down or unreachable. This fires "
                         "independently of user traffic, so it catches outages during quiet hours."
                     ),
                     "runbook_url": "https://docs.otterworks.dev/runbooks/critical-api-slo",
@@ -514,9 +529,9 @@ def probe_alerts(catalog: dict[str, Any]) -> dict[str, Any]:
                 "for": "10m",
                 "labels": {"severity": "warning", "slo": "latency"},
                 "annotations": {
-                    "summary": "Synthetic probe {{ $labels.probe_id }} is slow",
+                    "summary": "{{ $labels.backend }} health probe is slow",
                     "description": (
-                        "The synthetic check for {{ $labels.probe_id }} took "
+                        "The synthetic health check {{ $labels.probe_id }} took "
                         "{{ $value | humanizeDuration }}, above the "
                         f"{_fmt(probe_latency_budget)}s probe budget."
                     ),
@@ -560,43 +575,20 @@ def render_rules(
 
 
 def render_probe_targets(catalog: dict[str, Any], endpoints: list[Endpoint]) -> str:
-    base = catalog["probe"]["target_base_url"].rstrip("/")
+    owners_by_service = {endpoint.service: endpoint.owner for endpoint in endpoints}
     entries: list[dict[str, Any]] = []
 
     for probe in catalog.get("health_probes", []):
-        entries.append(
-            {
-                "targets": [f"{base}{probe['path']}"],
-                "labels": {
-                    "__param_module": _probe_module(probe["id"], probe["expect_status"]),
-                    "probe_id": probe["id"],
-                    "backend": "api-gateway",
-                    "tier": "critical",
-                    "probe_kind": "health",
-                },
-            }
-        )
-
-    for endpoint in endpoints:
-        if endpoint.probe is None:
-            continue
-        entries.append(
-            {
-                "targets": [f"{base}{endpoint.probe['path']}"],
-                "labels": {
-                    "__param_module": _probe_module(
-                        endpoint.id, endpoint.probe["expect_status"]
-                    ),
-                    "probe_id": endpoint.id,
-                    "backend": endpoint.service,
-                    "owner": endpoint.owner,
-                    "tier": endpoint.tier,
-                    "route": endpoint.route,
-                    "method": endpoint.method,
-                    "probe_kind": "endpoint",
-                },
-            }
-        )
+        labels = {
+            "__param_module": _probe_module(probe["id"], probe["expect_status"]),
+            "probe_id": probe["id"],
+            "backend": probe["backend"],
+            "probe_kind": "health",
+        }
+        owner = probe.get("owner", owners_by_service.get(probe["backend"]))
+        if owner is not None:
+            labels["owner"] = owner
+        entries.append({"targets": [probe["url"]], "labels": labels})
 
     return json.dumps(entries, indent=2) + "\n"
 
@@ -801,7 +793,7 @@ def render_dashboard(catalog: dict[str, Any], burn_rates: list[BurnRate]) -> str
                     "legendFormat": "{{ probe_id }}",
                 }
             ],
-            description="Blackbox probe results per critical endpoint.",
+            description="Blackbox health probe results per backend service.",
             field_config={
                 "defaults": {
                     "mappings": [

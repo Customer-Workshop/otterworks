@@ -86,16 +86,30 @@ def test_no_traffic_alert_only_covers_endpoints_expecting_traffic(catalog_bundle
     assert "slo:api_endpoint:expect_traffic" in alerts[0]["expr"]
 
 
-def test_probe_targets_only_include_probed_endpoints(catalog_bundle):
+def test_every_backend_owning_an_endpoint_has_a_health_probe(catalog_bundle):
     catalog, endpoints, _ = catalog_bundle
     targets = yaml.safe_load(generate.render_probe_targets(catalog, endpoints))
-    probed = {e.id for e in endpoints if e.probe}
-    endpoint_targets = {
-        t["labels"]["probe_id"] for t in targets if t["labels"]["probe_kind"] == "endpoint"
-    }
-    assert endpoint_targets == probed
+    probed_backends = {t["labels"]["backend"] for t in targets}
+    assert {e.service for e in endpoints} <= probed_backends
     for target in targets:
         assert target["labels"]["__param_module"] in generate.PROBE_MODULES.values()
+        # A credential-free probe of a protected route is answered by the
+        # gateway's JWT middleware, so probes must hit /health directly.
+        assert target["targets"][0].endswith("/health")
+
+
+def test_endpoint_level_probes_are_rejected(tmp_path):
+    data = _catalog_dict()
+    data["endpoints"][0]["probe"] = {"path": "/api/v1/documents", "expect_status": [200, 401]}
+    with pytest.raises(generate.CatalogError, match="health_probes"):
+        _write_and_load(tmp_path, data)
+
+
+def test_health_probes_must_target_health_endpoints(tmp_path):
+    data = _catalog_dict()
+    data["health_probes"][0]["url"] = "http://api-gateway:8080/api/v1/documents"
+    with pytest.raises(generate.CatalogError, match="/health"):
+        _write_and_load(tmp_path, data)
 
 
 def test_gateway_route_table_is_derived_from_the_catalog(catalog_bundle):

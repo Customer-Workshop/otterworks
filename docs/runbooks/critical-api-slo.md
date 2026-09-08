@@ -33,9 +33,10 @@ target (`api-gateway`).
      in [service-down.md](service-down.md).
    - Every endpoint of every service → suspect the gateway, ingress or a shared
      dependency (RDS, Redis) rather than any single service.
-3. Check whether the synthetic probes agree. Probes failing as well means the
-   failure is reproducible from outside; probes green while the burn rate is
-   high points at a specific client, payload or authenticated path.
+3. Check the synthetic health probes. They call each service's own `/health`
+   credential-free, so a failing probe means that service is down or
+   unreachable; probes green while the burn rate is high points at a specific
+   handler, payload or dependency rather than at the process being dead.
 
 ## Investigation
 

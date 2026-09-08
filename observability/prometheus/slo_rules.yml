@@ -1246,9 +1246,10 @@ groups:
       severity: critical
       slo: availability
     annotations:
-      summary: Synthetic probe {{ $labels.probe_id }} is failing
-      description: The synthetic check for {{ $labels.probe_id }} against {{ $labels.instance }} has failed
-        for 2 minutes. This fires independently of user traffic, so it catches outages during quiet hours.
+      summary: '{{ $labels.backend }} is failing its health probe'
+      description: The synthetic health check {{ $labels.probe_id }} against {{ $labels.instance }} has
+        failed for 2 minutes, so {{ $labels.backend }} is down or unreachable. This fires independently
+        of user traffic, so it catches outages during quiet hours.
       runbook_url: https://docs.otterworks.dev/runbooks/critical-api-slo
   - alert: CriticalApiProbeSlow
     expr: |
@@ -1258,7 +1259,7 @@ groups:
       severity: warning
       slo: latency
     annotations:
-      summary: Synthetic probe {{ $labels.probe_id }} is slow
-      description: The synthetic check for {{ $labels.probe_id }} took {{ $value | humanizeDuration }},
-        above the 5s probe budget.
+      summary: '{{ $labels.backend }} health probe is slow'
+      description: The synthetic health check {{ $labels.probe_id }} took {{ $value | humanizeDuration
+        }}, above the 5s probe budget.
       runbook_url: https://docs.otterworks.dev/runbooks/critical-api-slo

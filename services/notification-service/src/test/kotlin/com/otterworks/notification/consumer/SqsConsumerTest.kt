@@ -14,9 +14,11 @@ import io.mockk.slot
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -174,13 +176,19 @@ class SqsConsumerTest {
     }
 
     @Test
-    fun `epoch timestamps decode under a strict non-lenient parser`() {
+    fun `strict non-lenient parser still rejects epoch timestamps (chaos scenario)`() {
         val strict = Json { isLenient = false; ignoreUnknownKeys = false }
         val body = """{"eventType":"file_shared","timestamp":1704067200}"""
 
-        val event = strict.decodeFromString<SqsNotificationMessage>(body)
-
-        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+        assertFailsWith<SerializationException> {
+            strict.decodeFromString<SqsNotificationMessage>(body)
+        }
+        assertEquals(
+            "2024-01-01T00:00:00Z",
+            strict.decodeFromString<SqsNotificationMessage>(
+                """{"eventType":"file_shared","timestamp":"2024-01-01T00:00:00Z"}"""
+            ).timestamp
+        )
     }
 
     @Test

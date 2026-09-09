@@ -16,6 +16,9 @@ import java.time.Instant
 /**
  * Event timestamps arrive either as RFC 3339 strings (current producers) or as Unix epoch
  * numbers in seconds or milliseconds (legacy producers). Both decode to an ISO-8601 UTC string.
+ *
+ * A non-lenient [kotlinx.serialization.json.Json] (the strict-schema chaos parser) only accepts
+ * the string form, matching the published `format: date-time` schema.
  */
 object EventTimestampSerializer : KSerializer<String> {
     private const val EPOCH_MILLIS_THRESHOLD = 100_000_000_000L
@@ -30,6 +33,9 @@ object EventTimestampSerializer : KSerializer<String> {
         val element = jsonDecoder.decodeJsonElement() as? JsonPrimitive
             ?: throw SerializationException("timestamp must be a string or a number")
         if (element.isString) return element.content
+        if (!jsonDecoder.json.configuration.isLenient) {
+            throw SerializationException("timestamp must be an RFC 3339 string, got ${element.content}")
+        }
         val epoch = element.longOrNull
             ?: throw SerializationException("timestamp must be an RFC 3339 string or an integer epoch, got ${element.content}")
         return fromEpoch(epoch)

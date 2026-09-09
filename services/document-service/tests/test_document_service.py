@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.document import (
+    DEFAULT_CONTENT_TYPE,
     CommentCreate,
     DocumentCreate,
     DocumentPatch,
@@ -237,3 +238,10 @@ async def test_paginate_helper():
     assert DocumentService.paginate(11, 1, 5) == 3
     assert DocumentService.paginate(0, 1, 5) == 1
     assert DocumentService.paginate(10, 1, 0) == 1
+
+
+def test_schema_defaults_use_shared_content_type_constant():
+    assert DEFAULT_CONTENT_TYPE == "text/markdown"
+    assert DocumentCreate(title="t").content_type == DEFAULT_CONTENT_TYPE
+    assert DocumentUpdate(title="t").content_type == DEFAULT_CONTENT_TYPE
+    assert TemplateCreate(name="t", created_by=uuid.uuid4()).content_type == DEFAULT_CONTENT_TYPE

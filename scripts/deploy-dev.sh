@@ -35,17 +35,6 @@ SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-SKIP_PLATFORM=false
-SKIP_TERRAFORM=false
-SKIP_BUILD=false
-for arg in "$@"; do
-  case "$arg" in
-    --skip-platform)  SKIP_PLATFORM=true ;;
-    --skip-terraform) SKIP_TERRAFORM=true ;;
-    --skip-build)     SKIP_BUILD=true ;;
-  esac
-done
-
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -55,6 +44,18 @@ NC='\033[0m'
 log()  { echo -e "${GREEN}[deploy]${NC} $*"; }
 warn() { echo -e "${YELLOW}[deploy]${NC} $*"; }
 err()  { echo -e "${RED}[deploy]${NC} $*" >&2; }
+
+SKIP_PLATFORM=false
+SKIP_TERRAFORM=false
+SKIP_BUILD=false
+for arg in "$@"; do
+  case "$arg" in
+    --skip-platform)  SKIP_PLATFORM=true ;;
+    --skip-terraform) SKIP_TERRAFORM=true ;;
+    --skip-build)     SKIP_BUILD=true ;;
+    *) err "Unknown argument: $arg"; exit 1 ;;
+  esac
+done
 
 # Service list
 BACKEND_SERVICES=(

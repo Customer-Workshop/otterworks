@@ -1,9 +1,20 @@
 package com.otterworks.notification.consumer
 
 import aws.sdk.kotlin.services.sqs.SqsClient
+import aws.sdk.kotlin.services.sqs.model.DeleteMessageRequest
+import aws.sdk.kotlin.services.sqs.model.Message
+import aws.sdk.kotlin.services.sqs.model.ReceiveMessageResponse
 import com.otterworks.notification.config.AppConfig
+import com.otterworks.notification.model.SqsNotificationMessage
 import com.otterworks.notification.service.NotificationService
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -118,6 +129,115 @@ class SqsConsumerTest {
         assertEquals("mentioned-user", event.mentionedUserId)
         assertEquals("actor-2", event.actorId)
         assertEquals("doc-789", event.documentId)
+    }
+
+    @Test
+    fun `parseMessage accepts legacy epoch-seconds timestamp`() {
+        val body = """
+            {
+                "eventType": "file_shared",
+                "fileId": "file-123",
+                "ownerId": "owner-1",
+                "sharedWithUserId": "user-2",
+                "timestamp": 1704067200
+            }
+        """.trimIndent()
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("file_shared", event.eventType)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage accepts legacy epoch-millis timestamp`() {
+        val body = """{"eventType":"document_edited","userId":"user-1","documentId":"doc-1","timestamp":1704067200123}"""
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("2024-01-01T00:00:00.123Z", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage accepts SNS-wrapped legacy epoch timestamp`() {
+        val innerMessage = """{"eventType":"comment_added","userId":"user-1","actorId":"actor-1","documentId":"doc-1","commentId":"c-1","timestamp":1704067200}"""
+        val escapedInner = innerMessage.replace("\"", "\\\"")
+        val body = """{"Type":"Notification","MessageId":"msg-1","Message":"$escapedInner"}"""
+
+        val event = consumer.parseMessage(body)
+
+        assertNotNull(event)
+        assertEquals("comment_added", event.eventType)
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `epoch timestamps decode under a strict non-lenient parser`() {
+        val strict = Json { isLenient = false; ignoreUnknownKeys = false }
+        val body = """{"eventType":"file_shared","timestamp":1704067200}"""
+
+        val event = strict.decodeFromString<SqsNotificationMessage>(body)
+
+        assertEquals("2024-01-01T00:00:00Z", event.timestamp)
+    }
+
+    @Test
+    fun `parseMessage returns null for non-numeric non-string timestamp`() {
+        val event = consumer.parseMessage("""{"eventType":"file_shared","timestamp":{"seconds":1}}""")
+        assertNull(event)
+    }
+
+    @Test
+    fun `startPolling deletes unparseable messages instead of leaving them on the queue`() = runTest {
+        val poison = Message {
+            messageId = "poison-1"
+            receiptHandle = "rh-poison-1"
+            body = "not json at all"
+        }
+        val valid = Message {
+            messageId = "ok-1"
+            receiptHandle = "rh-ok-1"
+            body = """{"eventType":"file_shared","fileId":"f-1","timestamp":1704067200}"""
+        }
+        coEvery { sqsClient.receiveMessage(any()) } returnsMany listOf(
+            ReceiveMessageResponse { messages = listOf(poison, valid) },
+            ReceiveMessageResponse { messages = emptyList() },
+        )
+
+        val job = launch { consumer.startPolling() }
+        advanceTimeBy(config.sqsPollIntervalMs * 3)
+        job.cancel()
+
+        val deleted = mutableListOf<DeleteMessageRequest>()
+        coVerify(exactly = 2) { sqsClient.deleteMessage(capture(deleted)) }
+        assertEquals(setOf("rh-poison-1", "rh-ok-1"), deleted.map { it.receiptHandle }.toSet())
+
+        val processed = slot<SqsNotificationMessage>()
+        coVerify(exactly = 1) { notificationService.processEvent(capture(processed)) }
+        assertEquals("f-1", processed.captured.fileId)
+        assertEquals("2024-01-01T00:00:00Z", processed.captured.timestamp)
+    }
+
+    @Test
+    fun `startPolling keeps a message on the queue when processing fails transiently`() = runTest {
+        val msg = Message {
+            messageId = "m-1"
+            receiptHandle = "rh-1"
+            body = """{"eventType":"file_shared","fileId":"f-1","timestamp":"2024-01-01T00:00:00Z"}"""
+        }
+        coEvery { sqsClient.receiveMessage(any()) } returnsMany listOf(
+            ReceiveMessageResponse { messages = listOf(msg) },
+            ReceiveMessageResponse { messages = emptyList() },
+        )
+        coEvery { notificationService.processEvent(any()) } throws IllegalStateException("dynamodb unavailable")
+
+        val job = launch { consumer.startPolling() }
+        advanceTimeBy(config.sqsPollIntervalMs * 3)
+        job.cancel()
+
+        coVerify(exactly = 0) { sqsClient.deleteMessage(any()) }
     }
 
     @Test

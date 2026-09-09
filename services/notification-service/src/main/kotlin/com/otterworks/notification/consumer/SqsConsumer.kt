@@ -48,13 +48,9 @@ class SqsConsumer(
         isLenient = true
     }
 
-    // CHAOS: strict parser that rejects messages whose timestamp field is not
-    // a valid RFC 3339 string.  Legacy events emitted by older service versions
-    // use Unix epoch integers for timestamps, which are rejected here.
-    // When the chaos flag is active, every such message throws
-    // SerializationException, is never deleted from the queue, and becomes
-    // visible again after the SQS visibility timeout — causing queue depth to
-    // climb indefinitely while the consumer appears healthy.
+    // CHAOS: strict parser (no lenient literals, no unknown keys) selected while the
+    // chaos flag is set. Timestamps are decoded by EventTimestampSerializer, so
+    // epoch-int values from legacy producers parse under either configuration.
     private val strictJson = Json {
         ignoreUnknownKeys = false
         isLenient = false
@@ -86,18 +82,18 @@ class SqsConsumer(
 
                             if (event != null) {
                                 notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
+                                deleteMessage(msg.messageId, msg.receiptHandle)
                             } else {
+                                // Malformed payloads never succeed on redelivery; drop them so they
+                                // do not cycle through the visibility timeout forever.
                                 processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+                                logger.warn {
+                                    "Discarding unparseable SQS message ${msg.messageId}: ${body.take(MAX_LOGGED_BODY_CHARS)}"
+                                }
+                                deleteMessage(msg.messageId, msg.receiptHandle)
                             }
                         } catch (e: Exception) {
+                            processingErrorsCounter?.increment()
                             logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
                         }
                     }
@@ -111,6 +107,15 @@ class SqsConsumer(
                 delay(config.sqsPollIntervalMs * 2)
             }
         }
+    }
+
+    private suspend fun deleteMessage(messageId: String?, handle: String?) {
+        val deleteRequest = DeleteMessageRequest {
+            queueUrl = config.sqsQueueUrl
+            receiptHandle = handle
+        }
+        sqsClient.deleteMessage(deleteRequest)
+        logger.debug { "Deleted SQS message: $messageId" }
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {
@@ -130,6 +135,8 @@ class SqsConsumer(
         }
     }
 }
+
+private const val MAX_LOGGED_BODY_CHARS = 512
 
 @kotlinx.serialization.Serializable
 internal data class SnsEnvelope(

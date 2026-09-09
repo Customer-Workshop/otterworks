@@ -6,6 +6,7 @@ import com.otterworks.notification.model.UnreadCountResponse
 import com.otterworks.notification.service.NotificationService
 import com.otterworks.notification.websocket.WebSocketManager
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
 import io.ktor.server.request.receive
@@ -14,8 +15,10 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.put
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
@@ -34,6 +37,23 @@ data class ErrorResponse(val error: String)
 @Serializable
 data class MarkAllReadResponse(val markedCount: Int)
 
+private fun ApplicationCall.requestedUserId(): String? =
+    (request.headers["X-User-ID"] ?: request.queryParameters["user_id"])?.takeUnless { it.isBlank() }
+
+private suspend fun ApplicationCall.respondUserIdRequired() =
+    respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
+
+private suspend fun ApplicationCall.respondNotificationIdRequired() =
+    respond(HttpStatusCode.BadRequest, ErrorResponse("Notification ID is required"))
+
+private suspend fun ApplicationCall.respondNoContentOrNotFound(success: Boolean) {
+    if (success) {
+        respond(HttpStatusCode.NoContent)
+    } else {
+        respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+    }
+}
+
 fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
     val notificationService by inject<NotificationService>()
     val webSocketManager by inject<WebSocketManager>()
@@ -50,144 +70,151 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             )
         }
 
-        route("/api/v1/notifications") {
-            get {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
-                if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
-                    return@get
-                }
+        notificationRoutes(notificationService)
+        preferenceRoutes(notificationService)
+        notificationWebSocket(webSocketManager)
+    }
+}
 
-                val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-                val pageSize = call.request.queryParameters["page_size"]?.toIntOrNull() ?: 20
+private fun Route.notificationRoutes(notificationService: NotificationService) {
+    route("/api/v1/notifications") {
+        get {
+            val userId = call.requestedUserId()
+            if (userId == null) {
+                call.respondUserIdRequired()
+                return@get
+            }
 
-                val (notifications, total) = notificationService.getNotifications(userId, page, pageSize)
+            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+            val pageSize = call.request.queryParameters["page_size"]?.toIntOrNull() ?: 20
 
-                call.respond(
-                    PaginatedResponse(
-                        data = notifications,
-                        total = total,
-                        page = page,
-                        pageSize = pageSize,
-                        hasMore = (page * pageSize) < total,
-                    )
+            val (notifications, total) = notificationService.getNotifications(userId, page, pageSize)
+
+            call.respond(
+                PaginatedResponse(
+                    data = notifications,
+                    total = total,
+                    page = page,
+                    pageSize = pageSize,
+                    hasMore = (page * pageSize) < total,
                 )
+            )
+        }
+
+        get("/unread-count") {
+            val userId = call.requestedUserId()
+            if (userId == null) {
+                call.respondUserIdRequired()
+                return@get
             }
 
-            get("/unread-count") {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
-                if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
-                    return@get
-                }
+            val count = notificationService.getUnreadCount(userId)
+            call.respond(UnreadCountResponse(userId = userId, unreadCount = count))
+        }
 
-                val count = notificationService.getUnreadCount(userId)
-                call.respond(UnreadCountResponse(userId = userId, unreadCount = count))
+        get("/{id}") {
+            val id = call.parameters["id"]
+            if (id == null) {
+                call.respondNotificationIdRequired()
+                return@get
             }
 
-            get("/{id}") {
-                val id = call.parameters["id"] ?: return@get call.respond(
-                    HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
-                )
-
-                val notification = notificationService.getNotificationById(id)
-                if (notification != null) {
-                    call.respond(notification)
-                } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
-                }
-            }
-
-            put("/{id}/read") {
-                val id = call.parameters["id"] ?: return@put call.respond(
-                    HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
-                )
-
-                val success = notificationService.markAsRead(id)
-                if (success) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
-                }
-            }
-
-            put("/read-all") {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
-                if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
-                    return@put
-                }
-
-                val count = notificationService.markAllAsRead(userId)
-                call.respond(MarkAllReadResponse(markedCount = count))
-            }
-
-            delete("/{id}") {
-                val id = call.parameters["id"] ?: return@delete call.respond(
-                    HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
-                )
-
-                val success = notificationService.deleteNotification(id)
-                if (success) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
-                }
+            val notification = notificationService.getNotificationById(id)
+            if (notification != null) {
+                call.respond(notification)
+            } else {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
             }
         }
 
-        route("/api/v1/preferences") {
-            get {
-                val userId = call.request.headers["X-User-ID"] ?: call.request.queryParameters["user_id"]
-                if (userId.isNullOrBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("user_id is required (via X-User-ID header or query parameter)"))
-                    return@get
-                }
-
-                val preferences = notificationService.getPreferences(userId)
-                call.respond(preferences)
+        put("/{id}/read") {
+            val id = call.parameters["id"]
+            if (id == null) {
+                call.respondNotificationIdRequired()
+                return@put
             }
 
-            put {
-                val request = call.receive<NotificationPreferenceRequest>()
-                notificationService.updatePreferences(
-                    userId = request.userId,
-                    eventType = request.eventType,
-                    channels = request.channels,
-                )
-                call.respond(HttpStatusCode.NoContent)
-            }
+            val success = notificationService.markAsRead(id)
+            call.respondNoContentOrNotFound(success)
         }
 
-        webSocket("/ws/notifications/{userId}") {
-            val userId = call.parameters["userId"]
-            if (userId.isNullOrBlank()) {
-                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "userId is required"))
-                return@webSocket
+        put("/read-all") {
+            val userId = call.requestedUserId()
+            if (userId == null) {
+                call.respondUserIdRequired()
+                return@put
             }
 
-            webSocketManager.addConnection(userId, this)
+            val count = notificationService.markAllAsRead(userId)
+            call.respond(MarkAllReadResponse(markedCount = count))
+        }
 
-            try {
-                for (frame in incoming) {
-                    when (frame) {
-                        is Frame.Text -> {
-                            val text = frame.readText()
-                            // Handle ping/pong or client messages if needed
-                            if (text == "ping") {
-                                send(Frame.Text("pong"))
-                            }
-                        }
-                        is Frame.Close -> break
-                        else -> { /* ignore other frame types */ }
-                    }
+        delete("/{id}") {
+            val id = call.parameters["id"]
+            if (id == null) {
+                call.respondNotificationIdRequired()
+                return@delete
+            }
+
+            val success = notificationService.deleteNotification(id)
+            call.respondNoContentOrNotFound(success)
+        }
+    }
+}
+
+private fun Route.preferenceRoutes(notificationService: NotificationService) {
+    route("/api/v1/preferences") {
+        get {
+            val userId = call.requestedUserId()
+            if (userId == null) {
+                call.respondUserIdRequired()
+                return@get
+            }
+
+            val preferences = notificationService.getPreferences(userId)
+            call.respond(preferences)
+        }
+
+        put {
+            val request = call.receive<NotificationPreferenceRequest>()
+            notificationService.updatePreferences(
+                userId = request.userId,
+                eventType = request.eventType,
+                channels = request.channels,
+            )
+            call.respond(HttpStatusCode.NoContent)
+        }
+    }
+}
+
+private fun Route.notificationWebSocket(webSocketManager: WebSocketManager) {
+    webSocket("/ws/notifications/{userId}") {
+        val userId = call.parameters["userId"]
+        if (userId.isNullOrBlank()) {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "userId is required"))
+            return@webSocket
+        }
+
+        webSocketManager.addConnection(userId, this)
+
+        try {
+            handleIncomingFrames()
+        } finally {
+            webSocketManager.removeConnection(userId, this)
+        }
+    }
+}
+
+private suspend fun DefaultWebSocketServerSession.handleIncomingFrames() {
+    for (frame in incoming) {
+        when (frame) {
+            is Frame.Text -> {
+                if (frame.readText() == "ping") {
+                    send(Frame.Text("pong"))
                 }
-            } finally {
-                webSocketManager.removeConnection(userId, this)
             }
+            is Frame.Close -> break
+            else -> { }
         }
     }
 }

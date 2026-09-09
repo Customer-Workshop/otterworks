@@ -3,6 +3,7 @@ package com.otterworks.auth.service;
 import com.otterworks.auth.config.AdminBootstrapConfig;
 import com.otterworks.auth.entity.User;
 import com.otterworks.auth.repository.UserRepository;
+import java.util.HashSet;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,12 +15,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Provisions the bootstrap admin account from configuration instead of a hash committed in a
- * migration. When no password is configured the seeded account stays locked.
+ * migration. Only a missing account or the locked seed row is touched; an account that already has
+ * a real password is never overwritten. When no password is configured the seeded account stays
+ * locked.
  */
 @Component
 public class AdminBootstrap implements ApplicationRunner {
 
   private static final Logger log = LoggerFactory.getLogger(AdminBootstrap.class);
+
+  /** Sentinel written by the migrations; not a valid bcrypt hash so it can never match. */
+  static final String LOCKED_PASSWORD_HASH = "!";
 
   private final AdminBootstrapConfig config;
   private final UserRepository userRepository;
@@ -52,14 +58,23 @@ public class AdminBootstrap implements ApplicationRunner {
                   u.setEmail(config.getEmail());
                   u.setDisplayName(config.getDisplayName());
                   u.setEmailVerified(true);
-                  u.setRoles(Set.of(User.Role.ADMIN, User.Role.USER));
+                  u.setPasswordHash(LOCKED_PASSWORD_HASH);
                   return u;
                 });
 
-    if (admin.getId() != null && passwordEncoder.matches(password, admin.getPasswordHash())) {
+    if (!LOCKED_PASSWORD_HASH.equals(admin.getPasswordHash())) {
+      if (!passwordEncoder.matches(password, admin.getPasswordHash())) {
+        log.warn(
+            "Bootstrap admin {} already has a password; configured value ignored",
+            config.getEmail());
+      }
       return;
     }
 
+    Set<User.Role> roles = new HashSet<>(admin.getRoles());
+    roles.add(User.Role.ADMIN);
+    roles.add(User.Role.USER);
+    admin.setRoles(roles);
     admin.setPasswordHash(passwordEncoder.encode(password));
     userRepository.save(admin);
     log.info("Bootstrap admin {} provisioned from configuration", config.getEmail());

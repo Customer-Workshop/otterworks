@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -72,13 +73,49 @@ class AdminBootstrapTest {
     seeded.setEmail("admin@otterworks.dev");
     seeded.setPasswordHash("!");
     when(userRepository.findByEmail("admin@otterworks.dev")).thenReturn(Optional.of(seeded));
-    when(passwordEncoder.matches("s3cret-from-env", "!")).thenReturn(false);
     when(passwordEncoder.encode("s3cret-from-env")).thenReturn("$2a$12$encoded");
 
     bootstrap.run(null);
 
     assertThat(seeded.getPasswordHash()).isEqualTo("$2a$12$encoded");
+    assertThat(seeded.getRoles()).containsExactlyInAnyOrder(User.Role.ADMIN, User.Role.USER);
     verify(userRepository).save(seeded);
+  }
+
+  @Test
+  void run_withLockedUserOnlyAccount_shouldAddAdminRole() {
+    config.setPassword("s3cret-from-env");
+    User seeded = new User();
+    seeded.setId(UUID.randomUUID());
+    seeded.setEmail("admin@otterworks.dev");
+    seeded.setPasswordHash("!");
+    seeded.setRoles(Set.of(User.Role.USER));
+    when(userRepository.findByEmail("admin@otterworks.dev")).thenReturn(Optional.of(seeded));
+    when(passwordEncoder.encode("s3cret-from-env")).thenReturn("$2a$12$encoded");
+
+    bootstrap.run(null);
+
+    assertThat(seeded.getRoles()).containsExactlyInAnyOrder(User.Role.ADMIN, User.Role.USER);
+    verify(userRepository).save(seeded);
+  }
+
+  @Test
+  void run_withExistingUnlockedAccount_shouldNotOverwritePassword() {
+    config.setPassword("s3cret-from-env");
+    User existing = new User();
+    existing.setId(UUID.randomUUID());
+    existing.setEmail("admin@otterworks.dev");
+    existing.setPasswordHash("$2a$12$someoneelses");
+    existing.setRoles(Set.of(User.Role.USER));
+    when(userRepository.findByEmail("admin@otterworks.dev")).thenReturn(Optional.of(existing));
+    when(passwordEncoder.matches("s3cret-from-env", "$2a$12$someoneelses")).thenReturn(false);
+
+    bootstrap.run(null);
+
+    assertThat(existing.getPasswordHash()).isEqualTo("$2a$12$someoneelses");
+    assertThat(existing.getRoles()).containsExactly(User.Role.USER);
+    verify(userRepository, never()).save(any());
+    verify(passwordEncoder, never()).encode(anyString());
   }
 
   @Test

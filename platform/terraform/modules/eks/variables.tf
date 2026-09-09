@@ -75,3 +75,16 @@ variable "enable_karpenter" {
   type        = bool
   default     = true
 }
+
+
+variable "cluster_log_retention_days" {
+  description = "Retention for the EKS control-plane CloudWatch log group"
+  type        = number
+  default     = 7
+}
+
+variable "node_tags" {
+  description = "Extra tags stamped on node-group EC2 instances, volumes and ENIs via the launch template"
+  type        = map(string)
+  default     = {}
+}

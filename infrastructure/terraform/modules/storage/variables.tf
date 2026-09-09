@@ -17,3 +17,9 @@ variable "project" {
     error_message = "Project name must be lowercase alphanumeric with hyphens, 2-21 characters."
   }
 }
+
+variable "force_destroy" {
+  description = "Delete all objects when the bucket is destroyed"
+  type        = bool
+  default     = false
+}

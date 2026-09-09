@@ -38,10 +38,10 @@ enable_nat_gateway = false
 #
 # SPOT keeps the rate ~70% below on-demand; xlarge because a few large nodes
 # bin-pack many small pods far better than many small ones.
-node_instance_types = ["m6a.xlarge", "m6i.xlarge", "m5.xlarge", "t3.xlarge"]
+node_instance_types = ["m6a.xlarge", "m5a.xlarge", "m6i.xlarge", "m5.xlarge", "t3a.xlarge", "t3.xlarge"]
 node_capacity_type  = "SPOT"
 node_desired_size   = 1
 node_min_size       = 1
-node_max_size       = 3
+node_max_size       = 2
 
 ecr_prefix = "otterworks/"

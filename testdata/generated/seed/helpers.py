@@ -9,6 +9,7 @@ to query the database for parent IDs.
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import bcrypt
 import psycopg2
@@ -76,12 +77,27 @@ def hash_password(plain: str) -> str:
 
 # ── DB connection ─────────────────────────────────────────────────────────────
 
+
+def _local_db_password() -> str:
+    """DB_PASSWORD, else POSTGRES_PASSWORD from the environment or the repo-root .env."""
+    for name in ("DB_PASSWORD", "POSTGRES_PASSWORD"):
+        if os.getenv(name):
+            return os.environ[name]
+    env_file = Path(__file__).resolve().parents[3] / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text().splitlines():
+            key, sep, value = line.strip().partition("=")
+            if sep and key == "POSTGRES_PASSWORD":
+                return value.strip().strip("\"'")
+    return ""
+
+
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "port": int(os.getenv("DB_PORT", "5432")),
     "dbname": os.getenv("DB_NAME", "otterworks"),
     "user": os.getenv("DB_USER", "otterworks"),
-    "password": os.getenv("DB_PASSWORD", "otterworks_dev"),
+    "password": _local_db_password(),
 }
 
 

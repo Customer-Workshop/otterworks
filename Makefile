@@ -15,6 +15,10 @@ help: ## Show this help
 		cp .env.example .env; \
 		sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$(openssl rand -hex 16)/" .env; \
 		echo "Generated .env with a random POSTGRES_PASSWORD"; \
+		if docker volume ls -q 2>/dev/null | grep -q postgres_data; then \
+			echo "NOTE: an existing Postgres volume keeps the password it was initialised with;"; \
+			echo "      set POSTGRES_PASSWORD in .env to that value, or reset local data with 'make down && docker compose -f docker-compose.infra.yml -f docker-compose.yml down -v'"; \
+		fi; \
 	fi
 
 PROCS_COMPOSE = docker compose -f docker-compose.procs.yml -p otterworks-procs-$(NS)

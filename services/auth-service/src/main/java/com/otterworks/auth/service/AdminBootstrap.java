@@ -43,9 +43,16 @@ public class AdminBootstrap implements ApplicationRunner {
   public void run(ApplicationArguments args) {
     String password = config.getPassword();
     if (password == null || password.isBlank()) {
-      log.warn(
-          "AUTH_BOOTSTRAP_ADMIN_PASSWORD not set; bootstrap admin {} remains locked",
-          config.getEmail());
+      boolean locked =
+          userRepository
+              .findByEmail(config.getEmail())
+              .map(u -> LOCKED_PASSWORD_HASH.equals(u.getPasswordHash()))
+              .orElse(true);
+      if (locked) {
+        log.warn(
+            "AUTH_BOOTSTRAP_ADMIN_PASSWORD not set; bootstrap admin {} remains locked",
+            config.getEmail());
+      }
       return;
     }
 

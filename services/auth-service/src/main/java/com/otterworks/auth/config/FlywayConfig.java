@@ -1,5 +1,6 @@
 package com.otterworks.auth.config;
 
+import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.ErrorCode;
 import org.flywaydb.core.api.output.ValidateOutput;
 import org.flywaydb.core.api.output.ValidateResult;
@@ -20,7 +21,12 @@ public class FlywayConfig {
   @Bean
   public FlywayMigrationStrategy flywayMigrationStrategy() {
     return flyway -> {
-      ValidateResult result = flyway.validateWithResult();
+      ValidateResult result =
+          Flyway.configure()
+              .configuration(flyway.getConfiguration())
+              .ignoreMigrationPatterns("*:pending")
+              .load()
+              .validateWithResult();
       if (!result.validationSuccessful && onlyRepairableChecksumMismatch(result)) {
         log.warn("Repairing Flyway checksum for migration V{}", REPAIRABLE_VERSION);
         flyway.repair();

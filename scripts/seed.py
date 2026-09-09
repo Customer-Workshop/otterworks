@@ -32,7 +32,7 @@ from psycopg2.extras import execute_values, Json
 def _local_db_password() -> str:
     """DB_PASSWORD, else POSTGRES_PASSWORD from the environment or the repo-root .env."""
     for name in ("DB_PASSWORD", "POSTGRES_PASSWORD"):
-        if os.getenv(name):
+        if name in os.environ:
             return os.environ[name]
     env_file = Path(__file__).resolve().parents[1] / ".env"
     if env_file.is_file():

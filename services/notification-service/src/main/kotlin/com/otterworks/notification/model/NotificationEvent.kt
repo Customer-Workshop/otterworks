@@ -1,6 +1,19 @@
 package com.otterworks.notification.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 
 @Serializable
 enum class EventType {
@@ -39,8 +52,45 @@ data class SqsNotificationMessage(
     val userId: String = "",
     val actorId: String = "",
     val mentionedUserId: String = "",
+    @Serializable(with = EventTimestampSerializer::class)
     val timestamp: String,
 )
+
+/**
+ * Accepts the event timestamp either as an RFC 3339 string (current producers) or as a
+ * Unix epoch number in seconds or milliseconds (legacy producers), always yielding an
+ * ISO-8601 UTC string.
+ */
+object EventTimestampSerializer : KSerializer<String> {
+    private const val EPOCH_MILLIS_THRESHOLD = 100_000_000_000L
+
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("com.otterworks.notification.EventTimestamp", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): String {
+        val jsonDecoder = decoder as? JsonDecoder
+            ?: return decoder.decodeString()
+        val element = jsonDecoder.decodeJsonElement()
+        val primitive = element as? JsonPrimitive
+            ?: throw SerializationException("timestamp must be a string or number, got $element")
+        if (primitive.isString) return primitive.content
+        val epoch = primitive.longOrNull
+            ?: primitive.doubleOrNull?.toLong()
+            ?: throw SerializationException("timestamp must be a string or number, got $element")
+        return fromEpoch(epoch)
+    }
+
+    override fun serialize(encoder: Encoder, value: String) = encoder.encodeString(value)
+
+    fun fromEpoch(epoch: Long): String {
+        val instant = if (epoch >= EPOCH_MILLIS_THRESHOLD) {
+            Instant.ofEpochMilli(epoch)
+        } else {
+            Instant.ofEpochSecond(epoch)
+        }
+        return DateTimeFormatter.ISO_INSTANT.format(instant)
+    }
+}
 
 @Serializable
 data class Notification(

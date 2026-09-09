@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS user_roles (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_created_at ON users(created_at);
 
--- Seed admin user (password: Admin123!)
+-- Seed admin user (password: Admin123!) and its roles in one statement
+WITH admin_user AS (
 INSERT INTO users (id, email, password_hash, display_name, email_verified, created_at, updated_at)
 VALUES (
     'a0000000-0000-0000-0000-000000000001',
@@ -32,8 +33,10 @@ VALUES (
     true,
     NOW(),
     NOW()
-);
-
-INSERT INTO user_roles (user_id, role) VALUES
-('a0000000-0000-0000-0000-000000000001', 'ADMIN'),
-('a0000000-0000-0000-0000-000000000001', 'USER');
+)
+RETURNING id
+)
+INSERT INTO user_roles (user_id, role)
+SELECT admin_user.id, r.role
+FROM admin_user
+CROSS JOIN (VALUES ('ADMIN'), ('USER')) AS r(role);

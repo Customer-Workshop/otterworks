@@ -22,12 +22,14 @@ CREATE TABLE IF NOT EXISTS user_roles (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_created_at ON users(created_at);
 
--- Seed admin user (password: Admin123!)
+-- Seed admin user. The account is created locked ('!' is not a valid bcrypt hash and
+-- can never match); AdminBootstrap sets the real hash at startup from
+-- AUTH_BOOTSTRAP_ADMIN_PASSWORD.
 INSERT INTO users (id, email, password_hash, display_name, email_verified, created_at, updated_at)
 VALUES (
     'a0000000-0000-0000-0000-000000000001',
     'admin@otterworks.dev',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash
+    '!',
     'Admin User',
     true,
     NOW(),

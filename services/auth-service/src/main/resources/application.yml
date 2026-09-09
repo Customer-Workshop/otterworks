@@ -33,6 +33,11 @@ jwt:
   access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600}
   refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:2592000}
 
+auth:
+  bootstrap-admin:
+    email: ${AUTH_BOOTSTRAP_ADMIN_EMAIL:admin@otterworks.dev}
+    password: ${AUTH_BOOTSTRAP_ADMIN_PASSWORD:}
+
 management:
   endpoints:
     web:

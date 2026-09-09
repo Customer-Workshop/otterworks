@@ -84,13 +84,10 @@ class SqsConsumer(
                                 notificationService.processEvent(event)
                                 deleteMessage(msg.messageId, msg.receiptHandle)
                             } else {
-                                // Malformed payloads never succeed on redelivery; drop them so they
-                                // do not cycle through the visibility timeout forever.
+                                // Left on the queue so the redrive policy dead-letters it after
+                                // maxReceiveCount attempts instead of losing the payload.
                                 processingErrorsCounter?.increment()
-                                logger.warn {
-                                    "Discarding unparseable SQS message ${msg.messageId}: ${body.take(MAX_LOGGED_BODY_CHARS)}"
-                                }
-                                deleteMessage(msg.messageId, msg.receiptHandle)
+                                logger.warn { "Failed to parse SQS message ${msg.messageId}; leaving it for the redrive policy" }
                             }
                         } catch (e: Exception) {
                             processingErrorsCounter?.increment()
@@ -135,8 +132,6 @@ class SqsConsumer(
         }
     }
 }
-
-private const val MAX_LOGGED_BODY_CHARS = 512
 
 @kotlinx.serialization.Serializable
 internal data class SnsEnvelope(

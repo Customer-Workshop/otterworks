@@ -190,7 +190,7 @@ class SqsConsumerTest {
     }
 
     @Test
-    fun `startPolling deletes unparseable messages instead of leaving them on the queue`() = runTest {
+    fun `startPolling leaves unparseable messages for the redrive policy and processes the rest`() = runTest {
         val poison = Message {
             messageId = "poison-1"
             receiptHandle = "rh-poison-1"
@@ -211,8 +211,8 @@ class SqsConsumerTest {
         job.cancel()
 
         val deleted = mutableListOf<DeleteMessageRequest>()
-        coVerify(exactly = 2) { sqsClient.deleteMessage(capture(deleted)) }
-        assertEquals(setOf("rh-poison-1", "rh-ok-1"), deleted.map { it.receiptHandle }.toSet())
+        coVerify(exactly = 1) { sqsClient.deleteMessage(capture(deleted)) }
+        assertEquals(listOf("rh-ok-1"), deleted.map { it.receiptHandle })
 
         val processed = slot<SqsNotificationMessage>()
         coVerify(exactly = 1) { notificationService.processEvent(capture(processed)) }

@@ -17,6 +17,7 @@ make_bucket otterworks-audit-archive
 
 # SQS Queue (create-queue is idempotent for an existing queue with the same name)
 awslocal sqs create-queue --queue-name otterworks-notifications
+awslocal sqs create-queue --queue-name otterworks-notifications-dlq
 awslocal sqs create-queue --queue-name otterworks-audit-events-queue
 awslocal sqs create-queue --queue-name otterworks-search-events
 
@@ -31,6 +32,17 @@ awslocal sns subscribe \
   --topic-arn arn:aws:sns:us-east-1:000000000000:otterworks-events \
   --protocol sqs \
   --notification-endpoint "$NOTIFICATION_QUEUE_ARN"
+
+# Mirror the Terraform redrive policy so unparseable notifications dead-letter
+# after 3 receives instead of cycling through the visibility timeout forever.
+NOTIFICATION_DLQ_ARN=$(awslocal sqs get-queue-attributes \
+  --queue-url http://localhost:4566/000000000000/otterworks-notifications-dlq \
+  --attribute-names QueueArn \
+  --query 'Attributes.QueueArn' \
+  --output text)
+awslocal sqs set-queue-attributes \
+  --queue-url http://localhost:4566/000000000000/otterworks-notifications \
+  --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$NOTIFICATION_DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\"}"
 AUDIT_QUEUE_ARN=$(awslocal sqs get-queue-attributes \
   --queue-url http://localhost:4566/000000000000/otterworks-audit-events-queue \
   --attribute-names QueueArn \

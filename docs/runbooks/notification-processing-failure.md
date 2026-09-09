@@ -36,10 +36,11 @@
 1. If the chaos flag is set, clear it: `redis-cli DEL chaos:notification-service:consumer_strict_schema`
    (or `scripts/inject-bug.sh <ID> reset` for a tenant).
 2. The consumer accepts `timestamp` as either an RFC 3339 string or an epoch number (seconds or
-   milliseconds), and deletes messages that cannot be deserialized instead of leaving them to
-   cycle through the visibility timeout. If a new schema mismatch appears, extend the model /
+   milliseconds). Messages that still cannot be deserialized are left on the queue and moved to
+   the `-dlq` queue by the redrive policy after `maxReceiveCount` (3) receives, so the main queue
+   cannot grow unboundedly. If a new schema mismatch appears, extend the model /
    `EventTimestampSerializer` in `NotificationEvent.kt`, redeploy, and let the backlog drain.
-3. If messages were parked in the DLQ, redrive them once the consumer is healthy:
+3. Redrive the DLQ once the consumer accepts the payloads:
    `aws sqs start-message-move-task --source-arn <dlq-arn> --destination-arn <queue-arn>`.
 4. Confirm `notifications_processing_errors_total` stops increasing and the alert resolves.
 
@@ -47,5 +48,5 @@
 
 - Confirm the producer that emits epoch timestamps is tracked for migration to RFC 3339
   (`shared/events/schemas/notification-events.json` specifies `format: date-time`).
-- Review the discarded-message warnings (`Discarding unparseable SQS message`) for payloads that
-  were genuinely malformed rather than legacy-formatted.
+- Inspect what remains in the DLQ to separate genuinely malformed payloads from
+  legacy-formatted ones before purging.

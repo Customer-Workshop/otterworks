@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record build-webhook demo-webhooks assert-headless
 
 SHELL := /bin/bash
 
@@ -150,6 +150,15 @@ build-analytics: ## Build Analytics Service
 build-admin: ## Build Admin Service
 	cd services/admin-service && bundle install
 
+build-webhook: ## Build Webhook Service
+	cd services/webhook-service && go build -o bin/server ./cmd/server
+
+demo-webhooks: ## Run the webhook service copy-paste demo
+	./scripts/demo-webhooks.sh
+
+assert-headless: ## Assert webhook service remains headless
+	./scripts/assert-headless.sh
+
 build-audit: ## Build Audit Service
 	cd services/audit-service && dotnet build
 
@@ -172,6 +181,7 @@ test: ## Run tests for all services
 	@echo "=== Analytics Service (Scala) ===" && cd services/analytics-service && sbt test
 	@echo "=== Admin Service (Ruby) ===" && cd services/admin-service && bundle exec rspec
 	@echo "=== Audit Service (C#) ===" && cd services/audit-service && dotnet test
+	@echo "=== Webhook Service (Go) ===" && cd services/webhook-service && go test ./... && cd sink && go test ./...
 	@echo "=== Web Frontend ===" && cd frontend/web-app && npm test
 	@echo "=== Admin Dashboard ===" && cd frontend/admin-dashboard && npm test
 
@@ -192,6 +202,7 @@ test-api-flows-collect: ## Collect black-box API flow tests without running them
 
 lint: ## Lint all services
 	@echo "=== API Gateway ===" && cd services/api-gateway && golangci-lint run
+	@echo "=== Webhook Service ===" && cd services/webhook-service && golangci-lint run && cd sink && golangci-lint run
 	@echo "=== Auth Service ===" && cd services/auth-service && ./gradlew spotlessCheck
 	@echo "=== File Service ===" && cd services/file-service && cargo clippy -- -D warnings
 	@echo "=== Document Service ===" && cd services/document-service && ruff check .

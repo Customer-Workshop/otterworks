@@ -24,6 +24,7 @@ type Config struct {
 	AdminServiceURL        string
 	AuditServiceURL        string
 	ReportServiceURL       string
+	WebhookServiceURL      string
 
 	// Rate limiting
 	RateLimitRPS int
@@ -71,6 +72,7 @@ func Load() *Config {
 		AdminServiceURL:        getEnv("ADMIN_SERVICE_URL", "http://admin-service:8089"),
 		AuditServiceURL:        getEnv("AUDIT_SERVICE_URL", "http://audit-service:8090"),
 		ReportServiceURL:       getEnv("REPORT_SERVICE_URL", "http://report-service:8091"),
+		WebhookServiceURL:      getEnv("WEBHOOK_SERVICE_URL", "http://webhook-service:8092"),
 
 		RateLimitRPS: getEnvInt("RATE_LIMIT_RPS", 100),
 
@@ -108,6 +110,7 @@ func (c *Config) ServiceRoutes() map[string]string {
 		"/api/v1/audit":         c.AuditServiceURL,
 		"/api/v1/reports":       c.ReportServiceURL,
 		"/api/v1/settings":      c.AuthServiceURL,
+		"/api/v1/webhooks":      c.WebhookServiceURL,
 	}
 }
 

@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -14,7 +14,7 @@ RUN apk --no-cache add ca-certificates wget && adduser -D -u 1001 appuser
 COPY --from=builder /bin/sink /app/sink
 USER appuser
 EXPOSE 8093
-HEALTHCHECK --interval=10s --timeout=3s CMD wget --spider -q http://localhost:8093/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s CMD wget -q -O /dev/null http://localhost:8093/health || exit 1
 ENTRYPOINT ["/app/sink"]
 
 # The service itself (default target). No static assets, no templates: the
@@ -26,5 +26,5 @@ COPY --from=builder /bin/server /app/server
 USER appuser
 
 EXPOSE 8092
-HEALTHCHECK --interval=10s --timeout=3s CMD wget --spider -q http://localhost:8092/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s CMD wget -q -O /dev/null http://localhost:8092/health || exit 1
 ENTRYPOINT ["/app/server"]

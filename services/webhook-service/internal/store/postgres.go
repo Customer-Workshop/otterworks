@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -153,8 +154,8 @@ func (p *Postgres) DeleteSubscription(ctx context.Context, ownerID, id string) e
 	return nil
 }
 
-func (p *Postgres) ActiveSubscriptionsForEvent(ctx context.Context, eventType string) ([]*Subscription, error) {
-	rows, err := p.pool.Query(ctx, `SELECT `+subCols+` FROM webhook_subscriptions WHERE active AND (event_types @> ARRAY[$1]::text[] OR event_types @> ARRAY['*']::text[])`, eventType)
+func (p *Postgres) ActiveSubscriptionsForEvent(ctx context.Context, ownerID, eventType string) ([]*Subscription, error) {
+	rows, err := p.pool.Query(ctx, `SELECT `+subCols+` FROM webhook_subscriptions WHERE owner_id=$1 AND active AND (event_types @> ARRAY[$2]::text[] OR event_types @> ARRAY['*']::text[])`, ownerID, eventType)
 	if err != nil {
 		return nil, err
 	}
@@ -215,14 +216,20 @@ func encodeCursor(t time.Time, id string) string {
 func decodeCursor(c string) (time.Time, string, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(c)
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, "", ErrInvalidCursor
 	}
 	parts := strings.SplitN(string(raw), "|", 2)
 	if len(parts) != 2 {
-		return time.Time{}, "", errors.New("malformed cursor")
+		return time.Time{}, "", ErrInvalidCursor
 	}
 	t, err := time.Parse(time.RFC3339Nano, parts[0])
-	return t, parts[1], err
+	if err != nil {
+		return time.Time{}, "", ErrInvalidCursor
+	}
+	if _, err := uuid.Parse(parts[1]); err != nil {
+		return time.Time{}, "", ErrInvalidCursor
+	}
+	return t, parts[1], nil
 }
 
 func (p *Postgres) ListDeliveries(ctx context.Context, f DeliveryFilter) ([]*Delivery, string, error) {
@@ -251,7 +258,7 @@ func (p *Postgres) ListDeliveries(ctx context.Context, f DeliveryFilter) ([]*Del
 	if f.Cursor != "" {
 		t, id, err := decodeCursor(f.Cursor)
 		if err != nil {
-			return nil, "", fmt.Errorf("invalid cursor: %w", err)
+			return nil, "", err
 		}
 		args = append(args, t, id)
 		where = append(where, fmt.Sprintf("(created_at, id) < ($%d, $%d::uuid)", len(args)-1, len(args)))
@@ -301,8 +308,9 @@ func (p *Postgres) ListAttempts(ctx context.Context, deliveryID string) ([]*Atte
 	return out, rows.Err()
 }
 
-func (p *Postgres) ClaimDueDeliveries(ctx context.Context, now time.Time, limit int) ([]*Delivery, error) {
-	// Lease rows for 60s so a crashed worker's claims become visible again.
+func (p *Postgres) ClaimDueDeliveries(ctx context.Context, now time.Time, lease time.Duration, limit int) ([]*Delivery, error) {
+	// Leased rows become visible again after the lease so a crashed worker's
+	// claims are eventually retried.
 	rows, err := p.pool.Query(ctx, `
 		WITH due AS (
 			SELECT id FROM webhook_deliveries
@@ -313,9 +321,9 @@ func (p *Postgres) ClaimDueDeliveries(ctx context.Context, now time.Time, limit 
 			LIMIT $2
 			FOR UPDATE SKIP LOCKED
 		)
-		UPDATE webhook_deliveries d SET locked_until = $1 + interval '60 seconds'
+		UPDATE webhook_deliveries d SET locked_until = $3
 		FROM due WHERE d.id = due.id
-		RETURNING `+prefixed("d.", delCols), now, limit)
+		RETURNING `+prefixed("d.", delCols), now, limit, now.Add(lease))
 	if err != nil {
 		return nil, err
 	}

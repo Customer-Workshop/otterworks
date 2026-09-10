@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -138,6 +139,25 @@ func TestSubscriptionCRUDAndOwnership(t *testing.T) {
 	assert.Equal(t, 404, rec.Code)
 }
 
+func TestDeliveryFilterValidation(t *testing.T) {
+	h, _ := newTestServer(t)
+	for _, q := range []string{
+		"subscriptionId=not-a-uuid",
+		"cursor=" + base64.RawURLEncoding.EncodeToString([]byte("garbage")),
+		"cursor=" + base64.RawURLEncoding.EncodeToString([]byte("2026-01-01T00:00:00Z|not-a-uuid")),
+		"limit=0",
+		"status=bogus",
+		"since=yesterday",
+	} {
+		rec := do(t, h, http.MethodGet, "/api/v1/webhooks/deliveries?"+q, "alice", nil)
+		body := assertJSON(t, rec)
+		assert.Equal(t, http.StatusBadRequest, rec.Code, q)
+		assert.Equal(t, "validation_error", body["error"], q)
+	}
+	rec := do(t, h, http.MethodGet, "/api/v1/webhooks/deliveries?subscriptionId="+uuid.NewString()+"&limit=5", "alice", nil)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestSubscriptionValidation(t *testing.T) {
 	h, _ := newTestServer(t)
 	bad := []map[string]any{
@@ -193,7 +213,7 @@ func TestDeliveryLogReplayAndDeadLetters(t *testing.T) {
 
 	// Drive the delivery to dead_letter through the store (3 failed attempts).
 	for i := 1; i <= 3; i++ {
-		due, err := mem.ClaimDueDeliveries(ctx, time.Now().Add(time.Hour), 10)
+		due, err := mem.ClaimDueDeliveries(ctx, time.Now().Add(time.Hour), time.Minute, 10)
 		require.NoError(t, err)
 		require.Len(t, due, 1, "attempt %d", i)
 		res := store.AttemptResult{StatusCode: 500, Error: "boom", AttemptedAt: time.Now()}

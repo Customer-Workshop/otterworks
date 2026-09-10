@@ -101,12 +101,12 @@ func (m *Memory) DeleteSubscription(_ context.Context, ownerID, id string) error
 	return nil
 }
 
-func (m *Memory) ActiveSubscriptionsForEvent(_ context.Context, eventType string) ([]*Subscription, error) {
+func (m *Memory) ActiveSubscriptionsForEvent(_ context.Context, ownerID, eventType string) ([]*Subscription, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	out := []*Subscription{}
 	for _, s := range m.subs {
-		if !s.Active {
+		if !s.Active || s.OwnerID != ownerID {
 			continue
 		}
 		for _, et := range s.EventTypes {
@@ -209,7 +209,7 @@ func (m *Memory) ListAttempts(_ context.Context, deliveryID string) ([]*Attempt,
 	return out, nil
 }
 
-func (m *Memory) ClaimDueDeliveries(_ context.Context, now time.Time, limit int) ([]*Delivery, error) {
+func (m *Memory) ClaimDueDeliveries(_ context.Context, now time.Time, lease time.Duration, limit int) ([]*Delivery, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	out := []*Delivery{}
@@ -218,10 +218,10 @@ func (m *Memory) ClaimDueDeliveries(_ context.Context, now time.Time, limit int)
 			break
 		}
 		if (d.Status == StatusPending || d.Status == StatusRetrying) && d.NextAttemptAt != nil && !d.NextAttemptAt.After(now) {
-			if lease, ok := m.leases[d.ID]; ok && lease.After(now) {
+			if until, ok := m.leases[d.ID]; ok && until.After(now) {
 				continue
 			}
-			m.leases[d.ID] = now.Add(60 * time.Second)
+			m.leases[d.ID] = now.Add(lease)
 			out = append(out, cloneDel(d))
 		}
 	}

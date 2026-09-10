@@ -49,7 +49,12 @@ step "starting postgres, localstack, webhook-service, webhook-sink, api-gateway"
 "${COMPOSE[@]}" up -d postgres localstack
 wait_for "http://localhost:4566/_localstack/health" 120
 "${COMPOSE[@]}" up -d --build --no-deps webhook-service webhook-sink api-gateway
-wait_for "http://localhost:8092/health"
+# webhook-service is deliberately not published on the host; probe it from inside the network.
+for _ in $(seq 1 90); do
+  "${COMPOSE[@]}" exec -T webhook-service wget -q -O /dev/null http://localhost:8092/health 2>/dev/null && break
+  sleep 1
+done
+"${COMPOSE[@]}" exec -T webhook-service wget -q -O /dev/null http://localhost:8092/health || die "timeout waiting for webhook-service"
 wait_for "$SINK/health"
 wait_for "$GATEWAY/health"
 # ready.d hook must have created the webhook queues
@@ -140,9 +145,14 @@ ok "all $total requests carried a valid X-OtterWorks-Signature"
 
 # ---- 8. SQS dead-letter queue -----------------------------------------------------
 step "checking the SQS DLQ"
-DLQ_MSG="$("${COMPOSE[@]}" exec -T localstack awslocal sqs receive-message \
-  --queue-url http://localhost:4566/000000000000/otterworks-webhook-dlq --wait-time-seconds 5 --max-number-of-messages 10 \
-  | jq -r --arg d "$DEL_FAIL" '.Messages[]?.Body | fromjson | select(.deliveryId==$d) | .deliveryId' | head -n1)"
+# Drain in several rounds: earlier runs may have left messages on the queue.
+DLQ_MSG=""
+for _ in $(seq 1 10); do
+  DLQ_MSG="$("${COMPOSE[@]}" exec -T localstack awslocal sqs receive-message \
+    --queue-url http://localhost:4566/000000000000/otterworks-webhook-dlq --wait-time-seconds 2 --max-number-of-messages 10 --visibility-timeout 120 \
+    | jq -r --arg d "$DEL_FAIL" '.Messages[]?.Body | fromjson | select(.deliveryId==$d) | .deliveryId' | head -n1)"
+  [[ "$DLQ_MSG" == "$DEL_FAIL" ]] && break
+done
 [[ "$DLQ_MSG" == "$DEL_FAIL" ]] || die "dead-lettered delivery not found on otterworks-webhook-dlq"
 ok "dead letter published to otterworks-webhook-dlq"
 

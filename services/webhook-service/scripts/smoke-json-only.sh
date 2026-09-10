@@ -39,7 +39,7 @@ check() {
   if [[ ${#problems[@]} -eq 0 ]]; then
     pass=$((pass+1)); printf 'PASS  %-4s %-58s %s json\n' "$method" "$path" "$status" >&2
   else
-    fail=$((fail+1)); printf 'FAIL  %-4s %-58s %s\n' "$method" "$path" "$(IFS=';'; echo "${problems[*]}")" >&2
+    fail=$((fail+1)); printf 'FAIL  %-4s %-58s %s\n' "$method" "$path" "$(printf '%s;' "${problems[@]}")" >&2
     echo "      body: $(head -c 300 "$out")" >&2
   fi
   cat "$out"

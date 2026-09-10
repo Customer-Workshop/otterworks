@@ -20,6 +20,23 @@ type Event struct {
 	Source     string          `json:"source"`
 	OccurredAt time.Time       `json:"occurredAt"`
 	Data       json.RawMessage `json:"data"`
+	// OwnerID is the user the event belongs to; deliveries only fan out to
+	// that user's subscriptions. Events without an owner are not delivered.
+	OwnerID string `json:"-"`
+}
+
+// ownerKeys are the producer fields that identify the acting/owning user, in
+// order of preference.
+var ownerKeys = []string{"ownerId", "owner_id", "userId", "user_id", "authorId", "author_id"}
+
+func ownerFrom(fields map[string]json.RawMessage) string {
+	for _, k := range ownerKeys {
+		var s string
+		if raw, ok := fields[k]; ok && json.Unmarshal(raw, &s) == nil && strings.TrimSpace(s) != "" {
+			return strings.TrimSpace(s)
+		}
+	}
+	return ""
 }
 
 // snsEnvelope is the wrapper SNS puts around a message when fanning out to SQS.
@@ -68,14 +85,22 @@ func parseProducerMessage(body []byte) (*Event, error) {
 		_ = json.Unmarshal(generic["event_type"], &ev.Type)
 		if p, ok := generic["payload"]; ok {
 			ev.Data = p
+			var inner map[string]json.RawMessage
+			if json.Unmarshal(p, &inner) == nil {
+				ev.OwnerID = ownerFrom(inner)
+			}
 		} else {
 			ev.Data = body
+		}
+		if ev.OwnerID == "" {
+			ev.OwnerID = ownerFrom(generic)
 		}
 		ev.Source = "document-service"
 	case generic["eventType"] != nil:
 		// file-service shape: the whole message is the data
 		_ = json.Unmarshal(generic["eventType"], &ev.Type)
 		ev.Data = body
+		ev.OwnerID = ownerFrom(generic)
 		ev.Source = "file-service"
 	default:
 		return nil, ErrUnrecognised

@@ -18,17 +18,23 @@ func TestParseSNSEnvelopeWithFileServiceMessage(t *testing.T) {
 	assert.Equal(t, "msg-123", ev.ID)
 	assert.Equal(t, "file_uploaded", ev.Type)
 	assert.Equal(t, "file-service", ev.Source)
+	assert.Equal(t, "u1", ev.OwnerID)
 	assert.Equal(t, "2026-01-02T03:04:05Z", ev.OccurredAt.Format("2006-01-02T15:04:05Z"))
 	assert.JSONEq(t, inner, string(ev.Data))
 }
 
 func TestParseDocumentServiceMessage(t *testing.T) {
-	body := `{"event_type":"document_created","timestamp":"2026-01-02T03:04:05+00:00","payload":{"id":"d1","title":"Plan"}}`
+	body := `{"event_type":"document_created","timestamp":"2026-01-02T03:04:05+00:00","payload":{"id":"d1","title":"Plan","owner_id":"u7"}}`
 	ev, err := Parse([]byte(body))
 	require.NoError(t, err)
 	assert.Equal(t, "document_created", ev.Type)
 	assert.Equal(t, "document-service", ev.Source)
-	assert.JSONEq(t, `{"id":"d1","title":"Plan"}`, string(ev.Data))
+	assert.Equal(t, "u7", ev.OwnerID)
+	assert.JSONEq(t, `{"id":"d1","title":"Plan","owner_id":"u7"}`, string(ev.Data))
+
+	anon, err := Parse([]byte(`{"event_type":"document_deleted","payload":{"id":"d2"}}`))
+	require.NoError(t, err)
+	assert.Empty(t, anon.OwnerID, "no owner field means no owner")
 	assert.Regexp(t, `^evt_[0-9a-f]{32}$`, ev.ID)
 
 	again, err := Parse([]byte(body))

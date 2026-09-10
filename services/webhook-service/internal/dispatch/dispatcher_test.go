@@ -3,8 +3,8 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -22,15 +22,70 @@ import (
 )
 
 type fakeDLQ struct {
-	mu   sync.Mutex
-	seen []string
+	mu       sync.Mutex
+	seen     []string
+	failNext int
 }
 
 func (f *fakeDLQ) Publish(_ context.Context, d *store.Delivery) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.failNext > 0 {
+		f.failNext--
+		return errors.New("sqs unavailable")
+	}
 	f.seen = append(f.seen, d.ID)
 	return nil
+}
+
+func TestEnqueueScopesFanOutToEventOwner(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemory()
+	addSub(t, st, "http://127.0.0.1:1/aaaa", "*")
+	now := time.Now().UTC()
+	require.NoError(t, st.CreateSubscription(ctx, &store.Subscription{ID: "sub-bbbb", OwnerID: "bob", URL: "http://127.0.0.1:1/bbbb", EventTypes: []string{"*"}, Secret: testSecret(t), Active: true, CreatedAt: now, UpdatedAt: now}))
+	d := newDispatcher(t, st, nil, 3)
+
+	n, err := d.Enqueue(ctx, &events.Event{ID: "evt-bob", OwnerID: "bob", Type: "file_uploaded", Data: json.RawMessage(`{}`)})
+	require.NoError(t, err)
+	assert.Equal(t, 1, n, "only bob's subscription receives bob's event")
+	dels, _, _ := st.ListDeliveries(ctx, store.DeliveryFilter{OwnerID: "alice", Limit: 10})
+	assert.Empty(t, dels, "alice must not see bob's event")
+
+	n, err = d.Enqueue(ctx, &events.Event{ID: "evt-anon", Type: "file_uploaded", Data: json.RawMessage(`{}`)})
+	require.NoError(t, err)
+	assert.Equal(t, 0, n, "ownerless events are not delivered to anyone")
+}
+
+func TestDeadLetterPublishFailureIsRetriedNotLost(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemory()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(500) }))
+	defer srv.Close()
+	addSub(t, st, srv.URL+"/aaaa", "*")
+	dlq := &fakeDLQ{failNext: 1}
+	d := newDispatcher(t, st, dlq, 1)
+	_, err := d.Enqueue(ctx, &events.Event{ID: "evt-4", OwnerID: "alice", Type: "file_deleted", Data: json.RawMessage(`{}`)})
+	require.NoError(t, err)
+
+	_, err = d.RunOnce(ctx)
+	require.NoError(t, err)
+	dels, _, _ := st.ListDeliveries(ctx, store.DeliveryFilter{OwnerID: "alice", Limit: 10})
+	require.Len(t, dels, 1)
+	assert.Equal(t, store.StatusRetrying, dels[0].Status, "not marked dead_letter while the DLQ publish failed")
+	assert.Contains(t, dels[0].LastError, "dead-letter publish failed")
+	assert.Empty(t, dlq.seen)
+
+	time.Sleep(5 * time.Millisecond)
+	_, err = d.RunOnce(ctx)
+	require.NoError(t, err)
+	dels, _, _ = st.ListDeliveries(ctx, store.DeliveryFilter{OwnerID: "alice", Limit: 10})
+	assert.Equal(t, store.StatusDeadLetter, dels[0].Status)
+	assert.Equal(t, []string{dels[0].ID}, dlq.seen)
+	atts, _ := st.ListAttempts(ctx, dels[0].ID)
+	require.Len(t, atts, 2)
+	assert.Equal(t, 500, atts[0].StatusCode)
+	assert.Equal(t, 0, atts[1].StatusCode, "receiver is not called again once retries are exhausted")
 }
 
 func newDispatcher(t *testing.T, st store.Store, dlq DeadLetterSink, maxAttempts int) *Dispatcher {
@@ -41,23 +96,29 @@ func newDispatcher(t *testing.T, st store.Store, dlq DeadLetterSink, maxAttempts
 	}, zerolog.Nop())
 }
 
+func testSecret(t *testing.T) string {
+	t.Helper()
+	sec, err := signing.NewSecret()
+	require.NoError(t, err)
+	return sec
+}
+
 func addSub(t *testing.T, st store.Store, url string, types ...string) *store.Subscription {
 	t.Helper()
 	now := time.Now().UTC()
-	s := &store.Subscription{ID: "sub-" + url[len(url)-4:], OwnerID: "alice", URL: url, EventTypes: types, Secret: "whsec_test_secret_0123456789", Active: true, CreatedAt: now, UpdatedAt: now}
+	s := &store.Subscription{ID: "sub-" + url[len(url)-4:], OwnerID: "alice", URL: url, EventTypes: types, Secret: testSecret(t), Active: true, CreatedAt: now, UpdatedAt: now}
 	require.NoError(t, st.CreateSubscription(context.Background(), s))
 	return s
 }
 
 func TestBackoffGrowsAndCaps(t *testing.T) {
-	assert.Equal(t, 2*time.Second, Backoff(1, 2*time.Second, time.Minute, nil))
-	assert.Equal(t, 4*time.Second, Backoff(2, 2*time.Second, time.Minute, nil))
-	assert.Equal(t, 32*time.Second, Backoff(5, 2*time.Second, time.Minute, nil))
-	assert.Equal(t, time.Minute, Backoff(10, 2*time.Second, time.Minute, nil), "capped")
-	assert.Equal(t, time.Minute, Backoff(500, 2*time.Second, time.Minute, nil), "no overflow")
-	rng := rand.New(rand.NewSource(1))
+	assert.Equal(t, 2*time.Second, Backoff(1, 2*time.Second, time.Minute, false))
+	assert.Equal(t, 4*time.Second, Backoff(2, 2*time.Second, time.Minute, false))
+	assert.Equal(t, 32*time.Second, Backoff(5, 2*time.Second, time.Minute, false))
+	assert.Equal(t, time.Minute, Backoff(10, 2*time.Second, time.Minute, false), "capped")
+	assert.Equal(t, time.Minute, Backoff(500, 2*time.Second, time.Minute, false), "no overflow")
 	for i := 0; i < 100; i++ {
-		d := Backoff(3, time.Second, time.Minute, rng)
+		d := Backoff(3, time.Second, time.Minute, true)
 		assert.GreaterOrEqual(t, d, 2*time.Second, "jitter floor is half the exponential delay")
 		assert.LessOrEqual(t, d, 4*time.Second)
 	}
@@ -82,14 +143,15 @@ func TestEnqueueFansOutIdempotentlyAndSignsDelivery(t *testing.T) {
 	defer srv.Close()
 
 	sub := addSub(t, st, srv.URL+"/aaaa", "file_uploaded")
-	addSub(t, st, srv.URL+"/bbbb", "*")
+	wild := addSub(t, st, srv.URL+"/bbbb", "*")
+	secrets := map[string]string{sub.ID: sub.Secret, wild.ID: wild.Secret}
 	addSub(t, st, srv.URL+"/cccc", "document_created")
 	inactive := addSub(t, st, srv.URL+"/dddd", "*")
 	inactive.Active = false
 	require.NoError(t, st.UpdateSubscription(ctx, inactive))
 
 	d := newDispatcher(t, st, nil, 3)
-	ev := &events.Event{ID: "evt-1", Type: "file_uploaded", Source: "file-service", OccurredAt: time.Now(), Data: json.RawMessage(`{"fileId":"f1"}`)}
+	ev := &events.Event{ID: "evt-1", OwnerID: "alice", Type: "file_uploaded", Source: "file-service", OccurredAt: time.Now(), Data: json.RawMessage(`{"fileId":"f1"}`)}
 	n, err := d.Enqueue(ctx, ev)
 	require.NoError(t, err)
 	assert.Equal(t, 2, n, "matching + wildcard, not inactive or other type")
@@ -114,11 +176,12 @@ func TestEnqueueFansOutIdempotentlyAndSignsDelivery(t *testing.T) {
 	assert.Equal(t, "file_uploaded", lastReq.Header.Get(signing.HeaderEvent))
 	assert.Equal(t, "evt-1", lastReq.Header.Get(signing.HeaderEventID))
 	assert.NotEmpty(t, lastReq.Header.Get(signing.HeaderDeliveryID))
-	require.NoError(t, signing.Verify(sub.Secret, lastReq.Header.Get(signing.HeaderSignature), lastBody, time.Now(), time.Minute))
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(lastBody, &payload))
 	assert.Equal(t, "file_uploaded", payload["type"])
-	assert.NotEmpty(t, payload["subscriptionId"])
+	subID, _ := payload["subscriptionId"].(string)
+	require.Contains(t, secrets, subID)
+	require.NoError(t, signing.Verify(secrets[subID], lastReq.Header.Get(signing.HeaderSignature), lastBody, time.Now(), time.Minute))
 }
 
 func TestRetriesThenDeadLetters(t *testing.T) {
@@ -134,7 +197,7 @@ func TestRetriesThenDeadLetters(t *testing.T) {
 	dlq := &fakeDLQ{}
 	d := newDispatcher(t, st, dlq, 3)
 
-	_, err := d.Enqueue(ctx, &events.Event{ID: "evt-2", Type: "document_deleted", OccurredAt: time.Now(), Data: json.RawMessage(`{}`)})
+	_, err := d.Enqueue(ctx, &events.Event{ID: "evt-2", OwnerID: "alice", Type: "document_deleted", OccurredAt: time.Now(), Data: json.RawMessage(`{}`)})
 	require.NoError(t, err)
 
 	for attempt := 1; attempt <= 3; attempt++ {
@@ -185,7 +248,7 @@ func TestRetryingStatusBetweenAttempts(t *testing.T) {
 	defer srv.Close()
 	addSub(t, st, srv.URL+"/slow", "*")
 	d := New(st, nil, Options{Workers: 1, MaxAttempts: 5, BackoffBase: time.Hour, BackoffMax: time.Hour, AllowPrivateTargets: true}, zerolog.Nop())
-	_, err := d.Enqueue(ctx, &events.Event{ID: "evt-3", Type: "comment_added", OccurredAt: time.Now(), Data: json.RawMessage(`{}`)})
+	_, err := d.Enqueue(ctx, &events.Event{ID: "evt-3", OwnerID: "alice", Type: "comment_added", OccurredAt: time.Now(), Data: json.RawMessage(`{}`)})
 	require.NoError(t, err)
 	_, err = d.RunOnce(ctx)
 	require.NoError(t, err)

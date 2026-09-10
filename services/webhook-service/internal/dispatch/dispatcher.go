@@ -9,10 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -63,8 +63,6 @@ type Dispatcher struct {
 	opts   Options
 	dlq    DeadLetterSink
 	log    zerolog.Logger
-	rng    *rand.Rand
-	rngMu  sync.Mutex
 	now    func() time.Time
 }
 
@@ -93,7 +91,7 @@ func New(st store.Store, dlq DeadLetterSink, opts Options, log zerolog.Logger) *
 	}
 	d := &Dispatcher{
 		store: st, dlq: dlq, opts: opts, log: log.With().Str("component", "dispatcher").Logger(),
-		rng: rand.New(rand.NewSource(time.Now().UnixNano())), now: func() time.Time { return time.Now().UTC() },
+		now: func() time.Time { return time.Now().UTC() },
 	}
 	d.client = &http.Client{
 		Timeout: opts.Timeout,
@@ -162,7 +160,11 @@ func ValidateTargetURL(raw string, allowPrivate bool) error {
 
 // Enqueue creates one pending delivery per active subscription that matches ev.
 func (d *Dispatcher) Enqueue(ctx context.Context, ev *events.Event) (int, error) {
-	subs, err := d.store.ActiveSubscriptionsForEvent(ctx, ev.Type)
+	if ev.OwnerID == "" {
+		d.log.Warn().Str("event_id", ev.ID).Str("event_type", ev.Type).Msg("event carries no owner; not delivered")
+		return 0, nil
+	}
+	subs, err := d.store.ActiveSubscriptionsForEvent(ctx, ev.OwnerID, ev.Type)
 	if err != nil {
 		return 0, err
 	}
@@ -188,6 +190,12 @@ func (d *Dispatcher) Enqueue(ctx context.Context, ev *events.Event) (int, error)
 	return len(dels), d.store.CreateDeliveries(ctx, dels)
 }
 
+// leaseFor is how long a claimed delivery stays invisible to other workers:
+// long enough for the slowest possible HTTP attempt plus bookkeeping.
+func (d *Dispatcher) leaseFor() time.Duration {
+	return d.opts.Timeout + 30*time.Second
+}
+
 // Run polls for due deliveries until ctx is cancelled.
 func (d *Dispatcher) Run(ctx context.Context) {
 	ticker := time.NewTicker(d.opts.PollEvery)
@@ -206,7 +214,7 @@ func (d *Dispatcher) Run(ctx context.Context) {
 
 // RunOnce claims a batch of due deliveries and attempts them concurrently.
 func (d *Dispatcher) RunOnce(ctx context.Context) (int, error) {
-	due, err := d.store.ClaimDueDeliveries(ctx, d.now(), d.opts.Workers*4)
+	due, err := d.store.ClaimDueDeliveries(ctx, d.now(), d.leaseFor(), d.opts.Workers*4)
 	if err != nil || len(due) == 0 {
 		return 0, err
 	}
@@ -234,25 +242,26 @@ func (d *Dispatcher) Attempt(ctx context.Context, del *store.Delivery) error {
 		return err
 	}
 	res := store.AttemptResult{AttemptedAt: d.now()}
-	if !sub.Active {
+	attemptNo := del.Attempts + 1
+	switch {
+	case del.Attempts >= del.MaxAttempts:
+		// Retries were already exhausted but the dead-letter publish failed last
+		// time; don't hit the receiver again, just retry the publish.
+		res.Error = "retries exhausted"
+	case !sub.Active:
 		res.Error = "subscription inactive"
-	} else {
+	default:
 		res = d.post(ctx, sub, del, res)
 	}
 	attemptDuration.Observe(res.Duration.Seconds())
 
-	attemptNo := del.Attempts + 1
 	switch {
 	case res.Success:
 		attemptsTotal.WithLabelValues("delivered").Inc()
 	case attemptNo >= del.MaxAttempts:
-		res.DeadLetter = true
-		attemptsTotal.WithLabelValues("dead_letter").Inc()
-		deadLettersTotal.Inc()
+		d.deadLetter(ctx, del, &res)
 	default:
-		d.rngMu.Lock()
-		wait := Backoff(attemptNo, d.opts.BackoffBase, d.opts.BackoffMax, d.rng)
-		d.rngMu.Unlock()
+		wait := Backoff(attemptNo, d.opts.BackoffBase, d.opts.BackoffMax, true)
 		next := res.AttemptedAt.Add(wait)
 		res.NextAttemptAt = &next
 		attemptsTotal.WithLabelValues("retry").Inc()
@@ -269,12 +278,26 @@ func (d *Dispatcher) Attempt(ctx context.Context, del *store.Delivery) error {
 		Int("attempt", attemptNo).Int("status_code", res.StatusCode).Str("status", del.Status).
 		Str("error", res.Error).Msg("webhook attempt")
 
-	if res.DeadLetter && d.dlq != nil {
+	return nil
+}
+
+// deadLetter publishes del to the DLQ sink before the row is marked
+// dead_letter, so a failed publish never loses the record: the delivery stays
+// retrying and the publish is re-attempted on the next due cycle.
+func (d *Dispatcher) deadLetter(ctx context.Context, del *store.Delivery, res *store.AttemptResult) {
+	if d.dlq != nil {
 		if err := d.dlq.Publish(ctx, del); err != nil {
-			d.log.Error().Err(err).Str("delivery_id", del.ID).Msg("failed to publish to dead-letter queue")
+			d.log.Error().Err(err).Str("delivery_id", del.ID).Msg("failed to publish to dead-letter queue; will retry")
+			next := res.AttemptedAt.Add(d.opts.BackoffBase)
+			res.NextAttemptAt = &next
+			res.Error = strings.TrimPrefix(res.Error+"; dead-letter publish failed: "+err.Error(), "; ")
+			attemptsTotal.WithLabelValues("dead_letter_publish_failed").Inc()
+			return
 		}
 	}
-	return nil
+	res.DeadLetter = true
+	attemptsTotal.WithLabelValues("dead_letter").Inc()
+	deadLettersTotal.Inc()
 }
 
 func (d *Dispatcher) post(ctx context.Context, sub *store.Subscription, del *store.Delivery, res store.AttemptResult) store.AttemptResult {

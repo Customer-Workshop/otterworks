@@ -398,8 +398,10 @@ services:
       context: ./services/webhook-service
       dockerfile: Dockerfile
     container_name: otterworks-webhook-service
-    ports:
-    - 8092:8092
+    # Not published on the host: the service trusts X-User-ID from the gateway,
+    # so it must only be reachable through api-gateway (/api/v1/webhooks).
+    expose:
+    - "8092"
     environment:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test

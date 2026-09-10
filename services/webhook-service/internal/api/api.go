@@ -24,7 +24,7 @@ import (
 
 // KnownEventTypes are the events published on the otterworks-events topic today.
 var KnownEventTypes = []string{
-	"file_uploaded", "file_deleted", "file_shared",
+	"file_uploaded", "file_deleted", "file_shared", "file_trashed", "file_restored", "file_updated", "file_moved",
 	"document_created", "document_updated", "document_deleted",
 	"comment_added",
 }
@@ -443,6 +443,11 @@ func (s *Server) filterFrom(r *http.Request) (store.DeliveryFilter, error) {
 		Cursor:         q.Get("cursor"),
 		Limit:          50,
 	}
+	if f.SubscriptionID != "" {
+		if _, err := uuid.Parse(f.SubscriptionID); err != nil {
+			return f, errors.New("subscriptionId must be a UUID")
+		}
+	}
 	if v := q.Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > maxPageSize {
@@ -467,6 +472,10 @@ func (s *Server) filterFrom(r *http.Request) (store.DeliveryFilter, error) {
 
 func (s *Server) writeDeliveries(w http.ResponseWriter, r *http.Request, f store.DeliveryFilter) {
 	items, next, err := s.store.ListDeliveries(r.Context(), f)
+	if errors.Is(err, store.ErrInvalidCursor) {
+		writeError(w, http.StatusBadRequest, "validation_error", "cursor is invalid")
+		return
+	}
 	if err != nil {
 		s.storeErr(w, err)
 		return

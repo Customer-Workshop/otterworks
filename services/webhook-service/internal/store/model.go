@@ -10,6 +10,9 @@ import (
 // ErrNotFound is returned when a subscription or delivery does not exist.
 var ErrNotFound = errors.New("not found")
 
+// ErrInvalidCursor is returned when a pagination cursor cannot be decoded.
+var ErrInvalidCursor = errors.New("invalid cursor")
+
 // Delivery lifecycle states.
 const (
 	StatusPending    = "pending"
@@ -98,7 +101,9 @@ type Store interface {
 	ListSubscriptions(ctx context.Context, ownerID string) ([]*Subscription, error)
 	UpdateSubscription(ctx context.Context, s *Subscription) error
 	DeleteSubscription(ctx context.Context, ownerID, id string) error
-	ActiveSubscriptionsForEvent(ctx context.Context, eventType string) ([]*Subscription, error)
+	// ActiveSubscriptionsForEvent returns ownerID's active subscriptions that
+	// match eventType (exactly or via "*"). Events never fan out across owners.
+	ActiveSubscriptionsForEvent(ctx context.Context, ownerID, eventType string) ([]*Subscription, error)
 
 	CreateDeliveries(ctx context.Context, ds []*Delivery) error
 	GetDelivery(ctx context.Context, ownerID, id string) (*Delivery, error)
@@ -106,7 +111,7 @@ type Store interface {
 	ListAttempts(ctx context.Context, deliveryID string) ([]*Attempt, error)
 	// ClaimDueDeliveries atomically leases up to limit deliveries whose next
 	// attempt is due, so concurrent workers never double-send.
-	ClaimDueDeliveries(ctx context.Context, now time.Time, limit int) ([]*Delivery, error)
+	ClaimDueDeliveries(ctx context.Context, now time.Time, lease time.Duration, limit int) ([]*Delivery, error)
 	RecordAttempt(ctx context.Context, d *Delivery, r AttemptResult) error
 	// RequeueDelivery resets a dead-lettered (or any) delivery for immediate retry.
 	RequeueDelivery(ctx context.Context, ownerID, id string, maxAttempts int) (*Delivery, error)

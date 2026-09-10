@@ -397,6 +397,8 @@ func (p *Postgres) RequeueDelivery(ctx context.Context, ownerID, id string, maxA
 	if errors.Is(err, ErrNotFound) {
 		if _, getErr := p.GetDelivery(ctx, ownerID, id); getErr == nil {
 			return nil, ErrConflict
+		} else if !errors.Is(getErr, ErrNotFound) {
+			return nil, getErr
 		}
 	}
 	return d, err

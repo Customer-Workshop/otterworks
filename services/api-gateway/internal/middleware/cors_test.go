@@ -131,6 +131,66 @@ func TestCORS_WildcardOrigin(t *testing.T) {
 	assert.Equal(t, "http://any-origin.com", rec.Header().Get("Access-Control-Allow-Origin"))
 }
 
+func TestCORS_NoOriginHeaderWithWildcard(t *testing.T) {
+	cfg := CORSConfig{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET"},
+		AllowedHeaders: []string{"Content-Type"},
+	}
+
+	called := false
+	handler := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodOptions, "/api/test", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.True(t, called, "OPTIONS without Origin is not a preflight and must pass through")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Methods"))
+}
+
+func TestCORS_AllowedOriginHeaderSet(t *testing.T) {
+	cfg := CORSConfig{
+		AllowedOrigins: []string{"http://localhost:3000"},
+		AllowedMethods: []string{"GET"},
+		AllowedHeaders: []string{"Content-Type"},
+	}
+
+	handler := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, "http://localhost:3000", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "Origin", rec.Header().Get("Vary"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"), "credentials header only when AllowCredentials is set")
+	assert.Empty(t, rec.Header().Get("Access-Control-Expose-Headers"), "expose header omitted when ExposedHeaders is empty")
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Methods"), "preflight headers only on OPTIONS")
+}
+
+func TestCORSPolicy_IsOriginAllowed(t *testing.T) {
+	exact := newCORSPolicy(CORSConfig{AllowedOrigins: []string{"http://localhost:3000"}})
+	assert.True(t, exact.isOriginAllowed("http://localhost:3000"))
+	assert.False(t, exact.isOriginAllowed("http://localhost:3000/"))
+	assert.False(t, exact.isOriginAllowed("http://evil.com"))
+	assert.False(t, exact.isOriginAllowed(""))
+
+	wildcard := newCORSPolicy(CORSConfig{AllowedOrigins: []string{"http://localhost:3000", "*"}})
+	assert.True(t, wildcard.isOriginAllowed("http://any-origin.com"))
+	assert.False(t, wildcard.isOriginAllowed(""), "wildcard must not match a missing Origin header")
+}
+
 func TestCORS_NoOriginHeader(t *testing.T) {
 	cfg := DefaultCORSConfig()
 

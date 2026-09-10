@@ -24,6 +24,7 @@ import (
 type fakeDLQ struct {
 	mu       sync.Mutex
 	seen     []string
+	last     *store.Delivery
 	failNext int
 }
 
@@ -35,6 +36,8 @@ func (f *fakeDLQ) Publish(_ context.Context, d *store.Delivery) error {
 		return errors.New("sqs unavailable")
 	}
 	f.seen = append(f.seen, d.ID)
+	cp := *d
+	f.last = &cp
 	return nil
 }
 
@@ -219,6 +222,8 @@ func TestRetriesThenDeadLetters(t *testing.T) {
 	assert.Equal(t, 500, del.LastStatusCode)
 	assert.NotNil(t, del.DeadLetteredAt)
 	assert.Equal(t, []string{del.ID}, dlq.seen, "dead letter also published to the DLQ sink")
+	assert.Equal(t, 3, dlq.last.Attempts, "DLQ record describes the final attempt")
+	assert.Equal(t, 500, dlq.last.LastStatusCode)
 
 	attempts, err := st.ListAttempts(ctx, del.ID)
 	require.NoError(t, err)

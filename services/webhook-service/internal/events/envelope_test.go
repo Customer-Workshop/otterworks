@@ -35,6 +35,11 @@ func TestParseDocumentServiceMessage(t *testing.T) {
 	anon, err := Parse([]byte(`{"event_type":"document_deleted","payload":{"id":"d2"}}`))
 	require.NoError(t, err)
 	assert.Empty(t, anon.OwnerID, "no owner field means no owner")
+
+	// Matches DocumentService.delete's payload so deletions fan out to the owner.
+	deleted, err := Parse([]byte(`{"event_type":"document_deleted","payload":{"id":"d2","type":"document","owner_id":"u7"}}`))
+	require.NoError(t, err)
+	assert.Equal(t, "u7", deleted.OwnerID)
 	assert.Regexp(t, `^evt_[0-9a-f]{32}$`, ev.ID)
 
 	again, err := Parse([]byte(body))

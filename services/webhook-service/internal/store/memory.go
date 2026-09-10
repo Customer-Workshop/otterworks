@@ -80,7 +80,21 @@ func (m *Memory) UpdateSubscription(_ context.Context, s *Subscription) error {
 	if !ok || cur.OwnerID != s.OwnerID {
 		return ErrNotFound
 	}
-	m.subs[s.ID] = cloneSub(s)
+	next := cloneSub(s)
+	next.Secret = cur.Secret
+	m.subs[s.ID] = next
+	return nil
+}
+
+func (m *Memory) RotateSecret(_ context.Context, ownerID, id, secret string, now time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cur, ok := m.subs[id]
+	if !ok || cur.OwnerID != ownerID {
+		return ErrNotFound
+	}
+	cur.Secret = secret
+	cur.UpdatedAt = now
 	return nil
 }
 

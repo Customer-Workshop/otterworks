@@ -98,7 +98,7 @@ func TestEveryRouteIsJSON(t *testing.T) {
 }
 
 func TestSubscriptionCRUDAndOwnership(t *testing.T) {
-	h, _ := newTestServer(t)
+	h, st := newTestServer(t)
 
 	rec := do(t, h, "POST", "/api/v1/webhooks/subscriptions", "alice", map[string]any{
 		"url": "http://sink:9000/hook", "eventTypes": []string{"file_uploaded"}, "description": "files",
@@ -129,7 +129,14 @@ func TestSubscriptionCRUDAndOwnership(t *testing.T) {
 
 	rec = do(t, h, "POST", "/api/v1/webhooks/subscriptions/"+id+"/rotate-secret", "alice", nil)
 	require.Equal(t, 200, rec.Code)
-	assert.NotEqual(t, created["secret"], assertJSON(t, rec)["secret"])
+	rotated := assertJSON(t, rec)["secret"].(string)
+	assert.NotEqual(t, created["secret"], rotated)
+
+	rec = do(t, h, "PATCH", "/api/v1/webhooks/subscriptions/"+id, "alice", map[string]any{"description": "renamed"})
+	require.Equal(t, 200, rec.Code)
+	stored, err := st.GetSubscription(context.Background(), "alice", id)
+	require.NoError(t, err)
+	assert.Equal(t, rotated, stored.Secret, "PATCH never writes the secret column")
 
 	rec = do(t, h, "DELETE", "/api/v1/webhooks/subscriptions/"+id, "bob", nil)
 	assert.Equal(t, 404, rec.Code)

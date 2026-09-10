@@ -132,8 +132,20 @@ func collectSubs(rows pgx.Rows) ([]*Subscription, error) {
 }
 
 func (p *Postgres) UpdateSubscription(ctx context.Context, s *Subscription) error {
-	tag, err := p.pool.Exec(ctx, `UPDATE webhook_subscriptions SET url=$3, description=$4, event_types=$5, secret=$6, active=$7, updated_at=$8 WHERE owner_id=$1 AND id=$2`,
-		s.OwnerID, s.ID, s.URL, s.Description, s.EventTypes, s.Secret, s.Active, s.UpdatedAt)
+	tag, err := p.pool.Exec(ctx, `UPDATE webhook_subscriptions SET url=$3, description=$4, event_types=$5, active=$6, updated_at=$7 WHERE owner_id=$1 AND id=$2`,
+		s.OwnerID, s.ID, s.URL, s.Description, s.EventTypes, s.Active, s.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (p *Postgres) RotateSecret(ctx context.Context, ownerID, id, secret string, now time.Time) error {
+	tag, err := p.pool.Exec(ctx, `UPDATE webhook_subscriptions SET secret=$3, updated_at=$4 WHERE owner_id=$1 AND id=$2`,
+		ownerID, id, secret, now)
 	if err != nil {
 		return err
 	}

@@ -79,13 +79,20 @@ func main() {
 	if cfg.DispatcherEnabled {
 		go disp.Run(ctx)
 	}
+	readiness := st.Ping
 	if cfg.ConsumerEnabled {
 		c := consumer.New(sqsClient, cfg.EventsQueueURL, cfg.ConsumerWaitSeconds, disp, log)
 		go c.Run(ctx)
+		readiness = func(ctx context.Context) error {
+			if err := st.Ping(ctx); err != nil {
+				return err
+			}
+			return c.Ready(ctx)
+		}
 	}
 
 	handler := api.New(st, api.Options{
-		MaxAttempts: cfg.MaxAttempts, AllowPrivateTargets: cfg.AllowPrivateTargets, Readiness: st.Ping,
+		MaxAttempts: cfg.MaxAttempts, AllowPrivateTargets: cfg.AllowPrivateTargets, Readiness: readiness,
 	}, log)
 	srv := &http.Server{
 		Addr: ":" + cfg.Port, Handler: handler,

@@ -197,7 +197,8 @@ class DocumentService:
         await self.db.commit()
 
         await event_publisher.publish(
-            "document_deleted", {"id": document_id, "type": "document"}
+            "document_deleted",
+            {"id": document_id, "type": "document", "owner_id": document.owner_id},
         )
         return True
 

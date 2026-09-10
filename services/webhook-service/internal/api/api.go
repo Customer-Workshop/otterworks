@@ -34,6 +34,9 @@ const (
 	HeaderUserID = "X-User-ID"
 	maxBody      = 64 << 10
 	maxPageSize  = 200
+	// minSecretLen matches the 256-bit key HMAC-SHA256 expects; anything shorter
+	// lets a receiver's signature check be brute-forced offline.
+	minSecretLen = 32
 )
 
 // Options configures the API.
@@ -279,8 +282,8 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 	secret := ""
 	if in.Secret != nil {
-		if len(*in.Secret) < 16 {
-			writeError(w, http.StatusBadRequest, "validation_error", "secret must be at least 16 characters")
+		if len(*in.Secret) < minSecretLen {
+			writeError(w, http.StatusBadRequest, "validation_error", "secret must be at least 32 characters")
 			return
 		}
 		secret = *in.Secret
@@ -395,7 +398,7 @@ func (s *Server) rotateSecret(w http.ResponseWriter, r *http.Request) {
 	}
 	sub.Secret = secret
 	sub.UpdatedAt = s.now()
-	if err := s.store.UpdateSubscription(r.Context(), sub); err != nil {
+	if err := s.store.RotateSecret(r.Context(), sub.OwnerID, sub.ID, secret, sub.UpdatedAt); err != nil {
 		s.storeErr(w, err)
 		return
 	}

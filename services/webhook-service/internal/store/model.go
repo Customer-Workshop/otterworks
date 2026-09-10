@@ -99,7 +99,10 @@ type Store interface {
 	CreateSubscription(ctx context.Context, s *Subscription) error
 	GetSubscription(ctx context.Context, ownerID, id string) (*Subscription, error)
 	ListSubscriptions(ctx context.Context, ownerID string) ([]*Subscription, error)
+	// UpdateSubscription writes every mutable column except the secret, so a
+	// stale read can never undo a concurrent RotateSecret.
 	UpdateSubscription(ctx context.Context, s *Subscription) error
+	RotateSecret(ctx context.Context, ownerID, id, secret string, now time.Time) error
 	DeleteSubscription(ctx context.Context, ownerID, id string) error
 	// ActiveSubscriptionsForEvent returns ownerID's active subscriptions that
 	// match eventType (exactly or via "*"). Events never fan out across owners.

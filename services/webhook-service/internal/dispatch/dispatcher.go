@@ -121,7 +121,17 @@ func (d *Dispatcher) transport() http.RoundTripper {
 					return nil, fmt.Errorf("target %s resolves to a private address", host)
 				}
 			}
-			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+			// Dial the literal IP just checked so no second lookup can be
+			// answered differently (DNS rebinding); confirm the peer too.
+			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+			if err != nil {
+				return nil, err
+			}
+			if ra, ok := conn.RemoteAddr().(*net.TCPAddr); ok && isPrivate(ra.IP) {
+				_ = conn.Close()
+				return nil, fmt.Errorf("target %s connected to a private address", host)
+			}
+			return conn, nil
 		}
 	}
 	return t
@@ -286,7 +296,14 @@ func (d *Dispatcher) Attempt(ctx context.Context, del *store.Delivery) error {
 // retrying and the publish is re-attempted on the next due cycle.
 func (d *Dispatcher) deadLetter(ctx context.Context, del *store.Delivery, res *store.AttemptResult) {
 	if d.dlq != nil {
-		if err := d.dlq.Publish(ctx, del); err != nil {
+		// The DLQ record must describe the final attempt, which is not yet
+		// persisted on del.
+		final := *del
+		if del.Attempts < del.MaxAttempts {
+			final.Attempts = del.Attempts + 1
+			final.LastError, final.LastStatusCode = res.Error, res.StatusCode
+		}
+		if err := d.dlq.Publish(ctx, &final); err != nil {
 			d.log.Error().Err(err).Str("delivery_id", del.ID).Msg("failed to publish to dead-letter queue; will retry")
 			next := res.AttemptedAt.Add(d.opts.BackoffBase)
 			res.NextAttemptAt = &next

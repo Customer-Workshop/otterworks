@@ -34,6 +34,10 @@ func (f *fakeSQS) DeleteMessage(_ context.Context, in *sqs.DeleteMessageInput, _
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
+func (f *fakeSQS) GetQueueAttributes(_ context.Context, _ *sqs.GetQueueAttributesInput, _ ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+	return &sqs.GetQueueAttributesOutput{}, nil
+}
+
 func (f *fakeSQS) SendMessage(_ context.Context, in *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
 	f.sent = append(f.sent, aws.ToString(in.MessageBody))
 	return &sqs.SendMessageOutput{}, nil

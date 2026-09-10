@@ -2,6 +2,7 @@ package com.otterworks.notification.consumer
 
 import aws.sdk.kotlin.services.sqs.SqsClient
 import aws.sdk.kotlin.services.sqs.model.DeleteMessageRequest
+import aws.sdk.kotlin.services.sqs.model.Message
 import aws.sdk.kotlin.services.sqs.model.ReceiveMessageRequest
 import com.otterworks.notification.config.AppConfig
 import com.otterworks.notification.model.SqsNotificationMessage
@@ -65,42 +66,10 @@ class SqsConsumer(
 
         while (isActive) {
             try {
-                val request = ReceiveMessageRequest {
-                    queueUrl = config.sqsQueueUrl
-                    maxNumberOfMessages = config.sqsMaxMessages
-                    waitTimeSeconds = config.sqsWaitTimeSeconds
-                }
-
-                val response = sqsClient.receiveMessage(request)
-                val messages = response.messages ?: emptyList()
-
-                if (messages.isNotEmpty()) {
-                    logger.info { "Received ${messages.size} messages from SQS" }
-                }
+                val messages = receiveMessages()
 
                 for (msg in messages) {
-                    launch {
-                        try {
-                            val body = msg.body ?: return@launch
-                            val event = parseMessage(body)
-
-                            if (event != null) {
-                                notificationService.processEvent(event)
-
-                                val deleteRequest = DeleteMessageRequest {
-                                    queueUrl = config.sqsQueueUrl
-                                    receiptHandle = msg.receiptHandle
-                                }
-                                sqsClient.deleteMessage(deleteRequest)
-                                logger.debug { "Deleted SQS message: ${msg.messageId}" }
-                            } else {
-                                processingErrorsCounter?.increment()
-                                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
-                            }
-                        } catch (e: Exception) {
-                            logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
-                        }
-                    }
+                    launch { handleMessage(msg) }
                 }
 
                 if (messages.isEmpty()) {
@@ -111,6 +80,47 @@ class SqsConsumer(
                 delay(config.sqsPollIntervalMs * 2)
             }
         }
+    }
+
+    private suspend fun receiveMessages(): List<Message> {
+        val request = ReceiveMessageRequest {
+            queueUrl = config.sqsQueueUrl
+            maxNumberOfMessages = config.sqsMaxMessages
+            waitTimeSeconds = config.sqsWaitTimeSeconds
+        }
+
+        val messages = sqsClient.receiveMessage(request).messages ?: emptyList()
+
+        if (messages.isNotEmpty()) {
+            logger.info { "Received ${messages.size} messages from SQS" }
+        }
+        return messages
+    }
+
+    internal suspend fun handleMessage(msg: Message) {
+        try {
+            val body = msg.body ?: return
+            val event = parseMessage(body)
+
+            if (event != null) {
+                notificationService.processEvent(event)
+                deleteMessage(msg)
+            } else {
+                processingErrorsCounter?.increment()
+                logger.warn { "Failed to parse SQS message: ${msg.messageId}" }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error processing SQS message: ${msg.messageId}" }
+        }
+    }
+
+    private suspend fun deleteMessage(msg: Message) {
+        val deleteRequest = DeleteMessageRequest {
+            queueUrl = config.sqsQueueUrl
+            receiptHandle = msg.receiptHandle
+        }
+        sqsClient.deleteMessage(deleteRequest)
+        logger.debug { "Deleted SQS message: ${msg.messageId}" }
     }
 
     internal fun parseMessage(body: String): SqsNotificationMessage? {

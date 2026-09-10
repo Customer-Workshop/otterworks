@@ -1,9 +1,15 @@
 package com.otterworks.notification.consumer
 
 import aws.sdk.kotlin.services.sqs.SqsClient
+import aws.sdk.kotlin.services.sqs.model.DeleteMessageRequest
+import aws.sdk.kotlin.services.sqs.model.Message
 import com.otterworks.notification.config.AppConfig
 import com.otterworks.notification.service.NotificationService
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -27,7 +33,11 @@ class SqsConsumerTest {
         sqsWaitTimeSeconds = 5,
     )
 
-    private val consumer = SqsConsumer(sqsClient, notificationService, config)
+    private val meterRegistry = SimpleMeterRegistry()
+    private val consumer = SqsConsumer(sqsClient, notificationService, config, meterRegistry)
+
+    private fun processingErrors(): Double =
+        meterRegistry.counter("notifications.processing.errors").count()
 
     @Test
     fun `parseMessage parses direct SQS message`() {
@@ -118,6 +128,61 @@ class SqsConsumerTest {
         assertEquals("mentioned-user", event.mentionedUserId)
         assertEquals("actor-2", event.actorId)
         assertEquals("doc-789", event.documentId)
+    }
+
+    @Test
+    fun `handleMessage processes event and deletes message`() = runTest {
+        val msg = Message {
+            messageId = "msg-1"
+            receiptHandle = "rh-1"
+            body = """{"eventType":"file_shared","fileId":"file-123","timestamp":"2024-01-01T00:00:00Z"}"""
+        }
+
+        consumer.handleMessage(msg)
+
+        coVerify(exactly = 1) { notificationService.processEvent(match { it.eventType == "file_shared" && it.fileId == "file-123" }) }
+        coVerify(exactly = 1) {
+            sqsClient.deleteMessage(match<DeleteMessageRequest> { it.queueUrl == config.sqsQueueUrl && it.receiptHandle == "rh-1" })
+        }
+        assertEquals(0.0, processingErrors())
+    }
+
+    @Test
+    fun `handleMessage counts parse failure and leaves message on queue`() = runTest {
+        val msg = Message {
+            messageId = "msg-2"
+            receiptHandle = "rh-2"
+            body = "not json at all"
+        }
+
+        consumer.handleMessage(msg)
+
+        coVerify(exactly = 0) { notificationService.processEvent(any()) }
+        coVerify(exactly = 0) { sqsClient.deleteMessage(any<DeleteMessageRequest>()) }
+        assertEquals(1.0, processingErrors())
+    }
+
+    @Test
+    fun `handleMessage ignores message without body`() = runTest {
+        consumer.handleMessage(Message { messageId = "msg-3"; receiptHandle = "rh-3" })
+
+        coVerify(exactly = 0) { notificationService.processEvent(any()) }
+        coVerify(exactly = 0) { sqsClient.deleteMessage(any<DeleteMessageRequest>()) }
+        assertEquals(0.0, processingErrors())
+    }
+
+    @Test
+    fun `handleMessage does not delete message when processing fails`() = runTest {
+        coEvery { notificationService.processEvent(any()) } throws IllegalStateException("boom")
+        val msg = Message {
+            messageId = "msg-4"
+            receiptHandle = "rh-4"
+            body = """{"eventType":"file_shared","timestamp":"2024-01-01T00:00:00Z"}"""
+        }
+
+        consumer.handleMessage(msg)
+
+        coVerify(exactly = 0) { sqsClient.deleteMessage(any<DeleteMessageRequest>()) }
     }
 
     @Test

@@ -1,0 +1,6 @@
+# Fingerprints of findings that are already remediated at HEAD but remain in
+# branch history. Each entry names the commit it lives in; keep it exact.
+
+# webhook-service: a fixed, never-deployed HMAC test secret in a unit-test
+# fixture. Replaced with signing.NewSecret() in a later commit on the same PR.
+aa5c6910007f0119a77bf9ee26b461f51fccf66d:services/webhook-service/internal/dispatch/dispatcher_test.go:generic-api-key:47

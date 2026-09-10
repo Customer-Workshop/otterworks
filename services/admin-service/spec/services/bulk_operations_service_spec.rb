@@ -36,6 +36,14 @@ RSpec.describe BulkOperationsService do
       expect(result.errors).to include('Invalid operation: invalid')
     end
 
+    it 'records a per-user failure when an unknown operation reaches apply_operation' do
+      counts = described_class.send(:execute_operations, 'unknown', user_ids, {})
+      expect(counts[:success_count]).to eq(0)
+      expect(counts[:failure_count]).to eq(3)
+      expect(counts[:errors].map { |e| e[:error] }.uniq).to eq(['Unknown operation: unknown'])
+      expect(users.map { |u| u.reload.status }.uniq).to eq(['active'])
+    end
+
     it 'reports missing users' do
       result = described_class.process(operation: 'suspend', user_ids: user_ids + [SecureRandom.uuid])
       expect(result.success_count).to eq(3)

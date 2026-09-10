@@ -1,5 +1,6 @@
 class BulkOperationsService
   Result = Struct.new(:success_count, :failure_count, :errors, keyword_init: true)
+  class UnknownOperationError < StandardError; end
 
   VALID_OPERATIONS = %w[suspend activate delete update_role].freeze
 
@@ -57,6 +58,8 @@ class BulkOperationsService
       user.soft_delete!
     when 'update_role'
       user.update!(role: params[:role])
+    else
+      raise UnknownOperationError, "Unknown operation: #{operation}"
     end
   end
 

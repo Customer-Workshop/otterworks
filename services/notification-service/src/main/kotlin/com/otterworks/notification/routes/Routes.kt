@@ -25,6 +25,9 @@ import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
 
+const val NOTIFICATION_ID_REQUIRED = "Notification ID is required"
+const val NOTIFICATION_NOT_FOUND = "Notification not found"
+
 @Serializable
 data class HealthResponse(val status: String, val service: String)
 
@@ -88,28 +91,28 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             get("/{id}") {
                 val id = call.parameters["id"] ?: return@get call.respond(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
+                    ErrorResponse(NOTIFICATION_ID_REQUIRED),
                 )
 
                 val notification = notificationService.getNotificationById(id)
                 if (notification != null) {
                     call.respond(notification)
                 } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse(NOTIFICATION_NOT_FOUND))
                 }
             }
 
             put("/{id}/read") {
                 val id = call.parameters["id"] ?: return@put call.respond(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
+                    ErrorResponse(NOTIFICATION_ID_REQUIRED),
                 )
 
                 val success = notificationService.markAsRead(id)
                 if (success) {
                     call.respond(HttpStatusCode.NoContent)
                 } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse(NOTIFICATION_NOT_FOUND))
                 }
             }
 
@@ -127,14 +130,14 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             delete("/{id}") {
                 val id = call.parameters["id"] ?: return@delete call.respond(
                     HttpStatusCode.BadRequest,
-                    ErrorResponse("Notification ID is required"),
+                    ErrorResponse(NOTIFICATION_ID_REQUIRED),
                 )
 
                 val success = notificationService.deleteNotification(id)
                 if (success) {
                     call.respond(HttpStatusCode.NoContent)
                 } else {
-                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Notification not found"))
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse(NOTIFICATION_NOT_FOUND))
                 }
             }
         }

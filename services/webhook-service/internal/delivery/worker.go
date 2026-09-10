@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/store"
@@ -25,6 +26,14 @@ type Worker struct {
 	baseBackoff  time.Duration
 	logger       zerolog.Logger
 	now          func() time.Time
+}
+
+const maxInFlight = 10
+
+func ClaimLeaseWarningThreshold(deliveryTimeout time.Duration) time.Duration {
+	const claimLimit = 20
+	batches := (claimLimit + maxInFlight - 1) / maxInFlight
+	return 2 * deliveryTimeout * time.Duration(batches)
 }
 
 func NewWorker(s store.Store, client *http.Client, pollInterval, baseBackoff time.Duration, logger zerolog.Logger, allowPrivate ...bool) *Worker {
@@ -97,11 +106,21 @@ func (w *Worker) Process(ctx context.Context) {
 		w.logger.Error().Err(err).Msg("claim webhook deliveries")
 		return
 	}
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxInFlight)
 	for _, d := range deliveries {
-		if err := w.deliver(ctx, d); err != nil {
-			w.logger.Warn().Err(err).Str("delivery_id", d.ID.String()).Msg("webhook delivery failed")
-		}
+		d := d
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			if err := w.deliver(ctx, d); err != nil {
+				w.logger.Warn().Err(err).Str("delivery_id", d.ID.String()).Msg("webhook delivery failed")
+			}
+		}()
 	}
+	wg.Wait()
 }
 func (w *Worker) deliver(ctx context.Context, d store.Delivery) error {
 	now := w.now()

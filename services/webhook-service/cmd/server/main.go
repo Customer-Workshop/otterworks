@@ -24,6 +24,13 @@ func main() {
 	cfg := config.Load()
 	logger := zerolog.New(os.Stdout).With().Timestamp().Str("service", "webhook-service").Logger()
 	ctx := context.Background()
+	if cfg.DeliveryClaimLease < delivery.ClaimLeaseWarningThreshold(cfg.DeliveryTimeout) {
+		logger.Warn().
+			Dur("claim_lease", cfg.DeliveryClaimLease).
+			Dur("delivery_timeout", cfg.DeliveryTimeout).
+			Dur("recommended_minimum", delivery.ClaimLeaseWarningThreshold(cfg.DeliveryTimeout)).
+			Msg("delivery claim lease may expire before a claimed batch completes")
+	}
 	db, err := store.NewPostgresStore(ctx, cfg.DatabaseURL, cfg.DeliveryClaimLease)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("initialize store")

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/store"
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/targets"
@@ -138,10 +139,10 @@ type subscriptionRequest struct {
 }
 
 func validateSubscription(req subscriptionRequest, allowPrivate bool) error {
-	if len(req.TargetURL) > 2048 {
+	if utf8.RuneCountInString(req.TargetURL) > 2048 {
 		return fmt.Errorf("target_url must be at most 2048 characters")
 	}
-	if len(req.Description) > 1024 {
+	if utf8.RuneCountInString(req.Description) > 1024 {
 		return fmt.Errorf("description must be at most 1024 characters")
 	}
 	if err := targets.Validate(req.TargetURL, allowPrivate); err != nil {

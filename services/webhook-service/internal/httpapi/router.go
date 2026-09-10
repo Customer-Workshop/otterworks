@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -137,6 +138,12 @@ type subscriptionRequest struct {
 }
 
 func validateSubscription(req subscriptionRequest, allowPrivate bool) error {
+	if len(req.TargetURL) > 2048 {
+		return fmt.Errorf("target_url must be at most 2048 characters")
+	}
+	if len(req.Description) > 1024 {
+		return fmt.Errorf("description must be at most 1024 characters")
+	}
 	if err := targets.Validate(req.TargetURL, allowPrivate); err != nil {
 		return err
 	}
@@ -151,8 +158,14 @@ func validateSubscription(req subscriptionRequest, allowPrivate bool) error {
 	return nil
 }
 func (a *API) createSubscription(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 	var req subscriptionRequest
-	if json.NewDecoder(r.Body).Decode(&req) != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "request body too large"})
+			return
+		}
 		writeJSON(w, 400, map[string]string{"error": "invalid JSON"})
 		return
 	}

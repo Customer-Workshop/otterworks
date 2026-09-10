@@ -32,6 +32,16 @@ func TestSubscriptionAPI(t *testing.T) {
 		}
 	}
 
+	oversizeBody := `{"target_url":"https://example.test","event_types":["webhook.ping"],"description":"` + strings.Repeat("x", 70<<10) + `"}`
+	response = serveAPI(router, http.MethodPost, "/api/v1/webhooks/subscriptions", "owner-a", oversizeBody)
+	if response.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversize body status=%d body=%s", response.Code, response.Body.String())
+	}
+	response = serveAPI(router, http.MethodPost, "/api/v1/webhooks/subscriptions", "owner-a", `{"target_url":"https://example.test","event_types":["webhook.ping"],"description":"`+strings.Repeat("x", 1025)+`"}`)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("oversize description status=%d body=%s", response.Code, response.Body.String())
+	}
+
 	response = serveAPI(router, http.MethodPost, "/api/v1/webhooks/subscriptions", "owner-a", `{"target_url":"https://example.test","event_types":["webhook.ping"]}`)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", response.Code, response.Body.String())

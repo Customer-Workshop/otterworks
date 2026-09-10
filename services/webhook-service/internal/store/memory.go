@@ -277,6 +277,9 @@ func (m *Memory) RequeueDelivery(_ context.Context, ownerID, id string, maxAttem
 	if !ok || d.OwnerID != ownerID {
 		return nil, ErrNotFound
 	}
+	if d.Status != StatusDeadLetter {
+		return nil, ErrConflict
+	}
 	now := time.Now().UTC()
 	d.Status, d.NextAttemptAt, d.DeadLetteredAt, d.UpdatedAt = StatusPending, &now, nil, now
 	d.MaxAttempts = d.Attempts + maxAttempts

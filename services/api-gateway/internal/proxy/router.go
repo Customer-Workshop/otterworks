@@ -65,8 +65,9 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	// (claims.Subject); fall back to the custom "user_id" claim.
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
+			// SetURL points Host at the backend; the caller's Host is only
+			// forwarded as X-Forwarded-Host so backends never route on it.
 			pr.SetURL(target)
-			pr.Out.Host = pr.In.Host
 			pr.SetXForwarded()
 			// Never let a caller-supplied identity header reach a backend.
 			pr.Out.Header.Del("X-User-ID")

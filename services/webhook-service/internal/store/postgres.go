@@ -392,8 +392,14 @@ func (p *Postgres) RecordAttempt(ctx context.Context, d *Delivery, r AttemptResu
 
 func (p *Postgres) RequeueDelivery(ctx context.Context, ownerID, id string, maxAttempts int) (*Delivery, error) {
 	now := time.Now().UTC()
-	return scanDel(p.pool.QueryRow(ctx, `UPDATE webhook_deliveries SET status='pending', next_attempt_at=$3, locked_until=NULL, dead_lettered_at=NULL, max_attempts=attempts+$4, updated_at=$3 WHERE owner_id=$1 AND id=$2 RETURNING `+delCols,
-		ownerID, id, now, maxAttempts))
+	d, err := scanDel(p.pool.QueryRow(ctx, `UPDATE webhook_deliveries SET status='pending', next_attempt_at=$3, locked_until=NULL, dead_lettered_at=NULL, max_attempts=attempts+$4, updated_at=$3 WHERE owner_id=$1 AND id=$2 AND status=$5 RETURNING `+delCols,
+		ownerID, id, now, maxAttempts, StatusDeadLetter))
+	if errors.Is(err, ErrNotFound) {
+		if _, getErr := p.GetDelivery(ctx, ownerID, id); getErr == nil {
+			return nil, ErrConflict
+		}
+	}
+	return d, err
 }
 
 func (p *Postgres) Stats(ctx context.Context, ownerID string) (map[string]int, error) {

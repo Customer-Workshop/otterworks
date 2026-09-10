@@ -13,6 +13,10 @@ var ErrNotFound = errors.New("not found")
 // ErrInvalidCursor is returned when a pagination cursor cannot be decoded.
 var ErrInvalidCursor = errors.New("invalid cursor")
 
+// ErrConflict is returned when a delivery is not in a state that permits the
+// requested transition (e.g. replaying a delivery that is still in flight).
+var ErrConflict = errors.New("conflicting delivery state")
+
 // Delivery lifecycle states.
 const (
 	StatusPending    = "pending"
@@ -116,7 +120,10 @@ type Store interface {
 	// attempt is due, so concurrent workers never double-send.
 	ClaimDueDeliveries(ctx context.Context, now time.Time, lease time.Duration, limit int) ([]*Delivery, error)
 	RecordAttempt(ctx context.Context, d *Delivery, r AttemptResult) error
-	// RequeueDelivery resets a dead-lettered (or any) delivery for immediate retry.
+	// RequeueDelivery resets a dead-lettered delivery for immediate retry. The
+	// status predicate is enforced atomically in the store so a replay can never
+	// race a dispatcher that still holds the lease; non-terminal deliveries
+	// return ErrConflict.
 	RequeueDelivery(ctx context.Context, ownerID, id string, maxAttempts int) (*Delivery, error)
 	// SubscriptionSecret returns the signing secret even when the caller has no owner context.
 	SubscriptionSecret(ctx context.Context, id string) (string, error)

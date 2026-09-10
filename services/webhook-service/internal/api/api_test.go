@@ -67,6 +67,9 @@ func TestEveryRouteIsJSON(t *testing.T) {
 		{"GET", "/static/app.js", "", 404},
 		{"DELETE", "/health", "", 405},
 		{"GET", "/api/v1/webhooks", "", 401},
+		{"GET", "/api/v1/webhooks", "u1\x01", 401},
+		{"GET", "/api/v1/webhooks", "u 1", 401},
+		{"GET", "/api/v1/webhooks", strings.Repeat("x", 129), 401},
 		{"GET", "/api/v1/webhooks", "u1", 200},
 		{"GET", "/api/v1/webhooks/event-types", "u1", 200},
 		{"GET", "/api/v1/webhooks/stats", "u1", 200},
@@ -212,6 +215,10 @@ func TestDeliveryLogReplayAndDeadLetters(t *testing.T) {
 	del := assertJSON(t, rec)
 	delID := del["id"].(string)
 	assert.Equal(t, "pending", del["status"])
+
+	rec = do(t, h, "POST", "/api/v1/webhooks/deliveries/"+delID+"/replay", "alice", nil)
+	assert.Equal(t, 409, rec.Code, "in-flight deliveries cannot be replayed")
+	assert.Equal(t, "conflict", assertJSON(t, rec)["error"])
 
 	rec = do(t, h, "GET", "/api/v1/webhooks/deliveries?subscriptionId="+subID+"&status=pending", "alice", nil)
 	assert.Equal(t, float64(1), assertJSON(t, rec)["count"])

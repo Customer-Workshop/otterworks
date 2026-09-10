@@ -37,6 +37,9 @@ const (
 	// minSecretLen matches the 256-bit key HMAC-SHA256 expects; anything shorter
 	// lets a receiver's signature check be brute-forced offline.
 	minSecretLen = 32
+	// maxOwnerIDLen bounds the identity the gateway forwards; JWT subjects are
+	// UUIDs or short opaque ids, never free text.
+	maxOwnerIDLen = 128
 )
 
 // Options configures the API.
@@ -134,6 +137,10 @@ func (s *Server) storeErr(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "not_found", "resource not found")
 		return
 	}
+	if errors.Is(err, store.ErrConflict) {
+		writeError(w, http.StatusConflict, "conflict", "only dead_letter deliveries can be replayed")
+		return
+	}
 	s.log.Error().Err(err).Msg("store error")
 	writeError(w, http.StatusInternalServerError, "internal_error", "internal error")
 }
@@ -161,8 +168,27 @@ func (s *Server) requireOwner(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "unauthorized", "missing authenticated user; requests must come through the API gateway")
 			return
 		}
+		if !validOwnerID(owner) {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "malformed authenticated user identity")
+			return
+		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ownerKey, owner)))
 	})
+}
+
+// validOwnerID accepts only bounded, printable, whitespace-free ASCII so a
+// forwarded identity can never smuggle control characters or oversized keys
+// into owner-scoped storage.
+func validOwnerID(id string) bool {
+	if len(id) > maxOwnerIDLen {
+		return false
+	}
+	for i := 0; i < len(id); i++ {
+		if id[i] <= ' ' || id[i] > '~' {
+			return false
+		}
+	}
+	return true
 }
 
 func owner(r *http.Request) string { v, _ := r.Context().Value(ownerKey).(string); return v }

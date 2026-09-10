@@ -28,7 +28,7 @@ func ParseMessage(body string) (*ParsedEvent, error) {
 	if err := json.Unmarshal(inner, &event); err != nil {
 		return nil, fmt.Errorf("invalid event: %w", err)
 	}
-	busType, _ := event["event_type"].(string)
+	busType := stringValue(event, "event_type", "eventType")
 	webhookType, ok := eventMapping[busType]
 	if !ok {
 		return nil, nil
@@ -44,10 +44,19 @@ func ParseMessage(body string) (*ParsedEvent, error) {
 		data = payload
 	} else {
 		for key, value := range event {
-			if key != "event_type" && key != "timestamp" {
+			if key != "event_type" && key != "eventType" && key != "timestamp" {
 				data[key] = value
 			}
 		}
 	}
 	return &ParsedEvent{BusType: busType, WebhookType: webhookType, OccurredAt: occurred, Data: data}, nil
+}
+
+func stringValue(event map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := event[key].(string); ok {
+			return value
+		}
+	}
+	return ""
 }

@@ -5,18 +5,42 @@ GATEWAY="${GATEWAY:-http://localhost:8080}"
 SINK="${SINK:-http://localhost:8093}"
 EMAIL="${EMAIL:-admin@otterworks.dev}"
 PASSWORD="${PASSWORD:-Admin123!}"
-PARTNER_EMAIL="${PARTNER_EMAIL:-webhook-partner@otterworks.dev}"
+PARTNER_EMAIL="${PARTNER_EMAIL:-webhook-partner-$(date +%s)@otterworks.dev}"
 command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }
 curl -fsS "$GATEWAY/health" >/dev/null || { echo "gateway is not ready" >&2; exit 1; }
 curl -fsS "$SINK/health" >/dev/null || { echo "sink is not ready" >&2; exit 1; }
 
 echo "=== 1) login ==="
-login=$(curl -fsS -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
-TOKEN=$(jq -r '.accessToken // .access_token' <<<"$login")
+login=""
+if ! login=$(curl -fsS -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" 2>/dev/null); then
+  login=""
+fi
+TOKEN=""
+if [[ -n "$login" ]]; then
+  TOKEN=$(jq -r '.accessToken // .access_token' <<<"$login") || TOKEN=""
+fi
+LOGIN_EMAIL="$EMAIL"
+if [[ "$TOKEN" == "null" || -z "$TOKEN" ]]; then
+  LOGIN_EMAIL="webhook-demo@otterworks.dev"
+  if fallback_login=$(curl -fsS -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' -d "{\"email\":\"$LOGIN_EMAIL\",\"password\":\"$PASSWORD\"}" 2>/dev/null); then
+    login="$fallback_login"
+    TOKEN=$(jq -r '.accessToken // .access_token' <<<"$login") || TOKEN=""
+  fi
+fi
+if [[ "$TOKEN" == "null" || -z "$TOKEN" ]]; then
+  owner_payload=$(jq -n --arg email "$LOGIN_EMAIL" --arg password "$PASSWORD" '{email:$email,password:$password,displayName:"Webhook Demo"}')
+  register_status=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/v1/auth/register" -H 'Content-Type: application/json' -d "$owner_payload")
+  [[ "$register_status" == "201" || "$register_status" == "409" ]] || {
+    echo "demo owner registration failed with HTTP $register_status" >&2
+    exit 1
+  }
+  login=$(curl -fsS -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' -d "{\"email\":\"$LOGIN_EMAIL\",\"password\":\"$PASSWORD\"}")
+  TOKEN=$(jq -r '.accessToken // .access_token' <<<"$login")
+fi
 [[ "$TOKEN" != "null" && -n "$TOKEN" ]] || { echo "$login" >&2; exit 1; }
 AUTH=(-H "Authorization: Bearer $TOKEN")
 OWNER_ID=$(jq -r '.user.id // .id' <<<"$login")
-echo "logged in"
+echo "using account: $LOGIN_EMAIL"
 
 echo "=== 2) register partner and create subscription ==="
 partner_payload=$(jq -n --arg email "$PARTNER_EMAIL" --arg password "$PASSWORD" '{email:$email,password:$password,displayName:"Webhook Partner"}')

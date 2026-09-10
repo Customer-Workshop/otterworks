@@ -42,8 +42,12 @@ dead-letters the delivery with status `failed`.
 ## Local demo
 
 Start the stack with `make up`, then run `scripts/demo-webhooks.sh`. The demo
-registers a partner, creates a subscription, verifies a ping and file-sharing
-event, and exercises fail-mode retries using `webhook-sink`.
+first tries `EMAIL`/`PASSWORD` (defaulting to `admin@otterworks.dev` /
+`Admin123!`). If that account cannot log in, it registers and uses
+`webhook-demo@otterworks.dev` with display name `Webhook Demo`, then prints the
+account used. It registers a unique partner by default, creates a subscription,
+verifies a ping and file-sharing event, and exercises fail-mode retries using
+`webhook-sink`.
 
 ## Headless guarantees
 

@@ -31,6 +31,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:8089
       AUDIT_SERVICE_URL: http://audit-service:8090
       REPORT_SERVICE_URL: http://report-service:8091
+      WEBHOOK_SERVICE_URL: http://webhook-service:8092
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
     depends_on:
     - auth-service
@@ -392,6 +393,67 @@ services:
     - /tmp
     - /app/tmp:uid=1001,gid=1001
     - /app/log:uid=1001,gid=1001
+  webhook-service:
+    build:
+      context: ./services/webhook-service
+      dockerfile: Dockerfile
+    container_name: otterworks-webhook-service
+    ports:
+    - 8092:8092
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+      DATABASE_URL: postgres://otterworks:otterworks_dev@postgres:5432/otterworks
+      WEBHOOK_EVENTS_QUEUE_URL: http://localstack:4566/000000000000/otterworks-webhook-events
+      WEBHOOK_DLQ_URL: http://localstack:4566/000000000000/otterworks-webhook-dlq
+      DELIVERY_MAX_ATTEMPTS: ${WEBHOOK_DELIVERY_MAX_ATTEMPTS:-4}
+      DELIVERY_BACKOFF_BASE_MS: ${WEBHOOK_DELIVERY_BACKOFF_BASE_MS:-1000}
+      DELIVERY_BACKOFF_MAX_SECONDS: ${WEBHOOK_DELIVERY_BACKOFF_MAX_SECONDS:-10}
+      DISPATCHER_POLL_MS: 500
+      # Local demo only: lets subscriptions target the in-compose sink / localhost.
+      ALLOW_PRIVATE_TARGETS: "true"
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O- http://127.0.0.1:8092/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
+    tmpfs:
+    - /tmp
+  webhook-sink:
+    # Headless demo receiver: verifies HMAC signatures and exposes what it got as JSON.
+    build:
+      context: ./services/webhook-service
+      dockerfile: Dockerfile
+      target: sink
+    container_name: otterworks-webhook-sink
+    ports:
+    - 8093:8093
+    environment:
+      PORT: "8093"
+      SINK_SECRET: ${WEBHOOK_SINK_SECRET:-whsec_localdemo_0123456789abcdef0123456789abcdef}
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O- http://127.0.0.1:8093/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    security_opt:
+    - no-new-privileges:true
+    read_only: true
   report-service:
     build:
       context: ./services/report-service

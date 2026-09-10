@@ -50,6 +50,22 @@ awslocal sns subscribe \
   --protocol sqs \
   --notification-endpoint "$SEARCH_QUEUE_ARN"
 
+# Webhook service: source queue fed by the events topic, plus a dead-letter queue
+# that receives deliveries which exhausted their retries.
+awslocal sqs create-queue --queue-name otterworks-webhook-events \
+  --attributes VisibilityTimeout=30
+awslocal sqs create-queue --queue-name otterworks-webhook-dlq \
+  --attributes MessageRetentionPeriod=1209600
+WEBHOOK_QUEUE_ARN=$(awslocal sqs get-queue-attributes \
+  --queue-url http://localhost:4566/000000000000/otterworks-webhook-events \
+  --attribute-names QueueArn \
+  --query 'Attributes.QueueArn' \
+  --output text)
+awslocal sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:000000000000:otterworks-events \
+  --protocol sqs \
+  --notification-endpoint "$WEBHOOK_QUEUE_ARN"
+
 # DynamoDB Tables
 table_exists otterworks-file-metadata || awslocal dynamodb create-table \
   --table-name otterworks-file-metadata \

@@ -163,6 +163,7 @@ build-admin-dash: ## Build Admin Dashboard
 
 test: ## Run tests for all services
 	@echo "=== API Gateway (Go) ===" && cd services/api-gateway && go test ./...
+	@echo "=== Webhook Service (Go) ===" && cd services/webhook-service && go test ./...
 	@echo "=== Auth Service (Java) ===" && cd services/auth-service && ./gradlew test
 	@echo "=== File Service (Rust) ===" && cd services/file-service && cargo test
 	@echo "=== Document Service (Python) ===" && cd services/document-service && pytest
@@ -192,6 +193,7 @@ test-api-flows-collect: ## Collect black-box API flow tests without running them
 
 lint: ## Lint all services
 	@echo "=== API Gateway ===" && cd services/api-gateway && golangci-lint run
+	@echo "=== Webhook Service ===" && cd services/webhook-service && golangci-lint run && scripts/headless-guard.sh
 	@echo "=== Auth Service ===" && cd services/auth-service && ./gradlew spotlessCheck
 	@echo "=== File Service ===" && cd services/file-service && cargo clippy -- -D warnings
 	@echo "=== Document Service ===" && cd services/document-service && ruff check .
@@ -379,6 +381,17 @@ deps-transcript-baseline: ## Prove the recorded before-state still reproduces (M
 deps-record: ## Record the transcripts as the reference evidence (REASON="..." required)
 	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make deps-record REASON="baseline on commons-text 1.9"' >&2; exit 2)
 	$(DEPS) transcript --record --reason "$(REASON)" $(if $(MODULE),--module $(MODULE),) $(if $(ALLOW_RERECORD),--allow-rerecord,)
+
+# --- Webhook service (headless, API-only) ---
+
+test-webhook: ## Run webhook-service unit tests + headless guard
+	cd services/webhook-service && go vet ./... && go test -race ./... && scripts/headless-guard.sh
+
+smoke-webhook: ## JSON-only smoke test against a running webhook-service (BASE_URL, AUTH_HEADER)
+	services/webhook-service/scripts/smoke-json-only.sh
+
+e2e-webhook: ## Full localhost demo: gateway -> webhook-service -> SNS/SQS -> signed sink deliveries, retries, DLQ, replay
+	services/webhook-service/scripts/e2e-compose.sh
 
 test-report: ## Run report-service tests only
 	cd services/report-service && mvn test

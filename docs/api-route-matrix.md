@@ -15,6 +15,7 @@ This matrix captures the primary API endpoints used to design and expand the bla
 | `/api/v1/analytics` | Analytics service | Event ingestion and aggregate metrics. |
 | `/api/v1/admin` | Admin service | User, quota, feature, announcement, audit-log, metrics, health admin APIs. |
 | `/api/v1/audit` | Audit service | Audit events, history, reports, export, archive. |
+| `/api/v1/webhooks` | Webhook service | Headless (JSON-only): outbound webhook subscriptions CRUD, HMAC-signed delivery log, dead letters, replay, stats. |
 
 ## Critical user-flow routes
 
@@ -30,6 +31,7 @@ This matrix captures the primary API endpoints used to design and expand the bla
 | Search/discovery | `GET /api/v1/search`, `GET /api/v1/search/suggest`, `POST /api/v1/search/advanced`, `POST /api/v1/search/index/document`, `POST /api/v1/search/index/file`, `DELETE /api/v1/search/index/{type}/{id}`, `POST /api/v1/search/reindex` | Planned next API flow suite. |
 | Collaboration | `GET /api/v1/collab/documents`, `GET /api/v1/collab/documents/{id}/presence`, Socket.IO connection to collab service | Planned WebSocket/API suite. |
 | Notifications/preferences | `GET /api/v1/notifications`, notification lifecycle routes, `/api/v1/preferences` | Gateway prefix gap: preferences are not currently in `ServiceRoutes`. |
+| Outbound webhooks | `POST/GET /api/v1/webhooks/subscriptions`, `GET/PUT/PATCH/DELETE /api/v1/webhooks/subscriptions/{id}`, `POST .../{id}/rotate-secret`, `POST .../{id}/test`, `GET /api/v1/webhooks/deliveries[/{id}[/attempts]]`, `POST /api/v1/webhooks/deliveries/{id}/replay`, `GET /api/v1/webhooks/dead-letters`, `GET /api/v1/webhooks/stats` | `services/webhook-service/scripts/smoke-json-only.sh` (JSON-only smoke) + `scripts/e2e-compose.sh` (SNS -> SQS -> signed delivery, retry, DLQ, replay). |
 | Audit | `POST /api/v1/audit/events`, `GET /api/v1/audit/events`, `GET /api/v1/audit/events/{id}`, `GET /api/v1/audit/resources/{resourceId}/history`, `GET /api/v1/audit/export`, `POST /api/v1/audit/archive` | Planned side-effect and direct API suite. |
 | Reports | `POST /api/v1/reports`, `GET /api/v1/reports`, `GET /api/v1/reports/{id}`, `GET /api/v1/reports/{id}/download`, `DELETE /api/v1/reports/{id}` | Gateway prefix gap: report service is configured in Compose but not in `ServiceRoutes`. |
 

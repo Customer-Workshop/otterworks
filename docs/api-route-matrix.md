@@ -15,6 +15,7 @@ This matrix captures the primary API endpoints used to design and expand the bla
 | `/api/v1/analytics` | Analytics service | Event ingestion and aggregate metrics. |
 | `/api/v1/admin` | Admin service | User, quota, feature, announcement, audit-log, metrics, health admin APIs. |
 | `/api/v1/audit` | Audit service | Audit events, history, reports, export, archive. |
+| `/api/v1/webhooks` | Webhook service | Partner webhook subscriptions and delivery history. |
 
 ## Critical user-flow routes
 

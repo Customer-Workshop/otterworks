@@ -123,15 +123,23 @@ OtterWorks is a collaborative file storage and document editing platform (functi
 - **Port**: 8090
 - **Key Patterns**: Minimal API, DynamoDB document model, S3 lifecycle policies, Serilog structured logging, MediatR CQRS, xUnit testing
 
+### 11. Webhook Service (`services/webhook-service/`)
+- **Language**: Go 1.22
+- **Framework**: Chi
+- **Database**: PostgreSQL (`webhook` schema), SQS/SNS event bus
+- **Purpose**: Headless partner webhook subscriptions, signed outbound deliveries, retry history, and event-driven fan-out.
+- **Port**: 8092
+- **Key Patterns**: JSON-only API, SQS long polling, HMAC-SHA256 signatures, exponential retry worker. The demo sink runs on port 8093.
+
 ## Frontend Applications
 
-### 11. Web Frontend (`frontend/web-app/`)
+### 12. Web Frontend (`frontend/web-app/`)
 - **Language**: TypeScript 5.4
 - **Framework**: React 18 + Next.js 14
 - **Purpose**: Main user-facing SPA. File browser, document editor (TipTap/ProseMirror), sharing dialogs, search, notifications panel.
 - **Key Patterns**: App Router, Server Components, TanStack Query, Zustand state management, Tailwind CSS, Playwright E2E tests
 
-### 12. Admin Dashboard (`frontend/admin-dashboard/`)
+### 13. Admin Dashboard (`frontend/admin-dashboard/`)
 - **Language**: TypeScript 5.4
 - **Framework**: Angular 17
 - **Purpose**: Admin-facing dashboard. User management, system metrics, audit log viewer, feature flags.

@@ -178,7 +178,8 @@ BASE_URL="$GATEWAY" AUTH_HEADER="Authorization: Bearer $TOKEN" SINK_URL="http://
 
 # ---- 11. headless: image contains a single binary and nothing UI-shaped -------------
 step "inspecting the webhook-service image for static/template content"
-FILES="$(docker run --rm --entrypoint sh "$(docker compose -f docker-compose.infra.yml -f docker-compose.yml images -q webhook-service | head -n1)" -c 'find /app -type f')"
+IMAGE="$(docker compose -f docker-compose.infra.yml -f docker-compose.yml config --images | grep -E '(^|/)[^/]*webhook-service(:[^/]*)?$' | head -n1)"
+FILES="$(docker run --rm --entrypoint sh "$IMAGE" -c 'find /app -type f')"
 [[ "$FILES" == "/app/server" ]] || die "unexpected files in image: $FILES"
 ok "image ships exactly /app/server"
 

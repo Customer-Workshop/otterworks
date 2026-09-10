@@ -35,10 +35,10 @@ func main() {
 	if cfg.SQSEnabled {
 		go consumer.New(sqsClient, cfg.SQSQueueURL, db, logger, cfg.SQSWaitTimeSeconds, cfg.DeliveryMaxAttempts).Run(runCtx)
 	}
-	go delivery.NewWorker(db, &http.Client{Timeout: cfg.DeliveryTimeout}, cfg.WorkerPollInterval, cfg.DeliveryBaseBackoff, logger).Run(runCtx)
+	go delivery.NewWorker(db, &http.Client{Timeout: cfg.DeliveryTimeout}, cfg.WorkerPollInterval, cfg.DeliveryBaseBackoff, logger, cfg.AllowPrivateTargets).Run(runCtx)
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      httpapi.NewRouter(db, logger, cfg.DeliveryMaxAttempts),
+		Handler:      httpapi.NewRouter(db, logger, httpapi.Options{MaxAttempts: cfg.DeliveryMaxAttempts, AllowPrivateTargets: cfg.AllowPrivateTargets}),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,

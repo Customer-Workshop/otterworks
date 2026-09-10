@@ -66,6 +66,8 @@ services:
       POSTGRES_DB: otterworks
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: webhook-service
+      # The local demo sink is a private compose-network target.
+      ALLOW_PRIVATE_TARGETS: 'true'
       SQS_ENABLED: 'true'
       SQS_QUEUE_URL: http://localstack:4566/000000000000/webhook-service-events
     depends_on:

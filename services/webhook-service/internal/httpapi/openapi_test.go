@@ -25,7 +25,7 @@ func TestOpenAPIIsReadable(t *testing.T) {
 	if err := yaml.Unmarshal(data, &document); err != nil {
 		t.Fatal(err)
 	}
-	router := NewRouter(store.NewMemoryStore(), zerolog.Nop())
+	router := NewRouter(store.NewMemoryStore(), zerolog.Nop(), Options{AllowPrivateTargets: true})
 	routes := make(map[string]struct{})
 	if err := chi.Walk(router, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		routes[method+" "+route] = struct{}{}

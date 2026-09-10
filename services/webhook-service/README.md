@@ -19,6 +19,9 @@ domain events from SQS, and retries signed JSON deliveries. It listens on port
 | `DELIVERY_BASE_BACKOFF` | `2s` | Exponential retry base |
 | `DELIVERY_TIMEOUT` | `5s` | Partner request timeout |
 | `WORKER_POLL_INTERVAL` | `1s` | Delivery worker cadence |
+| `ALLOW_PRIVATE_TARGETS` | `false` | Allow private or local target URLs (enable only for trusted local networks) |
+
+Keep `ALLOW_PRIVATE_TARGETS=false` in normal deployments; local Compose enables it so the demo can target the in-network sink.
 
 Events map `file_shared` → `file.shared`, `document_updated` → `document.updated`,
 and `comment_added` → `comment.added`. Unknown events are acknowledged and ignored.

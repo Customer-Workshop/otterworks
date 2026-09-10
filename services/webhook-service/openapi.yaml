@@ -3,7 +3,10 @@ info:
   title: OtterWorks Webhook Service
   version: 0.1.0
   description: |
-    Headless outbound webhook delivery API. Every response is JSON. Deliveries use
+    Headless outbound webhook delivery API. Every response is JSON. `target_url` must
+    use HTTP or HTTPS and, unless `ALLOW_PRIVATE_TARGETS=true`, must not resolve to
+    localhost, loopback, private, link-local, unspecified, or multicast addresses.
+    Deliveries use
     POST JSON with X-OtterWorks-Event, X-OtterWorks-Delivery-Id,
     X-OtterWorks-Timestamp (Unix seconds), and X-OtterWorks-Signature
     (sha256=HMAC-SHA256(secret, timestamp + "." + body)).

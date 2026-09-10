@@ -50,6 +50,7 @@ type Delivery struct {
 	AttemptsLog      []DeliveryAttempt `json:"attempts_log"`
 	TargetURL        string            `json:"-"`
 	Secret           string            `json:"-"`
+	SourceMessageID  *string           `json:"-"`
 }
 
 type Store interface {
@@ -157,6 +158,13 @@ func (s *MemoryStore) EnqueueDelivery(_ context.Context, d *Delivery) error {
 	}
 	if sub, ok := s.subscriptions[d.SubscriptionID]; ok {
 		d.TargetURL, d.Secret = sub.TargetURL, sub.Secret
+	}
+	if d.SourceMessageID != nil {
+		for _, existing := range s.deliveries {
+			if existing.SubscriptionID == d.SubscriptionID && existing.SourceMessageID != nil && *existing.SourceMessageID == *d.SourceMessageID {
+				return nil
+			}
+		}
 	}
 	s.deliveries[d.ID] = *d
 	return nil

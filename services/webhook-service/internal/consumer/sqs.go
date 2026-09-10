@@ -42,35 +42,56 @@ func (c *Consumer) Run(ctx context.Context) {
 				return
 			case <-time.After(time.Second):
 			}
+			continue
 		}
 		for _, message := range output.Messages {
 			if message.Body == nil || *message.Body == "" {
 				c.delete(ctx, message.ReceiptHandle)
 				continue
 			}
-			event, err := ParseMessage(*message.Body)
+			messageID := ""
+			if message.MessageId != nil {
+				messageID = *message.MessageId
+			}
+			event, err := ParseMessageWithID(*message.Body, messageID)
 			if err != nil {
 				c.logger.Warn().Err(err).Msg("could not parse event")
-			} else if event != nil {
-				c.enqueue(ctx, event)
+				c.delete(ctx, message.ReceiptHandle)
+				continue
+			}
+			if event == nil {
+				c.delete(ctx, message.ReceiptHandle)
+				continue
+			}
+			if err := c.enqueue(ctx, event); err != nil {
+				c.logger.Error().Err(err).Msg("enqueue webhook delivery")
+				continue
 			}
 			c.delete(ctx, message.ReceiptHandle)
 		}
 	}
 }
-func (c *Consumer) enqueue(ctx context.Context, event *ParsedEvent) {
+func (c *Consumer) enqueue(ctx context.Context, event *ParsedEvent) error {
 	subs, err := c.store.ListActiveSubscriptionsForEvent(ctx, event.WebhookType)
 	if err != nil {
 		c.logger.Error().Err(err).Msg("list webhook subscriptions")
-		return
+		return err
 	}
-	payload, _ := json.Marshal(map[string]any{"event": event.WebhookType, "source_event_type": event.BusType, "occurred_at": event.OccurredAt, "data": event.Data})
+	payload, err := json.Marshal(map[string]any{"event": event.WebhookType, "source_event_type": event.BusType, "occurred_at": event.OccurredAt, "data": event.Data})
+	if err != nil {
+		return err
+	}
 	for _, sub := range subs {
 		now := time.Now().UTC()
-		if err := c.store.EnqueueDelivery(ctx, &store.Delivery{ID: uuid.New(), SubscriptionID: sub.ID, EventType: event.WebhookType, Payload: payload, Status: "pending", MaxAttempts: c.maxAttempts, NextAttemptAt: now, CreatedAt: now, UpdatedAt: now}); err != nil {
-			c.logger.Error().Err(err).Msg("enqueue webhook delivery")
+		var sourceMessageID *string
+		if event.MessageID != "" {
+			sourceMessageID = &event.MessageID
+		}
+		if err := c.store.EnqueueDelivery(ctx, &store.Delivery{ID: uuid.New(), SubscriptionID: sub.ID, EventType: event.WebhookType, Payload: payload, Status: "pending", MaxAttempts: c.maxAttempts, NextAttemptAt: now, CreatedAt: now, UpdatedAt: now, SourceMessageID: sourceMessageID}); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 func (c *Consumer) delete(ctx context.Context, receipt *string) {
 	if receipt == nil {

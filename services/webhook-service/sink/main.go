@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -30,8 +31,14 @@ type sink struct {
 }
 
 func (s *sink) record(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	body, err := readBody(r)
 	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			jsonResponse(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "body too large"})
+			return
+		}
 		jsonResponse(w, 400, map[string]string{"error": "invalid body"})
 		return
 	}
@@ -72,6 +79,7 @@ func (s *sink) record(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonResponse(w, 200, map[string]string{"status": "received"})
 }
+
 func (s *sink) received(w http.ResponseWriter, _ *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

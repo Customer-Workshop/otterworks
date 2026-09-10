@@ -11,16 +11,25 @@ type ParsedEvent struct {
 	WebhookType string
 	OccurredAt  time.Time
 	Data        any
+	MessageID   string
 }
 
 var eventMapping = map[string]string{"file_shared": "file.shared", "document_updated": "document.updated", "comment_added": "comment.added"}
 
 func ParseMessage(body string) (*ParsedEvent, error) {
+	return ParseMessageWithID(body, "")
+}
+
+func ParseMessageWithID(body, fallbackMessageID string) (*ParsedEvent, error) {
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(body), &raw); err != nil {
 		return nil, fmt.Errorf("invalid message: %w", err)
 	}
 	inner := []byte(body)
+	messageID := fallbackMessageID
+	if wrapperID, ok := raw["MessageId"].(string); ok && wrapperID != "" {
+		messageID = wrapperID
+	}
 	if message, ok := raw["Message"].(string); ok && message != "" {
 		inner = []byte(message)
 	}
@@ -49,7 +58,7 @@ func ParseMessage(body string) (*ParsedEvent, error) {
 			}
 		}
 	}
-	return &ParsedEvent{BusType: busType, WebhookType: webhookType, OccurredAt: occurred, Data: data}, nil
+	return &ParsedEvent{BusType: busType, WebhookType: webhookType, OccurredAt: occurred, Data: data, MessageID: messageID}, nil
 }
 
 func stringValue(event map[string]any, keys ...string) string {

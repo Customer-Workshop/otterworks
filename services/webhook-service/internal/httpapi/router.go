@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/store"
+	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/targets"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -20,17 +20,27 @@ import (
 var allowedEvents = map[string]bool{"file.shared": true, "document.updated": true, "comment.added": true, "webhook.ping": true}
 
 type API struct {
-	store       store.Store
-	logger      zerolog.Logger
-	maxAttempts int
+	store               store.Store
+	logger              zerolog.Logger
+	maxAttempts         int
+	allowPrivateTargets bool
 }
 
-func NewRouter(s store.Store, logger zerolog.Logger, maxAttempts ...int) chi.Router {
+type Options struct {
+	MaxAttempts         int
+	AllowPrivateTargets bool
+}
+
+func NewRouter(s store.Store, logger zerolog.Logger, options ...Options) chi.Router {
 	attempts := 5
-	if len(maxAttempts) > 0 && maxAttempts[0] > 0 {
-		attempts = maxAttempts[0]
+	allowPrivateTargets := false
+	if len(options) > 0 {
+		if options[0].MaxAttempts > 0 {
+			attempts = options[0].MaxAttempts
+		}
+		allowPrivateTargets = options[0].AllowPrivateTargets
 	}
-	api := &API{store: s, logger: logger, maxAttempts: attempts}
+	api := &API{store: s, logger: logger, maxAttempts: attempts, allowPrivateTargets: allowPrivateTargets}
 	r := chi.NewRouter()
 	r.Use(headless)
 	r.Use(requestLogger(logger))
@@ -126,10 +136,9 @@ type subscriptionRequest struct {
 	Description string   `json:"description"`
 }
 
-func validateSubscription(req subscriptionRequest) error {
-	parsed, err := url.Parse(req.TargetURL)
-	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return fmt.Errorf("target_url must be a valid http or https URL")
+func validateSubscription(req subscriptionRequest, allowPrivate bool) error {
+	if err := targets.Validate(req.TargetURL, allowPrivate); err != nil {
+		return err
 	}
 	if len(req.EventTypes) == 0 {
 		return fmt.Errorf("event_types must not be empty")
@@ -147,7 +156,7 @@ func (a *API) createSubscription(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, map[string]string{"error": "invalid JSON"})
 		return
 	}
-	if err := validateSubscription(req); err != nil {
+	if err := validateSubscription(req, a.allowPrivateTargets); err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}

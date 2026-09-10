@@ -13,7 +13,7 @@ import (
 )
 
 func TestHeadlessRoutes(t *testing.T) {
-	router := NewRouter(store.NewMemoryStore(), zerolog.Nop())
+	router := NewRouter(store.NewMemoryStore(), zerolog.Nop(), Options{AllowPrivateTargets: true})
 	if err := chi.Walk(router, func(method string, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		path = strings.ReplaceAll(path, "{id}", "00000000-0000-0000-0000-000000000001")
 		request := httptest.NewRequest(method, path, nil)

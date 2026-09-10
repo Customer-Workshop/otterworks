@@ -38,3 +38,17 @@ func TestFailModeRecordsAndReturns500(t *testing.T) {
 		t.Fatalf("items=%d", len(s.items))
 	}
 }
+
+func TestBodyLimit(t *testing.T) {
+	s := &sink{}
+	server := httptest.NewServer(http.HandlerFunc(s.record))
+	defer server.Close()
+	response, err := http.Post(server.URL, "application/json", strings.NewReader(strings.Repeat("x", 1<<20+1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status=%d", response.StatusCode)
+	}
+}

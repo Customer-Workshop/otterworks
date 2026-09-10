@@ -33,7 +33,7 @@ func TestWorkerRetriesAndDelivers(t *testing.T) {
 	if err := memory.EnqueueDelivery(context.Background(), &delivery); err != nil {
 		t.Fatal(err)
 	}
-	worker := NewWorker(memory, server.Client(), time.Second, 2*time.Second, zerolog.Nop())
+	worker := NewWorker(memory, server.Client(), time.Second, 2*time.Second, zerolog.Nop(), true)
 	for i := 0; i < 3; i++ {
 		items, err := memory.ListDeliveries(context.Background(), "owner", nil, 10)
 		if err != nil {
@@ -63,7 +63,7 @@ func TestWorkerDeadLettersAtMaxAttempts(t *testing.T) {
 	_ = memory.CreateSubscription(context.Background(), &sub)
 	now := time.Now().UTC()
 	_ = memory.EnqueueDelivery(context.Background(), &store.Delivery{ID: uuid.New(), SubscriptionID: sub.ID, EventType: "webhook.ping", Payload: []byte(`{}`), MaxAttempts: 5, NextAttemptAt: now, CreatedAt: now, UpdatedAt: now})
-	worker := NewWorker(memory, server.Client(), time.Second, 2*time.Second, zerolog.Nop())
+	worker := NewWorker(memory, server.Client(), time.Second, 2*time.Second, zerolog.Nop(), true)
 	for i := 0; i < 5; i++ {
 		items, _ := memory.ListDeliveries(context.Background(), "owner", nil, 10)
 		if err := worker.deliver(context.Background(), items[0]); err != nil {

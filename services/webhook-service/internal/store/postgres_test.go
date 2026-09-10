@@ -56,18 +56,29 @@ func TestPostgresStoreLifecycle(t *testing.T) {
 	}
 
 	now := time.Now().UTC()
+	sourceMessageID := "source-" + uuid.NewString()
 	delivery := &Delivery{
-		ID:             uuid.New(),
-		SubscriptionID: subscription.ID,
-		EventType:      "webhook.ping",
-		Payload:        []byte(`{"message":"ping"}`),
-		MaxAttempts:    5,
-		NextAttemptAt:  now,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:              uuid.New(),
+		SubscriptionID:  subscription.ID,
+		EventType:       "webhook.ping",
+		Payload:         []byte(`{"message":"ping"}`),
+		MaxAttempts:     5,
+		NextAttemptAt:   now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		SourceMessageID: &sourceMessageID,
 	}
 	if err := first.EnqueueDelivery(ctx, delivery); err != nil {
 		t.Fatal(err)
+	}
+	duplicate := *delivery
+	duplicate.ID = uuid.New()
+	if err := first.EnqueueDelivery(ctx, &duplicate); err != nil {
+		t.Fatal(err)
+	}
+	allDeliveries, err := first.ListDeliveries(ctx, owner, &subscription.ID, 10)
+	if err != nil || len(allDeliveries) != 1 {
+		t.Fatalf("deduplicated deliveries=%+v err=%v", allDeliveries, err)
 	}
 	claimed, err := first.ClaimDueDeliveries(ctx, 10)
 	if err != nil || len(claimed) != 1 {

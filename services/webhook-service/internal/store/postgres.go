@@ -124,11 +124,11 @@ func (s *PostgresStore) EnqueueDelivery(ctx context.Context, d *Delivery) error 
 	if d.MaxAttempts <= 0 {
 		d.MaxAttempts = 5
 	}
-	_, err := s.pool.Exec(ctx, `INSERT INTO webhook.deliveries (id,subscription_id,event_type,payload,status,attempts,max_attempts,next_attempt_at,created_at,updated_at) VALUES ($1,$2,$3,$4,'pending',0,$5,$6,$7,$7)`, d.ID, d.SubscriptionID, d.EventType, d.Payload, d.MaxAttempts, d.NextAttemptAt, d.CreatedAt)
+	_, err := s.pool.Exec(ctx, `INSERT INTO webhook.deliveries (id,subscription_id,event_type,payload,status,attempts,max_attempts,next_attempt_at,created_at,updated_at,source_message_id) VALUES ($1,$2,$3,$4,'pending',0,$5,$6,$7,$7,$8) ON CONFLICT (subscription_id, source_message_id) WHERE source_message_id IS NOT NULL DO NOTHING`, d.ID, d.SubscriptionID, d.EventType, d.Payload, d.MaxAttempts, d.NextAttemptAt, d.CreatedAt, d.SourceMessageID)
 	return err
 }
 func (s *PostgresStore) ListDeliveries(ctx context.Context, owner string, subID *uuid.UUID, limit int) ([]Delivery, error) {
-	query := `SELECT d.id,d.subscription_id,d.event_type,d.payload,d.status,d.attempts,d.max_attempts,d.last_response_code,d.last_error,d.next_attempt_at,d.created_at,d.updated_at,d.delivered_at,s.target_url,s.secret FROM webhook.deliveries d JOIN webhook.subscriptions s ON s.id=d.subscription_id WHERE s.owner_id=$1`
+	query := `SELECT d.id,d.subscription_id,d.event_type,d.payload,d.status,d.attempts,d.max_attempts,d.last_response_code,d.last_error,d.next_attempt_at,d.created_at,d.updated_at,d.delivered_at,s.target_url,s.secret,d.source_message_id FROM webhook.deliveries d JOIN webhook.subscriptions s ON s.id=d.subscription_id WHERE s.owner_id=$1`
 	args := []any{owner}
 	if subID != nil {
 		query += " AND d.subscription_id=$2"
@@ -144,7 +144,7 @@ func (s *PostgresStore) ListDeliveries(ctx context.Context, owner string, subID 
 	var out []Delivery
 	for rows.Next() {
 		var d Delivery
-		if err := rows.Scan(&d.ID, &d.SubscriptionID, &d.EventType, &d.Payload, &d.Status, &d.Attempts, &d.MaxAttempts, &d.LastResponseCode, &d.LastError, &d.NextAttemptAt, &d.CreatedAt, &d.UpdatedAt, &d.DeliveredAt, &d.TargetURL, &d.Secret); err != nil {
+		if err := rows.Scan(&d.ID, &d.SubscriptionID, &d.EventType, &d.Payload, &d.Status, &d.Attempts, &d.MaxAttempts, &d.LastResponseCode, &d.LastError, &d.NextAttemptAt, &d.CreatedAt, &d.UpdatedAt, &d.DeliveredAt, &d.TargetURL, &d.Secret, &d.SourceMessageID); err != nil {
 			return nil, err
 		}
 		d.AttemptsLog, err = s.attempts(ctx, d.ID)
@@ -203,7 +203,7 @@ func (s *PostgresStore) ClaimDueDeliveries(ctx context.Context, limit int) ([]De
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	deliveryRows, err := s.pool.Query(ctx, `SELECT d.id,d.subscription_id,d.event_type,d.payload,d.status,d.attempts,d.max_attempts,d.last_response_code,d.last_error,d.next_attempt_at,d.created_at,d.updated_at,d.delivered_at,s.target_url,s.secret
+	deliveryRows, err := s.pool.Query(ctx, `SELECT d.id,d.subscription_id,d.event_type,d.payload,d.status,d.attempts,d.max_attempts,d.last_response_code,d.last_error,d.next_attempt_at,d.created_at,d.updated_at,d.delivered_at,s.target_url,s.secret,d.source_message_id
 		FROM webhook.deliveries d
 		JOIN webhook.subscriptions s ON s.id=d.subscription_id
 		WHERE d.id=ANY($1)`, ids)
@@ -214,7 +214,7 @@ func (s *PostgresStore) ClaimDueDeliveries(ctx context.Context, limit int) ([]De
 	out := make([]Delivery, 0, len(ids))
 	for deliveryRows.Next() {
 		var d Delivery
-		if err := deliveryRows.Scan(&d.ID, &d.SubscriptionID, &d.EventType, &d.Payload, &d.Status, &d.Attempts, &d.MaxAttempts, &d.LastResponseCode, &d.LastError, &d.NextAttemptAt, &d.CreatedAt, &d.UpdatedAt, &d.DeliveredAt, &d.TargetURL, &d.Secret); err != nil {
+		if err := deliveryRows.Scan(&d.ID, &d.SubscriptionID, &d.EventType, &d.Payload, &d.Status, &d.Attempts, &d.MaxAttempts, &d.LastResponseCode, &d.LastError, &d.NextAttemptAt, &d.CreatedAt, &d.UpdatedAt, &d.DeliveredAt, &d.TargetURL, &d.Secret, &d.SourceMessageID); err != nil {
 			return nil, err
 		}
 		out = append(out, d)

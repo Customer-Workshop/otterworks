@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/store"
+	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/targets"
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/pkg/signature"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -25,11 +27,57 @@ type Worker struct {
 	now          func() time.Time
 }
 
-func NewWorker(s store.Store, client *http.Client, pollInterval, baseBackoff time.Duration, logger zerolog.Logger) *Worker {
+func NewWorker(s store.Store, client *http.Client, pollInterval, baseBackoff time.Duration, logger zerolog.Logger, allowPrivate ...bool) *Worker {
+	allowPrivateTargets := len(allowPrivate) > 0 && allowPrivate[0]
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Second}
 	}
+	client = secureClient(client, allowPrivateTargets)
 	return &Worker{store: s, client: client, pollInterval: pollInterval, baseBackoff: baseBackoff, logger: logger, now: func() time.Time { return time.Now().UTC() }}
+}
+
+func secureClient(client *http.Client, allowPrivate bool) *http.Client {
+	secured := *client
+	secured.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	if allowPrivate {
+		return &secured
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if base, ok := client.Transport.(*http.Transport); ok {
+		transport = base.Clone()
+	}
+	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return nil, err
+		}
+		lookupCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		ips, err := net.DefaultResolver.LookupIPAddr(lookupCtx, host)
+		if err != nil {
+			return nil, err
+		}
+		var lastErr error
+		for _, resolved := range ips {
+			if targets.BlockedIP(resolved.IP) {
+				lastErr = fmt.Errorf("target resolved to private or local address")
+				continue
+			}
+			conn, dialErr := (&net.Dialer{}).DialContext(ctx, network, net.JoinHostPort(resolved.IP.String(), port))
+			if dialErr == nil {
+				return conn, nil
+			}
+			lastErr = dialErr
+		}
+		if lastErr == nil {
+			lastErr = fmt.Errorf("target host resolved to no addresses")
+		}
+		return nil, lastErr
+	}
+	secured.Transport = transport
+	return &secured
 }
 func (w *Worker) Run(ctx context.Context) {
 	ticker := time.NewTicker(w.pollInterval)

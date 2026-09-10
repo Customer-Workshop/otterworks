@@ -44,3 +44,26 @@ func TestMemoryStoreClaimLease(t *testing.T) {
 		t.Fatalf("claimed again=%+v err=%v", claimedAgain, err)
 	}
 }
+
+func TestMemoryStoreDeduplicatesSourceMessage(t *testing.T) {
+	memory := NewMemoryStore()
+	now := time.Now().UTC()
+	subscription := &Subscription{ID: uuid.New(), OwnerID: "owner", TargetURL: "https://example.test/webhook", Secret: "secret", Active: true, CreatedAt: now, UpdatedAt: now}
+	if err := memory.CreateSubscription(context.Background(), subscription); err != nil {
+		t.Fatal(err)
+	}
+	sourceID := "message-1"
+	first := &Delivery{ID: uuid.New(), SubscriptionID: subscription.ID, EventType: "file.shared", Payload: []byte(`{}`), SourceMessageID: &sourceID, NextAttemptAt: now, CreatedAt: now, UpdatedAt: now}
+	second := *first
+	second.ID = uuid.New()
+	if err := memory.EnqueueDelivery(context.Background(), first); err != nil {
+		t.Fatal(err)
+	}
+	if err := memory.EnqueueDelivery(context.Background(), &second); err != nil {
+		t.Fatal(err)
+	}
+	items, err := memory.ListDeliveries(context.Background(), "owner", nil, 10)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("items=%+v err=%v", items, err)
+	}
+}

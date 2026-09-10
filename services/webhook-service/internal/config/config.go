@@ -21,6 +21,7 @@ type Config struct {
 	DeliveryTimeout     time.Duration
 	WorkerPollInterval  time.Duration
 	DeliveryClaimLease  time.Duration
+	AllowPrivateTargets bool
 	ShutdownTimeout     time.Duration
 }
 
@@ -45,6 +46,7 @@ func Load() Config {
 		DeliveryTimeout:     getduration("DELIVERY_TIMEOUT", 5*time.Second),
 		WorkerPollInterval:  getduration("WORKER_POLL_INTERVAL", time.Second),
 		DeliveryClaimLease:  getduration("DELIVERY_CLAIM_LEASE", time.Minute),
+		AllowPrivateTargets: getbool("ALLOW_PRIVATE_TARGETS", false),
 		ShutdownTimeout:     getduration("SHUTDOWN_TIMEOUT", 30*time.Second),
 	}
 }

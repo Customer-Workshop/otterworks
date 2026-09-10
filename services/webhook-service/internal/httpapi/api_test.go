@@ -13,7 +13,7 @@ import (
 )
 
 func TestSubscriptionAPI(t *testing.T) {
-	router := NewRouter(store.NewMemoryStore(), zerolog.Nop())
+	router := NewRouter(store.NewMemoryStore(), zerolog.Nop(), Options{AllowPrivateTargets: true})
 
 	response := serveAPI(router, http.MethodGet, "/api/v1/webhooks/subscriptions", "", "")
 	if response.Code != http.StatusUnauthorized {

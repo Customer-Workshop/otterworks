@@ -18,13 +18,13 @@ if find "$ROOT" -type f -name package.json -print -quit | grep -q .; then
 fi
 for file in "$ROOT"/go.mod "$ROOT"/go.sum "$ROOT"/sink/go.mod "$ROOT"/sink/go.sum; do
   [[ -f "$file" ]] || continue
-  grep -qiE 'react|vue|angular|svelte|next|nuxt|htmx|templ|gin-gonic/gin.*html' "$file" && fail "UI framework reference in $file"
+  grep -qiE '(^|/)(react|vue|angular|svelte|next|nuxt|htmx)(/|@|$)|a-h/templ|gin-gonic/gin' "$file" && fail "UI framework reference in $file"
 done
-if rg -l 'html/template' "$ROOT" --glob '*.go' | grep -q .; then
+if grep -rl --include='*.go' 'html/template' "$ROOT" | grep -q .; then
   fail "html/template import found"
 fi
 if [[ -n "${BASE_REF:-}" ]]; then
-  if git diff --name-only "$BASE_REF"...HEAD | rg '^frontend/' >/dev/null; then
+  if git diff --name-only "$BASE_REF"...HEAD | grep -E '^frontend/' >/dev/null; then
     fail "frontend path changed in headless proof diff"
   fi
 fi

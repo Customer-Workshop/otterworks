@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,9 +14,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type PostgresStore struct{ pool *pgxpool.Pool }
+type PostgresStore struct {
+	pool       *pgxpool.Pool
+	ClaimLease time.Duration
+}
 
-func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
+func NewPostgresStore(ctx context.Context, dsn string, lease ...time.Duration) (*PostgresStore, error) {
+	claimLease := time.Minute
+	if len(lease) > 0 && lease[0] > 0 {
+		claimLease = lease[0]
+	}
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
@@ -45,7 +52,7 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 		return nil, err
 	}
 	m.Close()
-	return &PostgresStore{pool: pool}, nil
+	return &PostgresStore{pool: pool, ClaimLease: claimLease}, nil
 }
 
 func migrationDSN(dsn string) string {
@@ -127,7 +134,8 @@ func (s *PostgresStore) ListDeliveries(ctx context.Context, owner string, subID 
 		query += " AND d.subscription_id=$2"
 		args = append(args, *subID)
 	}
-	query += fmt.Sprintf(" ORDER BY d.created_at DESC LIMIT %d", limit)
+	query += " ORDER BY d.created_at DESC LIMIT $" + strconv.Itoa(len(args)+1)
+	args = append(args, limit)
 	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -164,24 +172,68 @@ func (s *PostgresStore) attempts(ctx context.Context, id uuid.UUID) ([]DeliveryA
 	return out, rows.Err()
 }
 func (s *PostgresStore) ClaimDueDeliveries(ctx context.Context, limit int) ([]Delivery, error) {
-	rows, err := s.pool.Query(ctx, `SELECT d.id,d.subscription_id,d.event_type,d.payload,d.status,d.attempts,d.max_attempts,d.last_response_code,d.last_error,d.next_attempt_at,d.created_at,d.updated_at,d.delivered_at,s.target_url,s.secret FROM webhook.deliveries d JOIN webhook.subscriptions s ON s.id=d.subscription_id WHERE d.status='pending' AND d.next_attempt_at<=now() ORDER BY d.next_attempt_at FOR UPDATE OF d SKIP LOCKED LIMIT $1`, limit)
+	rows, err := s.pool.Query(ctx, `WITH due AS (
+		SELECT id
+		FROM webhook.deliveries
+		WHERE status='pending' AND next_attempt_at<=now()
+		ORDER BY next_attempt_at
+		LIMIT $1
+		FOR UPDATE SKIP LOCKED
+	)
+	UPDATE webhook.deliveries d
+	SET next_attempt_at=now()+$2::interval, updated_at=now()
+	FROM due
+	WHERE d.id=due.id
+	RETURNING d.id`, limit, s.ClaimLease.String())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []Delivery
+	var ids []uuid.UUID
 	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	deliveryRows, err := s.pool.Query(ctx, `SELECT d.id,d.subscription_id,d.event_type,d.payload,d.status,d.attempts,d.max_attempts,d.last_response_code,d.last_error,d.next_attempt_at,d.created_at,d.updated_at,d.delivered_at,s.target_url,s.secret
+		FROM webhook.deliveries d
+		JOIN webhook.subscriptions s ON s.id=d.subscription_id
+		WHERE d.id=ANY($1)`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer deliveryRows.Close()
+	out := make([]Delivery, 0, len(ids))
+	for deliveryRows.Next() {
 		var d Delivery
-		if err := rows.Scan(&d.ID, &d.SubscriptionID, &d.EventType, &d.Payload, &d.Status, &d.Attempts, &d.MaxAttempts, &d.LastResponseCode, &d.LastError, &d.NextAttemptAt, &d.CreatedAt, &d.UpdatedAt, &d.DeliveredAt, &d.TargetURL, &d.Secret); err != nil {
+		if err := deliveryRows.Scan(&d.ID, &d.SubscriptionID, &d.EventType, &d.Payload, &d.Status, &d.Attempts, &d.MaxAttempts, &d.LastResponseCode, &d.LastError, &d.NextAttemptAt, &d.CreatedAt, &d.UpdatedAt, &d.DeliveredAt, &d.TargetURL, &d.Secret); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
 	}
-	return out, rows.Err()
+	return out, deliveryRows.Err()
 }
 func (s *PostgresStore) RecordAttempt(ctx context.Context, a *DeliveryAttempt) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO webhook.delivery_attempts (id,delivery_id,attempt,response_code,error,duration_ms,attempted_at) VALUES ($1,$2,$3,$4,$5,$6,$7); UPDATE webhook.deliveries SET attempts=$3,last_response_code=$4,last_error=$5,updated_at=now() WHERE id=$2`, a.ID, a.DeliveryID, a.Attempt, a.ResponseCode, a.Error, a.DurationMS, a.AttemptedAt)
-	return err
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `INSERT INTO webhook.delivery_attempts (id,delivery_id,attempt,response_code,error,duration_ms,attempted_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`, a.ID, a.DeliveryID, a.Attempt, a.ResponseCode, a.Error, a.DurationMS, a.AttemptedAt); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE webhook.deliveries SET attempts=$2,last_response_code=$3,last_error=$4,updated_at=now() WHERE id=$1`, a.DeliveryID, a.Attempt, a.ResponseCode, a.Error); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 func (s *PostgresStore) MarkDelivered(ctx context.Context, id uuid.UUID, at time.Time) error {
 	_, err := s.pool.Exec(ctx, `UPDATE webhook.deliveries SET status='delivered',delivered_at=$2,updated_at=$2 WHERE id=$1`, id, at)

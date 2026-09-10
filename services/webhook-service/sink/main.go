@@ -117,7 +117,8 @@ func main() {
 		port = "8093"
 	}
 	log.Printf(`{"service":"webhook-sink","port":%q}`, port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	server := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

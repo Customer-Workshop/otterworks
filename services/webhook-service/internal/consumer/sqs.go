@@ -37,8 +37,11 @@ func (c *Consumer) Run(ctx context.Context) {
 		output, err := c.client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{QueueUrl: &c.queueURL, WaitTimeSeconds: c.wait, MaxNumberOfMessages: 10})
 		if err != nil {
 			c.logger.Error().Err(err).Msg("receive SQS messages")
-			time.Sleep(time.Second)
-			continue
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Second):
+			}
 		}
 		for _, message := range output.Messages {
 			if message.Body == nil || *message.Body == "" {

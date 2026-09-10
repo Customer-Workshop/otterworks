@@ -21,7 +21,7 @@ echo "logged in"
 echo "=== 2) register partner and create subscription ==="
 partner_payload=$(jq -n --arg email "$PARTNER_EMAIL" --arg password "$PASSWORD" '{email:$email,password:$password,displayName:"Webhook Partner"}')
 curl -sS -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/v1/auth/register" -H 'Content-Type: application/json' -d "$partner_payload" | grep -Eq '^(201|409)$'
-sub=$(curl -fsS -X POST "$GATEWAY/api/v1/webhooks/subscriptions" "${AUTH[@]}" -H 'X-User-ID: ignored' -H 'Content-Type: application/json' -d '{"target_url":"http://webhook-sink:8093/","event_types":["file.shared","document.updated","comment.added"]}')
+sub=$(curl -fsS -X POST "$GATEWAY/api/v1/webhooks/subscriptions" "${AUTH[@]}" -H 'Content-Type: application/json' -d '{"target_url":"http://webhook-sink:8093/","event_types":["file.shared","document.updated","comment.added"]}')
 SUB_ID=$(jq -r '.id' <<<"$sub"); SECRET=$(jq -r '.secret' <<<"$sub")
 echo "$sub" | jq '{id,secret,target_url,event_types}'
 

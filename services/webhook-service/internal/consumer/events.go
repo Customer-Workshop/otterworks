@@ -51,6 +51,3 @@ func ParseMessage(body string) (*ParsedEvent, error) {
 	}
 	return &ParsedEvent{BusType: busType, WebhookType: webhookType, OccurredAt: occurred, Data: data}, nil
 }
-
-// ParseEvent is an alias useful to callers that process an already-unwrapped body.
-func ParseEvent(body []byte) (*ParsedEvent, error) { return ParseMessage(string(body)) }

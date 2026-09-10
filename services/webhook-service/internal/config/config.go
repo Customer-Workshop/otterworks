@@ -20,6 +20,7 @@ type Config struct {
 	DeliveryBaseBackoff time.Duration
 	DeliveryTimeout     time.Duration
 	WorkerPollInterval  time.Duration
+	DeliveryClaimLease  time.Duration
 	ShutdownTimeout     time.Duration
 }
 
@@ -43,6 +44,7 @@ func Load() Config {
 		DeliveryBaseBackoff: getduration("DELIVERY_BASE_BACKOFF", 2*time.Second),
 		DeliveryTimeout:     getduration("DELIVERY_TIMEOUT", 5*time.Second),
 		WorkerPollInterval:  getduration("WORKER_POLL_INTERVAL", time.Second),
+		DeliveryClaimLease:  getduration("DELIVERY_CLAIM_LEASE", time.Minute),
 		ShutdownTimeout:     getduration("SHUTDOWN_TIMEOUT", 30*time.Second),
 	}
 }

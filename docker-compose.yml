@@ -592,3 +592,4 @@ networks:
 volumes:
   postgres_data: null
   localstack_data: null
+

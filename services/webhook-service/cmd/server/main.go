@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/config"
 	"github.com/Cognition-Partner-Workshops/otterworks/services/webhook-service/internal/consumer"
@@ -23,7 +24,7 @@ func main() {
 	cfg := config.Load()
 	logger := zerolog.New(os.Stdout).With().Timestamp().Str("service", "webhook-service").Logger()
 	ctx := context.Background()
-	db, err := store.NewPostgresStore(ctx, cfg.DatabaseURL)
+	db, err := store.NewPostgresStore(ctx, cfg.DatabaseURL, cfg.DeliveryClaimLease)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("initialize store")
 	}
@@ -35,7 +36,13 @@ func main() {
 		go consumer.New(sqsClient, cfg.SQSQueueURL, db, logger, cfg.SQSWaitTimeSeconds, cfg.DeliveryMaxAttempts).Run(runCtx)
 	}
 	go delivery.NewWorker(db, &http.Client{Timeout: cfg.DeliveryTimeout}, cfg.WorkerPollInterval, cfg.DeliveryBaseBackoff, logger).Run(runCtx)
-	server := &http.Server{Addr: ":" + cfg.Port, Handler: httpapi.NewRouter(db, logger, cfg.DeliveryMaxAttempts)}
+	server := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      httpapi.NewRouter(db, logger, cfg.DeliveryMaxAttempts),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 	go func() {
 		logger.Info().Str("port", cfg.Port).Msg("webhook service listening")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

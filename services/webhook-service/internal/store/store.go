@@ -73,10 +73,15 @@ type MemoryStore struct {
 	subscriptions map[uuid.UUID]Subscription
 	deliveries    map[uuid.UUID]Delivery
 	attempts      map[uuid.UUID][]DeliveryAttempt
+	ClaimLease    time.Duration
 }
 
-func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{subscriptions: make(map[uuid.UUID]Subscription), deliveries: make(map[uuid.UUID]Delivery), attempts: make(map[uuid.UUID][]DeliveryAttempt)}
+func NewMemoryStore(lease ...time.Duration) *MemoryStore {
+	claimLease := time.Minute
+	if len(lease) > 0 && lease[0] > 0 {
+		claimLease = lease[0]
+	}
+	return &MemoryStore{subscriptions: make(map[uuid.UUID]Subscription), deliveries: make(map[uuid.UUID]Delivery), attempts: make(map[uuid.UUID][]DeliveryAttempt), ClaimLease: claimLease}
 }
 func (s *MemoryStore) CreateSubscription(_ context.Context, sub *Subscription) error {
 	s.mu.Lock()
@@ -177,10 +182,15 @@ func (s *MemoryStore) ClaimDueDeliveries(_ context.Context, limit int) ([]Delive
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now()
+	lease := s.ClaimLease
+	if lease <= 0 {
+		lease = time.Minute
+	}
 	var out []Delivery
 	for id, d := range s.deliveries {
 		if d.Status == "pending" && !d.NextAttemptAt.After(now) {
-			d.Status = "pending"
+			d.NextAttemptAt = now.Add(lease)
+			d.UpdatedAt = now
 			s.deliveries[id] = d
 			out = append(out, d)
 			if len(out) >= limit {

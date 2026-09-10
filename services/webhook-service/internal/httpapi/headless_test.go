@@ -14,11 +14,6 @@ import (
 
 func TestHeadlessRoutes(t *testing.T) {
 	router := NewRouter(store.NewMemoryStore(), zerolog.Nop())
-	routes := []struct{ method, path string }{
-		{"GET", "/health"}, {"POST", "/api/v1/webhooks/subscriptions"}, {"GET", "/api/v1/webhooks/subscriptions"},
-		{"GET", "/api/v1/webhooks/subscriptions/{id}"}, {"DELETE", "/api/v1/webhooks/subscriptions/{id}"},
-		{"POST", "/api/v1/webhooks/subscriptions/{id}/test"}, {"GET", "/api/v1/webhooks/deliveries"},
-	}
 	if err := chi.Walk(router, func(method string, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		path = strings.ReplaceAll(path, "{id}", "00000000-0000-0000-0000-000000000001")
 		request := httptest.NewRequest(method, path, nil)
@@ -40,9 +35,6 @@ func TestHeadlessRoutes(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	for _, route := range routes {
-		_ = route
-	}
 	for _, accept := range []string{"/", "/nope"} {
 		req := httptest.NewRequest(http.MethodGet, accept, nil)
 		resp := httptest.NewRecorder()
@@ -50,12 +42,35 @@ func TestHeadlessRoutes(t *testing.T) {
 		if resp.Code != 404 {
 			t.Errorf("%s status=%d", accept, resp.Code)
 		}
+		assertHeadlessResponse(t, resp)
 	}
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	req.Header.Set("Accept", "text/html")
-	resp := httptest.NewRecorder()
-	router.ServeHTTP(resp, req)
-	if resp.Code != 406 {
-		t.Fatalf("Accept status=%d", resp.Code)
+	for _, test := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/api/v1/webhooks/subscriptions"},
+		{http.MethodGet, "/nope"},
+	} {
+		req := httptest.NewRequest(test.method, test.path, strings.NewReader(`{}`))
+		req.Header.Set("Accept", "text/html")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		if resp.Code != http.StatusNotAcceptable {
+			t.Errorf("%s %s status=%d", test.method, test.path, resp.Code)
+		}
+		assertHeadlessResponse(t, resp)
+	}
+}
+
+func assertHeadlessResponse(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+	if got := response.Header().Get("Content-Type"); !strings.HasPrefix(got, "application/json") {
+		t.Errorf("content-type=%q", got)
+	}
+	if response.Header().Get("Set-Cookie") != "" {
+		t.Error("response set a cookie")
+	}
+	if response.Body.Len() > 0 && !json.Valid(response.Body.Bytes()) {
+		t.Error("response body is not JSON")
 	}
 }

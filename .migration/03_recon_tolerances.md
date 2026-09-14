@@ -1,7 +1,7 @@
 # Reconciliation tolerance record
 
 **Version `tol-p1-v1` (2026-09-14).** Machine form: `03_recon_tolerances.json` (same version id).
-Recon mode: **LIVE** (source pinned by SCN or `SET TRANSACTION READ ONLY`, target = Lakebase batch
+Recon mode: **LIVE** (source pinned by `AS OF SCN` (D10-8 closed 2026-09-14), target = Lakebase batch
 branch or Delta staging). DEGRADED is not in effect; if D10-2 stays open, LIVE recon runs from the
 Devin VM path, not from Databricks serverless, which changes nothing in this record.
 
@@ -25,7 +25,7 @@ Devin VM path, not from Databricks serverless, which changes nothing in this rec
 | 14 | operational | Sequence / identity parity | target sequence `last_value` >= source `LAST_NUMBER` at the pin; `identity` named per table (`SEQ_CUSTOMER_MASTER`, `SEQ_ENTITY_ATTR_VALUE`, `SEQ_BILLING_AUDIT_LOG`, `SEQ_*_HIST`) | 5 sequence-backed tables | PROPOSED |
 | 15 | operational | Trigger side effects | `_HIST` rows produced by `trg_*_hist` compared as sets; `trg_sub_no_uncancel` and `trg_usage_events_check` verified by behavioural test in the unit PR, not by recon | affected tables | PROPOSED |
 | 16 | operational | Watermark | every operational mapping names a `watermark` column (`UPDATED_AT`/`CREATED_AT`/`LOGGED_AT`, or `ORA_ROWSCN` where none exists); a table with none is graded strictly | every operational table | FACT (playbook rule) |
-| 17 | both | Isolation | source `SET TRANSACTION READ ONLY` / `AS OF SCN <pin>`; target: Lakebase `REPEATABLE READ` snapshot; Delta: table version pin | every run | PROPOSED |
+| 17 | both | Isolation | source `AS OF SCN <pin>` (FLASHBACK ANY TABLE granted, D10-8); target: Lakebase `REPEATABLE READ` snapshot; Delta: table version pin | every run | PROPOSED |
 
 ## Recon economics
 

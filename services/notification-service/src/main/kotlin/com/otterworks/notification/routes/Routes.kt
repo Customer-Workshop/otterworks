@@ -152,9 +152,20 @@ fun Application.configureRouting(prometheusRegistry: PrometheusMeterRegistry) {
             }
 
             put {
+                val userId = call.request.headers["X-User-ID"]
+                if (userId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("X-User-ID header is required"))
+                    return@put
+                }
+
                 val request = call.receive<NotificationPreferenceRequest>()
+                if (request.userId != null && request.userId != userId) {
+                    call.respond(HttpStatusCode.Forbidden, ErrorResponse("Cannot update preferences for another user"))
+                    return@put
+                }
+
                 notificationService.updatePreferences(
-                    userId = request.userId,
+                    userId = userId,
                     eventType = request.eventType,
                     channels = request.channels,
                 )

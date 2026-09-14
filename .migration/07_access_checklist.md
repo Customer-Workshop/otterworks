@@ -23,11 +23,13 @@ under `/home/ubuntu/probe/` and are summarised here; no credential value is reco
 | 16 | Recon Oracle driver | BLOCKED | no `oracle` extra in harness (`databricks`, `sqlserver`, `lakebase`, `all`, `test`) -> D10-5 | wave-0 item |
 | 17 | Databricks serverless -> Oracle network | BLOCKED | SG admits Devin CIDRs only -> D10-2; recon from Devin VM works (rows 2-5) | parent applies SG |
 | 18 | Oracle supplemental logging / `c##dbzuser` | BLOCKED | `SUPPLEMENTAL_LOG_DATA_MIN=NO`; `DBA_USERS` has no `C##DBZUSER` -> D10-1 | customer DBA |
-| 19 | Enforcement hooks (`.claude/hooks`) + hook probe | see `09_capabilities.json` | factory-doctor run recorded below | — |
+| 19 | Enforcement hook (`hooks/dbx_guard.py`) platform loading | BLOCKED | nonce probe echoed unblocked (`hook_platform_loaded: fail`); guard works when invoked directly -> D10-7 | org admin |
 
 ## D10-2 evidence: Databricks serverless egress
-See `04_dependency_register.md` D10-2 and `stops/STOP_A.md` §Network for the documented CIDRs / NCC
-requirement found for workspace region (populated from the docs lookup in this session).
+Full research note: `evidence/d10-2_serverless_egress.md`. Workspace region AWS us-west-2; CIDRs from
+`https://www.databricks.com/networking/v1/ip-ranges.json` (snapshot 2026-09-07): `18.246.106.0/24`,
+`3.42.138.0/25`, `44.234.192.32/28`, `52.27.216.188/32`. Not static; the doc requires re-reading the
+JSON when it changes. Legacy NCC stable-IP list is decommissioned; NCC/PrivateLink not required.
 
 ## factory-doctor
 Command and result recorded in `09_capabilities.json` (orchestrator role). Summary in `stops/STOP_A.md`.

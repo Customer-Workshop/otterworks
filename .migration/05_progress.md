@@ -6,7 +6,7 @@ Status flow: NOT_STARTED -> IN_FLIGHT -> PR_OPEN -> RECON_GREEN -> MERGED (or BL
 
 | Stop | State | When | Provenance |
 |---|---|---|---|
-| A | POSTED | 2026-09-14 | awaiting reply (soft, 60 s) |
+| A | POSTED | 2026-09-14 | `!dbx_migrate_pipeline` invoked in the orchestrator session after setup; awaiting reply (blocking) |
 | B | not started | | |
 | C | not started | | |
 | D | per wave | | |

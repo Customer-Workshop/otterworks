@@ -40,37 +40,37 @@ launches children or writes conversion code.
 - CDC landing (parent workstream, D10-10): Debezium connector `ow_tp_dbz_ow_billing` on the 10 operational tables, Kafka topics -> `/Volumes/ow_tp/bronze/landing/cdc/` -> `ow_tp.bronze.cdc_*` -> apply into the batch branch.
 - Fixture: `services/legacy-billing/db/oracle/setup/` seed reproduced in a Postgres fixture (`make tp-smoke` target) — children iterate on fixture, one live read per unit.
 
-## 4. Execution schedule
+## 4. Execution schedule (as approved at STOP C, DEC-C)
 
-Consequence of `ready=false`: `migration-fanout/workflow.py` refuses any manifest whose capabilities are not `ready:true`
-(identity row). Since D10-4 (human PAT) is accepted for this run, **no wave may have more than one batch** (the
-fan-out workflow is required for multi-batch waves and cannot run). Wave 1 therefore collapses U1+U2 into one child.
+STOP C added "Fix identity: grant SP on ow_tp, width 2 from wave 1". The parent provisioned the migration service principal
+`dhrov_spa` (`2e90bc1d-e9a1-4703-8c48-ad28ebb1864d`, OAuth M2M); factory-doctor re-run 2026-09-14 is `ready=true`,
+`blocking=[]`, so `migration-fanout/workflow.py` launches every wave. D10-11 closed. U4 calls `rating.sp_finalize_rating`
+(U3), so it cannot run in the same wave as U3 (a child blocked on an unlanded sibling stops, it never builds a substitute);
+U4 is therefore wave 3 on its own. Width is 2 from wave 1; only wave 1 actually has two batches.
 
-| Wave | Batch | Units | Lakebase branch | Declared write targets | Size | verify_depth | Window tier |
-|---|---|---|---|---|---|---|---|
-| 0 | w0-b1 | U0 (+ scaffolding above) | `mig-p1-w0-b1` | `ow_billing.util.*`, `ow_billing.codes/plans/tenants/billing_audit_log`, `ow_tp.silver.{codes,plans,tenants}`, `ow_tp.ops.p1_recon_runs` | M | sampled (tables < threshold -> full diff anyway) | short (reference) |
-| 1 | w1-b1 | U1, U2 (two PRs) | `mig-p1-w1-b1` (child of w0 branch) | `ow_billing.subscriptions`, `subscriptions_hist`, `usage_events`, `plans.*`, `usage.*`, `ow_tp.silver.subscriptions_hist` | M+S | full (U1 is the plan-change path) | standard |
-| 2 | w2-b1 | U3 then U4 (two PRs; U4 is XL -> decision-first 2-PR split: contract PR then implementation PR) | `mig-p1-w2-b1` (child of w1 branch) | `ow_billing.rating_periods`, `rating_results`, `invoices`, `invoice_lines`, `credit_notes`, `rating.*`, `invoicing.*` | L + XL | full (money path) | full window + period-end boundary |
+| Wave | Batch | Units | Lakebase branch | Declared write targets | Size | verify_depth |
+|---|---|---|---|---|---|---|
+| 0 | w0-b1 | U0 (+ scaffolding above) | `mig-p1-w0-b1` | `ow_billing.util.*`, `ow_billing.codes/plans/tenants/billing_audit_log`, `ow_tp.silver.{codes,plans,tenants}`, `ow_tp.ops.p1_recon_runs` | M | sampled (all tables < threshold -> full diff anyway) |
+| 1 | w1-b1 | U1 | `mig-p1-w1-b1` | `ow_billing.subscriptions`, `subscriptions_hist`, `plans.*`, `ow_tp.silver.subscriptions_hist` | M | full |
+| 1 | w1-b2 | U2 | `mig-p1-w1-b2` | `ow_billing.usage_events`, `usage.*` | S | full |
+| 2 | w2-b1 | U3 | `mig-p1-w2-b1` | `ow_billing.rating_periods`, `rating_results`, `rating.*` | L | full |
+| 3 | w3-b1 | U4 (contract PR then implementation PR) | `mig-p1-w3-b1` | `ow_billing.invoices`, `invoice_lines`, `credit_notes`, `invoicing.*` | XL | full |
 
-Width 1 per wave (cap 4 unused). Breaker: 3 same-class failures halts (moot at width 1 but stated). Legacy cap: 2 statements
-per unit, 4 total — wave 1 uses 4, others 2. Idempotency rule: each run drops and recreates the batch branch from its parent.
-`auto_merge: true` (stop_mode soft) but merge still requires verifier PASS. Pilot rule satisfied: wave 0 width 1.
-Namespace slice per child: the branch name; tables keep their logical names.
+Same-wave batches (w1-b1, w1-b2) share no write target and no shared object beyond read-only U0 (checked by the workflow
+before launch). Breaker 3 same-class failures. Legacy cap: 2 statements per unit; wave 1 uses 4 = the total cap.
+Idempotency: each run drops and recreates the batch branch from its parent branch. `auto_merge: true` (stop_mode soft) but
+merge requires verifier PASS. Pilot rule: wave 0 is a single unit.
 
-Wall clock: serial floor 3 waves x (1 child session + verifier) ≈ 3 child sessions + 3 verifier passes; reviewer throughput:
-5 PRs (U0, U1, U2, U3-contract+U3, U4-contract+U4 = 7 PRs incl. 2 contract PRs) at recon-green light-tier review.
-Lead times dominate: D10-9 (UI enablement) and D10-10 (CDC containers) gate the *transactional* recon posture, not conversion;
-STOP E is gated by D4-5/D3-1 (customer-owned, open-ended).
+Wall clock: 4 waves, serial floor 4 child rounds + 4 verifier passes; 6 PRs (U0, U1, U2, U3, U4-contract, U4). Lead times:
+D10-9 (Lakehouse Sync, parent, "sync enabled") and D10-10 (CDC containers, parent, "cdc live") gate the recon posture only;
+until those messages arrive Tier 6 is `skipped/no_cdc` and Delta copies are freeze-and-load. STOP E is gated by
+D4-5/D3-1 (customer-owned).
 
-Cost line: `dbx-recon estimate` needs unit mapping specs that do not exist before wave 0; statement counts from the analysis
-are 2 per unit (source) and ~4 per unit (target incl. parity tiers), rows crossing the wire < 1,000 total (largest table
-814 rows). Warehouse hours are negligible (< 0.1 per wave); the real cost is 3 child + 3 verifier sessions. Wave 0 measures
-actual per-unit cost and re-baselines waves 1-2.
+Cost line: `dbx-recon estimate` needs unit mapping specs that do not exist before wave 0; from the analysis: 2 source
+statements per unit, ~4-6 target statements per unit incl. parity tiers, < 1,000 rows total over the wire (largest table
+814 rows), warehouse hours negligible (< 0.1 per wave). Wave 0 re-baselines waves 1-3 from actuals.
 
-Manifests: `.migration/waves/wave-0.json`, `wave-1.json`, `wave-2.json` (committed with this plan; `capabilities` copied
-from `09_capabilities.json` so a mismatch at launch is visible; they remain unusable by `workflow.py` while `ready=false`,
-so each single-batch wave is launched as one child session by this orchestrator with the same collision check, doctor run,
-and an independent verifier session).
+Manifests: `.migration/waves/wave-{0,1,2,3}.json`, `capabilities` copied from `09_capabilities.json` (SP identity).
 
 ## 5. Recon gate (mechanical)
 
@@ -97,7 +97,6 @@ production-branch grants are a STOP E action.
 
 ## 7. Risk register
 
-Analysis §8 R1-R12 plus: **R13** fan-out workflow unusable at `ready=false` (mitigated: width 1, hand-launched single-batch
-waves with the same checks); **R14** new-surface procedures (`close_billing_period`, `issue_credit_note`) have no source
+Analysis §8 R1-R12 plus: **R13** (closed by DEC-C) fan-out workflow was unusable under the PAT identity; now `ready=true` as the SP; **R14** new-surface procedures (`close_billing_period`, `issue_credit_note`) have no source
 truth — fixture Tier 4 only, flagged in each PR; **R15** `INVOICE_LINES` has 2 rows against 3 `INVOICES` at source — recon
 compares as-is, no repair.

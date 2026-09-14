@@ -63,3 +63,10 @@ Approve as written, with D7-2 option B.
 `Approve STOP C: P1 plan as written, D7-2 option B.`
 
 To choose the other notification option instead: `Approve STOP C: P1 plan as written, D7-2 option A.`
+
+## Outcome (2026-09-14)
+
+Customer reply, verbatim (relayed by the parent): "Approve STOP C: P1 plan as written, D7-2 option B. Fix identity: grant SP
+on ow_tp, width 2 from wave 1." Identity fixed by the parent (SP `dhrov_spa`, DEC-C); doctor `ready=true`; D10-4 and
+D10-11 closed. Schedule amended in the plan §4: width 2 from wave 1; U4 moves to its own wave 3 because it depends on U3.
+D10-9 and D10-10 remain with the parent ("sync enabled" / "cdc live" messages switch the recon posture).

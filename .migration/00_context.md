@@ -39,12 +39,12 @@ session, evidence in `07_access_checklist.md`), **PROPOSED** (default, confirmed
 | Field | Value | Mark |
 |---|---|---|
 | Workspace | `DATABRICKS_DEMO_HOST` (shared demo workspace) | FACT |
-| Auth | `DATABRICKS_DEMO_TOKEN` (PAT, files scope). `DATABRICKS_CLIENT_ID`/`DATABRICKS_CLIENT_SECRET` unset when using the CLI. The identity is a human user, not a migration service principal (see D10-4 in `04_dependency_register.md`). | FACT / DISCOVERED |
+| Auth | Migration service principal `dhrov_spa`, applicationId/userName `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d`, via OAuth M2M using the existing `DATABRICKS_CLIENT_ID`/`DATABRICKS_CLIENT_SECRET` secret names with `DATABRICKS_DEMO_HOST`. Prior `DATABRICKS_DEMO_TOKEN` PAT authentication superseded 2026-09-14 (DEC-C). | FACT |
 | Migration catalog | `ow_tp`; schemas `bronze`, `silver`, `gold`, `ops`; volume `/Volumes/ow_tp/bronze/landing`; secret scope `ow_tp`; workspace dir `/Shared/ow_tp`. All parent-created. | FACT |
 | Compute | existing serverless SQL warehouse + serverless notebook tasks only; no clusters, no hourly-cost resources | FACT |
 | Shared rules | everything prefixed `ow_tp`, jobs named `ow_tp_<unit>`, `ns=demo` parameter, volume paths `<ns>/<unit>/...` (`docs/tech-partnerships/contracts/README.md`) | FACT |
 | Lakebase project | id `ow-tp-billing` (display `ow_tp-billing`), branch `production`, endpoint `primary`, host `ep-damp-river-d1lws1dv.database.us-west-2.cloud.databricks.com`, db `databricks_postgres`. Lakebase Postgres Autoscaling tier. | FACT |
-| Lakebase credential | 1-hour credential from `databricks postgres generate-database-credential projects/ow-tp-billing/branches/<branch>/endpoints/primary` (PAT auth); no static DSN secret; children derive at runtime. Logical name `LAKEBASE_OW_TP_BILLING_DSN`. | FACT |
+| Lakebase credential | 1-hour credential from `databricks postgres generate-database-credential projects/ow-tp-billing/branches/<branch>/endpoints/primary` (OAuth M2M auth); no static DSN secret; children derive at runtime. Logical name `LAKEBASE_OW_TP_BILLING_DSN`. | FACT |
 | Lakebase write policy | one branch per wave batch (copy-on-write, TTL, dropped at wave close); **no child writes `production`**; branch names `mig-<pipeline>-w<N>-<batch>` | FACT / PROPOSED (naming) |
 | Repo roles | SOURCE + TARGET + DOCS = `Cognition-Partner-Workshops/otterworks`, branch `tp-run/databricks-20260914T183234Z`; `.migration/` at repo root; unit PRs one per unit into that branch; never `tech-partnerships` or `main` | FACT |
 | Target-state profiles | `docs/migration/ow_billing_target_state.md` (CORE, SQL, PIPELINE, ORCHESTRATION, CONSUMER, LAKEBASE, DATA/DEPENDENCY; ML-SCORING N/A) | this session |

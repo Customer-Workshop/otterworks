@@ -1,68 +1,110 @@
 """Authentication middleware for the search service.
 
-Public endpoints (health, metrics) are exempt. All other endpoints accept
-either of two authentication modes:
+Public endpoints (health, metrics) are exempt. Every other endpoint falls
+into one of two classes:
 
-* A valid service-to-service token via ``Authorization: Bearer <token>``
-  (used by trusted internal callers such as the SQS indexer or admin
-  reindex jobs).
-* The ``X-User-ID`` header injected by the API gateway after it has
-  validated the caller's JWT (used by user-facing requests proxied
-  through the gateway).
+* **Internal endpoints** (the ``index`` blueprint: index/reindex/remove)
+  require the service-to-service token via ``Authorization: Bearer <token>``.
+  A user JWT is never sufficient here.
+* **User endpoints** (the ``search`` blueprint) require the caller's JWT via
+  ``Authorization: Bearer <jwt>``, forwarded unchanged by the API gateway.
+  The user identity is taken from the validated token's ``sub``/``user_id``
+  claim and exposed as ``flask.g.user_id``. Inbound ``X-User-ID`` headers
+  are never trusted, so a caller that reaches the pod directly cannot
+  impersonate another user.
 
-If a service token is configured the middleware will accept it on any
-endpoint; if it is not configured (e.g. local dev), only the gateway
-identity path is available and internal endpoints become reachable only
-via the gateway.
+The service token is also accepted on user endpoints so trusted internal
+callers can search across owners.
 """
 
 from __future__ import annotations
 
+import hmac
+
+import jwt
 import structlog
-from flask import jsonify, request
+from flask import g, jsonify, request
 
 logger = structlog.get_logger()
 
 PUBLIC_PREFIXES = ("/health", "/metrics")
+INTERNAL_BLUEPRINTS = frozenset({"index"})
+JWT_ALGORITHMS = ["HS256", "HS384"]
 
 
 def require_auth(app):
     """Register a ``before_request`` hook that enforces authentication.
 
     * Requests to health/metrics paths are always allowed.
-    * All other requests must present either a valid service token in
-      the ``Authorization`` header or an ``X-User-ID`` header set by
-      the API gateway after JWT validation.
+    * Internal (index) endpoints require the configured service token.
+    * All other endpoints require a valid user JWT (or the service token).
     """
     auth_config = app.config["APP_CONFIG"].auth
 
+    if not auth_config.require_auth:
+        logger.warning("auth_disabled", detail="REQUIRE_AUTH=false; X-User-ID header is trusted as-is")
+    elif not auth_config.jwt_secret:
+        logger.warning("jwt_secret_missing", detail="user endpoints will reject every request")
+
     @app.before_request
     def _check_auth():
-        if not auth_config.require_auth:
-            return None
+        g.user_id = None
 
         path = request.path
         if any(path.startswith(p) for p in PUBLIC_PREFIXES):
             return None
 
-        # Accept a valid service token if one is configured.
-        if auth_config.service_token:
-            token = _extract_bearer_token()
-            if token and token == auth_config.service_token:
-                return None
-
-        # Otherwise require gateway-injected user identity.
-        user_id = request.headers.get("X-User-ID", "").strip()
-        if user_id:
+        if not auth_config.require_auth:
+            g.user_id = request.headers.get("X-User-ID", "").strip() or None
             return None
 
-        endpoint = request.endpoint or ""
-        logger.warning("auth_rejected", endpoint=endpoint, path=path)
-        return jsonify({"error": "unauthorized"}), 401
+        token = _extract_bearer_token()
+        if token and _is_service_token(token, auth_config.service_token):
+            return None
+
+        user_id = _user_id_from_jwt(token, auth_config.jwt_secret) if token else None
+        if not user_id:
+            return _reject(401, "unauthorized")
+
+        if request.blueprint in INTERNAL_BLUEPRINTS:
+            return _reject(403, "forbidden")
+
+        g.user_id = user_id
+        return None
 
 
-def _extract_bearer_token() -> str:
+def _reject(status: int, error: str):
+    logger.warning("auth_rejected", endpoint=request.endpoint or "", path=request.path, status=status)
+    return jsonify({"error": error}), status
+
+
+def _is_service_token(token: str, service_token: str) -> bool:
+    """Constant-time comparison against the configured service token."""
+    if not service_token:
+        return False
+    return hmac.compare_digest(token.encode("utf-8"), service_token.encode("utf-8"))
+
+
+def _user_id_from_jwt(token: str, secret: str) -> str | None:
+    """Return the user id from a valid JWT, or ``None`` if the token is not trusted."""
+    if not secret:
+        return None
+    try:
+        payload = jwt.decode(token, secret, algorithms=JWT_ALGORITHMS)
+    except jwt.PyJWTError:
+        return None
+    user_id = payload.get("user_id") or payload.get("sub")
+    if not user_id:
+        return None
+    return str(user_id).strip() or None
+
+
+def _extract_bearer_token() -> str | None:
+    """Return the bearer token from the ``Authorization`` header, if present."""
     auth_header = request.headers.get("Authorization", "")
-    if auth_header.lower().startswith("bearer "):
-        return auth_header[7:].strip()
-    return ""
+    if not auth_header:
+        return None
+    parts = auth_header.split(None, 1)
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+    return parts[1].strip() or None

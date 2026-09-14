@@ -27,7 +27,10 @@ async fn main() -> std::io::Result<()> {
 
     let app_config = config::AppConfig::from_env();
     if app_config.auth.jwt_secret.is_none() {
-        tracing::warn!("JWT_SECRET is not set; every user-scoped request will be rejected");
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "JWT_SECRET is required: file-service authenticates every API request against it",
+        ));
     }
     let s3_client = storage::S3Client::new(&app_config.aws).await;
     let meta_client = metadata::MetadataClient::new(&app_config.aws).await;
@@ -66,6 +69,7 @@ async fn main() -> std::io::Result<()> {
             .route("/metrics", web::get().to(handlers::metrics))
             .service(
                 web::scope("/api/v1/files")
+                    .wrap(actix_middleware::from_fn(auth::require_bearer))
                     .route("/upload", web::post().to(handlers::upload_file))
                     .route("/shared", web::get().to(handlers::list_shared_files))
                     .route("/trash", web::get().to(handlers::list_trashed))
@@ -93,6 +97,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api/v1/folders")
+                    .wrap(actix_middleware::from_fn(auth::require_bearer))
                     .route("", web::get().to(handlers::list_folders))
                     .route("", web::post().to(handlers::create_folder))
                     .route("/{folder_id}", web::get().to(handlers::get_folder))

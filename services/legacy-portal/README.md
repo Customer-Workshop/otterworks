@@ -37,8 +37,8 @@ access token issued by `auth-service` (HS256, signed with the shared `JWT_SECRET
 - The acting user is the token's `sub` claim. Feedback is submitted and listed for that user
   only; `/api/preferences/{userId}` must match it unless the caller has `ADMIN`.
 - Creating or publishing announcements requires the `ADMIN` or `EDITOR` role.
-- `JWT_SECRET` must be set for the `postgres` (on-prem) profile; the default H2 profile falls
-  back to auth-service's local-dev secret so `run-onprem.sh` stays self-contained.
+- `JWT_SECRET` has no default in any profile; the app refuses to start without it (tests set a
+  test-only value).
 
 ### Why it's an obvious decomposition candidate
 
@@ -62,7 +62,7 @@ cd services/legacy-portal
 ### Local / on a VM (embedded H2, self-contained)
 
 ```bash
-./scripts/run-onprem.sh
+JWT_SECRET=<secret auth-service signs with> ./scripts/run-onprem.sh
 curl http://localhost:8095/health          # {"status":"UP","service":"legacy-portal"}
 curl http://localhost:8095/actuator/health
 ```

@@ -30,9 +30,9 @@ management:
         enabled: true
 
 # Access tokens are the HS256 JWTs issued by auth-service, so this must be the same secret
-# auth-service signs with. The fallback matches auth-service's local-dev default only.
+# auth-service signs with. Deliberately no default: the app refuses to start without it.
 jwt:
-  secret: ${JWT_SECRET:dev-jwt-secret-otterworks-2024-change-in-production}
+  secret: ${JWT_SECRET}
 
 ---
 # On-prem / VM profile: talks to a real PostgreSQL running alongside the app on the VM
@@ -53,7 +53,3 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
-# No fallback outside local dev: the on-prem deployment refuses to start without JWT_SECRET.
-jwt:
-  secret: ${JWT_SECRET}

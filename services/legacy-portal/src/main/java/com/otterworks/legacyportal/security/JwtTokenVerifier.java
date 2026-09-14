@@ -23,6 +23,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtTokenVerifier {
 
+    private static final String ACCESS_TOKEN_TYPE = "access";
+
     private final SecretKey key;
 
     public JwtTokenVerifier(@Value("${jwt.secret}") String secret) {
@@ -40,7 +42,7 @@ public class JwtTokenVerifier {
         } catch (JwtException | IllegalArgumentException e) {
             return null;
         }
-        if ("refresh".equals(claims.get("type", String.class))) {
+        if (!ACCESS_TOKEN_TYPE.equals(claims.get("type", String.class))) {
             return null;
         }
         String userId = claims.getSubject();

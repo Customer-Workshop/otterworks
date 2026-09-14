@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Full-context test: the whole modular monolith boots and every module's routes are wired. */
-@SpringBootTest
+@SpringBootTest(properties = "jwt.secret=test-only-jwt-secret-legacy-portal-hs256-32b")
 @AutoConfigureMockMvc
 @Transactional
 class LegacyPortalApplicationTest {
@@ -123,7 +123,7 @@ class LegacyPortalApplicationTest {
     }
 
     @Test
-    void forgedAndRefreshTokensAreRejected() throws Exception {
+    void forgedRefreshAndUntypedTokensAreRejected() throws Exception {
         String forged =
                 "Bearer "
                         + Jwts.builder()
@@ -147,6 +147,18 @@ class LegacyPortalApplicationTest {
                                                 jwtSecret.getBytes(StandardCharsets.UTF_8)))
                                 .compact();
         mockMvc.perform(get("/api/announcements").header(HttpHeaders.AUTHORIZATION, refresh))
+                .andExpect(status().isUnauthorized());
+
+        String untyped =
+                "Bearer "
+                        + Jwts.builder()
+                                .subject("u1")
+                                .claim("roles", Arrays.asList("ADMIN"))
+                                .signWith(
+                                        Keys.hmacShaKeyFor(
+                                                jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                                .compact();
+        mockMvc.perform(get("/api/announcements").header(HttpHeaders.AUTHORIZATION, untyped))
                 .andExpect(status().isUnauthorized());
     }
 

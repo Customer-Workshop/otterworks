@@ -8,10 +8,12 @@
 # a real PostgreSQL by exporting SPRING_PROFILES_ACTIVE=postgres and SPRING_DATASOURCE_*.
 #
 # Usage:
-#   ./scripts/run-onprem.sh            # build (if needed) + run with embedded H2
-#   SKIP_BUILD=1 ./scripts/run-onprem.sh
+#   JWT_SECRET=<secret auth-service signs with> ./scripts/run-onprem.sh   # build (if needed) + run with embedded H2
+#   SKIP_BUILD=1 JWT_SECRET=... ./scripts/run-onprem.sh
 # ------------------------------------------------------------------------------
 set -euo pipefail
+
+: "${JWT_SECRET:?JWT_SECRET must be the secret auth-service signs access tokens with}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"

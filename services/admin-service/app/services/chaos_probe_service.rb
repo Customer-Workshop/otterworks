@@ -17,11 +17,13 @@ class ChaosProbeService
     },
     # file-service upload expects multipart/form-data with a "file" field.
     # Sending JSON results in a 400 before the chaos flag is ever checked.
-    # X-User-ID must be a valid UUID (parsed by the handler).
+    # file-service verifies the bearer JWT itself and takes the owner from it,
+    # so the probe signs a token for a fixed probe user with the shared secret.
     'file-service' => {
       url: 'http://file-service:8082/api/v1/files/upload',
       method: :multipart,
-      headers: { 'X-User-ID' => '00000000-0000-0000-0000-000000000001' },
+      headers: {},
+      bearer_user_id: '00000000-0000-0000-0000-000000000001',
     },
     # notification-service chaos works by switching to a strict JSON parser
     # that rejects messages with integer (Unix epoch) timestamps.  Hitting
@@ -93,9 +95,22 @@ class ChaosProbeService
               end
 
     config[:headers]&.each { |k, v| request[k] = v }
+    if config[:bearer_user_id]
+      token = bearer_token_for(config[:bearer_user_id])
+      request['Authorization'] = "Bearer #{token}" if token
+    end
     http.request(request)
   rescue StandardError
     nil
+  end
+
+  # Short-lived HS256 token signed with the JWT secret shared across services.
+  def self.bearer_token_for(user_id)
+    secret = Rails.application.credentials.jwt_secret || ENV['JWT_SECRET']
+    return nil if secret.blank?
+
+    now = Time.now.to_i
+    JWT.encode({ sub: user_id, type: 'access', iat: now, exp: now + 300 }, secret, 'HS256')
   end
 
   # Builds a multipart/form-data POST with a small dummy file.

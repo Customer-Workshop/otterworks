@@ -5,6 +5,14 @@ pub struct AppConfig {
     pub server: ServerConfig,
     pub aws: AwsConfig,
     pub sns: SnsConfig,
+    pub auth: AuthConfig,
+}
+
+#[derive(Clone, Debug)]
+pub struct AuthConfig {
+    /// HMAC secret shared with auth-service and the api-gateway. Requests are
+    /// authenticated by verifying the caller's bearer JWT against it.
+    pub jwt_secret: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -35,6 +43,15 @@ impl AppConfig {
             server: ServerConfig::from_env(),
             aws: AwsConfig::from_env(),
             sns: SnsConfig::from_env(),
+            auth: AuthConfig::from_env(),
+        }
+    }
+}
+
+impl AuthConfig {
+    pub fn from_env() -> Self {
+        Self {
+            jwt_secret: env::var("JWT_SECRET").ok().filter(|s| !s.trim().is_empty()),
         }
     }
 }

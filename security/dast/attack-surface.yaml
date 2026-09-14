@@ -48,6 +48,7 @@ routes:
     auth: bearer JWT
     expect:
       - object ids from another owner return 403/404
+      - identity comes from the JWT verified in-service, never from X-User-ID or an owner_id parameter
   - prefix: /api/v1/search
     service: search-service
     auth: bearer JWT

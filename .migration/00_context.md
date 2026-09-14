@@ -81,7 +81,7 @@ share this ledger, `04_dependency_register.md` and one STOP sequence.
 
 | Track | Posture | Mark |
 |---|---|---|
-| operational | CDC coexistence: Debezium (Oracle LogMiner) -> Kafka -> Delta landing (`ow_tp.bronze`) -> Lakebase apply. Gated on D10-1 (supplemental logging + `c##dbzuser`) and D10-3 (Debezium/Kafka footprint). Rehearsal fallback: SCN-pinned freeze-and-load into the Lakebase branch. | FACT |
+| operational | CDC coexistence: Debezium (Oracle LogMiner) -> Kafka -> Delta landing (`ow_tp.bronze`) -> Lakebase apply. PRIMARY per STOP A (D10-1 closed, D10-3 accepted); freeze-and-load is fallback only. Was gated on D10-1 (supplemental logging + `c##dbzuser`) and D10-3 (Debezium/Kafka footprint). Rehearsal fallback: SCN-pinned freeze-and-load into the Lakebase branch. | FACT |
 | analytical | SCN-pinned freeze-and-load (`AS OF SCN`) into Delta | FACT |
 | coexistence read bridge | Lakehouse Federation / JDBC to Oracle approved; blocked until D10-2 (serverless egress CIDRs added to the SG). Recon from Devin VMs works now. | FACT |
 | lakehouse sync | operational tables synced from Lakebase into `ow_tp.silver` for the analytical track (Lakebase -> UC) | PROPOSED |

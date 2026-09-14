@@ -1,5 +1,7 @@
 {
-  "blocking": [],
+  "blocking": [
+    "allowlist_committed=fail"
+  ],
   "checks": [
     {
       "data": {},
@@ -18,34 +20,37 @@
     {
       "data": {
         "catalogs": [
-          "ow_tp"
+          "ow_tp",
+          "databricks_postgres"
         ],
         "guard_mode": "block",
         "legacy_sources": 5
       },
-      "detail": "catalogs=['ow_tp'] guard_mode=block",
+      "detail": "catalogs=['ow_tp', 'databricks_postgres'] guard_mode=block",
       "id": "allowed_targets",
       "status": "ok"
     },
     {
       "data": {
         ".migration/03_recon_tolerances.json": "clean",
-        ".migration/allowed_targets.json": "clean"
+        ".migration/allowed_targets.json": "modified since HEAD"
       },
-      "detail": "allowed_targets.json and 03_recon_tolerances.json are byte-equal to HEAD",
+      "detail": "the working copy is not the committed contract: .migration/allowed_targets.json modified since HEAD. Restore HEAD's copy, or commit the change through a recorded decision, then re-run",
       "id": "allowlist_committed",
-      "status": "ok"
+      "status": "fail"
     },
     {
       "data": {
         "allowlist": [
-          "ow_tp"
+          "ow_tp",
+          "databricks_postgres"
         ],
         "expected": [
-          "ow_tp"
+          "ow_tp",
+          "databricks_postgres"
         ]
       },
-      "detail": "allowlist catalogs match the contract: ['ow_tp']",
+      "detail": "allowlist catalogs match the contract: ['ow_tp', 'databricks_postgres']",
       "id": "allowlist_matches_contract",
       "status": "ok"
     },
@@ -57,13 +62,13 @@
     },
     {
       "data": {},
-      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__98b88017",
+      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__8295b56d",
       "id": "hook_guard_functional",
       "status": "ok"
     },
     {
       "data": {
-        "probe_nonce": "d5d8dc96"
+        "probe_nonce": "7f5b38f1"
       },
       "detail": "live probe was BLOCKED: the platform is running hooks.json",
       "id": "hook_platform_loaded",
@@ -157,18 +162,19 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-14T20:42:01Z",
+  "generated_at": "2026-09-14T23:13:36Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,
     "userName": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d"
   },
   "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.2.0",
-  "ready": true,
+  "ready": false,
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
   "summary": {
-    "ok": 15,
+    "fail": 1,
+    "ok": 14,
     "skipped": 2
   },
   "workspace": "/home/ubuntu/repos/otterworks"

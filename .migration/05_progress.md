@@ -8,7 +8,7 @@ Status flow: NOT_STARTED -> IN_FLIGHT -> PR_OPEN -> RECON_GREEN -> MERGED (or BL
 |---|---|---|---|
 | A | APPROVED | 2026-09-14 | `!dbx_migrate_pipeline` invoked in the orchestrator session after setup; APPROVED (amended: CDC coexistence primary) |
 | B | APPROVED | 2026-09-14 | inventory complete: `docs/migration/OW_BILLING_inventory.md`, `.migration/08_governance_inventory.md`, `.migration/stops/STOP_B.md`; awaiting pipeline selection (soft stop, default = P1 Monthly invoicing) |
-| C | APPROVED (DEC-C/C1); D10-7b halt resolved option b (DEC-C3); wave 0 LAUNCHED direct-launch | 2026-09-14 | `docs/migration/P1_monthly_invoicing_analysis.md`, `P1_monthly_invoicing_plan.md`, `.migration/waves/wave-{0,1,2}.json`, `.migration/stops/STOP_C.md` |
+| C | APPROVED (DEC-C/C1); D10-7b halt resolved option b (DEC-C3); wave 0 child BLOCKED on hook_platform_loaded; HALT D10-7c (option c proposed) | 2026-09-14 | `docs/migration/P1_monthly_invoicing_analysis.md`, `P1_monthly_invoicing_plan.md`, `.migration/waves/wave-{0,1,2}.json`, `.migration/stops/STOP_C.md` |
 | D | per wave | | |
 | E | not started | | |
 

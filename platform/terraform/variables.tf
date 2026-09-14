@@ -80,3 +80,9 @@ variable "ecr_prefix" {
   type        = string
   default     = "otterworks/"
 }
+
+variable "creator_tag" {
+  description = "Value of the `creator` tag applied to every resource in this layer"
+  type        = string
+  default     = "partner-workshops"
+}

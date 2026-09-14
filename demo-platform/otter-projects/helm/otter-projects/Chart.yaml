@@ -1,0 +1,13 @@
+apiVersion: v2
+name: otter-projects
+description: >-
+  Otter Projects — minimal issue tracker with Devin ticket assignment, deployed
+  into the otterworks-platform namespace behind the shared ingress-nginx.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - otterworks
+  - demo-platform
+  - otter-projects
+home: https://github.com/Cognition-Partner-Workshops/otterworks

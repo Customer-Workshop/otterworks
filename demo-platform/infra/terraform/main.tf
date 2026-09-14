@@ -35,6 +35,7 @@ provider "aws" {
       Component = "demo-platform"
       ManagedBy = "terraform"
       Layer     = "control-plane"
+      creator   = var.creator_tag
     }
   }
 }

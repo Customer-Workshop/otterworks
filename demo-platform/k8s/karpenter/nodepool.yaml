@@ -28,7 +28,7 @@ spec:
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
-        volumeSize: 60Gi
+        volumeSize: 30Gi
         volumeType: gp3
         encrypted: true
         deleteOnTermination: true
@@ -36,6 +36,7 @@ spec:
     Project: otterworks
     ManagedBy: karpenter
     Layer: platform
+    creator: partner-workshops
 ---
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -91,10 +92,10 @@ spec:
       # Cap voluntary churn so consolidation cannot drain a large share of the
       # cluster at once during a workshop.
       - nodes: "20%"
-  # Ceiling on what this pool can ever launch -- roughly 100 awake tenants at
-  # the measured ~4 vCPU each, and a hard stop on a runaway loop provisioning
-  # the account into the ground. Concurrency is governed before this by the
-  # dashboard's checkout cap and the idle suspend.
+  # Ceiling on what this pool can ever launch -- roughly 8 awake tenants at the
+  # measured ~4 vCPU each, and a hard stop on a runaway loop provisioning the
+  # account into the ground. Raise deliberately for a large workshop; the
+  # steady-state footprint is one perpetual tenant on the managed node.
   limits:
-    cpu: "400"
-    memory: 1600Gi
+    cpu: "32"
+    memory: 128Gi

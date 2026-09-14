@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
 
 SHELL := /bin/bash
 
@@ -440,7 +440,11 @@ security-scan: ## Run security scans across all services
 # the local stack (default), a tenant URL, or a preview environment.
 
 DAST_TARGET ?= http://localhost:8080
-DAST := uv run --with httpx --with tabulate security/dast/harness/dast_scan.py
+# Each script declares its own dependencies (PEP 723), so `uv run` needs no --with.
+# Note that make reports 2 for any failed recipe: to act on the harness's own exit
+# codes (1 findings, 2 nothing tested, 3 no verdict), call security/dast/run.sh.
+DAST := uv run security/dast/harness/dast_scan.py
+DAST_COVERAGE := uv run security/dast/harness/dast_coverage.py
 
 dast-list: ## List the registered DAST attack probes
 	$(DAST) --list
@@ -453,6 +457,16 @@ ifndef FINDING
 	$(error FINDING is required, e.g. make dast-verify FINDING=DAST-MISSING-SECURITY-HEADERS)
 endif
 	$(DAST) --target $(DAST_TARGET) --only $(FINDING) --no-baseline --fail-on info
+
+dast-routes: ## List the edge-reachable routes read from the services' source
+	uv run security/dast/harness/route_inventory.py
+
+dast-coverage: ## Fail if a route the gateway proxies was never attacked by the last scan
+	$(DAST_COVERAGE)
+
+dast-test: ## Unit-test the harness itself (route extraction, coverage gate, perimeter verdicts)
+	uv run --python '>=3.11' --with pytest --with httpx --with pyyaml --with tabulate \
+		python -m pytest security/dast/harness/tests -q
 
 dast-baseline: ## Record current findings as accepted (REASON="...")
 	$(DAST) --target $(DAST_TARGET) --reason "$${REASON:-recorded by make dast-baseline}" --update-baseline
@@ -492,6 +506,37 @@ dast-zap: ## Run the OWASP ZAP baseline sweep and merge it into the DAST report
 		     "missing from this run. Running the probe suite on its own."; \
 		$(DAST) --target $(DAST_TARGET); \
 	fi
+
+# --- Dependency CVE remediation ---
+#
+# The advisory (security/deps/advisory.yaml) names the artifact and its vulnerable
+# range; modules.yaml registers every JVM module so the blast radius cannot be
+# partial. Reports land in security/deps/reports/ (git-ignored: collect them as CI
+# artifacts and paste the summary into the PR).
+
+DEPS := uv run --with pyyaml==6.0.2 --with tabulate==0.10.0 security/deps/harness/deps_check.py
+
+deps-inventory: ## Report the blast radius of the advisory across every JVM module
+	$(DEPS) inventory
+
+deps-gate: ## Fail if the vulnerable version is still reachable from any dependency tree
+	$(DEPS) gate
+
+deps-command: ## Print the harness invocation, for callers that need its exact exit code
+	@echo '$(DEPS)'
+
+deps-tests: ## Build and run every affected module's own suite (MODULE=<id> optional)
+	$(DEPS) tests $(if $(MODULE),--module $(MODULE),)
+
+deps-transcript: ## Grade interpolation behavior after remediation (MODULE=<id> optional)
+	$(DEPS) transcript --stage remediated $(if $(MODULE),--module $(MODULE),)
+
+deps-transcript-baseline: ## Prove the recorded before-state still reproduces (MODULE=<id> optional)
+	$(DEPS) transcript --stage baseline $(if $(MODULE),--module $(MODULE),)
+
+deps-record: ## Record the transcripts as the reference evidence (REASON="..." required)
+	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make deps-record REASON="baseline on commons-text 1.9"' >&2; exit 2)
+	$(DEPS) transcript --record --reason "$(REASON)" $(if $(MODULE),--module $(MODULE),) $(if $(ALLOW_RERECORD),--allow-rerecord,)
 
 test-report: ## Run report-service tests only
 	cd services/report-service && mvn test
@@ -549,3 +594,39 @@ legacy-sftp-up: ## Start the optional localhost-only SFTP drop fixture
 
 legacy-sftp-down: ## Stop the SFTP drop fixture
 	docker compose -f etl/legacy-extra/docker-compose.sftp.yml down
+
+# --- Functional-equivalence gate for source-level security refactors ---
+#
+# security/equivalence/findings.yaml registers each finding (subject class,
+# methods, secure pattern) and each module's emit/test commands. The recorded
+# before-state lives in security/equivalence/expected/ and is fingerprinted
+# against the cases, the seed, the emitter and the subject sources. Reports land
+# in security/equivalence/reports/ (git-ignored: collect them as CI artifacts and
+# paste the summary into the PR).
+
+EQ := uv run --with pyyaml==6.0.2 --with tabulate==0.10.0 --with defusedxml==0.7.1 security/equivalence/harness/equivalence_check.py
+
+eq-list: ## List the registered findings and the state of their recorded evidence
+	$(EQ) list
+
+eq-gate: ## Grade every finding against its recorded evidence, before-state or refactored
+	$(EQ) grade --stage auto $(if $(FINDING),--finding $(FINDING),)
+
+eq-baseline: ## Prove the recorded before-state still reproduces (FINDING=<id> optional)
+	$(EQ) grade --stage baseline $(if $(FINDING),--finding $(FINDING),)
+
+eq-verify: ## Grade a refactor: contract cases unchanged, attacks neutralised (FINDING=<id> optional)
+	$(EQ) grade --stage remediated $(if $(FINDING),--finding $(FINDING),)
+
+eq-exploit: ## Report whether the attack cases still fire, ignoring the recording
+	$(EQ) exploit $(if $(FINDING),--finding $(FINDING),)
+
+eq-exploit-refactored: ## Require a closed exploit verdict from every finding whose subject changed
+	$(EQ) exploit --refactored-only $(if $(FINDING),--finding $(FINDING),)
+
+eq-tests: ## Run the affected module's own suite against the recorded pass list
+	$(EQ) tests $(if $(FINDING),--finding $(FINDING),)
+
+eq-record: ## Record the before-state as the reference evidence (REASON="..." required)
+	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make eq-record REASON="baseline before OW-SEC-401 refactor"' >&2; exit 2)
+	$(EQ) record --reason "$(REASON)" $(if $(FINDING),--finding $(FINDING),) $(if $(ALLOW_RERECORD),--allow-rerecord,)

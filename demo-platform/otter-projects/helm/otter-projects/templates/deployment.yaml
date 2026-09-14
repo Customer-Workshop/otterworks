@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "otter-projects.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "otter-projects.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if .Values.secret.create }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- end }}
+      labels:
+        {{- include "otter-projects.labels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          envFrom:
+            - secretRef:
+                name: {{ include "otter-projects.secretName" . }}
+          env:
+            - name: PROJECTS_TABLE
+              value: {{ .Values.table | quote }}
+            - name: AWS_REGION
+              value: {{ .Values.awsRegion | quote }}
+            - name: PUBLIC_URL
+              value: {{ .Values.publicUrl | quote }}
+            - name: DEVIN_ORG_ID
+              value: {{ .Values.devin.orgId | quote }}
+            - name: DEVIN_API_BASE
+              value: {{ .Values.devin.apiBase | quote }}
+            - name: DEVIN_WEBHOOK_URL
+              value: {{ .Values.devin.webhookUrl | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

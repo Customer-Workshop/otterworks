@@ -68,7 +68,7 @@ output "sns_events_topic_arn" {
 
 output "meilisearch_ecs_cluster_arn" {
   description = "MeiliSearch ECS cluster ARN"
-  value       = module.search.meilisearch_ecs_cluster_arn
+  value       = var.enable_shared_search ? module.search[0].meilisearch_ecs_cluster_arn : null
 }
 
 # --- Auth ---
@@ -92,7 +92,7 @@ output "cognito_admin_client_id" {
 
 output "redis_endpoint" {
   description = "ElastiCache Redis primary endpoint"
-  value       = module.cache.redis_endpoint
+  value       = var.enable_shared_cache ? module.cache[0].redis_endpoint : null
 }
 
 # --- Monitoring ---

@@ -76,7 +76,7 @@ variable "ecr_repo_prefix" {
 variable "monthly_budget_usd" {
   description = "Monthly cost budget for the otterworks platform, in USD. See demo-platform/docs/cost-and-scale.md for how this figure is derived."
   type        = number
-  default     = 700
+  default     = 200
 }
 
 variable "budget_alert_emails" {
@@ -153,3 +153,9 @@ variable "github_actions_trusted_repos" {
   }
 }
 
+
+variable "creator_tag" {
+  description = "Value of the `creator` tag applied to every resource in this layer"
+  type        = string
+  default     = "partner-workshops"
+}

@@ -1,0 +1,57 @@
+{
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": "!dbx_unit_migration",
+  "verify_macro": "!dbx_data_reconciliation",
+  "width": 1,
+  "breaker_threshold": 3,
+  "auto_merge": true,
+  "child_minutes": 120,
+  "capabilities": {
+    "identity": "dhrov.subramanian@cognition.ai",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": [
+      "ow_tp"
+    ],
+    "guard_mode": "block",
+    "stop_mode": "soft",
+    "ready": false
+  },
+  "source": {
+    "family": "oracle",
+    "secret": "ORACLE_OW_BILLING_RO_DSN",
+    "params": {
+      "schema": "OW_BILLING",
+      "service": "FREEPDB1",
+      "isolation": "as_of_scn"
+    }
+  },
+  "base_branch": "tp-run/databricks-20260914T183234Z",
+  "wave": 2,
+  "verify_depth": "full",
+  "cost_estimate": {
+    "source_statements": 4,
+    "target_statements": 24,
+    "source_rows_fetched": 16,
+    "warehouse_hours": 0.05
+  },
+  "batches": [
+    {
+      "id": "w2-b1",
+      "units": [
+        "U3_rating",
+        "U4_invoicing_credits"
+      ],
+      "write_targets": [
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.rating_periods",
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.rating_results",
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.rating_pkg",
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.invoices",
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.invoice_lines",
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.credit_notes",
+        "lakebase:ow-tp-billing/mig-p1-w2-b1:ow_billing.invoicing_pkg"
+      ],
+      "verify_depth": "full",
+      "brief": "CONTRACT (read first). Repo Cognition-Partner-Workshops/otterworks, base branch tp-run/databricks-20260914T183234Z; one PR per unit into that branch, never main/tech-partnerships; PR bodies never name or email the requester. Read .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json}, allowed_targets.json, docs/migration/P1_monthly_invoicing_analysis.md (your unit rows, dictionary, recon plan) and P1_monthly_invoicing_plan.md (decisions D2-1..D10-11 as DECIDED at STOP C). Never edit .migration/. Run factory-doctor --role child --expect-identity dhrov.subramanian@cognition.ai --expect-host https://dbc-8bc9474f-40ae.cloud.databricks.com --expect-catalogs ow_tp first; any mismatch -> report BLOCKED and stop. Skills: oracle-plsql, target-routing -> databricks-lakebase, data-reconciliation, tp-pre-pr-self-check. Oracle is read-only (secret name ORACLE_OW_BILLING_RO_DSN via AWS Secrets Manager ow-tp/oracle/ow_billing_ro; never print it); every live source read is pinned AS OF SCN and you get ONE live read per unit (2 statements). Lakebase: project ow-tp-billing, write ONLY to your batch branch below (create from its parent with TTL 7d; credential via `databricks postgres generate-database-credential`, PAT auth, unset DATABRICKS_CLIENT_ID/SECRET); never touch branch production. Databricks: catalog ow_tp only, serverless warehouse 565cd2fd713738c4, no clusters, everything prefixed ow_tp_, ns=demo. Fixture first (`make tp-smoke`, tp-validate-contracts, tp-validate-schemas), then one live dbx-recon run --mode transactional --target-kind lakebase --depth full; result.json on the PR is the merge authority (make tp-validate-recon). Caps: 3 review rounds, 3 full recon re-runs, then escalate. Report back: PR links, result.json paths, SCN pin, branch name, cost actuals.\nBATCH w2-b1, units U3 then U4 (U4 is XL: open a ~100-line contract/decision PR first \u2014 signatures, composite types, tax/credit rules, recon exclusions \u2014 then the implementation PR). Lakebase branch mig-p1-w2-b1 from the merged wave-1 branch mig-p1-w1-b1. U3 rating: tables RATING_PERIODS (UQ tenant_id, period_start), RATING_RESULTS; PKG_RATING -> type rating.rating_result_t (tenant_id, period_start, period_end, used_units, quota_units, rollover_units, billable_units, first_tier, second_tier, overage_amount), rating.compute_rating(text,date,date) RETURNS rating.rating_result_t replacing the 10 package globals (D9-2), rating.fn_usage_rating / fn_usage_summary RETURNS TABLE (kinds decoded api/storage/compute/UNKNOWN), rating.sp_finalize_rating(text,date,date) with INSERT ... ON CONFLICT upserts for both tables and deterministic ids via util.f_md5_uuid exactly as Oracle concatenates them. Port verbatim: TO_CHAR 'YYYYMMDD' compares, 101-unit tier boundary, LEAST/GREATEST NULL semantics (explicit CASE), ADD_MONTHS(-3) rollover window (fixture case Jan 31/Feb 28, R3), suspension factor from suspended_on, ROUND half-away. Recon tiers 1,2 (SUM(overage_amount), SUM(billable_units)),3,4 dual-run fn_usage_rating and fn_usage_summary for every tenant x 3 periods at the pin vs Lakebase (numeric exact),5,7. Declared source rows at pin: RATING_PERIODS 3, RATING_RESULTS 3. mapping_spec: rating_results watermark created_at; rating_periods none (strict). PR ow_tp_u3_rating.\nU4 invoicing-credits: tables INVOICES (FK tenants, rating_periods), INVOICE_LINES (UQ invoice_id,line_no; FK ON DELETE CASCADE), CREDIT_NOTES; PKG_INVOICING -> type invoicing.preview_t (plan_code, plan_fee, overage, tax, credit), invoicing.compute_preview(text,date,date) RETURNS invoicing.preview_t (calls rating.compute_rating, sums open credit notes, tenant tax exemption, TAX_RATE 0.0825 constant), invoicing.fn_invoice_preview RETURNS TABLE (5 lines: plan, usage, regional tax, local tax = g_tax/2 each unrounded until column insert, credit), invoicing.fn_invoice_lines(text) RETURNS TABLE, invoicing.sp_issue_invoice(text,date,date): deterministic period/invoice ids, CALL rating.sp_finalize_rating, upsert invoices, delete+rebuild invoice_lines from the preview, subtotal/tax/credit/total, credit burn-down oldest-first preserving the documented double-decrement quirk verbatim (R11: keep intermediates unconstrained numeric). NO notification emission (D7-2 option B). New surfaces, fixture-tested only and excluded from source recon: invoicing.close_billing_period(date,date) (per-tenant savepoint, failures logged via util.log_msg, never swallowed) and invoicing.issue_credit_note(text,text,date,numeric) (D4-6). Recon tiers 1,2 (SUM(total), SUM(remaining_amount)),3 (INVOICE_LINES has 2 rows vs 3 invoices at source: compare as-is, never repair, R15),4 dual-run fn_invoice_preview per tenant/period at the pin and sp_issue_invoice idempotency on a fixture copy (second run identical rows),5,7. Declared source rows at pin: INVOICES 3, INVOICE_LINES 2, CREDIT_NOTES 5. mapping_spec: invoices watermark issued_at; invoice_lines, credit_notes none (strict). PRs ow_tp_u4_invoicing_contract, ow_tp_u4_invoicing_credits."
+    }
+  ]
+}

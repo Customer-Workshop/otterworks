@@ -1,6 +1,5 @@
 {
   "blocking": [
-    "hook_platform_loaded=fail",
     "databricks_identity=warn"
   ],
   "checks": [
@@ -60,15 +59,17 @@
     },
     {
       "data": {},
-      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__4bfb014e",
+      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__bd89f946",
       "id": "hook_guard_functional",
       "status": "ok"
     },
     {
-      "data": {},
-      "detail": "live probe ran unblocked: hooks.json is not being applied in this session. Treat as a D10; do not launch children until fixed (plugin not installed at org level, or hooks disabled).",
+      "data": {
+        "probe_nonce": "98f730e0"
+      },
+      "detail": "live probe was BLOCKED: the platform is running hooks.json",
       "id": "hook_platform_loaded",
-      "status": "fail"
+      "status": "ok"
     },
     {
       "data": {
@@ -156,7 +157,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-14T19:37:59Z",
+  "generated_at": "2026-09-14T20:26:05Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": false,
@@ -167,8 +168,7 @@
   "role": "orchestrator",
   "schema": "dbx-migration-factory/capabilities/1",
   "summary": {
-    "fail": 1,
-    "ok": 12,
+    "ok": 13,
     "skipped": 2,
     "warn": 2
   },

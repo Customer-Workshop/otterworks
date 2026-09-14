@@ -7,6 +7,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,6 +41,7 @@ public class AnnouncementController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     @ResponseStatus(HttpStatus.CREATED)
     public AnnouncementResponse create(@Valid @RequestBody CreateAnnouncementRequest request) {
         return AnnouncementResponse.from(
@@ -47,6 +49,7 @@ public class AnnouncementController {
     }
 
     @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR')")
     public AnnouncementResponse publish(@PathVariable Long id) {
         return AnnouncementResponse.from(service.publish(id));
     }

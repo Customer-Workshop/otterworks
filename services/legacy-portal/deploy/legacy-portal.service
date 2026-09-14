@@ -7,8 +7,11 @@
 #   sudo cp deploy/legacy-portal.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now legacy-portal
 #
-# Optional PostgreSQL backend (defaults to embedded H2):
+# Required: the HS256 secret auth-service signs access tokens with (do not commit real secrets):
 #   /etc/legacy-portal.env with:
+#     JWT_SECRET=...
+#
+# Optional PostgreSQL backend (defaults to embedded H2), also in /etc/legacy-portal.env:
 #     SPRING_PROFILES_ACTIVE=postgres
 #     SPRING_DATASOURCE_URL=jdbc:postgresql://db-host:5432/legacyportal
 #     SPRING_DATASOURCE_USERNAME=legacyportal

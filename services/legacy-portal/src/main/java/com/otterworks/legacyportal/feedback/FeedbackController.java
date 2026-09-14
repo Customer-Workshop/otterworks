@@ -1,5 +1,6 @@
 package com.otterworks.legacyportal.feedback;
 
+import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,10 +14,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Feedback is always attributed to, and listed for, the authenticated user. */
 @RestController
 @RequestMapping("/api/feedback")
 public class FeedbackController {
@@ -29,14 +30,15 @@ public class FeedbackController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public FeedbackResponse submit(@Valid @RequestBody SubmitFeedbackRequest request) {
+    public FeedbackResponse submit(
+            Principal principal, @Valid @RequestBody SubmitFeedbackRequest request) {
         return FeedbackResponse.from(
-                service.submit(request.getUserId(), request.getRating(), request.getMessage()));
+                service.submit(principal.getName(), request.getRating(), request.getMessage()));
     }
 
     @GetMapping
-    public List<FeedbackResponse> listForUser(@RequestParam String userId) {
-        return service.listForUser(userId).stream()
+    public List<FeedbackResponse> listForUser(Principal principal) {
+        return service.listForUser(principal.getName()).stream()
                 .map(FeedbackResponse::from)
                 .collect(Collectors.toList());
     }
@@ -48,10 +50,6 @@ public class FeedbackController {
 
     public static class SubmitFeedbackRequest {
 
-        @NotBlank
-        @Size(max = 100)
-        private String userId;
-
         @Min(1)
         @Max(5)
         private int rating;
@@ -59,14 +57,6 @@ public class FeedbackController {
         @NotBlank
         @Size(max = 2000)
         private String message;
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public void setUserId(String userId) {
-            this.userId = userId;
-        }
 
         public int getRating() {
             return rating;

@@ -23,10 +23,22 @@ and the datasource. That is exactly what makes this a good decomposition candida
 |---|---|---|---|
 | Announcements | `com.otterworks.legacyportal.announcements` | `announcements` | `GET/POST /api/announcements`, `GET /api/announcements/{id}`, `POST /api/announcements/{id}/publish` |
 | User Preferences | `com.otterworks.legacyportal.userpreferences` | `user_preferences` | `GET /api/preferences/{userId}`, `PUT /api/preferences/{userId}` |
-| Feedback | `com.otterworks.legacyportal.feedback` | `feedback` | `POST /api/feedback`, `GET /api/feedback?userId=`, `GET /api/feedback/average-rating` |
+| Feedback | `com.otterworks.legacyportal.feedback` | `feedback` | `POST /api/feedback`, `GET /api/feedback`, `GET /api/feedback/average-rating` |
 
 Shared, non-domain plumbing lives in `com.otterworks.legacyportal.common` (health endpoint,
-exception handling).
+exception handling) and `com.otterworks.legacyportal.security` (bearer-token auth).
+
+### Authentication
+
+Every `/api/**` route requires `Authorization: Bearer <access token>`, where the token is an
+access token issued by `auth-service` (HS256, signed with the shared `JWT_SECRET`). Only
+`/health` and `/actuator/health` are anonymous.
+
+- The acting user is the token's `sub` claim. Feedback is submitted and listed for that user
+  only; `/api/preferences/{userId}` must match it unless the caller has `ADMIN`.
+- Creating or publishing announcements requires the `ADMIN` or `EDITOR` role.
+- `JWT_SECRET` must be set for the `postgres` (on-prem) profile; the default H2 profile falls
+  back to auth-service's local-dev secret so `run-onprem.sh` stays self-contained.
 
 ### Why it's an obvious decomposition candidate
 
@@ -60,7 +72,7 @@ Or under systemd on the VM — see [`deploy/legacy-portal.service`](deploy/legac
 ### On-prem with a real PostgreSQL (Docker Compose)
 
 ```bash
-docker compose -f docker-compose.onprem.yml up --build
+JWT_SECRET=<secret auth-service signs with> docker compose -f docker-compose.onprem.yml up --build
 curl http://localhost:8095/health
 docker compose -f docker-compose.onprem.yml down -v
 ```

@@ -3,6 +3,7 @@ package com.otterworks.legacyportal.userpreferences;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -10,9 +11,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Preferences are owned by the authenticated user; only admins may act on another user's. */
 @RestController
 @RequestMapping("/api/preferences")
 public class UserPreferenceController {
+
+    private static final String SELF_OR_ADMIN = "#userId == authentication.name or hasRole('ADMIN')";
 
     private final UserPreferenceService service;
 
@@ -21,11 +25,13 @@ public class UserPreferenceController {
     }
 
     @GetMapping("/{userId}")
+    @PreAuthorize(SELF_OR_ADMIN)
     public PreferenceResponse get(@PathVariable String userId) {
         return PreferenceResponse.from(service.getOrDefault(userId));
     }
 
     @PutMapping("/{userId}")
+    @PreAuthorize(SELF_OR_ADMIN)
     public PreferenceResponse update(
             @PathVariable String userId, @Valid @RequestBody UpdatePreferenceRequest request) {
         return PreferenceResponse.from(

@@ -29,6 +29,11 @@ management:
       probes:
         enabled: true
 
+# Access tokens are the HS256 JWTs issued by auth-service, so this must be the same secret
+# auth-service signs with. The fallback matches auth-service's local-dev default only.
+jwt:
+  secret: ${JWT_SECRET:dev-jwt-secret-otterworks-2024-change-in-production}
+
 ---
 # On-prem / VM profile: talks to a real PostgreSQL running alongside the app on the VM
 # (see docker-compose.onprem.yml and scripts/run-onprem.sh). The three schemas are created
@@ -48,3 +53,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# No fallback outside local dev: the on-prem deployment refuses to start without JWT_SECRET.
+jwt:
+  secret: ${JWT_SECRET}

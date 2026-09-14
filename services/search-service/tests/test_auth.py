@@ -11,7 +11,7 @@ import pytest
 from app.config import AppConfig, AuthConfig
 from app.main import create_app
 
-JWT_SECRET = "test-jwt-secret"
+JWT_SECRET = "test-jwt-secret-that-is-at-least-32-bytes-long"
 SERVICE_TOKEN = "test-service-token"
 
 SEARCH_URL = "/api/v1/search/?q=test"
@@ -60,7 +60,7 @@ class TestUserEndpoints:
         assert response.status_code == 401
 
     def test_jwt_signed_with_wrong_secret_rejected(self, secured_client):
-        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(secret="not-the-secret")))
+        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(secret="not-the-secret-but-also-32-bytes-long!!")))
         assert response.status_code == 401
 
     def test_unsigned_jwt_rejected(self, secured_client):

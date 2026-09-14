@@ -12,7 +12,8 @@ session, evidence in `07_access_checklist.md`), **PROPOSED** (default, confirmed
 |---|---|---|
 | Engagement | OtterWorks billing estate -> Databricks (Lakebase operational track + Delta analytical track) | FACT |
 | Pipeline 1 | Monthly invoicing: `OW_BILLING` packages `pkg_plans`, `pkg_rating`, `pkg_invoicing`, `pkg_dunning`, `pkg_ow_util` and the tables they touch | FACT |
-| stop_mode | `soft` (60 s window, recommended default then accepted; STOP E always hard). Any stop whose default would change tolerances, widen scope, or touch the legacy source is hard. | FACT |
+| stop_mode | `soft` (60 s window, then the recommended default is accepted and recorded) | FACT |
+| Stops that always block regardless of mode | STOP E; any stop whose default would change tolerances, widen scope, or touch the legacy source | FACT |
 | Orchestrator session | this session (`devin-8c378c45e9024737a3d45c0d6f87ad71`), child of parent `devin-7e19cb53998e471c9dc41f46d6a0058f` | FACT |
 | Interaction contract | Stops are posted in this session as one message (decision, recommendation, exact approving reply); the parent session relays to Slack `#ow-tp-alerts` and replies with the customer's exact words. One question at a time, concrete options. Events: STOP A/B/C/E, wave close (STOP D), fan-out halt. Nothing else pings. | FACT |
 | Notification contract | none from this session directly (parent owns `#ow-tp-alerts`); no daily digest, event-only | FACT / PROPOSED (digest) |

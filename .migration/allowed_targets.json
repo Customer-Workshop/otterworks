@@ -1,5 +1,5 @@
 {
-  "catalogs": ["ow_tp", "databricks_postgres"],
+  "catalogs": ["ow_tp"],
   "legacy_sources": [
     "ORACLE_OW_BILLING_RO_DSN",
     "ow-tp/oracle/ow_billing_ro",

@@ -11,7 +11,7 @@ import pytest
 from app.config import AppConfig, AuthConfig
 from app.main import create_app
 
-JWT_SECRET = "test-jwt-secret-that-is-at-least-32-bytes-long"
+JWT_SECRET = "test-jwt-secret-that-is-at-least-48-bytes-long-for-hs384"
 SERVICE_TOKEN = "test-service-token"
 
 SEARCH_URL = "/api/v1/search/?q=test"

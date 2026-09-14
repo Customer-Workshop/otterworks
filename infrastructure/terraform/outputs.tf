@@ -59,11 +59,6 @@ output "sqs_notification_queue_url" {
   value       = module.messaging.notification_queue_url
 }
 
-output "sqs_search_indexing_queue_url" {
-  description = "SQS queue URL for search indexing"
-  value       = module.messaging.search_indexing_queue_url
-}
-
 output "sns_events_topic_arn" {
   description = "SNS topic ARN for system events"
   value       = module.messaging.events_topic_arn

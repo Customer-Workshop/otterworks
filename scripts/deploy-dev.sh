@@ -219,7 +219,6 @@ load_infra_outputs() {
   DDB_SHARES="$(terraform -chdir="$d" output -raw dynamodb_file_shares_table 2>/dev/null || echo "")"
   SNS_TOPIC="$(terraform -chdir="$d" output -raw sns_events_topic_arn 2>/dev/null || echo "")"
   SQS_NOTIF="$(terraform -chdir="$d" output -raw sqs_notification_queue_url 2>/dev/null || echo "")"
-  SQS_SEARCH="$(terraform -chdir="$d" output -raw sqs_search_indexing_queue_url 2>/dev/null || echo "")"
   IRSA_JSON="$(terraform -chdir="$d" output -json irsa_role_arns 2>/dev/null || echo "{}")"
   DB_NAME="${DB_NAME:-otterworks}"; DB_USER="${DB_USER:-otterworks_admin}"
   # MeiliSearch runs in-cluster (see deploy_meilisearch); search-service reaches it by Service DNS.
@@ -383,14 +382,7 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.HOST=0.0.0.0" --set-string "config.PORT=8087")
       EXTRA_ARGS+=(--set-string "config.MEILISEARCH_URL=${MEILISEARCH_URL}")
-      # Documents/files reach the index through the SNS->SQS subscription that
-      # Terraform provisions for search-service; the HTTP index endpoints are
-      # service-token only.
-      if [ -n "${SQS_SEARCH}" ]; then
-        EXTRA_ARGS+=(--set-string "config.SQS_ENABLED=true" --set-string "config.SQS_QUEUE_URL=${SQS_SEARCH}")
-      else
-        EXTRA_ARGS+=(--set-string "config.SQS_ENABLED=false")
-      fi
+      EXTRA_ARGS+=(--set-string "config.SQS_ENABLED=false")
       add_secret SEARCH_SERVICE_TOKEN "${SEARCH_SERVICE_TOKEN}" ;;
     analytics-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")

@@ -1,0 +1,14 @@
+{
+  "catalogs": ["ow_tp", "databricks_postgres"],
+  "legacy_sources": [
+    "ORACLE_OW_BILLING_RO_DSN",
+    "ow-tp/oracle/ow_billing_ro",
+    "52.201.36.9",
+    "FREEPDB1",
+    "OW_BILLING"
+  ],
+  "guard_mode": "block",
+  "target_hosts": ["LAKEBASE_OW_TP_BILLING_DSN"],
+  "bundle_targets": ["migration"],
+  "forbidden_bundle_targets": ["prod", "production"]
+}

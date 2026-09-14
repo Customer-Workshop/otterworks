@@ -1,0 +1,7 @@
+# Fingerprints (commit:file:rule:line) of findings that are not credentials.
+# Keep entries commit-scoped so the rule still fires on any new occurrence.
+
+# search-service unit-test JWT signing key; superseded by a derived value in
+# tests/conftest.py, but the literal remains in these two commits' history.
+840ab78cd07659cbe4e65719096abfdb4edb4634:services/search-service/tests/test_auth.py:generic-api-key:14
+f459719743fb8e2bc260807c27cd33427687352d:services/search-service/tests/test_auth.py:generic-api-key:14

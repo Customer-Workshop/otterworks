@@ -34,6 +34,28 @@ def test_search_query_suggest_and_advanced_flow(api_client):
     assert advanced_response.status_code == 200, advanced_response.text
 
 
+def test_search_validation_and_pagination_bounds(api_client):
+    user = api_client.register_user("search-validation")
+
+    missing_query = api_client.client.get("/api/v1/search/", headers=user.auth_headers)
+    assert missing_query.status_code == 400
+
+    invalid_page = api_client.client.get(
+        "/api/v1/search/",
+        headers=user.auth_headers,
+        params={"q": "anything", "page": "not-a-number"},
+    )
+    assert invalid_page.status_code == 400
+
+    short_suggest = api_client.client.get(
+        "/api/v1/search/suggest",
+        headers=user.auth_headers,
+        params={"q": "a"},
+    )
+    assert short_suggest.status_code == 200, short_suggest.text
+    assert short_suggest.json()["suggestions"] == []
+
+
 def test_index_endpoints_reject_end_user_tokens(api_client):
     """Indexing is internal: a user JWT must not be able to write to or wipe the index."""
     user = api_client.register_user("search-index-user")

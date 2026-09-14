@@ -6,15 +6,18 @@ into one of two classes:
 * **Internal endpoints** (the ``index`` blueprint: index/reindex/remove)
   require the service-to-service token via ``Authorization: Bearer <token>``.
   A user JWT is never sufficient here.
-* **User endpoints** (the ``search`` blueprint) require the caller's JWT via
-  ``Authorization: Bearer <jwt>``, forwarded unchanged by the API gateway.
-  The user identity is taken from the validated token's ``sub``/``user_id``
-  claim and exposed as ``flask.g.user_id``. Inbound ``X-User-ID`` headers
-  are never trusted, so a caller that reaches the pod directly cannot
-  impersonate another user.
+* **User endpoints** (the ``search`` blueprint) require the caller's access
+  JWT via ``Authorization: Bearer <jwt>``, forwarded unchanged by the API
+  gateway. The user identity is taken from the validated token's
+  ``sub``/``user_id`` claim and exposed as ``flask.g.user_id``. Inbound
+  ``X-User-ID`` headers are never trusted, so a caller that reaches the pod
+  directly cannot impersonate another user.
 
 The service token is also accepted on user endpoints so trusted internal
 callers can search across owners.
+
+There is no switch to turn this off: a missing ``JWT_SECRET`` or
+``SEARCH_SERVICE_TOKEN`` makes the corresponding class of request fail closed.
 """
 
 from __future__ import annotations
@@ -29,7 +32,8 @@ logger = structlog.get_logger()
 
 PUBLIC_PREFIXES = ("/health", "/metrics")
 INTERNAL_BLUEPRINTS = frozenset({"index"})
-JWT_ALGORITHMS = ["HS256", "HS384"]
+JWT_ALGORITHMS = ["HS256", "HS384", "HS512"]
+REFRESH_TOKEN_TYPE = "refresh"
 
 
 def require_auth(app):
@@ -41,10 +45,10 @@ def require_auth(app):
     """
     auth_config = app.config["APP_CONFIG"].auth
 
-    if not auth_config.require_auth:
-        logger.warning("auth_disabled", detail="REQUIRE_AUTH=false; X-User-ID header is trusted as-is")
-    elif not auth_config.jwt_secret:
+    if not auth_config.jwt_secret:
         logger.warning("jwt_secret_missing", detail="user endpoints will reject every request")
+    if not auth_config.service_token:
+        logger.warning("service_token_missing", detail="index endpoints will reject every request")
 
     @app.before_request
     def _check_auth():
@@ -52,10 +56,6 @@ def require_auth(app):
 
         path = request.path
         if any(path.startswith(p) for p in PUBLIC_PREFIXES):
-            return None
-
-        if not auth_config.require_auth:
-            g.user_id = request.headers.get("X-User-ID", "").strip() or None
             return None
 
         token = _extract_bearer_token()
@@ -92,6 +92,8 @@ def _user_id_from_jwt(token: str, secret: str) -> str | None:
     try:
         payload = jwt.decode(token, secret, algorithms=JWT_ALGORITHMS)
     except jwt.PyJWTError:
+        return None
+    if payload.get("type") == REFRESH_TOKEN_TYPE:
         return None
     user_id = payload.get("user_id") or payload.get("sub")
     if not user_id:

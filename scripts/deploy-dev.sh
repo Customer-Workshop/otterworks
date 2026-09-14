@@ -29,6 +29,10 @@ GOLDEN_HOST_SUFFIX="${GOLDEN_HOST_SUFFIX:-otterworks.app}"
 # service that validates tokens. Generated once if not supplied; pass a stable
 # value (JWT_SECRET=...) across redeploys so previously issued tokens stay valid.
 JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
+# Service-to-service token for search-service's internal index/reindex
+# endpoints. Generated if not supplied; pass a stable value to keep operator
+# tooling working across redeploys.
+SEARCH_SERVICE_TOKEN="${SEARCH_SERVICE_TOKEN:-$(openssl rand -hex 32)}"
 # Rails (admin-service) session key. Stable value recommended across redeploys.
 SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
 
@@ -378,7 +382,8 @@ build_helm_args() {
       EXTRA_ARGS+=(--set-string "config.REDIS_HOST=${REDIS_HOST}" --set-string "config.REDIS_PORT=6379")
       EXTRA_ARGS+=(--set-string "config.HOST=0.0.0.0" --set-string "config.PORT=8087")
       EXTRA_ARGS+=(--set-string "config.MEILISEARCH_URL=${MEILISEARCH_URL}")
-      EXTRA_ARGS+=(--set-string "config.REQUIRE_AUTH=true" --set-string "config.SQS_ENABLED=false") ;;
+      EXTRA_ARGS+=(--set-string "config.SQS_ENABLED=false")
+      add_secret SEARCH_SERVICE_TOKEN "${SEARCH_SERVICE_TOKEN}" ;;
     analytics-service)
       EXTRA_ARGS+=(--set-string "config.AWS_REGION=${AWS_REGION}")
       EXTRA_ARGS+=(--set-string "config.ANALYTICS_HOST=0.0.0.0" --set-string "config.PORT=8088")

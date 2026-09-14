@@ -1,4 +1,4 @@
-"""Tests for the authentication middleware with REQUIRE_AUTH enabled."""
+"""Tests for the authentication middleware."""
 
 from __future__ import annotations
 
@@ -10,9 +10,8 @@ import pytest
 
 from app.config import AppConfig, AuthConfig
 from app.main import create_app
-
-JWT_SECRET = "test-jwt-secret-that-is-at-least-48-bytes-long-for-hs384"
-SERVICE_TOKEN = "test-service-token"
+from tests.conftest import TEST_JWT_SECRET as JWT_SECRET
+from tests.conftest import TEST_SERVICE_TOKEN as SERVICE_TOKEN
 
 SEARCH_URL = "/api/v1/search/?q=test"
 INDEX_URL = "/api/v1/search/index/document"
@@ -21,8 +20,8 @@ REINDEX_URL = "/api/v1/search/reindex"
 DOCUMENT = {"id": "doc-1", "title": "Doc", "content": "body", "owner_id": "user-1"}
 
 
-def _jwt(sub: str = "user-1", secret: str = JWT_SECRET, alg: str = "HS256") -> str:
-    return jwt.encode({"sub": sub}, secret, algorithm=alg)
+def _jwt(sub: str = "user-1", secret: str = JWT_SECRET, alg: str = "HS256", **claims: str) -> str:
+    return jwt.encode({"sub": sub, **claims}, secret, algorithm=alg)
 
 
 def _bearer(token: str) -> dict[str, str]:
@@ -30,17 +29,9 @@ def _bearer(token: str) -> dict[str, str]:
 
 
 @pytest.fixture()
-def secured_client(app_config: AppConfig, mock_meilisearch_client: MagicMock):
-    """Flask test client for an app with authentication enforced."""
-    config = dataclasses.replace(
-        app_config,
-        auth=AuthConfig(service_token=SERVICE_TOKEN, require_auth=True, jwt_secret=JWT_SECRET),
-    )
-    with patch("app.services.meilisearch_client.meilisearch.Client") as mock_cls:
-        mock_cls.return_value = mock_meilisearch_client
-        flask_app = create_app(config)
-        flask_app.config["TESTING"] = True
-        yield flask_app.test_client()
+def secured_client(app):
+    """Flask test client that sends no credentials unless a test adds them."""
+    return app.test_client()
 
 
 class TestPublicEndpoints:
@@ -59,8 +50,20 @@ class TestUserEndpoints:
         response = secured_client.get(SEARCH_URL, headers={"X-User-ID": "victim"})
         assert response.status_code == 401
 
+    def test_require_auth_env_var_cannot_disable_auth(self, secured_client, monkeypatch):
+        """The legacy REQUIRE_AUTH=false switch no longer exists; there is no way to opt out."""
+        monkeypatch.setenv("REQUIRE_AUTH", "false")
+        assert not hasattr(AuthConfig(), "require_auth")
+        response = secured_client.get(SEARCH_URL, headers={"X-User-ID": "victim"})
+        assert response.status_code == 401
+
     def test_jwt_signed_with_wrong_secret_rejected(self, secured_client):
-        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(secret="not-the-secret-but-also-32-bytes-long!!")))
+        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(secret=JWT_SECRET[::-1])))
+        assert response.status_code == 401
+
+    def test_refresh_token_rejected(self, secured_client):
+        """auth-service marks refresh tokens with type=refresh; they are not access credentials."""
+        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(type="refresh")))
         assert response.status_code == 401
 
     def test_unsigned_jwt_rejected(self, secured_client):
@@ -76,8 +79,14 @@ class TestUserEndpoints:
         response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt()))
         assert response.status_code == 200
 
-    def test_valid_jwt_hs384_accepted(self, secured_client):
-        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(alg="HS384")))
+    @pytest.mark.parametrize("alg", ["HS384", "HS512"])
+    def test_valid_jwt_other_hmac_algorithms_accepted(self, secured_client, alg):
+        """auth-service (JJWT ``signWith(key)``) picks HS512 for its 64-byte secret."""
+        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(alg=alg)))
+        assert response.status_code == 200
+
+    def test_access_token_with_type_claim_accepted(self, secured_client):
+        response = secured_client.get(SEARCH_URL, headers=_bearer(_jwt(type="access")))
         assert response.status_code == 200
 
     def test_owner_scope_comes_from_jwt_not_header(self, secured_client, mock_meilisearch_client):
@@ -141,7 +150,7 @@ class TestMissingServiceToken:
     ):
         config = dataclasses.replace(
             app_config,
-            auth=AuthConfig(service_token="", require_auth=True, jwt_secret=JWT_SECRET),
+            auth=AuthConfig(service_token="", jwt_secret=JWT_SECRET),
         )
         with patch("app.services.meilisearch_client.meilisearch.Client") as mock_cls:
             mock_cls.return_value = mock_meilisearch_client

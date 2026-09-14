@@ -10,10 +10,15 @@ from app.config import AppConfig, AuthConfig, MeiliSearchConfig, SQSConfig
 from app.main import create_app
 from app.services.meilisearch_client import MeiliSearchService
 
+# Test-only credentials; long enough for every HMAC algorithm the middleware
+# accepts (PyJWT warns below 64 bytes for HS512).
+TEST_JWT_SECRET = "unit-test-jwt-signing-key-" * 3
+TEST_SERVICE_TOKEN = "unit-test-service-token"
+
 
 @pytest.fixture()
 def app_config() -> AppConfig:
-    """Create a test AppConfig with auth disabled."""
+    """Create a test AppConfig with test credentials."""
     return AppConfig(
         service_name="search-service-test",
         port=8087,
@@ -26,7 +31,7 @@ def app_config() -> AppConfig:
             files_index="test-otterworks-files",
         ),
         sqs=SQSConfig(enabled=False),
-        auth=AuthConfig(service_token="", require_auth=False),
+        auth=AuthConfig(service_token=TEST_SERVICE_TOKEN, jwt_secret=TEST_JWT_SECRET),
     )
 
 
@@ -69,8 +74,10 @@ def app(app_config: AppConfig, mock_meilisearch_client: MagicMock):
 
 @pytest.fixture()
 def client(app):
-    """Create a Flask test client."""
-    return app.test_client()
+    """Create a Flask test client that authenticates as the internal service."""
+    test_client = app.test_client()
+    test_client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {TEST_SERVICE_TOKEN}"
+    return test_client
 
 
 @pytest.fixture()

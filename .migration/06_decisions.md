@@ -171,3 +171,39 @@ frozen, money stays exact, and canonicalization is untouched. The six specs now 
 `timestamp(6)` and `gen_mapping_specs.py` emits `timestamp(p)` for the `TIMESTAMP` base type,
 so the defect cannot be regenerated. STOP E records that six columns were re-typed after the
 specs were frozen, and why.
+
+---
+
+## D-011 — `usage_events` lands on both tracks; `pkg_rating` moves to wave 4 behind it
+
+**Date:** 2026-09-15 · **Decided by:** user (explicit reply) · **Status:** accepted
+
+`pkg_rating` reads `usage_events` row-at-a-time in `compute_rating` and `fn_usage_summary`,
+but `usage_events` was placed on the analytical track in wave 1 (`ow_tp.silver.usage_events`)
+and no `billing.usage_events` exists in Lakebase. Wave 3's `p1-pkg-rating` reported BLOCKED
+rather than materialising an undeclared copy inside a package unit, and the independent
+verifier agreed that was the correct refusal. The same gap blocks `p1-pkg-invoicing`, because
+`sp_issue_invoice` calls `sp_finalize_rating`.
+
+Decision: add `p1-usage-events-oltp` (U-28) as a wave-4 unit on the operational track, with
+`billing.usage_events` as its declared write target. The Delta copy stays and remains the
+analytical one. The two units share one source table and have disjoint write targets, and
+each reconciles against Oracle — never one target against the other.
+
+Sequencing, serialized inside wave 4: `w4-c` (`p1-usage-events-oltp`) → `w4-d`
+(`p1-pkg-rating`, retried) → `w4-b` (`p1-pkg-invoicing`). `w4-a` (the nightly dunning job) is
+independent of the rating chain and already running. `p1-pkg-rating` is re-placed from w3-a
+to w4-d for the reason D-009 moved `p1-pkg-invoicing`: a runtime write to the rating tables
+is only safe once the wave that owns those tables has delivered them. Wave 3's manifest keeps
+the two rating data units, and its result artifact still records that `p1-pkg-rating` ran
+there and was blocked.
+
+Rejected alternative: leave rating on the analytical track. Invoicing would then stop being a
+Lakebase transaction, which is the operational contract this migration exists to preserve.
+
+Not a tolerance change: tolerances stay frozen and money stays exact. Manifests revalidate at
+28 units / 48 write targets / 14 runtime writes / no collisions.
+
+STOP E records that one source table is materialised on both tracks, that the operational
+copy is loaded by the migration rather than by the application, and that keeping the two
+copies in step after cutover needs a named owner.

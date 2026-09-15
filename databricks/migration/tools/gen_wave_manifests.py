@@ -44,6 +44,7 @@ UNIT = {
     "p1-plans":              ("U-02 PLANS", "lakebase", "full"),
     "p1-codes":              ("U-11 CODES", "lakebase", "full"),
     "p1-usage-events":       ("U-18 USAGE_EVENTS", "delta", "full"),
+    "p1-usage-events-oltp":  ("U-28 USAGE_EVENTS (operational copy)", "lakebase", "full"),
     "p1-invoice-header":     ("U-16 INVOICE_HEADER (legacy)", "delta", "full"),
     "p1-invoice-line":       ("U-17 INVOICE_LINE (legacy)", "delta", "full"),
     "p1-subscriptions":      ("U-03 SUBSCRIPTIONS", "lakebase", "full"),
@@ -480,30 +481,19 @@ It depends only on billing.tenants (fk_cn_tenant), which merged in wave 1.
     # Same cap reason as wave 2. Three batches now: credit notes moved to wave 2 so invoicing
     # is the only writer of that table while it runs.
     (3, 3, [
-        ("w3-a", ["p1-rating-periods", "p1-rating-results", "p1-pkg-rating"],
-         ["billing.rating_periods", "billing.rating_results", "billing.sp_finalize_rating",
-          "billing.fn_usage_rating", "billing.fn_usage_summary"],
-         # sp_finalize_rating writes the hand-off row wave 0 created the table for; the DDL
-         # owner is a strictly earlier wave, so this is DML on someone else's table and has
-         # to be declared rather than left implicit in the brief.
-         ["billing.rating_state", "billing.billing_audit_log"],
+        ("w3-a", ["p1-rating-periods", "p1-rating-results"],
+         ["billing.rating_periods", "billing.rating_results"],
+         [],
          """
-The rating chain: RATING_PERIODS (3), RATING_RESULTS (3) and pkg_rating
-(packages/03_pkg_rating.sql), together because the package writes both tables.
+The rating tables: RATING_PERIODS (3) and RATING_RESULTS (3).
+pkg_rating itself is NOT in this batch. It ran here first, found no billing.usage_events to
+read on the operational track, and reported BLOCKED; D-011 re-placed it in wave 4 as w4-d,
+behind the unit that lands that table. Deliver the tables and their constraints only.
 Ids are f_md5_uuid outputs from wave 0 - if the parity proof did not land, stop here.
-Traps called out in the source and the analysis:
- - row-at-a-time cursor summation: the converted set-based version must produce the same
-   rounding, including the per-row order the cursor implies;
- - date comparison via TO_CHAR(...,'YYYYMMDD') string compare;
- - LEAST/GREATEST NULL semantics differ Oracle <-> Postgres (source comments at :95-98);
- - tier break hardcoded at 101; suspension proration;
- - insert-then-catch-DUP_VAL_ON_INDEX upserts become ON CONFLICT with the same outcome;
- - pkg_rating sets the globals pkg_invoicing later reads (g_overage_amount): the hand-off is
-   the state table `billing.rating_state` whose shape wave 0 pinned in
-   docs/migration/Pipeline1_invoicing_plan.md (P1-D4). Implement that shape exactly - batch
-   w3-b codes against it in parallel with you. If it does not fit the source behaviour, stop
-   and report status=BLOCKED with `rating_state_contract`; do not redesign it unilaterally.
-   fn_usage_summary orders by kind; keep it deterministic.
+ - Reproduce every Oracle constraint, not just the data: a foreign key missing in the
+   target still passes a row-level diff, so read ALL_CONSTRAINTS and match it.
+ - Oracle TIMESTAMP is zoneless -> Postgres timestamp, never timestamptz (D-010).
+ - The rating_state hand-off row belongs to w4-d, which writes it. Do not populate it here.
 """),
         ("w3-b", ["p1-invoices", "p1-invoice-lines"],
          ["billing.invoices", "billing.invoice_lines"],
@@ -567,6 +557,43 @@ Do not create the nightly job here; that is U-25 in wave 4.
 """),
     ]),
     (4, 2, [
+        ("w4-c", ["p1-usage-events-oltp"],
+         ["billing.usage_events"],
+         [],
+         """
+U-28 USAGE_EVENTS onto the OPERATIONAL track, and the unblocker for the rest of this wave.
+The same source table already landed in Delta as U-18 in wave 1; that copy stays and is the
+analytical one. This unit is the Lakebase copy pkg_rating actually reads (D-011).
+Why it exists: pkg_rating reads usage_events row-at-a-time in compute_rating and
+fn_usage_summary. Wave 3's p1-pkg-rating had nothing to read and reported BLOCKED rather
+than materialising a copy inside a package unit, which would have been an undeclared write
+over data nobody reconciled. This unit is that decision made properly, with a declared
+write target and its own recon.
+ - Same source rows, same keys as U-18. Reconcile against Oracle, not against the Delta
+   copy: two targets of one source, never one target of another.
+ - Oracle TIMESTAMP is zoneless -> Postgres timestamp, never timestamptz (D-010).
+ - Write ONLY billing.usage_events. The rating tables belong to wave 3 and are merged.
+w4-d and w4-b are serialized behind you: report the moment the table is loaded.
+"""),
+        ("w4-d", ["p1-pkg-rating"],
+         ["billing.sp_finalize_rating", "billing.fn_usage_rating",
+          "billing.fn_usage_summary"],
+         ["billing.rating_periods", "billing.rating_results", "billing.rating_state",
+          "billing.billing_audit_log"],
+         """
+U-22 pkg_rating, retried here after wave 3 reported it BLOCKED (D-011). Run only once w4-c
+has loaded billing.usage_events; if the table is absent, report BLOCKED again rather than
+creating it.
+The rating tables it writes (rating_periods, rating_results) are wave-3 units and are
+already delivered: call them, do not re-convert or re-load them, and declare the writes as
+runtime writes, which the manifest does for you.
+ - billing.rating_state carries the g_overage_amount hand-off to pkg_invoicing. It is
+   package-global state: make it explicit, and keep updated_at zoneless (D-010).
+ - billing.billing_audit_log, through the converted log_msg. Keep the logging; declaring it
+   is the fix, never dropping the call (D-009).
+ - compute_rating's per-row rounding stays exactly where the source puts it.
+w4-b is serialized behind you because sp_issue_invoice calls sp_finalize_rating.
+"""),
         ("w4-a", ["p1-job-nightly-dunning"],
          ["ow_tp_p1_nightly_dunning"],
          [],

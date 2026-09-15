@@ -40,6 +40,9 @@ PLACEMENT = {
     "p1-plans": (1, "w1-a", "full"),
     "p1-codes": (1, "w1-a", "full"),
     "p1-usage-events": (1, "w1-b", "full"),
+    # The operational-track copy of the same source table (D-011), added in wave 4 because
+    # pkg_rating cannot read the Delta one.
+    "p1-usage-events-oltp": (4, "w4-c", "full"),
     "p1-invoice-header": (1, "w1-c", "full"),
     "p1-invoice-line": (1, "w1-c", "full"),
     "p1-subscriptions": (2, "w2-a", "full"),
@@ -52,7 +55,9 @@ PLACEMENT = {
     "p1-job-purge-audit-log": (2, "w2-e", "sampled"),
     "p1-rating-periods": (3, "w3-a", "full"),
     "p1-rating-results": (3, "w3-a", "full"),
-    "p1-pkg-rating": (3, "w3-a", "full"),
+    # Wave 4, not 3: wave 3 reported it BLOCKED with no billing.usage_events to read, and
+    # D-011 re-placed it behind w4-c, which lands that table.
+    "p1-pkg-rating": (4, "w4-d", "full"),
     "p1-credit-notes": (2, "w2-f", "full"),
     "p1-invoices": (3, "w3-b", "full"),
     "p1-invoice-lines": (3, "w3-b", "full"),

@@ -45,6 +45,14 @@ ADAPTER_NOTE = (
     "`dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
 )
 
+# Tiers 5-7 read source catalog metadata (constraints, indexes, identity/sequences), which
+# OracleJdbcSourceAdapter does not expose: on depths that run them the adapter records them
+# unverified, and on depths that stop earlier they are simply absent. Either way this route
+# cannot claim them, so the warning is stated here rather than inferred from the tier list.
+UNVERIFIED = ("UNVERIFIED tiers 5-7 (constraint, index and identity parity): the repo-local "
+              "Oracle JDBC source adapter reads no catalog metadata, so they are reported "
+              "unverified, never assumed")
+
 DEGRADED_MD = """# DEGRADED recon result — not an official harness verdict
 
 - Unit: `{unit}`
@@ -144,6 +152,14 @@ def main(argv: list[str] | None = None) -> int:
 
     result["degraded"] = {"grade": "DEGRADED", "official_verdict": False, "reason": REASON,
                           "source_adapter": ADAPTER_NOTE}
+    # The harness withholds merge eligibility from any run carrying an unverified warning;
+    # this route always carries one, so the warning and the consequence are recorded before
+    # result.json is written instead of leaving a degraded run looking merge-eligible.
+    warnings = list(result.get("warnings") or [])
+    if UNVERIFIED not in warnings:
+        warnings.append(UNVERIFIED)
+    result["warnings"] = warnings
+    result["merge_eligible"] = False
     result_path = args.out / "result.json"
     result_path.write_text(json.dumps(result, indent=2, default=str))
     (args.out / "DEGRADED.md").write_text(DEGRADED_MD.format(

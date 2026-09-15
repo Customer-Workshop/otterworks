@@ -3,7 +3,7 @@
 # Recon summary: `p1-customer-master-hist` - **PASS**
 
 - Mode: `live`
-- Merge eligible: yes (fixture/continuous evidence never merges) - degraded, see DEGRADED.md
+- Merge eligible: no - degraded, see DEGRADED.md
 - Mapping `map-p1-v1` / tolerances `v1` / seed `0` / depth `full`
 - Generated: 2026-09-15T08:04:00.726587+00:00
 - Cost: source 6 statements / 0 rows fetched; target 5 statements / 0 rows; 2.897s

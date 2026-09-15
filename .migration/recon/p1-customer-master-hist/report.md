@@ -4,7 +4,7 @@
 
 - **Verdict: PASS**
 - Mode: `live`
-- Merge eligible: yes (fixture/continuous evidence never merges) - degraded, see DEGRADED.md
+- Merge eligible: no - degraded, see DEGRADED.md
 - Mapping version: `map-p1-v1`
 - Tolerance version: `v1`
 - Seed: `0`

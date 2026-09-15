@@ -28,10 +28,11 @@ What is preserved, deliberately:
   - `hist_op` is 'UPD' for an update and 'DEL' for a delete, and only those two events
     write history - an INSERT into the parent writes nothing, exactly as in Oracle;
   - `hist_dt` is a STRING in Oracle's `DD-MON-YY HH24:MI:SS` shape, uppercase month, not a
-    timestamp. It is written with the same format, from UTC (plan decision P1-D3), because
-    downstream consumers parse that exact text;
-  - the parsed companions of the `DD-MON-YY` string dates are recomputed with the same
-    f_str2dt semantics as the backfill: NULL on anything unparseable.
+    timestamp. It is written with the same format and converted to UTC explicitly (plan
+    decision P1-D3), so the text does not move with the writer's session timezone;
+  - the parsed companions of the `DD-MON-YY` string dates are recomputed by the same
+    shared `oracle_dates.parse_date` expression the backfill uses, so an append and a
+    reload of the same value cannot disagree.
 
 The sequence: Delta has no sequences, and this batch may write nothing except the two
 history tables, so `hist_id` is allocated from the history table itself -
@@ -57,6 +58,8 @@ import os
 import re
 import sys
 
+from oracle_dates import HIST_DT, parse_date
+
 CATALOG = "ow_tp"
 SILVER = "silver"
 WAREHOUSE = "565cd2fd713738c4"
@@ -69,9 +72,6 @@ IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
 QUALIFIED = re.compile(r"^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*){0,2}$")
 TYPE = re.compile(r"^[A-Z_]+(\(\d+(,\s*\d+)?\))?$")
 
-PARSE_DATE = "try_to_timestamp({col}, 'dd-MMM-yy')"
-# TO_CHAR(SYSDATE,'DD-MON-YY HH24:MI:SS') with English NLS: '15-SEP-26 07:56:01'.
-HIST_DT = "upper(date_format(current_timestamp(), 'dd-MMM-yy HH:mm:ss'))"
 ZONELESS_SOURCE = ("DATE", "TIMESTAMP")
 
 
@@ -121,7 +121,7 @@ def append_sql(table: dict, old_image: str, op: str) -> str:
 
     values = [hist_id, HIST_DT, f"'{op}'"]
     values += [f"cast({ident(f['source'])} AS {target_type(f)})" for f in body]
-    values += [f"cast({PARSE_DATE.format(col=ident(d['raw']))} AS TIMESTAMP_NTZ)"
+    values += [f"cast({parse_date(ident(d['raw']))} AS TIMESTAMP_NTZ)"
                for d in derived]
 
     return (f"INSERT INTO {CATALOG}.{SILVER}.{target} ({', '.join(columns)}) "

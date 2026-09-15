@@ -12,9 +12,14 @@ class on the target warehouse, so the anomaly numbers in the report are measured
 copied from the load's own output.
 
     python3 emit_recon_report.py --result .migration/recon/<unit>/result.json \
-      --anomaly 'orphan_invoice_lines=SELECT count(*) FROM ...' \
+      --anomaly orphan_invoice_lines --expect orphan_invoice_lines=37 \
+      --idempotency-result pass \
       --idempotency-evidence 'loader rerun 2026-..., counts unchanged' \
       --unverified 'source-side constraint/index parity (tiers 5-7)'
+
+Probes are not taken from the command line: each declared anomaly class is a named query
+in PROBES below, reviewed with the rest of this file. The caller picks a name, so no SQL
+the reviewer has not seen ever reaches the warehouse.
 """
 
 from __future__ import annotations
@@ -22,25 +27,36 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 from pathlib import Path
 
 from databricks import sql as dbsql
 
 WAREHOUSE = "565cd2fd713738c4"
-CATALOG = "ow_tp"
 
-# An anomaly probe is a read, run with the migration service principal: one statement,
-# starting at `SELECT count(`, naming every table it reads as a bare three-part name inside
-# the migration catalog. Quoting is refused rather than parsed, so an identifier cannot hide
-# a catalog behind a backtick.
-PROBE = re.compile(r"^\s*SELECT\s+count\s*\(", re.IGNORECASE)
-FORBIDDEN = re.compile(
-    r"\b(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|COPY|SET)\b",
-    re.IGNORECASE)
-SOURCE = re.compile(r"\b(?:FROM|JOIN)\s+(\(|[^\s,(]+)", re.IGNORECASE)
-QUOTES = re.compile(r"[`\"\[\]]")
-TABLE = re.compile(rf"^{CATALOG}\.[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", re.IGNORECASE)
+# The declared anomaly classes of pipeline 1, one recount each, per unit. Legacy behaviour
+# that the migration reproduces on purpose: orphan lines (D8-01), `f_str2dt` returning NULL
+# on a malformed DD-MON-YY string, and the empty CHAR(1) flag read as NULL.
+PROBES = {
+    "p1-invoice-header": {
+        "unparseable_invoice_dt_null":
+            "SELECT count(*) FROM ow_tp.silver.invoice_header"
+            " WHERE invoice_dt IS NOT NULL AND invoice_dt_parsed IS NULL",
+        "unparseable_due_dt_null":
+            "SELECT count(*) FROM ow_tp.silver.invoice_header"
+            " WHERE due_dt IS NOT NULL AND due_dt_parsed IS NULL",
+    },
+    "p1-invoice-line": {
+        "orphan_invoice_lines":
+            "SELECT count(*) FROM ow_tp.silver.invoice_line l"
+            " LEFT JOIN ow_tp.silver.invoice_header h ON l.invoice_id = h.invoice_id"
+            " WHERE h.invoice_id IS NULL",
+        "empty_posted_yn_as_null":
+            "SELECT count(*) FROM ow_tp.silver.invoice_line WHERE posted_yn IS NULL",
+        "unparseable_invoice_dt_null":
+            "SELECT count(*) FROM ow_tp.silver.invoice_line"
+            " WHERE invoice_dt IS NOT NULL AND invoice_dt_parsed IS NULL",
+    },
+}
 
 
 def sql_conn():
@@ -55,30 +71,18 @@ def sql_conn():
         credentials_provider=lambda: oauth_service_principal(cfg))
 
 
-def check_probe(name: str, query: str) -> str:
-    query = query.strip().rstrip(";").strip()
-    if ";" in query:
-        raise SystemExit(f"anomaly probe {name!r} must be a single statement")
-    if not PROBE.match(query) or FORBIDDEN.search(query):
-        raise SystemExit(f"anomaly probe {name!r} must be a read-only SELECT count(...)")
-    if QUOTES.search(query):
-        raise SystemExit(f"anomaly probe {name!r} must name its tables unquoted")
-    refs = SOURCE.findall(query)
-    if not refs:
-        raise SystemExit(f"anomaly probe {name!r} names no table")
-    for ref in refs:
-        if not TABLE.match(ref):
-            raise SystemExit(
-                f"anomaly probe {name!r} reads {ref}: every source must be a bare "
-                f"{CATALOG}.<schema>.<table> name")
-    return query
-
-
-def measure(pairs: list[str]) -> list[dict]:
-    """Each `name=SQL` recounted on the target; the count is the anomaly-set member."""
-    if not pairs:
+def measure(unit: str, names: list[str]) -> list[dict]:
+    """Each named probe recounted on the target; the count is the anomaly-set member."""
+    if not names:
         return []
-    probes = [(n, check_probe(n, q)) for n, _, q in (p.partition("=") for p in pairs)]
+    known = PROBES.get(unit, {})
+    probes = []
+    for name in names:
+        if name not in known:
+            raise SystemExit(
+                f"no anomaly probe {name!r} declared for unit {unit!r}; "
+                f"known: {', '.join(sorted(known)) or 'none'}")
+        probes.append((name, known[name]))
     out = []
     with sql_conn() as conn, conn.cursor() as cur:
         for name, query in probes:
@@ -92,7 +96,7 @@ def main() -> int:
     ap.add_argument("--result", required=True)
     ap.add_argument("--namespace", default="demo")
     ap.add_argument("--anomaly", action="append", default=[],
-                    help="declared anomaly class as name=SQL, recounted on the target")
+                    help="name of a declared anomaly class in PROBES, recounted on the target")
     ap.add_argument("--expect", action="append", default=[],
                     help="expected anomaly class as name=count")
     ap.add_argument("--idempotency-result", required=True, choices=["pass", "fail"],
@@ -113,7 +117,7 @@ def main() -> int:
                "checks_run": t["checks_run"]}
               for t in result["tiers"]]
 
-    actual = measure(args.anomaly)
+    actual = measure(result["unit"], args.anomaly)
     expected = [{"anomaly": n, "count": int(c)}
                 for n, _, c in (p.partition("=") for p in args.expect)]
 

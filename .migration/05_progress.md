@@ -10,11 +10,11 @@ Status values: `not started` → `in flight` → `recon PASS` / `recon FAIL` →
 
 | Item | Value |
 |---|---|
-| Phase | setup complete → STOP A |
+| Phase | STOP A accepted → STOP B (inventory presented) |
 | Branch | `tp-run/databricks-20260915T045714Z` |
 | Waves closed | 0 |
 | Units merged | 0 |
-| Open D10s | D10-01 (federation / SG), D10-04 (identity confirmation) |
+| Open D10s | D10-01 (federation / SG), D10-04 (identity confirmation), D4-01 (finance-close consumer) |
 | Circuit breaker | not tripped |
 
 ## Pipeline 1 — monthly invoicing (Oracle → Lakebase + Delta, with CDC)
@@ -47,3 +47,5 @@ Launch once pipeline 1 has reconciled. Graded on their own acceptance criteria.
 | 2026-09-15 | `make tp-preflight PLATFORM=databricks`: 11 probes, 0 denied |
 | 2026-09-15 | Approved one-time Oracle supplemental-log DDL applied (D-001); archive-log housekeeping installed |
 | 2026-09-15 | `.migration/` initialized; recon harness installed, `dbx-recon selftest` PASS |
+| 2026-09-15 | factory-doctor `ready=True` (16 ok / 2 skipped / 0 fail); STOP A default-accepted (D-007) |
+| 2026-09-15 | Estate inventory + governance census written: 82 objects, coverage closes; STOP B presented |

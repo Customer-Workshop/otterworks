@@ -97,3 +97,29 @@ and its documented remedy is to reconcile Oracle through Lakehouse Federation as
 `--family databricks`. Recommendation: open 1521 on `sg-0eaf11f4434260e1e` to the Databricks
 serverless NAT range for us-east-1 and nothing else. Until this is answered, recon can only
 run in DEGRADED snapshot mode, which is not sufficient evidence for STOP E.
+
+---
+
+## D-007 — STOP A: setup accepted (soft-mode default)
+
+**Date:** 2026-09-15 · **Decided by:** default-accepted (soft stop_mode), presented to owner · **Status:** accepted
+
+factory-doctor reports `ready=True` (16 ok, 2 skipped, 0 fail) against workspace
+`dbc-8bc9474f-40ae`, catalog allowlist `['ow_tp']`, guard mode `block`, hook probe blocked
+live, recon harness selftest PASS. The two skipped rows (`delete_evidence`,
+`source_principal_read_only`) are not applicable until unit mappings exist; both are
+re-checked before wave 1. The identity row passes when the expectation is written as the
+service principal's object id `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d` — the display name
+`dhrov_spa` is not what the API returns. D10-04 (owner confirmation of the SP) stays open
+independently of this row.
+
+---
+
+## D-008 — Who consumes the finance close
+
+**Date:** 2026-09-15 · **Decided by:** open — asked at STOP B · **Status:** OPEN (D4-01)
+
+`finance_excel_report.pl` mails its CSV-renamed-to-`.xls` through a sendmail pipe that has
+been dead for years, so the estate does not reveal who reads the month-end close today or
+what artifact they accept. Pipeline 2 cannot state acceptance criteria without it. Not
+blocking now; blocking at pipeline 2's STOP C.

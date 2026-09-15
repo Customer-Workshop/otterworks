@@ -3,7 +3,7 @@
   "repo": "github.com/Cognition-Partner-Workshops/otterworks",
   "child_macro": "!dbx_unit_migration",
   "verify_macro": "!dbx_data_reconciliation",
-  "width": 2,
+  "width": 1,
   "breaker_threshold": 3,
   "auto_merge": false,
   "child_minutes": 90,

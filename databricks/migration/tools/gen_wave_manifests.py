@@ -497,8 +497,10 @@ Ids are f_md5_uuid outputs from wave 0 - if the parity proof did not land, stop 
 """),
         ("w3-b", ["p1-invoices", "p1-invoice-lines"],
          ["billing.invoices", "billing.invoice_lines"],
-         # billing_audit_log: every converted package logs through wave 0's log_msg (D-009).
-         ["billing.credit_notes", "billing.billing_audit_log"],
+         # Data-only since pkg_invoicing left for w4-b: the credit-note burn-down and the
+         # log_msg audit write went with it, so this batch declares no runtime writes and a
+         # write to either table while it runs is a real undeclared write, not batch noise.
+         [],
          """
 Modern INVOICES (3) + INVOICE_LINES (2). pkg_invoicing left this batch for wave-4 w4-b
 under D-009: sp_issue_invoice calls sp_finalize_rating, so it writes w3-a's rating tables,
@@ -556,7 +558,11 @@ Traps:
 Do not create the nightly job here; that is U-25 in wave 4.
 """),
     ]),
-    (4, 2, [
+    # Width 1: w4-c -> w4-d -> w4-b is a dependency chain (usage_events, then pkg_rating,
+    # then invoicing), and the manifest schema has no way to express batch dependencies, so
+    # the wave is dispatched one batch at a time in manifest order. A wider wave would start
+    # w4-d before its table exists and turn a timing race into a BLOCKED result.
+    (4, 1, [
         ("w4-c", ["p1-usage-events-oltp"],
          ["billing.usage_events"],
          [],

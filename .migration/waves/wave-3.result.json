@@ -1,0 +1,238 @@
+{
+ "auto_merge": false,
+ "base_sha": "5661987e",
+ "batches": [
+  {
+   "branch": "child session w3-a, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/43efdbda50be45fbb2a4ad92ee61bc8a",
+   "id": "w3-a",
+   "official_verdict": false,
+   "one_line_summary": "rating_periods and rating_results (3 rows each) into Lakebase billing on branch mig-p1-w2, both PASS and verifier-agreed; p1-pkg-rating NOT DELIVERED - pkg_rating reads usage_events row-at-a-time and Lakebase has no billing.usage_events, the only copy being Delta ow_tp.silver.usage_events. The child refused to invent the table rather than create an undeclared write target, and the verifier agrees that was right.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1586, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1587",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PARTIAL",
+   "runtime_writes": [
+    "billing.rating_state",
+    "billing.billing_audit_log"
+   ],
+   "skill_feedback": [
+    "Retyping a timestamptz column in place must convert explicitly (USING col AT TIME ZONE 'UTC') and be guarded on the column still being timestamptz: a bare ALTER reads the stored instant in the migrating session's zone, and the guarded form is the only one that is safe to re-run, because the USING expression flips meaning once the column is zone-less.",
+    "A package that reads a table row-at-a-time cannot be converted while that table lives only on the other track. Route the dependency as a track-split question to the parent instead of materialising a Lakebase copy inside the package's unit."
+   ],
+   "status": "PARTIAL",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-rating-periods/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1586",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 3,
+     "unit": "p1-rating-periods"
+    },
+    {
+     "evidence_path": ".migration/recon/p1-rating-results/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1587",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 3,
+     "unit": "p1-rating-results"
+    },
+    {
+     "blocked_on": "billing.usage_events does not exist in Lakebase. pkg_rating reads usage_events row-at-a-time in compute_rating and fn_usage_summary; the only migrated copy is ow_tp.silver.usage_events on the analytical track. Creating a Lakebase copy inside this unit would have been an undeclared write target and would have put the rating cursor over data nobody reconciled, so the child escalated instead. Needs a parent decision on how usage_events reaches the operational track.",
+     "evidence_path": ".migration/recon/p1-pkg-rating/",
+     "official_verdict": false,
+     "pr_url": null,
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "BLOCKED",
+     "rows": null,
+     "unit": "p1-pkg-rating"
+    }
+   ],
+   "units": [
+    "p1-rating-periods",
+    "p1-rating-results",
+    "p1-pkg-rating"
+   ],
+   "write_targets": [
+    "billing.rating_periods",
+    "billing.rating_results",
+    "billing.sp_finalize_rating",
+    "billing.fn_usage_rating",
+    "billing.fn_usage_summary"
+   ]
+  },
+  {
+   "branch": "child session w3-b, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/623a8e20ac0c4cfd85c8b41f92b50069",
+   "id": "w3-b",
+   "official_verdict": false,
+   "one_line_summary": "invoices (3 rows) and invoice_lines (2 rows) into Lakebase billing; both PASS. The verifier found Oracle's FK_INV_PERIOD missing in the target and the child added fk_inv_period, which the verifier then confirmed matches Oracle.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1588, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1589",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PASS",
+   "runtime_writes": [
+    "billing.credit_notes",
+    "billing.billing_audit_log"
+   ],
+   "skill_feedback": [
+    "Oracle foreign keys have to be read from ALL_CONSTRAINTS and reproduced as part of the unit: data parity passes with a constraint missing, so tier-3 alone will not catch it.",
+    "Constraint DDL belongs in a pg_constraint-guarded DO block so the unit stays idempotent.",
+    "Parent-directed corrections (D-010, the FK fix) push a unit past the nominal three-full-run / one-live-read cap; report the overrun instead of trimming the evidence to fit it."
+   ],
+   "status": "PASS",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-invoices/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1588",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 3,
+     "unit": "p1-invoices"
+    },
+    {
+     "evidence_path": ".migration/recon/p1-invoice-lines/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1589",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 2,
+     "unit": "p1-invoice-lines"
+    }
+   ],
+   "units": [
+    "p1-invoices",
+    "p1-invoice-lines"
+   ],
+   "write_targets": [
+    "billing.invoices",
+    "billing.invoice_lines"
+   ]
+  },
+  {
+   "branch": "child session w3-d, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/c419cc5e0a2e4ff18f1474c42bedda6b",
+   "id": "w3-d",
+   "official_verdict": false,
+   "one_line_summary": "dunning_attempts (1 row), notifications (1 row) and the converted pkg_dunning into Lakebase billing; all PASS. The verifier found three Oracle foreign keys missing (FK_DA_INVOICE, FK_DA_TENANT, FK_NOTIF_TENANT) and the child added them; the verifier confirmed all three match Oracle. pkg_dunning's log_msg calls are present and write two audit rows when the procedures are invoked.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1590, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1591, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1592",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PASS",
+   "runtime_writes": [
+    "billing.tenants",
+    "billing.subscriptions",
+    "billing.billing_audit_log"
+   ],
+   "skill_feedback": [
+    "Proving a converted package writes the audit log does not need a committed run: call the procedures inside a transaction, capture the rows, and roll back, so the reconciled rows on a shared branch are not disturbed.",
+    "Do not drop log_msg to satisfy a manifest that does not declare billing.billing_audit_log - the declaration is the fix, the behaviour is the contract.",
+    "A wave-0 DDL correction applied from a wave-3 unit branch breaks the ownership model even when the parent asked for it; it should be folded into the parent-owned schema change."
+   ],
+   "status": "PASS",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-dunning-attempts/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1590",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 1,
+     "unit": "p1-dunning-attempts"
+    },
+    {
+     "evidence_path": ".migration/recon/p1-notifications/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1591",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 1,
+     "unit": "p1-notifications"
+    },
+    {
+     "evidence_path": ".migration/recon/p1-pkg-dunning/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1592",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": null,
+     "unit": "p1-pkg-dunning"
+    }
+   ],
+   "units": [
+    "p1-dunning-attempts",
+    "p1-notifications",
+    "p1-pkg-dunning"
+   ],
+   "write_targets": [
+    "billing.dunning_attempts",
+    "billing.notifications",
+    "billing.sp_schedule_dunning",
+    "billing.sp_suspend_overdue",
+    "billing.fn_overdue_accounts"
+   ]
+  }
+ ],
+ "breaker_threshold": 3,
+ "breaker_tripped_on": null,
+ "close_blocked_on": "p1-pkg-rating (U-22) is not delivered and the wave cannot be called complete without it. pkg_rating reads usage_events row-at-a-time and the operational track has no billing.usage_events; the only copy is ow_tp.silver.usage_events on the analytical track. This is a track-split dependency the plan did not register, and it is the parent's call, not the orchestrator's. It also blocks wave 4's w4-b: sp_issue_invoice calls sp_finalize_rating, which is one of the three pkg_rating routines that were never installed.",
+ "close_note": "Wave 3 landed 7 of 8 in-scope units, all DEGRADED and none an official harness verdict, and the independent verifier agrees with all seven after two rounds of defect correction. The wave is reported as PARTIAL rather than closed because p1-pkg-rating is blocked on a missing operational-track dependency. Two classes of real defect were found by the verifier and fixed by the owning children, then re-verified: four Oracle foreign keys absent from the target, and a surviving timestamptz on billing.rating_state.updated_at that D-010's six specs missed. p1-pkg-invoicing is not graded here: it moved to wave 4 (w4-b) under D-009 because its transitive writes to billing.rating_periods and billing.rating_results collide with w3-a, which owns those tables in the same wave. No wave-3 routine has been executed end to end by anyone, so the package units are installed-behaviour assertions, not exercised ones, and the wave-2 empty-source caveat still stands verbatim for STOP E.",
+ "closed": false,
+ "launch_mechanism": "child_sessions",
+ "launch_reason": "Same environment gap as waves 1 and 2, which the parent directed be used without asking again: the process run_workflow starts inherits no environment, so DATABRICKS_HOST / DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET and the AWS pair are absent and the pre-flight factory-doctor fails databricks_identity. Persisting credentials to a CLI profile or any file to get past it stays refused. Three child Devin sessions ran the same batch contract instead: manifest and write-target collision check before launch, one PR per unit into the working branch, children write only .migration/recon/<unit>/, the orchestrator is the single writer of these wave artifacts, the same 3-same-class circuit breaker, and an independent verifier that migrated none of the units.",
+ "manifest_sha": "6b10cfb4b2ec",
+ "manifest_width": 3,
+ "official_verdict": false,
+ "recon_cap_exceptions": [
+  "p1-invoices ran six full recon runs and three live Oracle reads across the initial round, the D-010 retype and the FK correction, against a nominal cap of three full runs and one live read. Both later rounds were parent-directed corrections. Recorded rather than trimmed out of the evidence."
+ ],
+ "recon_grade": "DEGRADED",
+ "recon_grade_reason": "d10_01_denied: Lakehouse Federation to Oracle was refused, so recon reads Oracle over JDBC with a repo-local adapter outside the harness's tested matrix. Every wave-3 verdict is DEGRADED and none is an official harness verdict. Tiers 5-7 stay unverified and merge_eligible is false on every unit.",
+ "run_id": null,
+ "scope_change": {
+  "from": "wave 3, batch w3-b",
+  "reason": "D-009: sp_issue_invoice calls pkg_rating.sp_finalize_rating, so the unit writes billing.rating_periods and billing.rating_results transitively. Those tables are w3-a's write targets, so declaring the runtime writes in the same wave is a genuine collision. Moving the unit to wave 4 keeps the writes declared and lands them after the wave that owns the tables. It is therefore not graded as a wave-3 unit.",
+  "to": "wave 4, batch w4-b",
+  "unit": "p1-pkg-invoicing"
+ },
+ "undeclared_write_targets": {},
+ "unreported_write_targets": [],
+ "verify": {
+  "changed_paths": [],
+  "findings": [
+   "Seven of eight in-scope units AGREE on a full recompute from Oracle read-only and from Lakebase branch mig-p1-w2 directly, never from output the units produced: rating_periods 3, rating_results 3, invoices 3, invoice_lines 2, dunning_attempts 1, notifications 1, every keyed digest identical to Oracle's and money sums exact (invoices 375.62 / 347.00 / 28.62, invoice_lines 161.29).",
+   "p1-pkg-rating: DISAGREE - not delivered. sp_finalize_rating, fn_usage_rating and fn_usage_summary are absent from Lakebase and billing.rating_state has 0 rows and no writes. The verifier agrees with the child's refusal to invent billing.usage_events and holds that the wave cannot close on it.",
+   "SCHEMA DEFECT (fixed): Oracle FK_INV_PERIOD, FK_DA_INVOICE, FK_DA_TENANT and FK_NOTIF_TENANT were enabled and validated at source but absent in the target. The owning children added all four in pg_constraint-guarded, re-runnable DDL; the verifier re-read both catalogues and confirmed each matches Oracle on columns, parent key, NO ACTION delete rule, NOT DEFERRABLE/IMMEDIATE and validated, with zero orphan rows and every table digest unchanged by the change.",
+   "MAPPING DEFECT (fixed): billing.rating_state.updated_at was still timestamp with time zone, the last timestamptz in the billing schema and the exact pkg_rating -> pkg_invoicing hand-off column that D-010 exists to correct. It was not one of D-010's six specs. Retyped to timestamp(6) with an explicit UTC conversion under a guard, applied twice with no second-run change.",
+   "DISPUTED AND RESOLVED IN THE CHILD'S FAVOUR: the verifier read pkg_dunning as still dropping log_msg. pg_get_functiondef on mig-p1-w2 shows one billing.log_msg call in sp_schedule_dunning and one in sp_suspend_overdue, Oracle's two points, present since commit 05fd3e0d. The empty audit table is explained by nothing having executed the routines, not by missing calls: invoking both procedures in a transaction writes exactly the two expected audit rows, captured and rolled back (.migration/recon/p1-pkg-dunning/audit_log_writes.md).",
+   "No wave-3 procedure or function has been executed end to end by either side. Rating cursor rounding, the rating_state hand-off, sp_suspend_overdue idempotency and the dunning sweep are all unexercised, and p1-pkg-dunning's PASS covers installed behaviour and a rolled-back probe, not a production sweep.",
+   "billing.billing_audit_log shows 4 inserts and 0 live rows, all rolled back. It is declared runtime scope for all three wave-3 batches now, so this is not a scope breach, but the verifier could not attribute every insert to a named routine.",
+   "ow_tp.silver.billing_audit_log was last updated at 09:03:38 UTC, inside the wave-3 window, while wave 3 declares no Unity Catalog write targets. The writer is the same service principal every session uses, so attribution is unresolved; it is recorded here rather than assumed benign, and it carries into STOP E as an open attribution question.",
+   "Not verified by the verifier: Delta content through warehouse 565cd2fd713738c4 - the SQL statements API is blocked by the migration guard and the verifier did not route around it, so Delta was checked on Unity Catalog metadata only. Indexes beyond constraint-backed ones were not compared.",
+   "Everything above is DEGRADED with official_verdict=false, reason d10_01_denied; none of it is an official Oracle harness verdict, and neither is the children's evidence. Tiers 5-7 stay unverified and merge_eligible is false on every unit. The verifier migrated no unit, wrote to no target, edited no .migration file and opened no PR."
+  ],
+  "session": "https://partner-workshops.devinenterprise.com/sessions/bb62d1d497294e5397fa05244f3bf63b",
+  "units_migrated": 0,
+  "verdict": "AGREE_ON_SEVEN_DISAGREE_ON_ONE",
+  "wave_should_close": false
+ },
+ "wave": 3,
+ "width": 4,
+ "width_note": "The committed manifest declares width 3 and the approved child-session fallback is width 5. Wave 3 has three batches, so three converting children were live plus the independent verifier. Recorded rather than silently reconciled: the manifest width was not edited.",
+ "write_target_overlaps": []
+}

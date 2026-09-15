@@ -49,6 +49,10 @@ UNITS_SPEC = {
     "p1-invoice-header":       ("invoice_header", "invoice_header", ["invoice_id"], None, None, "delta"),
     "p1-invoice-line":         ("invoice_line", "invoice_line", ["line_id"], None, None, "delta"),
     "p1-usage-events":         ("usage_events", "usage_events", ["id"], ("occurred_at", None), None, "delta"),
+    # The same source table on the other track (D-011). pkg_rating reads usage_events
+    # row-at-a-time, so the operational track needs its own copy; the Delta copy above stays
+    # the analytical one. Two units, two tracks, one source, disjoint write targets.
+    "p1-usage-events-oltp":    ("usage_events", "usage_events", ["id"], ("occurred_at", None), None, "lakebase"),
     "p1-billing-audit-log":    ("billing_audit_log", "billing_audit_log", ["log_id"], ("logged_at", None), "log_id", "delta"),
 }
 

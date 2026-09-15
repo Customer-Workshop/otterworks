@@ -1,0 +1,66 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-usage-events-oltp",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "usage_events",
+      "source_table": "OW_BILLING.usage_events",
+      "target_table": "usage_events",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "occurred_at",
+          "target": "occurred_at",
+          "source_type": "TIMESTAMP",
+          "target_type": "timestamp(6)",
+          "rules": []
+        },
+        {
+          "source": "units",
+          "target": "units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "kind_cd",
+          "target": "kind_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        }
+      ],
+      "watermark": {
+        "source": "occurred_at",
+        "target": "occurred_at"
+      }
+    }
+  ]
+}

@@ -44,6 +44,7 @@ UNIT = {
     "p1-plans":              ("U-02 PLANS", "lakebase", "full"),
     "p1-codes":              ("U-11 CODES", "lakebase", "full"),
     "p1-usage-events":       ("U-18 USAGE_EVENTS", "delta", "full"),
+    "p1-usage-events-oltp":  ("U-28 USAGE_EVENTS (operational copy)", "lakebase", "full"),
     "p1-invoice-header":     ("U-16 INVOICE_HEADER (legacy)", "delta", "full"),
     "p1-invoice-line":       ("U-17 INVOICE_LINE (legacy)", "delta", "full"),
     "p1-subscriptions":      ("U-03 SUBSCRIPTIONS", "lakebase", "full"),
@@ -401,7 +402,8 @@ Lakebase units in wave 4. State the generation in both mapping specs and in your
     (2, 4, [
         ("w2-a", ["p1-subscriptions", "p1-pkg-plans"],
          ["billing.subscriptions", "billing.fn_plan_entitlements", "billing.sp_assign_plan"],
-         [],
+         # sp_assign_plan logs through wave 0's log_msg, so it writes the audit table (D-009).
+         ["billing.billing_audit_log"],
          """
 SUBSCRIPTIONS (69 rows) plus pkg_plans, together because the package writes the table.
  - TRG_SUB_NO_UNCANCEL: a cancelled subscription can never be un-cancelled. The rule must
@@ -479,37 +481,30 @@ It depends only on billing.tenants (fk_cn_tenant), which merged in wave 1.
     # Same cap reason as wave 2. Three batches now: credit notes moved to wave 2 so invoicing
     # is the only writer of that table while it runs.
     (3, 3, [
-        ("w3-a", ["p1-rating-periods", "p1-rating-results", "p1-pkg-rating"],
-         ["billing.rating_periods", "billing.rating_results", "billing.sp_finalize_rating",
-          "billing.fn_usage_rating", "billing.fn_usage_summary"],
-         # sp_finalize_rating writes the hand-off row wave 0 created the table for; the DDL
-         # owner is a strictly earlier wave, so this is DML on someone else's table and has
-         # to be declared rather than left implicit in the brief.
-         ["billing.rating_state"],
+        ("w3-a", ["p1-rating-periods", "p1-rating-results"],
+         ["billing.rating_periods", "billing.rating_results"],
+         [],
          """
-The rating chain: RATING_PERIODS (3), RATING_RESULTS (3) and pkg_rating
-(packages/03_pkg_rating.sql), together because the package writes both tables.
+The rating tables: RATING_PERIODS (3) and RATING_RESULTS (3).
+pkg_rating itself is NOT in this batch. It ran here first, found no billing.usage_events to
+read on the operational track, and reported BLOCKED; D-011 re-placed it in wave 4 as w4-d,
+behind the unit that lands that table. Deliver the tables and their constraints only.
 Ids are f_md5_uuid outputs from wave 0 - if the parity proof did not land, stop here.
-Traps called out in the source and the analysis:
- - row-at-a-time cursor summation: the converted set-based version must produce the same
-   rounding, including the per-row order the cursor implies;
- - date comparison via TO_CHAR(...,'YYYYMMDD') string compare;
- - LEAST/GREATEST NULL semantics differ Oracle <-> Postgres (source comments at :95-98);
- - tier break hardcoded at 101; suspension proration;
- - insert-then-catch-DUP_VAL_ON_INDEX upserts become ON CONFLICT with the same outcome;
- - pkg_rating sets the globals pkg_invoicing later reads (g_overage_amount): the hand-off is
-   the state table `billing.rating_state` whose shape wave 0 pinned in
-   docs/migration/Pipeline1_invoicing_plan.md (P1-D4). Implement that shape exactly - batch
-   w3-b codes against it in parallel with you. If it does not fit the source behaviour, stop
-   and report status=BLOCKED with `rating_state_contract`; do not redesign it unilaterally.
-   fn_usage_summary orders by kind; keep it deterministic.
+ - Reproduce every Oracle constraint, not just the data: a foreign key missing in the
+   target still passes a row-level diff, so read ALL_CONSTRAINTS and match it.
+ - Oracle TIMESTAMP is zoneless -> Postgres timestamp, never timestamptz (D-010).
+ - The rating_state hand-off row belongs to w4-d, which writes it. Do not populate it here.
 """),
-        ("w3-b", ["p1-invoices", "p1-invoice-lines", "p1-pkg-invoicing"],
-         ["billing.invoices", "billing.invoice_lines", "billing.sp_issue_invoice",
-          "billing.fn_invoice_preview", "billing.fn_invoice_lines"],
-         ["billing.credit_notes"],  # runtime writes; DDL owner is w2-f, an earlier wave
+        ("w3-b", ["p1-invoices", "p1-invoice-lines"],
+         ["billing.invoices", "billing.invoice_lines"],
+         # Data-only since pkg_invoicing left for w4-b: the credit-note burn-down and the
+         # log_msg audit write went with it, so this batch declares no runtime writes and a
+         # write to either table while it runs is a real undeclared write, not batch noise.
+         [],
          """
-Modern INVOICES (3) + INVOICE_LINES (2) + pkg_invoicing (packages/04_pkg_invoicing.sql).
+Modern INVOICES (3) + INVOICE_LINES (2). pkg_invoicing left this batch for wave-4 w4-b
+under D-009: sp_issue_invoice calls sp_finalize_rating, so it writes w3-a's rating tables,
+and a runtime write is only safe once its owner merged in an earlier wave.
 THIS IS THE MODERN GENERATION (D9-01), not legacy INVOICE_HEADER/INVOICE_LINE from wave 1.
 You run CONCURRENTLY with w3-a (rating), whose hand-off you consume:
  - rating hand-off: read `billing.rating_state` per the shape pinned in the plan (P1-D4).
@@ -535,7 +530,8 @@ your PR body too.
         ("w3-d", ["p1-dunning-attempts", "p1-notifications", "p1-pkg-dunning"],
          ["billing.dunning_attempts", "billing.notifications", "billing.sp_schedule_dunning",
           "billing.sp_suspend_overdue", "billing.fn_overdue_accounts"],
-         ["billing.tenants", "billing.subscriptions"],  # runtime writes; owners w1-a/w2-a
+         # runtime writes; owners w1-a/w2-a, and wave 0 for the audit log (D-009)
+         ["billing.tenants", "billing.subscriptions", "billing.billing_audit_log"],
          """
 The dunning chain: DUNNING_ATTEMPTS (1), NOTIFICATIONS (1) and pkg_dunning
 (packages/05_pkg_dunning.sql). One batch, not three, because sp_suspend_overdue writes both
@@ -562,7 +558,48 @@ Traps:
 Do not create the nightly job here; that is U-25 in wave 4.
 """),
     ]),
+    # Width 1: w4-c -> w4-d -> w4-b is a dependency chain (usage_events, then pkg_rating,
+    # then invoicing), and the manifest schema has no way to express batch dependencies, so
+    # the wave is dispatched one batch at a time in manifest order. A wider wave would start
+    # w4-d before its table exists and turn a timing race into a BLOCKED result.
     (4, 1, [
+        ("w4-c", ["p1-usage-events-oltp"],
+         ["billing.usage_events"],
+         [],
+         """
+U-28 USAGE_EVENTS onto the OPERATIONAL track, and the unblocker for the rest of this wave.
+The same source table already landed in Delta as U-18 in wave 1; that copy stays and is the
+analytical one. This unit is the Lakebase copy pkg_rating actually reads (D-011).
+Why it exists: pkg_rating reads usage_events row-at-a-time in compute_rating and
+fn_usage_summary. Wave 3's p1-pkg-rating had nothing to read and reported BLOCKED rather
+than materialising a copy inside a package unit, which would have been an undeclared write
+over data nobody reconciled. This unit is that decision made properly, with a declared
+write target and its own recon.
+ - Same source rows, same keys as U-18. Reconcile against Oracle, not against the Delta
+   copy: two targets of one source, never one target of another.
+ - Oracle TIMESTAMP is zoneless -> Postgres timestamp, never timestamptz (D-010).
+ - Write ONLY billing.usage_events. The rating tables belong to wave 3 and are merged.
+w4-d and w4-b are serialized behind you: report the moment the table is loaded.
+"""),
+        ("w4-d", ["p1-pkg-rating"],
+         ["billing.sp_finalize_rating", "billing.fn_usage_rating",
+          "billing.fn_usage_summary"],
+         ["billing.rating_periods", "billing.rating_results", "billing.rating_state",
+          "billing.billing_audit_log"],
+         """
+U-22 pkg_rating, retried here after wave 3 reported it BLOCKED (D-011). Run only once w4-c
+has loaded billing.usage_events; if the table is absent, report BLOCKED again rather than
+creating it.
+The rating tables it writes (rating_periods, rating_results) are wave-3 units and are
+already delivered: call them, do not re-convert or re-load them, and declare the writes as
+runtime writes, which the manifest does for you.
+ - billing.rating_state carries the g_overage_amount hand-off to pkg_invoicing. It is
+   package-global state: make it explicit, and keep updated_at zoneless (D-010).
+ - billing.billing_audit_log, through the converted log_msg. Keep the logging; declaring it
+   is the fix, never dropping the call (D-009).
+ - compute_rating's per-row rounding stays exactly where the source puts it.
+w4-b is serialized behind you because sp_issue_invoice calls sp_finalize_rating.
+"""),
         ("w4-a", ["p1-job-nightly-dunning"],
          ["ow_tp_p1_nightly_dunning"],
          [],
@@ -577,6 +614,40 @@ run-history equivalence on the fixture (one fixture run of the legacy job vs one
 converted job, same input state, same rows written) and state that gap plainly in summary.md
 and the PR. The data recon on billing.dunning_attempts is threshold/sampled only - the row
 contract belongs to w3-d, and you must not re-write its tables.
+"""),
+        ("w4-b", ["p1-pkg-invoicing"],
+         ["billing.sp_issue_invoice", "billing.fn_invoice_preview",
+          "billing.fn_invoice_lines"],
+         ["billing.credit_notes", "billing.billing_audit_log",
+          # rating_state as well: the same sp_finalize_rating call writes the hand-off row.
+          "billing.rating_periods", "billing.rating_results", "billing.rating_state",
+          # sp_issue_invoice inserts the header and rebuilds its lines (source :137-160),
+          # and those two tables are w3-b's, so the DML is a runtime write here.
+          "billing.invoices", "billing.invoice_lines"],
+         """
+pkg_invoicing (packages/04_pkg_invoicing.sql) -> sp_issue_invoice, fn_invoice_preview,
+fn_invoice_lines. THIS IS THE MODERN GENERATION (D9-01), not legacy INVOICE_HEADER/
+INVOICE_LINE. It ran in wave 3 inside w3-b and halted on `undeclared_write_target`; D-009
+declared the writes and moved the unit here, because a runtime write is only safe once the
+owning unit merged in an earlier wave and wave 3 owns the rating tables.
+What it writes, all declared and all real legacy behaviour to preserve:
+ - billing.billing_audit_log, through the converted pkg_ow_util.log_msg. Keep the logging.
+ - billing.rating_periods and billing.rating_results, because sp_issue_invoice calls
+   pkg_rating.sp_finalize_rating. Call the converted procedure; do not re-convert it.
+ - billing.credit_notes, the burn-down's UPDATEs, in `issued_on, id` order. DML only.
+ - billing.invoices and billing.invoice_lines: sp_issue_invoice inserts the header, flips
+   status_cd to 20, and deletes-then-reinserts the lines. w3-b owns those tables and has
+   delivered them - DML only, no DDL, no reload.
+Read billing.rating_state for the package-global hand-off from pkg_rating
+(g_overage_amount): it is state, so make it explicit rather than incidental.
+Traps:
+ - tax rate hardcoded 0.0825 at :26 - keep the value, make it a named constant;
+ - EXECUTE IMMEDIATE delete of invoice lines -> plain DELETE, same rows;
+ - the credit burn-down decrements a running counter in a quirk the source says to preserve
+   verbatim (:180-190);
+ - rounding is applied per line AND again on the total. Both roundings stay.
+Money is exact in recon: a one-cent difference is a FAIL, not a tolerance. Oracle TIMESTAMP
+is zoneless -> Postgres timestamp, never timestamptz (D-010).
 """),
     ]),
 ]

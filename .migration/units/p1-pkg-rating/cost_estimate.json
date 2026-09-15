@@ -1,7 +1,7 @@
 {
   "unit": "p1-pkg-rating",
-  "wave": 3,
-  "batch": "w3-a",
+  "wave": 4,
+  "batch": "w4-d",
   "depth": "full",
   "mode": "transactional",
   "rows": 6,

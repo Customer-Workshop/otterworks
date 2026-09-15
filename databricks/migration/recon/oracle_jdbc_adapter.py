@@ -25,6 +25,30 @@ from recon.adapters import SchemaFacts, _SqlAdapterBase, _split_table
 ORACLE_NUMERIC_TYPES = ("NUMBER", "FLOAT", "BINARY_FLOAT", "BINARY_DOUBLE")
 
 
+class _FoldedCursor:
+    """Cursor whose result column names are folded to lower case.
+
+    Oracle stores an unquoted identifier in upper case and reports it that way, so a plain
+    `SELECT cust_id` comes back as `CUST_ID` and the harness cannot find the mapping spec's
+    column in the row. Folding here keeps the row shape engine-neutral, the same way the
+    Postgres and Databricks adapters already hand back lower-case names. Ops SQL that wants
+    an exact name quotes a lower-case alias, which folding leaves untouched.
+    """
+
+    def __init__(self, cur):
+        self._cur = cur
+
+    @property
+    def description(self):
+        return [(d[0].lower(),) + tuple(d[1:]) for d in self._cur.description or []]
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    def __iter__(self):
+        return iter(self._cur)
+
+
 def _dsn_from_env(name: str) -> dict[str, Any]:
     """Connection parts from the env var NAME (never a literal on the command line).
 
@@ -74,11 +98,17 @@ class OracleJdbcSourceAdapter(_SqlAdapterBase):
     def __init__(self, dsn_secret: str):
         import oracledb  # lazy: optional extra
 
+        # NUMBER comes back as a Python float unless decimals are asked for, which rounds the
+        # money columns the tolerances compare exactly.
+        oracledb.defaults.fetch_decimals = True
         parts = _dsn_from_env(dsn_secret)
         conn = oracledb.connect(
             user=parts["user"], password=parts["password"],
             dsn=f"{parts['host']}:{parts['port']}/{parts['service']}")
         super().__init__(conn)
+
+    def _execute(self, sql: str, params=()):
+        return _FoldedCursor(super()._execute(sql, params))
 
     def _catalog_rows(self, table: str, predicate: str) -> set[str]:
         owner, name = _split_table(table, os.environ.get("OW_TP_ORACLE_SCHEMA", "OW_BILLING"))
@@ -86,7 +116,7 @@ class OracleJdbcSourceAdapter(_SqlAdapterBase):
             "SELECT column_name FROM all_tab_columns "
             f"WHERE owner = :1 AND table_name = :2 AND ({predicate})",
             {"1": owner.upper(), "2": name.upper()})
-        return {col for (col,) in rows}
+        return {col.lower() for (col,) in rows}
 
     def numeric_columns(self, table: str) -> set[str]:
         types = ", ".join(f"'{t}'" for t in ORACLE_NUMERIC_TYPES)

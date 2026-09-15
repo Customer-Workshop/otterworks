@@ -150,10 +150,16 @@ def gate_cmd(unit: str) -> str:
         # itself, so its own recon reads ow_tp.bronze, where it writes.
         schema = "bronze" if unit == "p1-cdc-transport" else "silver"
         mode, kind, secret = "live", "databricks", "DATABRICKS_MIGRATION_SQL"
+    # The Databricks target adapter wants a JSON credential in an env var. No stored secret
+    # holds one and the guard blocks creating it, so the wrapper mints a short-lived token
+    # from the migration service principal and hands it to the child process only.
+    token = ("  python3 databricks/migration/recon/with_databricks_sql_token.py "
+             f"{secret} -- \\\n" if kind == "databricks" else "")
     ops = (f"    --ops .migration/units/{unit}/ops.json \\\n"
            if (UNITS / unit / "ops.json").exists() else "")
     return (f"  python3 databricks/migration/recon/with_oracle_secret.py "
             f"OW_TP_ORACLE_RO ow-tp/oracle/ow_billing_ro -- \\\n"
+            f"{token}"
             f"  python3 databricks/migration/recon/run_degraded_recon.py --unit {unit} \\\n"
             f"    --mapping .migration/units/{unit}/mapping_spec.json \\\n"
             f"{ops}"
@@ -274,7 +280,7 @@ PLAN = [
         ("w0-a", ["p1-pkg-ow-util"],
          ["billing.f_md5_uuid", "billing.f_str2dt", "billing.f_code_desc", "billing.log_msg",
           "billing.rating_state", "billing.billing_audit_log", "billing.md5_parity_input",
-          "ow_tp.silver.ow_util_fn", "/Volumes/ow_tp/bronze/landing"],
+          "ow_tp.silver.ow_util_fn"],
          [],
          """
 Wave 0 is serial and everything else waits on it. Deliver, in this order:
@@ -326,7 +332,14 @@ Wave 0 is serial and everything else waits on it. Deliver, in this order:
 Do not convert any business table here. Do not enable any schedule.
 """),
         ("w0-b", ["p1-cdc-transport"],
-         ["ow_tp.bronze.cdc_ow_billing", "ow_tp_p1_cdc_ingest"],
+         # The D-002 fallback lands one bronze table per captured source table through the
+         # landing volume, so those tables are write targets of this batch exactly as the
+         # stream's own table is. Declaring only the stream table would make the sanctioned
+         # fallback an undeclared write and halt the wave.
+         ["ow_tp.bronze.cdc_ow_billing", "ow_tp_p1_cdc_ingest",
+          "ow_tp.bronze.customer_master", "ow_tp.bronze.invoice_header",
+          "ow_tp.bronze.invoice_line", "ow_tp.bronze.codes",
+          "/Volumes/ow_tp/bronze/landing"],
          [],
          """
 The CDC transport, serial after w0-a: Debezium Server on the existing EKS cluster

@@ -53,6 +53,11 @@ VOLUME = "/Volumes/ow_tp/bronze/landing"
 WAREHOUSE = "565cd2fd713738c4"
 BATCH = 10_000
 
+# python-oracledb hands NUMBER back as a Python float by default, which silently rounds the
+# money columns this migration compares exactly. Fetching decimals keeps every NUMBER exact
+# from the source cursor all the way into Delta.
+oracledb.defaults.fetch_decimals = True
+
 # Table, key and watermark names are concatenated into Oracle and Databricks SQL, so they are
 # restricted to plain unquoted identifiers. Anything else is rejected before a statement is
 # built rather than escaped afterwards.
@@ -100,15 +105,41 @@ def cell(value):
     return value
 
 
-def arrow_table(columns, rows):
+def decimal_ps(desc) -> tuple[int, int]:
+    """Precision and scale for an Oracle NUMBER column, from the cursor's own metadata.
+
+    A NUMBER declared without precision, or with a negative scale (Oracle allows it, Delta
+    does not), has no usable pair and widens to the largest exact decimal. Everything else
+    keeps the column's declared shape: inferring one from the rows in the batch would give
+    the same source column a different target type on a different day.
+    """
+    precision, scale = desc[4], desc[5]
+    if not precision or scale is None or scale < 0 or scale > precision or precision > 38:
+        return 38, 10
+    return precision, scale
+
+
+def is_integer_number(desc) -> bool:
+    """A NUMBER declared with scale 0 and a precision BIGINT holds without loss."""
+    precision, scale = desc[4], desc[5]
+    return bool(precision) and scale == 0 and precision <= 18
+
+
+def arrow_table(description, rows):
     cols = {}
-    for i, name in enumerate(columns):
+    for i, desc in enumerate(description):
+        name = desc[0]
         values = [cell(r[i]) for r in rows]
         sample = next((v for v in values if v is not None), None)
-        if isinstance(sample, decimal.Decimal):
-            typ = pa.decimal128(38, 10)
-            values = [None if v is None else decimal.Decimal(v).quantize(
-                decimal.Decimal("1.0000000000")) for v in values]
+        if desc[1] is oracledb.DB_TYPE_NUMBER and is_integer_number(desc):
+            typ = pa.int64()
+            values = [None if v is None else int(v) for v in values]
+        elif desc[1] is oracledb.DB_TYPE_NUMBER or isinstance(sample, decimal.Decimal):
+            precision, scale = decimal_ps(desc)
+            typ = pa.decimal128(precision, scale)
+            quantum = decimal.Decimal(1).scaleb(-scale)
+            values = [None if v is None else decimal.Decimal(v).quantize(quantum)
+                      for v in values]
         elif isinstance(sample, datetime):
             typ = pa.timestamp("us")
         elif isinstance(sample, date):
@@ -128,11 +159,15 @@ def delta_type(desc) -> str:
     """Delta type for one Oracle cursor-description column.
 
     Only used to register an empty table when the source has no rows; a table with rows is
-    created from the Parquet stage, which carries the same decisions from arrow_table().
+    created from the Parquet stage, which takes its decimal precision and scale from the
+    same metadata, so the target schema does not depend on which rows a load happened to see.
     """
-    _, typ, _, _, precision, scale, _ = desc
+    typ = desc[1]
     if typ is oracledb.DB_TYPE_NUMBER:
-        return f"DECIMAL({precision or 38},{scale if scale is not None else 10})"
+        if is_integer_number(desc):
+            return "BIGINT"
+        precision, scale = decimal_ps(desc)
+        return f"DECIMAL({precision},{scale})"
     if typ in (oracledb.DB_TYPE_DATE, oracledb.DB_TYPE_TIMESTAMP,
                oracledb.DB_TYPE_TIMESTAMP_TZ, oracledb.DB_TYPE_TIMESTAMP_LTZ):
         return "TIMESTAMP"
@@ -174,6 +209,9 @@ def main() -> int:
     ap.add_argument("--watermark-column")
     ap.add_argument("--full-refresh", action="store_true",
                     help="read every row and delete target keys the source no longer has")
+    ap.add_argument("--recreate", action="store_true",
+                    help="drop the target first so its column types are rebuilt from the "
+                         "source's metadata; implies --full-refresh")
     args = ap.parse_args()
     table = ident(args.table, "--table")
     keys = [ident(k, "--keys") for k in args.keys.split(",")]
@@ -181,10 +219,13 @@ def main() -> int:
                         if args.watermark_column else None)
 
     with sql_conn() as conn, conn.cursor() as cur:
-        since = (None if args.full_refresh
+        if args.recreate:
+            # A MERGE never changes an existing column's type, so a target built before the
+            # loader knew the source's precision keeps the wrong one until it is rebuilt.
+            cur.execute(f"DROP TABLE IF EXISTS {CATALOG}.{SCHEMA}.{table}")
+        since = (None if args.full_refresh or args.recreate
                  else current_watermark(cur, table, watermark_column))
         description, rows = read_source(table, watermark_column, since)
-        columns = [d[0] for d in description]
         # The stage holds every live key only when nothing filtered the read.
         full_snapshot = since is None
         if not rows:
@@ -211,7 +252,7 @@ def main() -> int:
         run_id = uuid.uuid4().hex
         staged = f"{VOLUME}/{table}/{run_id}.parquet"
         buf = io.BytesIO()
-        pq.write_table(arrow_table(columns, rows), buf)
+        pq.write_table(arrow_table(description, rows), buf)
         buf.seek(0)
         WorkspaceClient().files.upload(staged, buf, overwrite=True)
 

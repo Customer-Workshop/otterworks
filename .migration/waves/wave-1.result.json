@@ -66,7 +66,7 @@
           "recon_grade": "DEGRADED",
           "recon_mode": "transactional",
           "recon_verdict": "PASS",
-          "rows": 203,
+          "rows": 69,
           "unit": "p1-tenants"
         },
         {
@@ -76,7 +76,7 @@
           "recon_grade": "DEGRADED",
           "recon_mode": "transactional",
           "recon_verdict": "PASS",
-          "rows": 10,
+          "rows": 3,
           "unit": "p1-plans"
         },
         {
@@ -86,7 +86,7 @@
           "recon_grade": "DEGRADED",
           "recon_mode": "transactional",
           "recon_verdict": "PASS",
-          "rows": 129,
+          "rows": 32,
           "unit": "p1-codes"
         }
       ],
@@ -154,7 +154,7 @@
           "recon_grade": "DEGRADED",
           "recon_mode": "live",
           "recon_verdict": "PASS",
-          "rows": 885,
+          "rows": 814,
           "unit": "p1-usage-events"
         }
       ],
@@ -214,7 +214,7 @@
           "recon_grade": "DEGRADED",
           "recon_mode": "live",
           "recon_verdict": "PASS",
-          "rows": 37500,
+          "rows": 18750,
           "unit": "p1-invoice-header"
         },
         {
@@ -224,7 +224,7 @@
           "recon_grade": "DEGRADED",
           "recon_mode": "live",
           "recon_verdict": "PASS",
-          "rows": 300000,
+          "rows": 150000,
           "unit": "p1-invoice-line"
         }
       ],

@@ -23,11 +23,12 @@ line is your batch brief, unchanged.
 
 Two things the brief cannot know:
 
-1. START FROM `{work_branch}`, NOT the base branch. The plan, the wave-0 scaffolding, the
-   Oracle JDBC recon driver and the mapping specs your brief tells you to read are on that
-   branch; PR #1566 carries it into `{base_branch}` and has not merged yet. So:
-   `git clone` the repo, `git checkout {work_branch}`, cut your unit branch from there, and
-   open your PR with **base `{work_branch}`**. Do not target `{base_branch}`, `main` or
+1. START FROM `{work_branch}`. The plan, the wave-0 scaffolding, the Oracle JDBC recon
+   driver and the mapping specs your brief tells you to read are on that branch; the parts
+   of it that are not yet in `{base_branch}` are waiting on a human merge. So: `git clone`
+   the repo, `git checkout {work_branch}`, cut your unit branch from there, and open your
+   PR with **base `{base_branch}`** (your diff will also show the unmerged commits from
+   `{work_branch}` until they land; that is expected). Do not target `main` or
    `tech-partnerships`, and do not merge your own PR.
 2. REPORT BACK IN THE SESSION. You cannot write to the orchestrator's session and you must
    not edit `.migration/` outside `.migration/recon/<your unit>/`. Finish with a

@@ -15,10 +15,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
+# The DSN goes into a variable of this shape and no other, so a mistyped first argument
+# cannot land a credential in PATH or in a variable the child reads for something else.
+VAR_NAME = re.compile(r"^OW_TP_[A-Z0-9_]+$")
 PROJECT = "ow-tp-billing"
 DATABASE = "ow_tp"
 ALLOWED_TARGETS = Path(".migration/allowed_targets.json")
@@ -54,6 +58,8 @@ def main(argv: list[str]) -> int:
         raise SystemExit(__doc__)
     split = argv.index("--")
     var, branch = argv[0], argv[1]
+    if not VAR_NAME.match(var):
+        raise SystemExit(f"refusing to set {var!r}: the DSN variable must match {VAR_NAME.pattern}")
     command = argv[split + 1:]
     if not command:
         raise SystemExit(__doc__)

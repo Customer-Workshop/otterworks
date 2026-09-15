@@ -1,0 +1,166 @@
+{
+  "kind": "recon-report",
+  "unit": "ow-tp-usage-meter",
+  "namespace": "ow_tp",
+  "run_mode": "live",
+  "generated_at": "2026-09-15T12:33:16+00:00",
+  "checks": [
+    {
+      "id": "meter_vs_direct_aggregate",
+      "expected": {
+        "mismatches": 0,
+        "rows": 169
+      },
+      "actual": {
+        "mismatches": 0,
+        "rows": 169
+      },
+      "source_of_truth": "direct_aggregate",
+      "result": "pass"
+    },
+    {
+      "id": "meter_vs_migrated_snapshot",
+      "expected": {
+        "mismatches": 0,
+        "rows": 169
+      },
+      "actual": {
+        "mismatches": 0,
+        "rows": 169
+      },
+      "source_of_truth": "migrated_snapshot",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_vs_meter",
+      "expected": {
+        "mismatches": 0,
+        "rows": 169
+      },
+      "actual": {
+        "mismatches": 0,
+        "rows": 169
+      },
+      "source_of_truth": "meter",
+      "result": "pass"
+    },
+    {
+      "id": "period_totals",
+      "source_of_truth": "direct_aggregate",
+      "expected": {
+        "events": 814,
+        "units": 336293
+      },
+      "actual": {
+        "events": 814,
+        "units": 336293
+      },
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "gold digest f6359a593175264c436f6dfc7bccb31a unchanged after a full rerun, 0 new silver rows on the second pass"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "duplicate-event-id",
+      "late-arriving-event",
+      "missing tenant attribution",
+      "units must be > 0",
+      "unknown usage kind"
+    ],
+    "actual_set": [
+      "duplicate-event-id",
+      "late-arriving-event",
+      "missing tenant attribution",
+      "units must be > 0",
+      "unknown usage kind"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "period": {
+    "start": "2026-02-01",
+    "end": "2026-02-28"
+  },
+  "target": {
+    "catalog": "ow_tp",
+    "meter_table": "ow_tp.gold.usage_meter_period",
+    "lakebase_project": "ow-tp-billing",
+    "lakebase_branch": "mig-p1-w0",
+    "lakebase_table": "billing.usage_meter_current"
+  },
+  "rating_window_rule": "TO_CHAR(occurred_at,'YYYYMMDD') between period start and end, inclusive",
+  "totals": {
+    "meter_events": 814,
+    "meter_units": 336293,
+    "direct_events": 814,
+    "direct_units": 336293,
+    "lakebase_events": 814,
+    "lakebase_units": 336293
+  },
+  "comparisons": [
+    {
+      "left": "meter",
+      "right": "direct_aggregate",
+      "rows_left": 169,
+      "rows_right": 169,
+      "exact_columns": [
+        "event_count",
+        "units_total"
+      ],
+      "money_columns": [],
+      "float_columns": [
+        "avg_units_per_event"
+      ],
+      "float_relative_tolerance": 1e-09,
+      "mismatches": [],
+      "verdict": "pass"
+    },
+    {
+      "left": "meter",
+      "right": "migrated_snapshot",
+      "rows_left": 169,
+      "rows_right": 169,
+      "exact_columns": [
+        "event_count",
+        "units_total"
+      ],
+      "money_columns": [],
+      "float_columns": [
+        "avg_units_per_event"
+      ],
+      "float_relative_tolerance": 1e-09,
+      "mismatches": [],
+      "verdict": "pass"
+    },
+    {
+      "left": "lakebase",
+      "right": "meter",
+      "rows_left": 169,
+      "rows_right": 169,
+      "exact_columns": [
+        "event_count",
+        "units_total"
+      ],
+      "money_columns": [],
+      "float_columns": [
+        "avg_units_per_event"
+      ],
+      "float_relative_tolerance": 1e-09,
+      "mismatches": [],
+      "verdict": "pass"
+    }
+  ],
+  "verdict": "pass",
+  "unverified_paths": [
+    "No money column exists in the meter, so the exact-on-money rule has nothing to compare; rating's tier, quota, rollover and proration arithmetic is untouched by this work.",
+    "Nothing was read from Oracle. Agreement is with the migrated Delta snapshot, not with a live legacy query.",
+    "The legacy rating package was not executed against these events; the comparison reproduces its window rule, it does not run it.",
+    "Lakebase branch mig-p1-w0 only; no production branch was contacted.",
+    "The schedule is paused, so no unattended run has been observed."
+  ]
+}

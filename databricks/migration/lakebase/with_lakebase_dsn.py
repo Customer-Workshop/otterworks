@@ -25,7 +25,7 @@ from pathlib import Path
 VAR_NAME = re.compile(r"^OW_TP_[A-Z0-9_]+$")
 PROJECT = "ow-tp-billing"
 DATABASE = "ow_tp"
-ALLOWED_TARGETS = Path(".migration/allowed_targets.json")
+ALLOWED_TARGETS = Path(__file__).resolve().parents[3] / ".migration" / "allowed_targets.json"
 
 
 def _cli(*args: str) -> dict:

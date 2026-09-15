@@ -619,7 +619,8 @@ contract belongs to w3-d, and you must not re-write its tables.
          ["billing.sp_issue_invoice", "billing.fn_invoice_preview",
           "billing.fn_invoice_lines"],
          ["billing.credit_notes", "billing.billing_audit_log",
-          "billing.rating_periods", "billing.rating_results",
+          # rating_state as well: the same sp_finalize_rating call writes the hand-off row.
+          "billing.rating_periods", "billing.rating_results", "billing.rating_state",
           # sp_issue_invoice inserts the header and rebuilds its lines (source :137-160),
           # and those two tables are w3-b's, so the DML is a runtime write here.
           "billing.invoices", "billing.invoice_lines"],

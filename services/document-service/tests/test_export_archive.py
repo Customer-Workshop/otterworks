@@ -67,6 +67,27 @@ def test_rejects_symlink_escaping_archive(tmp_path, archive, secret_outside_arch
         archive.read_export("link.md")
 
 
+def test_rejects_symlink_swapped_in_after_resolution(
+    tmp_path, archive, secret_outside_archive, monkeypatch
+):
+    real_resolve = archive.resolve_export_path
+
+    def resolve_then_swap(name):
+        path = real_resolve(name)
+        (tmp_path / "report.md").unlink()
+        (tmp_path / "report.md").symlink_to(secret_outside_archive)
+        return path
+
+    monkeypatch.setattr(archive, "resolve_export_path", resolve_then_swap)
+    with pytest.raises(OSError):
+        archive.read_export("report.md")
+
+
+def test_rejects_directory(archive):
+    with pytest.raises(OSError):
+        archive.read_export("reports")
+
+
 @pytest.mark.asyncio
 async def test_export_endpoint_serves_archived_file(client, monkeypatch, tmp_path):
     (tmp_path / "report.md").write_text("# Report\n", encoding="utf-8")

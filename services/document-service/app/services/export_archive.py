@@ -7,6 +7,7 @@ Exports are rendered to disk by the export worker under ``EXPORT_ARCHIVE_DIR``
 from __future__ import annotations
 
 import os
+import stat
 
 import structlog
 
@@ -54,5 +55,13 @@ class ExportArchive:
         """
         path = self.resolve_export_path(name)
         logger.debug("export_read", name=name)
-        with open(path, encoding="utf-8") as handle:
-            return handle.read()
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise FileNotFoundError(f"Export is not a regular file: {name!r}")
+            with open(fd, encoding="utf-8") as handle:
+                fd = -1
+                return handle.read()
+        finally:
+            if fd != -1:
+                os.close(fd)

@@ -1,0 +1,3 @@
+# Fixture JWT signing key in a billing-service unit test (later rewritten as a
+# built string). It never signed anything outside pytest and grants no access.
+7df939b92d72afd6526857b7b0135e9ca6a95979:services/billing-service/tests/test_tenant_auth.py:generic-api-key:19

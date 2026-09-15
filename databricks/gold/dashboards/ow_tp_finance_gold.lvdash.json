@@ -1,0 +1,510 @@
+{
+  "datasets": [
+    {
+      "name": "ds_revenue_totals",
+      "displayName": "Revenue totals",
+      "queryLines": [
+        "SELECT MEASURE(`ARR`) AS arr,\n",
+        "       MEASURE(`MRR`) AS mrr,\n",
+        "       MEASURE(`Active Subscriptions`) AS active_subscriptions,\n",
+        "       MEASURE(`Paying Tenants`) AS paying_tenants,\n",
+        "       MEASURE(`ARPA`) AS arpa\n",
+        "FROM mv_arr_mrr"
+      ]
+    },
+    {
+      "name": "ds_mrr_by_plan",
+      "displayName": "MRR by plan",
+      "queryLines": [
+        "SELECT `Plan` AS plan,\n",
+        "       MEASURE(`MRR`) AS mrr,\n",
+        "       MEASURE(`ARR`) AS arr,\n",
+        "       MEASURE(`Active Subscriptions`) AS active_subscriptions\n",
+        "FROM mv_arr_mrr\n",
+        "WHERE `Counts Towards MRR`\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 2 DESC"
+      ]
+    },
+    {
+      "name": "ds_ar_totals",
+      "displayName": "AR totals",
+      "queryLines": [
+        "SELECT MEASURE(`Open Balance`) AS open_balance,\n",
+        "       MEASURE(`Open Invoices`) AS open_invoices,\n",
+        "       MEASURE(`Balance Past Due`) AS balance_past_due,\n",
+        "       MEASURE(`Balance With Unknown Ageing`) AS balance_unknown_ageing,\n",
+        "       MEASURE(`Average Days Past Due`) AS avg_days_past_due\n",
+        "FROM mv_ar_ageing"
+      ]
+    },
+    {
+      "name": "ds_ar_ageing",
+      "displayName": "AR ageing buckets",
+      "queryLines": [
+        "SELECT `Ageing Bucket` AS ageing_bucket,\n",
+        "       MEASURE(`Open Balance`) AS open_balance,\n",
+        "       MEASURE(`Open Invoices`) AS open_invoices\n",
+        "FROM mv_ar_ageing\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 1"
+      ]
+    },
+    {
+      "name": "ds_ar_top_customers",
+      "displayName": "AR by customer",
+      "queryLines": [
+        "SELECT `Customer` AS customer,\n",
+        "       MEASURE(`Open Balance`) AS open_balance,\n",
+        "       MEASURE(`Balance Past Due`) AS balance_past_due,\n",
+        "       MEASURE(`Open Invoices`) AS open_invoices\n",
+        "FROM mv_ar_ageing\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 2 DESC\n",
+        "LIMIT 20"
+      ]
+    },
+    {
+      "name": "ds_overage_totals",
+      "displayName": "Overage totals",
+      "queryLines": [
+        "SELECT MEASURE(`Overage Amount`) AS overage_amount,\n",
+        "       MEASURE(`Billable Units`) AS billable_units,\n",
+        "       MEASURE(`Used Units`) AS used_units,\n",
+        "       MEASURE(`Entitled Units`) AS entitled_units,\n",
+        "       MEASURE(`Tenants Over Entitlement`) AS tenants_over,\n",
+        "       MEASURE(`Unrateable Periods`) AS unrateable_periods\n",
+        "FROM mv_overage"
+      ]
+    },
+    {
+      "name": "ds_overage_by_plan",
+      "displayName": "Overage by plan",
+      "queryLines": [
+        "SELECT `Plan` AS plan,\n",
+        "       MEASURE(`Overage Amount`) AS overage_amount,\n",
+        "       MEASURE(`Used Units`) AS used_units,\n",
+        "       MEASURE(`Entitled Units`) AS entitled_units,\n",
+        "       MEASURE(`Tenants Over Entitlement`) AS tenants_over\n",
+        "FROM mv_overage\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 2 DESC"
+      ]
+    },
+    {
+      "name": "ds_overage_top_tenants",
+      "displayName": "Tenants over entitlement",
+      "queryLines": [
+        "SELECT `Tenant` AS tenant,\n",
+        "       `Plan` AS plan,\n",
+        "       MEASURE(`Used Units`) AS used_units,\n",
+        "       MEASURE(`Entitled Units`) AS entitled_units,\n",
+        "       MEASURE(`Billable Units`) AS billable_units,\n",
+        "       MEASURE(`Overage Amount`) AS overage_amount\n",
+        "FROM mv_overage\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 6 DESC\n",
+        "LIMIT 15"
+      ]
+    },
+    {
+      "name": "ds_storage_totals",
+      "displayName": "Storage totals",
+      "queryLines": [
+        "SELECT MEASURE(`Allocated Storage Cost`) AS allocated_storage_cost,\n",
+        "       MEASURE(`Storage Cost At List`) AS storage_cost_at_list,\n",
+        "       MEASURE(`Storage Units`) AS storage_units,\n",
+        "       MEASURE(`Storage Share`) AS storage_share\n",
+        "FROM mv_storage_cost"
+      ]
+    },
+    {
+      "name": "ds_storage_top_tenants",
+      "displayName": "Storage cost by tenant",
+      "queryLines": [
+        "SELECT `Tenant` AS tenant,\n",
+        "       `Plan` AS plan,\n",
+        "       MEASURE(`Storage Units`) AS storage_units,\n",
+        "       MEASURE(`Allocated Storage Cost`) AS allocated_storage_cost,\n",
+        "       MEASURE(`Storage Cost At List`) AS storage_cost_at_list\n",
+        "FROM mv_storage_cost\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 4 DESC\n",
+        "LIMIT 15"
+      ]
+    },
+    {
+      "name": "ds_dq",
+      "displayName": "Data quality exceptions",
+      "queryLines": [
+        "SELECT rule_name,\n",
+        "       metric_treatment,\n",
+        "       COUNT(*) AS exception_rows,\n",
+        "       SUM(amount_at_risk) AS amount_at_risk\n",
+        "FROM dq_exceptions\n",
+        "GROUP BY ALL\n",
+        "ORDER BY 3 DESC"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "finance_overview",
+      "displayName": "Finance overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# OtterWorks finance — gold layer\n",
+                "\n",
+                "Every number here comes from a Unity Catalog metric view over `ow_tp.gold`, so the definition travels with the metric instead of living in a spreadsheet. **ARR/MRR** counts a subscription when it is active, its period covers the as-of moment, and it is the tenant's latest-starting subscription; credit notes do not reduce it. **AR ageing** buckets the open invoice header balance by days past due, and keeps unparseable dates in an `unknown` bucket rather than dropping the money. **Overage** and **storage cost** follow the legacy rating rules, including the 101-unit tier break. The data-quality panel at the bottom is the audit trail: every source row the layer could not take at face value, with what the metric did about it."
+              ]
+            }
+          },
+          "position": { "x": 0, "y": 0, "width": 12, "height": 4 }
+        },
+        {
+          "widget": {
+            "name": "kpi_arr",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_revenue_totals",
+                  "fields": [{ "name": "sum(arr)", "expression": "SUM(`arr`)" }],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "title": "ARR (run rate)", "showTitle": true },
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(arr)",
+                  "displayName": "ARR",
+                  "format": { "type": "number-currency", "currencyCode": "USD", "decimalPlaces": { "type": "exact", "places": 0 } }
+                }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 4, "width": 3, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "kpi_mrr",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_revenue_totals",
+                  "fields": [{ "name": "sum(mrr)", "expression": "SUM(`mrr`)" }],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "title": "MRR", "showTitle": true },
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(mrr)",
+                  "displayName": "MRR",
+                  "format": { "type": "number-currency", "currencyCode": "USD", "decimalPlaces": { "type": "exact", "places": 2 } }
+                }
+              }
+            }
+          },
+          "position": { "x": 3, "y": 4, "width": 3, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "kpi_ar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ar_totals",
+                  "fields": [{ "name": "sum(open_balance)", "expression": "SUM(`open_balance`)" }],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "title": "Open receivable", "showTitle": true },
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(open_balance)",
+                  "displayName": "Open AR",
+                  "format": { "type": "number-currency", "currencyCode": "USD", "decimalPlaces": { "type": "exact", "places": 0 } }
+                }
+              }
+            }
+          },
+          "position": { "x": 6, "y": 4, "width": 3, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "kpi_overage",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_overage_totals",
+                  "fields": [{ "name": "sum(overage_amount)", "expression": "SUM(`overage_amount`)" }],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "title": "Billed overage", "showTitle": true },
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(overage_amount)",
+                  "displayName": "Overage",
+                  "format": { "type": "number-currency", "currencyCode": "USD", "decimalPlaces": { "type": "exact", "places": 2 } }
+                }
+              }
+            }
+          },
+          "position": { "x": 9, "y": 4, "width": 3, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "mrr_by_plan",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_mrr_by_plan",
+                  "fields": [
+                    { "name": "plan", "expression": "`plan`" },
+                    { "name": "sum(mrr)", "expression": "SUM(`mrr`)" }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "title": "MRR by plan", "showTitle": true },
+              "encodings": {
+                "x": { "fieldName": "plan", "scale": { "type": "categorical" }, "displayName": "Plan" },
+                "y": { "fieldName": "sum(mrr)", "scale": { "type": "quantitative" }, "displayName": "MRR" },
+                "label": { "show": true }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 7, "width": 6, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "ar_ageing",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ar_ageing",
+                  "fields": [
+                    { "name": "ageing_bucket", "expression": "`ageing_bucket`" },
+                    { "name": "sum(open_balance)", "expression": "SUM(`open_balance`)" }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "title": "Open receivable by ageing bucket", "showTitle": true },
+              "encodings": {
+                "x": { "fieldName": "ageing_bucket", "scale": { "type": "categorical" }, "displayName": "Days past due" },
+                "y": { "fieldName": "sum(open_balance)", "scale": { "type": "quantitative" }, "displayName": "Open balance" },
+                "label": { "show": true }
+              }
+            }
+          },
+          "position": { "x": 6, "y": 7, "width": 6, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "overage_by_plan",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_overage_by_plan",
+                  "fields": [
+                    { "name": "plan", "expression": "`plan`" },
+                    { "name": "sum(overage_amount)", "expression": "SUM(`overage_amount`)" }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "title": "Overage billed by plan", "showTitle": true },
+              "encodings": {
+                "x": { "fieldName": "plan", "scale": { "type": "categorical" }, "displayName": "Plan" },
+                "y": { "fieldName": "sum(overage_amount)", "scale": { "type": "quantitative" }, "displayName": "Overage" },
+                "label": { "show": true }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 13, "width": 6, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "storage_top_tenants",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_storage_top_tenants",
+                  "fields": [
+                    { "name": "tenant", "expression": "`tenant`" },
+                    { "name": "sum(allocated_storage_cost)", "expression": "SUM(`allocated_storage_cost`)" }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "title": "Storage cost per tenant (share of billed overage)", "showTitle": true },
+              "encodings": {
+                "x": { "fieldName": "tenant", "scale": { "type": "categorical" }, "displayName": "Tenant" },
+                "y": { "fieldName": "sum(allocated_storage_cost)", "scale": { "type": "quantitative" }, "displayName": "Storage cost" }
+              }
+            }
+          },
+          "position": { "x": 6, "y": 13, "width": 6, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "overage_tenants_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_overage_top_tenants",
+                  "fields": [
+                    { "name": "tenant", "expression": "`tenant`" },
+                    { "name": "plan", "expression": "`plan`" },
+                    { "name": "used_units", "expression": "`used_units`" },
+                    { "name": "entitled_units", "expression": "`entitled_units`" },
+                    { "name": "billable_units", "expression": "`billable_units`" },
+                    { "name": "overage_amount", "expression": "`overage_amount`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": { "title": "Tenants furthest over entitlement", "showTitle": true },
+              "encodings": {
+                "columns": [
+                  { "fieldName": "tenant", "displayName": "Tenant", "booleanValues": ["false", "true"], "type": "string" },
+                  { "fieldName": "plan", "displayName": "Plan", "booleanValues": ["false", "true"], "type": "string" },
+                  { "fieldName": "used_units", "displayName": "Used units", "type": "integer" },
+                  { "fieldName": "entitled_units", "displayName": "Entitled", "type": "integer" },
+                  { "fieldName": "billable_units", "displayName": "Billable", "type": "integer" },
+                  { "fieldName": "overage_amount", "displayName": "Overage", "type": "float" }
+                ]
+              }
+            }
+          },
+          "position": { "x": 0, "y": 19, "width": 6, "height": 7 }
+        },
+        {
+          "widget": {
+            "name": "ar_customers_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ar_top_customers",
+                  "fields": [
+                    { "name": "customer", "expression": "`customer`" },
+                    { "name": "balance_past_due", "expression": "`balance_past_due`" },
+                    { "name": "open_balance", "expression": "`open_balance`" },
+                    { "name": "open_invoices", "expression": "`open_invoices`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": { "title": "Largest open balances by customer", "showTitle": true },
+              "encodings": {
+                "columns": [
+                  { "fieldName": "customer", "displayName": "Customer", "booleanValues": ["false", "true"], "type": "string" },
+                  { "fieldName": "open_balance", "displayName": "Open balance", "type": "float" },
+                  { "fieldName": "balance_past_due", "displayName": "Past due", "type": "float" },
+                  { "fieldName": "open_invoices", "displayName": "Invoices", "type": "integer" }
+                ]
+              }
+            }
+          },
+          "position": { "x": 6, "y": 19, "width": 6, "height": 7 }
+        },
+        {
+          "widget": {
+            "name": "dq_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_dq",
+                  "fields": [
+                    { "name": "rule_name", "expression": "`rule_name`" },
+                    { "name": "metric_treatment", "expression": "`metric_treatment`" },
+                    { "name": "exception_rows", "expression": "`exception_rows`" },
+                    { "name": "amount_at_risk", "expression": "`amount_at_risk`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": { "title": "Data quality exceptions — what the metrics did with dirty source rows", "showTitle": true },
+              "encodings": {
+                "columns": [
+                  { "fieldName": "rule_name", "displayName": "Rule", "booleanValues": ["false", "true"], "type": "string" },
+                  { "fieldName": "metric_treatment", "displayName": "Metric treatment", "booleanValues": ["false", "true"], "type": "string" },
+                  { "fieldName": "exception_rows", "displayName": "Rows", "type": "integer" },
+                  { "fieldName": "amount_at_risk", "displayName": "Amount at risk", "type": "float" }
+                ]
+              }
+            }
+          },
+          "position": { "x": 0, "y": 26, "width": 12, "height": 6 }
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "LEFT"
+    }
+  }
+}

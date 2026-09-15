@@ -1,0 +1,105 @@
+{
+  "kind": "recon-report",
+  "unit": "ow_tp_finance_gold",
+  "generated_at": "2026-09-15T12:29:40+00:00",
+  "tolerance": "exact",
+  "verdict": "pass",
+  "checks": [
+    {
+      "check": "MRR total",
+      "metric_view": "8682.00",
+      "direct_query": "8682.00",
+      "match": true
+    },
+    {
+      "check": "ARR total",
+      "metric_view": "104184.00",
+      "direct_query": "104184.00",
+      "match": true
+    },
+    {
+      "check": "Active subscriptions",
+      "metric_view": "68",
+      "direct_query": "68",
+      "match": true
+    },
+    {
+      "check": "MRR: STARTER",
+      "metric_view": "1911.00",
+      "direct_query": "1911.00",
+      "match": true
+    },
+    {
+      "check": "MRR: GROWTH",
+      "metric_view": "3278.00",
+      "direct_query": "3278.00",
+      "match": true
+    },
+    {
+      "check": "MRR: SCALE",
+      "metric_view": "3493.00",
+      "direct_query": "3493.00",
+      "match": true
+    },
+    {
+      "check": "AR open balance",
+      "metric_view": "83036372.61",
+      "direct_query": "83036372.61",
+      "match": true
+    },
+    {
+      "check": "AR open invoices",
+      "metric_view": "8252",
+      "direct_query": "8252",
+      "match": true
+    },
+    {
+      "check": "AR bucket 0-30",
+      "metric_view": "323264.70",
+      "direct_query": "323264.70",
+      "match": true
+    },
+    {
+      "check": "AR bucket 31-60",
+      "metric_view": "384995.75",
+      "direct_query": "384995.75",
+      "match": true
+    },
+    {
+      "check": "AR bucket 61-90",
+      "metric_view": "332345.60",
+      "direct_query": "332345.60",
+      "match": true
+    },
+    {
+      "check": "AR bucket 90+",
+      "metric_view": "81995766.56",
+      "direct_query": "81995766.56",
+      "match": true
+    },
+    {
+      "check": "Overage amount",
+      "metric_view": "21313.69",
+      "direct_query": "21313.69",
+      "match": true
+    },
+    {
+      "check": "Used units (from silver)",
+      "metric_view": "336293",
+      "direct_query": "336293",
+      "match": true
+    },
+    {
+      "check": "Storage units (from silver)",
+      "metric_view": "58190",
+      "direct_query": "58190",
+      "match": true
+    },
+    {
+      "check": "Storage cost rows cover the same overage",
+      "metric_view": "21313.69",
+      "direct_query": "21313.69",
+      "match": true
+    }
+  ]
+}

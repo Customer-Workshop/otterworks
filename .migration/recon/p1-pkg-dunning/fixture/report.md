@@ -9,15 +9,15 @@
 - Tolerance version: `v1`
 - Seed: `0`
 - Tier 3 depth: `full`
-- Generated: 2026-09-15T08:56:13.424346+00:00
-- Cost: `{"source_statements": 13, "source_rows_fetched": 24, "target_statements": 12, "target_rows_fetched": 24, "elapsed_s": 0.083}`
+- Generated: 2026-09-15T10:15:35.531649+00:00
+- Cost: `{"source_statements": 14, "source_rows_fetched": 45, "target_statements": 13, "target_rows_fetched": 45, "elapsed_s": 0.049}`
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|
 | 1 | counts_through_mapping | 2 | PASS |
 | 2 | per_field_aggregates | 10 | PASS |
 | 3 | keyed_diffs | 2 | PASS |
-| 4 | app_level_parity | 3 | PASS |
+| 4 | app_level_parity | 4 | PASS |
 
 ## Tier 1 coverage
 ```json

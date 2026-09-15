@@ -19,6 +19,15 @@
     ]
   },
   {
+    "name": "dunning_log_line_text",
+    "object": "p1-pkg-dunning",
+    "source_sql": "SELECT TO_CHAR(DATE '2026-09-01' + (LEVEL - 1), 'YYYY-MM-DD') AS \"as_of\", 'scheduled ' || TO_CHAR(LEVEL - 1) || ' attempts as of ' || TO_CHAR(DATE '2026-09-01' + (LEVEL - 1), 'DD-MON-YY', 'NLS_DATE_LANGUAGE=ENGLISH') AS \"message\" FROM dual CONNECT BY LEVEL <= 21 ORDER BY 1",
+    "target_sql": "SELECT to_char(g.d, 'YYYY-MM-DD') AS as_of, 'scheduled ' || (g.d::date - DATE '2026-09-01')::text || ' attempts as of ' || billing.f_dt2str(g.d::date) AS message FROM generate_series(DATE '2026-09-01', DATE '2026-09-21', INTERVAL '1 day') AS g(d) ORDER BY 1",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  },
+  {
     "name": "suspension_notification_id_formula",
     "object": "p1-pkg-dunning",
     "source_sql": "SELECT id AS \"id\", pkg_ow_util.f_md5_uuid(tenant_id || 'suspension' || TO_CHAR(TRUNC(CAST(sent_at AS DATE)), 'YYYY-MM-DD')) AS \"derived_id\" FROM ow_billing.notifications WHERE kind_cd = 3 ORDER BY 1",

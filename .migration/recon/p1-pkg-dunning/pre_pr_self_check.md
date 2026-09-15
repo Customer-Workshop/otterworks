@@ -22,8 +22,8 @@ DEGRADED with `official_verdict=false`, reason `d10_01_denied`.
 
 ## Not green, stated rather than hidden
 
-- The three routines were **not executed end to end**: `billing.invoices` belongs to unit `p1-invoices` (batch w3-b, concurrent) and is not on `mig-p1-w2` yet. They install and resolve their table references at execution time, but no sweep was run. The wave gate re-runs the op diff after w3-b merges.
-- Behavioural idempotency of `sp_suspend_overdue` (a second sweep on the same day writing nothing) depends on that same missing table and is **unverified**.
+- The three routines were **not executed end to end**: a sweep writes `dunning_attempts`, `notifications`, `tenants`, `subscriptions` and the audit log on the shared wave branch, which are the rows recon compares against Oracle, so running one here would destroy the baseline the wave is measured on. They install and resolve their table references at execution time. The wave gate runs the end-to-end op diff.
+- Behavioural idempotency of `sp_suspend_overdue` (a second sweep on the same day writing nothing) needs that sweep and is **unverified**.
 - Tiers 5-7 (source-side constraint, index and identity metadata) are **unverified**: the repo-local Oracle JDBC adapter does not read them under `d10_01_denied`.
-- Logging is dropped on purpose: Oracle's `pkg_ow_util.log_msg` converts to `billing.log_msg`, which inserts into `billing.billing_audit_log` - not a declared write target for this batch. Calling it would be an undeclared runtime write, so the routines stay silent and the gap is declared.
+- Logging is kept: Oracle's `pkg_ow_util.log_msg` calls convert to `billing.log_msg`, which inserts into `billing.billing_audit_log` - a declared runtime write for this batch (wave-3 manifest, ledger D-009), DML only, never its DDL. The line's text is compared against Oracle by the `dunning_log_line_text` op; the insert path was exercised on the wave branch in a rolled-back transaction.
 - The verdict is DEGRADED, `official_verdict=false`. Merge evidence, not an official harness verdict.

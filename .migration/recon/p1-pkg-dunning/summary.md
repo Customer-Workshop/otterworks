@@ -8,12 +8,12 @@ is `recon.summary.md`.
 ## What this PASS covers, and what it does not
 
 The harness run compares the two tables the package writes, `billing.dunning_attempts` and
-`billing.notifications`, against Oracle. It does **not** run the converted routines:
-`billing.invoices` is unit `p1-invoices` (batch w3-b, concurrent) and is not on
-`mig-p1-w2` yet, so `fn_overdue_accounts`, `sp_schedule_dunning` and `sp_suspend_overdue`
-install and resolve their table references at execution time, but no end-to-end sweep was
-executed. The wave gate re-runs the op diff after w3-b merges. Nobody may cite this run as
-behavioural evidence for the sweep itself.
+`billing.notifications`, against Oracle. It does **not** run the converted routines. A sweep
+writes `dunning_attempts`, `notifications`, `tenants`, `subscriptions` and the audit log on
+the shared wave branch, which are the same rows recon compares against Oracle, so executing
+it here would destroy the baseline every batch in this wave is measured on. The routines
+install and resolve their table references at execution time; the wave gate runs the
+end-to-end op diff. Nobody may cite this run as behavioural evidence for the sweep itself.
 
 What was verified of the conversion, in the fixture run's tier-4 ops
 (`databricks/migration/recon/ops/p1_pkg_dunning_ops.json`, evidence under `fixture/`):
@@ -26,6 +26,10 @@ What was verified of the conversion, in the fixture run's tier-4 ops
    reproduces the ids Oracle actually wrote.
 3. `suspension_notification_id_formula` — same for kind-3 notification ids, against
    `f_md5_uuid(tenant_id || 'suspension' || YYYY-MM-DD)`.
+4. `dunning_log_line_text` — the audit line `sp_schedule_dunning` writes, over 21 days:
+   Oracle's `'scheduled ' || TO_CHAR(cnt) || ' attempts as of ' || TO_CHAR(d,'DD-MON-YY',
+   'NLS_DATE_LANGUAGE=ENGLISH')` against the converted form built on `billing.f_dt2str`,
+   character for character.
 
 ## What ran
 
@@ -35,7 +39,9 @@ What was verified of the conversion, in the fixture run's tier-4 ops
 - Idempotency of the target state: two loads, two digests (`load_digest_run1.json`,
   `load_digest_run2.json`), identical. Behavioural idempotency of `sp_suspend_overdue` (a
   second sweep on the same day writes nothing, by the `NOT EXISTS` dedupe) is **not**
-  proven here — same missing `billing.invoices`.
+  proven here — it needs a sweep, and a sweep is the shared-branch write above.
+- The audit-write path was exercised directly on the wave branch inside a transaction that
+  was rolled back: `billing.log_msg('DUNNING', …)` inserted one row and left none behind.
 - Source-side constraint, index and identity parity (tiers 5–7) is **unverified** on the
   JDBC route.
 
@@ -53,12 +59,16 @@ What was verified of the conversion, in the fixture run's tier-4 ops
 - Package globals `g_last_run_dt` and `g_scheduled_cnt` become `INOUT` parameters on
   `sp_schedule_dunning` (P1-D4) — not a session global, and not a state table, because a
   state table would be a write target this batch has not declared.
-- **Logging is dropped.** Oracle calls `pkg_ow_util.log_msg`; its converted form
-  `billing.log_msg` inserts into `billing.billing_audit_log`, which is not in this batch's
-  declared write targets. Calling it would be an undeclared runtime write, so the routines
-  stay silent and the gap is declared instead of routed around.
-- Runtime DML on tables another unit owns the DDL for: `billing.tenants` and
-  `billing.subscriptions` (declared runtime writes; no DDL is issued against either).
+- **Logging is kept.** Oracle's `pkg_ow_util.log_msg` calls convert to `billing.log_msg`
+  (wave-0, U-01), at the same two points: the scheduling total after the loop, and one line
+  per suspended tenant. `billing.billing_audit_log` is a declared runtime write for this
+  batch (wave-3 manifest, ledger D-009); this batch issues DML only and never touches its
+  DDL. `log_msg` swallows its own failures as Oracle's autonomous transaction does; what it
+  cannot reproduce on Postgres is committing the log row independently of a caller that
+  rolls back — that is wave-0's declared divergence P1-D1a, not new here.
+- Runtime DML on tables another unit owns the DDL for: `billing.tenants`,
+  `billing.subscriptions` and `billing.billing_audit_log` (declared runtime writes; no DDL
+  is issued against any of them).
 
 ## Evidence
 
@@ -69,4 +79,4 @@ What was verified of the conversion, in the fixture run's tier-4 ops
 | `recon.summary.md`, `report.md` | the harness's own summary and report |
 | `DEGRADED.md` | why this is not an official verdict |
 | `load_digest_run1.json`, `load_digest_run2.json` | the rerun that proves target-state idempotency |
-| `fixture/` | the fixture run, including the three tier-4 ops; development evidence only |
+| `fixture/` | the fixture run, including the four tier-4 ops; development evidence only |

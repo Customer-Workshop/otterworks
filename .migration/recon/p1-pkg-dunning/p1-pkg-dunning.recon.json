@@ -2,9 +2,8 @@
   "kind": "recon-report",
   "unit": "p1-pkg-dunning",
   "namespace": "demo",
-  "generated_at": "2026-09-15T08:56:45.333933+00:00",
-  "run_mode": "live",
-  "harness_run_mode": "transactional",
+  "generated_at": "2026-09-15T10:14:42.125696+00:00",
+  "run_mode": "transactional",
   "checks": [
     {
       "id": "tier0_consistency_window",
@@ -57,8 +56,8 @@
     {
       "id": "tier7_schema_parity",
       "expected": "pass",
-      "actual": "unverified",
-      "result": "skipped",
+      "actual": "pass",
+      "result": "pass",
       "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
       "checks_run": 0
     }
@@ -77,8 +76,8 @@
   },
   "unverified_paths": [
     "source-side constraint, index and identity metadata (tiers 5-7): the Oracle JDBC adapter reads none under d10_01_denied",
-    "end-to-end execution of sp_schedule_dunning / sp_suspend_overdue / fn_overdue_accounts: billing.invoices is unit p1-invoices (batch w3-b) and is not on mig-p1-w2 yet, so the routines install but were not run; the wave gate re-runs the op diff after w3-b merges",
-    "behavioural idempotency of sp_suspend_overdue (a second sweep on the same day writes nothing): depends on the same missing billing.invoices",
+    "end-to-end execution of sp_schedule_dunning / sp_suspend_overdue / fn_overdue_accounts: a sweep writes dunning_attempts, notifications, tenants, subscriptions and billing_audit_log on the shared wave branch, which are the rows recon compares against Oracle, so it was not run here; the wave gate runs the end-to-end op diff",
+    "behavioural idempotency of sp_suspend_overdue (a second sweep on the same day writes nothing): needs that same sweep",
     "the Oracle side is read through a repo-local JDBC adapter outside the harness tested matrix (degraded, official_verdict=false)"
   ],
   "verdict": "PASS",

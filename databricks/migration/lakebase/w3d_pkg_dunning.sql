@@ -13,10 +13,13 @@
 -- declared. Callers that ignore them (the wave-4 job U-25) call the procedure with the
 -- as-of date alone.
 --
--- Logging is deliberately dropped. Oracle calls pkg_ow_util.log_msg, whose converted form
--- billing.log_msg inserts into billing.billing_audit_log - a table outside this batch's
--- declared write targets. The log line is not observable behaviour for recon, so the
--- routines stay silent and the gap is declared in the PR rather than routed around.
+-- Logging is kept. Oracle calls pkg_ow_util.log_msg; the converted billing.log_msg inserts
+-- into billing.billing_audit_log, which is a declared runtime write for this batch (wave-3
+-- manifest, ledger D-009): DML only, never its DDL, which wave 0 owns. log_msg swallows its
+-- own failures the way Oracle's autonomous transaction does; what it cannot reproduce is
+-- Oracle committing the log row independently of the caller (P1-D1a, declared at wave 0).
+-- The date in the scheduling line goes through billing.f_dt2str, the wave-0 'DD-MON-YY'
+-- helper, because Postgres to_char would take month names from lc_time, not Oracle's NLS.
 --
 -- Read dependency: billing.invoices is migrated by unit p1-invoices (batch w3-b, running
 -- concurrently) and is not on the wave branch yet. plpgsql resolves table references at
@@ -42,10 +45,10 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 STABLE
--- Oracle has no session zone; P1-D3 declares the estate UTC. billing.invoices is w3-b's
--- and its mapping still types issued_at as timestamptz, so a date cast would otherwise
--- follow the caller's TimeZone. Pinning it here makes the business date UTC whichever
--- type that column lands as, and whatever the caller's session is set to.
+-- Oracle has no session zone; P1-D3 declares the estate UTC. billing.invoices is w3-b's,
+-- so its issued_at type is not this unit's to choose: were it zone-aware, a date cast would
+-- follow the caller's TimeZone. Pinning it here makes the business date UTC whichever type
+-- that column lands as, and whatever the caller's session is set to.
 SET TimeZone TO 'UTC'
 AS $$
     SELECT i.tenant_id,
@@ -130,13 +133,18 @@ BEGIN
                 NULL;  -- legacy swallow, reproduced (P1-D2)
         END;
     END LOOP;
+
+    PERFORM billing.log_msg('DUNNING',
+        'scheduled ' || p_scheduled_cnt::text || ' attempts as of ' ||
+        billing.f_dt2str(p_as_of::date));
 END;
 $$;
 
 -- sp_suspend_overdue: suspend tenants whose open invoices are 14+ days old.
 --
--- Runtime writes into tables another unit owns the DDL for, declared in the PR:
--- billing.tenants and billing.subscriptions (DML only, never DDL).
+-- Runtime writes into tables another unit owns the DDL for, declared in the wave manifest
+-- and the PR: billing.tenants, billing.subscriptions and, through log_msg,
+-- billing.billing_audit_log (DML only, never DDL).
 --
 -- Behaviour kept as-is: the driving set is DISTINCT tenant_id over invoices whose issued_at
 -- day is on or before as-of minus 14 days; a tenant is skipped unless it is currently
@@ -183,6 +191,9 @@ BEGIN
                     WHERE tenant_id = v_tenant.tenant_id
                       AND kind_cd = 3
                       AND sent_at = v_sent_at);
+
+            PERFORM billing.log_msg('DUNNING',
+                'suspended tenant=' || v_tenant.tenant_id);
         END IF;
     END LOOP;
 END;

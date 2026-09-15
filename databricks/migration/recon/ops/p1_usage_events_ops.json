@@ -1,0 +1,30 @@
+[
+  {
+    "name": "usage_units_by_tenant_period",
+    "object": "p1-usage-events",
+    "source_sql": "SELECT tenant_id AS \"tenant_id\", TO_CHAR(occurred_at, 'YYYY-MM') AS \"period\", SUM(units) AS \"units_total\", COUNT(*) AS \"event_count\" FROM ow_billing.usage_events GROUP BY tenant_id, TO_CHAR(occurred_at, 'YYYY-MM') ORDER BY 1, 2",
+    "target_sql": "SELECT tenant_id, date_format(occurred_at, 'yyyy-MM') AS period, SUM(units) AS units_total, COUNT(*) AS event_count FROM ow_tp.silver.usage_events GROUP BY tenant_id, date_format(occurred_at, 'yyyy-MM') ORDER BY 1, 2",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "usage_kind_cd_is_a_known_usage_kind",
+    "object": "p1-usage-events",
+    "source_sql": "SELECT COUNT(*) AS \"unknown_kind_rows\" FROM ow_billing.usage_events u WHERE NOT EXISTS (SELECT 1 FROM ow_billing.codes c WHERE c.code_type = 'USAGE_KIND' AND c.code_val = u.kind_cd)",
+    "target_sql": "SELECT count_if(kind_cd NOT IN (SELECT code_val FROM ow_tp.bronze.codes WHERE code_type = 'USAGE_KIND')) AS unknown_kind_rows FROM ow_tp.silver.usage_events",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "usage_units_are_positive",
+    "object": "p1-usage-events",
+    "source_sql": "SELECT COUNT(*) AS \"non_positive_rows\", MIN(units) AS \"min_units\" FROM ow_billing.usage_events WHERE NVL(units, 0) <= 0",
+    "target_sql": "SELECT count_if(units IS NULL OR units <= 0) AS non_positive_rows, min(CASE WHEN units IS NULL OR units <= 0 THEN units END) AS min_units FROM ow_tp.silver.usage_events",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  }
+]

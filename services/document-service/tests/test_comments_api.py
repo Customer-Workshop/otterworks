@@ -27,18 +27,31 @@ async def _create_document(client: AsyncClient, owner_id: uuid.UUID, title: str 
 @pytest.mark.asyncio
 async def test_add_comment(client: AsyncClient, owner_id: uuid.UUID):
     doc_id = await _create_document(client, owner_id, "Commented Doc")
-    author_id = str(uuid.uuid4())
 
     resp = await client.post(
         f"/api/v1/documents/{doc_id}/comments",
-        json={"author_id": author_id, "content": "Great document!"},
+        json={"author_id": str(owner_id), "content": "Great document!"},
         headers=_auth(owner_id),
     )
     assert resp.status_code == 201
     data = resp.json()
     assert data["content"] == "Great document!"
-    assert data["author_id"] == author_id
+    assert data["author_id"] == str(owner_id)
     assert data["document_id"] == doc_id
+
+
+@pytest.mark.asyncio
+async def test_add_comment_attributes_to_caller(client: AsyncClient, owner_id: uuid.UUID):
+    """A client-supplied author_id cannot attribute the comment to someone else."""
+    doc_id = await _create_document(client, owner_id, "Commented Doc")
+
+    resp = await client.post(
+        f"/api/v1/documents/{doc_id}/comments",
+        json={"author_id": str(uuid.uuid4()), "content": "forged"},
+        headers=_auth(owner_id),
+    )
+    assert resp.status_code == 201
+    assert resp.json()["author_id"] == str(owner_id)
 
 
 @pytest.mark.asyncio

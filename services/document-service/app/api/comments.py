@@ -17,12 +17,13 @@ router = APIRouter()
 
 async def _authorize_document(
     document_id: UUID, request: Request, service: DocumentService
-) -> None:
+) -> UUID:
     user_id = _require_user_id(request)
     document = await service.get(document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     _ensure_owner(document, user_id)
+    return user_id
 
 
 @router.post(
@@ -36,9 +37,10 @@ async def add_comment(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Add a comment to a document."""
+    """Add a comment to a document, attributed to the authenticated caller."""
     service = DocumentService(db)
-    await _authorize_document(document_id, request, service)
+    user_id = await _authorize_document(document_id, request, service)
+    body = body.model_copy(update={"author_id": user_id})
     comment = await service.add_comment(document_id, body)
     if not comment:
         raise HTTPException(status_code=404, detail="Document not found")

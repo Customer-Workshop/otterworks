@@ -168,7 +168,8 @@ pub struct RenameFileRequest {
 pub struct ShareFileRequest {
     pub shared_with: Uuid,
     pub permission: SharePermission,
-    pub shared_by: Uuid,
+    /// Ignored; the sharer is always the authenticated caller.
+    pub shared_by: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize)]

@@ -1,0 +1,32 @@
+{
+  "bucket": "otterworks-data-lake",
+  "export_root": "/Volumes/ow_tp/gold/exports/analytics",
+  "objects": {
+    "analytics/daily/year=2026/month=09/day=15/hourly_breakdown.json.gz": {
+      "bytes": 463,
+      "raw_b64": "H4sIAAAAAAACA6WWXW7CMAzH3zlFxXM11U7Lxw7BFVDVZhoSjInBE+Luq9pRR43tuOytSmXnZ/tvO/dFli2LYvme3buv7rs9N7eT/7rum4uvr77t/mA+/GrOp/5P3bb9ufs7/zgc/f7ns770p1U+cdT6ox8cQWhAxxge376P53rwD93xI+8BgQH07WGwL3m3kAZhggUBRkoCEiQS5NTaGZMyZtFJ1xljHZPjlFAJ3cnozxt39U69CCzEY3xgwionWLK5qbalgAhsiFIi5NCnRaFAKk2/jjd3CVom9pLNdSDR1SShsamSNl6hcjwROHGsRQ5MyCi+DuV8KOIXZEmIG61kvDUmKiYUmBMxcWyJQ/UbDs502M9fb/HkS0TLQUIhQ+JLrZqYc1YpkvQB0iPO2oDkFP/R19YNE1znTHs6KYdocJnXEsxTeIBeMuiv3ob6O4KJkzgqaaU423jX8hpPU2OeApmujDKNho66SWH9UoM6crBR64eGl11U1vk6jV6gxLeV86a8SDE3Ne+8ZwsW5mdLunndjPFJ8MRiGHvK4kzgW16ZyeWBKKXL2ufxDlMnhkly1JLotCFfCZ7L3NYs0fzhRsPi8QtdPGfaqA0AAA==",
+      "sha256": "a740e8f4203a7366f6b312dbbe985d28eef47c03cc56a4c388243c53a90d3fb0"
+    },
+    "analytics/daily/year=2026/month=09/day=15/summary.json.gz": {
+      "bytes": 153,
+      "raw_b64": "H4sIAAAAAAACA13NSw7CIBCA4X1P0XTtopRWqpchI4yRhIqBoYkx3t10UINuv38ej6ZtOzDkVtQ5YUzdsRXDrlIbTF7wSlsZ+rqcnUeen1gpEHiN62d2PDB/97WJCIR2a/NfQutKGfdcTFhKAGvZpWDnlzrffIC3T5WnC8SiqlKLHqnm051+j6heSTFLpZrnC9vKtEUQAQAA",
+      "sha256": "590d3a65ce7f69598a0cceb4d23cf142678d27982449b1992d5cb353e2bd9b59"
+    },
+    "analytics/daily/year=2026/month=09/day=15/top_users.jsonl.gz": {
+      "bytes": 518,
+      "raw_b64": "H4sIAAAAAAAC/42VS27cMAyG9z1F4HVbSNS7h8gVBnpQ6KATO5jxoItB7l4lQVzLoh8r27Rs/h/5i3p09xteT+fU/Xoqt9cfLrgE3AWrHQN0pvv+1Pk4nof+VpY8ujTE+wv24wnTecT3z1RZMUUTXvAzbEo4Di8fUZ/SRwzmS+MV/edSWcL5fMHT7be/1pH762XwaYo9++dyx7/e/s8m3kpsHEZ/eX9gb98eSzDFwWHWIgodjXS4BFumq7AmWNOmljS/JPg5zS9a/jkOWAonmmxyjMIoRBn8fp9Mk4XTysVK56gKbdViBljhKAKHiyCF9cInm3zGTHZnEi7azIbOrAjdFJ8mu833dUeeS/VZ5FYCt2zPVSsl11sln7BpkZYmr7VLQrtV6LzOWoEwoLIltde2qPWsFfegp+gdBkcsROF4YMyyIKzRiGEFp5owR0y+wUOohNaYNGWNA9QGdz4mxl25WkS9O6/E9vauNdJTfKEcqoH79cnPmcX2RvzsX3Ne7gjeBCpZ1LZcFIPA9wcadUispW+KI2heaiNRlBWOJnCMgWh14oazUHjU4fbVzmlFr9ARw4s6gCrd1EDTDrWzMWJMEUCx1TbUBSJKSbVmqac1LewPYs4J3SIHsDkylMlLJ90B3WJL0GJmL3bWXE5zOvd/+uFvv+/fykRlBPwDwK+TMIwJAAA=",
+      "sha256": "0467c16bfa2f94ecec65d10e0a9ff8b901168a54872953400226e870a6eeec39"
+    },
+    "reports/analytics/daily/2026-09-15/report.json": {
+      "baseline_sha256_at_baseline_wallclock": "c238b22e602d8a12411f110e07ec60bac0e16c6b39185691808a8c0d79b8aa94",
+      "bytes": 908,
+      "raw_b64": "ewogICJyZXBvcnRfdHlwZSI6ICJkYWlseV9hbmFseXRpY3MiLAogICJyZXBvcnRfZGF0ZSI6ICIyMDI2LTA5LTE1IiwKICAiZ2VuZXJhdGVkX2F0IjogIjIwMjYtMDktMTVUMTg6MzI6MjkuMDYxMzE1KzAwOjAwIiwKICAic3VtbWFyeSI6IHsKICAgICJhY3RpdmVfdXNlcnMiOiAxMiwKICAgICJhY3RpdmVfZG9jdW1lbnRzIjogMjAsCiAgICAiYWN0aXZlX2ZpbGVzIjogMTUsCiAgICAidG90YWxfZXZlbnRzIjogMjQ5LAogICAgImRvY3VtZW50c19jcmVhdGVkIjogMjgsCiAgICAiZG9jdW1lbnRzX2VkaXRlZCI6IDQ2LAogICAgImNvbW1lbnRzX2FkZGVkIjogMzEsCiAgICAiZmlsZXNfdXBsb2FkZWQiOiAzNSwKICAgICJmaWxlc19zaGFyZWQiOiAzNywKICAgICJmaWxlc19kZWxldGVkIjogMzcsCiAgICAiYnl0ZXNfdXBsb2FkZWQiOiA3MDczMTgzNzcKICB9LAogICJoaWdobGlnaHRzIjogewogICAgInBlYWtfaG91ciI6IHsKICAgICAgImhvdXIiOiAiMjMiLAogICAgICAiZXZlbnRfY291bnQiOiAxNgogICAgfSwKICAgICJtb3N0X2FjdGl2ZV91c2VycyI6IFsKICAgICAgInVzci05YjlkMjE5Yjg2OTAyZTk3IiwKICAgICAgInVzci01MTI5ZWY2M2MzNmM3NDllIiwKICAgICAgInVzci01YzdmN2ZjYzM3NWVlNGJhIiwKICAgICAgInVzci0xM2I0MzhhM2FkOGRhZmVmIiwKICAgICAgInVzci0xYzFmNGJhMGMxODQyMTgwIgogICAgXQogIH0sCiAgImRvY3VtZW50X21ldHJpY3MiOiB7CiAgICAiY3JlYXRlZCI6IDI4LAogICAgImVkaXRlZCI6IDQ2LAogICAgImNvbW1lbnRzIjogMzEKICB9LAogICJmaWxlX21ldHJpY3MiOiB7CiAgICAidXBsb2FkZWQiOiAzNSwKICAgICJzaGFyZWQiOiAzNywKICAgICJkZWxldGVkIjogMzcsCiAgICAiYnl0ZXNfdXBsb2FkZWQiOiA3MDczMTgzNzcKICB9Cn0=",
+      "sha256": "c40dd1384b9a2d393ed4df8a8730f4e29f68b1c94fd5ffe2fd6dbfa6f966a7e8",
+      "wallclock_field": "generated_at",
+      "wallclock_value": "2026-09-15T18:32:29.061315+00:00"
+    }
+  },
+  "run_date": "2026-09-15",
+  "source": ".migration/recon/p3/baselines/p3-analytics-daily.baseline.json and the legacy estate's own S3 objects for this run date",
+  "unit": "p3-analytics-daily"
+}

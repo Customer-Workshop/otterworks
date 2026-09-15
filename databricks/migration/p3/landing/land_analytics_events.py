@@ -20,6 +20,14 @@ Two properties this loader has to hold:
   so the order is observable output. `ingest_ordinal` records it: SQS records in queue
   order, then DynamoDB records in scan order. Nothing downstream may invent an order.
 
+  The DynamoDB half of that order is the order the *scan* returns, which is a property of
+  the table and not of the snapshot file: the two differ, and the difference is visible in
+  the byte order of `hourly_breakdown.json.gz` and `top_users.jsonl.gz`. So the snapshot
+  carries `analytics_source_order.json`, the event ids in the order the source handed them
+  over, captured by `exports/capture_source_order.py` at extraction time. Events the
+  recorded scan did not return (a record dated outside the scanned day) keep snapshot-file
+  order behind the ones it did; the day the legacy read is sequenced exactly as it read it.
+
 The payload is stored verbatim as JSON text. The events are heterogeneous by construction
 (the attribution field varies per record, `sizeBytes` is present only on uploads), so typing
 them here would mean deciding at landing time what the contract says, which belongs in the
@@ -41,6 +49,7 @@ WAREHOUSE = "565cd2fd713738c4"
 # The order the legacy concatenates them in; ordinals are assigned in this order.
 STREAMS = (("sqs", "analytics_sqs_events.json"),
            ("dynamodb", "analytics_dynamodb_events.json"))
+SOURCE_ORDER = "analytics_source_order.json"
 
 CREATE_RAW = f"""
 CREATE TABLE IF NOT EXISTS {RAW_TABLE} (
@@ -87,12 +96,46 @@ def execute(w, statement: str, parameters=None) -> list[list[str]]:
     return (result.result.data_array if result.result else []) or []
 
 
+def source_order(snapshot: Path) -> list[str] | None:
+    """The event ids in the order the source returned them, if the snapshot recorded it."""
+    path = snapshot / SOURCE_ORDER
+    if not path.exists():
+        return None
+    recorded = json.loads(path.read_text())
+    order = recorded["event_ids"] if isinstance(recorded, dict) else recorded
+    if len(set(order)) != len(order):
+        raise SystemExit(f"{path} repeats an event id; it is a sequence, not a bag")
+    return order
+
+
+def in_source_order(events: list[dict], order: list[str] | None) -> list[dict]:
+    """Sequence the scanned events as the source returned them, file order behind them.
+
+    A recorded id the snapshot does not hold means the two describe different extractions,
+    which would silently sequence the wrong day, so it fails rather than being skipped.
+    """
+    if order is None:
+        return events
+    by_id = {event["event_id"]: event for event in events}
+    missing = [event_id for event_id in order if event_id not in by_id]
+    if missing:
+        raise SystemExit(f"{len(missing)} ids in {SOURCE_ORDER} are not in the snapshot "
+                         f"(first: {missing[0]}); the order was captured from a different "
+                         "extraction than this snapshot holds")
+    scanned = [by_id[event_id] for event_id in order]
+    recorded = set(order)
+    return scanned + [event for event in events if event["event_id"] not in recorded]
+
+
 def snapshot_rows(snapshot: Path, batch: str) -> list[tuple[str, str, str, int, str, str]]:
     """(event_uid, batch, stream, ordinal, event_date, payload) in legacy concatenation order."""
     rows = []
     ordinal = 0
+    order = source_order(snapshot)
     for stream, name in STREAMS:
         events = json.loads((snapshot / name).read_text())
+        if stream == "dynamodb":
+            events = in_source_order(events, order)
         for event in events:
             payload = json.dumps(event, sort_keys=True, separators=(",", ":"))
             rows.append((f"{batch}:{stream}:{ordinal}", batch, stream, ordinal,
@@ -137,7 +180,9 @@ def upload(w, snapshot: Path, volume_dir: str) -> list[str]:
     same checksums the local run checked, not trust it because it is in a volume.
     """
     written = []
-    for _, name in (*STREAMS, ("manifest", "manifest.json")):
+    for _, name in (*STREAMS, ("manifest", "manifest.json"), ("order", SOURCE_ORDER)):
+        if not (snapshot / name).exists():
+            continue
         target = f"{volume_dir}/{name}"
         w.files.upload(target, (snapshot / name).open("rb"), overwrite=True)
         written.append(target)
@@ -212,6 +257,8 @@ def main(argv: list[str] | None = None) -> int:
     uploaded = [] if args.skip_upload else upload(w, snapshot, volume_dir)
     result = load(w, snapshot_rows(snapshot, args.batch), args.batch)
     result["volume_files"] = uploaded
+    result["dynamodb_order"] = ("source_scan" if source_order(snapshot) is not None
+                               else "snapshot_file")
     json.dump(result, sys.stdout, sort_keys=True)
     print()
     return 0

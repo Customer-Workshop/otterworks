@@ -206,6 +206,50 @@ resources:
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
+
+        # P3-Q3: the legacy's four data-lake objects, rebuilt byte for byte from gold. The
+        # Delta tables remain this unit's governed output; this is the file interface on
+        # top of them, for consumers that read the objects rather than the tables. It
+        # depends on all four gold tables because the report embeds the summary, the peak
+        # hour and the top five users, and the ordering inside the files comes from silver,
+        # which every one of them has already read.
+        - task_key: export_report_objects
+          depends_on:
+            - task_key: load_gold_summary
+            - task_key: load_gold_hourly
+            - task_key: load_gold_top_users
+            - task_key: load_gold_top_user_actions
+          spark_python_task:
+            python_file: exports/export_analytics_reports.py
+            parameters:
+              - --run-date
+              - "{{job.parameters.run_date}}"
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # The acceptance gate the plan declared and the first cut of this unit dropped:
+        # the exported bytes against the legacy's own bytes for the pinned day, not row
+        # parity over the tables. It reads back from the volume, so it checks what was
+        # written. A date the frozen legacy objects do not cover reports compared=false
+        # rather than passing.
+        - task_key: compare_report_objects
+          depends_on:
+            - task_key: export_report_objects
+          spark_python_task:
+            python_file: exports/compare_legacy_exports.py
+            parameters:
+              - --unit
+              - p3-analytics-daily
+              - --run-date
+              - "{{job.parameters.run_date}}"
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
       environments:
         - environment_key: serverless
           spec:

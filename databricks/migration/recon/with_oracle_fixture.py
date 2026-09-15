@@ -16,8 +16,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
+
+# The variable the fixture JSON is bound to is a secret-style name, never PATH, PYTHONPATH or
+# anything else the child's runtime is resolved from.
+SECRET_VAR = re.compile(r"^OW_TP_[A-Z0-9_]+$")
 
 FIXTURE = {"user": "ow_billing", "password": "ow_billing", "host": "127.0.0.1",
            "port": os.environ.get("ORACLE_BILLING_DB_PORT", "52521"), "service": "FREEPDB1"}
@@ -28,6 +33,9 @@ def main(argv: list[str]) -> int:
         raise SystemExit(__doc__)
     split = argv.index("--")
     var = argv[0]
+    if not SECRET_VAR.match(var):
+        raise SystemExit(f"refusing to bind the fixture credentials to {var!r}: "
+                         "the target variable must be named OW_TP_*")
     command = argv[split + 1:]
     if not command:
         raise SystemExit(__doc__)

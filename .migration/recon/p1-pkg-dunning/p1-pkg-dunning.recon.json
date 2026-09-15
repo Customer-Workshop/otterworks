@@ -49,8 +49,8 @@
     {
       "id": "tier6_cdc_lag_ordering",
       "expected": "pass",
-      "actual": "unverified",
-      "result": "skipped",
+      "actual": "pass",
+      "result": "pass",
       "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
       "checks_run": 0
     },

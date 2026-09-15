@@ -1,0 +1,89 @@
+{
+  "kind": "recon-report",
+  "unit": "p2-custbill-parse",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T12:51:35.113865+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy parser output ow_tp.bronze.custbill_legacy_baseline_psv",
+      "checks_run": 1
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy parser output ow_tp.bronze.custbill_legacy_baseline_psv",
+      "checks_run": 3
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy parser output ow_tp.bronze.custbill_legacy_baseline_psv",
+      "checks_run": 116
+    },
+    {
+      "id": "gold_completeness_invariant",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "ow_tp.silver.custbill vs ow_tp.bronze.custbill_quarantine, queried through the migration warehouse",
+      "evidence": "116 silver rows against 116 legacy psv lines; 14 quarantined rows, 0 of them missing from silver. Every expectation is warn-only (expect_all), so no record is filtered out of silver or out of gold's input (contract C-6.3, P2-D02)."
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "The compared column is psv_line, the whole legacy output line byte for byte, keyed by (source_file, record_no). Field-level comparison is deliberately not used: the legacy's positional '|' split and the target's byte slices disagree by design on the delimiter-collision record (C-5.1), so a field diff there would measure the comparison, not the parse.",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "second pipeline update 688607b2-f7f7-40a3-9448-c71be248e7f0 and a third, 53d45dcb-86a5-4bce-bc3e-6e60e576b93c, from the committed source; silver 116 rows / md5 115f7e40240d7529b6bc48ec0a922ccd, quarantine 14 rows / md5 158d9647f29bfa8713db13190b1deef3, trailer audit 6 rows / md5 c286f2cd16e1168b779e31521c768835 - identical before and after (idempotency.before.json, idempotency.after.json)"
+  },
+  "planted_anomaly_detections": {
+    "compared_as": "set of (expectation, rows failing it) over ow_tp.bronze.custbill_quarantine, per the frozen tolerances",
+    "expected_set": [
+      {"anomaly": "rec_len_65", "count": 5},
+      {"anomaly": "bill_date_valid_iso", "count": 5},
+      {"anomaly": "rec_type_known", "count": 5},
+      {"anomaly": "bill_amt_all_digits", "count": 4},
+      {"anomaly": "currency_known", "count": 4},
+      {"anomaly": "ascii_only", "count": 2},
+      {"anomaly": "cust_id_nonempty", "count": 2},
+      {"anomaly": "bill_amt_non_negative", "count": 1},
+      {"anomaly": "no_delimiter_collision", "count": 1}
+    ],
+    "actual_set": [
+      {"anomaly": "rec_len_65", "count": 5},
+      {"anomaly": "bill_date_valid_iso", "count": 5},
+      {"anomaly": "rec_type_known", "count": 5},
+      {"anomaly": "bill_amt_all_digits", "count": 4},
+      {"anomaly": "currency_known", "count": 4},
+      {"anomaly": "ascii_only", "count": 2},
+      {"anomaly": "cust_id_nonempty", "count": 2},
+      {"anomaly": "bill_amt_non_negative", "count": 1},
+      {"anomaly": "no_delimiter_collision", "count": 1}
+    ],
+    "missing": [],
+    "unexpected": [],
+    "derivation": "expected_set enumerated by hand from databricks/migration/p2/baseline/gen_probe_fixture.py before the quarantine table was read: the short, long and blank records plus the UTF-8 and CRLF probes are the five over/under-length records; the UTF-8 record's multibyte name shifts date, currency and rec_type into the neighbouring fields, which is why those counts exceed the number of deliberately bad values."
+  },
+  "trailer_audit": {
+    "enforced": false,
+    "finding": "CUSTBILL_PROBE_001.dat declares a trailer of 15 and parses 14: the record whose customer id starts HDRFAKE is deleted by the legacy sed as if it were a header. The target reproduces that loss exactly (C-4.1/C-4.2) and surfaces it in ow_tp.bronze.custbill_trailer_audit as shadowed_count=1 instead of silently swallowing it. Audit only - it never changes output."
+  },
+  "unverified_paths": [
+    "P2-D01, the landing race: the legacy poller can parse a half-written .dat, the target lands atomically and sequences parse behind it. Named behaviour change, not exercisable against pinned inputs.",
+    "Structure parity: the harness compares rows, not Delta table properties, clustering, comments or grants. Nothing checks that ow_tp.silver grants match any legacy access model.",
+    "Expectation semantics: the ten expectations are new quality signals with no legacy counterpart. They are warn-only by construction, so the harness proves they do not filter, but nothing external validates the thresholds themselves.",
+    "The legacy parser is reconciled through its captured output over the pinned fixture set. Inputs outside that set - other encodings, records longer than the probes, other delimiter placements - are not exercised.",
+    "parsed_at and quarantined_at are target-side wall clock with no legacy counterpart and are excluded from both the keyed diff and the idempotency fingerprint.",
+    "factory-doctor source_principal_read_only: still unverified, no privilege query exists for a Databricks-family source."
+  ],
+  "verdict": "PASS"
+}

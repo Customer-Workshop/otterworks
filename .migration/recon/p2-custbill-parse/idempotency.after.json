@@ -1,0 +1,18 @@
+{
+  "label": "after-second-run",
+  "silver": {
+    "rows": 116,
+    "files": 5,
+    "content_md5": "115f7e40240d7529b6bc48ec0a922ccd"
+  },
+  "quarantine": {
+    "rows": 14,
+    "files": 3,
+    "content_md5": "158d9647f29bfa8713db13190b1deef3"
+  },
+  "trailer_audit": {
+    "rows": 6,
+    "files": 6,
+    "content_md5": "c286f2cd16e1168b779e31521c768835"
+  }
+}

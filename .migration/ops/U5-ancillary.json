@@ -1,0 +1,59 @@
+[
+  {
+    "name": "notifications_kind_decode",
+    "collection": "notifications",
+    "why": "KIND_CD is decoded through CODES NOTIF_KIND; the source holds an integer and the target a string, so no canonicalization rule can compare them.",
+    "source_sql": "SELECT n.id AS \"id\", NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(n.kind_cd) || ')') AS \"kind\" FROM notifications n LEFT JOIN codes c ON c.code_type = 'NOTIF_KIND' AND c.code_val = n.kind_cd",
+    "target_pipeline": [{"$project": {"_id": 0, "id": "$_id", "kind": 1}}]
+  },
+  {
+    "name": "notifications_kind_counts",
+    "collection": "notifications",
+    "why": "The decoded kind as a distribution, so an extra or missing notification shows up as a count, not just a row diff.",
+    "source_sql": "SELECT NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(n.kind_cd) || ')') AS \"kind\", COUNT(*) AS \"n\" FROM notifications n LEFT JOIN codes c ON c.code_type = 'NOTIF_KIND' AND c.code_val = n.kind_cd GROUP BY NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(n.kind_cd) || ')')",
+    "target_pipeline": [
+      {"$group": {"_id": "$kind", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "kind": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "notifications_idempotency_key_unique",
+    "collection": "notifications",
+    "why": "(tenantId, kind, sentAt) is the unique index and the reload idempotency key; it must be unique on both sides.",
+    "source_sql": "SELECT COUNT(*) AS \"groups\", MAX(cnt) AS \"maxPerKey\" FROM (SELECT n.tenant_id, n.kind_cd, n.sent_at, COUNT(*) AS cnt FROM notifications n GROUP BY n.tenant_id, n.kind_cd, n.sent_at)",
+    "target_pipeline": [
+      {"$group": {"_id": {"tenantId": "$tenantId", "kind": "$kind", "sentAt": "$sentAt"}, "cnt": {"$sum": 1}}},
+      {"$group": {"_id": null, "groups": {"$sum": 1}, "maxPerKey": {"$max": "$cnt"}}},
+      {"$project": {"_id": 0, "groups": 1, "maxPerKey": 1}}
+    ]
+  },
+  {
+    "name": "credit_notes_outstanding_by_tenant",
+    "collection": "credit_notes",
+    "why": "The app-level question this collection answers: outstanding credit per tenant. Money totals compare to 0.01 per the tolerance record.",
+    "source_sql": "SELECT tenant_id AS \"tenantId\", TO_CHAR(ROUND(SUM(remaining_amount) * 100), 'FM999999999990') AS \"remainingCents\", COUNT(*) AS \"n\" FROM credit_notes GROUP BY tenant_id",
+    "target_pipeline": [
+      {"$group": {"_id": "$tenantId", "remaining": {"$sum": {"$toDecimal": "$remainingAmount"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "tenantId": "$_id", "n": 1, "remainingCents": {"$toString": {"$toLong": {"$round": [{"$multiply": [{"$toDouble": "$remaining"}, 100]}, 0]}}}}}
+    ]
+  },
+  {
+    "name": "credit_notes_issued_month",
+    "collection": "credit_notes",
+    "why": "ISSUED_ON is a DATE; grouping by month proves the UTC conversion did not shift a note across a boundary.",
+    "source_sql": "SELECT TO_CHAR(issued_on, 'YYYY-MM') AS \"month\", COUNT(*) AS \"n\" FROM credit_notes GROUP BY TO_CHAR(issued_on, 'YYYY-MM')",
+    "target_pipeline": [
+      {"$group": {"_id": {"$dateToString": {"date": "$issuedOn", "format": "%Y-%m", "timezone": "UTC"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "month": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "audit_log_empty",
+    "collection": "audit_log",
+    "why": "BILLING_AUDIT_LOG is empty at source; the correct target is an empty collection, and the TTL index deletes nothing at migration time. Both sides return zero rows, which is the assertion.",
+    "source_sql": "SELECT TO_CHAR(log_id) AS \"id\", TO_CHAR(logged_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') AS \"loggedAt\", module AS \"module\" FROM billing_audit_log",
+    "target_pipeline": [
+      {"$project": {"_id": 0, "id": {"$toString": "$_id"}, "loggedAt": {"$dateToString": {"date": "$loggedAt", "format": "%Y-%m-%dT%H:%M:%S", "timezone": "UTC"}}, "module": 1}}
+    ]
+  }
+]

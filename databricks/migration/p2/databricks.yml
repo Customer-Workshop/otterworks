@@ -9,9 +9,16 @@ variables:
   landing_path:
     description: Governed landing volume for CUSTBILL*.dat.
     default: /Volumes/ow_tp/bronze/landing/custbill
-  notification_destination:
-    description: Failure-notification destination for pipeline 2 jobs (replaces the dead sendmail pipe).
-    default: ow-migrations
+  sftp_drop_dir:
+    description: Directory the CUSTBILL*.dat producer writes to, as the landing task sees it.
+    default: /Volumes/ow_tp/bronze/landing/custbill_drop
+  failure_webhooks:
+    description: >-
+      on_failure notification destinations for pipeline 2's jobs, replacing the dead sendmail
+      pipe. Empty in the migration target on purpose: a migration session does not wire a live
+      pager. Cutover sets it to [{id: <notification destination id>}].
+    type: complex
+    default: []
 
 targets:
   migration:
@@ -19,6 +26,13 @@ targets:
     mode: development
     workspace:
       host: https://dbc-8bc9474f-40ae.cloud.databricks.com
+    presets:
+      # Belt and braces on top of each schedule's own pause_status: nothing this bundle
+      # deploys can run on a timer, whatever a resource asks for. Development mode also
+      # deploys every resource as "[dev <principal>] <name>"; the resource names below
+      # are the ow_tp_* names, and the prefix disappears when a cutover deploys a
+      # production target. An empty name_prefix preset does not remove it.
+      trigger_pause_status: PAUSED
 
 # ow_tp.bronze.landing already exists and is owned outside this bundle (pipeline 1's
 # convention). It is referenced, not managed here, so a deploy can never redefine it.
@@ -32,14 +46,84 @@ resources:
       comment: Governed file exports from ow_tp.gold. Holds the finance close CSV and its .xls copy, which replace the shared-drive path finance_excel_report.pl wrote to.
 
   jobs:
-    # The export task only. Cron, the stage ordering that replaces run_all.sh's two
-    # sleep 600 calls, retries and the failure notification that replaces the dead
-    # sendmail pipe are wave 4 (p2-orchestration). This job carries no schedule at
-    # all, so deploying it cannot start anything.
-    ow_tp_p2_custbill_finance_close_export:
-      name: ow_tp_p2_custbill_finance_close_export
+    # Both jobs replace cron and run_all.sh, per docs/migration/Pipeline2_schedule_model.md.
+    # Every schedule is PAUSED, so deploying this bundle cannot start anything, and the
+    # Sunday 06:00 run_all re-run is deliberately absent (P2-D05, a STOP E question).
+    # Timezone is P2-D04: one declared timezone for the schedules and the export's date
+    # stamp, proposed UTC, where the legacy used the ETL box's local clock.
+
+    ow_tp_p2_custbill_ingest:
+      name: ow_tp_p2_custbill_ingest
+      # Legacy: */15 ingest, and parse on 5-59/15 five minutes behind it on a guess.
+      # Parse loses its schedule entirely and becomes a dependency edge.
+      schedule:
+        quartz_cron_expression: "0 0/15 * * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      # The legacy ingest overlaps its own previous run (incident 2016-03-12) and its
+      # /tmp lock file is checked but never removed, so it excludes nothing. A late run
+      # is skipped rather than stacked.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      webhook_notifications:
+        on_failure: ${var.failure_webhooks}
       tasks:
-        - task_key: finance_close_export
+        - task_key: land_files
+          spark_python_task:
+            python_file: landing/land_custbill_files.py
+            parameters:
+              - --source-dir
+              - ${var.sftp_drop_dir}
+              - --landing-path
+              - ${var.landing_path}
+          environment_key: serverless
+          # sftp_ingest_poll.ksh ended every stage in `|| true`. A failed landing fails
+          # the task; the retries below are for transient failures, not for hiding one.
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+        - task_key: custbill_pipeline
+          depends_on:
+            - task_key: land_files
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.ow_tp_p2_custbill_ingest_parse.id}
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "3"
+
+    ow_tp_p2_finance_close:
+      name: ow_tp_p2_finance_close
+      # Legacy: 10 2 * * *, on the same box as analytics_daily.py at 02:00. Nothing is
+      # shared between them now, so the collision is gone rather than rescheduled.
+      schedule:
+        quartz_cron_expression: "0 10 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      queue:
+        # A late ingest delays the close; it never cancels it.
+        enabled: true
+      webhook_notifications:
+        on_failure: ${var.failure_webhooks}
+      tasks:
+        # The schedule model lists gold_close and trailer_audit as separate tasks. Both
+        # are flows inside the declarative pipeline, so this one task materializes
+        # silver, gold and the trailer audit together; splitting them would mean running
+        # the same pipeline three times.
+        - task_key: await_silver
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.ow_tp_p2_custbill_ingest_parse.id}
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+        - task_key: export_csv_xls
+          depends_on:
+            - task_key: await_silver
           spark_python_task:
             python_file: export/finance_close_export.py
             # A serverless python task is exec()'d, so the script has no __file__ to
@@ -48,6 +132,9 @@ resources:
               - --pipeline-dir
               - ${workspace.file_path}/pipeline
           environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
       environments:
         - environment_key: serverless
           spec:

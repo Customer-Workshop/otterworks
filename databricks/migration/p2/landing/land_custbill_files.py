@@ -40,7 +40,6 @@ import hashlib
 import io
 import json
 import os
-import sys
 import time
 
 DEFAULT_LANDING = "/Volumes/ow_tp/bronze/landing/custbill"
@@ -185,4 +184,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Not sys.exit(main()): a serverless python task runs this file through
+    # exec(compile(...)), where SystemExit(0) is an exception that fails the task.
+    # A real failure still raises, and still fails it.
+    main()

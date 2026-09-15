@@ -1,0 +1,95 @@
+{
+  "kind": "recon-report",
+  "unit": "p2-orchestration",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T14:05:00+00:00",
+  "run_mode": "live",
+  "verify_depth": "structural",
+  "scope_note": "This unit replaces run_all.sh and the CUSTBILL cron entries. It moves no data of its own: every row the two jobs cause to exist is produced by the pipeline and the export, which are reconciled row-for-row in waves 1-3. So there is no row parity to compute here and this report does not claim one. The evidence is the deployed job shape, read back from the workspace with the SDK rather than from the bundle file that produced it (databricks/migration/p2/recon/verify_job_structure.py, output in job_structure.json), plus one real end-to-end run.",
+  "checks": [
+    {
+      "id": "job_graph_and_dependencies",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "jobs.get on the deployed jobs 935996008367305 and 518051143219510",
+      "evidence": "ow_tp_p2_custbill_ingest: land_files -> custbill_pipeline. ow_tp_p2_finance_close: await_silver -> export_csv_xls. Both are depends_on edges. The two `sleep 600` calls in run_all.sh and the parse's own `5-59/15` cron entry are gone: the parse no longer has a schedule at all, which is what removes the 5-minute guess between ingest and parse."
+    },
+    {
+      "id": "sequencing_proven_by_a_real_run",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "run 785229779815979 of ow_tp_p2_custbill_ingest",
+      "evidence": "land_files SUCCESS 13:51:19.629Z -> 13:51:53.054Z; custbill_pipeline SUCCESS 13:51:53.526Z -> 13:53:05.765Z. The second task starts 0.5 seconds after the first ends rather than 600 seconds later, and only because the first succeeded."
+    },
+    {
+      "id": "retry_policy",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "jobs.get task settings",
+      "evidence": "Every task on both jobs: max_retries 2, min_retry_interval_millis 300000, retry_on_timeout true, job timeout_seconds 3600. The legacy swallowed every stage failure with `|| true`; a failed task now fails the run after its retries."
+    },
+    {
+      "id": "concurrency_control",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "jobs.get",
+      "evidence": "max_concurrent_runs 1 on both jobs, and queue.enabled true so a late ingest delays the close instead of cancelling it. This replaces the three /tmp lock files the legacy created, never removed, and never checked for mutual exclusion; the `*/15` ingest could overlap its own previous run and no longer can."
+    },
+    {
+      "id": "no_live_schedule_from_a_migration_session",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "jobs.get",
+      "evidence": "ow_tp_p2_custbill_ingest quartz 0 0/15 * * * ? PAUSED; ow_tp_p2_finance_close quartz 0 10 2 * * ? PAUSED. The bundle target also sets presets.trigger_pause_status PAUSED, so nothing it deploys can run on a timer whatever a resource asks for. Both runs in this wave were started by hand."
+    },
+    {
+      "id": "no_cluster_created",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "jobs.get",
+      "evidence": "No new_cluster, existing_cluster_id, job_cluster_key or job_clusters on either job. The two python tasks run on a serverless environment; the two pipeline tasks run on the pipeline's own serverless compute."
+    },
+    {
+      "id": "failure_notification_not_wired_live",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "jobs.get",
+      "evidence": "webhook_notifications.on_failure is empty on both jobs: the destination is the bundle variable failure_webhooks, left empty in the migration target on purpose. A migration session does not wire a live pager. Cutover sets it, and it is what replaces the dead sendmail pipe (D4-01)."
+    },
+    {
+      "id": "idempotency_through_the_job",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "fingerprint_silver.py against ow_tp.silver via the migration warehouse, after the orchestrated run",
+      "evidence": "silver 116 rows / 5 files / md5 115f7e40240d7529b6bc48ec0a922ccd, quarantine 15 / 3 / cde9f90726dcbf5300535477ccdfea66, trailer_audit 6 / 6 / c286f2cd16e1168b779e31521c768835 - identical to the wave-2 fingerprints. land_files skipped all six inputs as byte-identical and published nothing, and the pipeline update changed no row. The close job was also rerun end to end and both exports are still 321 bytes / md5 de118d0223bb3a77fd83973a625fed8d."
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "Run 785229779815979 of the ingest job is itself the rerun: the same six files were already landed by wave 1, so the run re-executed the whole chain and left every fingerprint unchanged."
+  },
+  "deviations_from_the_wave_manifest": [
+    "The manifest sketched the close job as await_silver -> gold_close -> export_csv_xls plus trailer_audit. gold and trailer_audit are tables in the same Lakeflow pipeline as silver, so one pipeline update materializes all three; they cannot be separate job tasks without splitting the pipeline. The deployed graph is await_silver -> export_csv_xls, where await_silver is that pipeline update. The ordering the sleeps used to fake is preserved, and the export still cannot run before gold exists."
+  ],
+  "unverified_paths": [
+    "P2-D01, the landing race, is a named behaviour change, not a defect fix: the legacy parse could read a half-written .dat because it ran on a 5-minute timer behind a 1-second double-stat. The target lands atomically and makes parse a dependency edge, so it cannot. Not exercisable against pinned fixtures - it needs a producer raced mid-write.",
+    "Retries and failure notification are configured, not exercised: no task was made to fail on purpose in this wave, so the retry path and the on_failure delivery are unproven. The destination is empty by design, so on_failure delivers nothing today whatever happens.",
+    "The schedules are PAUSED, so the quartz expressions are verified as configuration, not by observing a timed fire.",
+    "P2-D04, timezone: UTC is proposed, not decided. It also sets the date stamp in the export filename, so a different answer changes that name.",
+    "P2-D05: no replacement exists for the Sunday 06:00 run_all.sh re-run. Not created on purpose; it is a STOP E question.",
+    "Job permissions and grants are not compared - this unit's evidence is the job graph, not access control.",
+    "Development-mode naming: the bundle deploys these as '[dev <principal>] ow_tp_*'. The resource names are the ow_tp_* names and the prefix disappears when a production target deploys them; nothing else about the shape differs.",
+    "factory-doctor source_principal_read_only: still unverified, no privilege query exists for a Databricks-family source."
+  ],
+  "verdict": "PASS"
+}

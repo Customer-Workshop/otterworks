@@ -1,0 +1,184 @@
+{
+  "checks": [
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "job_id",
+      "value": "935996008367305",
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "schedule_quartz",
+      "value": "0 0/15 * * * ?",
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "schedule_paused",
+      "value": "PauseStatus.PAUSED",
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "task_graph",
+      "value": {
+        "custbill_pipeline": [
+          "land_files"
+        ],
+        "land_files": []
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "max_concurrent_runs_1",
+      "value": 1,
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "timeout_seconds",
+      "value": 3600,
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "retry_policy_on_every_task",
+      "value": {
+        "custbill_pipeline": [
+          2,
+          300000,
+          true
+        ],
+        "land_files": [
+          2,
+          300000,
+          true
+        ]
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "no_cluster_created",
+      "value": {
+        "custbill_pipeline": [
+          null,
+          null,
+          null
+        ],
+        "land_files": [
+          null,
+          null,
+          null
+        ]
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "python_tasks_serverless",
+      "value": {
+        "land_files": "serverless"
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "failure_notification_destination_empty_in_migration",
+      "value": {},
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "job_id",
+      "value": "518051143219510",
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "schedule_quartz",
+      "value": "0 10 2 * * ?",
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "schedule_paused",
+      "value": "PauseStatus.PAUSED",
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "task_graph",
+      "value": {
+        "await_silver": [],
+        "export_csv_xls": [
+          "await_silver"
+        ]
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "max_concurrent_runs_1",
+      "value": 1,
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "timeout_seconds",
+      "value": 3600,
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "retry_policy_on_every_task",
+      "value": {
+        "await_silver": [
+          2,
+          300000,
+          true
+        ],
+        "export_csv_xls": [
+          2,
+          300000,
+          true
+        ]
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "no_cluster_created",
+      "value": {
+        "await_silver": [
+          null,
+          null,
+          null
+        ],
+        "export_csv_xls": [
+          null,
+          null,
+          null
+        ]
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "python_tasks_serverless",
+      "value": {
+        "export_csv_xls": "serverless"
+      },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "failure_notification_destination_empty_in_migration",
+      "value": {},
+      "ok": true
+    }
+  ],
+  "failed": [],
+  "verdict": "PASS"
+}

@@ -1,0 +1,39 @@
+bundle:
+  name: ow_tp_p2_custbill
+
+# Pipeline 2 (CUSTBILL finance close). Deployed by the migration service principal only.
+# There is deliberately no prod target: a migration child never deploys production, and
+# every schedule this bundle defines is created PAUSED.
+
+variables:
+  landing_path:
+    description: Governed landing volume for CUSTBILL*.dat.
+    default: /Volumes/ow_tp/bronze/landing/custbill
+  notification_destination:
+    description: Failure-notification destination for pipeline 2 jobs (replaces the dead sendmail pipe).
+    default: ow-migrations
+
+targets:
+  migration:
+    default: true
+    mode: development
+    workspace:
+      host: https://dbc-8bc9474f-40ae.cloud.databricks.com
+
+# ow_tp.bronze.landing already exists and is owned outside this bundle (pipeline 1's
+# convention). It is referenced, not managed here, so a deploy can never redefine it.
+
+resources:
+  pipelines:
+    ow_tp_p2_custbill_ingest_parse:
+      name: ow_tp_p2_custbill_ingest_parse
+      catalog: ow_tp
+      schema: bronze
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      configuration:
+        p2.landing_path: ${var.landing_path}
+      libraries:
+        - glob:
+            include: pipeline/**

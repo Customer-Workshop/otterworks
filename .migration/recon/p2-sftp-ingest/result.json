@@ -1,0 +1,61 @@
+{
+  "unit": "p2-sftp-ingest",
+  "mode": "live",
+  "mapping_version": "map-p2-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 5,
+    "source_rows_fetched": 123,
+    "target_statements": 4,
+    "target_rows_fetched": 123,
+    "elapsed_s": 2.763
+  },
+  "generated_at": "2026-09-15T12:24:09.076150+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.custbill_legacy_baseline_raw": 123
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 123,
+      "stats": {
+        "custbill_raw": {
+          "mode": "full_diff",
+          "population": 123,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

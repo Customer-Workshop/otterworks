@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 root = sys.argv[1]
 d = os.path.join(root, "sftp-drop", "upload")
 os.makedirs(d, exist_ok=True)

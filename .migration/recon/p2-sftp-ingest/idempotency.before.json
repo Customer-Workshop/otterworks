@@ -1,0 +1,14 @@
+{
+  "label": "before-rerun",
+  "custbill_raw": {
+    "rows": 123,
+    "files": 5,
+    "total_bytes": 7822,
+    "content_md5": "0b26fec48c3c75d5569194902469cc00"
+  },
+  "custbill_files": {
+    "rows": 6,
+    "records": 123,
+    "bytes": 7945
+  }
+}

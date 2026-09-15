@@ -1,0 +1,88 @@
+{
+  "kind": "recon-report",
+  "unit": "p2-sftp-ingest",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T12:24:09.076150+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy baseline ow_tp.bronze.custbill_legacy_baseline_raw",
+      "checks_run": 1
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy baseline ow_tp.bronze.custbill_legacy_baseline_raw",
+      "checks_run": 4
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy baseline ow_tp.bronze.custbill_legacy_baseline_raw",
+      "checks_run": 123
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "landing rerun plus pipeline update c329fc79-68cb-4206-8531-27110c7cebf0; ow_tp.bronze.custbill_raw fingerprint identical before and after - 123 rows, 5 files, 7822 record bytes, content md5 0b26fec48c3c75d5569194902469cc00, ledger 6 files / 123 records / 7945 bytes (idempotency.before.json, idempotency.after.json)"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      {
+        "anomaly": "pipe_byte_inside_name",
+        "count": 1
+      },
+      {
+        "anomaly": "multibyte_utf8_shifts_layout",
+        "count": 1
+      },
+      {
+        "anomaly": "cust_id_prefixed_hdr_deleted_as_header",
+        "count": 1
+      },
+      {
+        "anomaly": "empty_input_file",
+        "count": 1
+      }
+    ],
+    "actual_set": [
+      {
+        "anomaly": "pipe_byte_inside_name",
+        "count": 1
+      },
+      {
+        "anomaly": "multibyte_utf8_shifts_layout",
+        "count": 1
+      },
+      {
+        "anomaly": "cust_id_prefixed_hdr_deleted_as_header",
+        "count": 1
+      },
+      {
+        "anomaly": "empty_input_file",
+        "count": 1
+      }
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "P2-D01, the landing race: the legacy poller can copy a half-written .dat, the target lands atomically. The differing case cannot be exercised against pinned inputs, so parity is proven only for whole files.",
+    "Residual source-side race: the landing task requires the source to be unchanged across a one-second window spanning the read (stat, wait, read, stat) and refuses to publish anything that moved, but a producer that pauses longer than the stability window defeats that check exactly as it defeats the legacy 1-second double-stat. Closing it needs an upstream rename-on-complete or completion marker, which is D3-01 at STOP E. Not exercised by the pinned fixtures.",
+    "SFTP transport itself: the unit reconciles what is in the landing volume. The hop from the MVSPROD CB77340 drop to the volume is out of scope until D3-01 is decided at STOP E.",
+    "Structure parity: the harness compares rows, not Delta table properties, clustering, grants or comments. Nothing checks that ow_tp.bronze grants match any legacy access model.",
+    "factory-doctor source_principal_read_only: no privilege query is implemented for a Databricks-family source, and pipeline 2's source is files on disk, so SELECT-only access is asserted by construction rather than machine-verified.",
+    "Timestamps: ingested_at and file_modified_at are target-side metadata with no legacy counterpart and are excluded from the keyed diff."
+  ],
+  "verdict": "PASS"
+}

@@ -1,0 +1,23 @@
+{
+  "before": {
+    "usage_events": {
+      "count": 814,
+      "sha256": "ac51f5792f87ba6ec002744ca412f5d3b4e02aed9ffbc1214a07f13120644208"
+    },
+    "rating_periods": {
+      "count": 3,
+      "sha256": "6d8a76198ff427c75f175e90445e7e27b264a6b160bb51821fd65af4e5b53354"
+    }
+  },
+  "after": {
+    "usage_events": {
+      "count": 814,
+      "sha256": "ac51f5792f87ba6ec002744ca412f5d3b4e02aed9ffbc1214a07f13120644208"
+    },
+    "rating_periods": {
+      "count": 3,
+      "sha256": "6d8a76198ff427c75f175e90445e7e27b264a6b160bb51821fd65af4e5b53354"
+    }
+  },
+  "identical": true
+}

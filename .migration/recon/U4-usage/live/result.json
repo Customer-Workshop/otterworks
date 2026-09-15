@@ -1,0 +1,72 @@
+{
+  "unit": "U4-usage",
+  "mode": "live",
+  "mapping_version": "1",
+  "tolerance_version": "1",
+  "seed": 714559852,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-15T05:25:03.256606+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {
+        "source_counts": {
+          "USAGE_EVENTS": 814,
+          "RATING_PERIODS": 3
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {
+        "deferred_to_tier3": [
+          "usage_events.tenantId",
+          "usage_events.units",
+          "rating_periods.tenantId"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 820,
+      "stats": {
+        "usage_events": {
+          "mode": "full_diff",
+          "population": 814,
+          "duplicate_source_key_count": 0
+        },
+        "rating_periods": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "embeds_graded": {
+          "rating_periods.results": 3
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

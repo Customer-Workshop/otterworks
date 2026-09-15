@@ -1,0 +1,107 @@
+{
+  "kind": "recon-report",
+  "unit": "U4-usage",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T05:25:03.256606+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "no findings",
+      "actual": "0 findings over 3 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "no findings",
+      "actual": "0 findings over 6 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "no findings",
+      "actual": "0 findings over 820 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier4_app_level_parity",
+      "expected": "no findings",
+      "actual": "0 findings over 4 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "count_usage_events",
+      "expected": 814,
+      "actual": 814,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_rating_periods",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_rating_periods_results_elements",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U4-usage/idempotency.json"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": [],
+    "note": "The frozen budget (37 orphaned INVOICE_LINE rows, 50 unparseable SIGNUP_DT values, 31 malformed RELATED_ACCT_IDS lists) sits in other units. USAGE_EVENTS, RATING_PERIODS and RATING_RESULTS carry none of it, so the expected set for U4-usage is empty and nothing extra turned up."
+  },
+  "unverified_paths": [
+    "Live mode reads the locally seeded copy of the estate (seed 714559852, namespace demo), not the parent's container. The data is byte-identical by construction, but no query ran against the parent's instance.",
+    "The harness has no rule for yn_to_bool, csv_split_trim or parse_date_string and cannot compare an integer code against its decoded string. kind is therefore graded by tier 4 recorded operations, not by a field-level rule.",
+    "The $jsonSchema validator on usage_events is asserted by reading it back from Atlas and replayed logically by the usage_validator_domain operation; no rejected write was attempted, so its enforcement behaviour is untested.",
+    "Every source row satisfies the validator today (units > 0, kind in api|storage|compute), so the dirty-value path (null plus legacy.<field>Raw) never executes in this unit.",
+    "PKG_RATING's TO_CHAR(...,'YYYYMMDD') date comparison is a source quirk and is deliberately not reproduced; no test covers callers that depend on it.",
+    "The pre-PR self-check asks for an ow_tp / ow-tp- namespace prefix. This batch's contract names ow_billing_migration, so that prefix rule is not met by design.",
+    "M0 scale: index choice is graded for correctness, not for performance at production volume."
+  ],
+  "counts_from_target": {
+    "usage_events": 814,
+    "rating_periods": 3,
+    "rating_periods_results_elements": 3
+  },
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "runs": [
+    ".migration/recon/U4-usage/fixture/result.json",
+    ".migration/recon/U4-usage/live/result.json"
+  ],
+  "tier4_operations": {
+    "definition": ".migration/ops/U4-usage.json (copied to .migration/recon/U4-usage/inputs/U4-usage.json)",
+    "operations": [
+      "usage_kind_decode_counts",
+      "usage_units_by_tenant_and_kind",
+      "usage_validator_domain",
+      "rating_period_totals"
+    ],
+    "why": "Each records a source_sql and a target_pipeline so the decoded CODES value and the PKG_RATING roll-up are graded on both stacks."
+  },
+  "write_targets": [
+    "ow_billing_migration.usage_events",
+    "ow_billing_migration.rating_periods"
+  ],
+  "tolerance_version": "1",
+  "mapping_version": "1"
+}

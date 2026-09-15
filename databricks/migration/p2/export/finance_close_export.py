@@ -64,7 +64,10 @@ def report_rows(spark) -> list[dict]:
             "currency": row["currency"],
             "record_type": row["record_type"],
             "record_count": row["record_count"],
-            "total_amount": float(row["total_amount"]),
+            # The Decimal from gold, not a float of it: `%.2f` formats both, but the
+            # round trip through binary floating point can move a cent once a group
+            # total is large enough, and money is exact in this migration's tolerances.
+            "total_amount": row["total_amount"],
         }
         for row in sorted(rows, key=lambda row: row["sort_key"])
     ]

@@ -1,0 +1,13 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-notifications",
+  "run_id": "bab6b0c755964770ba5409948d0226df",
+  "finished_at": "2026-09-15T08:57:32.114033+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.billing.notifications",
+      "rows": 1,
+      "content_hash": "d3cf5e571ab5b9f75b466b9597cd99b7"
+    }
+  ]
+}

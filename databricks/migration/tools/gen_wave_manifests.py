@@ -613,7 +613,10 @@ contract belongs to w3-d, and you must not re-write its tables.
          ["billing.sp_issue_invoice", "billing.fn_invoice_preview",
           "billing.fn_invoice_lines"],
          ["billing.credit_notes", "billing.billing_audit_log",
-          "billing.rating_periods", "billing.rating_results"],
+          "billing.rating_periods", "billing.rating_results",
+          # sp_issue_invoice inserts the header and rebuilds its lines (source :137-160),
+          # and those two tables are w3-b's, so the DML is a runtime write here.
+          "billing.invoices", "billing.invoice_lines"],
          """
 pkg_invoicing (packages/04_pkg_invoicing.sql) -> sp_issue_invoice, fn_invoice_preview,
 fn_invoice_lines. THIS IS THE MODERN GENERATION (D9-01), not legacy INVOICE_HEADER/
@@ -625,6 +628,9 @@ What it writes, all declared and all real legacy behaviour to preserve:
  - billing.rating_periods and billing.rating_results, because sp_issue_invoice calls
    pkg_rating.sp_finalize_rating. Call the converted procedure; do not re-convert it.
  - billing.credit_notes, the burn-down's UPDATEs, in `issued_on, id` order. DML only.
+ - billing.invoices and billing.invoice_lines: sp_issue_invoice inserts the header, flips
+   status_cd to 20, and deletes-then-reinserts the lines. w3-b owns those tables and has
+   delivered them - DML only, no DDL, no reload.
 Read billing.rating_state for the package-global hand-off from pkg_rating
 (g_overage_amount): it is state, so make it explicit rather than incidental.
 Traps:

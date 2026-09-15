@@ -1,0 +1,43 @@
+{
+  "wave": 0,
+  "run_id": "w0-20260915T045208Z",
+  "path": "single-session (1 batch; migration-fanout is for waves with more than 2 batches)",
+  "branch": "tp-run/mongodb-20260915T045208Z",
+  "auto_merge": true,
+  "stop_mode": "soft",
+  "verdict": "PASS",
+  "breaker_trips": 0,
+  "halts": [],
+  "batches": [
+    {
+      "id": "w0-b01",
+      "unit": "U1-reference",
+      "verdict": "PASS",
+      "merge_authority": "live recon PASS",
+      "write_targets": [
+        "ow_billing_migration.plans",
+        "ow_billing_migration.codes",
+        "ow_billing_migration.tenants",
+        "ow_billing_migration.subscription_history"
+      ],
+      "counts": {
+        "plans": 3,
+        "codes": 32,
+        "tenants": 69,
+        "tenants.subscriptions": 69,
+        "subscription_history": 0
+      },
+      "recon_report": ".migration/recon/U1-reference/U1-reference.recon.json",
+      "smoke": "make tp-smoke"
+    }
+  ],
+  "write_target_collisions": [],
+  "amendments": [
+    "Grading-only (pre-authorised at STOP A): codes now compares on the decomposed pair (codeType, codeVal) instead of the composed _id, because the harness requires equal-length key tuples. The PRD identity _id = CODE_TYPE:CODE_VAL is unchanged."
+  ],
+  "skill_feedback": [
+    "The recon harness lacks yn_to_bool, csv_split_trim and parse_date_string. Wave 1 units will need the same tier 4 workaround unless the harness gains them.",
+    "The guard blocks passing ledger paths under .migration/ as command arguments, so each unit copies its read-only inputs into .migration/recon/<unit>/inputs/ first.",
+    "The harness grades every collection in the spec it is given; migrations/mongodb/common/unit_spec.py slices the spec per unit."
+  ]
+}

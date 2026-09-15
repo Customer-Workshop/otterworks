@@ -1,0 +1,409 @@
+{
+  "version": "1",
+  "source_family": "oracle",
+  "unit": "U1-reference",
+  "collections": [
+    {
+      "collection": "plans",
+      "unit": "U1-reference",
+      "root_table": "PLANS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "CODE",
+          "target": "code",
+          "source_type": "VARCHAR2(50)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "MONTHLY_FEE",
+          "target": "monthlyFee",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "INCLUDED_UNITS",
+          "target": "includedUnits",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "OVERAGE_RATE",
+          "target": "overageRate",
+          "source_type": "NUMBER(12,6)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "code": 1
+          },
+          "unique": true
+        }
+      ],
+      "cardinality": "plans == count(PLANS)",
+      "fields_ungraded_pending_profile_rule": [
+        {
+          "source": "ACTIVE_YN",
+          "target": "active",
+          "source_type": "CHAR(1)",
+          "bson_type": "bool",
+          "rules": [
+            "rstrip_spaces",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs yn_to_bool"
+        }
+      ],
+      "fields_decoded_graded_by_op": [
+        {
+          "source": "TIER_CD",
+          "target": "tier",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "PLAN_TIER"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        }
+      ]
+    },
+    {
+      "collection": "codes",
+      "unit": "U1-reference",
+      "root_table": "CODES",
+      "key": {
+        "source": [
+          "CODE_TYPE",
+          "CODE_VAL"
+        ],
+        "target": [
+          "codeType",
+          "codeVal"
+        ],
+        "id_compose": "_id = CODE_TYPE || ':' || CODE_VAL (the PRD identity); the comparison key is the pair of decomposed fields, which the harness can match column for column"
+      },
+      "fields": [
+        {
+          "source": "CODE_TYPE",
+          "target": "codeType",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CODE_VAL",
+          "target": "codeVal",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CODE_DESC",
+          "target": "codeDesc",
+          "source_type": "VARCHAR2(80)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "codeType": 1,
+            "codeVal": 1
+          },
+          "unique": true
+        }
+      ],
+      "cardinality": "codes == count(CODES)",
+      "note": "PRD 4.5: kept only for readers that still compare integers; retired when the last one is repointed."
+    },
+    {
+      "collection": "tenants",
+      "unit": "U1-reference",
+      "root_table": "TENANTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "NAME",
+          "target": "name",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "subscriptions",
+          "child_table": "SUBSCRIPTIONS",
+          "parent_key": [
+            "TENANT_ID"
+          ],
+          "key": {
+            "source": [
+              "ID"
+            ],
+            "target": "id"
+          },
+          "fields": [
+            {
+              "source": "PLAN_ID",
+              "target": "planId",
+              "source_type": "VARCHAR2(36)",
+              "bson_type": "string",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "STARTS_ON",
+              "target": "startsOn",
+              "source_type": "DATE",
+              "bson_type": "date",
+              "rules": [
+                "datetime_utc_truncate_ms"
+              ]
+            },
+            {
+              "source": "ENDS_ON",
+              "target": "endsOn",
+              "source_type": "DATE",
+              "bson_type": "date",
+              "rules": [
+                "datetime_utc_truncate_ms",
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "SUSPENDED_ON",
+              "target": "suspendedOn",
+              "source_type": "DATE",
+              "bson_type": "date",
+              "rules": [
+                "datetime_utc_truncate_ms",
+                "null_missing_equiv"
+              ]
+            }
+          ],
+          "fields_decoded_graded_by_op": [
+            {
+              "source": "STATUS_CD",
+              "target": "status",
+              "source_type": "NUMBER(4,0)",
+              "bson_type": "string",
+              "decode": {
+                "codes_type": "SUB_STATUS"
+              },
+              "rules": [
+                "null_missing_equiv"
+              ],
+              "grading": "tier4_op",
+              "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+            }
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "name": 1
+          },
+          "unique": true
+        }
+      ],
+      "cardinality": "tenants == count(TENANTS); sum(tenants.subscriptions[]) == count(SUBSCRIPTIONS)",
+      "fields_ungraded_pending_profile_rule": [
+        {
+          "source": "TAX_EXEMPT_YN",
+          "target": "taxExempt",
+          "source_type": "CHAR(1)",
+          "bson_type": "bool",
+          "rules": [
+            "rstrip_spaces",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs yn_to_bool"
+        }
+      ],
+      "fields_decoded_graded_by_op": [
+        {
+          "source": "STATUS_CD",
+          "target": "status",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "TENANT_STATUS"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        }
+      ]
+    },
+    {
+      "collection": "subscription_history",
+      "unit": "U1-reference",
+      "root_table": "SUBSCRIPTIONS_HIST",
+      "key": {
+        "source": [
+          "HIST_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "HIST_OP",
+          "target": "op",
+          "source_type": "VARCHAR2(3)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "ID",
+          "target": "subscriptionId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "PLAN_ID",
+          "target": "planId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "STARTS_ON",
+          "target": "startsOn",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "ENDS_ON",
+          "target": "endsOn",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "SUSPENDED_ON",
+          "target": "suspendedOn",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "subscriptionId": 1,
+            "at": -1
+          }
+        }
+      ],
+      "cardinality": "subscription_history == count(SUBSCRIPTIONS_HIST)",
+      "retention": "none in v1 (Open item 4)",
+      "fields_ungraded_pending_profile_rule": [
+        {
+          "source": "HIST_DT",
+          "target": "at",
+          "source_type": "VARCHAR2(20)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY HH24:MI:SS",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.histDtRaw"
+            }
+          },
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        }
+      ],
+      "fields_decoded_graded_by_op": [
+        {
+          "source": "STATUS_CD",
+          "target": "status",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "SUB_STATUS"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        }
+      ]
+    }
+  ]
+}

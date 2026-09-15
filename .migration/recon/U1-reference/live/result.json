@@ -1,0 +1,96 @@
+{
+  "unit": "U1-reference",
+  "mode": "live",
+  "mapping_version": "1",
+  "tolerance_version": "1",
+  "seed": 714559852,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-15T05:05:32.043856+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 5,
+      "stats": {
+        "source_counts": {
+          "PLANS": 3,
+          "CODES": 32,
+          "TENANTS": 69,
+          "SUBSCRIPTIONS_HIST": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 15,
+      "stats": {
+        "deferred_to_tier3": [
+          "plans.code",
+          "plans.monthlyFee",
+          "plans.includedUnits",
+          "plans.overageRate",
+          "codes.codeType",
+          "codes.codeVal",
+          "codes.codeDesc",
+          "tenants.name",
+          "subscription_history.op",
+          "subscription_history.subscriptionId",
+          "subscription_history.tenantId",
+          "subscription_history.planId",
+          "subscription_history.startsOn",
+          "subscription_history.endsOn",
+          "subscription_history.suspendedOn"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 173,
+      "stats": {
+        "plans": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "codes": {
+          "mode": "full_diff",
+          "population": 32,
+          "duplicate_source_key_count": 0
+        },
+        "tenants": {
+          "mode": "full_diff",
+          "population": 69,
+          "duplicate_source_key_count": 0
+        },
+        "embeds_graded": {
+          "tenants.subscriptions": 69
+        },
+        "subscription_history": {
+          "mode": "full_diff",
+          "population": 0,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

@@ -1,0 +1,43 @@
+plans: 3 documents
+codes: 32 documents
+tenants: 69 documents
+subscription_history: 0 documents
+{
+  "before": {
+    "plans": {
+      "count": 3,
+      "sha256": "867c50adb1aaf2357b1f61076472f69a9047d259c5e5739f349f4ae3e935cc77"
+    },
+    "codes": {
+      "count": 32,
+      "sha256": "619c7457ab4ff53efd395b1523b1b800c7072369ba75b3bf34a65625d2272bca"
+    },
+    "tenants": {
+      "count": 69,
+      "sha256": "a165b363ce2966f138e969deea0e4c2205349f151362ac8b47484c189e3f5869"
+    },
+    "subscription_history": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "after": {
+    "plans": {
+      "count": 3,
+      "sha256": "867c50adb1aaf2357b1f61076472f69a9047d259c5e5739f349f4ae3e935cc77"
+    },
+    "codes": {
+      "count": 32,
+      "sha256": "619c7457ab4ff53efd395b1523b1b800c7072369ba75b3bf34a65625d2272bca"
+    },
+    "tenants": {
+      "count": 69,
+      "sha256": "a165b363ce2966f138e969deea0e4c2205349f151362ac8b47484c189e3f5869"
+    },
+    "subscription_history": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
+idempotent: a second load left all four collections byte-identical

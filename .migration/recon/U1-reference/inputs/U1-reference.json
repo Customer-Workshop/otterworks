@@ -1,0 +1,62 @@
+[
+  {
+    "name": "plans_active_flag_per_plan",
+    "collection": "plans",
+    "why": "ACTIVE_YN becomes a boolean; no canonicalization rule compares 'Y' with true, so the flag is graded here.",
+    "source_sql": "SELECT code AS \"code\", CASE WHEN active_yn = 'Y' THEN 'true' WHEN active_yn = 'N' THEN 'false' ELSE 'other' END AS \"active\" FROM plans",
+    "target_pipeline": [
+      {"$project": {"_id": 0, "code": 1,
+        "active": {"$switch": {"branches": [
+          {"case": {"$eq": ["$active", true]}, "then": "true"},
+          {"case": {"$eq": ["$active", false]}, "then": "false"}], "default": "other"}}}}
+    ]
+  },
+  {
+    "name": "plans_tier_decode",
+    "collection": "plans",
+    "why": "TIER_CD is decoded through CODES PLAN_TIER; source integer vs target string.",
+    "source_sql": "SELECT p.code AS \"code\", NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(p.tier_cd) || ')') AS \"tier\" FROM plans p LEFT JOIN codes c ON c.code_type = 'PLAN_TIER' AND c.code_val = p.tier_cd",
+    "target_pipeline": [{"$project": {"_id": 0, "code": 1, "tier": 1}}]
+  },
+  {
+    "name": "tenants_tax_exempt_counts",
+    "collection": "tenants",
+    "why": "TAX_EXEMPT_YN becomes a boolean; graded as a distribution over 69 tenants.",
+    "source_sql": "SELECT CASE WHEN tax_exempt_yn = 'Y' THEN 'true' WHEN tax_exempt_yn = 'N' THEN 'false' ELSE 'other' END AS \"taxExempt\", COUNT(*) AS \"n\" FROM tenants GROUP BY CASE WHEN tax_exempt_yn = 'Y' THEN 'true' WHEN tax_exempt_yn = 'N' THEN 'false' ELSE 'other' END",
+    "target_pipeline": [
+      {"$group": {"_id": {"$switch": {"branches": [
+        {"case": {"$eq": ["$taxExempt", true]}, "then": "true"},
+        {"case": {"$eq": ["$taxExempt", false]}, "then": "false"}], "default": "other"}},
+        "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "taxExempt": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "tenants_status_decode_counts",
+    "collection": "tenants",
+    "why": "STATUS_CD is decoded through CODES TENANT_STATUS.",
+    "source_sql": "SELECT NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(t.status_cd) || ')') AS \"status\", COUNT(*) AS \"n\" FROM tenants t LEFT JOIN codes c ON c.code_type = 'TENANT_STATUS' AND c.code_val = t.status_cd GROUP BY NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(t.status_cd) || ')')",
+    "target_pipeline": [
+      {"$group": {"_id": "$status", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "status": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "subscription_status_decode_counts",
+    "collection": "tenants",
+    "why": "The embedded subscriptions carry a decoded SUB_STATUS; graded as a distribution over all 69 subscriptions.",
+    "source_sql": "SELECT NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(s.status_cd) || ')') AS \"status\", COUNT(*) AS \"n\" FROM subscriptions s LEFT JOIN codes c ON c.code_type = 'SUB_STATUS' AND c.code_val = s.status_cd GROUP BY NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(s.status_cd) || ')')",
+    "target_pipeline": [
+      {"$unwind": "$subscriptions"},
+      {"$group": {"_id": "$subscriptions.status", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "status": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "codes_lookup_identity",
+    "collection": "codes",
+    "why": "The CODES table is the decode authority for every other unit, so its rows are compared whole.",
+    "source_sql": "SELECT code_type AS \"codeType\", TO_CHAR(code_val) AS \"codeVal\", code_desc AS \"codeDesc\" FROM codes",
+    "target_pipeline": [{"$project": {"_id": 0, "codeType": 1, "codeVal": {"$toString": "$codeVal"}, "codeDesc": 1}}]
+  }
+]

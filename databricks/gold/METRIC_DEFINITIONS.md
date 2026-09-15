@@ -104,7 +104,10 @@ the denormalised copy on invoice lines: an invoice with no lines would otherwise
 nameless, and a renamed customer would be labelled by whichever line copy sorted highest.
 Line copies that disagree with the master, and open invoices whose customer is missing from
 it, are recorded (`customer_name_disagrees_with_master`, `customer_missing_from_master`).
-Today all 8,252 open invoices resolve a name and no copy disagrees.
+The disagreement check compares every distinct `(cust_id, cust_name)` pair on the lines, so
+a customer carrying one correct name and one stale one is still reported. Today all 8,252
+open invoices resolve a name, every customer carries exactly one line name, and no copy
+disagrees.
 
 **AR is not joined to tenants.** The invoice ledger's `tenant_id` values come from the legacy
 customer master and do not intersect the Lakebase billing tenant ids at all. AR is therefore
@@ -185,6 +188,16 @@ reach ARR until the load is run. Rather than leave it implicit, `dq_exceptions` 
 `reference_snapshot_stale` once a reference snapshot is more than 7 days old, so the
 dashboard shows the run rate is being priced from an old snapshot. Closing the window
 properly needs the load to run on job compute that can reach Postgres.
+
+**A reference snapshot is all-or-nothing.** The load reads all five Lakebase tables inside
+one `REPEATABLE READ READ ONLY` transaction and writes nothing until every read has
+succeeded, so a Postgres error cannot leave half the reference set replaced. The five writes
+are still five statements, so every row carries a `snapshot_id` from the run that produced
+it and `fct_subscription_mrr` refuses to build when the five reference tables disagree on
+it. It checks all five, not only the three it reads: it is the first task in the refresh
+graph, so failing it also stops the usage and storage builds, which read rating results. A
+load that dies between writes fails the next refresh instead of pricing new plans against
+old subscriptions.
 
 It reads Lakebase branch `mig-p1-w2`, which is where pipeline 1's data landed. `mig-p1-w0`
 is the intake-era branch name still quoted in older briefs and holds only

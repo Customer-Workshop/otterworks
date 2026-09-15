@@ -35,6 +35,7 @@ import argparse
 import datetime as dt
 import decimal
 import json
+import uuid
 
 import psycopg
 from apply_gold_sql import run
@@ -135,7 +136,7 @@ def sql_literal(value: object) -> str:
 
 
 def rebuild_statement(table: str, comment: str, columns: list[tuple[str, str]],
-                      rows: list[tuple], branch: str) -> str:
+                      rows: list[tuple], branch: str, snapshot_id: str) -> str:
     cols = ", ".join(f"CAST(c{i} AS {t}) AS {name}" for i, (name, t) in enumerate(columns))
     values = ",\n         ".join(
         "(" + ", ".join(sql_literal(v) for v in row) + ")" for row in rows)
@@ -145,6 +146,7 @@ def rebuild_statement(table: str, comment: str, columns: list[tuple[str, str]],
         f"COMMENT {sql_literal(comment)}\n"
         f"AS SELECT {cols},\n"
         f"          CAST({sql_literal(branch)} AS STRING) AS source_lakebase_branch,\n"
+        f"          CAST({sql_literal(snapshot_id)} AS STRING) AS snapshot_id,\n"
         f"          CAST(current_timestamp() AS TIMESTAMP_NTZ) AS ingested_at\n"
         f"     FROM VALUES\n         {values}\n"
         f"     AS t({placeholders})")
@@ -160,7 +162,13 @@ def main(argv: list[str] | None = None) -> int:
 
     w = WorkspaceClient()
     summary = {}
-    with psycopg.connect(lakebase_dsn(w, args.branch)) as conn:
+    snapshot_id = str(uuid.uuid4())
+    fetched = []
+    # One REPEATABLE READ transaction for every read: plans, subscriptions and rating results
+    # change together, and read-committed selects issued one after another can each see a
+    # different commit, producing a reference set that never existed in the OLTP system.
+    with psycopg.connect(lakebase_dsn(w, args.branch), autocommit=False) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         for table, comment, query, columns in TABLES:
             with conn.cursor() as cur:
                 cur.execute(query)
@@ -170,15 +178,23 @@ def main(argv: list[str] | None = None) -> int:
                     f"billing source for {table} returned no rows; refusing to replace "
                     f"{CATALOG}.{SCHEMA}.{table} with an empty table")
             summary[table] = len(rows)
-            if args.dry_run:
-                continue
+            fetched.append((table, comment, columns, rows))
+
+    # Nothing is written until every table has been read and accepted, so a Lakebase error
+    # cannot leave half the reference set replaced. The writes themselves are still five
+    # statements: every row carries `snapshot_id`, and the gold builds refuse to run when the
+    # reference tables disagree on it, so a failure between writes stops the metrics instead
+    # of pricing new plans against old subscriptions.
+    if not args.dry_run:
+        for table, comment, columns, rows in fetched:
             # run() polls to a terminal state. A wait timeout only bounds the API call, not
             # the statement, so treating PENDING/RUNNING as failure would abandon a CTAS that
             # then replaces the table after the load has already given up on the rest.
-            run(w, rebuild_statement(table, comment, columns, rows, args.branch), {})
+            run(w, rebuild_statement(table, comment, columns, rows, args.branch,
+                                     snapshot_id), {})
 
     print(json.dumps({"branch": args.branch, "dry_run": args.dry_run,
-                      "rows_ingested": summary}, indent=2))
+                      "snapshot_id": snapshot_id, "rows_ingested": summary}, indent=2))
     return 0
 
 

@@ -112,8 +112,8 @@ SELECT
   'AR reports the customer master name; the invoice-line copy is ignored',
   NULL,
   CAST(current_timestamp() AS TIMESTAMP_NTZ)
-FROM (SELECT cust_id, MAX(cust_name) AS line_name
-        FROM ow_tp.silver.invoice_line GROUP BY cust_id) x
+FROM (SELECT DISTINCT cust_id, cust_name AS line_name
+        FROM ow_tp.silver.invoice_line) x
 JOIN ow_tp.bronze.customer_master m ON m.cust_id = x.cust_id
 WHERE m.cust_name IS DISTINCT FROM x.line_name
 

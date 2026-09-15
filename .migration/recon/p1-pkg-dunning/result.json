@@ -1,0 +1,243 @@
+{
+  "unit": "p1-pkg-dunning",
+  "mode": "transactional",
+  "mapping_version": "map-p1-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 29,
+    "source_rows_fetched": 10,
+    "target_statements": 23,
+    "target_rows_fetched": 8,
+    "elapsed_s": 1.91
+  },
+  "generated_at": "2026-09-15T10:59:02.322605+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "consistency_window",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "isolation": {
+          "source": "snapshot",
+          "target": "repeatable_read"
+        },
+        "strength": {
+          "source": "snapshot",
+          "target": "snapshot"
+        },
+        "markers": {
+          "dunning_attempts": {
+            "source_open": [
+              "1",
+              "80000000-0000-0000-0000-000000000001"
+            ],
+            "source_close": [
+              "1",
+              "80000000-0000-0000-0000-000000000001"
+            ],
+            "target_open": [
+              1,
+              "80000000-0000-0000-0000-000000000001"
+            ],
+            "target_close": [
+              1,
+              "80000000-0000-0000-0000-000000000001"
+            ],
+            "in_flight_at_open": 0
+          },
+          "notifications": {
+            "source_open": [
+              "1",
+              "90000000-0000-0000-0000-000000000001"
+            ],
+            "source_close": [
+              "1",
+              "90000000-0000-0000-0000-000000000001"
+            ],
+            "target_open": [
+              1,
+              "90000000-0000-0000-0000-000000000001"
+            ],
+            "target_close": [
+              1,
+              "90000000-0000-0000-0000-000000000001"
+            ],
+            "in_flight_at_open": 0
+          }
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.dunning_attempts": 1,
+          "OW_BILLING.notifications": 1
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 10,
+      "stats": {
+        "deferred_to_tier3": [
+          "dunning_attempts.id",
+          "dunning_attempts.tenant_id",
+          "dunning_attempts.invoice_id",
+          "notifications.id",
+          "notifications.tenant_id"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "dunning_attempts": {
+          "mode": "full_diff",
+          "population": 1,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "notifications": {
+          "mode": "full_diff",
+          "population": 1,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 5,
+      "name": "pk_set_diff",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "dunning_attempts": {
+          "ranges": 3,
+          "population": 1,
+          "fingerprint": "unavailable: every range streamed",
+          "mismatched_ranges": 3,
+          "keys_streamed": 6,
+          "missing_on_target": 0,
+          "extra_on_target": 0,
+          "in_flight_missing": 0,
+          "in_flight_updates": 0,
+          "in_flight_deletes": 0,
+          "delete_evidence": {
+            "status": "absent",
+            "kind": null,
+            "applied_position": null,
+            "horizon": [
+              null,
+              null
+            ],
+            "events": 0,
+            "in_flight_deletes": 0,
+            "aged_deletes": 0,
+            "reinserted": 0,
+            "detail": ""
+          },
+          "rows_ahead_on_target": 0,
+          "rows_behind_on_target": 0
+        },
+        "notifications": {
+          "ranges": 3,
+          "population": 1,
+          "fingerprint": "unavailable: every range streamed",
+          "mismatched_ranges": 3,
+          "keys_streamed": 6,
+          "missing_on_target": 0,
+          "extra_on_target": 0,
+          "in_flight_missing": 0,
+          "in_flight_updates": 0,
+          "in_flight_deletes": 0,
+          "delete_evidence": {
+            "status": "absent",
+            "kind": null,
+            "applied_position": null,
+            "horizon": [
+              null,
+              null
+            ],
+            "events": 0,
+            "in_flight_deletes": 0,
+            "aged_deletes": 0,
+            "reinserted": 0,
+            "detail": ""
+          },
+          "rows_ahead_on_target": 0,
+          "rows_behind_on_target": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 6,
+      "name": "cdc_lag_ordering",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "dunning_attempts": {
+          "watermark": null,
+          "note": "no watermark declared: the window markers alone prove stillness",
+          "in_flight_deletes": 0
+        },
+        "notifications": {
+          "watermark": null,
+          "note": "no watermark declared: the window markers alone prove stillness",
+          "in_flight_deletes": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 7,
+      "name": "schema_parity",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "unverified": [
+          "dunning_attempts: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed",
+          "notifications: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed"
+        ]
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [
+    "UNVERIFIED schema_parity: dunning_attempts: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed",
+    "UNVERIFIED schema_parity: notifications: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed",
+    "UNVERIFIED tiers 5-7 (constraint, index and identity parity): the repo-local Oracle JDBC source adapter reads no catalog metadata, so they are reported unverified, never assumed"
+  ],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "degraded": {
+    "grade": "DEGRADED",
+    "official_verdict": false,
+    "reason": "d10_01_denied",
+    "source_adapter": "Oracle read over JDBC from the Devin CIDRs with a repo-local source adapter (databricks/migration/recon/oracle_jdbc_adapter.py). The harness supplies every tier, canonicalisation rule and tolerance; the connector is outside its tested matrix, so `dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
+  }
+}

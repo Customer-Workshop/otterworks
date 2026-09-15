@@ -1,0 +1,91 @@
+{
+  "kind": "recon-report",
+  "unit": "p1-pkg-dunning",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T10:59:02.322605+00:00",
+  "run_mode": "live",
+  "harness_run_mode": "transactional",
+  "checks": [
+    {
+      "id": "tier0_consistency_window",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 10
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier5_pk_set_diff",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier6_cdc_lag_ordering",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 0
+    },
+    {
+      "id": "tier7_schema_parity",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 0
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "loader run at 2026-09-15T08:57:43.998903+00:00 and rerun at 2026-09-15T08:57:44.746321+00:00; target state identical: ow_tp.billing.dunning_attempts 1 rows, xxhash64 xor 3d0074925628fe396a184cd7cfd3039c; ow_tp.billing.notifications 1 rows, xxhash64 xor d3cf5e571ab5b9f75b466b9597cd99b7"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "source-side constraint, index and identity metadata (tiers 5-7): the Oracle JDBC adapter reads none under d10_01_denied",
+    "end-to-end execution of sp_schedule_dunning / sp_suspend_overdue / fn_overdue_accounts: a sweep writes dunning_attempts, notifications, tenants, subscriptions and billing_audit_log on the shared wave branch, which are the rows recon compares against Oracle, so it was not run here; the routines were called once inside a rolled-back transaction to show the audit rows they write (.migration/recon/p1-pkg-dunning/audit_log_writes.md), and the wave gate runs the end-to-end op diff",
+    "behavioural idempotency of sp_suspend_overdue (a second sweep on the same day writes nothing): needs that same sweep",
+    "the Oracle side is read through a repo-local JDBC adapter outside the harness tested matrix (degraded, official_verdict=false)"
+  ],
+  "verdict": "PASS",
+  "degraded": {
+    "grade": "DEGRADED",
+    "official_verdict": false,
+    "reason": "d10_01_denied",
+    "source_adapter": "Oracle read over JDBC from the Devin CIDRs with a repo-local source adapter (databricks/migration/recon/oracle_jdbc_adapter.py). The harness supplies every tier, canonicalisation rule and tolerance; the connector is outside its tested matrix, so `dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
+  }
+}

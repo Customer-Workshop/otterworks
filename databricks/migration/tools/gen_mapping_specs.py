@@ -256,8 +256,10 @@ def make_object(src: str, tgt: str, key: list[str], track: str,
     # one against its raw string would fail every row. The contract is declared here and
     # proved by the unit's `str_date_parse` op, which compares the target's parsed column
     # against the same raw bytes parsed on the source side.
+    # Oracle DATE carries a time part, so the parsed companion is a timestamp on both tracks;
+    # a date-typed target does not compare equal to the source-side parse.
     parsed = [{"raw": c, "target": c + PARSED_SUFFIX,
-               "target_type": "date" if track == "lakebase" else "DATE",
+               "target_type": "timestamp" if track == "lakebase" else "TIMESTAMP_NTZ",
                "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, "
                             "NULL on anything else"}
               for c, t in tables[src] if is_ddmonyy(c, t)]

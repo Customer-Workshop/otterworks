@@ -30,12 +30,18 @@ The load is restart-safe and idempotent: the table is created once from the decl
 then every run MERGEs the full bronze snapshot on the mapping's key and deletes target keys
 bronze no longer has, so a rerun converges instead of duplicating.
 
+`--digest-out` writes a target-state digest of what the run left behind - row count plus an
+order-independent content hash per table. Two digests from two runs are what proves the
+load idempotent; the recon report derives its idempotency field from them rather than from
+a sentence someone typed.
+
     python3 silver_legacy_invoice_load.py --mapping .migration/units/p1-invoice-header/mapping_spec.json
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import re
@@ -61,6 +67,10 @@ PARSE_DATE = "try_to_timestamp({col}, 'dd-MMM-yy')"
 # Oracle DATE keeps its time part and carries no zone, so a column derived through f_str2dt
 # is a zoneless timestamp on the target side. See the module docstring.
 DERIVED_TYPE = {"DATE": "TIMESTAMP_NTZ"}
+
+# Order-independent content hash: XOR folds the per-row hashes, so the digest depends on the
+# set of rows and not on the order Delta hands them back.
+DIGEST = "SELECT count(*), bit_xor(xxhash64(to_json(struct(*)))) FROM {table}"
 
 
 def ident(name: str) -> str:
@@ -135,6 +145,8 @@ def main() -> int:
     ap.add_argument("--recreate", action="store_true",
                     help="drop this unit's silver table first so its column types are "
                          "rebuilt: a MERGE never changes an existing column's type")
+    ap.add_argument("--digest-out",
+                    help="write this run's target-state digest here, as idempotency evidence")
     args = ap.parse_args()
 
     with open(args.mapping) as fh:
@@ -177,9 +189,22 @@ def main() -> int:
                 raise SystemExit(
                     f"{CATALOG}.{SILVER}.{target} did not converge: bronze={bronze_rows} "
                     f"silver={silver_rows} distinct_keys={silver_keys}")
-            out.append({"unit": spec["unit"], "generation": generation,
-                        "target": f"{CATALOG}.{SILVER}.{target}",
-                        "bronze_rows": bronze_rows, "silver_rows": silver_rows})
+            row = {"unit": spec["unit"], "generation": generation,
+                   "target": f"{CATALOG}.{SILVER}.{target}",
+                   "bronze_rows": bronze_rows, "silver_rows": silver_rows}
+            if args.digest_out:
+                cur.execute(DIGEST.format(table=f"{CATALOG}.{SILVER}.{target}"))
+                rows, digest = cur.fetchone()
+                row["digest"] = {"rows": rows, "content_hash": str(digest)}
+            out.append(row)
+    if args.digest_out:
+        finished = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+        with open(args.digest_out, "w") as fh:
+            json.dump({"kind": "target-state-digest", "unit": spec["unit"],
+                       "finished_at": finished,
+                       "tables": [{"table": r["target"], **r["digest"]} for r in out]},
+                      fh, indent=2)
+            fh.write("\n")
     print(json.dumps(out, indent=2))
     return 0
 

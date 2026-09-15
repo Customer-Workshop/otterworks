@@ -1,0 +1,12 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-invoice-line",
+  "finished_at": "2026-09-15T07:54:11+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.silver.invoice_line",
+      "rows": 150000,
+      "content_hash": "-1852379910498030974"
+    }
+  ]
+}

@@ -42,7 +42,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "silver_legacy_invoice_load.py rerun after the recon: 150000 bronze / 150000 silver rows, distinct line_id = row count, aggregates unchanged"
+    "evidence": "loader run at 2026-09-15T07:54:01+00:00 and rerun at 2026-09-15T07:54:11+00:00; target state identical: ow_tp.silver.invoice_line 150000 rows, xxhash64 xor -1852379910498030974"
   },
   "planted_anomaly_detections": {
     "expected_set": [

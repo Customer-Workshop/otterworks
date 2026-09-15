@@ -65,6 +65,10 @@ resources:
         # backfill run passes --params snapshot_batch=<id> explicitly.
         - name: snapshot_batch
           default: "{{job.trigger.time.iso_date}}"
+        # The date exports/legacy_objects/p3-analytics-daily.json holds the legacy's own
+        # bytes for. Only a run on this date has something to byte-compare against.
+        - name: legacy_objects_run_date
+          default: "2026-09-15"
       tasks:
         - task_key: land_events
           spark_python_task:
@@ -234,11 +238,26 @@ resources:
         # The acceptance gate the plan declared and the first cut of this unit dropped:
         # the exported bytes against the legacy's own bytes for the pinned day, not row
         # parity over the tables. It reads back from the volume, so it checks what was
-        # written. A date the frozen legacy objects do not cover reports compared=false
-        # rather than passing.
-        - task_key: compare_report_objects
+        # written.
+        #
+        # The frozen legacy objects are one run of the legacy on one date. A later
+        # scheduled date has no legacy bytes to be compared against, so the byte gate is
+        # entered only for the date they cover: an uncovered date skips it rather than
+        # failing a run for an absence it cannot fix. Widening the gate means capturing
+        # legacy objects for the new date and moving this parameter; the comparator still
+        # fails loudly if it is run on a date the manifest does not cover.
+        - task_key: legacy_objects_cover_run_date
           depends_on:
             - task_key: export_report_objects
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.run_date}}"
+            right: "{{job.parameters.legacy_objects_run_date}}"
+
+        - task_key: compare_report_objects
+          depends_on:
+            - task_key: legacy_objects_cover_run_date
+              outcome: "true"
           spark_python_task:
             python_file: exports/compare_legacy_exports.py
             parameters:
@@ -288,6 +307,10 @@ resources:
         # STOP E item. A recon or backfill run passes --params snapshot_batch=<id>.
         - name: snapshot_batch
           default: "{{job.trigger.time.iso_date}}"
+        # The date exports/legacy_objects/p3-audit-archive.json holds the legacy's own
+        # bytes for. Only a run on this date has something to byte-compare against.
+        - name: legacy_objects_run_date
+          default: "2026-09-15"
       tasks:
         - task_key: land_audit_events
           spark_python_task:
@@ -388,9 +411,21 @@ resources:
           min_retry_interval_millis: 300000
           retry_on_timeout: true
 
-        - task_key: compare_archive_objects
+        # As on ow_tp_p3_analytics_daily: the byte gate runs on the date the frozen legacy
+        # objects cover and is skipped on any other, because there is nothing on the other
+        # side of the comparison for it.
+        - task_key: legacy_objects_cover_run_date
           depends_on:
             - task_key: export_archive_objects
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.run_date}}"
+            right: "{{job.parameters.legacy_objects_run_date}}"
+
+        - task_key: compare_archive_objects
+          depends_on:
+            - task_key: legacy_objects_cover_run_date
+              outcome: "true"
           spark_python_task:
             python_file: exports/compare_legacy_exports.py
             parameters:

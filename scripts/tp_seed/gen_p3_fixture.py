@@ -579,6 +579,63 @@ def clear_ns(table, ns: str) -> int:
         kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
 
 
+def audit_scan(table, cutoff: str) -> list[dict]:
+    """The records the audit job's own scan returns, in the order it returns them."""
+    items, kwargs = [], {"FilterExpression": "#ts < :cutoff",
+                         "ExpressionAttributeNames": {"#ts": "timestamp"},
+                         "ExpressionAttributeValues": {":cutoff": cutoff}}
+    while True:
+        page = table.scan(**kwargs)
+        items += page.get("Items", [])
+        last = page.get("LastEvaluatedKey")
+        if not last:
+            return items
+        kwargs["ExclusiveStartKey"] = last
+
+
+def audit_source_order(table, ns: str, slices: dict[str, list[dict]],
+                       cutoff: str, run_date: str) -> dict:
+    """The scan order and per-record attribute order of each audit shape.
+
+    The archive object is one JSON line per record in the order the scan returned them,
+    with each line's keys in the order DynamoDB returned that record's attributes. Neither
+    is a property of the snapshot file -- both belong to the table -- so they are read off
+    the table this script has just seeded rather than derived from the generated records.
+    The legacy runs one shape at a time against a table holding only that shape, so each
+    shape is observed the same way, and the full seed is restored afterwards.
+    """
+    order = {}
+    for shape, rows in sorted(slices.items()):
+        clear_ns(table, ns)
+        with table.batch_writer() as batch:
+            for item in rows:
+                batch.put_item(Item=item)
+        ours = {item["id"] for item in rows}
+        first = [r for r in audit_scan(table, cutoff) if r["id"] in ours]
+        second = [r for r in audit_scan(table, cutoff) if r["id"] in ours]
+        # Identity as well as attribute order: every record of a shape carries the same
+        # attributes in the same order, so comparing attribute lists alone would accept a
+        # scan that returned the same records in a different sequence -- the thing the
+        # archive's line order actually depends on.
+        if [(r["id"], list(r)) for r in first] != [(r["id"], list(r)) for r in second]:
+            raise SystemExit(
+                f"{shape}: two scans of the same table returned different orders, so the "
+                "legacy's own output order is not reproducible and no recorded order can "
+                "stand in for it")
+        order[shape] = [{"event_id": r.get("event_id") or r.get("id") or r.get("Id"),
+                         "attribute_order": list(r)} for r in first]
+
+    clear_ns(table, ns)
+    with table.batch_writer() as batch:
+        for rows in slices.values():
+            for item in rows:
+                batch.put_item(Item=item)
+
+    return {"table": AUDIT_TABLE, "run_date": run_date, "cutoff": cutoff,
+            "scan_filter": "#ts < :cutoff on the lowercase timestamp attribute",
+            "shapes": order}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -663,6 +720,14 @@ def main() -> int:
 
     queue_url = sqs.create_queue(QueueName=ANALYTICS_QUEUE)["QueueUrl"]
 
+    # The archive bytes are made of the source's scan order and each record's attribute
+    # order, so the snapshot carries them too; landing refuses to run without them.
+    audit_cutoff = iso(datetime.strptime(run_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                       - timedelta(days=RETENTION_DAYS))
+    checksums["audit_source_order.json"] = dump(
+        "audit_source_order.json",
+        audit_source_order(audit_table, ns, audit_slices, audit_cutoff, run_date))
+
     # ---- the legacy's own clone, disjoint from the target's input ----------
     clone_buckets = {}
     if args.legacy_clone:
@@ -702,8 +767,7 @@ def main() -> int:
             "user_activity_history_users": len(
                 {r["user_id"] for d in activity_history["days"] for r in d["top_users"]}),
         },
-        "audit_cutoff": iso(datetime.strptime(run_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                            - timedelta(days=RETENTION_DAYS)),
+        "audit_cutoff": audit_cutoff,
         "expected": {
             "audit": {
                 "A-estate": "scan matches 0 (filter names `timestamp`, records carry `Timestamp`); exit 0; no archive object, no compliance report",

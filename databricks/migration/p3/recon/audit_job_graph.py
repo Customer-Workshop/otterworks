@@ -14,7 +14,9 @@ The rules are the ones pipeline 2 paid for:
   * no two jobs starting the same pipeline. Pipeline 3 defines no pipelines, so this
     is checked as "no pipeline_task at all" rather than assumed;
   * the task graph itself, against the expected keys and edges below, because rules
-    applied per deployed task are satisfied vacuously by a job that lost one.
+    applied per deployed task are satisfied vacuously by a job that lost one;
+  * the byte-gate condition each export job is gated on, stated as the comparison it
+    deploys with, so the gate cannot quietly widen to "always skip".
 
 Usage:
     python3 databricks/migration/p3/recon/audit_job_graph.py [--json out.json]
@@ -31,6 +33,15 @@ TIMEZONE = "UTC"
 ENVIRONMENT_KEY = "serverless"
 RETRY_INTERVAL_MILLIS = 300000
 WORK_KINDS = {"spark_python_task", "sql_task"}
+
+# Gate tasks: task key -> the comparison it must deploy with. A condition task carries no
+# environment or retry policy, so those rules do not apply to it; what must hold is that
+# the byte comparison downstream of it runs exactly when the frozen legacy objects cover
+# the run date.
+CONDITIONS = {
+    "legacy_objects_cover_run_date":
+        "{{job.parameters.run_date}} EQUAL_TO {{job.parameters.legacy_objects_run_date}}",
+}
 
 # The graph each job must deploy with: task key -> the tasks it waits for. A string
 # value instead of a list means the task is a run_job_task running that job.
@@ -49,7 +60,8 @@ EXPECTED = {
             # P3-Q3: the legacy report objects, rebuilt from gold and byte-compared.
             "export_report_objects": ["load_gold_hourly", "load_gold_summary",
                                       "load_gold_top_user_actions", "load_gold_top_users"],
-            "compare_report_objects": ["export_report_objects"],
+            "legacy_objects_cover_run_date": ["export_report_objects"],
+            "compare_report_objects": ["legacy_objects_cover_run_date:true"],
         },
     },
     "ow_tp_p3_storage_cleanup_daily": {
@@ -72,7 +84,8 @@ EXPECTED = {
             # P3-Q3: the legacy archive and compliance objects, rebuilt from the governed
             # tables and byte-compared against the legacy's own bytes.
             "export_archive_objects": ["archive_events", "write_compliance_report"],
-            "compare_archive_objects": ["export_archive_objects"],
+            "legacy_objects_cover_run_date": ["export_archive_objects"],
+            "compare_archive_objects": ["legacy_objects_cover_run_date:true"],
         },
     },
     "ow_tp_p3_usage_rollup_daily": {
@@ -117,12 +130,18 @@ def collect(w):
                 "kind": (
                     "run_job_task" if t.run_job_task
                     else "pipeline_task" if t.pipeline_task
+                    else "condition_task" if t.condition_task
                     else "spark_python_task" if t.spark_python_task
                     else "sql_task" if t.sql_task
                     else "spark_jar_task" if t.spark_jar_task
                     else "other"
                 ),
-                "depends_on": sorted(d.task_key for d in (t.depends_on or [])),
+                "depends_on": sorted(
+                    f"{d.task_key}:{d.outcome}" if d.outcome else d.task_key
+                    for d in (t.depends_on or [])),
+                "condition": (
+                    f"{t.condition_task.left} {t.condition_task.op.value} "
+                    f"{t.condition_task.right}" if t.condition_task else None),
                 "max_retries": t.max_retries,
                 "min_retry_interval_millis": t.min_retry_interval_millis,
                 "retry_on_timeout": t.retry_on_timeout,
@@ -195,6 +214,14 @@ def check(found):
                 problems.append(f"{where}: runs on a cluster, not serverless")
             if t["pipeline_id"]:
                 problems.append(f"{where}: starts a pipeline; pipeline 3 defines none")
+
+            if key in CONDITIONS:
+                if t["kind"] != "condition_task":
+                    problems.append(f"{where}: is a {t['kind']}, expected a condition_task")
+                elif t["condition"] != CONDITIONS[key]:
+                    problems.append(
+                        f"{where}: gates on {t['condition']}, expected {CONDITIONS[key]}")
+                continue
 
             if runs_job:
                 if t["kind"] != "run_job_task":

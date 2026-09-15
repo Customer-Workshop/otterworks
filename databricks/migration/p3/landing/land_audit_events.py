@@ -1,7 +1,16 @@
 """Land the audit-event table snapshot in bronze.
 
+A snapshot is produced in two steps, and landing needs both:
+
+    python3 scripts/tp_seed/gen_p3_fixture.py --ns p3probe ...          # the records
+    python3 databricks/migration/p3/exports/capture_legacy_audit_objects.py \
+        --snapshot /path/to/fixtures/p3probe --run-date <ds>            # the scan order
     python3 databricks/migration/p3/landing/land_audit_events.py \
         --snapshot-dir /path/to/fixtures/p3probe --batch p3probe
+
+The generator writes the records; it cannot write the scan order. That order, and each
+record's attribute order, are what DynamoDB hands back for one shape at a time, so they
+are read off the seeded table by the capture step and not invented by the generator.
 
 `audit_archive_weekly.py` scans DynamoDB live and then tries to delete what it scanned, so
 its input changes underneath it. P3-D04 splits the two: the scan is landed here as a
@@ -27,9 +36,11 @@ body compares as a string on both sides of the recon.
 Two more columns exist for the file export, and only for it. The legacy archive object is
 one `json.dumps(record)` per line, in scan order, with each record's attributes in the
 order DynamoDB handed them over -- neither the snapshot file's order nor sorted order. Both
-of those are properties of the source table, not of the snapshot, so they are captured from
-the scan itself (`exports/capture_legacy_audit_objects.py` writes `audit_source_order.json`
-next to the snapshot) and landed here as `scan_ordinal` and `payload_raw_json`. Canonical
+of those are properties of the source table, not of the snapshot, so they are read off the
+scan itself and written next to the snapshot as `audit_source_order.json` -- by
+`scripts/tp_seed/gen_p3_fixture.py` when it seeds the fixture, and again by
+`exports/capture_legacy_audit_objects.py` when the legacy objects are re-frozen -- then
+landed here as `scan_ordinal` and `payload_raw_json`. Canonical
 `payload_json` stays the column the recon compares; the raw one exists so the exported
 bytes can be the legacy's bytes.
 """
@@ -166,7 +177,8 @@ def source_order(snapshot: Path) -> dict[str, dict[str, tuple[int, list[str]]]]:
         raise SystemExit(
             f"{path} is missing. It carries the order the source scan returned the records "
             "in and the attribute order of each one, which the exported archive bytes are "
-            "made of. Capture it with exports/capture_legacy_audit_objects.py.")
+            "made of. Snapshots from scripts/tp_seed/gen_p3_fixture.py carry it; an older "
+            "one gains it from exports/capture_legacy_audit_objects.py.")
     captured = json.loads(path.read_text())["shapes"]
     return {shape: {entry["event_id"]: (position, entry["attribute_order"])
                     for position, entry in enumerate(entries)}

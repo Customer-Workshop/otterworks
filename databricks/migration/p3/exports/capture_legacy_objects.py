@@ -38,6 +38,10 @@ UNITS = {
                            "export_root": "/Volumes/ow_tp/gold/exports/analytics",
                            "wallclock_key_suffix": "report.json",
                            "wallclock_field": "generated_at"},
+    "p3-user-activity": {"bucket": "otterworks-data-lake",
+                         "export_root": "/Volumes/ow_tp/gold/exports/user-activity",
+                         "wallclock_key_suffix": "activity_report.json",
+                         "wallclock_field": "generated_at"},
 }
 
 
@@ -65,15 +69,23 @@ def capture(unit: str, run_date: str) -> dict:
         entry = {"bytes": len(body), "sha256": digest,
                  "raw_b64": base64.b64encode(body).decode("ascii")}
         if key.endswith(spec["wallclock_key_suffix"]):
-            legacy_value = recorded["content"][spec["wallclock_field"]]
             entry["wallclock_field"] = spec["wallclock_field"]
             entry["wallclock_value"] = json.loads(body.decode())[spec["wallclock_field"]]
             entry["baseline_sha256_at_baseline_wallclock"] = recorded["sha256"]
-            if normalized_digest(body, spec["wallclock_field"], legacy_value) \
-                    != recorded["sha256"]:
+            # The baseline parsed some of these objects and only digested others. Where it
+            # kept the content, the object is checked modulo the wall clock; where it kept
+            # only a digest, that digest is of these very bytes and has to match exactly.
+            if recorded.get("content"):
+                legacy_value = recorded["content"][spec["wallclock_field"]]
+                if normalized_digest(body, spec["wallclock_field"], legacy_value) \
+                        != recorded["sha256"]:
+                    problems.append(
+                        f"{key}: differs from the captured baseline by more than "
+                        f"{spec['wallclock_field']}")
+            elif digest != recorded["sha256"]:
                 problems.append(
-                    f"{key}: differs from the captured baseline by more than "
-                    f"{spec['wallclock_field']}")
+                    f"{key}: estate object sha256 {digest} != baseline "
+                    f"{recorded['sha256']}")
         elif digest != recorded["sha256"]:
             problems.append(
                 f"{key}: estate object sha256 {digest} != baseline {recorded['sha256']}")

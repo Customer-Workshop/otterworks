@@ -1,0 +1,47 @@
+{
+  "bucket": "otterworks-audit-archive",
+  "cutoff": "2026-06-17T00:00:00Z",
+  "export_root": "/Volumes/ow_tp/gold/exports/audit-archive",
+  "run_date": "2026-09-15",
+  "shapes": {
+    "A-estate": {
+      "exit_code": 0,
+      "objects": {},
+      "reason": "F-0.4: exit 0, no archive, no report, nothing deleted",
+      "records_scanned": 0
+    },
+    "A-full": {
+      "exit_code": 0,
+      "objects": {
+        "audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz": {
+          "bytes": 2014,
+          "raw_b64": "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",
+          "sha256": "151b5703ceba032957501fea9821712ae7d5f783a6fb03c9186f36f5ae858884"
+        },
+        "reports/compliance/audit-archive/2026-09-15/report.json": {
+          "bytes": 688,
+          "raw_b64": "ewogICJyZXBvcnRfdHlwZSI6ICJhdWRpdF9hcmNoaXZlX2NvbXBsaWFuY2UiLAogICJleGVjdXRpb25fZGF0ZSI6ICIyMDI2LTA5LTE1IiwKICAiZ2VuZXJhdGVkX2F0IjogIjIwMjYtMDktMTVUMjA6MDY6MTguOTc2NDQ3KzAwOjAwIiwKICAicmV0ZW50aW9uX3BvbGljeSI6IHsKICAgICJyZXRlbnRpb25fZGF5cyI6IDkwLAogICAgImN1dG9mZl9kYXRlIjogIjIwMjYtMDYtMTdUMDA6MDA6MDBaIgogIH0sCiAgInJlc3VsdHMiOiB7CiAgICAiZXZlbnRzX3NjYW5uZWQiOiA0MSwKICAgICJldmVudHNfYXJjaGl2ZWQiOiA0MSwKICAgICJldmVudHNfZGVsZXRlZF9mcm9tX3NvdXJjZSI6IDAsCiAgICAiYXJjaGl2ZV9sb2NhdGlvbiI6ICJzMzovL290dGVyd29ya3MtYXVkaXQtYXJjaGl2ZS9hdWRpdC1hcmNoaXZlL3llYXI9MjAyNi93ZWVrPTIwMjYtMDktMTUvYXVkaXRfZXZlbnRzLmpzb25sLmd6IiwKICAgICJhcmNoaXZlX3N0b3JhZ2VfY2xhc3MiOiAiR0xBQ0lFUiIsCiAgICAiY29tcHJlc3NlZF9zaXplX2J5dGVzIjogMjAxNAogIH0sCiAgImNvbXBsaWFuY2UiOiB7CiAgICAiZ2Rwcl9jb21wbGlhbnQiOiB0cnVlLAogICAgInNvYzJfY29tcGxpYW50IjogdHJ1ZSwKICAgICJkYXRhX2VuY3J5cHRlZF9hdF9yZXN0IjogdHJ1ZSwKICAgICJkYXRhX2VuY3J5cHRlZF9pbl90cmFuc2l0IjogdHJ1ZQogIH0KfQ==",
+          "sha256": "5c4fa272bfe67c065496997759dee5742d012753380ba713339fae9c82d95d2b",
+          "wallclock_field": "generated_at",
+          "wallclock_value": "2026-09-15T20:06:18.976447+00:00"
+        }
+      },
+      "reason": "F-0.4a: archive written, deletes swallowed, nothing deleted",
+      "records_scanned": 41
+    },
+    "A-tsonly": {
+      "exit_code": 1,
+      "objects": {
+        "audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz": {
+          "bytes": 1849,
+          "raw_b64": "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",
+          "sha256": "5c2bb57bf4712a9f2bc38b05318af395fccc837146f006ab80c425c2e9c2eef0"
+        }
+      },
+      "reason": "F-0.4b: archive written, then exit 1 on KeyError('event_id')",
+      "records_scanned": 41
+    }
+  },
+  "source": "a re-run of the wave-0 audit probe, checked against .migration/recon/p3/baselines/p3-audit-archive.baseline.json",
+  "unit": "p3-audit-archive"
+}

@@ -23,6 +23,15 @@ in the payload, where it can be read without being mistaken for the filter colum
 
 The payload is stored as canonical JSON (sorted keys, compact separators) so the archived
 body compares as a string on both sides of the recon.
+
+Two more columns exist for the file export, and only for it. The legacy archive object is
+one `json.dumps(record)` per line, in scan order, with each record's attributes in the
+order DynamoDB handed them over -- neither the snapshot file's order nor sorted order. Both
+of those are properties of the source table, not of the snapshot, so they are captured from
+the scan itself (`exports/capture_legacy_audit_objects.py` writes `audit_source_order.json`
+next to the snapshot) and landed here as `scan_ordinal` and `payload_raw_json`. Canonical
+`payload_json` stays the column the recon compares; the raw one exists so the exported
+bytes can be the legacy's bytes.
 """
 
 from __future__ import annotations
@@ -37,6 +46,7 @@ RUNS_TABLE = "ow_tp.bronze.p3_audit_landing_runs"
 DEFAULT_VOLUME = "/Volumes/ow_tp/bronze/landing/analytics"
 WAREHOUSE = "565cd2fd713738c4"
 FILES = ("audit_events.json",)
+ORDER_FILE = "audit_source_order.json"
 
 CREATE_EVENTS = f"""
 CREATE TABLE IF NOT EXISTS {EVENTS_TABLE} (
@@ -45,6 +55,8 @@ CREATE TABLE IF NOT EXISTS {EVENTS_TABLE} (
   event_id STRING NOT NULL COMMENT 'event_id when the record carries one, else its id; the archive is keyed on it',
   ts_attr STRING COMMENT 'the lowercase timestamp attribute and only that one. NULL means the record has none, which is what makes the legacy scan skip it',
   payload_json STRING NOT NULL COMMENT 'the whole record as canonical JSON: the archived body, not a projection of it',
+  scan_ordinal INT COMMENT 'position of this record in the source scan; NULL for a record the scan did not return',
+  payload_raw_json STRING COMMENT 'the record serialized as the legacy serializes it: source attribute order, json.dumps defaults',
   landed_at TIMESTAMP NOT NULL
 )
 USING DELTA
@@ -116,28 +128,81 @@ def verify_snapshot(snapshot: Path) -> None:
         raise SystemExit("snapshot does not match its manifest:\n  " + "\n  ".join(problems))
 
 
+def add_export_columns(w) -> None:
+    """Give a table created before the export columns those columns.
+
+    CREATE TABLE IF NOT EXISTS leaves an existing table alone, so a workspace that landed
+    this snapshot before the export existed would otherwise merge into columns that are
+    not there. The re-landed batch fills them; rows from other batches keep NULL, and the
+    exporter refuses to export a batch whose archived rows carry NULL.
+    """
+    columns = {row[0] for row in execute(w, f"SHOW COLUMNS IN {EVENTS_TABLE}")}
+    if "scan_ordinal" not in columns:
+        execute(w, f"ALTER TABLE {EVENTS_TABLE} ADD COLUMN scan_ordinal INT COMMENT "
+                   "'position of this record in the source scan' AFTER payload_json")
+    if "payload_raw_json" not in columns:
+        execute(w, f"ALTER TABLE {EVENTS_TABLE} ADD COLUMN payload_raw_json STRING "
+                   "COMMENT 'the record as the legacy serializes it' AFTER scan_ordinal")
+
+
 def upload(w, snapshot: Path, volume_dir: str) -> list[str]:
     written = []
-    for name in (*FILES, "manifest.json"):
+    for name in (*FILES, ORDER_FILE, "manifest.json"):
         target = f"{volume_dir}/{name}"
         w.files.upload(target, (snapshot / name).open("rb"), overwrite=True)
         written.append(target)
     return written
 
 
+def source_order(snapshot: Path) -> dict[str, dict[str, tuple[int, list[str]]]]:
+    """Scan position and source attribute order per shape, per record.
+
+    Required, not optional: without it the landed rows cannot reproduce the archive
+    object's bytes, and a unit that silently landed without them would fail the byte gate
+    much later with a much worse error message.
+    """
+    path = snapshot / ORDER_FILE
+    if not path.exists():
+        raise SystemExit(
+            f"{path} is missing. It carries the order the source scan returned the records "
+            "in and the attribute order of each one, which the exported archive bytes are "
+            "made of. Capture it with exports/capture_legacy_audit_objects.py.")
+    captured = json.loads(path.read_text())["shapes"]
+    return {shape: {entry["event_id"]: (position, entry["attribute_order"])
+                    for position, entry in enumerate(entries)}
+            for shape, entries in captured.items()}
+
+
+def raw_payload(record: dict, attribute_order: list[str], shape: str,
+                identity: str) -> str:
+    """`json.dumps(record)` with the attributes in the order the source returned them."""
+    if sorted(attribute_order) != sorted(record):
+        raise SystemExit(
+            f"{shape}/{identity}: the source scan returned attributes "
+            f"{sorted(attribute_order)} and the snapshot carries {sorted(record)}; the "
+            "captured order describes a different record")
+    return json.dumps({name: record[name] for name in attribute_order})
+
+
 def event_rows(snapshot: Path, batch: str) -> list[tuple]:
     """One row per record per shape, with the record kept whole."""
     by_shape = json.loads((snapshot / "audit_events.json").read_text())
+    scanned = source_order(snapshot)
     rows = []
     for shape, records in sorted(by_shape.items()):
+        positions = scanned.get(shape, {})
         for record in records:
             identity = record.get("event_id") or record.get("id") or record.get("Id")
             if not identity:
                 raise SystemExit(
                     f"{shape}: a record carries neither event_id, id nor Id, so it cannot be "
                     "keyed; the archive would silently collapse rows together")
+            position, order = positions.get(identity, (None, None))
             rows.append((batch, shape, identity, record.get("timestamp"),
-                         json.dumps(record, sort_keys=True, separators=(",", ":"))))
+                         json.dumps(record, sort_keys=True, separators=(",", ":")),
+                         None if position is None else position,
+                         None if order is None
+                         else raw_payload(record, order, shape, identity)))
     return rows
 
 
@@ -176,10 +241,12 @@ def insert_chunk(stage: str, columns: list[tuple[str, str]],
 
 def load(w, rows: list[tuple], batch: str) -> dict:
     columns = [("snapshot_batch", "STRING"), ("probe_shape", "STRING"),
-               ("event_id", "STRING"), ("ts_attr", "STRING"), ("payload_json", "STRING")]
+               ("event_id", "STRING"), ("ts_attr", "STRING"), ("payload_json", "STRING"),
+               ("scan_ordinal", "INT"), ("payload_raw_json", "STRING")]
     key = ["snapshot_batch", "probe_shape", "event_id"]
     stage = f"{EVENTS_TABLE}_stage"
     execute(w, CREATE_EVENTS)
+    add_export_columns(w)
     execute(w, f"CREATE OR REPLACE TABLE {stage} ("
                + ", ".join(f"{n} {t}" for n, t in columns) + ")")
     for start in range(0, len(rows), 25):

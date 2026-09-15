@@ -5,10 +5,10 @@
 - Merge eligible: yes (fixture/continuous evidence never merges)
 - Mapping version: `map-p3-v1`
 - Tolerance version: `v1`
-- Seed: `0`
+- Seed: `0` | Params: `{'run_date': '2026-09-15', 'batch': 'p3probe'}`
 - Tier 3 depth: `full`
-- Generated: 2026-09-15T17:33:44.753868+00:00
-- Cost: `{"source_statements": 10, "source_rows_fetched": 84, "target_statements": 8, "target_rows_fetched": 84, "elapsed_s": 3.656}`
+- Generated: 2026-09-15T20:19:33.837347+00:00
+- Cost: `{"source_statements": 10, "source_rows_fetched": 84, "target_statements": 8, "target_rows_fetched": 84, "elapsed_s": 8.04}`
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

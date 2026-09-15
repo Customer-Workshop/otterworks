@@ -46,6 +46,10 @@ EXPECTED = {
             "load_gold_top_users": ["load_silver"],
             "load_gold_top_user_actions": ["load_gold_top_users"],
             "publish_summary": ["load_gold_summary"],
+            # P3-Q3: the legacy report objects, rebuilt from gold and byte-compared.
+            "export_report_objects": ["load_gold_hourly", "load_gold_summary",
+                                      "load_gold_top_user_actions", "load_gold_top_users"],
+            "compare_report_objects": ["export_report_objects"],
         },
     },
     "ow_tp_p3_storage_cleanup_daily": {
@@ -65,6 +69,10 @@ EXPECTED = {
             "archive_events": ["create_tables"],
             "write_compliance_report": ["archive_events"],
             "report_run": ["write_compliance_report"],
+            # P3-Q3: the legacy archive and compliance objects, rebuilt from the governed
+            # tables and byte-compared against the legacy's own bytes.
+            "export_archive_objects": ["archive_events", "write_compliance_report"],
+            "compare_archive_objects": ["export_archive_objects"],
         },
     },
     "ow_tp_p3_usage_rollup_daily": {

@@ -368,6 +368,40 @@ resources:
           max_retries: 2
           min_retry_interval_millis: 300000
           retry_on_timeout: true
+
+        # P3-Q3. The legacy's two S3 objects are an interface of this job, not a by-product
+        # of it, so they are rebuilt from the governed tables and written to a volume. The
+        # compliance report counts the archive, so this waits for both.
+        - task_key: export_archive_objects
+          depends_on:
+            - task_key: archive_events
+            - task_key: write_compliance_report
+          spark_python_task:
+            python_file: exports/export_audit_archive.py
+            parameters:
+              - --run-date
+              - "{{job.parameters.run_date}}"
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: compare_archive_objects
+          depends_on:
+            - task_key: export_archive_objects
+          spark_python_task:
+            python_file: exports/compare_legacy_exports.py
+            parameters:
+              - --unit
+              - p3-audit-archive
+              - --run-date
+              - "{{job.parameters.run_date}}"
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
       environments:
         - environment_key: serverless
           spec:

@@ -45,7 +45,7 @@
   ],
   "unverified_paths": [
     "Source deletion: NOT PERFORMED and therefore not verified. By P3-D04 the converted unit archives and never deletes from DynamoDB. Both sides report 0 deletions, but for different reasons: the legacy's deletes fail on the wrong key schema and the error is swallowed, the target's do not exist. What a fixed-key-schema legacy would delete in production is unknown from this repo and is a STOP E question.",
-    "The archive artifact differs in form: the legacy writes one GZIP JSONL object to S3 with StorageClass GLACIER, the target holds the same bodies as Delta rows in ow_tp.silver.audit_archive. The record bodies were compared; the object, its compression, and its storage class were not.",
+    "Archive object bytes ARE compared as of the P3-Q3 export restoration: export_archive_objects rebuilds the legacy's GZIP JSONL archive and its compliance report from the governed tables into /Volumes/ow_tp/gold/exports/audit-archive, and compare_archive_objects reads those files back and compares them byte for byte against the legacy's own objects for 2026-09-15 (generated_at normalized in the report, nothing else). What is still not compared is the S3 destination itself and its StorageClass GLACIER: the target writes to a Unity Catalog volume, not to Glacier.",
     "The legacy's compliance report carries hard-coded booleans (retention policy applied, archive verified and similar assertions the script never checks). They are deliberately not copied into the target report, so those fields have no counterpart and were not compared.",
     "A-tsonly's legacy exit code 1 is recorded as a behavioural fact, not reconciled. The converted job has no equivalent failure because it does not run a delete loop.",
     "AWS access by named secret is unexercised: ow_tp/aws_migration_access_key_id and ow_tp/aws_migration_secret_access_key do not exist in the workspace. The converted unit needs no AWS call because it reads the landed snapshot, so nothing fell back to the plaintext keys in etl/config.ini, but a DynamoDB-reading variant of this job has no credential evidence.",
@@ -53,5 +53,18 @@
     "Inputs outside the pinned snapshot - an empty table, a record with neither event_id nor id, a timestamp exactly on the cutoff - are not exercised by this run.",
     "Structure parity: the harness compares rows, not Delta table properties, comments, or grants."
   ],
-  "verdict": "PASS"
+  "verdict": "PASS",
+  "file_byte_gate": {
+    "task": "compare_archive_objects (ow_tp_p3_audit_archive_weekly)",
+    "run_date": "2026-09-15",
+    "export_root": "/Volumes/ow_tp/gold/exports/audit-archive",
+    "verdict": "PASS",
+    "objects": {
+      "A-estate/": "no object written, and the target prefix is checked empty (F-0.4: exit 0, no archive, no report)",
+      "A-tsonly/audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz": "1849 bytes, sha256 5c2bb57bf4712a9f2bc38b05318af395fccc837146f006ab80c425c2e9c2eef0",
+      "A-full/audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz": "2014 bytes, sha256 151b5703ceba032957501fea9821712ae7d5f783a6fb03c9186f36f5ae858884",
+      "A-full/reports/compliance/audit-archive/2026-09-15/report.json": "688 bytes, sha256 5c4fa272bfe67c065496997759dee5742d012753380ba713339fae9c82d95d2b, generated_at normalized"
+    },
+    "note": "The bytes compared are read back from the governed volume after the export task wrote them, against the legacy's own objects frozen in databricks/migration/p3/exports/legacy_objects/p3-audit-archive.json. Every mismatch fails the task."
+  }
 }

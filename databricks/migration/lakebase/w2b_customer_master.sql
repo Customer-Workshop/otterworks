@@ -225,3 +225,42 @@ DROP TRIGGER IF EXISTS trg_customer_master_seq ON billing.customer_master;
 CREATE TRIGGER trg_customer_master_seq
     BEFORE INSERT ON billing.customer_master
     FOR EACH ROW EXECUTE FUNCTION billing.trg_customer_master_seq();
+
+-- The `_parsed` companions exist only on the target, so nothing in the source maintains them.
+-- An application write carries the raw DD-MON-YY string and knows nothing about the companion,
+-- which would leave it NULL after an INSERT and stale after an UPDATE of the raw column. This
+-- trigger derives all 15 from their raw column on every write, with the same f_str2dt the
+-- backfill used, so the companion is always the parse of the string beside it. It touches no
+-- migrated column: the raw strings, the money and the status codes pass through untouched, and
+-- the backfill runs with triggers disabled, so the migrated rows keep the values the source
+-- holds.
+CREATE OR REPLACE FUNCTION billing.trg_customer_master_dates() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+    NEW.signup_dt_parsed        := billing.f_str2dt(NEW.signup_dt);
+    NEW.last_activity_dt_parsed := billing.f_str2dt(NEW.last_activity_dt);
+    NEW.last_invoice_dt_parsed  := billing.f_str2dt(NEW.last_invoice_dt);
+    NEW.last_payment_dt_parsed  := billing.f_str2dt(NEW.last_payment_dt);
+    NEW.terminate_dt_parsed     := billing.f_str2dt(NEW.terminate_dt);
+    NEW.udf_dt_01_parsed        := billing.f_str2dt(NEW.udf_dt_01);
+    NEW.udf_dt_02_parsed        := billing.f_str2dt(NEW.udf_dt_02);
+    NEW.udf_dt_03_parsed        := billing.f_str2dt(NEW.udf_dt_03);
+    NEW.udf_dt_04_parsed        := billing.f_str2dt(NEW.udf_dt_04);
+    NEW.udf_dt_05_parsed        := billing.f_str2dt(NEW.udf_dt_05);
+    NEW.udf_dt_06_parsed        := billing.f_str2dt(NEW.udf_dt_06);
+    NEW.udf_dt_07_parsed        := billing.f_str2dt(NEW.udf_dt_07);
+    NEW.udf_dt_08_parsed        := billing.f_str2dt(NEW.udf_dt_08);
+    NEW.udf_dt_09_parsed        := billing.f_str2dt(NEW.udf_dt_09);
+    NEW.udf_dt_10_parsed        := billing.f_str2dt(NEW.udf_dt_10);
+    RETURN NEW;
+END;
+$fn$;
+
+DROP TRIGGER IF EXISTS trg_customer_master_dates ON billing.customer_master;
+CREATE TRIGGER trg_customer_master_dates
+    BEFORE INSERT OR UPDATE OF
+        signup_dt, last_activity_dt, last_invoice_dt, last_payment_dt, terminate_dt,
+        udf_dt_01, udf_dt_02, udf_dt_03, udf_dt_04, udf_dt_05,
+        udf_dt_06, udf_dt_07, udf_dt_08, udf_dt_09, udf_dt_10
+    ON billing.customer_master
+    FOR EACH ROW EXECUTE FUNCTION billing.trg_customer_master_dates();

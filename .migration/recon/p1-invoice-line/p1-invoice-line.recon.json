@@ -1,0 +1,90 @@
+{
+  "kind": "recon-report",
+  "unit": "p1-invoice-line",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T07:39:01.490419+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 1
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 20
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 150000
+    },
+    {
+      "id": "tier4_app_level_parity",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 1
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "loader run at 2026-09-15T07:57:03.738239+00:00 and rerun at 2026-09-15T07:57:12.746403+00:00; target state identical: ow_tp.silver.invoice_line 150000 rows, xxhash64 xor -1852379910498030974"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      {
+        "anomaly": "orphan_invoice_lines",
+        "count": 37
+      },
+      {
+        "anomaly": "empty_posted_yn_as_null",
+        "count": 29942
+      },
+      {
+        "anomaly": "unparseable_invoice_dt_null",
+        "count": 0
+      }
+    ],
+    "actual_set": [
+      {
+        "anomaly": "orphan_invoice_lines",
+        "count": 37
+      },
+      {
+        "anomaly": "empty_posted_yn_as_null",
+        "count": 29942
+      },
+      {
+        "anomaly": "unparseable_invoice_dt_null",
+        "count": 0
+      }
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "source-side constraint, index and identity parity (harness tiers 5-7): the degraded JDBC adapter does not read Oracle catalog metadata",
+    "factory-doctor source_principal_read_only: no Oracle privilege query is implemented, so SELECT-only access is asserted by construction, not machine-verified"
+  ],
+  "verdict": "PASS",
+  "degraded": {
+    "grade": "DEGRADED",
+    "official_verdict": false,
+    "reason": "d10_01_denied",
+    "source_adapter": "Oracle read over JDBC from the Devin CIDRs with a repo-local source adapter (databricks/migration/recon/oracle_jdbc_adapter.py). The harness supplies every tier, canonicalisation rule and tolerance; the connector is outside its tested matrix, so `dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
+  }
+}

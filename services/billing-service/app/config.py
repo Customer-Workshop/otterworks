@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
     allow_internal_reset: bool = False
     service_token: str = ""
+    jwt_secret: str = ""
 
     model_config = {"env_prefix": "BILLING_SVC_", "env_file": ".env", "extra": "ignore"}
 

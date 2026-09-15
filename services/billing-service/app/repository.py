@@ -13,6 +13,17 @@ class PostgresPlansRepository:
     def __init__(self, connection: psycopg.Connection) -> None:
         self.connection = connection
 
+    def is_tenant_member(self, tenant_id: UUID, user_id: str) -> bool:
+        row = self.connection.execute(
+            """
+            SELECT 1
+            FROM billing_svc.tenant_members
+            WHERE tenant_id = %s AND user_id = %s
+            """,
+            (tenant_id, user_id),
+        ).fetchone()
+        return row is not None
+
     def list_plans(self) -> list[PlanRow]:
         rows = self.connection.execute(
             """

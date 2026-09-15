@@ -28,3 +28,9 @@ CREATE TABLE IF NOT EXISTS billing_svc.subscriptions (
     CHECK (ends_on IS NULL OR ends_on >= starts_on),
     CHECK (suspended_on IS NULL OR suspended_on >= starts_on)
 );
+
+CREATE TABLE IF NOT EXISTS billing_svc.tenant_members (
+    tenant_id uuid NOT NULL REFERENCES billing_svc.tenants(id) ON DELETE CASCADE,
+    user_id text NOT NULL,
+    PRIMARY KEY (tenant_id, user_id)
+);

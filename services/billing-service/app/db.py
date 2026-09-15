@@ -26,7 +26,8 @@ def reset() -> None:
         connection.execute(MIGRATION.read_text())
         connection.execute(
             """
-            TRUNCATE TABLE billing_svc.subscriptions,
+            TRUNCATE TABLE billing_svc.tenant_members,
+                           billing_svc.subscriptions,
                            billing_svc.plans,
                            billing_svc.tenants
             """

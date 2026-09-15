@@ -11,7 +11,8 @@ from app.domain import SubscriptionRow
 
 TENANT = UUID("00000000-0000-0000-0000-000000000001")
 PLAN = UUID("10000000-0000-0000-0000-000000000002")
-TENANT_HEADERS = {"X-User-ID": "user-001", "X-Tenant-ID": str(TENANT)}
+SERVICE_TOKEN = "test-service-token"
+SERVICE_HEADERS = {"Authorization": f"Bearer {SERVICE_TOKEN}"}
 CREATED = SubscriptionRow(
     UUID("20000000-0000-0000-0000-000000000003"),
     TENANT,
@@ -44,13 +45,14 @@ def test_repeated_plan_change_returns_conflict(monkeypatch) -> None:
     monkeypatch.setattr(main, "migrate", lambda: None)
     monkeypatch.setattr(main, "connect", FakeConnection)
     monkeypatch.setattr(main, "change_plan", fake_change_plan)
+    monkeypatch.setattr(main.settings, "service_token", SERVICE_TOKEN)
     with TestClient(main.app) as client:
         payload = {"plan_id": str(PLAN), "effective_on": "2026-03-01"}
         first = client.post(
-            f"/api/tenants/{TENANT}/plan-change", json=payload, headers=TENANT_HEADERS
+            f"/api/tenants/{TENANT}/plan-change", json=payload, headers=SERVICE_HEADERS
         )
         second = client.post(
-            f"/api/tenants/{TENANT}/plan-change", json=payload, headers=TENANT_HEADERS
+            f"/api/tenants/{TENANT}/plan-change", json=payload, headers=SERVICE_HEADERS
         )
 
     assert first.status_code == 200

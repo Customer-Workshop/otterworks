@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.auth import authorize_tenant
+from app.auth import Principal, authorize_tenant, require_service
 from app.config import settings
 from app.db import connect, migrate, reset
 from app.domain import catalog, change_plan, entitlement
@@ -49,7 +49,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/internal/reset", status_code=204)
-def internal_reset() -> Response:
+def internal_reset(_principal: Annotated[Principal, Depends(require_service)]) -> Response:
     if not settings.allow_internal_reset:
         raise HTTPException(status_code=404, detail="internal reset is disabled")
     reset()

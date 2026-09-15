@@ -153,8 +153,16 @@ def main() -> int:
             cur.execute(merge)
             cur.execute(f"SELECT count(*) FROM {CATALOG}.{BRONZE}.{target}")
             bronze_rows = cur.fetchone()[0]
-            cur.execute(f"SELECT count(*) FROM {CATALOG}.{SILVER}.{target}")
-            silver_rows = cur.fetchone()[0]
+            keys = ", ".join(ident(k) for k in table["key"]["target"])
+            cur.execute(f"SELECT count(*), count(DISTINCT {keys}) "
+                        f"FROM {CATALOG}.{SILVER}.{target}")
+            silver_rows, silver_keys = cur.fetchone()
+            # Delta enforces no key uniqueness, so a full-snapshot MERGE converges only while
+            # the declared key really is one: prove it instead of reporting it.
+            if silver_rows != silver_keys or silver_rows != bronze_rows:
+                raise SystemExit(
+                    f"{CATALOG}.{SILVER}.{target} did not converge: bronze={bronze_rows} "
+                    f"silver={silver_rows} distinct_keys={silver_keys}")
             out.append({"unit": spec["unit"], "generation": generation,
                         "target": f"{CATALOG}.{SILVER}.{target}",
                         "bronze_rows": bronze_rows, "silver_rows": silver_rows})

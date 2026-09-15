@@ -83,6 +83,24 @@ def test_rejects_symlink_swapped_in_after_resolution(
         archive.read_export("report.md")
 
 
+def test_rejects_parent_directory_swapped_for_symlink_after_resolution(
+    tmp_path, archive, secret_outside_archive, monkeypatch
+):
+    (secret_outside_archive.parent / "q3.md").write_text("leaked\n", encoding="utf-8")
+    real_resolve = archive.resolve_export_path
+
+    def resolve_then_swap_parent(name):
+        path = real_resolve(name)
+        (tmp_path / "reports" / "q3.md").unlink()
+        (tmp_path / "reports").rmdir()
+        (tmp_path / "reports").symlink_to(secret_outside_archive.parent)
+        return path
+
+    monkeypatch.setattr(archive, "resolve_export_path", resolve_then_swap_parent)
+    with pytest.raises(OSError):
+        archive.read_export("reports/q3.md")
+
+
 def test_rejects_directory(archive):
     with pytest.raises(OSError):
         archive.read_export("reports")

@@ -83,7 +83,11 @@ audit call persists.
   later caller in the same session can read an earlier caller's plan code, and nothing
   invalidates it. Reproducing that needs a state row, and a state table is outside this
   batch's declared write targets. Recorded as a coverage gap for the owner rather than
-  written to an undeclared object.
+  written to an undeclared object. Two consequences of the same gap, both unverified:
+  a call that returns no entitlement row returns no state values either, where Oracle
+  still updates `g_last_tenant_id`; and a failed cache lookup yields NULL here, where
+  Oracle's swallowed exception leaves the *previous* `g_last_plan_code` in place. The
+  cross-call read is the part with consumer impact, and it needs the state row.
 - **`fn_list_plans` is not converted.** The third package entrypoint is a plans-only
   projection and is not in this batch's declared write targets. Coverage gap, not a failure.
 - `log_msg` inherits declared divergence P1-D1a: Oracle's `PRAGMA AUTONOMOUS_TRANSACTION`

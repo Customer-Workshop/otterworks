@@ -3,12 +3,14 @@
   "unit": "p3-analytics-daily",
   "track": "delta",
   "generation": "legacy-file",
-  "notes": "Source side is the legacy job's own S3 output for the pinned fixture day, loaded verbatim into ow_tp.bronze.p3_analytics_legacy_baseline: the summary.json.gz object as one row, and top_users.jsonl.gz / hourly_breakdown.json.gz as their own rows. Target side is ow_tp.gold.analytics_daily_summary recomputed by the Lakeflow job from the same immutable input snapshot. Counts are exact (recon posture: row counts exact, money exact); bytes_uploaded is an integer byte total and is compared exact, not at 1e-9, because it is a count of bytes rather than a float. Two comparisons carry the contract's sharp edges: active_users excludes the literal 'unknown' while top_users includes it (C-2.7), so they are compared separately and a target that reconciles the two would fail; and event types are matched as exact snake_case literals (F-0.9), so a dotted 'document.created' must raise total_events without raising documents_created. top_users is compared as an ordered list because the legacy's sort is stable and the tie order is observable output, and both halves of each top_users record are compared: the total in analytics_daily_top_users and the per-event-type actions map in analytics_daily_top_user_actions. hourly_breakdown nests event type inside hour, so it is compared at (hour, event type) grain; hour totals alone would compare green while the split inside an hour differed. Where the legacy frame has no event type for a row, its JSON key is the literal 'NaN' - that is shipped output, so both sides carry the literal rather than the loader erasing it. The Postgres upsert is deliberately NOT in this mapping: the legacy swallows its failure (C-2.16) and the target fails loudly (P3-D02), so there is no row-level parity to assert on that path.",
+  "notes": "Every object is scoped to the run date on both sides (P3-D10). The legacy baseline is one day and the gold tables now hold 33 days of seeded history as well, because p3-user-activity reports over a 31-day window and seeds that history into these same tables; without the filter the comparison is 34 target days against 1 legacy day, which fails on row counts while saying nothing about the conversion. No tolerance is changed and no field is dropped. Source side is the legacy job's own S3 output for the pinned fixture day, loaded verbatim into ow_tp.bronze.p3_analytics_legacy_baseline: the summary.json.gz object as one row, and top_users.jsonl.gz / hourly_breakdown.json.gz as their own rows. Target side is ow_tp.gold.analytics_daily_summary recomputed by the Lakeflow job from the same immutable input snapshot. Counts are exact (recon posture: row counts exact, money exact); bytes_uploaded is an integer byte total and is compared exact, not at 1e-9, because it is a count of bytes rather than a float. Two comparisons carry the contract's sharp edges: active_users excludes the literal 'unknown' while top_users includes it (C-2.7), so they are compared separately and a target that reconciles the two would fail; and event types are matched as exact snake_case literals (F-0.9), so a dotted 'document.created' must raise total_events without raising documents_created. top_users is compared as an ordered list because the legacy's sort is stable and the tie order is observable output, and both halves of each top_users record are compared: the total in analytics_daily_top_users and the per-event-type actions map in analytics_daily_top_user_actions. hourly_breakdown nests event type inside hour, so it is compared at (hour, event type) grain; hour totals alone would compare green while the split inside an hour differed. Where the legacy frame has no event type for a row, its JSON key is the literal 'NaN' - that is shipped output, so both sides carry the literal rather than the loader erasing it. The Postgres upsert is deliberately NOT in this mapping: the legacy swallows its failure (C-2.16) and the target fails loudly (P3-D02), so there is no row-level parity to assert on that path.",
   "tables": [
     {
       "object": "analytics_daily_summary",
       "source_table": "ow_tp.bronze.p3_analytics_legacy_baseline",
       "target_table": "analytics_daily_summary",
+      "root_where": "summary_date = DATE '${run_date}'",
+      "target_where": "summary_date = DATE '${run_date}'",
       "key": {
         "source": [
           "summary_date"
@@ -108,6 +110,8 @@
       "object": "analytics_daily_top_users",
       "source_table": "ow_tp.bronze.p3_analytics_legacy_top_users",
       "target_table": "analytics_daily_top_users",
+      "root_where": "summary_date = DATE '${run_date}'",
+      "target_where": "summary_date = DATE '${run_date}'",
       "key": {
         "source": [
           "summary_date",
@@ -153,6 +157,8 @@
       "object": "analytics_daily_hourly",
       "source_table": "ow_tp.bronze.p3_analytics_legacy_hourly",
       "target_table": "analytics_daily_hourly",
+      "root_where": "summary_date = DATE '${run_date}'",
+      "target_where": "summary_date = DATE '${run_date}'",
       "key": {
         "source": [
           "summary_date",
@@ -202,6 +208,8 @@
       "object": "analytics_daily_top_user_actions",
       "source_table": "ow_tp.bronze.p3_analytics_legacy_top_user_actions",
       "target_table": "analytics_daily_top_user_actions",
+      "root_where": "summary_date = DATE '${run_date}'",
+      "target_where": "summary_date = DATE '${run_date}'",
       "key": {
         "source": [
           "summary_date",

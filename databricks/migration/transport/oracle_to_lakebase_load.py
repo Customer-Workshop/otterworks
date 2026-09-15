@@ -37,6 +37,9 @@ from pathlib import Path
 import psycopg
 
 IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# The write allowlist is the committed one or none at all; a caller cannot point the loader
+# at a file of its own that authorizes somewhere else.
+ALLOWED_TARGETS = Path(__file__).resolve().parents[3] / ".migration" / "allowed_targets.json"
 
 
 def ident(name: str) -> str:
@@ -151,11 +154,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--target-secret", required=True, help="ENV VAR NAME, never a value")
     p.add_argument("--target-catalog", required=True)
     p.add_argument("--target-schema", required=True)
-    p.add_argument("--allowed-targets-file", type=Path,
-                   default=Path(".migration/allowed_targets.json"))
+    p.add_argument("--allowed-targets-file", type=Path, default=ALLOWED_TARGETS,
+                   help=f"must be {ALLOWED_TARGETS}; accepted only so the recon commands "
+                        "can pass it explicitly")
     args = p.parse_args(argv)
 
-    allowed = json.loads(args.allowed_targets_file.read_text())
+    if args.allowed_targets_file.resolve() != ALLOWED_TARGETS:
+        raise SystemExit(f"--allowed-targets-file must be the committed {ALLOWED_TARGETS}, "
+                         f"not {args.allowed_targets_file}")
+    allowed = json.loads(ALLOWED_TARGETS.read_text())
     catalog = ident(args.target_catalog)
     if catalog not in allowed.get("catalogs", []) and catalog not in allowed:
         raise SystemExit(f"--target-catalog {catalog!r} is not in {args.allowed_targets_file}")

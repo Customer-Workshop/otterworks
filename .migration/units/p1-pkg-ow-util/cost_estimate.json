@@ -1,0 +1,46 @@
+{
+  "unit": "p1-pkg-ow-util",
+  "wave": 0,
+  "batch": "w0-a",
+  "depth": "full",
+  "mode": "transactional",
+  "rows": 0,
+  "row_counts": {
+    "OW_BILLING.billing_audit_log": 0
+  },
+  "ops": 3,
+  "estimate": {
+    "mode": "transactional",
+    "depth": "full",
+    "tier3_mode": {
+      "OW_BILLING.billing_audit_log": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 3,
+      "tier4": 3,
+      "tier0": 2,
+      "tier5": 3,
+      "tier6": 0,
+      "tier7": 4,
+      "delete_evidence": 0,
+      "total": 17
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 3,
+      "tier0": 2,
+      "tier5": 1,
+      "tier6": 0,
+      "tier7": 4,
+      "delete_evidence": 0,
+      "total": 14
+    },
+    "source_rows_fetched": 0,
+    "target_rows_fetched": 0,
+    "row_counts_known": true
+  }
+}

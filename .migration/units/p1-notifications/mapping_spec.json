@@ -1,0 +1,59 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-notifications",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "notifications",
+      "source_table": "OW_BILLING.notifications",
+      "target_table": "notifications",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "kind_cd",
+          "target": "kind_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        },
+        {
+          "source": "sent_at",
+          "target": "sent_at",
+          "source_type": "TIMESTAMP",
+          "target_type": "timestamptz",
+          "rules": []
+        }
+      ],
+      "watermark": {
+        "source": "sent_at",
+        "target": "sent_at"
+      }
+    }
+  ]
+}

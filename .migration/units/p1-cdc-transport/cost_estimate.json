@@ -1,0 +1,40 @@
+{
+  "unit": "p1-cdc-transport",
+  "wave": 0,
+  "batch": "w0-b",
+  "depth": "threshold",
+  "mode": "live",
+  "rows": 193750,
+  "row_counts": {
+    "OW_BILLING.customer_master": 25000,
+    "OW_BILLING.invoice_header": 18750,
+    "OW_BILLING.invoice_line": 150000
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "live",
+    "depth": "threshold",
+    "tier3_mode": {
+      "OW_BILLING.customer_master": "full_diff",
+      "OW_BILLING.invoice_header": "full_diff",
+      "OW_BILLING.invoice_line": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 3,
+      "tier2": 3,
+      "tier3": 9,
+      "tier4": 0,
+      "total": 15
+    },
+    "target_statements": {
+      "tier1": 3,
+      "tier2": 3,
+      "tier3": 6,
+      "tier4": 0,
+      "total": 12
+    },
+    "source_rows_fetched": 193750,
+    "target_rows_fetched": 193750,
+    "row_counts_known": true
+  }
+}

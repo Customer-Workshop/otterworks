@@ -1,0 +1,159 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-pkg-invoicing",
+  "track": "lakebase",
+  "generation": "modern",
+  "behavioural": true,
+  "tables": [
+    {
+      "object": "invoices",
+      "source_table": "OW_BILLING.invoices",
+      "target_table": "invoices",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "period_id",
+          "target": "period_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "issued_at",
+          "target": "issued_at",
+          "source_type": "TIMESTAMP",
+          "target_type": "timestamptz",
+          "rules": []
+        },
+        {
+          "source": "subtotal",
+          "target": "subtotal",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "tax",
+          "target": "tax",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "total",
+          "target": "total",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        }
+      ]
+    },
+    {
+      "object": "invoice_lines",
+      "source_table": "OW_BILLING.invoice_lines",
+      "target_table": "invoice_lines",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_id",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "line_no",
+          "target": "line_no",
+          "source_type": "NUMBER(6)",
+          "target_type": "integer",
+          "rules": []
+        },
+        {
+          "source": "line_type",
+          "target": "line_type",
+          "source_type": "VARCHAR2(10)",
+          "target_type": "varchar(10)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "description",
+          "target": "description",
+          "source_type": "VARCHAR2(400)",
+          "target_type": "varchar(400)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "amount",
+          "target": "amount",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ]
+    }
+  ]
+}

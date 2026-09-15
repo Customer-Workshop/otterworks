@@ -1,0 +1,75 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-invoice-lines",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "invoice_lines",
+      "source_table": "OW_BILLING.invoice_lines",
+      "target_table": "invoice_lines",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_id",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "line_no",
+          "target": "line_no",
+          "source_type": "NUMBER(6)",
+          "target_type": "integer",
+          "rules": []
+        },
+        {
+          "source": "line_type",
+          "target": "line_type",
+          "source_type": "VARCHAR2(10)",
+          "target_type": "varchar(10)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "description",
+          "target": "description",
+          "source_type": "VARCHAR2(400)",
+          "target_type": "varchar(400)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "amount",
+          "target": "amount",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ]
+    }
+  ]
+}

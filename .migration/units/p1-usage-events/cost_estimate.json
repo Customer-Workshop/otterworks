@@ -1,0 +1,36 @@
+{
+  "unit": "p1-usage-events",
+  "wave": 1,
+  "batch": "w1-b",
+  "depth": "full",
+  "mode": "live",
+  "rows": 814,
+  "row_counts": {
+    "OW_BILLING.usage_events": 814
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "live",
+    "depth": "full",
+    "tier3_mode": {
+      "OW_BILLING.usage_events": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 3,
+      "tier4": 0,
+      "total": 5
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 0,
+      "total": 4
+    },
+    "source_rows_fetched": 814,
+    "target_rows_fetched": 814,
+    "row_counts_known": true
+  }
+}

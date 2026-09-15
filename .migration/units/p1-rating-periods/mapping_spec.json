@@ -1,0 +1,55 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-rating-periods",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "rating_periods",
+      "source_table": "OW_BILLING.rating_periods",
+      "target_table": "rating_periods",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "period_start",
+          "target": "period_start",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        },
+        {
+          "source": "period_end",
+          "target": "period_end",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

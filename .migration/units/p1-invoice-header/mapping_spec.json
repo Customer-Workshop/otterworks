@@ -1,0 +1,114 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-invoice-header",
+  "track": "delta",
+  "generation": "legacy",
+  "tables": [
+    {
+      "object": "invoice_header",
+      "source_table": "OW_BILLING.invoice_header",
+      "target_table": "invoice_header",
+      "key": {
+        "source": [
+          "invoice_id"
+        ],
+        "target": [
+          "invoice_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "invoice_id",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_no",
+          "target": "invoice_no",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "STRING",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_id",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_dt",
+          "target": "invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "due_dt",
+          "target": "due_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "total_amt",
+          "target": "total_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "batch_no",
+          "target": "batch_no",
+          "source_type": "NUMBER(8)",
+          "target_type": "INT",
+          "rules": []
+        }
+      ],
+      "derived_fields": [
+        {
+          "raw": "invoice_dt",
+          "target": "invoice_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
+        },
+        {
+          "raw": "due_dt",
+          "target": "due_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-entity-attr-value",
+  "track": "lakebase",
+  "generation": "legacy",
+  "tables": [
+    {
+      "object": "entity_attr_value",
+      "source_table": "OW_BILLING.entity_attr_value",
+      "target_table": "entity_attr_value",
+      "key": {
+        "source": [
+          "eav_id"
+        ],
+        "target": [
+          "eav_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "eav_id",
+          "target": "eav_id",
+          "source_type": "NUMBER(14)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "entity_type",
+          "target": "entity_type",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "varchar(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "entity_id",
+          "target": "entity_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "attr_name",
+          "target": "attr_name",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "varchar(100)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "attr_value",
+          "target": "attr_value",
+          "source_type": "VARCHAR2(4000)",
+          "target_type": "varchar(4000)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "attr_type",
+          "target": "attr_type",
+          "source_type": "VARCHAR2(10)",
+          "target_type": "varchar(10)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "created_dt",
+          "target": "created_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "varchar(9)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "derived_fields": [
+        {
+          "raw": "created_dt",
+          "target": "created_dt_parsed",
+          "target_type": "date",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
+        }
+      ],
+      "identity": {
+        "source": "eav_id",
+        "target": "eav_id"
+      }
+    }
+  ]
+}

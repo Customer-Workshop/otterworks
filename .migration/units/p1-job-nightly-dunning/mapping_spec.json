@@ -1,0 +1,72 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-job-nightly-dunning",
+  "track": "lakebase",
+  "generation": "modern",
+  "behavioural": true,
+  "tables": [
+    {
+      "object": "dunning_attempts",
+      "source_table": "OW_BILLING.dunning_attempts",
+      "target_table": "dunning_attempts",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_id",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "attempt_no",
+          "target": "attempt_no",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        },
+        {
+          "source": "scheduled_for",
+          "target": "scheduled_for",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

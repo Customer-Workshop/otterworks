@@ -1,0 +1,76 @@
+{
+  "vectors": {
+    "rating_results": {
+      "expression": "f_md5_uuid(period_id)",
+      "rows": 3,
+      "mismatches": 0,
+      "examples": [],
+      "stored_ids_checked": 3,
+      "stored_ids_matching_derivation": 0
+    },
+    "invoice_lines": {
+      "expression": "f_md5_uuid(invoice_id || line_no)",
+      "rows": 2,
+      "mismatches": 0,
+      "examples": [],
+      "stored_ids_checked": 2,
+      "stored_ids_matching_derivation": 0
+    },
+    "rating_periods": {
+      "expression": "f_md5_uuid(tenant_id || period_start)",
+      "rows": 3,
+      "mismatches": 0,
+      "examples": [],
+      "stored_ids_checked": 3,
+      "stored_ids_matching_derivation": 0
+    },
+    "customer_master": {
+      "expression": "f_md5_uuid(cust_id) - volume vector, 2000 real strings",
+      "rows": 2000,
+      "mismatches": 0,
+      "examples": [],
+      "stored_ids_checked": 0,
+      "stored_ids_matching_derivation": 0
+    }
+  },
+  "edge_cases": {
+    "''": {
+      "oracle": "d41d8cd9-8f00-b204-e980-0998ecf8427e",
+      "lakebase": "d41d8cd9-8f00-b204-e980-0998ecf8427e",
+      "match": true
+    },
+    "' '": {
+      "oracle": "7215ee9c-7d9d-c229-d292-1a40e899ec5f",
+      "lakebase": "7215ee9c-7d9d-c229-d292-1a40e899ec5f",
+      "match": true
+    },
+    "'0'": {
+      "oracle": "cfcd2084-95d5-65ef-66e7-dff9f98764da",
+      "lakebase": "cfcd2084-95d5-65ef-66e7-dff9f98764da",
+      "match": true
+    },
+    "'NULL'": {
+      "oracle": "6c3e226b-4d47-95d5-18ab-341b0824ec29",
+      "lakebase": "6c3e226b-4d47-95d5-18ab-341b0824ec29",
+      "match": true
+    },
+    "'aaaaaaaaaaaaaaaaaaaaaaa": {
+      "oracle": "26f660b6-b2f6-e012-af97-444eefeb0c07",
+      "lakebase": "26f660b6-b2f6-e012-af97-444eefeb0c07",
+      "match": true
+    },
+    "'\u00e9\u00e7\u00fc'": {
+      "oracle": "e3aebab7-a568-190b-f06a-15f93927f5f3",
+      "lakebase": "e3aebab7-a568-190b-f06a-15f93927f5f3",
+      "match": true
+    }
+  },
+  "grade": "DEGRADED",
+  "official_verdict": false,
+  "reason": "d10_01_denied",
+  "unverified_paths": [
+    "ow_billing.pkg_ow_util.f_md5_uuid not called directly: the read-only user has no EXECUTE on the package (ORA-41900) and granting it would be DDL on a read-only source. The package body's own hash expression is used inline instead, so the algorithm is proven and the entrypoint is not."
+  ],
+  "mismatches": 0,
+  "verdict": "PARITY"
+}

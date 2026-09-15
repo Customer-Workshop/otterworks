@@ -1,0 +1,142 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-pkg-rating",
+  "track": "lakebase",
+  "generation": "modern",
+  "behavioural": true,
+  "tables": [
+    {
+      "object": "rating_periods",
+      "source_table": "OW_BILLING.rating_periods",
+      "target_table": "rating_periods",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "period_start",
+          "target": "period_start",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        },
+        {
+          "source": "period_end",
+          "target": "period_end",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        }
+      ]
+    },
+    {
+      "object": "rating_results",
+      "source_table": "OW_BILLING.rating_results",
+      "target_table": "rating_results",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "period_id",
+          "target": "period_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "subscription_id",
+          "target": "subscription_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "used_units",
+          "target": "used_units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "quota_units",
+          "target": "quota_units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "rollover_units",
+          "target": "rollover_units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "billable_units",
+          "target": "billable_units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "overage_amount",
+          "target": "overage_amount",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "created_at",
+          "target": "created_at",
+          "source_type": "TIMESTAMP",
+          "target_type": "timestamptz",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

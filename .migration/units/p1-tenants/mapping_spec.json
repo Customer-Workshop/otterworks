@@ -1,0 +1,58 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-tenants",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "tenants",
+      "source_table": "OW_BILLING.tenants",
+      "target_table": "tenants",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "name",
+          "target": "name",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "varchar(200)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tax_exempt_yn",
+          "target": "tax_exempt_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "char(1)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

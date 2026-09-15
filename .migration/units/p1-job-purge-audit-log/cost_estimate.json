@@ -1,0 +1,36 @@
+{
+  "unit": "p1-job-purge-audit-log",
+  "wave": 2,
+  "batch": "w2-e",
+  "depth": "sampled",
+  "mode": "live",
+  "rows": 0,
+  "row_counts": {
+    "OW_BILLING.billing_audit_log": 0
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "live",
+    "depth": "sampled",
+    "tier3_mode": {
+      "OW_BILLING.billing_audit_log": "stratified_sample"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 6,
+      "tier4": 0,
+      "total": 8
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 0,
+      "total": 4
+    },
+    "source_rows_fetched": 0,
+    "target_rows_fetched": 0,
+    "row_counts_known": true
+  }
+}

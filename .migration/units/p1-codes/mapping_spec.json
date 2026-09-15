@@ -1,0 +1,50 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-codes",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "codes",
+      "source_table": "OW_BILLING.codes",
+      "target_table": "codes",
+      "key": {
+        "source": [
+          "code_type",
+          "code_val"
+        ],
+        "target": [
+          "code_type",
+          "code_val"
+        ]
+      },
+      "fields": [
+        {
+          "source": "code_type",
+          "target": "code_type",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "varchar(30)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "code_val",
+          "target": "code_val",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        },
+        {
+          "source": "code_desc",
+          "target": "code_desc",
+          "source_type": "VARCHAR2(80)",
+          "target_type": "varchar(80)",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

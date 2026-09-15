@@ -1,0 +1,48 @@
+{
+  "unit": "p1-pkg-rating",
+  "wave": 3,
+  "batch": "w3-a",
+  "depth": "full",
+  "mode": "transactional",
+  "rows": 6,
+  "row_counts": {
+    "OW_BILLING.rating_periods": 3,
+    "OW_BILLING.rating_results": 3
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "transactional",
+    "depth": "full",
+    "tier3_mode": {
+      "OW_BILLING.rating_periods": "full_diff",
+      "OW_BILLING.rating_results": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 2,
+      "tier2": 2,
+      "tier3": 6,
+      "tier4": 0,
+      "tier0": 4,
+      "tier5": 6,
+      "tier6": 0,
+      "tier7": 8,
+      "delete_evidence": 0,
+      "total": 28
+    },
+    "target_statements": {
+      "tier1": 2,
+      "tier2": 2,
+      "tier3": 4,
+      "tier4": 0,
+      "tier0": 4,
+      "tier5": 2,
+      "tier6": 0,
+      "tier7": 8,
+      "delete_evidence": 0,
+      "total": 22
+    },
+    "source_rows_fetched": 6,
+    "target_rows_fetched": 6,
+    "row_counts_known": true
+  }
+}

@@ -33,10 +33,12 @@ Secrets are read from the environment by name and never printed.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import re
 import sys
+import uuid
 from decimal import Decimal
 from pathlib import Path
 
@@ -178,7 +180,16 @@ def load_table(table: dict, ora, pg, schema: str) -> dict:
         advance_sequence(cur, table, target, schema)
         (count,) = cur.execute(f"SELECT count(*) FROM {target}").fetchone()
     return {"object": table["object"], "source_rows": len(prepared),
-            "target_rows": count, "deleted": removed}
+            "target_rows": count, "deleted": removed, "target": target}
+
+
+def digest(target: str, pg) -> dict:
+    """Row count plus an order-independent content hash, read back off the target."""
+    with pg.cursor() as cur:
+        (rows, content) = cur.execute(
+            "SELECT count(*), md5(string_agg(h, '' ORDER BY h)) FROM "
+            f"(SELECT md5(t::text) AS h FROM {target} t) s").fetchone()
+    return {"rows": rows, "content_hash": content}
 
 
 def advance_sequence(cur, table: dict, target: str, schema: str) -> None:
@@ -233,6 +244,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--target-secret", required=True, help="ENV VAR NAME, never a value")
     p.add_argument("--target-catalog", required=True)
     p.add_argument("--target-schema", required=True)
+    p.add_argument("--digest-out", type=Path,
+                   help="write a target-state digest of this run for the recon report's "
+                        "idempotency proof (pass it once per run, to a new file)")
     p.add_argument("--allowed-targets-file", type=Path, default=ALLOWED_TARGETS,
                    help=f"must be {ALLOWED_TARGETS}; accepted only so the recon commands "
                         "can pass it explicitly")
@@ -266,6 +280,17 @@ def main(argv: list[str] | None = None) -> int:
                              f"{catalog!r}")
         results = [load_table(t, ora, pg, schema) for t in spec["tables"]]
         pg.commit()
+        digests = [{"table": f"{catalog}.{r['target']}", **digest(r["target"], pg)}
+                   for r in results] if args.digest_out else []
+
+    if args.digest_out:
+        # The run id, not the clock, tells two runs apart: two loads of a small table finish
+        # inside the same second and are still two runs.
+        args.digest_out.write_text(json.dumps(
+            {"kind": "target-state-digest", "unit": spec["unit"],
+             "run_id": uuid.uuid4().hex,
+             "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="microseconds"),
+             "tables": digests}, indent=2) + "\n")
 
     for r in results:
         print(f"loaded {spec['unit']}.{r['object']}: source_rows={r['source_rows']} "

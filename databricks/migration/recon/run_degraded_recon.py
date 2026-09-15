@@ -79,22 +79,25 @@ BANNER = (
 )
 
 
-def stamp_markdown(out_dir: Path) -> None:
-    """Carry the DEGRADED grade into the harness's own Markdown, not just result.json.
+def stamp_markdown(out_dir: Path, merge_eligible: bool) -> None:
+    """Carry the DEGRADED grade and the final eligibility into the harness's own Markdown.
 
-    The harness writes its summary and report before it returns, so a reader who opens the
-    summary alone sees `Merge eligible: yes` with nothing saying the source connector is
-    outside the tested matrix - the opposite signal from the result the gate records.
+    The harness writes its summary and report inside run_recon, before this wrapper lowers
+    merge eligibility, so a reader who opens the summary alone would otherwise see
+    `Merge eligible: yes` - the opposite signal from the result the gate records. The whole
+    line is rewritten from the value that ends up in result.json, and a file that already
+    carries the banner is rewritten too, so a rerun converges instead of keeping whatever the
+    first run happened to write.
     """
+    eligible = f"- Merge eligible: {'yes' if merge_eligible else 'no'} - degraded, see DEGRADED.md"
     for name in ("recon.summary.md", "report.md"):
         path = out_dir / name
         if not path.exists():
             continue
         text = path.read_text()
         if text.startswith("> **DEGRADED"):
-            continue
-        lines = [(f"{line} - degraded, see DEGRADED.md"
-                  if line.startswith("- Merge eligible:") else line)
+            text = text.split("\n\n", 1)[1] if "\n\n" in text else text
+        lines = [(eligible if line.startswith("- Merge eligible:") else line)
                  for line in text.splitlines()]
         path.write_text(BANNER.format(reason=REASON) + "\n".join(lines) + "\n")
 
@@ -165,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     (args.out / "DEGRADED.md").write_text(DEGRADED_MD.format(
         unit=args.unit, mode=args.mode, depth=result["depth"], verdict=result["verdict"],
         reason=REASON, note=ADAPTER_NOTE))
-    stamp_markdown(args.out)
+    stamp_markdown(args.out, result["merge_eligible"])
 
     print(f"DEGRADED (not an official harness verdict) {result['verdict']}: unit={args.unit} "
           f"mode={args.mode} depth={result['depth']} mapping={spec.version} "

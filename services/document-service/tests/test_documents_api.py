@@ -15,6 +15,10 @@ def _make_jwt(user_id: str) -> str:
     return jwt.encode({"user_id": user_id}, TEST_JWT_SECRET, algorithm="HS256")
 
 
+def _auth(user_id: uuid.UUID) -> dict[str, str]:
+    return {"Authorization": f"Bearer {_make_jwt(str(user_id))}"}
+
+
 @pytest.mark.asyncio
 async def test_create_document(client: AsyncClient, owner_id: uuid.UUID):
     resp = await client.post(
@@ -60,11 +64,61 @@ async def test_list_documents(client: AsyncClient, owner_id: uuid.UUID):
             "/api/v1/documents/",
             json={"title": f"Doc {i}", "content": "", "owner_id": str(owner_id)},
         )
-    resp = await client.get("/api/v1/documents/", params={"owner_id": str(owner_id)})
+    resp = await client.get(
+        "/api/v1/documents/",
+        params={"owner_id": str(owner_id)},
+        headers=_auth(owner_id),
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 3
     assert len(data["items"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_list_documents_requires_auth(client: AsyncClient, owner_id: uuid.UUID):
+    resp = await client.get("/api/v1/documents/", params={"owner_id": str(owner_id)})
+    assert resp.status_code == 401
+    resp = await client.get("/api/v1/documents")
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_list_documents_ignores_foreign_owner_id(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    """A caller cannot list another user's documents by passing their owner_id."""
+    attacker_id = uuid.uuid4()
+    await client.post(
+        "/api/v1/documents/",
+        json={"title": "Victim Doc", "content": "", "owner_id": str(owner_id)},
+    )
+    await client.post(
+        "/api/v1/documents/",
+        json={"title": "Attacker Doc", "content": "", "owner_id": str(attacker_id)},
+    )
+
+    for path in ("/api/v1/documents/", "/api/v1/documents"):
+        resp = await client.get(
+            path, params={"owner_id": str(owner_id)}, headers=_auth(attacker_id)
+        )
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert [item["title"] for item in items] == ["Attacker Doc"]
+        assert all(item["owner_id"] == str(attacker_id) for item in items)
+
+    # No owner_id at all must not fall back to an unscoped listing.
+    resp = await client.get("/api/v1/documents/", headers=_auth(attacker_id))
+    assert resp.json()["total"] == 1
+
+    # The metadata-filter path is scoped the same way.
+    resp = await client.get(
+        "/api/v1/documents/",
+        params={"owner_id": str(owner_id), "title": "Doc"},
+        headers=_auth(attacker_id),
+    )
+    assert resp.status_code == 200
+    assert [item["title"] for item in resp.json()["items"]] == ["Attacker Doc"]
 
 
 @pytest.mark.asyncio
@@ -75,7 +129,9 @@ async def test_list_documents_pagination(client: AsyncClient, owner_id: uuid.UUI
             json={"title": f"Doc {i}", "content": "", "owner_id": str(owner_id)},
         )
     resp = await client.get(
-        "/api/v1/documents/", params={"owner_id": str(owner_id), "page": 1, "size": 2}
+        "/api/v1/documents/",
+        params={"owner_id": str(owner_id), "page": 1, "size": 2},
+        headers=_auth(owner_id),
     )
     data = resp.json()
     assert data["total"] == 5
@@ -192,11 +248,46 @@ async def test_search_documents(client: AsyncClient, owner_id: uuid.UUID):
         json={"title": "Rust Guide", "content": "Learn Rust", "owner_id": str(owner_id)},
     )
 
-    resp = await client.get("/api/v1/documents/search", params={"q": "Python"})
+    resp = await client.get(
+        "/api/v1/documents/search", params={"q": "Python"}, headers=_auth(owner_id)
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
     assert data["items"][0]["title"] == "Python Guide"
+
+
+@pytest.mark.asyncio
+async def test_search_documents_requires_auth(client: AsyncClient):
+    resp = await client.get("/api/v1/documents/search", params={"q": "Python"})
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_search_documents_scoped_to_caller(client: AsyncClient, owner_id: uuid.UUID):
+    """Search never returns another user's documents, even on a matching keyword."""
+    attacker_id = uuid.uuid4()
+    await client.post(
+        "/api/v1/documents/",
+        json={"title": "Victim Secret", "content": "secret plans", "owner_id": str(owner_id)},
+    )
+    await client.post(
+        "/api/v1/documents/",
+        json={"title": "Attacker Note", "content": "secret sauce", "owner_id": str(attacker_id)},
+    )
+
+    resp = await client.get(
+        "/api/v1/documents/search", params={"q": "secret"}, headers=_auth(attacker_id)
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["title"] == "Attacker Note"
+
+    resp = await client.get(
+        "/api/v1/documents/search", params={"q": "plans"}, headers=_auth(attacker_id)
+    )
+    assert resp.json()["total"] == 0
 
 
 @pytest.mark.asyncio

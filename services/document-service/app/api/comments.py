@@ -3,15 +3,26 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.documents import _ensure_owner, _require_user_id
 from app.db.session import get_db
 from app.schemas.document import CommentCreate, CommentResponse
 from app.services.document_service import DocumentService
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+async def _authorize_document(
+    document_id: UUID, request: Request, service: DocumentService
+) -> None:
+    user_id = _require_user_id(request)
+    document = await service.get(document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    _ensure_owner(document, user_id)
 
 
 @router.post(
@@ -22,10 +33,12 @@ router = APIRouter()
 async def add_comment(
     document_id: UUID,
     body: CommentCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Add a comment to a document."""
     service = DocumentService(db)
+    await _authorize_document(document_id, request, service)
     comment = await service.add_comment(document_id, body)
     if not comment:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -36,10 +49,12 @@ async def add_comment(
 @router.get("/{document_id}/comments", response_model=list[CommentResponse])
 async def list_comments(
     document_id: UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """List comments for a document."""
     service = DocumentService(db)
+    await _authorize_document(document_id, request, service)
     return await service.list_comments(document_id)
 
 
@@ -50,10 +65,12 @@ async def list_comments(
 async def delete_comment(
     document_id: UUID,
     comment_id: UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a comment."""
     service = DocumentService(db)
+    await _authorize_document(document_id, request, service)
     deleted = await service.delete_comment(document_id, comment_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Comment not found")

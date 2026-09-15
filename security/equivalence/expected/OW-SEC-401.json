@@ -501,10 +501,10 @@
  ],
  "finding": "OW-SEC-401",
  "fingerprint": {
-  "cases_sha256": "e5e712c2e7cde249eeac558f8e7990d59eadceaa94b80caaecea3b499a2b6a58",
+  "cases_sha256": "1f4d6fa7a6cfea720a1e7b91cee82a86c4349fa7618b19f076836b770dd9d85c",
   "emitter_sha256": "085ebb3cb2d4f1799457ba0bdec2528f8bb2d5c6eff853f78c81b3340ffa0dc9",
   "observed_sha256": {
-   "services/document-service/app/api/documents.py": "0026eb7fda38ff10fce4d7699512a2d2af87f51b032c99ef000b7c20a8e75ca5"
+   "services/document-service/app/api/documents.py": "0aa96ff4c76ab80cda2e890f2244d1f3927d456741dd002e7ed2e805d2022494"
   },
   "seed_sha256": "8fdf4fcc58c4b0e23d90cb65e10c372edce4633651cabff071ebdc8c6ac7ee97",
   "subject_sha256": {
@@ -517,25 +517,25 @@
   "app.services.document_query_repository:DocumentQueryRepository.search_documents": "search_documents(self, *, owner_id: 'str | None' = None, title_contains: 'str | None' = None, content_type: 'str | None' = None, folder_id: 'str | None' = None, sort: 'str' = 'updated_at', direction: 'str' = 'desc', limit: 'int' = 20, offset: 'int' = 0) -> 'list[dict[str, Any]]'"
  },
  "module": "document-service",
- "reason": "route handler now maps every unreadable-export OSError to the recorded 404; refresh observed-file provenance and suite pass list",
- "recorded_at": "2026-08-18T01:19:28.827608+00:00",
+ "reason": "list route now requires the authenticated caller; http cases carry the fixture identity",
+ "recorded_at": "2026-09-15T20:46:07.806309+00:00",
  "rerecorded_from": {
   "fingerprint": {
    "cases_sha256": "e5e712c2e7cde249eeac558f8e7990d59eadceaa94b80caaecea3b499a2b6a58",
    "emitter_sha256": "085ebb3cb2d4f1799457ba0bdec2528f8bb2d5c6eff853f78c81b3340ffa0dc9",
    "observed_sha256": {
-    "services/document-service/app/api/documents.py": "dfac23263dfc7d0d548f34c33b2abcb3c8b09b6b8eeafd543ad03df8702934e1"
+    "services/document-service/app/api/documents.py": "0026eb7fda38ff10fce4d7699512a2d2af87f51b032c99ef000b7c20a8e75ca5"
    },
    "seed_sha256": "8fdf4fcc58c4b0e23d90cb65e10c372edce4633651cabff071ebdc8c6ac7ee97",
    "subject_sha256": {
     "services/document-service/app/services/document_query_repository.py": "a79c49a410fe174bab2247f776088d76d747c8bacc96c8f91fd5e0d281b95e6d"
    }
   },
-  "reason": "harness v2: subject vs observes split so one finding's refactor no longer regrades its neighbours",
-  "recorded_at": "2026-08-18T00:47:16.618672+00:00"
+  "reason": "route handler now maps every unreadable-export OSError to the recorded 404; refresh observed-file provenance and suite pass list",
+  "recorded_at": "2026-08-18T01:19:28.827608+00:00"
  },
  "suite": {
-  "command": "poetry run pytest -q --junitxml=/tmp/ow-equivalence-junit-y77h6q2j/junit.xml",
+  "command": "poetry run pytest -q --junitxml=/home/ubuntu/tmp/ow-equivalence-junit-gvkox1il/junit.xml",
   "exit_code": 1,
   "failed": [
    "tests.test_documents_api::test_delete_document",
@@ -551,6 +551,8 @@
   "passed": [
    "tests.test_comments_api::test_add_comment",
    "tests.test_comments_api::test_add_comment_document_not_found",
+   "tests.test_comments_api::test_comment_endpoints_reject_non_owner",
+   "tests.test_comments_api::test_comment_endpoints_require_auth",
    "tests.test_comments_api::test_delete_comment",
    "tests.test_comments_api::test_delete_comment_not_found",
    "tests.test_comments_api::test_list_comments",
@@ -580,8 +582,12 @@
    "tests.test_documents_api::test_create_document_via_jwt_hs384",
    "tests.test_documents_api::test_create_document_x_user_id_header_ignored",
    "tests.test_documents_api::test_list_documents",
+   "tests.test_documents_api::test_list_documents_ignores_foreign_owner_id",
    "tests.test_documents_api::test_list_documents_pagination",
+   "tests.test_documents_api::test_list_documents_requires_auth",
    "tests.test_documents_api::test_search_documents",
+   "tests.test_documents_api::test_search_documents_requires_auth",
+   "tests.test_documents_api::test_search_documents_scoped_to_caller",
    "tests.test_export_archive::test_export_endpoint_404s_for_undecodable_file",
    "tests.test_export_archive::test_export_endpoint_404s_for_unknown_name",
    "tests.test_export_archive::test_export_endpoint_404s_for_unreadable_file",

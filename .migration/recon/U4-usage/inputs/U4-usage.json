@@ -1,0 +1,49 @@
+[
+  {
+    "name": "usage_kind_decode_counts",
+    "collection": "usage_events",
+    "why": "KIND_CD is decoded through CODES USAGE_KIND; the source holds an integer and the target holds the decoded string, so no canonicalization rule can compare them.",
+    "source_sql": "SELECT NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(u.kind_cd) || ')') AS \"kind\", COUNT(*) AS \"n\" FROM usage_events u LEFT JOIN codes c ON c.code_type = 'USAGE_KIND' AND c.code_val = u.kind_cd GROUP BY NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(u.kind_cd) || ')')",
+    "target_pipeline": [
+      {"$group": {"_id": "$kind", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "kind": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "usage_units_by_tenant_and_kind",
+    "collection": "usage_events",
+    "why": "The decoded kind graded per tenant rather than only in aggregate, with the units sum PKG_RATING.compute_rating reads.",
+    "source_sql": "SELECT u.tenant_id AS \"tenantId\", NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(u.kind_cd) || ')') AS \"kind\", COUNT(*) AS \"n\", SUM(u.units) AS \"units\" FROM usage_events u LEFT JOIN codes c ON c.code_type = 'USAGE_KIND' AND c.code_val = u.kind_cd GROUP BY u.tenant_id, NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(u.kind_cd) || ')')",
+    "target_pipeline": [
+      {"$group": {"_id": {"tenantId": "$tenantId", "kind": "$kind"},
+                  "n": {"$sum": 1}, "units": {"$sum": "$units"}}},
+      {"$project": {"_id": 0, "tenantId": "$_id.tenantId", "kind": "$_id.kind",
+                    "n": 1, "units": 1}}
+    ]
+  },
+  {
+    "name": "usage_validator_domain",
+    "collection": "usage_events",
+    "why": "trg_usage_events_check becomes a $jsonSchema validator; this replays its two conditions (units > 0, kind in the enum) on both sides.",
+    "source_sql": "SELECT COUNT(*) AS \"violations\" FROM usage_events u WHERE u.units <= 0 OR NOT EXISTS (SELECT 1 FROM codes c WHERE c.code_type = 'USAGE_KIND' AND c.code_val = u.kind_cd AND c.code_desc IN ('api', 'storage', 'compute'))",
+    "target_pipeline": [
+      {"$group": {"_id": null, "violations": {"$sum": {"$cond": [
+        {"$or": [{"$lte": ["$units", 0]},
+                 {"$not": [{"$in": ["$kind", ["api", "storage", "compute"]]}]}]},
+        1, 0]}}}},
+      {"$project": {"_id": 0, "violations": 1}}
+    ]
+  },
+  {
+    "name": "rating_period_totals",
+    "collection": "rating_periods",
+    "why": "PKG_RATING's period roll-up: the embedded results[] must total what RATING_RESULTS totals per period.",
+    "source_sql": "SELECT r.period_id AS \"periodId\", COUNT(*) AS \"n\", SUM(r.billable_units) AS \"billableUnits\" FROM rating_results r GROUP BY r.period_id",
+    "target_pipeline": [
+      {"$unwind": "$results"},
+      {"$group": {"_id": "$_id", "n": {"$sum": 1},
+                  "billableUnits": {"$sum": "$results.billableUnits"}}},
+      {"$project": {"_id": 0, "periodId": "$_id", "n": 1, "billableUnits": 1}}
+    ]
+  }
+]

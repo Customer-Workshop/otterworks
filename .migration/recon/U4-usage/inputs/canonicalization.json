@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "source_profile": "mongo-migration/profiles/oracle.md § recon_canonicalization",
+  "rules": [
+    {"rule": "decimal_round", "applies_to": "NUMBER->Decimal128", "params": {"mode": "half_even"}},
+    {"rule": "datetime_utc_truncate_ms", "applies_to": "DATE,TIMESTAMP*->date", "params": {"precision": "ms"}},
+    {"rule": "rstrip_spaces", "applies_to": "CHAR->string", "params": {}},
+    {"rule": "empty_string_is_null", "applies_to": "VARCHAR2,NVARCHAR2,CHAR->string", "params": {"target_policy": "null"}},
+    {"rule": "null_missing_equiv", "applies_to": "*", "params": {"policy": "equivalent"}},
+    {"rule": "collation_casefold", "applies_to": "string", "params": {"enabled_if": "NLS case-insensitive comparisons found in census", "enabled": false, "why": "census found none; the only case-fold path is CUST_NAME_UPPER, which the PRD replaces with a collation index"}}
+  ],
+  "profile_feedback": [
+    {"proposed_rule": "yn_to_bool", "applies_to": "CHAR(1) Y/N -> bool", "params": {"true": "Y", "false": "N", "other": "null_and_keep_raw"}, "why": "the PRD's flag rule. Not in the oracle profile today; used by 6 fields across customers, tenants, plans and invoice lines. Raised as profile feedback per the harness contract, not patched into the harness."},
+    {"proposed_rule": "csv_split_trim", "applies_to": "VARCHAR2 CSV -> array", "params": {"separator": ",", "trim": true, "malformed": "empty_array_and_keep_raw"}, "why": "the PRD's CSV rule, and the only way the 31 malformed lists grade as a set instead of as 31 value mismatches."},
+    {"proposed_rule": "parse_date_string", "applies_to": "VARCHAR2 'DD-MON-YY'[' HH24:MI:SS'] -> date", "params": {"on_fail": "null_and_keep_raw"}, "why": "OW_BILLING stores its conversion-era dates as VARCHAR2, so the profile's DATE->date rule never fires on them. Mirrors PKG_OW_UTIL.f_str2dt, which returns NULL on any parse failure — the same semantics the 50 dirty SIGNUP_DT values need."}
+  ]
+}

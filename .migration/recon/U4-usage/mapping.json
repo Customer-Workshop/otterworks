@@ -1,0 +1,230 @@
+{
+  "version": "1",
+  "source_family": "oracle",
+  "unit": "U4-usage",
+  "collections": [
+    {
+      "collection": "usage_events",
+      "unit": "U4-usage",
+      "root_table": "USAGE_EVENTS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "collection_type": "standard",
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "OCCURRED_AT",
+          "target": "occurredAt",
+          "source_type": "TIMESTAMP(6)",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "UNITS",
+          "target": "units",
+          "source_type": "NUMBER(10,0)",
+          "bson_type": "long",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        }
+      ],
+      "validator": {
+        "$jsonSchema": {
+          "bsonType": "object",
+          "required": [
+            "tenantId",
+            "occurredAt",
+            "units",
+            "kind"
+          ],
+          "properties": {
+            "units": {
+              "bsonType": [
+                "long",
+                "int"
+              ],
+              "minimum": 1
+            },
+            "kind": {
+              "enum": [
+                "api",
+                "storage",
+                "compute"
+              ]
+            }
+          }
+        }
+      },
+      "validator_source": "trg_usage_events_check (units > 0, kind in enum)",
+      "indexes": [
+        {
+          "keys": {
+            "tenantId": 1,
+            "occurredAt": 1
+          }
+        }
+      ],
+      "cardinality": "usage_events == count(USAGE_EVENTS)",
+      "fields_decoded_graded_by_op": [
+        {
+          "source": "KIND_CD",
+          "target": "kind",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "USAGE_KIND"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        }
+      ]
+    },
+    {
+      "collection": "rating_periods",
+      "unit": "U4-usage",
+      "root_table": "RATING_PERIODS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "PERIOD_START",
+          "target": "periodStart",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "PERIOD_END",
+          "target": "periodEnd",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "results",
+          "child_table": "RATING_RESULTS",
+          "parent_key": [
+            "PERIOD_ID"
+          ],
+          "key": {
+            "source": [
+              "ID"
+            ],
+            "target": "id"
+          },
+          "fields": [
+            {
+              "source": "SUBSCRIPTION_ID",
+              "target": "subscriptionId",
+              "source_type": "VARCHAR2(36)",
+              "bson_type": "string",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "USED_UNITS",
+              "target": "usedUnits",
+              "source_type": "NUMBER(10,0)",
+              "bson_type": "long",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "QUOTA_UNITS",
+              "target": "quotaUnits",
+              "source_type": "NUMBER(10,0)",
+              "bson_type": "long",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "ROLLOVER_UNITS",
+              "target": "rolloverUnits",
+              "source_type": "NUMBER(10,0)",
+              "bson_type": "long",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "BILLABLE_UNITS",
+              "target": "billableUnits",
+              "source_type": "NUMBER(10,0)",
+              "bson_type": "long",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "OVERAGE_AMOUNT",
+              "target": "overageAmount",
+              "source_type": "NUMBER(12,2)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            },
+            {
+              "source": "CREATED_AT",
+              "target": "createdAt",
+              "source_type": "TIMESTAMP(6)",
+              "bson_type": "date",
+              "rules": [
+                "datetime_utc_truncate_ms"
+              ]
+            }
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "tenantId": 1,
+            "periodStart": -1
+          }
+        }
+      ],
+      "cardinality": "rating_periods == count(RATING_PERIODS); sum(rating_periods.results[]) == count(RATING_RESULTS)"
+    }
+  ]
+}

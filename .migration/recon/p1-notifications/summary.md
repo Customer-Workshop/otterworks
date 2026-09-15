@@ -18,17 +18,18 @@ is `recon.summary.md`.
 
 ## Conversion notes
 
-- `sent_at` is `timestamp(6)`, **not** the `timestamptz` the parent-owned mapping spec
-  proposes. The source column is a zone-less Oracle `TIMESTAMP`; UTC is assumed and
-  declared (P1-D3), so the target keeps the zone-less type at the source's own precision.
+- `sent_at` is `timestamp(6)`, and the mapping spec now says so too: the generator's
+  `timestamptz` was accepted as a dialect finding and corrected in ledger entry D-010, so
+  this unit's DDL and its spec agree. The source column is a zone-less Oracle `TIMESTAMP`;
+  UTC is assumed and declared (P1-D3), so the target keeps the zone-less type at the
+  source's own precision.
   The fixture run proved the point before the type was changed: a `timestamptz` target
   returned `2026-02-16 09:00+00` against a source `2026-02-16 09:00`, and the run failed,
   because the canonicalization profile applies `datetime_utc_truncate_ms` to
   `TIMESTAMP → TIMESTAMP_NTZ` only — a zoned target is compared under `identity` and never
   equals the zone-less source value. Tolerances were not retuned; the target type was
-  corrected. Raised as dialect feedback on the mapping generator
-  (`databricks/migration/tools/gen_mapping_specs.py`), the mapping file itself is
-  parent-owned and was not edited.
+  corrected. The generator (`databricks/migration/tools/gen_mapping_specs.py`) and the six
+  frozen specs were fixed by the wave-close change this branch is rebased on, not here.
 - `uq_notifications (tenant_id, kind_cd, sent_at)` is declared: it is the dedupe key
   `sp_suspend_overdue` reads with `NOT EXISTS`, which is what makes a second sweep on the
   same day write nothing.

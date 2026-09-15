@@ -7,8 +7,9 @@
 -- (kind_cd stays the magic number the application writes, billing.codes('NOTIF_KIND'):
 -- 3 suspension).
 --
--- sent_at deviates from the generated mapping spec, which proposes timestamptz: it is
--- timestamp(6) here, the zone-less type, matching Oracle TIMESTAMP's own precision.
+-- sent_at is timestamp(6), the zone-less type, matching Oracle TIMESTAMP's own precision.
+-- The generator first proposed timestamptz; that was raised as a dialect finding and
+-- accepted as ledger entry D-010, so the spec and this DDL now agree.
 -- P1-D3 is the reason - Oracle carries no zone, the migration assumes and declares UTC and
 -- keeps the time part - and wave 0 already took the same decision for
 -- billing.billing_audit_log.logged_at. It is also what the recon gate requires: the

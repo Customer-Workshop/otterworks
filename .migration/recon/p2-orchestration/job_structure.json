@@ -43,7 +43,7 @@
     },
     {
       "job": "ow_tp_p2_custbill_ingest",
-      "check": "retry_policy_on_every_task",
+      "check": "retry_policy_on_every_retryable_task",
       "value": {
         "custbill_pipeline": [
           2,
@@ -81,6 +81,12 @@
       "value": {
         "land_files": "serverless"
       },
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_custbill_ingest",
+      "check": "queue_enabled",
+      "value": true,
       "ok": true
     },
     {
@@ -132,12 +138,12 @@
     },
     {
       "job": "ow_tp_p2_finance_close",
-      "check": "retry_policy_on_every_task",
+      "check": "retry_policy_on_every_retryable_task",
       "value": {
         "await_silver": [
-          2,
-          300000,
-          true
+          null,
+          null,
+          null
         ],
         "export_csv_xls": [
           2,
@@ -174,8 +180,26 @@
     },
     {
       "job": "ow_tp_p2_finance_close",
+      "check": "queue_enabled",
+      "value": true,
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
       "check": "failure_notification_destination_empty_in_migration",
       "value": {},
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "does_not_start_the_shared_pipeline_directly",
+      "value": [],
+      "ok": true
+    },
+    {
+      "job": "ow_tp_p2_finance_close",
+      "check": "await_silver_runs_ow_tp_p2_custbill_ingest",
+      "value": "935996008367305",
       "ok": true
     }
   ],

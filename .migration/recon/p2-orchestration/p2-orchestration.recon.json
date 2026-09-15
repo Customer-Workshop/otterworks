@@ -29,7 +29,7 @@
       "actual": "pass",
       "result": "pass",
       "source_of_truth": "jobs.get task settings",
-      "evidence": "Every task on both jobs: max_retries 2, min_retry_interval_millis 300000, retry_on_timeout true, job timeout_seconds 3600. The legacy swallowed every stage failure with `|| true`; a failed task now fails the run after its retries."
+      "evidence": "Every task that can carry one: max_retries 2, min_retry_interval_millis 300000, retry_on_timeout true, job timeout_seconds 3600. The legacy swallowed every stage failure with `|| true`; a failed task now fails the run after its retries. The one exception is the close's await_silver, a run_job_task: Databricks does not apply a task-level retry policy to a run_job_task, and the tasks inside the ingest job it runs carry their own, so the retry is not lost, it moves one level down."
     },
     {
       "id": "concurrency_control",
@@ -37,7 +37,15 @@
       "actual": "pass",
       "result": "pass",
       "source_of_truth": "jobs.get",
-      "evidence": "max_concurrent_runs 1 on both jobs, and queue.enabled true so a late ingest delays the close instead of cancelling it. This replaces the three /tmp lock files the legacy created, never removed, and never checked for mutual exclusion; the `*/15` ingest could overlap its own previous run and no longer can."
+      "evidence": "max_concurrent_runs 1 on both jobs, and queue.enabled true so a late run waits instead of being dropped. This replaces the three /tmp lock files the legacy created, never removed, and never checked for mutual exclusion; the `*/15` ingest could overlap its own previous run and no longer can."
+    },
+    {
+      "id": "cross_job_serialization_on_the_shared_pipeline",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "measured: ingest run 269028756207521 and close run 12075816226477, started 10 seconds apart on purpose",
+      "evidence": "An earlier shape had both jobs start the shared pipeline directly. A pipeline allows one active update, so with an ingest update in flight the close's await_silver failed in about 20 seconds with 'Pipeline update already in progress' and export_csv_xls was skipped: a late ingest at 02:10 would have failed the close. queue.enabled does not prevent this, because it is per job and these are two jobs. Fixed by making await_silver a run_job_task that runs ow_tp_p2_custbill_ingest, so the ingest job's own max_concurrent_runs 1 plus its queue is the single serialization point. Re-measured on the deployed shape: land_files SUCCESS, custbill_pipeline SUCCESS, await_silver waited about 4 minutes for the ingest run to terminate and then succeeded, export_csv_xls SUCCESS, close run SUCCESS. The close also gets fresh silver and gold, since one pipeline update materializes silver, gold and the trailer audit together."
     },
     {
       "id": "no_live_schedule_from_a_migration_session",
@@ -69,7 +77,7 @@
       "actual": "pass",
       "result": "pass",
       "source_of_truth": "fingerprint_silver.py against ow_tp.silver via the migration warehouse, after the orchestrated run",
-      "evidence": "silver 116 rows / 5 files / md5 115f7e40240d7529b6bc48ec0a922ccd, quarantine 15 / 3 / cde9f90726dcbf5300535477ccdfea66, trailer_audit 6 / 6 / c286f2cd16e1168b779e31521c768835 - identical to the wave-2 fingerprints. land_files skipped all six inputs as byte-identical and published nothing, and the pipeline update changed no row. The close job was also rerun end to end and both exports are still 321 bytes / md5 de118d0223bb3a77fd83973a625fed8d."
+      "evidence": "Re-measured after the cross-job probe ran the whole chain twice more: silver 116 rows / 5 files / md5 115f7e40240d7529b6bc48ec0a922ccd, quarantine 15 / 3 / cde9f90726dcbf5300535477ccdfea66, trailer_audit 6 / 6 / c286f2cd16e1168b779e31521c768835 - identical to the wave-2 fingerprints. land_files skipped all six inputs as byte-identical and published nothing, and the pipeline update changed no row. The close job was also rerun end to end and both exports are still 321 bytes / md5 de118d0223bb3a77fd83973a625fed8d."
     }
   ],
   "values_recomputed_from_target": true,
@@ -79,11 +87,13 @@
     "evidence": "Run 785229779815979 of the ingest job is itself the rerun: the same six files were already landed by wave 1, so the run re-executed the whole chain and left every fingerprint unchanged."
   },
   "deviations_from_the_wave_manifest": [
-    "The manifest sketched the close job as await_silver -> gold_close -> export_csv_xls plus trailer_audit. gold and trailer_audit are tables in the same Lakeflow pipeline as silver, so one pipeline update materializes all three; they cannot be separate job tasks without splitting the pipeline. The deployed graph is await_silver -> export_csv_xls, where await_silver is that pipeline update. The ordering the sleeps used to fake is preserved, and the export still cannot run before gold exists."
+    "The manifest sketched the close job as await_silver -> gold_close -> export_csv_xls plus trailer_audit. gold and trailer_audit are tables in the same Lakeflow pipeline as silver, so one pipeline update materializes all three; they cannot be separate job tasks without splitting the pipeline. The deployed graph is await_silver -> export_csv_xls, where await_silver runs the ingest job, whose own task runs that pipeline update. The ordering the sleeps used to fake is preserved, and the export still cannot run before gold exists."
   ],
   "unverified_paths": [
     "P2-D01, the landing race, is a named behaviour change, not a defect fix: the legacy parse could read a half-written .dat because it ran on a 5-minute timer behind a 1-second double-stat. The target lands atomically and makes parse a dependency edge, so it cannot. Not exercisable against pinned fixtures - it needs a producer raced mid-write.",
     "Retries and failure notification are configured, not exercised: no task was made to fail on purpose in this wave, so the retry path and the on_failure delivery are unproven. The destination is empty by design, so on_failure delivers nothing today whatever happens.",
+    "The close's 3600-second timeout is not sized against production ingest volumes. await_silver waits for the ingest job and that wait counts against the close's own timeout, so a long ingest, or a queue of them, could exhaust it and produce no export for the day. Against the pinned fixtures an ingest run is minutes and the measured wait was about 4, so it was never near the limit; the number must be re-sized at cutover against a real drop.",
+    "The close's await_silver carries no retry policy, because Databricks does not apply one to a run_job_task. If the ingest job fails after its own task retries, the close fails rather than retrying the ingest a second time - which is the wanted behaviour, but it is a configuration choice, not something exercised here.",
     "The schedules are PAUSED, so the quartz expressions are verified as configuration, not by observing a timed fire.",
     "P2-D04, timezone: UTC is proposed, not decided. It also sets the date stamp in the export filename, so a different answer changes that name.",
     "P2-D05: no replacement exists for the Sunday 06:00 run_all.sh re-run. Not created on purpose; it is a STOP E question.",

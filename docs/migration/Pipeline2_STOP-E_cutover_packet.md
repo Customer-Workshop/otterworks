@@ -14,14 +14,18 @@ are PAUSED. Cutover needs the customer-held cutover principal and an explicit re
 
 ## 1. What is being asked
 
-Four decisions. Only the first two need answering before anything can be scheduled.
+Four decisions. All four now carry a **parent-default answer, pending customer confirmation**:
+the engagement parent chose them so the build could be finished and parked, and they are
+recorded as defaults, not as customer decisions. **The customer holds the cutover principal**,
+so none of them takes effect until the customer confirms them and authorizes cutover
+separately. Only the first two need answering before anything can be scheduled.
 
-| # | Decision | Recommendation |
+| # | Decision | Parent default (pending customer confirmation) |
 |---|---|---|
-| **D3-01** | Does `MVSPROD` job `CB77340` keep dropping `CUSTBILL*.dat` on the SFTP server, or is it repointed at the governed volume `/Volumes/ow_tp/bronze/landing/custbill/`? | Keep the SFTP drop at first and land from it, so the upstream mainframe job is not changed on cutover day. Repoint later as a separate, reversible change. |
-| **D4-01** | The close was mailed through a sendmail pipe that has been dead for years. Confirm the replacement: the governed gold table plus the byte-compatible file export, and the job's own failure notification instead of mail. | Confirm as built. If a human consumer surfaces later they get the gold table or the volume export — not a revived mail pipe. Give the `on_failure` destination a real value at cutover; it is empty today on purpose. |
-| **P2-D05** | The Sunday 06:00 `run_all.sh` re-run has no replacement. Drop it, or recreate it? | Drop it. It re-emitted the same totals under a new filename; the every-15-minutes ingest and the 02:10 close already cover the work. |
-| **P2-D04** | Timezone for both schedules. UTC is proposed. It also sets the date stamp in the export filename. | Confirm UTC, unless finance reads the close by local business date — in which case name the timezone and the filename convention together, because they are the same decision. |
+| **D3-01** | Does `MVSPROD` job `CB77340` keep dropping `CUSTBILL*.dat` on the SFTP server, or is it repointed at the governed volume `/Volumes/ow_tp/bronze/landing/custbill/`? | **Keep the SFTP drop for now.** The target lands from it, so the upstream mainframe job is not changed on cutover day. A repoint stays available later as a separate, reversible change. |
+| **D4-01** | The close was mailed through a sendmail pipe that has been dead for years. Confirm the replacement: the governed gold table plus the byte-compatible file export, and the job's own failure notification instead of mail. | **Confirmed as built.** If a human consumer surfaces later they get the gold table or the volume export — not a revived mail pipe. The `on_failure` destination still needs a real value at cutover; it is empty today on purpose. |
+| **P2-D05** | The Sunday 06:00 `run_all.sh` re-run has no replacement. Drop it, or recreate it? | **Dropped.** It re-emitted the same totals under a new filename; the every-15-minutes ingest and the 02:10 close already cover the work. Nothing recreates it today. |
+| **P2-D04** | Timezone for both schedules. It also sets the date stamp in the export filename. | **UTC.** If finance reads the close by local business date, this is the one to revisit, because the timezone and the export filename convention are the same decision. |
 
 ---
 
@@ -35,13 +39,19 @@ Four decisions. Only the first two need answering before anything can be schedul
 | 1 | `p2-sftp-ingest` | `jobs/sftp_ingest_poll.ksh` | official **PASS**, live, full depth | #1603 |
 | 2 | `p2-custbill-parse` | `jobs/parse_custbill_fixedwidth.sh` | official **PASS**, live, full depth | #1606, #1607 |
 | 3 | `p2-finance-close` | `jobs/finance_excel_report.pl` | official **PASS**, live, full depth | #1608, #1609 |
-| 4 | `p2-orchestration` | `run_all.sh` + the CUSTBILL cron entries | structural **PASS** (20 checks) | #1610 |
+| 4 | `p2-orchestration` | `run_all.sh` + the CUSTBILL cron entries | structural **PASS** (24 checks) | #1610, #1613 |
 
 Unlike pipeline 1, these are **official harness verdicts** with `merge_eligible=true`: the
 source here is files on disk, so the harness's Oracle-adapter limitation does not apply.
 Money is exact, row counts exact, dates ISO-canonicalized, anomalies compared as sets, and
 every result was recomputed from the target rather than from the artifact that produced it.
 Idempotency was proven by an actual rerun in every wave.
+
+One fix after wave 4 closed (#1613): both jobs used to start the shared pipeline directly,
+and a pipeline allows one active update, so an ingest still running at 02:10 failed the close
+with "Pipeline update already in progress" — reproduced in the workspace. The close now runs
+the ingest job instead, so a late ingest delays the close rather than failing it; also proven
+by running both at once.
 
 What the target looks like today:
 
@@ -81,7 +91,8 @@ gap is exactly the empty-customer rows the Perl also skips. No expectation drops
 One legacy defect is now **visible** rather than silent: `CUSTBILL_PROBE_001.dat` declares a
 trailer of 15 and parses 14, because a customer id beginning `HDR` is deleted as a header
 line. The target loses the same record — identical output — and reports the discrepancy in
-`custbill_trailer_audit`. Whether to fix that is a customer call, not a migration call.
+`custbill_trailer_audit`. Whether to fix that is a customer call, not a migration call — it is
+tracked as **P2-BEH-02** in §4.
 
 ---
 
@@ -89,9 +100,10 @@ line. The target loses the same record — identical output — and reports the 
 
 | id | Change | Status |
 |---|---|---|
-| **P2-D01** | **The landing race is gone.** The legacy ingest checked file stability with a 1-second double-stat and the parse ran on a timer 5 minutes later, so it could read a half-written `.dat` and produce a close from it. The target lands atomically and makes the parse a dependency edge, so it cannot. | Accepted at STOP C. **Not testable** — it needs a producer raced mid-write, which pinned fixtures cannot do. If any downstream number ever depended on a partial read, it will now differ. |
+| **P2-D01** | **The landing race is gone.** The legacy ingest checked file stability with a 1-second double-stat and the parse ran on a timer 5 minutes later, so it could read a half-written `.dat` and produce a close from it. The target lands atomically and makes the parse a dependency edge, so it cannot. | **Customer owns this.** Accepted at STOP C as the one real behaviour change. **Not testable** — it needs a producer raced mid-write, which pinned fixtures cannot do. If any downstream number ever depended on a partial read, it will now differ, and only the customer can say whether one did. |
+| **P2-BEH-02** | **The `HDR`-prefix record loss in `CUSTBILL_PROBE_001`.** The legacy `sed` deletes every line starting `HDR`, so a customer id beginning `HDR` is deleted as if it were a header: the file declares a trailer of 15 and 14 records are parsed. The target loses the same record — the output is identical — and reports the gap in `ow_tp.bronze.custbill_trailer_audit`. | **Customer owns this.** Migration preserves the defect on purpose; whether to fix it, and what the corrected close would be worth, is a business call, not a migration call. Nothing changes until the customer asks. |
 | **P2-OPS-01** | No source file is deleted, no `/tmp` lock files are written, and a failed stage fails the run instead of being swallowed by `|| true`. | Accepted at STOP C. |
-| **D4-01** | sendmail is dropped; the job's `on_failure` notification replaces it. | Confirm at STOP E (§1). |
+| **D4-01** | sendmail is dropped; the job's `on_failure` notification replaces it. | Parent default, pending customer confirmation (§1). |
 
 ---
 
@@ -114,6 +126,12 @@ Stated plainly, because "all units passed" would be misleading:
   query for a Databricks-family source. 16 of 17 rows green.
 - Wall-clock columns (`parsed_at`, `quarantined_at`, `closed_at`) are excluded from the
   diffs and fingerprints as target-side values with no legacy counterpart.
+- **The close's 3600-second timeout is not sized against real ingest volumes.** The close now
+  waits for the ingest job (see §2), and that wait counts against its own timeout, so a long
+  ingest or a queue of them can in principle exhaust it and produce no export for the day.
+  Against the pinned fixtures an ingest run takes minutes, so it never came close; the real
+  drop is bigger. Measure a production-sized ingest at cutover and set the close timeout
+  above the worst-case wait plus one full ingest and export.
 
 ---
 
@@ -132,7 +150,12 @@ Stated plainly, because "all units passed" would be misleading:
 
 ## 7. Cutover sequence, once authorized
 
-1. Answer D3-01 and D4-01 (§1). Set `failure_webhooks` to a real notification destination.
+1. Confirm **all four** decisions in §1, not just the two blocking ones: D3-01 and D4-01 gate
+   the shape, and P2-D04 (timezone, which also sets the export date stamp) and P2-D05 (the
+   dropped Sunday re-run) take effect the moment the schedules are deployed and unpaused, so
+   a parent default must not become live without the customer saying so. Then set
+   `failure_webhooks` to a real notification destination, and size `timeout_seconds` on the
+   close against the real ingest duration (see §5).
 2. Deploy the bundle to a production target — that drops the development-mode `[dev ...]`
    name prefix, leaving `ow_tp_p2_custbill_ingest` and `ow_tp_p2_finance_close`.
 3. Run both jobs once by hand against the day's real drop and compare the export against the

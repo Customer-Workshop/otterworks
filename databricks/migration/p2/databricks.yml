@@ -61,10 +61,15 @@ resources:
         timezone_id: UTC
         pause_status: PAUSED
       # The legacy ingest overlaps its own previous run (incident 2016-03-12) and its
-      # /tmp lock file is checked but never removed, so it excludes nothing. A late run
-      # is skipped rather than stacked.
+      # /tmp lock file is checked but never removed, so it excludes nothing. Runs are
+      # serialized here instead.
       max_concurrent_runs: 1
       timeout_seconds: 3600
+      queue:
+        # With max_concurrent_runs: 1 this makes a run that arrives while another is
+        # in flight wait instead of being dropped, which is what lets the close job
+        # below queue behind a late ingest rather than collide with it.
+        enabled: true
       webhook_notifications:
         on_failure: ${var.failure_webhooks}
       tasks:
@@ -106,21 +111,23 @@ resources:
       max_concurrent_runs: 1
       timeout_seconds: 3600
       queue:
-        # A late ingest delays the close; it never cancels it.
         enabled: true
       webhook_notifications:
         on_failure: ${var.failure_webhooks}
       tasks:
-        # The schedule model lists gold_close and trailer_audit as separate tasks. Both
-        # are flows inside the declarative pipeline, so this one task materializes
-        # silver, gold and the trailer audit together; splitting them would mean running
-        # the same pipeline three times.
+        # The close runs the ingest job rather than the pipeline directly. Two jobs
+        # starting the same pipeline is not ordering: a pipeline allows one active
+        # update, so an ingest update still running at 02:10 made this task fail with
+        # "Pipeline update already in progress" (measured). Going through the ingest
+        # job means the ingest job's own max_concurrent_runs: 1 plus queue serializes
+        # them — a late ingest delays the close instead of failing it — and the close
+        # gets fresh silver and gold, since this one update materializes silver, gold
+        # and the trailer audit together.
         - task_key: await_silver
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.ow_tp_p2_custbill_ingest_parse.id}
-          max_retries: 2
-          min_retry_interval_millis: 300000
-          retry_on_timeout: true
+          run_job_task:
+            job_id: ${resources.jobs.ow_tp_p2_custbill_ingest.id}
+          # No retry block: Databricks ignores one on a run_job_task, and the tasks
+          # inside the ingest job carry their own.
         - task_key: export_csv_xls
           depends_on:
             - task_key: await_silver

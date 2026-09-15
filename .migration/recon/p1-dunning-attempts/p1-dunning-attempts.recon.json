@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "p1-dunning-attempts",
   "namespace": "demo",
-  "generated_at": "2026-09-15T08:56:34.432632+00:00",
+  "generated_at": "2026-09-15T10:32:10.872867+00:00",
   "run_mode": "live",
   "harness_run_mode": "transactional",
   "checks": [
@@ -67,7 +67,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "loader run at 2026-09-15T08:57:30.704872+00:00 and rerun at 2026-09-15T08:57:31.404681+00:00; target state identical: ow_tp.billing.dunning_attempts 1 rows, xxhash64 xor 3d0074925628fe396a184cd7cfd3039c"
+    "evidence": "loader run at 2026-09-15T10:32:47.874866+00:00 and rerun at 2026-09-15T10:32:51.731209+00:00; target state identical: ow_tp.billing.dunning_attempts 1 rows, xxhash64 xor 3d0074925628fe396a184cd7cfd3039c"
   },
   "planted_anomaly_detections": {
     "expected_set": [],

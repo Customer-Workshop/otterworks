@@ -9,8 +9,8 @@
 - Tolerance version: `v1`
 - Seed: `0`
 - Tier 3 depth: `full`
-- Generated: 2026-09-15T08:56:34.432632+00:00
-- Cost: `{"source_statements": 15, "source_rows_fetched": 5, "target_statements": 12, "target_rows_fetched": 4, "elapsed_s": 1.174}`
+- Generated: 2026-09-15T10:32:10.872867+00:00
+- Cost: `{"source_statements": 15, "source_rows_fetched": 5, "target_statements": 12, "target_rows_fetched": 4, "elapsed_s": 1.184}`
 - **WARNING: UNVERIFIED schema_parity: dunning_attempts: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed**
 
 | Tier | Name | Checks | Result |

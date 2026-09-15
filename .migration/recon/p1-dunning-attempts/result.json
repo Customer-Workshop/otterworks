@@ -12,9 +12,9 @@
     "source_rows_fetched": 5,
     "target_statements": 12,
     "target_rows_fetched": 4,
-    "elapsed_s": 1.174
+    "elapsed_s": 1.184
   },
-  "generated_at": "2026-09-15T08:56:34.432632+00:00",
+  "generated_at": "2026-09-15T10:32:10.872867+00:00",
   "tiers": [
     {
       "tier": 0,

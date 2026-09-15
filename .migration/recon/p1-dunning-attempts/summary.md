@@ -12,7 +12,9 @@ is `recon.summary.md`.
   (`--mode transactional --depth full --seed 0`).
 - Tiers 0–3 and 5–6 PASS. Tiers 5–7 constraint, index and identity parity on the **source**
   side are **unverified**: the JDBC adapter reads no constraint metadata under
-  `d10_01_denied`. That is a property of the route, not of this unit.
+  `d10_01_denied`. That is a property of the route, not of this unit. The two foreign keys
+  below were therefore read from Oracle's `ALL_CONSTRAINTS` directly and checked back off
+  Lakebase with `pg_get_constraintdef`, outside the harness.
 - Idempotency: the load ran twice against the same source; `load_digest_run1.json` and
   `load_digest_run2.json` (row count plus an order-independent content hash, read back off
   Lakebase) are identical apart from run id and timestamp.
@@ -28,8 +30,17 @@ is `recon.summary.md`.
   the scheduler's `MAX(attempt_no)+1` is what actually depends on it: without the
   constraint, a concurrent run would duplicate an attempt number instead of failing — and
   that failure is the one `WHEN OTHERS THEN NULL` swallows (P1-D2).
-- No foreign keys to `tenants` or `invoices`: orphan rows are reproduced, not cleaned
-  (D8-01).
+- Both Oracle foreign keys are recreated under their source names:
+  `fk_da_tenant (tenant_id) -> billing.tenants(id)` and
+  `fk_da_invoice (invoice_id) -> billing.invoices(id)`. Oracle's `ALL_CONSTRAINTS` gives
+  `DELETE_RULE = 'NO ACTION'`, `NOT DEFERRABLE`, `IMMEDIATE`, `VALIDATED` for both, and
+  Oracle has no `ON UPDATE` clause, so neither key carries a delete or update action here.
+  An earlier revision left them out on a D8-01 reading; that was wrong. D8-01 reproduces
+  orphan rows that exist in the source, and both keys are enabled and validated on Oracle,
+  so no orphan can exist to reproduce. Confirmed on the target before the keys were added:
+  zero rows in `billing.dunning_attempts` fail either reference.
+- The DDL is rerunnable: each key is added inside a `DO` block guarded on `pg_constraint`,
+  because Postgres has no `ADD CONSTRAINT IF NOT EXISTS` (P1-D6).
 - Status codes stay magic numbers (10 scheduled, 20 sent, 30 skipped).
 
 ## Evidence

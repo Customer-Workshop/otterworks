@@ -2,8 +2,13 @@
   "unit": "p3-orchestration",
   "reason": "Wave-3 orchestration unit: the Lakeflow Jobs that replace the pipeline-3 cron rows and the analytics-service CronJob. It moves no data of its own - every row it produces is produced by the units reconciled in waves 1 and 2. Its evidence is the job graph (task dependency edges and run_job_task instead of time offsets), retry placement on the owning job's tasks, max_concurrent_runs 1, and schedules created PAUSED.",
   "evidence": [
+    "docs/migration/Pipeline3_schedule_model.md",
     "docs/migration/Pipeline3_analytics_plan.md",
-    "databricks/migration/p2/databricks.yml"
+    "databricks/migration/p3/databricks.yml",
+    "databricks/migration/p2/databricks.yml",
+    ".migration/waves/p3-wave-3.json"
   ],
-  "declared_at": "p3 wave 0"
+  "declared_at": "p3 wave 0",
+  "closed_at": "p3 wave 3",
+  "verified": "The five deployed jobs were read back from the Jobs API: all PAUSED, max_concurrent_runs 1, queueing on, zero cluster definitions, retries on every working task and none asserted on the run_job_task. The table is in Pipeline3_schedule_model.md section 4."
 }

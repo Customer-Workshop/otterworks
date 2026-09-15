@@ -1,0 +1,421 @@
+{
+  "ow_tp_p3_analytics_daily": {
+    "cron": "0 0 2 * * ?",
+    "deployed_name": "[dev dhrov_spa] ow_tp_p3_analytics_daily",
+    "job_clusters": 0,
+    "job_id": 778915537808125,
+    "max_concurrent_runs": 1,
+    "pause_status": "PAUSED",
+    "queue": true,
+    "tasks": {
+      "create_tables": {
+        "depends_on": [
+          "land_events"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "land_events": {
+        "depends_on": [],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_gold_hourly": {
+        "depends_on": [
+          "load_silver"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_gold_summary": {
+        "depends_on": [
+          "load_silver"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_gold_top_user_actions": {
+        "depends_on": [
+          "load_gold_top_users"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_gold_top_users": {
+        "depends_on": [
+          "load_silver"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_silver": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "publish_summary": {
+        "depends_on": [
+          "load_gold_summary"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      }
+    },
+    "timeout_seconds": 3600,
+    "timezone_id": "UTC"
+  },
+  "ow_tp_p3_audit_archive_weekly": {
+    "cron": "0 0 3 ? * SUN",
+    "deployed_name": "[dev dhrov_spa] ow_tp_p3_audit_archive_weekly",
+    "job_clusters": 0,
+    "job_id": 140428076341004,
+    "max_concurrent_runs": 1,
+    "pause_status": "PAUSED",
+    "queue": true,
+    "tasks": {
+      "archive_events": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "create_tables": {
+        "depends_on": [
+          "land_audit_events"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "land_audit_events": {
+        "depends_on": [],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "report_run": {
+        "depends_on": [
+          "write_compliance_report"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "write_compliance_report": {
+        "depends_on": [
+          "archive_events"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      }
+    },
+    "timeout_seconds": 3600,
+    "timezone_id": "UTC"
+  },
+  "ow_tp_p3_storage_cleanup_daily": {
+    "cron": "0 30 2 * * ?",
+    "deployed_name": "[dev dhrov_spa] ow_tp_p3_storage_cleanup_daily",
+    "job_clusters": 0,
+    "job_id": 863882777394437,
+    "max_concurrent_runs": 1,
+    "pause_status": "PAUSED",
+    "queue": true,
+    "tasks": {
+      "compute_candidates": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "create_tables": {
+        "depends_on": [
+          "land_inventory"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "land_inventory": {
+        "depends_on": [],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "report_candidates": {
+        "depends_on": [
+          "compute_candidates"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      }
+    },
+    "timeout_seconds": 3600,
+    "timezone_id": "UTC"
+  },
+  "ow_tp_p3_usage_rollup_daily": {
+    "cron": "0 0 2 * * ?",
+    "deployed_name": "[dev dhrov_spa] ow_tp_p3_usage_rollup_daily",
+    "job_clusters": 0,
+    "job_id": 764058897553695,
+    "max_concurrent_runs": 1,
+    "pause_status": "PAUSED",
+    "queue": true,
+    "tasks": {
+      "create_tables": {
+        "depends_on": [
+          "land_usage_events"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "land_usage_events": {
+        "depends_on": [],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_gold_usage_rollup": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      }
+    },
+    "timeout_seconds": 3600,
+    "timezone_id": "UTC"
+  },
+  "ow_tp_p3_user_activity_daily": {
+    "cron": "0 0 5 * * ?",
+    "deployed_name": "[dev dhrov_spa] ow_tp_p3_user_activity_daily",
+    "job_clusters": 0,
+    "job_id": 625582203540130,
+    "max_concurrent_runs": 1,
+    "pause_status": "PAUSED",
+    "queue": true,
+    "tasks": {
+      "create_tables": {
+        "depends_on": [
+          "upstream_analytics_daily"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_report": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_report_days": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_user_actions": {
+        "depends_on": [
+          "load_user_summary"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "load_user_summary": {
+        "depends_on": [
+          "create_tables"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "upstream_analytics_daily": {
+        "depends_on": [],
+        "environment_key": null,
+        "existing_cluster_id": null,
+        "kind": "run_job_task",
+        "max_retries": null,
+        "min_retry_interval_millis": null,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": null,
+        "target_job_id": 778915537808125
+      }
+    },
+    "timeout_seconds": 3600,
+    "timezone_id": "UTC"
+  }
+}

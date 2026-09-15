@@ -1,0 +1,43 @@
+{
+  "wave": 3,
+  "pipeline": "p3",
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "width": 1,
+  "execution": "in-session. Orchestration is one unit: it moves no data, so there is nothing to fan out and nothing to reconcile.",
+  "auto_merge": false,
+  "verify_depth": "none",
+  "why_no_recon": "p3-orchestration writes no table. Its evidence is the deployed job graph read back from the workspace API, recorded in docs/migration/Pipeline3_schedule_model.md, not a row comparison.",
+  "base_branch": "tp-run/databricks-20260915T045714Z",
+  "unit": "p3-orchestration",
+  "artifact": ".migration/units/p3-orchestration/no_data_movement.json",
+  "scope": [
+    "every pipeline-3 schedule converted from etl/crontab and the analytics-service Helm CronJob",
+    "the dependency edges between the five jobs",
+    "retry, concurrency, queueing and timeout settings",
+    "the schedule-model document pipeline 3 inherits from pipeline 2"
+  ],
+  "invariants": {
+    "paused": "Every schedule is PAUSED in the resource definition and again by the target's trigger_pause_status preset. Verified against the deployed jobs, not just the YAML.",
+    "no_clusters": "No job_clusters, no new_cluster, no existing_cluster_id, no spark_jar_task. Every executable task runs on the serverless environment.",
+    "one_starter_per_pipeline": "Pipeline 3 defines no Lakeflow pipeline at all, so no two jobs can start the same pipeline update. Where one job needs another's output it uses run_job_task on the owning job (user_activity -> analytics_daily), which queues behind the owner instead of racing it.",
+    "retries_on_owning_tasks": "max_retries/min_retry_interval_millis/retry_on_timeout sit on the tasks that do the work. Nothing is asserted on the run_job_task, because Databricks drops task-level retry policy there.",
+    "no_production_target": "The bundle has one target, migration. There is no prod or production target to deploy by accident.",
+    "on_violation": "A halt reported to the parent, never reconciled around."
+  },
+  "deployed_evidence": {
+    "read_back_at": "2026-09-15",
+    "jobs": {
+      "ow_tp_p3_analytics_daily": {"cron": "0 0 2 * * ?", "pause_status": "PAUSED", "max_concurrent_runs": 1, "queue": true, "job_clusters": 0, "tasks": 8, "tasks_with_retries": 8},
+      "ow_tp_p3_storage_cleanup_daily": {"cron": "0 30 2 * * ?", "pause_status": "PAUSED", "max_concurrent_runs": 1, "queue": true, "job_clusters": 0, "tasks": 4, "tasks_with_retries": 4},
+      "ow_tp_p3_audit_archive_weekly": {"cron": "0 0 3 ? * SUN", "pause_status": "PAUSED", "max_concurrent_runs": 1, "queue": true, "job_clusters": 0, "tasks": 5, "tasks_with_retries": 5},
+      "ow_tp_p3_usage_rollup_daily": {"cron": "0 0 2 * * ?", "pause_status": "PAUSED", "max_concurrent_runs": 1, "queue": true, "job_clusters": 0, "tasks": 3, "tasks_with_retries": 3},
+      "ow_tp_p3_user_activity_daily": {"cron": "0 0 5 * * ?", "pause_status": "PAUSED", "max_concurrent_runs": 1, "queue": true, "job_clusters": 0, "tasks": 6, "tasks_with_retries": 5, "run_job_tasks": 1}
+    },
+    "no_job_for": "search_reindex_weekly.py (P3-D05, declared coverage gap, deliberately absent)"
+  },
+  "stop_e_inputs": [
+    "Sunday 04:00 search_reindex_weekly.py has no converted schedule: the job stays service-side and its schedule stays where it is.",
+    "The usage rollup's nightly 02:00 Helm CronJob is converted, but nothing in this estate consumes its output (F-0.6). Whether it should run at all is a user question.",
+    "Every schedule is PAUSED. Activating them is a cutover action with the customer's principal, never a child session's."
+  ]
+}

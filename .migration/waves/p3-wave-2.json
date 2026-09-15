@@ -1,0 +1,74 @@
+{
+  "wave": 2,
+  "pipeline": "p3",
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "width": 1,
+  "execution": "in-session, sequential. The migration-fanout workflow refuses to launch while factory-doctor reports ready=false (P3-D09), and the doctor's source_principal_read_only row cannot go green for a databricks-family source. Wave 1 ran the same way.",
+  "breaker_threshold": 3,
+  "auto_merge": false,
+  "verify_depth": "full",
+  "capabilities": {
+    "identity": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": ["ow_tp"],
+    "guard_mode": "block",
+    "stop_mode": "soft",
+    "ready": false,
+    "not_ready_reason": "source_principal_read_only unverified: the doctor implements privilege queries for SQL Server and Postgres only (P3-D09)"
+  },
+  "source": {
+    "family": "databricks",
+    "secret": "DATABRICKS_MIGRATION_SQL",
+    "params": {"source_schema": "bronze"}
+  },
+  "base_branch": "tp-run/databricks-20260915T045714Z",
+  "batches": [
+    {
+      "id": "p3-w2-a",
+      "units": ["p3-user-activity"],
+      "write_targets": [
+        "ow_tp.bronze.p3_user_activity_legacy_report",
+        "ow_tp.bronze.p3_user_activity_legacy_days",
+        "ow_tp.bronze.p3_user_activity_legacy_users",
+        "ow_tp.bronze.p3_user_activity_legacy_user_actions",
+        "ow_tp.gold.user_activity_report",
+        "ow_tp.gold.user_activity_report_days",
+        "ow_tp.gold.user_activity_user_summary",
+        "ow_tp.gold.user_activity_user_actions"
+      ],
+      "runtime_writes": [],
+      "verify_depth": "full",
+      "reads": [
+        "ow_tp.gold.analytics_daily_summary",
+        "ow_tp.gold.analytics_daily_top_users",
+        "ow_tp.gold.analytics_daily_top_user_actions"
+      ],
+      "why_not_wave_1": "This is the only unit that reads another unit's output, so it could not run beside p3-analytics-daily.",
+      "pr": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1622",
+      "recon": ".migration/recon/p3-user-activity/",
+      "verdict": "PASS"
+    }
+  ],
+  "behaviour_changes": [
+    {
+      "id": "P3-D08",
+      "change": "run_date is an explicit job parameter. The legacy dates itself from datetime.utcnow() at start and has no backfill path.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": ["wave brief", "STOP E packet"]
+    },
+    {
+      "id": "target-shape",
+      "change": "The legacy read analytics_daily_summary from serving Postgres and the top-user files from S3. The target reads analytics-daily's migrated Delta output instead, so the dependency is a real job edge rather than a 3-hour offset between two cron lines.",
+      "approved": "STOP C (stated in the pipeline-3 plan's target shape, not a separate decision row)",
+      "testable": true,
+      "must_be_stated_in": ["wave brief", "STOP E packet"]
+    }
+  ],
+  "invariants": {
+    "no_deletion": "This unit deletes nothing outside its own report date, which every load rewrites with INSERT ... REPLACE WHERE.",
+    "secrets_by_name": "No literal from etl/config.ini appears in converted code, a log, an artefact or a PR body. This unit needs no credential at all: it reads Delta.",
+    "legacy_defects_preserved": "active_days counts ranked days not active days; 'unknown' ranks like a real user; a typeless record keeps the literal action key NaN; reporting_days counts rows found, not window length.",
+    "on_violation": "A halt reported to the parent, never reconciled around."
+  }
+}

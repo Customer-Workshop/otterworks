@@ -1,0 +1,54 @@
+{
+  "version": "map-u0-v1",
+  "unit": "U0_shared_core",
+  "tables": [
+    {
+      "source_table": "OW_BILLING.CODES",
+      "target_table": "codes",
+      "key": {"source": ["CODE_TYPE", "CODE_VAL"], "target": ["code_type", "code_val"]},
+      "fields": [
+        {"source": "CODE_TYPE", "target": "code_type", "source_type": "VARCHAR2(30)", "target_type": "VARCHAR(30)", "rules": ["empty_string_is_null"]},
+        {"source": "CODE_VAL", "target": "code_val", "source_type": "NUMBER(4)", "target_type": "SMALLINT", "rules": ["identity"]},
+        {"source": "CODE_DESC", "target": "code_desc", "source_type": "VARCHAR2(80)", "target_type": "VARCHAR(80)", "rules": ["empty_string_is_null"]}
+      ]
+    },
+    {
+      "source_table": "OW_BILLING.PLANS",
+      "target_table": "plans",
+      "key": {"source": ["ID"], "target": "id"},
+      "fields": [
+        {"source": "ID", "target": "id", "source_type": "VARCHAR2(36)", "target_type": "VARCHAR(36)", "rules": ["empty_string_is_null"]},
+        {"source": "CODE", "target": "code", "source_type": "VARCHAR2(50)", "target_type": "VARCHAR(50)", "rules": ["empty_string_is_null"]},
+        {"source": "TIER_CD", "target": "tier_cd", "source_type": "NUMBER(4)", "target_type": "SMALLINT", "rules": ["identity"]},
+        {"source": "MONTHLY_FEE", "target": "monthly_fee", "source_type": "NUMBER(12,2)", "target_type": "NUMERIC(12,2)", "rules": ["identity"]},
+        {"source": "INCLUDED_UNITS", "target": "included_units", "source_type": "NUMBER(10)", "target_type": "BIGINT", "rules": ["identity"]},
+        {"source": "OVERAGE_RATE", "target": "overage_rate", "source_type": "NUMBER(12,6)", "target_type": "NUMERIC(12,6)", "rules": ["identity"]},
+        {"source": "ACTIVE_YN", "target": "active_yn", "source_type": "CHAR(1)", "target_type": "CHAR(1)", "rules": ["rstrip_spaces", "empty_string_is_null"]}
+      ]
+    },
+    {
+      "source_table": "OW_BILLING.TENANTS",
+      "target_table": "tenants",
+      "key": {"source": ["ID"], "target": "id"},
+      "fields": [
+        {"source": "ID", "target": "id", "source_type": "VARCHAR2(36)", "target_type": "VARCHAR(36)", "rules": ["empty_string_is_null"]},
+        {"source": "NAME", "target": "name", "source_type": "VARCHAR2(200)", "target_type": "VARCHAR(200)", "rules": ["empty_string_is_null"]},
+        {"source": "TAX_EXEMPT_YN", "target": "tax_exempt_yn", "source_type": "CHAR(1)", "target_type": "CHAR(1)", "rules": ["rstrip_spaces", "empty_string_is_null"]},
+        {"source": "STATUS_CD", "target": "status_cd", "source_type": "NUMBER(4)", "target_type": "SMALLINT", "rules": ["identity"]}
+      ]
+    },
+    {
+      "source_table": "OW_BILLING.BILLING_AUDIT_LOG",
+      "target_table": "billing_audit_log",
+      "key": {"source": ["LOG_ID"], "target": "log_id"},
+      "identity": {"source": "LOG_ID", "target": "log_id"},
+      "watermark": {"source": "LOGGED_AT", "target": "logged_at", "unit": "datetime"},
+      "fields": [
+        {"source": "LOG_ID", "target": "log_id", "source_type": "NUMBER(12)", "target_type": "BIGINT", "rules": ["identity"]},
+        {"source": "LOGGED_AT", "target": "logged_at", "source_type": "DATE", "target_type": "TIMESTAMP(0)", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "MODULE", "target": "module", "source_type": "VARCHAR2(30)", "target_type": "VARCHAR(30)", "rules": ["empty_string_is_null"]},
+        {"source": "MESSAGE", "target": "message", "source_type": "VARCHAR2(4000)", "target_type": "VARCHAR(4000)", "rules": ["empty_string_is_null"]}
+      ]
+    }
+  ]
+}

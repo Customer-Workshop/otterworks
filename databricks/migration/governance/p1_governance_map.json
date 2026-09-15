@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "pipeline": "p1-invoicing",
+  "source_inventory": ".migration/08_governance_inventory.md",
+  "target_catalog": "ow_tp",
+  "target_lakebase": {"project": "ow-tp-billing", "database": "ow_tp", "schema": "billing"},
+  "rules": [
+    "PUBLIC grants are never auto-mapped; they are proposals for a named group.",
+    "Direct user grants map to a proposed group and stay flagged.",
+    "A source privilege that is unverifiable at the read-only access tier is a GAP, never an assumption.",
+    "Only rows with status APPROVED may appear in an executable script.",
+    "Production-catalog grants are a STOP E action and are absent from this map."
+  ],
+  "mappings": [
+    {
+      "id": "G-01",
+      "source": {"object": "OW_BILLING (schema)", "grantee": "PUBLIC", "privilege": "INHERIT PRIVILEGES", "evidence": "FACT(live) ALL_TAB_PRIVS"},
+      "target_statement": "GRANT USE SCHEMA ON SCHEMA ow_tp.silver TO `ow-tp-billing-readers`",
+      "status": "PROPOSED",
+      "rationale": "Oracle INHERIT PRIVILEGES on the owning schema is not a data-read grant. The only defensible target analogue is a named reader group; PUBLIC (Unity Catalog `account users`) is never auto-mapped.",
+      "owner": "engagement owner",
+      "blocks": "nothing before STOP E; required before any consumer reads ow_tp.silver"
+    },
+    {
+      "id": "G-02",
+      "source": {"object": "OW_BILLING 20 tables", "grantee": "OW_BILLING", "privilege": "OWNER (all objects)", "evidence": "FACT(live)+FACT(admin-probe)"},
+      "target_statement": "ALTER SCHEMA ow_tp.bronze OWNER TO `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d`; ALTER SCHEMA ow_tp.silver OWNER TO `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d`; ALTER SCHEMA ow_tp.gold OWNER TO `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d`",
+      "status": "GAP",
+      "rationale": "Schema ownership in the migration catalog is already held by the migration principal (factory-doctor analytical_target_grants ok). The durable owner after cutover is an application/service identity the engagement has not named.",
+      "owner": "engagement owner",
+      "blocks": "STOP E"
+    },
+    {
+      "id": "G-03",
+      "source": {"object": "OW_BILLING 20 tables", "grantee": "OW_BILLING_RO", "privilege": "SELECT", "evidence": "FACT(live) write probe ORA-01031"},
+      "target_statement": "GRANT SELECT ON SCHEMA ow_tp.silver TO `ow-tp-billing-readers`",
+      "status": "PROPOSED",
+      "rationale": "The read-only reader role maps cleanly to a read group on the analytical track. The group does not exist yet; creating account groups is an account-admin action outside the migration principal.",
+      "owner": "engagement owner (account admin)",
+      "blocks": "STOP E"
+    },
+    {
+      "id": "G-04",
+      "source": {"object": "database-wide", "grantee": "C##DBZUSER", "privilege": "LOGMINING, SELECT ANY TRANSACTION, SELECT ANY TABLE, FLASHBACK ANY TABLE, LOCK ANY TABLE, SET CONTAINER, CREATE SESSION, CREATE TABLE, CREATE SEQUENCE", "evidence": "FACT(admin-probe)"},
+      "target_statement": "(no Unity Catalog analogue) — capture credential stays an Oracle-side account read by Debezium from secret `ow-tp/oracle/dbzuser`",
+      "status": "GAP",
+      "rationale": "A capture account is a source-engine construct. Its target-side counterpart is the secret reference plus the pipeline's run-as identity, not a UC privilege.",
+      "owner": "parent (D10-03)",
+      "blocks": "U-27 only"
+    },
+    {
+      "id": "G-05",
+      "source": {"object": "roles / role membership", "grantee": "DBA_ROLES, DBA_ROLE_PRIVS", "privilege": "unreadable at read-only tier", "evidence": "UNVERIFIABLE"},
+      "target_statement": "(none)",
+      "status": "GAP",
+      "rationale": "Role membership cannot be read by OW_BILLING_RO. Recorded unverifiable rather than implied absent; closing it needs a one-off admin-credential read the user must authorize.",
+      "owner": "engagement owner",
+      "blocks": "a complete grant story before STOP E"
+    },
+    {
+      "id": "G-06",
+      "source": {"object": "masking / redaction policies", "grantee": "n/a", "privilege": "redaction-policy views unreadable", "evidence": "UNVERIFIABLE"},
+      "target_statement": "(none) — no UC masking function or row filter is created on assumption",
+      "status": "GAP",
+      "rationale": "No semantic match can be proven. Creating a mask that the source does not have is as wrong as dropping one it does.",
+      "owner": "engagement owner",
+      "blocks": "a complete grant story before STOP E"
+    },
+    {
+      "id": "G-07",
+      "source": {"object": "migration working targets", "grantee": "migration principal", "privilege": "n/a (target-side only)", "evidence": "FACT factory-doctor lakebase_target_grants + analytical_target_grants"},
+      "target_statement": "see databricks/migration/governance/p1_grants_approved.sql",
+      "status": "APPROVED",
+      "rationale": "Migration-catalog working grants for the migration principal inside ow_tp / Lakebase billing. Approved by the same STOP A/B decisions that created allowed_targets.json; executed once by the orchestrator, never by a child.",
+      "owner": "parent (this session, once)",
+      "blocks": "nothing"
+    },
+    {
+      "id": "G-08",
+      "source": {"object": "etl/config.ini", "grantee": "n/a", "privilege": "plaintext AWS keys, Postgres password, MeiliSearch key", "evidence": "FACT(repo) D7-01"},
+      "target_statement": "converted jobs reference secret scope `ow_tp` by name only",
+      "status": "GAP",
+      "rationale": "Rotating the exposed values is the customer's action; the migration only stops propagating them.",
+      "owner": "engagement owner",
+      "blocks": "pipeline 3, not pipeline 1"
+    }
+  ]
+}

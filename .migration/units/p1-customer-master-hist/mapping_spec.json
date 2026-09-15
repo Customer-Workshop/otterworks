@@ -1,0 +1,1537 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-customer-master-hist",
+  "track": "delta",
+  "generation": "legacy",
+  "tables": [
+    {
+      "object": "customer_master_hist",
+      "source_table": "OW_BILLING.customer_master_hist",
+      "target_table": "customer_master_hist",
+      "key": {
+        "source": [
+          "hist_id"
+        ],
+        "target": [
+          "hist_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "hist_id",
+          "target": "hist_id",
+          "source_type": "NUMBER(12)",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "hist_dt",
+          "target": "hist_dt",
+          "source_type": "VARCHAR2(20)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "hist_op",
+          "target": "hist_op",
+          "source_type": "VARCHAR2(3)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_id",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_seq_no",
+          "target": "cust_seq_no",
+          "source_type": "NUMBER(12)",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_no",
+          "target": "cust_no",
+          "source_type": "VARCHAR2(20)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_name",
+          "target": "cust_name",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_name_upper",
+          "target": "cust_name_upper",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "legal_name",
+          "target": "legal_name",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "dba_name",
+          "target": "dba_name",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "addr_line_1",
+          "target": "addr_line_1",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "addr_line_2",
+          "target": "addr_line_2",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "addr_line_3",
+          "target": "addr_line_3",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "addr_line_4",
+          "target": "addr_line_4",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "addr_line_5",
+          "target": "addr_line_5",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "addr_line_6",
+          "target": "addr_line_6",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "city",
+          "target": "city",
+          "source_type": "VARCHAR2(80)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "state_cd",
+          "target": "state_cd",
+          "source_type": "VARCHAR2(4)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "zip",
+          "target": "zip",
+          "source_type": "VARCHAR2(12)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "zip4",
+          "target": "zip4",
+          "source_type": "VARCHAR2(6)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "country_cd",
+          "target": "country_cd",
+          "source_type": "VARCHAR2(4)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_addr_line_1",
+          "target": "mail_addr_line_1",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_addr_line_2",
+          "target": "mail_addr_line_2",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_addr_line_3",
+          "target": "mail_addr_line_3",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_addr_line_4",
+          "target": "mail_addr_line_4",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_addr_line_5",
+          "target": "mail_addr_line_5",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_addr_line_6",
+          "target": "mail_addr_line_6",
+          "source_type": "VARCHAR2(120)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_city",
+          "target": "mail_city",
+          "source_type": "VARCHAR2(80)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_state_cd",
+          "target": "mail_state_cd",
+          "source_type": "VARCHAR2(4)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mail_zip",
+          "target": "mail_zip",
+          "source_type": "VARCHAR2(12)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "phone1",
+          "target": "phone1",
+          "source_type": "VARCHAR2(25)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "phone2",
+          "target": "phone2",
+          "source_type": "VARCHAR2(25)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "phone3",
+          "target": "phone3",
+          "source_type": "VARCHAR2(25)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "phone4",
+          "target": "phone4",
+          "source_type": "VARCHAR2(25)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "phone1_type_cd",
+          "target": "phone1_type_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "phone2_type_cd",
+          "target": "phone2_type_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "phone3_type_cd",
+          "target": "phone3_type_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "phone4_type_cd",
+          "target": "phone4_type_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "fax",
+          "target": "fax",
+          "source_type": "VARCHAR2(25)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "email_1",
+          "target": "email_1",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "email_2",
+          "target": "email_2",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "email_3",
+          "target": "email_3",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "signup_dt",
+          "target": "signup_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "last_activity_dt",
+          "target": "last_activity_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "last_invoice_dt",
+          "target": "last_invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "last_payment_dt",
+          "target": "last_payment_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "terminate_dt",
+          "target": "terminate_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "sub_status_cd",
+          "target": "sub_status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "cust_type_cd",
+          "target": "cust_type_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "segment_cd",
+          "target": "segment_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "region_cd",
+          "target": "region_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "territory_cd",
+          "target": "territory_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "channel_cd",
+          "target": "channel_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "rate_class_cd",
+          "target": "rate_class_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "tax_exempt_yn",
+          "target": "tax_exempt_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "credit_hold_yn",
+          "target": "credit_hold_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "dunning_exempt_yn",
+          "target": "dunning_exempt_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "vip_yn",
+          "target": "vip_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cur_bal_amt",
+          "target": "cur_bal_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "past_due_amt",
+          "target": "past_due_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "ytd_billed_amt",
+          "target": "ytd_billed_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "ltd_billed_amt",
+          "target": "ltd_billed_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "ytd_paid_amt",
+          "target": "ytd_paid_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "credit_limit_amt",
+          "target": "credit_limit_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "related_acct_ids",
+          "target": "related_acct_ids",
+          "source_type": "VARCHAR2(2000)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "child_acct_ids",
+          "target": "child_acct_ids",
+          "source_type": "VARCHAR2(2000)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "promo_codes_csv",
+          "target": "promo_codes_csv",
+          "source_type": "VARCHAR2(1000)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "contact_notes",
+          "target": "contact_notes",
+          "source_type": "VARCHAR2(4000)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "legacy_sys_key",
+          "target": "legacy_sys_key",
+          "source_type": "VARCHAR2(50)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "mainframe_acct_no",
+          "target": "mainframe_acct_no",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "conversion_batch_no",
+          "target": "conversion_batch_no",
+          "source_type": "NUMBER(8)",
+          "target_type": "INT",
+          "rules": []
+        },
+        {
+          "source": "flag_01",
+          "target": "flag_01",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_02",
+          "target": "flag_02",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_03",
+          "target": "flag_03",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_04",
+          "target": "flag_04",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_05",
+          "target": "flag_05",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_06",
+          "target": "flag_06",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_07",
+          "target": "flag_07",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_08",
+          "target": "flag_08",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_09",
+          "target": "flag_09",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_10",
+          "target": "flag_10",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_11",
+          "target": "flag_11",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_12",
+          "target": "flag_12",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_13",
+          "target": "flag_13",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_14",
+          "target": "flag_14",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_15",
+          "target": "flag_15",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_16",
+          "target": "flag_16",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_17",
+          "target": "flag_17",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_18",
+          "target": "flag_18",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_19",
+          "target": "flag_19",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "flag_20",
+          "target": "flag_20",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_01",
+          "target": "udf_01",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_02",
+          "target": "udf_02",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_03",
+          "target": "udf_03",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_04",
+          "target": "udf_04",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_05",
+          "target": "udf_05",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_06",
+          "target": "udf_06",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_07",
+          "target": "udf_07",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_08",
+          "target": "udf_08",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_09",
+          "target": "udf_09",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_10",
+          "target": "udf_10",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_11",
+          "target": "udf_11",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_12",
+          "target": "udf_12",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_13",
+          "target": "udf_13",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_14",
+          "target": "udf_14",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_15",
+          "target": "udf_15",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_16",
+          "target": "udf_16",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_17",
+          "target": "udf_17",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_18",
+          "target": "udf_18",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_19",
+          "target": "udf_19",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_20",
+          "target": "udf_20",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_21",
+          "target": "udf_21",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_22",
+          "target": "udf_22",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_23",
+          "target": "udf_23",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_24",
+          "target": "udf_24",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_25",
+          "target": "udf_25",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_26",
+          "target": "udf_26",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_27",
+          "target": "udf_27",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_28",
+          "target": "udf_28",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_29",
+          "target": "udf_29",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_30",
+          "target": "udf_30",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_31",
+          "target": "udf_31",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_32",
+          "target": "udf_32",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_33",
+          "target": "udf_33",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_34",
+          "target": "udf_34",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_35",
+          "target": "udf_35",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_36",
+          "target": "udf_36",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_37",
+          "target": "udf_37",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_38",
+          "target": "udf_38",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_39",
+          "target": "udf_39",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_40",
+          "target": "udf_40",
+          "source_type": "VARCHAR2(100)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_amt_01",
+          "target": "udf_amt_01",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_02",
+          "target": "udf_amt_02",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_03",
+          "target": "udf_amt_03",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_04",
+          "target": "udf_amt_04",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_05",
+          "target": "udf_amt_05",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_06",
+          "target": "udf_amt_06",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_07",
+          "target": "udf_amt_07",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_08",
+          "target": "udf_amt_08",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_09",
+          "target": "udf_amt_09",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_amt_10",
+          "target": "udf_amt_10",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "udf_dt_01",
+          "target": "udf_dt_01",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_02",
+          "target": "udf_dt_02",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_03",
+          "target": "udf_dt_03",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_04",
+          "target": "udf_dt_04",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_05",
+          "target": "udf_dt_05",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_06",
+          "target": "udf_dt_06",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_07",
+          "target": "udf_dt_07",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_08",
+          "target": "udf_dt_08",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_09",
+          "target": "udf_dt_09",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "udf_dt_10",
+          "target": "udf_dt_10",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "created_by",
+          "target": "created_by",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "created_dt",
+          "target": "created_dt",
+          "source_type": "DATE",
+          "target_type": "TIMESTAMP",
+          "rules": []
+        },
+        {
+          "source": "updated_by",
+          "target": "updated_by",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "updated_dt",
+          "target": "updated_dt",
+          "source_type": "DATE",
+          "target_type": "TIMESTAMP",
+          "rules": []
+        },
+        {
+          "source": "row_version_no",
+          "target": "row_version_no",
+          "source_type": "NUMBER(8)",
+          "target_type": "INT",
+          "rules": []
+        }
+      ],
+      "identity": {
+        "source": "hist_id",
+        "target": "hist_id"
+      }
+    }
+  ]
+}

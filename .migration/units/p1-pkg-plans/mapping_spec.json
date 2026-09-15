@@ -1,0 +1,82 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-pkg-plans",
+  "track": "lakebase",
+  "generation": "modern",
+  "behavioural": true,
+  "tables": [
+    {
+      "object": "subscriptions",
+      "source_table": "OW_BILLING.subscriptions",
+      "target_table": "subscriptions",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "plan_id",
+          "target": "plan_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "starts_on",
+          "target": "starts_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        },
+        {
+          "source": "ends_on",
+          "target": "ends_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        },
+        {
+          "source": "suspended_on",
+          "target": "suspended_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

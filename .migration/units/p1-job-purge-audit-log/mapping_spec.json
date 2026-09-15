@@ -1,0 +1,58 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-job-purge-audit-log",
+  "track": "delta",
+  "generation": "modern",
+  "behavioural": true,
+  "tables": [
+    {
+      "object": "billing_audit_log",
+      "source_table": "OW_BILLING.billing_audit_log",
+      "target_table": "billing_audit_log",
+      "key": {
+        "source": [
+          "log_id"
+        ],
+        "target": [
+          "log_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "log_id",
+          "target": "log_id",
+          "source_type": "NUMBER(12)",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "logged_at",
+          "target": "logged_at",
+          "source_type": "DATE",
+          "target_type": "TIMESTAMP",
+          "rules": []
+        },
+        {
+          "source": "module",
+          "target": "module",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "message",
+          "target": "message",
+          "source_type": "VARCHAR2(4000)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

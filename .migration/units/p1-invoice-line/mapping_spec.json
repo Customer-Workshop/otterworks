@@ -1,0 +1,210 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-invoice-line",
+  "track": "delta",
+  "generation": "legacy",
+  "tables": [
+    {
+      "object": "invoice_line",
+      "source_table": "OW_BILLING.invoice_line",
+      "target_table": "invoice_line",
+      "key": {
+        "source": [
+          "line_id"
+        ],
+        "target": [
+          "line_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "line_id",
+          "target": "line_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_no",
+          "target": "invoice_no",
+          "source_type": "VARCHAR2(30)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "invoice_id",
+          "target": "invoice_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_id",
+          "target": "cust_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_no",
+          "target": "cust_no",
+          "source_type": "VARCHAR2(20)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "cust_name",
+          "target": "cust_name",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "line_no",
+          "target": "line_no",
+          "source_type": "NUMBER(6)",
+          "target_type": "INT",
+          "rules": []
+        },
+        {
+          "source": "line_type_cd",
+          "target": "line_type_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "item_desc",
+          "target": "item_desc",
+          "source_type": "VARCHAR2(400)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "qty",
+          "target": "qty",
+          "source_type": "NUMBER(12,3)",
+          "target_type": "DECIMAL(12,3)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "unit_price",
+          "target": "unit_price",
+          "source_type": "NUMBER(14,4)",
+          "target_type": "DECIMAL(14,4)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "amount",
+          "target": "amount",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "tax_amt",
+          "target": "tax_amt",
+          "source_type": "NUMBER(14,2)",
+          "target_type": "DECIMAL(14,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "invoice_dt",
+          "target": "invoice_dt",
+          "source_type": "VARCHAR2(9)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "service_period",
+          "target": "service_period",
+          "source_type": "VARCHAR2(20)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "posted_yn",
+          "target": "posted_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "gl_acct_csv",
+          "target": "gl_acct_csv",
+          "source_type": "VARCHAR2(200)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "batch_no",
+          "target": "batch_no",
+          "source_type": "NUMBER(8)",
+          "target_type": "INT",
+          "rules": []
+        },
+        {
+          "source": "src_system",
+          "target": "src_system",
+          "source_type": "VARCHAR2(10)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

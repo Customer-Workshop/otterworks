@@ -1,0 +1,36 @@
+{
+  "unit": "p1-customer-master-hist",
+  "wave": 2,
+  "batch": "w2-d",
+  "depth": "full",
+  "mode": "live",
+  "rows": 0,
+  "row_counts": {
+    "OW_BILLING.customer_master_hist": 0
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "live",
+    "depth": "full",
+    "tier3_mode": {
+      "OW_BILLING.customer_master_hist": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 3,
+      "tier4": 0,
+      "total": 5
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 0,
+      "total": 4
+    },
+    "source_rows_fetched": 0,
+    "target_rows_fetched": 0,
+    "row_counts_known": true
+  }
+}

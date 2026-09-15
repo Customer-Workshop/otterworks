@@ -1,0 +1,26 @@
+[
+  {
+    "name": "fn_invoice_preview_all",
+    "object": "p1-pkg-invoicing",
+    "source_sql": "SELECT * FROM ow_billing_fed.ow_billing.v_invoice_preview_all ORDER BY tenant_id",
+    "target_sql": "SELECT * FROM billing.fn_invoice_preview_all() ORDER BY tenant_id",
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "fn_invoice_lines_all",
+    "object": "p1-pkg-invoicing",
+    "source_sql": "SELECT * FROM ow_billing_fed.ow_billing.v_invoice_lines_all ORDER BY invoice_id, line_no",
+    "target_sql": "SELECT * FROM billing.fn_invoice_lines_all() ORDER BY invoice_id, line_no",
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  }
+]

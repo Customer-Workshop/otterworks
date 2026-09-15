@@ -1,0 +1,85 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-plans",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "plans",
+      "source_table": "OW_BILLING.plans",
+      "target_table": "plans",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "code",
+          "target": "code",
+          "source_type": "VARCHAR2(50)",
+          "target_type": "varchar(50)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tier_cd",
+          "target": "tier_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "smallint",
+          "rules": []
+        },
+        {
+          "source": "monthly_fee",
+          "target": "monthly_fee",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "included_units",
+          "target": "included_units",
+          "source_type": "NUMBER(10)",
+          "target_type": "bigint",
+          "rules": []
+        },
+        {
+          "source": "overage_rate",
+          "target": "overage_rate",
+          "source_type": "NUMBER(12,6)",
+          "target_type": "numeric(12,6)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "active_yn",
+          "target": "active_yn",
+          "source_type": "CHAR(1)",
+          "target_type": "char(1)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

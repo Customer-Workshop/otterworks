@@ -57,7 +57,7 @@
     },
     {
       "data": {},
-      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__667fa3d3",
+      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__7649ec5b",
       "id": "hook_guard_functional",
       "status": "ok"
     },
@@ -158,8 +158,8 @@
     },
     {
       "data": {
-        "branch": "dbx-doctor-probe-b6e84a3e",
-        "parent_branch": "production",
+        "branch": "dbx-doctor-probe-0e6216e9",
+        "parent_branch": "mig-p1-w0",
         "project": "ow-tp-billing"
       },
       "detail": "branch created and deleted",
@@ -190,7 +190,7 @@
       "status": "ok"
     }
   ],
-  "generated_at": "2026-09-15T05:09:04Z",
+  "generated_at": "2026-09-15T05:23:31Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,

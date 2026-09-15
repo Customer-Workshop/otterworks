@@ -1,0 +1,65 @@
+{
+  "wave": 4,
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": "!dbx_unit_migration",
+  "verify_macro": "!dbx_data_reconciliation",
+  "width": 1,
+  "breaker_threshold": 3,
+  "auto_merge": false,
+  "child_minutes": 90,
+  "verify_depth": "sampled",
+  "cost_estimate": {
+    "source_statements": 17,
+    "target_statements": 11,
+    "source_rows_fetched": 2,
+    "target_rows_fetched": 1
+  },
+  "capabilities": {
+    "identity": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": [
+      "ow_tp"
+    ],
+    "guard_mode": "block",
+    "stop_mode": "soft",
+    "ready": true
+  },
+  "source": {
+    "family": "databricks",
+    "secret": "OW_BILLING_RO_DSN",
+    "params": {
+      "source_schema": "OW_BILLING"
+    }
+  },
+  "base_branch": "tp-run/databricks-20260915T045714Z",
+  "controls": {
+    "source_query_cap": 4,
+    "recon_rerun_cap": 3,
+    "review_round_cap": 3,
+    "breaker_class": "3 same-class failures halts the wave and escalates",
+    "lakebase_branch": "mig-p1-w4",
+    "lakebase_branch_lifecycle": "child branch mig-p1-w4 off mig-p1-w0 at wave start, dropped by the orchestrator at wave close; never the production branch",
+    "idempotency": "every converted load is re-runnable: truncate-and-load or MERGE on the declared key, no append-only inserts; recon reruns must not change target row counts",
+    "namespace_isolation": "a batch writes only its declared write_targets; DDL for a table belongs to exactly one unit, runtime writes by another unit are declared in its PR",
+    "fixture_vs_live": "children own fixture runs (make oracle-billing-up) and take exactly one live source read per unit; only a live/snapshot/transactional PASS is merge evidence, a fixture PASS never is",
+    "source_volume_assertions": {
+      "p1-job-nightly-dunning": {
+        "OW_BILLING.dunning_attempts": 1
+      }
+    }
+  },
+  "batches": [
+    {
+      "id": "w4-a",
+      "units": [
+        "p1-job-nightly-dunning"
+      ],
+      "write_targets": [
+        "ow_tp_p1_nightly_dunning"
+      ],
+      "verify_depth": "sampled",
+      "lakebase_branch": "mig-p1-w4",
+      "brief": "BATCH w4-a - wave 4 of the OtterWorks pipeline-1 migration (Oracle OW_BILLING -> Lakebase Postgres + Delta).\n\nUNITS\n  - p1-job-nightly-dunning: U-25 JOB_NIGHTLY_DUNNING (created PAUSED) (track lakebase, depth sampled)\n\nWHAT THIS BATCH IS\nU-25 JOB_NIGHTLY_DUNNING, serial and last, because it is the only unit that orchestrates the\nwhole converted chain: it calls pkg_dunning (w3-d), which reads invoices (w3-b) and rating\n(w3-a). Everything it calls is merged before you start; read it, do not re-convert it.\nDeliver the Lakeflow job `ow_tp_p1_nightly_dunning`, daily 02:00, **CREATED PAUSED**. Devin\nnever enables a schedule; enabling it is part of the user's STOP E cutover decision.\nThe Oracle scheduler jobs are DISABLED, so there is no live run to compare against: verify by\nrun-history equivalence on the fixture (one fixture run of the legacy job vs one run of the\nconverted job, same input state, same rows written) and state that gap plainly in summary.md\nand the PR. The data recon on billing.dunning_attempts is threshold/sampled only - the row\ncontract belongs to w3-d, and you must not re-write its tables.\n\nISOLATION\n  Lakebase: create child branch `mig-p1-w4` off `mig-p1-w0` at start, convert and\n  reconcile against it, and leave it for wave close (the orchestrator drops it).\n  DSN at runtime: `databricks postgres generate-database-credential \\\n    projects/ow-tp-billing/branches/mig-p1-w4/endpoints/primary` -> export as\n  OW_TP_LAKEBASE_DSN. 1-hour token, never stored, never printed.\n  Declared write targets (write nowhere else): ow_tp_p1_nightly_dunning\n  Evidence you may write under .migration/: only .migration/recon/<your unit>/\n\nREPO AND BRANCH\n  Repo github.com/Cognition-Partner-Workshops/otterworks; base branch for your PR: tp-run/databricks-20260915T045714Z.\n  Never target `main` or `tech-partnerships`. One PR per unit, child branch\n  `migrate/p1/<wave>-<unit>`. Run `mise trust` after cloning.\n  Pre-PR: the repo's `tp-pre-pr-self-check` skill and `make tp-smoke`.\n\nREAD FIRST (committed on the base branch, parent-owned, do not edit)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline1_invoicing_analysis.md  (the approved analysis: your unit's row)\n  docs/migration/Pipeline1_invoicing_plan.md      (this plan: dictionary, gate, decisions)\n  docs/migration/OtterWorks_target_state.md       (target layout and conventions)\n\nSOURCE (read-only, no exceptions)\n  Oracle AI DB 26ai Free 23.26.3.0.0, 52.201.36.9:1521/FREEPDB1, schema OW_BILLING.\n  Secret name only: ow-tp/oracle/ow_billing_ro (AWS Secrets Manager us-east-1; JSON keys\n  user/password/host/port/service - `user`, not `username`). Never print a value.\n  No DDL, no DML, no CDC enablement on Oracle. Develop against the fixture\n  (`make oracle-billing-up`, repo skill `oracle-billing-estate`); take exactly ONE live read\n  per unit inside the source query cap (4 concurrent source queries for the whole wave).\n\nTARGETS (the only writable places)\n  Unity Catalog `ow_tp` (bronze/silver/gold), volume /Volumes/ow_tp/bronze/landing,\n  jobs and pipelines named ow_tp_*, secret scope `ow_tp`.\n  Lakebase project ow-tp-billing, database ow_tp, schema billing, on YOUR wave branch\n  (below). Never the `production` branch, never project loan-servicing-migration.\n  Warehouse 565cd2fd713738c4. Never create a cluster.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding: report status=BLOCKED, never route around it.\n\nCONVERSION RULES THAT ARE NOT NEGOTIABLE (from the approved analysis)\n  - Money is numeric(p,s)/DECIMAL(p,s), never float. Status codes stay magic numbers.\n  - The 37 `DD-MON-YY` string-date columns are migrated RAW (varchar/STRING, byte-exact)\n    plus a parsed date column for consumers. `f_str2dt` returns NULL on a bad date; that\n    NULL is the legacy behaviour and belongs in the declared anomaly set, not a fix.\n  - Oracle DATE keeps its time part (timestamp(0)/TIMESTAMP). Source has no zone; UTC is\n    assumed and declared (plan decision P1-D3) - if parity breaks, report it, do not retune.\n  - CHAR(1) Y/N stays char(1). Comma-separated id lists stay verbatim text.\n  - Orphan rows and malformed strings are reproduced, not cleaned (D8-01).\n  - Swallowed exceptions (`WHEN OTHERS THEN NULL`) are reproduced as observable behaviour\n    (plan decision P1-D2). Do not \"fix\" them.\n  - Package-global state becomes an explicit parameter or state row, never an implicit\n    session global (plan decision P1-D4).\n  - Every mapping names which invoice generation it covers (D9-01): modern\n    INVOICES/INVOICE_LINES (Lakebase) are NOT legacy INVOICE_HEADER/INVOICE_LINE (Delta).\n  - Every schedule you create lands PAUSED.\n\nRECON GATE (the only merge authority)\n  Official harness only: `dbx-recon`. No hand-written comparison SQL, ever.\n  Fixture first (mode=fixture, never merge evidence), then exactly one merge-evidence run.\n  Cap: 3 full recon runs; on the third failure stop and report status=FAIL with a short\n  failure_class. Evidence goes to .migration/recon/<unit_id>/ (summary.md + result.json) and\n  into the PR body. The exact command for each of your units is below.\n  Source side reads Oracle through Lakehouse Federation as `--family databricks`\n  (`--family oracle` is an untested adapter and the CLI refuses it). Federation needs\n  D10-01 (port 1521 open to the Databricks serverless NAT range). If D10-01 is still open\n  when you reach your gate: run the gate in the mode the plan's degraded path names, mark\n  the verdict DEGRADED in summary.md, and report status=BLOCKED with `d10_01_federation`.\n  Never invent an unofficial comparison and never call a fixture PASS a merge verdict.\n\nYOUR RECON GATE COMMANDS\n  dbx-recon run --unit p1-job-nightly-dunning --family databricks \\\n    --mapping .migration/units/p1-job-nightly-dunning/mapping_spec.json \\\n    --tolerances .migration/03_recon_tolerances.json \\\n    --canonicalization databricks/migration/recon/canonicalization.oracle.json \\\n    --mode transactional --source-dsn-secret OW_BILLING_RO_DSN \\\n    --target-kind lakebase --target-secret OW_TP_LAKEBASE_DSN \\\n    --target-catalog ow_tp --target-schema billing \\\n    --allowed-targets-file .migration/allowed_targets.json \\\n    --seed 0 --depth sampled --out .migration/recon/p1-job-nightly-dunning/\n"
+    }
+  ]
+}

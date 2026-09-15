@@ -1,0 +1,46 @@
+{
+  "unit": "p1-job-nightly-dunning",
+  "wave": 4,
+  "batch": "w4-a",
+  "depth": "sampled",
+  "mode": "transactional",
+  "rows": 1,
+  "row_counts": {
+    "OW_BILLING.dunning_attempts": 1
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "transactional",
+    "depth": "sampled",
+    "tier3_mode": {
+      "OW_BILLING.dunning_attempts": "stratified_sample"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 6,
+      "tier4": 0,
+      "tier0": 2,
+      "tier5": 3,
+      "tier6": 0,
+      "tier7": 4,
+      "delete_evidence": 0,
+      "total": 17
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 0,
+      "tier0": 2,
+      "tier5": 1,
+      "tier6": 0,
+      "tier7": 4,
+      "delete_evidence": 0,
+      "total": 11
+    },
+    "source_rows_fetched": 2,
+    "target_rows_fetched": 1,
+    "row_counts_known": true
+  }
+}

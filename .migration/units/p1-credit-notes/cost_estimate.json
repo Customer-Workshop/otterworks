@@ -1,0 +1,46 @@
+{
+  "unit": "p1-credit-notes",
+  "wave": 3,
+  "batch": "w3-c",
+  "depth": "full",
+  "mode": "transactional",
+  "rows": 5,
+  "row_counts": {
+    "OW_BILLING.credit_notes": 5
+  },
+  "ops": 0,
+  "estimate": {
+    "mode": "transactional",
+    "depth": "full",
+    "tier3_mode": {
+      "OW_BILLING.credit_notes": "full_diff"
+    },
+    "source_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 3,
+      "tier4": 0,
+      "tier0": 3,
+      "tier5": 3,
+      "tier6": 0,
+      "tier7": 4,
+      "delete_evidence": 0,
+      "total": 15
+    },
+    "target_statements": {
+      "tier1": 1,
+      "tier2": 1,
+      "tier3": 2,
+      "tier4": 0,
+      "tier0": 2,
+      "tier5": 1,
+      "tier6": 0,
+      "tier7": 4,
+      "delete_evidence": 0,
+      "total": 11
+    },
+    "source_rows_fetched": 5,
+    "target_rows_fetched": 5,
+    "row_counts_known": true
+  }
+}

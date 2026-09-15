@@ -1,0 +1,112 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-subscriptions-hist",
+  "track": "delta",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "subscriptions_hist",
+      "source_table": "OW_BILLING.subscriptions_hist",
+      "target_table": "subscriptions_hist",
+      "key": {
+        "source": [
+          "hist_id"
+        ],
+        "target": [
+          "hist_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "hist_id",
+          "target": "hist_id",
+          "source_type": "NUMBER(12)",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "hist_dt",
+          "target": "hist_dt",
+          "source_type": "VARCHAR2(20)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "hist_op",
+          "target": "hist_op",
+          "source_type": "VARCHAR2(3)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "plan_id",
+          "target": "plan_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "STRING",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "starts_on",
+          "target": "starts_on",
+          "source_type": "DATE",
+          "target_type": "TIMESTAMP",
+          "rules": []
+        },
+        {
+          "source": "ends_on",
+          "target": "ends_on",
+          "source_type": "DATE",
+          "target_type": "TIMESTAMP",
+          "rules": []
+        },
+        {
+          "source": "status_cd",
+          "target": "status_cd",
+          "source_type": "NUMBER(4)",
+          "target_type": "SMALLINT",
+          "rules": []
+        },
+        {
+          "source": "suspended_on",
+          "target": "suspended_on",
+          "source_type": "DATE",
+          "target_type": "TIMESTAMP",
+          "rules": []
+        }
+      ],
+      "identity": {
+        "source": "hist_id",
+        "target": "hist_id"
+      }
+    }
+  ]
+}

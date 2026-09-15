@@ -1,0 +1,38 @@
+[
+  {
+    "name": "f_md5_uuid_vector",
+    "object": "p1-pkg-ow-util",
+    "source_sql": "SELECT v AS input, f_md5_uuid(v) AS id FROM ow_billing_fed.ow_billing.fixture_md5_vector ORDER BY v",
+    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS id FROM billing.fixture_md5_vector ORDER BY input",
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "f_str2dt_vector",
+    "object": "p1-pkg-ow-util",
+    "source_sql": "SELECT v AS input, f_str2dt(v) AS dt FROM ow_billing_fed.ow_billing.fixture_date_vector ORDER BY v",
+    "target_sql": "SELECT input AS input, billing.f_str2dt(input) AS dt FROM billing.fixture_date_vector ORDER BY input",
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "f_code_desc_all",
+    "object": "p1-pkg-ow-util",
+    "source_sql": "SELECT code_type, code_val, f_code_desc(code_type, code_val) AS d FROM ow_billing_fed.ow_billing.codes ORDER BY code_type, code_val",
+    "target_sql": "SELECT code_type, code_val, billing.f_code_desc(code_type, code_val) AS d FROM billing.codes ORDER BY code_type, code_val",
+    "rules": [
+      "decimal_round",
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  }
+]

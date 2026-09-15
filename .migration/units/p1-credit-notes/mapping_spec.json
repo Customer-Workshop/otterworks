@@ -1,0 +1,72 @@
+{
+  "version": "map-p1-v1",
+  "unit": "p1-credit-notes",
+  "track": "lakebase",
+  "generation": "modern",
+  "tables": [
+    {
+      "object": "credit_notes",
+      "source_table": "OW_BILLING.credit_notes",
+      "target_table": "credit_notes",
+      "key": {
+        "source": [
+          "id"
+        ],
+        "target": [
+          "id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "id",
+          "target": "id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "VARCHAR2(36)",
+          "target_type": "varchar(36)",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "issued_on",
+          "target": "issued_on",
+          "source_type": "DATE",
+          "target_type": "timestamp(0)",
+          "rules": []
+        },
+        {
+          "source": "amount",
+          "target": "amount",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "remaining_amount",
+          "target": "remaining_amount",
+          "source_type": "NUMBER(12,2)",
+          "target_type": "numeric(12,2)",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ],
+      "watermark": {
+        "source": "issued_on",
+        "target": "issued_on"
+      }
+    }
+  ]
+}

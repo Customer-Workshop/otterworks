@@ -22,7 +22,9 @@ recon once the trigger path starts writing history rows.
   merge-evidence run (`--mode live --depth full --seed 0`). One live Oracle read for the
   extract, one for recon; never concurrent.
 - Tiers 1-3 PASS. Tiers 5-7 (constraint, index, identity parity) are **unverified** on the
-  JDBC route — structural to this route, not a property of this unit.
+  JDBC route — structural to this route, not a property of this unit. The result therefore
+  carries that unverified warning and `merge_eligible=false`, which is how the harness
+  treats any run with an unverified warning.
 - Idempotency: the silver load was rerun and `target_state.digest.json` (row count plus an
   order-independent content hash) was identical across runs, modulo run id and timestamp.
 - Recon values are recomputed from Databricks and Oracle directly, never from this unit's
@@ -38,7 +40,8 @@ from `seq_subscriptions_hist`. Parent inserts write no history row.
 Delta has no row triggers, so the behaviour moves into
 `databricks/migration/transport/silver_hist_trigger.py`, which generates the equivalent
 append from the parent's old image: same two operation codes, same full-row copy, `hist_dt`
-kept as the same formatted string (not a timestamp), and `hist_id` allocated as
+kept as the same formatted string (not a timestamp, converted to UTC explicitly so it does
+not follow the writer's session timezone), and `hist_id` allocated as
 `max(hist_id) + row_number()` in place of the sequence. Gap-free numbering is not preserved —
 an Oracle sequence is not either (it caches and loses numbers on restart); what is preserved
 is that ids are increasing and unique within the history table.

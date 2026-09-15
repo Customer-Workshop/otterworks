@@ -63,9 +63,11 @@
       "findings": []
     }
   ],
-  "warnings": [],
+  "warnings": [
+    "UNVERIFIED tiers 5-7 (constraint, index and identity parity): the repo-local Oracle JDBC source adapter reads no catalog metadata, so they are reported unverified, never assumed"
+  ],
   "verdict": "PASS",
-  "merge_eligible": true,
+  "merge_eligible": false,
   "degraded": {
     "grade": "DEGRADED",
     "official_verdict": false,

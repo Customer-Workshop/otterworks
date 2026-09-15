@@ -22,7 +22,8 @@ dialect work fixed and the mapping cannot express:
     raised as feedback rather than edited in place.
 
 The `DD-MON-YY` string dates are carried byte-exact and get the mapping's derived parsed
-companions, which reproduce `f_str2dt`: NULL on anything unparseable. A malformed legacy
+companions, which reproduce `f_str2dt` through the shared expression in `oracle_dates.py`:
+every shape Oracle's TO_DATE accepts parses, and anything else is NULL. A malformed legacy
 date stays NULL - that is the declared anomaly, not a defect to repair (D8-01).
 
 The load is restart-safe and idempotent: the table is created once from the declared types,
@@ -46,6 +47,8 @@ import re
 import sys
 import uuid
 
+from oracle_dates import parse_date
+
 from databricks import sql as dbsql
 
 CATALOG = "ow_tp"
@@ -61,10 +64,6 @@ IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
 # A declared type is a type name with optional precision/scale, nothing else: the mapping
 # spec is rendered straight into DDL, so it is a SQL-injection surface like any other input.
 TYPE = re.compile(r"^[A-Z_]+(\(\d+(,\s*\d+)?\))?$")
-
-# f_str2dt: Oracle TO_DATE(raw,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH'), NULL on error.
-# Spark's `yy` pivots on 2000-2099, which is Oracle's current-century rule for this run.
-PARSE_DATE = "try_to_timestamp({col}, 'dd-MMM-yy')"
 
 # Oracle DATE/TIMESTAMP are zoneless; the Delta equivalent is TIMESTAMP_NTZ.
 ZONELESS_SOURCE = ("DATE", "TIMESTAMP")
@@ -125,7 +124,7 @@ def field_expr(field: dict) -> str:
 
 def select_sql(table: dict) -> str:
     cols = [field_expr(f) for f in table["fields"]]
-    cols += [f"cast({PARSE_DATE.format(col=ident(d['raw']))} AS {derived_type(d)}) "
+    cols += [f"cast({parse_date(ident(d['raw']))} AS {derived_type(d)}) "
              f"AS {ident(d['target'])}"
              for d in table.get("derived_fields", [])]
     src = ident(table["target_table"])

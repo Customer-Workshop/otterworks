@@ -17,17 +17,17 @@ the source and land in different targets.
 | `id VARCHAR2(36) NOT NULL` | `id varchar(36) NOT NULL` | key, empty string is NULL |
 | `tenant_id VARCHAR2(36) NOT NULL` | `tenant_id varchar(36) NOT NULL` | parent `billing.tenants` (wave 1) |
 | `period_id VARCHAR2(36) NOT NULL` | `period_id varchar(36) NOT NULL` | parent `rating_periods` is not on this branch — see below |
-| `issued_at TIMESTAMP NOT NULL` | `issued_at timestamp NOT NULL` | Oracle TIMESTAMP is zoneless; UTC assumed (P1-D3) |
+| `issued_at TIMESTAMP NOT NULL` | `issued_at timestamp(6) NOT NULL` | Oracle TIMESTAMP is zoneless (D-010); UTC assumed (P1-D3) |
 | `subtotal NUMBER(12,2) NOT NULL` | `subtotal numeric(12,2) NOT NULL` | money is exact decimal, never float |
 | `tax NUMBER(12,2) NOT NULL` | `tax numeric(12,2) NOT NULL` | same |
 | `total NUMBER(12,2) NOT NULL` | `total numeric(12,2) NOT NULL` | same |
 | `status_cd NUMBER(4) NOT NULL` | `status_cd smallint NOT NULL` | magic status code stays a number |
 
-`issued_at` is `timestamp`, not the mapping spec's literal `timestamptz`: a `timestamptz`
-column reads back tz-aware and fails Tier 3 against Oracle's naive value on every row (the
-first fixture run did exactly that). Wave 0 made the same correction for
-`billing.billing_audit_log`. Recorded as a derived dialect rule in
-`.migration/recon/p1-invoices/summary.md`.
+`issued_at` is `timestamp(6)` under ledger decision D-010: a `timestamptz` column reads back
+tz-aware and fails Tier 3 against Oracle's naive value on every row, which is how this unit's
+first run failed. Wave 0 had made the same correction for `billing.billing_audit_log`.
+The unit mapping spec and `databricks/migration/tools/gen_mapping_specs.py` now emit
+`timestamp(p)`.
 
 ## Constraints and indexes
 

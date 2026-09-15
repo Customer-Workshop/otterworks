@@ -45,18 +45,20 @@ Target values are read back from Lakebase by the harness, never from the loader'
   to hang the constraint on would be a write outside this batch's declared targets. The
   `period_id` values are carried across unchanged; the constraint is a wave-gate item.
 
-## Derived dialect rule (skill_feedback)
+## Dialect rule: D-010
 
-The mapping spec gives `issued_at` the target type `timestamptz`. That cannot hold: Oracle
-`TIMESTAMP` is zoneless, and the canonicalization file applies `identity` to
-`TIMESTAMP(n>3)`, so a `timestamptz` column is read back tz-aware and every row is a Tier-3
-`field_diff` against the naive source value. The first fixture run failed exactly that way
-on all 3 rows. The column is therefore `timestamp`; the instant is unchanged. Wave 0 made
-the same correction for `billing.billing_audit_log`
-(`databricks/migration/lakebase/w0a_pkg_ow_util.sql:127`), so this is the second occurrence
-and belongs in the Oracle→Lakebase dialect rules: **Oracle `DATE`/`TIMESTAMP` → Postgres
-`timestamp`/`timestamp(0)`, never `timestamptz`, whatever the mapping spec's literal
-`target_type` says.**
+`issued_at` is `timestamp(6)`. The unit's first version followed the mapping spec's original
+`timestamptz` and every row failed Tier 3: Oracle `TIMESTAMP` is zoneless, the
+canonicalization file applies `identity` to `TIMESTAMP(n>3)`, and a `timestamptz` column is
+read back tz-aware, so it no longer equals the naive source value. Wave 0 had already made
+the same correction by hand for `billing.billing_audit_log`
+(`databricks/migration/lakebase/w0a_pkg_ow_util.sql:127`).
+
+The owner has since settled it as ledger decision **D-010**: Oracle `TIMESTAMP` → Postgres
+`timestamp(6)`, never `timestamptz`. The unit mapping spec and the spec generator
+(`databricks/migration/tools/gen_mapping_specs.py`) now emit `timestamp(p)`, and this
+evidence is the re-run against that corrected spec — DDL, target column and spec all agree.
+The instant is unchanged and UTC stays the declared assumption (P1-D3).
 
 ## Idempotency
 

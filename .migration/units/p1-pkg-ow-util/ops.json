@@ -1,9 +1,9 @@
 [
   {
-    "name": "f_md5_uuid_vs_oracle_rating_result_ids",
+    "name": "f_md5_uuid_vs_oracle_rating_result_inputs",
     "object": "p1-pkg-ow-util",
-    "source_sql": "SELECT period_id AS \"input\", id AS \"oracle_id\" FROM ow_billing.rating_results ORDER BY period_id",
-    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id FROM billing.md5_parity_input WHERE vector = 'rating_result' ORDER BY input",
+    "source_sql": "SELECT period_id AS \"input\", SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id), 'MD5'))),1,8)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id), 'MD5'))),9,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id), 'MD5'))),13,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id), 'MD5'))),17,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id), 'MD5'))),21,12) AS \"hashed\" FROM ow_billing.rating_results ORDER BY period_id",
+    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS hashed FROM billing.md5_parity_input WHERE vector = 'rating_result' ORDER BY input",
     "rules": [
       "decimal_round",
       "empty_string_is_null",
@@ -11,10 +11,10 @@
     ]
   },
   {
-    "name": "f_md5_uuid_vs_oracle_invoice_ids",
+    "name": "f_md5_uuid_vs_oracle_invoice_inputs",
     "object": "p1-pkg-ow-util",
-    "source_sql": "SELECT period_id || 'invoice' AS \"input\", id AS \"oracle_id\" FROM ow_billing.invoices ORDER BY 1",
-    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id FROM billing.md5_parity_input WHERE vector = 'invoice' ORDER BY input",
+    "source_sql": "SELECT period_id || 'invoice' AS \"input\", SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id || 'invoice'), 'MD5'))),1,8)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id || 'invoice'), 'MD5'))),9,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id || 'invoice'), 'MD5'))),13,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id || 'invoice'), 'MD5'))),17,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(period_id || 'invoice'), 'MD5'))),21,12) AS \"hashed\" FROM ow_billing.invoices ORDER BY 1",
+    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS hashed FROM billing.md5_parity_input WHERE vector = 'invoice' ORDER BY input",
     "rules": [
       "decimal_round",
       "empty_string_is_null",
@@ -22,10 +22,10 @@
     ]
   },
   {
-    "name": "f_md5_uuid_vs_oracle_invoice_line_ids",
+    "name": "f_md5_uuid_vs_oracle_invoice_line_inputs",
     "object": "p1-pkg-ow-util",
-    "source_sql": "SELECT invoice_id || TO_CHAR(line_no) AS \"input\", id AS \"oracle_id\" FROM ow_billing.invoice_lines ORDER BY 1",
-    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id FROM billing.md5_parity_input WHERE vector = 'invoice_line' ORDER BY input",
+    "source_sql": "SELECT invoice_id || TO_CHAR(line_no) AS \"input\", SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(invoice_id || TO_CHAR(line_no)), 'MD5'))),1,8)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(invoice_id || TO_CHAR(line_no)), 'MD5'))),9,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(invoice_id || TO_CHAR(line_no)), 'MD5'))),13,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(invoice_id || TO_CHAR(line_no)), 'MD5'))),17,4)||'-'||SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW(invoice_id || TO_CHAR(line_no)), 'MD5'))),21,12) AS \"hashed\" FROM ow_billing.invoice_lines ORDER BY 1",
+    "target_sql": "SELECT input AS input, billing.f_md5_uuid(input) AS hashed FROM billing.md5_parity_input WHERE vector = 'invoice_line' ORDER BY input",
     "rules": [
       "decimal_round",
       "empty_string_is_null",

@@ -62,28 +62,48 @@ UNITS_SPEC = {
 # the harness's tier-4 diff matches result columns by exact name against a lowercase target.
 SRC = "ow_billing"  # Oracle schema, read-only
 
+
+def md5_uuid(expr: str) -> str:
+    """Oracle SQL for pkg_ow_util.f_md5_uuid applied to `expr`, inlined from the package body.
+
+    The read-only user cannot EXECUTE the package (ORA-41900) and granting it would be DDL on
+    the source, so the gate compares this expression with billing.f_md5_uuid. Same inputs,
+    same algorithm, both sides computed rather than recalled.
+    """
+    h = f"LOWER(RAWTOHEX(STANDARD_HASH(UTL_RAW.CAST_TO_RAW({expr}), 'MD5')))"
+    return (f"SUBSTR({h},1,8)||'-'||SUBSTR({h},9,4)||'-'||SUBSTR({h},13,4)||'-'||"
+            f"SUBSTR({h},17,4)||'-'||SUBSTR({h},21,12)")
+
+
 CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, str, str]]]] = {
-    # U-20's parity ops compare Oracle-COMPUTED ids against the converted function. Neither
-    # side calls an Oracle package: the source side reads ids Oracle already produced
-    # (pkg_rating:197, pkg_invoicing:130-160 give the exact derivation), and the target side
-    # recomputes them from the same inputs, seeded into billing.md5_parity_input in wave 0.
-    # Calling f_md5_uuid on the source side would need an Oracle view over the package, which
-    # is source DDL and forbidden.
+    # U-20's parity ops compare the hash ORACLE COMPUTES for an input against the hash the
+    # converted function computes for the same input. Neither side calls the Oracle package:
+    # the read-only user has no EXECUTE on it (ORA-41900) and granting it is source DDL, so
+    # the source side inlines the package body's own expression (01_pkg_util.sql).
+    #
+    # It deliberately does NOT compare against the ids stored in rating_results / invoices /
+    # invoice_lines. Those rows were loaded, not produced by the package, so their ids are not
+    # hashes of their inputs; comparing them would fail the gate on data provenance rather
+    # than on the algorithm. Stored-id provenance is the informational check in
+    # databricks/migration/lakebase/w0a_md5_parity.py, not a merge gate.
     "p1-pkg-ow-util": (
         [("billing_audit_log", ["log_id"], "lakebase")],
-        [("f_md5_uuid_vs_oracle_rating_result_ids",
-          f'SELECT period_id AS "input", id AS "oracle_id" FROM {SRC}.rating_results ORDER BY period_id',
-          "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
+        [("f_md5_uuid_vs_oracle_rating_result_inputs",
+          f'SELECT period_id AS "input", {md5_uuid("period_id")} AS "hashed" '
+          f"FROM {SRC}.rating_results ORDER BY period_id",
+          "SELECT input AS input, billing.f_md5_uuid(input) AS hashed "
           "FROM billing.md5_parity_input WHERE vector = 'rating_result' ORDER BY input"),
-         ("f_md5_uuid_vs_oracle_invoice_ids",
-          f'SELECT period_id || \'invoice\' AS "input", id AS "oracle_id" '
-          f'FROM {SRC}.invoices ORDER BY 1',
-          "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
+         ("f_md5_uuid_vs_oracle_invoice_inputs",
+          f'SELECT period_id || \'invoice\' AS "input", '
+          f"""{md5_uuid("period_id || 'invoice'")} AS "hashed" """
+          f"FROM {SRC}.invoices ORDER BY 1",
+          "SELECT input AS input, billing.f_md5_uuid(input) AS hashed "
           "FROM billing.md5_parity_input WHERE vector = 'invoice' ORDER BY input"),
-         ("f_md5_uuid_vs_oracle_invoice_line_ids",
-          f'SELECT invoice_id || TO_CHAR(line_no) AS "input", id AS "oracle_id" '
-          f'FROM {SRC}.invoice_lines ORDER BY 1',
-          "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
+         ("f_md5_uuid_vs_oracle_invoice_line_inputs",
+          f'SELECT invoice_id || TO_CHAR(line_no) AS "input", '
+          f'{md5_uuid("invoice_id || TO_CHAR(line_no)")} AS "hashed" '
+          f"FROM {SRC}.invoice_lines ORDER BY 1",
+          "SELECT input AS input, billing.f_md5_uuid(input) AS hashed "
           "FROM billing.md5_parity_input WHERE vector = 'invoice_line' ORDER BY input")]),
     # The other four packages have NO ops file, deliberately. Their entrypoints are PL/SQL, and
     # the only way to put an Oracle-side result next to a target-side one would be an Oracle

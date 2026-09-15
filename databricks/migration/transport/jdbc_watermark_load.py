@@ -8,19 +8,31 @@ ships the D-002 fallback: a read-only JDBC snapshot plus a watermark, landed as 
 /Volumes/ow_tp/bronze/landing and registered as a Delta table in ow_tp.bronze. The CDC leg is
 a follow-up beside this, not a blocker.
 
-Incremental runs pass --watermark-column; rows with watermark > the table's current maximum
-are appended. Reruns are idempotent: the load is staged under a run id and the MERGE keys on
-the table's primary key, so running twice lands the same table state.
+Incremental runs pass --watermark-column; rows with watermark >= the table's current maximum
+are re-read and merged on the primary key. The boundary is inclusive on purpose: a strict >
+silently drops rows that arrive later carrying the same timestamp as the maximum already
+loaded, which Oracle's second-resolution DATE columns make common. Re-reading the boundary
+costs one timestamp's worth of rows and the key MERGE makes the overlap a no-op.
+
+Deletes: an incremental read cannot see a row the source deleted, so it stays in bronze.
+A full read (no --watermark-column, or --full-refresh) stages every live key and therefore
+CAN converge deletes; it removes target rows whose key is absent from the stage. The delete
+pass never runs against a watermark-filtered stage, which would empty the table. Watermarked
+tables need a periodic --full-refresh run to converge deletes; each run's JSON says whether
+deletes were converged.
 
 usage (under with_oracle_secret.py, with DATABRICKS_* in the environment):
   python3 jdbc_watermark_load.py --table codes --keys code_type,code_val
   python3 jdbc_watermark_load.py --table invoices --keys id --watermark-column updated_at
+  python3 jdbc_watermark_load.py --table invoices --keys id --watermark-column updated_at \
+      --full-refresh
 """
 import argparse
 import decimal
 import io
 import json
 import os
+import re
 import sys
 import uuid
 from datetime import date, datetime
@@ -37,6 +49,18 @@ SCHEMA = "bronze"
 VOLUME = "/Volumes/ow_tp/bronze/landing"
 WAREHOUSE = "565cd2fd713738c4"
 BATCH = 10_000
+
+# Table, key and watermark names are concatenated into Oracle and Databricks SQL, so they are
+# restricted to plain unquoted identifiers. Anything else is rejected before a statement is
+# built rather than escaped afterwards.
+IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,127}$")
+
+
+def ident(name: str, what: str) -> str:
+    n = name.strip().lower()
+    if not IDENT.match(n):
+        raise SystemExit(f"{what} is not a plain SQL identifier: {name!r}")
+    return n
 
 
 def oracle_conn():
@@ -101,7 +125,8 @@ def read_source(table: str, watermark_column: str | None, since) -> tuple[list[s
     where = ""
     binds: list = []
     if watermark_column and since is not None:
-        where = f" WHERE {watermark_column} > :1"
+        # Inclusive: rows tied with the current maximum may still be arriving. See module doc.
+        where = f" WHERE {watermark_column} >= :1"
         binds = [since]
     sql = f"SELECT * FROM {SOURCE_SCHEMA}.{table}{where}"
     with oracle_conn() as conn, conn.cursor() as cur:
@@ -127,15 +152,23 @@ def main() -> int:
     ap.add_argument("--table", required=True)
     ap.add_argument("--keys", required=True, help="comma-separated primary key columns")
     ap.add_argument("--watermark-column")
+    ap.add_argument("--full-refresh", action="store_true",
+                    help="read every row and delete target keys the source no longer has")
     args = ap.parse_args()
-    table = args.table.lower()
-    keys = [k.strip().lower() for k in args.keys.split(",")]
+    table = ident(args.table, "--table")
+    keys = [ident(k, "--keys") for k in args.keys.split(",")]
+    watermark_column = (ident(args.watermark_column, "--watermark-column")
+                        if args.watermark_column else None)
 
     with sql_conn() as conn, conn.cursor() as cur:
-        since = current_watermark(cur, table, args.watermark_column)
-        columns, rows = read_source(args.table, args.watermark_column, since)
+        since = (None if args.full_refresh
+                 else current_watermark(cur, table, watermark_column))
+        columns, rows = read_source(table, watermark_column, since)
+        # The stage holds every live key only when nothing filtered the read.
+        full_snapshot = since is None
         if not rows:
-            print(json.dumps({"table": table, "rows": 0, "watermark_since": str(since)}))
+            print(json.dumps({"table": table, "rows": 0, "watermark_since": str(since),
+                              "deletes_converged": False}))
             return 0
 
         run_id = uuid.uuid4().hex
@@ -151,17 +184,21 @@ def main() -> int:
             cur.execute(f"CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.{table} "
                         f"AS SELECT * FROM {stage} WHERE 1=0")
             on = " AND ".join(f"t.{k} <=> s.{k}" for k in keys)
+            delete_clause = (" WHEN NOT MATCHED BY SOURCE THEN DELETE"
+                             if full_snapshot else "")
             cur.execute(
                 f"MERGE INTO {CATALOG}.{SCHEMA}.{table} t USING {stage} s ON {on} "
-                "WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *")
+                "WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *"
+                f"{delete_clause}")
             cur.execute(f"SELECT count(*) FROM {CATALOG}.{SCHEMA}.{table}")
             total = cur.fetchone()[0]
         finally:
             cur.execute(f"DROP TABLE IF EXISTS {stage}")
 
     print(json.dumps({"table": table, "source_rows": len(rows), "target_rows": total,
-                      "watermark_column": args.watermark_column,
-                      "watermark_since": str(since), "staged": staged}))
+                      "watermark_column": watermark_column,
+                      "watermark_since": str(since), "full_snapshot": full_snapshot,
+                      "deletes_converged": full_snapshot, "staged": staged}))
     return 0
 
 

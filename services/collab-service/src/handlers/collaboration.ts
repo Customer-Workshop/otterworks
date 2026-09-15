@@ -130,6 +130,8 @@ export class CollaborationManager {
         return;
       }
 
+      if (!socket.connected) return;
+
       // If socket is already in another document, leave it first
       const oldDocId = awareness.getUserDocument(socket.id);
       if (oldDocId && oldDocId !== documentId) {
@@ -158,6 +160,14 @@ export class CollaborationManager {
 
       // Get or create Yjs document (safe against concurrent joins)
       const doc = await this.getOrCreateDoc(documentId);
+
+      if (!socket.connected) {
+        socket.leave(room);
+        if (awareness.getDocumentUserCount(documentId) === 0) {
+          this.persistAndCleanupDocument(documentId);
+        }
+        return;
+      }
 
       // Register awareness
       const userAwareness = awareness.addUser(

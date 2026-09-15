@@ -106,6 +106,19 @@ describe('DocumentServiceAccessChecker', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('does not reuse a cached decision for a different token with the same user', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(200))
+      .mockResolvedValueOnce(mockResponse(401));
+
+    await expect(checker.canAccess('doc-1', 'user-1', 'jwt-token')).resolves.toBe(true);
+    await expect(checker.canAccess('doc-1', 'user-1', 'other-token')).resolves.toBe(
+      false,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('re-checks after the cache entry expires', async () => {
     checker = new DocumentServiceAccessChecker(
       { baseUrl: 'http://document-service:8083', cacheTtlMs: 0 },

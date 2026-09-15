@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { Logger } from 'pino';
 
 const ROOM_PREFIX = 'document-';
@@ -53,7 +54,8 @@ export class DocumentServiceAccessChecker implements DocumentAccessChecker {
   async canAccess(documentId: string, userId: string, token: string): Promise<boolean> {
     if (!documentId || !userId || !token) return false;
 
-    const cacheKey = `${userId}:${documentId}`;
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const cacheKey = `${userId}:${documentId}:${tokenHash}`;
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.allowed;

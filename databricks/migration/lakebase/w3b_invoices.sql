@@ -23,11 +23,12 @@
 -- Constraints: pk_invoices and fk_inv_tenant are recreated under their Oracle names. The
 -- source enforces fk_inv_tenant and holds no orphan invoice (checked on the fixture and on
 -- the live read), so reproducing it does not collide with D8-01.
--- fk_inv_period (period_id -> rating_periods) is NOT recreated here: rating_periods is a
--- wave-3 batch a object and is not on this branch, and creating another unit's table to
--- hang a constraint on would be a write outside this batch's declared targets. The column
--- and its values are carried across unchanged; the constraint is a wave-gate item once the
--- rating unit merges. Nothing Oracle does not have is added.
+-- fk_inv_period (period_id -> rating_periods) is recreated too. Oracle declares it with no
+-- ON DELETE clause, so its delete rule is NO ACTION (USER_CONSTRAINTS.DELETE_RULE), not
+-- CASCADE, and Oracle has no ON UPDATE at all; the Postgres constraint therefore takes the
+-- default NO ACTION on both, NOT DEFERRABLE, matching the source exactly. Only
+-- billing.invoices is written: billing.rating_periods is referenced, never created or
+-- altered here, and it is a prerequisite on the branch like billing.tenants.
 --
 -- Indexes: the source has only the implicit unique index behind PK_INVOICES, which the
 -- Postgres primary key provides. No extra index is invented.
@@ -63,13 +64,28 @@ BEGIN
 END;
 $$;
 
+-- Idempotent add: the table may already exist from a run made before this constraint was
+-- part of the script. Referencing billing.rating_periods without creating it keeps the
+-- write inside billing.invoices.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                   WHERE conname = 'fk_inv_period'
+                     AND conrelid = 'billing.invoices'::regclass)
+    THEN
+        ALTER TABLE billing.invoices
+            ADD CONSTRAINT fk_inv_period FOREIGN KEY (period_id)
+            REFERENCES billing.rating_periods (id);
+    END IF;
+END;
+$$;
+
 COMMENT ON TABLE billing.invoices IS
     'Migration unit p1-invoices (U-06) from Oracle OW_BILLING.INVOICES, the modern invoice '
     'generation (D9-01) - not legacy INVOICE_HEADER.';
 COMMENT ON COLUMN billing.invoices.period_id IS
-    'Rating period key. Oracle enforces fk_inv_period against RATING_PERIODS; that parent '
-    'table belongs to the concurrent rating unit and is not on this branch, so the '
-    'constraint is deferred to the wave gate.';
+    'Rating period key, fk_inv_period against billing.rating_periods; NO ACTION on delete, '
+    'as Oracle declares it.';
 COMMENT ON COLUMN billing.invoices.issued_at IS
     'Oracle TIMESTAMP, zoneless on both sides (D-010); UTC assumed and declared (P1-D3).';
 COMMENT ON COLUMN billing.invoices.status_cd IS

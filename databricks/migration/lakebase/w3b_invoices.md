@@ -35,11 +35,15 @@ The unit mapping spec and `databricks/migration/tools/gen_mapping_specs.py` now 
 are recreated under their Oracle names. The source holds no orphan invoice, so reproducing
 the tenant FK does not collide with D8-01 (orphans are reproduced, not cleaned).
 
-`fk_inv_period` (`period_id` → `RATING_PERIODS`) is **not** recreated. `rating_periods`
-belongs to the rating unit running concurrently in this wave and is not on the branch;
-creating another unit's table to hang a constraint on would be a write outside this batch's
-declared targets. The column and its values are unchanged, and the constraint is a wave-gate
-item once that unit merges.
+`fk_inv_period` (`period_id` → `billing.rating_periods(id)`) is recreated as well, now that
+the parent table is on the branch. Oracle declares it without an `ON DELETE` clause, so
+`USER_CONSTRAINTS.DELETE_RULE` is `NO ACTION` and the constraint is `NOT DEFERRABLE`;
+Oracle has no `ON UPDATE` at all. The Postgres constraint keeps both defaults (`NO ACTION`
+on delete and on update), so the behaviour matches the source rather than the cascade the
+child-side `fk_il_invoice` uses. The DDL adds it inside a `DO` block guarded on
+`pg_constraint`, so re-running the script is a no-op, and it writes only `billing.invoices`:
+`billing.rating_periods` is referenced, never created or altered. No invoice on either side
+points at a missing period, so nothing is rejected by the new constraint.
 
 Oracle has one index on the table, the implicit unique index behind `PK_INVOICES`; the
 Postgres primary key provides the same one, so no extra index is created.

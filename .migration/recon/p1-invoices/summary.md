@@ -8,8 +8,9 @@ tier, tolerance and canonicalization rule is still the harness's own. See `DEGRA
 
 Merge-evidence run: `--mode transactional --depth full --seed 0`, against the live source.
 Fixture runs (`fixture/`) came first and are development evidence only, never a merge
-verdict. Three full runs used of the three-run cap: two fixture runs (the first failed on
-the `issued_at` type, below) and this one.
+verdict. This evidence is the re-run after `fk_inv_period` was added to the target (below);
+each directed correction round used one fixture run and one merge-evidence run, inside the
+three-run cap.
 
 ## What was compared
 
@@ -40,10 +41,14 @@ Target values are read back from Lakebase by the harness, never from the loader'
 - `pk_invoices` and `fk_inv_tenant` are recreated under their Oracle names. The source has
   no orphan invoice (checked: 0 rows with a missing tenant and 0 with a missing period), so
   recreating the tenant FK does not collide with D8-01.
-- `fk_inv_period` is **not** recreated: its parent `RATING_PERIODS` belongs to the
-  concurrently running rating unit and is not on this branch. Creating another unit's table
-  to hang the constraint on would be a write outside this batch's declared targets. The
-  `period_id` values are carried across unchanged; the constraint is a wave-gate item.
+- `fk_inv_period` (`period_id` → `billing.rating_periods(id)`) is now recreated as well.
+  Oracle declares it with no `ON DELETE` clause, so `USER_CONSTRAINTS.DELETE_RULE` is
+  `NO ACTION` and it is `NOT DEFERRABLE`; Oracle has no `ON UPDATE`. The Postgres
+  constraint keeps both defaults, so it is `NO ACTION` on delete and on update — not the
+  cascade the child-side `fk_il_invoice` carries. The DDL adds it in a `DO` block guarded
+  on `pg_constraint`, so re-running is a no-op, and only `billing.invoices` is written:
+  `billing.rating_periods` is referenced, never created or altered. No invoice on either
+  side points at a missing period, so the constraint rejects nothing.
 
 ## Dialect rule: D-010
 
@@ -68,6 +73,9 @@ was digested from Lakebase before and after the final rerun and did not move:
 
     rows=3 sha256=8f4b8bee8d1924812202a0944802b92bdf356e7c82e6bc51ca82273020cc70a5
 
+The DDL script was applied twice in a row when `fk_inv_period` was added; the second run
+changed nothing, so the guarded `DO` blocks are idempotent in practice, not just by shape.
+
 The fixture and the live source hold the same three invoices (compared value by value, only
 Oracle's `149` vs Postgres's `149.00` rendering differs), so the rerun could not have
 replaced merge evidence with fixture data.
@@ -77,8 +85,10 @@ replaced merge evidence with fixture data.
 - Tiers 5–7 source-side metadata (constraints, indexes, identity): the JDBC adapter reads no
   catalog metadata, so these are reported unverified rather than guessed. That is also why
   `merge_eligible` is `false` — structural on this route, not a failure of this unit.
-- `fk_inv_period` parity: nothing on the target enforces it yet (see above), so no evidence
-  covers it. It is a wave-gate item once the rating unit merges.
+- `fk_inv_period` parity is not covered by a harness tier: Tier 7 reads no source catalog
+  metadata over JDBC. The constraint's shape and its `NO ACTION` delete rule were read from
+  Oracle's `USER_CONSTRAINTS` / `USER_CONS_COLUMNS` directly and matched against
+  `pg_constraint` on the target by hand; that check is metadata, not a harness verdict.
 - `source_principal_read_only` is `unverified` in the capability preflight: the doctor has no
   privilege query for the Oracle family. This unit used the read-only credential
   (`ow-tp/oracle/ow_billing_ro`) and issued no DDL or DML against Oracle, but the grants

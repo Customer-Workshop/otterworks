@@ -1,7 +1,8 @@
 {
   "kind": "target-state-digest",
   "unit": "p1-invoice-header",
-  "finished_at": "2026-09-15T07:54:38+00:00",
+  "run_id": "94bfd44c-c559-40ed-bd98-fc7931cb99c9",
+  "finished_at": "2026-09-15T07:57:39.827245+00:00",
   "tables": [
     {
       "table": "ow_tp.silver.invoice_header",

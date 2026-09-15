@@ -19,8 +19,8 @@ copied from the load's own output.
 
 Idempotency is read off two target-state digests the loader wrote, one per run (row count
 plus an order-independent content hash per table). `performed` and `result` are derived
-from them: two digests of the same unit from two distinct runs, identical table sets and
-identical hashes. A caller cannot assert a rerun that did not happen.
+from them: two digests of the same unit carrying different loader run ids, identical table
+sets and identical hashes. A caller cannot assert a rerun that did not happen.
 
 Probes are not taken from the command line: each declared anomaly class is a named query
 in PROBES below, reviewed with the rest of this file. The caller picks a name, so no SQL
@@ -90,11 +90,15 @@ def idempotency(unit: str, paths: list[str]) -> dict:
             raise SystemExit(f"{path} digests unit {run.get('unit')!r}, not {unit!r}")
         if not run.get("tables"):
             raise SystemExit(f"{path} digests no table")
+        if not run.get("run_id"):
+            raise SystemExit(f"{path} carries no loader run id")
         runs.append(run)
     first, second = runs
-    if first["finished_at"] == second["finished_at"]:
+    # Runs are told apart by the loader's run id, not by the clock: two loads of a small
+    # table can finish inside the same second and still be two runs.
+    if first["run_id"] == second["run_id"]:
         raise SystemExit(
-            "both idempotency digests finished at the same instant: one run, not a rerun")
+            "both idempotency digests carry the same loader run id: one run, not a rerun")
 
     def state(run: dict) -> list[tuple]:
         return sorted((t["table"], t["rows"], t["content_hash"]) for t in run["tables"])

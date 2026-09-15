@@ -46,6 +46,7 @@ import json
 import os
 import re
 import sys
+import uuid
 
 from databricks import sql as dbsql
 
@@ -198,10 +199,12 @@ def main() -> int:
                 row["digest"] = {"rows": rows, "content_hash": str(digest)}
             out.append(row)
     if args.digest_out:
-        finished = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+        # The run id, not the clock, is what tells two runs apart: two loads of a small table
+        # can finish inside the same second and still be two runs.
+        finished = dt.datetime.now(dt.timezone.utc).isoformat(timespec="microseconds")
         with open(args.digest_out, "w") as fh:
             json.dump({"kind": "target-state-digest", "unit": spec["unit"],
-                       "finished_at": finished,
+                       "run_id": str(uuid.uuid4()), "finished_at": finished,
                        "tables": [{"table": r["target"], **r["digest"]} for r in out]},
                       fh, indent=2)
             fh.write("\n")

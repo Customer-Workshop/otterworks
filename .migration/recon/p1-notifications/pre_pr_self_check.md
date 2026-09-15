@@ -1,0 +1,26 @@
+# Pre-PR self-check - p1-notifications
+
+Every box from `.agents/skills/tp-pre-pr-self-check/SKILL.md`, run on this unit before the
+PR was opened. Nothing here is an official harness verdict: recon on this run is graded
+DEGRADED with `official_verdict=false`, reason `d10_01_denied`.
+
+| check | result | evidence |
+|---|---|---|
+| NULL / missing attribution cannot fail open | pass | every column of `billing.notifications` is `NOT NULL`; the dedupe is a `NOT EXISTS` on `(tenant_id, kind_cd, sent_at)`, all three non-nullable, so no row dedupes on a NULL |
+| references scoped to `ow_tp` / `ow-tp-` | pass | catalog `ow_tp`, schema `billing`, Lakebase project `ow-tp-billing`, branch `mig-p1-w2`; recon run with `--target-catalog ow_tp --target-schema billing --allowed-targets-file .migration/allowed_targets.json` |
+| no DDL drops / replaces / alters a shared table | pass | `w3d_notifications.sql` is `CREATE TABLE IF NOT EXISTS` only; no other unit's table is touched |
+| retention and cleanup safe on rerun | pass | the loader upserts by key and never deletes a newer run's rows; no retention job in this unit |
+| cleanup paths retain run evidence | pass | evidence lives under `.migration/recon/p1-notifications/` and is committed, not cleaned |
+| no secrets, tokens or real addresses in source, evidence or history | pass | credentials referenced by name only (`OW_TP_ORACLE_RO`, `OW_TP_LAKEBASE_DSN`, `ow-tp/oracle/ow_billing_ro`); grep over the unit's files and evidence finds no value, DSN or address |
+| parity-vs-tolerance decision matches the contract | pass | `.migration/03_recon_tolerances.json` used unmodified; money exact, counts exact |
+| idempotency proven by an actual rerun | pass | the table was loaded twice through `oracle_to_lakebase_load.py --digest-out`; `load_digest_run1.json` / `load_digest_run2.json` carry different `run_id`s and identical row counts and content hashes |
+| recon values recomputed from the target platform | pass | the harness reads Lakebase `billing` on `mig-p1-w2` directly; `values_recomputed_from_target: true` in the report |
+| every unverified path listed | pass | `unverified_paths` in `p1-notifications.recon.json` and the "unverified" section of `summary.md` |
+| machine-readable report present | pass | `.migration/recon/p1-notifications/p1-notifications.recon.json`, `"kind": "recon-report"`, `make tp-validate-recon` green |
+| capability preflight passed | pass | `.migration/09_capabilities.json` on the base branch; Lakebase credential issued for `projects/ow-tp-billing/branches/mig-p1-w2/endpoints/primary`, Oracle read-only reachable, guard active |
+| `make tp-smoke` green | pass | `tp-smoke: all checks passed` |
+
+## Not green, stated rather than hidden
+
+- Tiers 5-7 (source-side constraint, index and identity metadata) are **unverified**: the repo-local Oracle JDBC adapter does not read them under `d10_01_denied`. Listed in the recon report.
+- The verdict is DEGRADED, `official_verdict=false`. It is merge evidence under the owner's D10-01 decision, not an official harness verdict.

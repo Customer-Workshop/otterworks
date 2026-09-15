@@ -71,6 +71,10 @@ services:
       SPRING_DATASOURCE_USERNAME: otterworks
       SPRING_DATASOURCE_PASSWORD: otterworks_dev
       JWT_SECRET: ${JWT_SECRET:-otterworks-local-dev-jwt-secret-change-me-in-production}
+      # Initial ADMIN account for local dev. No account is created unless the
+      # password is set (there is no default); mirrors the web-app login secrets.
+      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${AUTH_BOOTSTRAP_ADMIN_EMAIL:-${OTTERWORKS_WEB_LOGIN_EMAIL:-admin@otterworks.dev}}
+      AUTH_BOOTSTRAP_ADMIN_PASSWORD: ${AUTH_BOOTSTRAP_ADMIN_PASSWORD:-${OTTERWORKS_WEB_LOGIN_PASSWORD:-}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -531,4 +535,3 @@ networks:
 volumes:
   postgres_data: null
   localstack_data: null
-

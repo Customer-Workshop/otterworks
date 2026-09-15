@@ -19,7 +19,7 @@ No code fixes were made during this pass. This document captures bugs, UI jank, 
 - **Files:** Upload, list, detail page, sharing, shared-with-me, and trash all worked.
 - **Documents:** Document creation, editor load, typing, autosave/list return all worked.
 - **Search:** Search found the uploaded file and the test document.
-- **Admin dashboard:** Admin login with `admin@otterworks.dev` / `Admin123!` succeeded.
+- **Admin dashboard:** Admin login with the bootstrap admin account (`AUTH_BOOTSTRAP_ADMIN_*`) succeeded.
 - **Mobile basics:** No horizontal overflow found on dashboard, files, documents, search, or settings.
 
 ### Main concerns
@@ -200,7 +200,7 @@ Moving a file to Trash worked. The Trash page shows Restore and Delete actions, 
 - **Trash:** Confirm deleted file appears in Trash.
 - **Settings:** Confirm page renders and detect backend settings API failure.
 - **Notifications:** Confirm page renders empty state and detect notification API failures.
-- **Admin:** Login with seeded admin credentials.
+- **Admin:** Login with the bootstrap admin account.
 - **Responsive:** Check dashboard, files, documents, search, and settings at `390x844` viewport.
 
 ## Service Health Snapshot

@@ -58,8 +58,6 @@ def log(msg: str) -> None:
 # ── Seed data ─────────────────────────────────────────────────────────────────
 
 # Fixed UUIDs so re-runs are idempotent
-ADMIN_ID = "a0000000-0000-0000-0000-000000000001"  # pre-existing admin from auth migration
-
 USERS = [
     {
         "id":           "5eed0001-0000-4000-a000-000000000001",

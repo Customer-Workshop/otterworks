@@ -53,7 +53,7 @@ def _service_period(raw):
         if len(part) != 6 or not part.isdigit():
             return None, True
         month, year = int(part[:2]), int(part[2:])
-        if not 1 <= month <= 12:
+        if not 1 <= month <= 12 or not 1 <= year <= 9999:
             return None, True
         bounds.append(dt.datetime(year, month, 1, tzinfo=dt.timezone.utc))
     return {"from": bounds[0], "to": bounds[1]}, False
@@ -70,8 +70,8 @@ def _conversion_line(r):
     accounts, accounts_bad = csv_list(r["GL_ACCT_CSV"])
     posted = yn(r["POSTED_YN"])
     el = {"lineId": r["LINE_ID"],
-          "lineNo": int(r["LINE_NO"]),
-          "type": int(r["LINE_TYPE_CD"]),
+          "lineNo": int(r["LINE_NO"]) if r["LINE_NO"] is not None else None,
+          "type": int(r["LINE_TYPE_CD"]) if r["LINE_TYPE_CD"] is not None else None,
           "description": r["ITEM_DESC"],
           "qty": money(r["QTY"]),
           "unitPrice": money(r["UNIT_PRICE"]),
@@ -110,7 +110,9 @@ def build_conversion(conn, codes):
         cust_no, cust_name = customer.get(r["INVOICE_ID"], (None, None))
         doc = {"_id": r["INVOICE_ID"],
                "source": "conversion",
-               "invoiceNo": r["INVOICE_NO"],
+               # omitted rather than null: the invoiceNo index is unique and sparse, and a
+               # sparse index still indexes an explicit null
+               **({"invoiceNo": r["INVOICE_NO"]} if r["INVOICE_NO"] is not None else {}),
                "tenantId": r["TENANT_ID"],
                "customer": {"id": r["CUST_ID"], "custNo": cust_no, "name": cust_name},
                "invoiceDate": invoice_dt,

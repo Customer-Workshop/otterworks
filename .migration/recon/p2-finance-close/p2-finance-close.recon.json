@@ -1,0 +1,93 @@
+{
+  "kind": "recon-report",
+  "unit": "p2-finance-close",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T13:28:35.665192+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy report ow_tp.bronze.custbill_legacy_baseline_close",
+      "checks_run": 1
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy report ow_tp.bronze.custbill_legacy_baseline_close",
+      "checks_run": 6
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy report ow_tp.bronze.custbill_legacy_baseline_close",
+      "checks_run": 11
+    },
+    {
+      "id": "gold_completeness_invariant",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "ow_tp.silver.custbill and ow_tp.gold.custbill_finance_close, queried through the migration warehouse",
+      "evidence": "116 silver rows feed the aggregation and 114 records are counted in gold, the same 114 the captured legacy report counted. The 2-row gap is exactly the rows whose first positional field is empty, which the Perl also skips (its `next unless $f[0] ne ''`). Quarantined rows are aggregated like any other row: no expectation removes a record from gold (contract C-6.3, P2-D02, STOP C condition)."
+    },
+    {
+      "id": "export_byte_identity",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "md5 of the exported files read back from /Volumes/ow_tp/gold/exports/custbill against the captured legacy artifacts under databricks/migration/p2/baseline/captured/reports/",
+      "evidence": "finance_billing_20260915.csv and finance_billing_20260915.xls, 321 bytes, md5 de118d0223bb3a77fd83973a625fed8d - the same bytes as both captured legacy files. The .xls is a byte copy of the CSV in the target exactly as it is in the legacy: the extension is a lie about the format, preserved deliberately."
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "The source side is the CSV finance_excel_report.pl itself wrote over the pinned fixtures, parsed into ow_tp.bronze.custbill_legacy_baseline_close by a loader that imports none of the converted code. The target side recomputes the close from ow_tp.silver.custbill and never reads that table. Compared per group: sort_key, row_order, currency, the displayed record_type, record_count and total_amount. row_order is compared as well as the key set, so an ordering regression fails the gate rather than passing as a set match; money is exact per the frozen tolerances.",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "pipeline update c0403e42-47a4-4f28-8cb2-d97ea2a16ac2 and a rerun of the export job with the same stamp: gold 11 rows / 114 records / md5 702976e005e1211ec03620545d4a06e7 and both export files 321 bytes / md5 de118d0223bb3a77fd83973a625fed8d, identical before and after (idempotency.before.json, idempotency.after.json). closed_at is excluded as target-side wall clock."
+  },
+  "planted_anomaly_detections": {
+    "compared_as": "set of (report group, row count) over the malformed groups in ow_tp.gold.custbill_finance_close, per the frozen tolerances; expected_set read from the captured legacy CSV, actual_set read from the gold table",
+    "expected_set": [
+      {"anomaly": "000000020000,UNKNOWN(USD)", "count": 1},
+      {"anomaly": "0US,UNKNOWN(D0)", "count": 1},
+      {"anomaly": "USD,UNKNOWN(03)", "count": 1},
+      {"anomaly": "usd,UNKNOWN(1 )", "count": 1},
+      {"anomaly": ",UNKNOWN()", "count": 1}
+    ],
+    "actual_set": [
+      {"anomaly": "000000020000,UNKNOWN(USD)", "count": 1},
+      {"anomaly": "0US,UNKNOWN(D0)", "count": 1},
+      {"anomaly": "USD,UNKNOWN(03)", "count": 1},
+      {"anomaly": "usd,UNKNOWN(1 )", "count": 1},
+      {"anomaly": ",UNKNOWN()", "count": 1}
+    ],
+    "missing": [],
+    "unexpected": [],
+    "derivation": "The first two groups are the two halves of the one delimiter-collision record: the extra '|' in the customer name shifts the amount into the currency position and the currency into the record-type position. The rest are the probe fixture's unknown record type, its lower-case currency with a single-space type, and its empty-currency record. Counts are report rows, and each of these groups holds exactly one record."
+  },
+  "legacy_defects_reproduced": [
+    "The delimiter collision keeps its nonsense group: the record with a '|' in the customer name shifts every later field, so the report still shows 0US,UNKNOWN(D0) and 000000020000,UNKNOWN(USD). The aggregation re-splits the rendered psv_line positionally rather than reading silver's clean columns, because grouping the clean columns would repair the defect and change the totals (C-5.1, P2-D03).",
+    "Amounts are coerced the way the Perl coerced them: a leading numeric prefix, junk contributing 0.00 while the row still counts toward record_count.",
+    "usd and USD are separate groups; the grouping is case-sensitive because the Perl's hash key is.",
+    "Record types other than 01 and 02 keep their raw bytes in UNKNOWN(<raw>), including the empty and single-space types.",
+    "The only row skipped is the one whose first positional field is empty, matching the Perl."
+  ],
+  "unverified_paths": [
+    "P2-D01, the landing race: the legacy chain can produce a close from a half-written .dat; the target lands atomically and sequences every stage as a dependency edge. Named behaviour change, not exercisable against pinned inputs.",
+    "The sendmail step is dropped, not reproduced. The mail pipe has been dead for years, so there is nothing to reconcile against; the gold table and the volume export are the replacement surfaces and the job's failure notification replaces the mail in wave 4 (D-007 / D4-01, confirmed at STOP E).",
+    "Structure parity: the harness compares rows, not Delta table properties, comments or grants, and nothing checks the grants on the export volume path.",
+    "The export file name: the legacy took its date from the ETL box's local clock, the job takes an explicit stamp. Byte identity is proven for the file contents, not for the name the scheduler will choose.",
+    "Inputs outside the pinned fixture set - other currencies, other record types, other delimiter placements - are not exercised.",
+    "closed_at is target-side wall clock with no legacy counterpart and is excluded from both the keyed diff and the idempotency fingerprint.",
+    "factory-doctor source_principal_read_only: still unverified, no privilege query exists for a Databricks-family source."
+  ],
+  "verdict": "PASS"
+}

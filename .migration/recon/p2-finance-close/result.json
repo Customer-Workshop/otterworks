@@ -1,0 +1,65 @@
+{
+  "unit": "p2-finance-close",
+  "mode": "live",
+  "mapping_version": "map-p2-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 5,
+    "source_rows_fetched": 11,
+    "target_statements": 4,
+    "target_rows_fetched": 11,
+    "elapsed_s": 3.028
+  },
+  "generated_at": "2026-09-15T13:28:35.665192+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.custbill_legacy_baseline_close": 11
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {
+        "deferred_to_tier3": [
+          "custbill_finance_close.total_amount"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 11,
+      "stats": {
+        "custbill_finance_close": {
+          "mode": "full_diff",
+          "population": 11,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

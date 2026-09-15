@@ -1,5 +1,7 @@
 {
-  "blocking": [],
+  "blocking": [
+    "source_principal_read_only=unverified"
+  ],
   "checks": [
     {
       "data": {},
@@ -57,7 +59,7 @@
     },
     {
       "data": {},
-      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__7649ec5b",
+      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__0ac623ad",
       "id": "hook_guard_functional",
       "status": "ok"
     },
@@ -96,28 +98,40 @@
       "data": {
         "drivers": {
           "databricks": true,
-          "postgres": true,
+          "postgres": false,
           "sqlserver": false
         }
       },
-      "detail": "installed adapters: ['databricks', 'postgres']",
+      "detail": "installed adapters: ['databricks']",
       "id": "recon_drivers",
       "status": "ok"
     },
     {
       "data": {
-        "mappings": {},
-        "units": []
+        "mappings": {
+          "p2-finance-close": {
+            "detail": "no object declares delete_evidence (drain-before-run contract applies)",
+            "status": "ok"
+          }
+        },
+        "units": [
+          "p2-finance-close"
+        ]
       },
-      "detail": "not applicable at setup: no unit mapping exists yet under .migration/units/*/mapping_spec.json",
+      "detail": "p2-finance-close: no object declares delete_evidence (drain-before-run contract applies)",
       "id": "delete_evidence",
-      "status": "skipped"
+      "status": "ok"
     },
     {
-      "data": {},
-      "detail": "not applicable at setup: no unit mapping exists yet under .migration/units/*/mapping_spec.json",
+      "data": {
+        "family": "databricks",
+        "tables": [
+          "ow_tp.bronze.custbill_legacy_baseline_close"
+        ]
+      },
+      "detail": "databricks: no privilege query implemented for this family (untested), so the source principal's write privileges are unknown; confirm SELECT-only grants by hand and record it",
       "id": "source_principal_read_only",
-      "status": "skipped"
+      "status": "unverified"
     },
     {
       "data": {
@@ -155,54 +169,21 @@
       "detail": "default warehouse resolved: 565cd2fd713738c4",
       "id": "databricks_warehouse",
       "status": "ok"
-    },
-    {
-      "data": {
-        "branch": "dbx-doctor-probe-0e6216e9",
-        "parent_branch": "mig-p1-w0",
-        "project": "ow-tp-billing"
-      },
-      "detail": "branch created and deleted",
-      "id": "lakebase_branch_create",
-      "status": "ok"
-    },
-    {
-      "data": {
-        "database": "ow_tp",
-        "role": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
-        "schema": "billing"
-      },
-      "detail": "role 2e90bc1d-e9a1-4703-8c48-ad28ebb1864d can CREATE in schema billing",
-      "id": "lakebase_target_grants",
-      "status": "ok"
-    },
-    {
-      "data": {
-        "catalog_owner": "dhrov.subramanian@cognition.ai",
-        "exists": true,
-        "missing": [],
-        "owner": "dhrov.subramanian@cognition.ai",
-        "principal": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
-        "schema": "ow_tp.silver"
-      },
-      "detail": "principal 2e90bc1d-e9a1-4703-8c48-ad28ebb1864d can create and write tables in ow_tp.silver (owner dhrov.subramanian@cognition.ai)",
-      "id": "analytical_target_grants",
-      "status": "ok"
     }
   ],
-  "generated_at": "2026-09-15T05:23:31Z",
+  "generated_at": "2026-09-15T13:32:51Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,
     "userName": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d"
   },
   "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.2.1",
-  "ready": true,
-  "role": "orchestrator",
+  "ready": false,
+  "role": "child",
   "schema": "dbx-migration-factory/capabilities/1",
   "summary": {
-    "ok": 18,
-    "skipped": 2
+    "ok": 16,
+    "unverified": 1
   },
   "workspace": "/home/ubuntu/repos/otterworks"
 }

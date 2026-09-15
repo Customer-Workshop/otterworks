@@ -24,6 +24,35 @@ targets:
 # convention). It is referenced, not managed here, so a deploy can never redefine it.
 
 resources:
+  volumes:
+    ow_tp_gold_exports:
+      catalog_name: ow_tp
+      schema_name: gold
+      name: exports
+      comment: Governed file exports from ow_tp.gold. Holds the finance close CSV and its .xls copy, which replace the shared-drive path finance_excel_report.pl wrote to.
+
+  jobs:
+    # The export task only. Cron, the stage ordering that replaces run_all.sh's two
+    # sleep 600 calls, retries and the failure notification that replaces the dead
+    # sendmail pipe are wave 4 (p2-orchestration). This job carries no schedule at
+    # all, so deploying it cannot start anything.
+    ow_tp_p2_custbill_finance_close_export:
+      name: ow_tp_p2_custbill_finance_close_export
+      tasks:
+        - task_key: finance_close_export
+          spark_python_task:
+            python_file: export/finance_close_export.py
+            # A serverless python task is exec()'d, so the script has no __file__ to
+            # locate its sibling module from; the deployed path is passed in instead.
+            parameters:
+              - --pipeline-dir
+              - ${workspace.file_path}/pipeline
+          environment_key: serverless
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "3"
+
   pipelines:
     ow_tp_p2_custbill_ingest_parse:
       name: ow_tp_p2_custbill_ingest_parse

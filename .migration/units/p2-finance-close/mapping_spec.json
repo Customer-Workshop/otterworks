@@ -7,7 +7,7 @@
   "tables": [
     {
       "object": "custbill_finance_close",
-      "source_table": "bronze.custbill_legacy_baseline_close",
+      "source_table": "ow_tp.bronze.custbill_legacy_baseline_close",
       "target_table": "custbill_finance_close",
       "key": {
         "source": ["sort_key"],

@@ -1,0 +1,20 @@
+{
+  "label": "before-rerun",
+  "gold": {
+    "rows": 11,
+    "records": 114,
+    "content_md5": "702976e005e1211ec03620545d4a06e7"
+  },
+  "exports": [
+    {
+      "name": "finance_billing_20260915.csv",
+      "content_md5": "de118d0223bb3a77fd83973a625fed8d",
+      "bytes": 321
+    },
+    {
+      "name": "finance_billing_20260915.xls",
+      "content_md5": "de118d0223bb3a77fd83973a625fed8d",
+      "bytes": 321
+    }
+  ]
+}

@@ -13,9 +13,14 @@ copied from the load's own output.
 
     python3 emit_recon_report.py --result .migration/recon/<unit>/result.json \
       --anomaly orphan_invoice_lines --expect orphan_invoice_lines=37 \
-      --idempotency-result pass \
-      --idempotency-evidence 'loader rerun 2026-..., counts unchanged' \
+      --idempotency-digest .migration/recon/<unit>/idempotency/run1.json \
+      --idempotency-digest .migration/recon/<unit>/idempotency/run2.json \
       --unverified 'source-side constraint/index parity (tiers 5-7)'
+
+Idempotency is read off two target-state digests the loader wrote, one per run (row count
+plus an order-independent content hash per table). `performed` and `result` are derived
+from them: two digests of the same unit from two distinct runs, identical table sets and
+identical hashes. A caller cannot assert a rerun that did not happen.
 
 Probes are not taken from the command line: each declared anomaly class is a named query
 in PROBES below, reviewed with the rest of this file. The caller picks a name, so no SQL
@@ -71,6 +76,38 @@ def sql_conn():
         credentials_provider=lambda: oauth_service_principal(cfg))
 
 
+def idempotency(unit: str, paths: list[str]) -> dict:
+    """Two target-state digests of one unit, compared: the rerun proof, not an assertion."""
+    if len(paths) != 2:
+        raise SystemExit(
+            "idempotency needs two --idempotency-digest files, one per loader run")
+    runs = []
+    for path in paths:
+        run = json.loads(Path(path).read_text())
+        if run.get("kind") != "target-state-digest":
+            raise SystemExit(f"{path} is not a target-state digest")
+        if run.get("unit") != unit:
+            raise SystemExit(f"{path} digests unit {run.get('unit')!r}, not {unit!r}")
+        if not run.get("tables"):
+            raise SystemExit(f"{path} digests no table")
+        runs.append(run)
+    first, second = runs
+    if first["finished_at"] == second["finished_at"]:
+        raise SystemExit(
+            "both idempotency digests finished at the same instant: one run, not a rerun")
+
+    def state(run: dict) -> list[tuple]:
+        return sorted((t["table"], t["rows"], t["content_hash"]) for t in run["tables"])
+
+    unchanged = state(first) == state(second)
+    tables = "; ".join(f"{t} {r} rows, xxhash64 xor {h}" for t, r, h in state(second))
+    return {"performed": True,
+            "result": "pass" if unchanged else "fail",
+            "evidence": (f"loader run at {first['finished_at']} and rerun at "
+                         f"{second['finished_at']}; target state "
+                         f"{'identical' if unchanged else 'CHANGED'}: {tables}")}
+
+
 def measure(unit: str, names: list[str]) -> list[dict]:
     """Each named probe recounted on the target; the count is the anomaly-set member."""
     if not names:
@@ -99,9 +136,8 @@ def main() -> int:
                     help="name of a declared anomaly class in PROBES, recounted on the target")
     ap.add_argument("--expect", action="append", default=[],
                     help="expected anomaly class as name=count")
-    ap.add_argument("--idempotency-result", required=True, choices=["pass", "fail"],
-                    help="outcome of the actual loader rerun")
-    ap.add_argument("--idempotency-evidence", required=True)
+    ap.add_argument("--idempotency-digest", action="append", default=[], required=True,
+                    help="target-state digest written by a loader run; pass it twice")
     ap.add_argument("--unverified", action="append", default=[])
     ap.add_argument("--out")
     args = ap.parse_args()
@@ -117,6 +153,7 @@ def main() -> int:
                "checks_run": t["checks_run"]}
               for t in result["tiers"]]
 
+    rerun = idempotency(result["unit"], args.idempotency_digest)
     actual = measure(result["unit"], args.anomaly)
     expected = [{"anomaly": n, "count": int(c)}
                 for n, _, c in (p.partition("=") for p in args.expect)]
@@ -130,7 +167,7 @@ def main() -> int:
     # The harness verdict covers the harness's own tiers; the anomaly set and the rerun are
     # extra gates emitted here, so a failure in either has to survive into the artifact.
     verdict = result["verdict"]
-    if missing or unexpected or args.idempotency_result != "pass":
+    if missing or unexpected or rerun["result"] != "pass":
         verdict = "FAIL"
 
     report = {
@@ -141,9 +178,7 @@ def main() -> int:
         "run_mode": result["mode"],
         "checks": checks,
         "values_recomputed_from_target": True,
-        "idempotency_rerun": {"performed": True,
-                              "result": args.idempotency_result,
-                              "evidence": args.idempotency_evidence},
+        "idempotency_rerun": rerun,
         "planted_anomaly_detections": {"expected_set": expected,
                                        "actual_set": actual,
                                        "missing": missing,

@@ -45,11 +45,13 @@
     "analytics-daily",
     "audit-archive",
     "storage-cleanup",
-    "usage-rollup"
+    "usage-rollup",
+    "user-activity"
   ],
   "captured_on": "2026-09-15",
   "captured_on_by_probe": {
-    "usage-rollup": "2026-09-15"
+    "usage-rollup": "2026-09-15",
+    "user-activity": "2026-09-15"
   },
   "fixture_run_date": "2026-09-15",
   "kind": "p3-baseline-summary",
@@ -68,6 +70,17 @@
       "2026-07-26",
       "2026-08-01"
     ]
+  },
+  "user_activity": {
+    "exit_code": 0,
+    "objects_written": [
+      "reports/user-activity/2026-09-15/activity_report.json",
+      "reports/user-activity/2026-09-15/user_summaries.jsonl",
+      "reports/user-activity/latest/activity_report.json"
+    ],
+    "reporting_days": 30,
+    "run_date": "2026-09-15",
+    "user_summaries": 500
   },
   "valid": true
 }

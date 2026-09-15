@@ -3,65 +3,75 @@
   "unit": "p3-user-activity",
   "track": "delta",
   "generation": "legacy-file",
-  "notes": "Depends on p3-analytics-daily: the legacy reads that job's S3 summary plus the data lake, so the target reads ow_tp.gold.analytics_daily_summary and the dependency is a Lakeflow task edge, not a time offset. Source side is the legacy's S3 output loaded into ow_tp.bronze.p3_user_activity_legacy_baseline; target side is ow_tp.gold.user_activity_daily. Because the input is the upstream unit's output, this recon is only meaningful once p3-analytics-daily is green: a difference here is ambiguous until the upstream is pinned.",
+  "notes": "Source side is the activity_report.json user_activity_daily.py itself wrote to S3 for the pinned day, split into four bronze tables by databricks/migration/p3/recon/load_legacy_baseline_user_activity.py; target side is the four gold tables the converted job writes. The legacy ships one JSON document, so the split is the only way this reconciles as rows rather than as bytes. Four objects because the legacy's blob has four grains: the trends block, the daily_summaries array, the user_summaries array, and the actions_by_type map inside each user summary. top_users is NOT a fifth object: it is user_summaries[:20] and the loader refuses a baseline where the two disagree, so a target that ranks differently cannot pass one comparison and fail the other. generated_at is not mapped, being a wall clock. The two windows are deliberately different widths (31 dates of summary rows, 30 dates of top-user objects, C-3.1/C-3.2) and the report is written for one report_date, so both sides are scoped to it rather than compared across days. user_id carries the literal 'unknown' (C-2.7) and action_type the literal 'NaN' and the unnormalised dotted 'document.created' (F-0.9); those are values to match, not defects to clean up. rank is a compared field and not part of any key, so a target that computes the right numbers in the wrong order is a mismatch on rank instead of a silently re-joined pass. avg_daily_events is the only float: Python round() is half-to-even, so the target computes it with bround(), and the 1e-9 relative tolerance applies on top of that.",
   "tables": [
     {
-      "object": "user_activity_daily",
-      "source_table": "ow_tp.bronze.p3_user_activity_legacy_baseline",
-      "target_table": "user_activity_daily",
-      "key": {
-        "source": [
-          "activity_date",
-          "user_id"
-        ],
-        "target": [
-          "activity_date",
-          "user_id"
-        ]
-      },
+      "object": "user_activity_report",
+      "source_table": "ow_tp.bronze.p3_user_activity_legacy_report",
+      "target_table": "user_activity_report",
+      "root_where": "snapshot_batch = '${batch}' AND report_date = DATE '${run_date}'",
+      "target_where": "report_date = DATE '${run_date}'",
+      "key": {"source": ["report_date"], "target": ["report_date"]},
       "fields": [
-        {
-          "source": "activity_date",
-          "target": "activity_date",
-          "source_type": "DATE",
-          "target_type": "DATE",
-          "rules": []
-        },
-        {
-          "source": "user_id",
-          "target": "user_id",
-          "source_type": "STRING",
-          "target_type": "STRING",
-          "rules": []
-        },
-        {
-          "source": "event_count",
-          "target": "event_count",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "documents_touched",
-          "target": "documents_touched",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "files_touched",
-          "target": "files_touched",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "active_hours",
-          "target": "active_hours",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        }
+        {"source": "report_date", "target": "report_date", "source_type": "DATE", "target_type": "DATE", "note": "the legacy's ds, derived from datetime.now(UTC) and passed to the target as run_date (P3-D08)", "rules": []},
+        {"source": "lookback_days", "target": "lookback_days", "source_type": "INT", "target_type": "INT", "note": "constant 30 in the legacy; carried as data so a target that windows differently shows it here", "rules": []},
+        {"source": "total_events", "target": "total_events", "source_type": "BIGINT", "target_type": "BIGINT", "note": "sum of total_events over the summary rows actually returned, missing days included as nothing rather than as zero", "rules": []},
+        {"source": "peak_active_users", "target": "peak_active_users", "source_type": "BIGINT", "target_type": "BIGINT", "note": "max active_users over the window, not a distinct count of users (C-3.5)", "rules": []},
+        {"source": "avg_daily_events", "target": "avg_daily_events", "source_type": "DOUBLE", "target_type": "DOUBLE", "note": "total_events / rows returned, rounded half-to-even to 2dp; 0 when the window returned nothing", "rules": []},
+        {"source": "reporting_days", "target": "reporting_days", "source_type": "BIGINT", "target_type": "BIGINT", "note": "rows the query returned, so a gap in analytics_daily_summary lowers it (C-3.6)", "rules": []}
+      ]
+    },
+    {
+      "object": "user_activity_report_days",
+      "source_table": "ow_tp.bronze.p3_user_activity_legacy_days",
+      "target_table": "user_activity_report_days",
+      "root_where": "snapshot_batch = '${batch}' AND report_date = DATE '${run_date}'",
+      "target_where": "report_date = DATE '${run_date}'",
+      "key": {"source": ["report_date", "summary_date"], "target": ["report_date", "summary_date"]},
+      "fields": [
+        {"source": "report_date", "target": "report_date", "source_type": "DATE", "target_type": "DATE", "note": "the report these rows belong to", "rules": []},
+        {"source": "summary_date", "target": "summary_date", "source_type": "DATE", "target_type": "DATE", "note": "report_date of the analytics row; renamed because the report owns report_date", "rules": []},
+        {"source": "active_users", "target": "active_users", "source_type": "BIGINT", "target_type": "BIGINT", "note": "excludes the unattributed 'unknown' bucket, which the same job still ships in top_users (C-2.7)", "rules": []},
+        {"source": "active_documents", "target": "active_documents", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "active_files", "target": "active_files", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "total_events", "target": "total_events", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "documents_created", "target": "documents_created", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "documents_edited", "target": "documents_edited", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "comments_added", "target": "comments_added", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "files_uploaded", "target": "files_uploaded", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "files_shared", "target": "files_shared", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "files_deleted", "target": "files_deleted", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []},
+        {"source": "bytes_uploaded", "target": "bytes_uploaded", "source_type": "BIGINT", "target_type": "BIGINT", "note": "summed from sizeBytes upstream, where one non-numeric value aborts the whole upstream day (C-2.12)", "rules": []}
+      ]
+    },
+    {
+      "object": "user_activity_user_summary",
+      "source_table": "ow_tp.bronze.p3_user_activity_legacy_users",
+      "target_table": "user_activity_user_summary",
+      "root_where": "snapshot_batch = '${batch}' AND report_date = DATE '${run_date}'",
+      "target_where": "report_date = DATE '${run_date}'",
+      "key": {"source": ["report_date", "user_id"], "target": ["report_date", "user_id"]},
+      "fields": [
+        {"source": "report_date", "target": "report_date", "source_type": "DATE", "target_type": "DATE", "rules": []},
+        {"source": "user_id", "target": "user_id", "source_type": "STRING", "target_type": "STRING", "note": "includes the literal 'unknown'", "rules": []},
+        {"source": "rank", "target": "rank", "source_type": "INT", "target_type": "INT", "note": "1-based position in the legacy's sorted list; rank <= 20 is its top_users block. Compared, not keyed: ties are broken by first appearance in the descending day order the legacy reads in, and this column is where a different tiebreak shows up", "rules": []},
+        {"source": "total_actions", "target": "total_actions", "source_type": "BIGINT", "target_type": "BIGINT", "note": "summed over the 30 daily top-user objects only, so it is a top-100-per-day total and not the user's real activity (C-3.3)", "rules": []},
+        {"source": "active_days", "target": "active_days", "source_type": "BIGINT", "target_type": "BIGINT", "note": "days the user appears in a daily top-user object, so a missing object lowers it silently (C-3.4)", "rules": []}
+      ]
+    },
+    {
+      "object": "user_activity_user_actions",
+      "source_table": "ow_tp.bronze.p3_user_activity_legacy_user_actions",
+      "target_table": "user_activity_user_actions",
+      "root_where": "snapshot_batch = '${batch}' AND report_date = DATE '${run_date}'",
+      "target_where": "report_date = DATE '${run_date}'",
+      "key": {"source": ["report_date", "user_id", "action_type"], "target": ["report_date", "user_id", "action_type"]},
+      "fields": [
+        {"source": "report_date", "target": "report_date", "source_type": "DATE", "target_type": "DATE", "rules": []},
+        {"source": "user_id", "target": "user_id", "source_type": "STRING", "target_type": "STRING", "rules": []},
+        {"source": "action_type", "target": "action_type", "source_type": "STRING", "target_type": "STRING", "note": "the legacy's own key: 'NaN' for an event its frame could not type, and 'document.created' unnormalised next to 'document_created' (F-0.9)", "rules": []},
+        {"source": "rank", "target": "rank", "source_type": "INT", "target_type": "INT", "note": "carried from the ranking so this table cannot drift from user_activity_user_summary", "rules": []},
+        {"source": "action_count", "target": "action_count", "source_type": "BIGINT", "target_type": "BIGINT", "rules": []}
       ]
     }
   ]

@@ -1,0 +1,10 @@
+[
+  {"rule": "identity", "applies_to": "*", "params": {}},
+  {"rule": "decimal_round", "applies_to": "NOTHING - declared unused. avg_daily_events is the only non-integer field, and the legacy's round(total/days, 2) is Python's half-even at two places, which the target reproduces with bround(...) in SQL. Rounding again at compare time would hide a target that rounded half-up, which is exactly the difference this unit has to catch", "params": {"mode": "half_even", "places": 2}},
+  {"rule": "empty_string_is_null", "applies_to": "NOTHING - declared unused. The legacy writes the literal user id 'unknown' rather than an empty or null id, and action types are written as the keys the source records carried", "params": {}},
+  {"rule": "rstrip_spaces", "applies_to": "NOTHING - declared unused. No field here is fixed-width or padded; user ids and action types are compared as bytes", "params": {}},
+  {"rule": "datetime_utc_truncate_ms", "applies_to": "NOTHING - declared unused. report_date and summary_date are DATEs on both sides. The report's generated_at is deliberately not a mapped field: it is wall-clock metadata, so a rerun would legitimately differ and a compare on it would be noise", "params": {}},
+  {"rule": "collation_casefold", "applies_to": "NOTHING - declared unused. Action types are exact literals, including 'document.created' and 'document_edited' arriving as two distinct keys from the same estate", "params": {}},
+  {"rule": "null_missing_equiv", "applies_to": "NOTHING - declared unused. A missing action type is the literal key 'NaN' in the legacy report and the same literal in the target, so the two sides compare as strings and a target that nulled it fails", "params": {}},
+  {"rule": "uuid_normalize", "applies_to": "NOTHING - declared unused. user_id is an opaque string, not a UUID", "params": {}}
+]

@@ -9,7 +9,8 @@
     "file_inventory.json": "3a122c7129f7c022506a1d6c54756da94984b4e118911b6c817764fed98648c5",
     "file_metadata.json": "eb5906175a1ff3a75668d4b7070d95918bc6654fe9553353360e0c17edd8d23a",
     "usage-events.ndjson": "7e10aff1fabf26a4fd4c17e39898c903a0d82a040c258079d9c690cf45276a5d",
-    "usage_events.json": "96d0c8bf643dc2176e760ae36b2605d04bfef9dff01d11b3ca24d80ef8e3e0d3"
+    "usage_events.json": "96d0c8bf643dc2176e760ae36b2605d04bfef9dff01d11b3ca24d80ef8e3e0d3",
+    "user_activity_history.json": "c073e746326051300224562f50478469a6f498c904f6ace305e3b12bc2f17243"
   },
   "counts": {
     "analytics_dynamodb": 165,
@@ -19,7 +20,9 @@
     "audit_A-tsonly": 58,
     "expected_orphans": 17,
     "file_objects": 138,
-    "usage_events": 471
+    "usage_events": 471,
+    "user_activity_history_days": 33,
+    "user_activity_history_users": 625
   },
   "expected": {
     "audit": {
@@ -42,7 +45,10 @@
     "analytics_table": "otterworks-analytics-events",
     "audit_table": "otterworks-audit-events",
     "file_metadata_table": "otterworks-file-metadata",
-    "legacy_clone_buckets": {},
+    "legacy_clone_buckets": {
+      "otterworks-file-quarantine": 0,
+      "otterworks-file-storage": 138
+    },
     "sqs_queue_url": "http://sqs.us-east-1.localhost.localstack.cloud:4566/123456789012/otterworks-analytics"
   }
 }

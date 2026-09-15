@@ -489,3 +489,127 @@ resources:
         - environment_key: serverless
           spec:
             client: "3"
+
+    # wave 2: the one dependent unit. Everything it reads is another job's gold output, so
+    # it has no landing task of its own.
+    ow_tp_p3_user_activity_daily:
+      name: ow_tp_p3_user_activity_daily
+      # Legacy: 0 5 * * * on the ETL box -- three hours after analytics_daily.py, which is
+      # how the legacy "depends on" it. That gap survives only as the trigger time; the
+      # ordering is the run_job_task below, so a late or re-run analytics day is read after
+      # it finishes rather than three hours after midnight whatever happened.
+      schedule:
+        quartz_cron_expression: "0 0 5 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      queue:
+        enabled: true
+      webhook_notifications:
+        on_failure: ${var.failure_webhooks}
+      parameters:
+        - name: run_date
+          default: "{{job.trigger.time.iso_date}}"
+        - name: snapshot_batch
+          default: "{{job.trigger.time.iso_date}}"
+      tasks:
+        # The dependency on analytics_daily as an edge, not a time offset. It is a
+        # run_job_task on the owning job rather than a copy of the analytics tasks here:
+        # two jobs driving the same gold partition would collide, and queueing is per job,
+        # so it would not save them. Queued behind the owning job, an 05:00 run that
+        # overlaps a late 02:00 run waits for it instead of racing it.
+        #
+        # No retry policy on this task on purpose: Databricks drops task-level retries on a
+        # run_job_task, so setting one would read as a guarantee the platform discards. The
+        # retries that matter are on ow_tp_p3_analytics_daily's own tasks.
+        #
+        # It inherits that job's failure semantics, including P3-D02: if the serving publish
+        # fails, the upstream run fails and this report is not produced, even though its own
+        # Delta inputs are complete. That is the loud-failure posture, chosen over reading a
+        # day whose upstream run did not finish.
+        - task_key: upstream_analytics_daily
+          run_job_task:
+            job_id: ${resources.jobs.ow_tp_p3_analytics_daily.id}
+            job_parameters:
+              run_date: "{{job.parameters.run_date}}"
+              snapshot_batch: "{{job.parameters.snapshot_batch}}"
+
+        - task_key: create_tables
+          depends_on:
+            - task_key: upstream_analytics_daily
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - user_activity/10_create_gold_user_activity_report.sql
+              - user_activity/20_create_gold_user_activity_report_days.sql
+              - user_activity/30_create_gold_user_activity_user_summary.sql
+              - user_activity/40_create_gold_user_activity_user_actions.sql
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # The trends block and the daily_summaries block are two reads of the same 31-day
+        # window into two disjoint tables, so they are siblings.
+        - task_key: load_report
+          depends_on:
+            - task_key: create_tables
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - user_activity/11_load_gold_user_activity_report.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_report_days
+          depends_on:
+            - task_key: create_tables
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - user_activity/21_load_gold_user_activity_report_days.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_user_summary
+          depends_on:
+            - task_key: create_tables
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - user_activity/31_load_gold_user_activity_user_summary.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # Reads the ranking this run just wrote, so it waits for it: against the previous
+        # run's rows it would report a ranking that no longer exists and still succeed.
+        - task_key: load_user_actions
+          depends_on:
+            - task_key: load_user_summary
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - user_activity/41_load_gold_user_activity_user_actions.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "3"

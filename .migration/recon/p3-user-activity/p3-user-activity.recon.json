@@ -1,0 +1,58 @@
+{
+  "kind": "recon-report",
+  "unit": "p3-user-activity",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T18:56:02.652298+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the four ow_tp.bronze.p3_user_activity_legacy_* tables (the activity_report.json user_activity_daily.py itself wrote)",
+      "checks_run": 4
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, same source tables, one check per mapped field",
+      "checks_run": 29
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, full keyed diff over all 3141 rows: 1 report row, 30 report days, 500 ranked users, 2610 user/action pairs",
+      "checks_run": 3141
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "Source side is the legacy's own output: scripts/tp_seed/capture_p3_baseline.py runs etl/scripts/user_activity_daily.py against the pinned p3probe fixture and databricks/migration/p3/recon/load_legacy_baseline_user_activity.py splits the activity_report.json it wrote into four bronze tables, importing none of the converted code. The report is one JSON document and the target is four normalised Delta tables, so the loader splits on the document's own blocks rather than reshaping them; it refuses a baseline whose top_users is not the first rows of user_summaries, because the target carries one ranked table and the two blocks have to be one ranking for that to be faithful. generated_at is deliberately unmapped: it is a clock reading, not business output. Target side is recomputed in SQL on Delta from ow_tp.gold.analytics_daily_summary and the analytics top-user tables, which is the migrated form of what the legacy read from Postgres and S3. The two windows are different on purpose and are both exercised here: the summary window is 31 dates (run_date-30 .. run_date) and the top-user object window is 30 (run_date-29 .. run_date), and the fixture carries days beyond both so a target that read too far back fails rather than passes.",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "The deployed job was run twice with the same parameters (run_date=2026-09-15, snapshot_batch=p3probe). Row counts and an order-independent md5 over every row of all four target tables are identical before and after (idempotency.before.json / idempotency.after.json, from databricks/migration/p3/recon/fingerprint_user_activity_target.py): user_activity_report 1 row a749d182a4a8b21a1f8034d3cd8ab7e1, user_activity_report_days 30 rows 8eea7b6db63fa0f37bfd2432bab6ce09, user_activity_user_summary 500 rows 81faea79f354eed4278625c83d4c2fae, user_activity_user_actions 2610 rows 2e85b2300b691dec8e95525b06a833cd. Every load is an INSERT ... REPLACE WHERE on the report date, so a rerun rewrites the date rather than appending to it.",
+    "scope": "Both runs were partial runs of the deployed job covering its own five tasks. The upstream_analytics_daily run_job_task was not selected, because the analytics job cannot finish in this workspace: its publish_summary task fails on the missing ow_tp/analytics_postgres_password. The edge itself was exercised once, in a full run before these two: it queued the owning job, that job ran land_events through load_gold_top_user_actions green and failed only on publish_summary, and this job's downstream tasks were skipped as designed."
+  },
+  "legacy_defects_reproduced": [
+    "active_days counts the days a user appears in a top-user file, not the days they were active. A user active every day but ranked on three of them reports 3, and the target reproduces that rather than counting real activity.",
+    "The two windows differ by one date: trends and daily_summaries read 31 dates, the user ranking reads 30. Nothing in the legacy makes them agree and the target does not tidy it up.",
+    "'unknown' is a user id in this output. It is excluded from analytics' active-user counts upstream but ranks here like any other user, and it carries the literal action key 'NaN' for records whose type was missing.",
+    "avg_daily_events is Python round() on a float, which is half-even, and reporting_days is the number of summary rows found, not the length of the window. A window with missing days divides by the days it found.",
+    "peak_active_users is the maximum of a stored per-day figure, so it inherits whatever that day's count already excluded.",
+    "Ordering is total actions descending with first appearance breaking ties, reproduced from the legacy's stable sort over files read newest first; the rank is compared but is not part of the key, so a re-ranked tie fails as a value difference rather than as a missing row.",
+    "A missing history object is skipped silently. The fixture omits 2026-09-08 and the legacy reports 30 days, not 31, with no error."
+  ],
+  "unverified_paths": [
+    "The end-to-end chain (upstream analytics job then this report) cannot run green in this workspace: ow_tp/analytics_postgres_password does not exist, so analytics_daily's publish_summary fails and this job's tasks are skipped. The dependency edge and the skip were both observed; what is unverified is a green run through both jobs. No plaintext fallback from etl/config.ini was added.",
+    "factory-doctor source_principal_read_only: still unverified. The doctor implements privilege queries for SQL Server and Postgres only, so a Databricks-family source can never satisfy the row (P3-D09). Fixing it needs a plugin change, not a runtime workaround.",
+    "Only the pinned fixture day is exercised. An empty window (no summaries at all), a day where every history object is missing, and a window with fewer than 20 users are not covered by this run.",
+    "The optional user_summaries.jsonl the legacy writes has no separate target object; its rows are ow_tp.gold.user_activity_user_summary, and nothing reproduces the JSONL file itself.",
+    "Structure parity: the harness compares rows, not Delta table properties, comments, or grants."
+  ],
+  "verdict": "PASS"
+}

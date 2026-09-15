@@ -1,0 +1,21 @@
+{
+  "report_date": "2026-09-15",
+  "tables": {
+    "gold.user_activity_report": {
+      "rows": 1,
+      "md5": "a749d182a4a8b21a1f8034d3cd8ab7e1"
+    },
+    "gold.user_activity_report_days": {
+      "rows": 30,
+      "md5": "8eea7b6db63fa0f37bfd2432bab6ce09"
+    },
+    "gold.user_activity_user_summary": {
+      "rows": 500,
+      "md5": "81faea79f354eed4278625c83d4c2fae"
+    },
+    "gold.user_activity_user_actions": {
+      "rows": 2610,
+      "md5": "2e85b2300b691dec8e95525b06a833cd"
+    }
+  }
+}

@@ -69,6 +69,11 @@ CFG_QUARANTINE_BUCKET = "otterworks-file-quarantine"
 
 RETENTION_DAYS = 90
 
+# The one history day with no top_users object at all. user_activity_daily.py catches
+# every exception from the S3 read and moves on (:173), so a hole in the window is
+# normal input rather than a failure.
+MISSING_HISTORY_OFFSET = 7
+
 # Two vocabularies, and they are not interchangeable (contract F-0.9).
 #
 # The event stream analytics_daily.py consumes comes from file-service
@@ -249,6 +254,99 @@ def build_analytics_events(ns: str, run_date: str,
 
 
 # ── audit events: the three record shapes of F-0.4 ───────────────────────────
+
+
+def build_user_activity_history(ns: str, run_date: str) -> dict:
+    """The 34 days of prior analytics output `user_activity_daily.py` looks back over.
+
+    Its report is a window function: 31 days of `analytics_daily_summary` rows and 30
+    days of `top_users.jsonl.gz` objects. A fixture with only the run date in it makes
+    every user's `active_days` 1, never exercises the sort, and never reaches the
+    500-row cap, so the whole aggregation would reconcile green on one day of data.
+
+    The days are generated here rather than by running the legacy analytics job 34
+    times: they *are* that job's committed output, and both sides read this same
+    snapshot -- the legacy from its S3 clone and Postgres, the target from the gold
+    tables the same objects were migrated into.
+
+    Deliberate shape:
+
+      - 620 users over 96-user days, so the union is past the 500-row cap and the cap
+        boundary is a real boundary;
+      - day 7 is missing entirely: the legacy swallows the S3 404 and skips it (:173),
+        and no row exists on the target side either;
+      - days 30..34 exist but sit outside the 30-day object window. Day 30 is still
+        inside the 31-day Postgres window, which is the asymmetry in the legacy's own
+        two windows (`BETWEEN ds - 30 days` against `range(30)`), so a target that
+        uses one width for both is caught;
+      - `unknown` and a `NaN` action key, both of which the legacy carries literally;
+      - two totals ties: one across days, decided by which day is more recent, and one
+        inside a day, decided by file order. Python's sort is stable, so ties keep
+        first-appearance order, and a target that sorts on the total alone is caught.
+    """
+    pool = [f"usr-hist-{i:04d}" for i in range(620)]
+    anchor = datetime.strptime(run_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    # `unknown` carries a total big enough to survive the report's 500-row cap: the
+    # legacy keeps it as an ordinary user id, and a target that drops it -- or that
+    # tidies away the `NaN` action key pandas leaves behind -- has to fail visibly.
+    unknown = {"NaN": 20, "document.created": 15}
+    specials = {
+        1: [("unknown", unknown), ("usr-tie-b", {"document_created": 40})],
+        2: [("unknown", unknown), ("usr-tie-a", {"document_created": 40})],
+        3: [("unknown", unknown),
+            ("usr-tie-c", {"comment_added": 25}),
+            ("usr-tie-d", {"comment_added": 25})],
+    }
+
+    days = []
+    for offset in range(1, 35):
+        if offset == MISSING_HISTORY_OFFSET:
+            continue
+        rng = rng_for(ns, f"user-activity-{offset}")
+        day = anchor - timedelta(days=offset)
+        start = (offset * 29) % len(pool)
+        chosen = [pool[(start + i) % len(pool)] for i in range(96)]
+
+        rows = []
+        for uid in chosen:
+            actions = {}
+            for _ in range(rng.randrange(1, 4)):
+                actions[ETL_EVENT_TYPES[rng.randrange(len(ETL_EVENT_TYPES))]] = \
+                    rng.randint(1, 9)
+            rows.append({"user_id": uid, "actions": actions,
+                         "total": sum(actions.values())})
+        for uid, actions in specials.get(offset, []):
+            rows.append({"user_id": uid, "actions": dict(actions),
+                         "total": sum(actions.values())})
+
+        # The analytics job sorts by total and keeps 100, so the history it wrote has
+        # that shape too. sorted() is stable on both sides of the comparison.
+        rows = sorted(rows, key=lambda r: r["total"], reverse=True)[:100]
+
+        total_events = sum(r["total"] for r in rows)
+        active_users = len([r for r in rows if r["user_id"] != "unknown"])
+        days.append({
+            "day_offset": offset,
+            "date": day.strftime("%Y-%m-%d"),
+            "top_users": rows,
+            "summary": {
+                "report_date": day.strftime("%Y-%m-%d"),
+                "active_users": active_users,
+                "active_documents": rng.randint(5, 60),
+                "active_files": rng.randint(5, 60),
+                "total_events": total_events,
+                "documents_created": rng.randint(0, 40),
+                "documents_edited": rng.randint(0, 40),
+                "comments_added": rng.randint(0, 40),
+                "files_uploaded": rng.randint(0, 40),
+                "files_shared": rng.randint(0, 40),
+                "files_deleted": rng.randint(0, 40),
+                "bytes_uploaded": rng.randint(0, 5_000_000_000),
+            },
+        })
+    return {"run_date": run_date, "days": days,
+            "missing_day_offset": MISSING_HISTORY_OFFSET,
+            "object_window_days": 30, "summary_window_days": 31}
 
 
 def build_audit_records(ns: str, run_date: str) -> dict[str, list[dict]]:
@@ -508,6 +606,7 @@ def main() -> int:
     audit_slices = build_audit_records(ns, run_date)
     file_objects, file_metadata, expected_orphans = build_file_objects(ns)
     usage_events = build_usage_events(ns)
+    activity_history = build_user_activity_history(ns, run_date)
 
     # ---- the snapshot, written before anything mutable is touched ----------
     def dump(name: str, payload) -> str:
@@ -528,6 +627,7 @@ def main() -> int:
         "file_metadata.json": dump("file_metadata.json", file_metadata),
         "expected_orphans.json": dump("expected_orphans.json", expected_orphans),
         "usage_events.json": dump("usage_events.json", usage_events),
+        "user_activity_history.json": dump("user_activity_history.json", activity_history),
     }
 
     # NDJSON copy of the usage events, the shape the Scala job reads.
@@ -598,6 +698,9 @@ def main() -> int:
             "file_objects": len(file_objects),
             "expected_orphans": len(expected_orphans),
             "usage_events": len(usage_events),
+            "user_activity_history_days": len(activity_history["days"]),
+            "user_activity_history_users": len(
+                {r["user_id"] for d in activity_history["days"] for r in d["top_users"]}),
         },
         "audit_cutoff": iso(datetime.strptime(run_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
                             - timedelta(days=RETENTION_DAYS)),

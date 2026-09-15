@@ -39,6 +39,7 @@ import contextlib
 import fcntl
 import gzip
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -498,7 +499,8 @@ def capture_audit_archive(snapshot: Path, out: Path, ns: str, cutoff: str) -> di
 # ── analytics daily ──────────────────────────────────────────────────────────
 
 
-def capture_analytics_daily(snapshot: Path, out: Path, ns: str) -> dict:
+def capture_analytics_daily(snapshot: Path, out: Path, ns: str,
+                            filename: str = "p3-analytics-daily.baseline.json") -> dict:
     """Seed SQS + DynamoDB from the snapshot, run the legacy, read back its S3 output.
 
     The job drains the queue as it reads it (F-0.1), so the queue is recreated
@@ -568,7 +570,204 @@ def capture_analytics_daily(snapshot: Path, out: Path, ns: str) -> dict:
         "summary": summary,
         "postgres_error_swallowed": "ERROR: PostgreSQL update failed" in result["stdout"],
     })
-    (out / "p3-analytics-daily.baseline.json").write_text(
+    (out / filename).write_text(json.dumps(result, sort_keys=True, indent=2) + "\n")
+    return result
+
+
+# ── user activity: the one unit that reads another unit's output ─────────────
+
+
+PG_DSN = {"host": "localhost", "port": 5432, "dbname": "otterworks_analytics",
+          "user": "etl_user"}
+
+SUMMARY_COLUMNS = ["report_date", "active_users", "active_documents", "active_files",
+                   "total_events", "documents_created", "documents_edited",
+                   "comments_added", "files_uploaded", "files_shared",
+                   "files_deleted", "bytes_uploaded"]
+
+
+def pg_connect():
+    """Connect to the local fixture serving database, by env var, never by literal."""
+    import psycopg2
+    password = os.environ.get("P3_PG_PASSWORD")
+    if not password:
+        raise SystemExit(
+            "P3_PG_PASSWORD is unset. user_activity_daily.py exits 1 when its Postgres "
+            "query fails (:117), so without the serving database there is no baseline "
+            "to capture -- only a failed run.")
+    return psycopg2.connect(**PG_DSN, password=password)
+
+
+def seed_summary_history(conn, days: list[dict], window: list[str]) -> dict:
+    """Put the history's summary rows in the table the legacy reads, and prove that
+    the window holds nothing else.
+
+    The legacy's query is a date range with no namespace or job filter, so any other
+    row inside the window is read as if this capture had produced it and lands in the
+    baseline's trends. The window is checked for identity before the legacy runs.
+    """
+    seeded = {d["summary"]["report_date"] for d in days}
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM analytics_daily_summary WHERE report_date = ANY(%s::date[])",
+                    (sorted(seeded),))
+        for day in days:
+            s = day["summary"]
+            cur.execute(
+                "INSERT INTO analytics_daily_summary (" + ", ".join(SUMMARY_COLUMNS) +
+                ", updated_at) VALUES (" + ", ".join(["%s"] * len(SUMMARY_COLUMNS)) +
+                ", NOW()) ON CONFLICT (report_date) DO UPDATE SET " +
+                ", ".join(f"{c} = EXCLUDED.{c}" for c in SUMMARY_COLUMNS[1:]),
+                [s[c] for c in SUMMARY_COLUMNS])
+        conn.commit()
+        cur.execute(
+            "SELECT report_date FROM analytics_daily_summary "
+            "WHERE report_date BETWEEN %s AND %s ORDER BY report_date",
+            (window[0], window[1]))
+        in_window = [r[0].isoformat() for r in cur.fetchall()]
+    return {"seeded_dates": sorted(seeded), "window": window, "dates_in_window": in_window}
+
+
+def seed_top_user_history(s3, days: list[dict]) -> list[str]:
+    """Write each history day's top_users.jsonl.gz where the legacy looks for it.
+
+    Same bytes the analytics job writes for the run date: one JSON object per line,
+    gzip with mtime=0 so the object is byte-identical on every re-seed.
+    """
+    keys = []
+    for day in days:
+        y, m, d = day["date"].split("-")
+        key = f"analytics/daily/year={y}/month={m}/day={d}/top_users.jsonl.gz"
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+            for row in day["top_users"]:
+                gz.write(json.dumps(row).encode("utf-8"))
+                gz.write(b"\n")
+        s3.put_object(Bucket=DATA_LAKE_BUCKET, Key=key, Body=buf.getvalue())
+        keys.append(key)
+    return sorted(keys)
+
+
+def capture_user_activity(snapshot: Path, out: Path, ns: str) -> dict:
+    """Run the real analytics job for the run date, seed the 33 prior days, then run
+    the real user_activity_daily.py over both.
+
+    This is the dependent unit, so the capture reproduces the dependency rather than
+    standing in for it: day 0 of both windows is whatever `analytics_daily.py` actually
+    wrote a moment ago -- its `top_users.jsonl.gz` object and its Postgres row -- and
+    days 1..34 are the pinned history. A capture that seeded day 0 too would be
+    reconciling the target against a fixture rather than against the upstream job.
+
+    Unlike the analytics probe, Postgres has to be reachable here: user_activity_daily.py
+    exits 1 on a failed query (:117) instead of swallowing it.
+    """
+    s3 = aws("s3")
+    history = json.loads((snapshot / "user_activity_history.json").read_text())
+    days = history["days"]
+    ds = legacy_analytics_date()
+    day0 = datetime.strptime(ds, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    # The legacy's two windows are different widths: 31 dates of summary rows
+    # (BETWEEN ds - 30 days AND ds) against 30 dates of objects (range(30)).
+    summary_window = [(day0 - timedelta(days=30)).strftime("%Y-%m-%d"), ds]
+    object_window = {(day0 - timedelta(days=n)).strftime("%Y-%m-%d") for n in range(30)}
+
+    # Day 0 of both windows: the upstream job's own output, not a fixture of it.
+    upstream = capture_analytics_daily(snapshot, out, ns, "p3-user-activity.upstream.json")
+    if upstream["exit_code"] != 0:
+        raise SystemExit(
+            f"analytics_daily.py exited {upstream['exit_code']}, so the run date has no "
+            f"upstream output and the dependent job would be reconciled against a "
+            f"29-day window pretending to be a 30-day one.")
+    if upstream["postgres_error_swallowed"]:
+        raise SystemExit(
+            "analytics_daily.py could not write its Postgres row (it swallows that "
+            "failure, C-2.16), so the run date is missing from the summary window that "
+            "user_activity_daily.py is about to read.")
+
+    history_keys = seed_top_user_history(s3, days)
+    conn = pg_connect()
+    try:
+        pg = seed_summary_history(conn, days, summary_window)
+    finally:
+        conn.close()
+
+    expected_window_dates = sorted({d["summary"]["report_date"] for d in days
+                                    if summary_window[0] <= d["summary"]["report_date"]
+                                    <= summary_window[1]} | {ds})
+    foreign = sorted(set(pg["dates_in_window"]) - set(expected_window_dates))
+    if foreign:
+        raise SystemExit(
+            f"analytics_daily_summary holds {len(foreign)} row(s) inside the report "
+            f"window that this capture did not seed, e.g. {foreign[:5]}. They would be "
+            f"summed into the baseline's trends. Clear them, or capture against a "
+            f"database no other run shares.")
+
+    result = run_legacy("user_activity_daily.py")
+    if legacy_analytics_date() != ds:
+        raise SystemExit(
+            f"the UTC date rolled from {ds} to {legacy_analytics_date()} during the "
+            f"capture, so the windows the legacy read are not the windows this probe "
+            f"seeded. Re-run it.")
+
+    report_key = f"reports/user-activity/{ds}/activity_report.json"
+    latest_key = "reports/user-activity/latest/activity_report.json"
+    users_key = f"reports/user-activity/{ds}/user_summaries.jsonl"
+
+    # Only the dated report is kept decoded. latest/ is the same document written a
+    # second time and user_summaries.jsonl is report["user_summaries"] one row per
+    # line, so keeping all three would triple the baseline to hold one set of
+    # numbers. Their digests still say exactly what the legacy wrote.
+    outputs = {}
+    for obj in list_bucket(s3, DATA_LAKE_BUCKET, "reports/user-activity/"):
+        body = s3.get_object(Bucket=DATA_LAKE_BUCKET, Key=obj["key"])["Body"].read()
+        outputs[obj["key"]] = {"bytes": len(body),
+                               "sha256": hashlib.sha256(body).hexdigest()}
+        if obj["key"] == report_key:
+            outputs[obj["key"]]["content"] = json.loads(body)
+
+    report = outputs.get(report_key, {}).get("content")
+
+    # What the history says the report must contain, derived from the snapshot rather
+    # than from the report, so the assertions can contradict the run.
+    read_days = [d for d in days if d["date"] in object_window]
+    per_user: dict[str, dict] = {}
+    for day in sorted(read_days, key=lambda d: d["day_offset"]):
+        for row in day["top_users"]:
+            u = per_user.setdefault(row["user_id"], {"total": 0, "days": 0})
+            u["total"] += row["total"]
+            u["days"] += 1
+    # Day 0's own users come from the upstream job, so the expectation is a floor on
+    # the distinct-user count rather than an exact figure.
+    expected = {
+        "summary_window": summary_window,
+        "object_window_dates": sorted(object_window),
+        "history_dates_in_object_window": sorted(d["date"] for d in read_days),
+        "missing_day": (day0 - timedelta(days=history["missing_day_offset"])
+                        ).strftime("%Y-%m-%d"),
+        "reporting_days": len(expected_window_dates),
+        "history_users_in_object_window": len(per_user),
+        "user_summaries_cap": 500,
+        "top_users_cap": 20,
+    }
+
+    result.update({
+        "run_date": ds,
+        "history_days_seeded": len(days),
+        "history_keys": history_keys,
+        "postgres": {k: v for k, v in pg.items() if k != "dates_in_window"},
+        "postgres_dates_in_window": pg["dates_in_window"],
+        "upstream_objects": upstream["objects_written"],
+        "objects_written": sorted(outputs),
+        "outputs": outputs,
+        "report": report,
+        # Byte identity rather than equality after parsing: the legacy writes the
+        # same bytes to both keys, so a serialisation difference is a difference.
+        "latest_matches_dated": (
+            latest_key in outputs and report_key in outputs
+            and outputs[latest_key]["sha256"] == outputs[report_key]["sha256"]),
+        "wrote_user_summaries_jsonl": users_key in outputs,
+        "expected": expected,
+    })
+    (out / "p3-user-activity.baseline.json").write_text(
         json.dumps(result, sort_keys=True, indent=2) + "\n")
     return result
 
@@ -655,7 +854,7 @@ def main() -> int:
                     help="the immutable snapshot directory written by gen_p3_fixture.py")
     ap.add_argument("--out", default=".migration/baselines/p3")
     ap.add_argument("--only", choices=["analytics-daily", "storage-cleanup", "audit-archive",
-                                      "usage-rollup"],
+                                      "usage-rollup", "user-activity"],
                     action="append")
     ap.add_argument("--allow-date-drift", action="store_true",
                     help="run even when the fixture's run_date is not today; "
@@ -692,7 +891,16 @@ def main() -> int:
     staging = Path(tempfile.mkdtemp(prefix="p3-baseline-"))
 
     wanted = set(args.only or ["analytics-daily", "storage-cleanup", "audit-archive",
-                               "usage-rollup"])
+                               "usage-rollup", "user-activity"])
+    if "user-activity" in wanted and manifest["run_date"] != today:
+        # Its history is dated relative to the fixture's run_date while the legacy
+        # windows itself from datetime.now(), so under drift the two do not overlap
+        # and the report would be captured over a mostly empty window.
+        print(f"user-activity needs the fixture's run_date ({manifest['run_date']}) to be "
+              f"today ({today}): the 30-day history is dated from the fixture and the "
+              f"legacy windows from datetime.now(). Regenerate with --run-date {today}.",
+              file=sys.stderr)
+        return 2
     summary: dict = {"kind": "p3-baseline-summary", "ns": args.ns,
                      "snapshot": str(snapshot), "captured": sorted(wanted),
                      "fixture_run_date": manifest["run_date"], "captured_on": today,
@@ -825,6 +1033,49 @@ def run_probes(snapshot: Path, out: Path, ns: str, wanted: set[str],
             print(f"audit_archive_weekly.py [{shape}]: exit {o['exit_code']}, "
                   f"archive written: {o['wrote_archive']}, "
                   f"source rows deleted: {o['rows_deleted_from_source']}")
+
+    if "user-activity" in wanted:
+        r = capture_user_activity(snapshot, out, ns)
+        e = r["expected"]
+        check(r["exit_code"] == 0,
+              f"user_activity_daily.py exited {r['exit_code']}, expected 0")
+        check(r["report"] is not None,
+              "user_activity_daily.py wrote no dated activity_report.json")
+        check(r["latest_matches_dated"],
+              "the legacy writes the same document to the dated key and to latest/, and "
+              "these two differ, so one of them is not the report this run produced")
+        check(r["wrote_user_summaries_jsonl"],
+              "no user_summaries.jsonl was written, so the optional third output is "
+              "untested rather than absent by contract")
+        report = r["report"] or {}
+        trends = report.get("trends", {})
+        check(trends.get("reporting_days") == e["reporting_days"],
+              f"the report covers {trends.get('reporting_days')} summary days, the "
+              f"seeded window holds {e['reporting_days']}")
+        check(len(report.get("daily_summaries", [])) == e["reporting_days"],
+              "daily_summaries does not carry one row per day in the summary window")
+        check(e["missing_day"] in e["object_window_dates"]
+              and e["missing_day"] not in e["history_dates_in_object_window"],
+              f"{e['missing_day']} was supposed to be the hole in the object window "
+              f"the legacy skips, and it is not")
+        check(len(report.get("user_summaries", [])) == e["user_summaries_cap"],
+              f"user_summaries holds {len(report.get('user_summaries', []))} rows; the "
+              f"history was built to overflow the {e['user_summaries_cap']}-row cap, so "
+              f"a shorter list means the cap boundary is untested")
+        check(len(report.get("top_users", [])) == e["top_users_cap"],
+              f"top_users holds {len(report.get('top_users', []))} rows, expected "
+              f"{e['top_users_cap']}")
+        summary["user_activity"] = {
+            "exit_code": r["exit_code"],
+            "run_date": r["run_date"],
+            "reporting_days": trends.get("reporting_days"),
+            "user_summaries": len(report.get("user_summaries", [])),
+            "objects_written": r["objects_written"],
+        }
+        print(f"user_activity_daily.py: exit {r['exit_code']}, "
+              f"{trends.get('reporting_days')} summary days, "
+              f"{len(report.get('user_summaries', []))} user summaries, "
+              f"{len(r['objects_written'])} report objects")
 
     if "usage-rollup" in wanted:
         manifest = json.loads((snapshot / "manifest.json").read_text())

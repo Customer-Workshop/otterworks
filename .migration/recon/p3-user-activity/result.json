@@ -1,0 +1,94 @@
+{
+  "unit": "p3-user-activity",
+  "mode": "live",
+  "mapping_version": "map-p3-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "batch": "p3probe",
+    "run_date": "2026-09-15"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 20,
+    "source_rows_fetched": 3141,
+    "target_statements": 16,
+    "target_rows_fetched": 3141,
+    "elapsed_s": 13.897
+  },
+  "generated_at": "2026-09-15T18:56:02.652298+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.p3_user_activity_legacy_report": 1,
+          "ow_tp.bronze.p3_user_activity_legacy_days": 30,
+          "ow_tp.bronze.p3_user_activity_legacy_users": 500,
+          "ow_tp.bronze.p3_user_activity_legacy_user_actions": 2610
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 29,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 3141,
+      "stats": {
+        "user_activity_report": {
+          "mode": "full_diff",
+          "population": 1,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "user_activity_report_days": {
+          "mode": "full_diff",
+          "population": 30,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "user_activity_user_summary": {
+          "mode": "full_diff",
+          "population": 500,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "user_activity_user_actions": {
+          "mode": "full_diff",
+          "population": 2610,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

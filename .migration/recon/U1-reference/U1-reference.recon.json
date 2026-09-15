@@ -1,6 +1,108 @@
 {
   "kind": "recon-report",
   "unit": "U1-reference",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T05:15:50.755132+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "no findings",
+      "actual": "0 findings over 5 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "no findings",
+      "actual": "0 findings over 15 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "no findings",
+      "actual": "0 findings over 173 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier4_app_level_parity",
+      "expected": "no findings",
+      "actual": "0 findings over 6 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "count_plans",
+      "expected": 3,
+      "actual": 3,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_codes",
+      "expected": 32,
+      "actual": 32,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_tenants",
+      "expected": 69,
+      "actual": 69,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_tenants.subscriptions",
+      "expected": 69,
+      "actual": 69,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_subscription_history",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U1-reference/idempotency.json"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": [],
+    "note": "the frozen 37/50/31 budget lives entirely in CUSTOMER_MASTER and INVOICE_LINE, which are wave 1 units; nothing in this unit's four tables carries a budgeted anomaly, and none was found"
+  },
+  "unverified_paths": [
+    "Y/N-to-boolean, CSV-to-array and DD-MON-YY-string-to-date are graded by tier 4 operations, not by the canonicaliser: the harness has no rule for them and patching the harness was out of scope. Raised as profile feedback in .migration/canonicalization.json.",
+    "CODES-decoded fields (plans.tier, tenants.status, subscriptions.status) are graded by tier 4 operations, not tier 3, because the source holds integers and the target holds decoded strings.",
+    "subscription_history is empty at source (0 rows), so its field grading is structurally exercised but not value-exercised.",
+    "The repo self-check asks for an ow_tp / ow-tp- namespace prefix. The engagement intake fixes the target database as ow_billing_migration, so the prefix rule is deliberately not met; the allowlist in .migration/allowed_targets.json is the control instead.",
+    "Scale is the demo estate on an Atlas M0 cluster. Nothing here is a statement about production volumes.",
+    "The load reads Oracle in one read-only transaction, so it is snapshot-consistent; it is not serialised against a second concurrent loader, which the wave manifest's disjoint write targets prevent rather than the code."
+  ],
+  "counts_from_target": {
+    "plans": 3,
+    "codes": 32,
+    "tenants": 69,
+    "tenants.subscriptions": 69,
+    "subscription_history": 0
+  },
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "runs": [
+    ".migration/recon/U1-reference/fixture/result.json",
+    ".migration/recon/U1-reference/live/result.json"
+  ],
   "wave": 0,
   "batch": "w0-b01",
   "branch": "tp-run/mongodb-20260915T045208Z",
@@ -13,59 +115,35 @@
     "tenants",
     "subscription_history"
   ],
-  "verdict": "PASS",
   "merge_authority": "live",
-  "runs": [
-    {
-      "mode": "fixture",
-      "verdict": "PASS",
-      "merge_eligible": false,
-      "result": ".migration/recon/U1-reference/fixture/result.json"
-    },
-    {
-      "mode": "live",
-      "verdict": "PASS",
-      "merge_eligible": true,
-      "result": ".migration/recon/U1-reference/live/result.json",
-      "source_reads": 1,
-      "source_concurrency": 2,
-      "seed": 714559852
-    }
-  ],
-  "counts_from_target": {
-    "plans": 3,
-    "codes": 32,
-    "tenants": 69,
-    "tenants.subscriptions": 69,
-    "subscription_history": 0
-  },
   "tiers": {
-    "tier1_counts": {"passed": true, "checks_run": 5},
-    "tier2_aggregates": {"passed": true, "checks_run": 15},
-    "tier3_keyed_diffs": {"passed": true, "checks_run": 173, "mode": "full_diff on every collection; no sampling"},
-    "tier4_app_parity": {"passed": true, "checks_run": 6, "ops": ".migration/recon/U1-reference/inputs/U1-reference.json"}
-  },
-  "anomaly_budget": {
-    "in_scope_for_this_unit": false,
-    "why": "the 37/50/31 anomalies all sit in CUSTOMER_MASTER and INVOICE_LINE, which are wave 1 units",
-    "observed_in_wave_0_tables": 0
-  },
-  "idempotency": {
-    "proven_by": "second full load, no drop, byte-identical target",
-    "evidence": ".migration/recon/U1-reference/idempotency.json"
+    "tier1_counts": {
+      "passed": true,
+      "checks_run": 5
+    },
+    "tier2_aggregates": {
+      "passed": true,
+      "checks_run": 15
+    },
+    "tier3_keyed_diffs": {
+      "passed": true,
+      "checks_run": 173,
+      "mode": "full_diff on every collection; no sampling"
+    },
+    "tier4_app_parity": {
+      "passed": true,
+      "checks_run": 6,
+      "ops": ".migration/recon/U1-reference/inputs/U1-reference.json"
+    }
   },
   "preflight": {
     "platform": "atlas",
     "manifest": ".tp-preflight/atlas-capabilities.json",
     "passed": true
   },
-  "unverified_or_not_covered": [
-    "Y/N-to-boolean, CSV-to-array and DD-MON-YY-string-to-date are graded by tier 4 operations, not by the canonicaliser: the harness has no rule for them and patching the harness was out of scope. Raised as profile feedback in .migration/canonicalization.json.",
-    "CODES-decoded fields (plans.tier, tenants.status, subscriptions.status) are graded by tier 4 operations, not tier 3, because the source holds integers and the target holds decoded strings.",
-    "subscription_history is empty at source (0 rows), so its field grading is structurally exercised but not value-exercised.",
-    "The repo self-check asks for an ow_tp / ow-tp- namespace prefix. The engagement intake fixes the target database as ow_billing_migration, so the prefix rule is deliberately not met; the allowlist in .migration/allowed_targets.json is the control instead.",
-    "Scale is the demo fixture on an Atlas M0 cluster. Nothing here is a statement about production volumes."
-  ],
-  "source_access": "SELECT/WITH only; no DDL or DML against OW_BILLING",
-  "secrets": ["ORACLE_BILLING_URI", "MONGODB_ATLAS_URI"]
+  "source_access": "SELECT/WITH only, in a single read-only transaction; no DDL or DML against OW_BILLING",
+  "secrets": [
+    "ORACLE_BILLING_URI",
+    "MONGODB_ATLAS_URI"
+  ]
 }

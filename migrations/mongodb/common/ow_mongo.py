@@ -33,11 +33,20 @@ def _secret(name: str) -> str:
     return value
 
 
-def oracle_connect():
-    """Read-only Oracle connection. DSN secret format: user/password/host:port/service."""
+def oracle_connect(snapshot: bool = True):
+    """Read-only Oracle connection. DSN secret format: user/password/host:port/service.
+
+    With snapshot=True the session opens a read-only transaction, so every query the loader
+    runs sees one committed state of the source. Without it, Oracle's default read-committed
+    isolation gives each statement its own snapshot and a parent can be copied from a later
+    moment than its children.
+    """
     import oracledb
     user, password, dsn = _secret(ORACLE_DSN_SECRET).split("/", 2)
-    return oracledb.connect(user=user, password=password, dsn=dsn)
+    conn = oracledb.connect(user=user, password=password, dsn=dsn)
+    if snapshot:
+        conn.cursor().execute("SET TRANSACTION READ ONLY")
+    return conn
 
 
 def mongo_db(database: str = TARGET_DB, allowed: Iterable[str] = (TARGET_DB,)):

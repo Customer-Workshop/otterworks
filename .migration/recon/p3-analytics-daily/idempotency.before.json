@@ -3,11 +3,11 @@
   "tables": {
     "bronze.analytics_events_raw": {
       "rows": 250,
-      "md5": "64a7082f98a8c5c47175af3d752f62f0"
+      "md5": "8b6d1aa685e2f082803a180f6677257c"
     },
     "silver.analytics_events_daily": {
       "rows": 249,
-      "md5": "0574fc71bf0d6756df3a79e8f8f13b29"
+      "md5": "0ccb0491b0b3b2cabf13a0a5790198ef"
     },
     "gold.analytics_daily_summary": {
       "rows": 1,

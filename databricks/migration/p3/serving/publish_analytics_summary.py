@@ -58,33 +58,55 @@ UPSERT = """
 """
 
 
-def read_summary(w, run_date: str) -> list[str]:
-    """The one gold row for this date, in the legacy's column order.
-
-    The gold summary is one row per day: the load replaces the whole date, so the
-    batch that produced it is a property of the silver rows underneath, not of this
-    table, and publishing reads the date the gold load just wrote.
-    """
+def query(w, statement: str, **params: str) -> list[list[str]]:
     from databricks.sdk.service.sql import StatementParameterListItem
 
-    statement = (f"SELECT {', '.join(COLUMNS)} FROM {SUMMARY_TABLE} "
-                 "WHERE summary_date = CAST(:run_date AS DATE)")
     result = w.statement_execution.execute_statement(
         statement=statement, warehouse_id=WAREHOUSE, wait_timeout="50s",
-        parameters=[StatementParameterListItem(name="run_date", value=run_date)])
+        parameters=[StatementParameterListItem(name=k, value=v) for k, v in params.items()])
     while result.status and result.status.state and result.status.state.value in (
             "PENDING", "RUNNING"):
         result = w.statement_execution.get_statement(result.statement_id)
     if result.status and result.status.state and result.status.state.value != "SUCCEEDED":
         raise SystemExit(f"{result.status.state.value}: {result.status.error}")
-    rows = (result.result.data_array if result.result else []) or []
-    if len(rows) != 1:
-        # The legacy writes a summary for every day it processes, including an all-zero one
-        # for an empty day, so "no row" means the transformation did not run, not "no data".
+    return (result.result.data_array if result.result else []) or []
+
+
+def read_summary(w, run_date: str, batch: str) -> list[str] | None:
+    """The one gold row for this date, in the legacy's column order, or None for an empty day.
+
+    The gold summary is one row per day: the load replaces the whole date, so the
+    batch that produced it is a property of the silver rows underneath, not of this
+    table, and publishing reads the date the gold load just wrote.
+
+    No row is not automatically an error. On a day with no events at all the legacy
+    prints its warning and exits 0 before it aggregates, publishes, or writes a report
+    (C-2.4), so the target must also publish nothing and succeed. What distinguishes
+    that from a broken run is silver: events present with no summary above them means
+    the transformation did not run, and that is still a failure.
+    """
+    rows = query(
+        w,
+        f"SELECT {', '.join(COLUMNS)} FROM {SUMMARY_TABLE} "
+        "WHERE summary_date = CAST(:run_date AS DATE)",
+        run_date=run_date)
+    if len(rows) == 1:
+        return rows[0]
+    if len(rows) > 1:
         raise SystemExit(
-            f"{SUMMARY_TABLE} holds {len(rows)} rows for {run_date}; expected exactly "
-            "one. Run the gold load for this date before publishing.")
-    return rows[0]
+            f"{SUMMARY_TABLE} holds {len(rows)} rows for {run_date}; it is one row per "
+            "day, so the gold load did not replace the date atomically.")
+    landed = query(
+        w,
+        "SELECT count(*) FROM ow_tp.silver.analytics_events_daily "
+        "WHERE summary_date = CAST(:run_date AS DATE) AND snapshot_batch = :batch",
+        run_date=run_date, batch=batch)
+    if int(landed[0][0]) > 0:
+        raise SystemExit(
+            f"{SUMMARY_TABLE} holds no row for {run_date} while silver holds "
+            f"{landed[0][0]} events for batch {batch}. Run the gold load for this date "
+            "before publishing.")
+    return None
 
 
 def publish(dsn_parts: dict, password: str, run_date: str, values: list[str]) -> None:
@@ -122,7 +144,13 @@ def main(argv: list[str] | None = None) -> int:
     from databricks.sdk import WorkspaceClient
 
     w = WorkspaceClient()
-    values = read_summary(w, args.run_date)
+    values = read_summary(w, args.run_date, args.batch)
+    if values is None:
+        json.dump({"published": None, "run_date": args.run_date, "batch": args.batch,
+                   "reason": "no events for this date; nothing to publish"},
+                  sys.stdout, sort_keys=True)
+        print()
+        return 0
     publish({"host": args.pg_host, "port": int(args.pg_port),
              "dbname": args.pg_database, "user": args.pg_user},
             w.dbutils.secrets.get(SECRET_SCOPE, SECRET_KEY), args.run_date, values)

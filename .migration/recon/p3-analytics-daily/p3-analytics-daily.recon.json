@@ -35,7 +35,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "The same job and the same batch (run_date=2026-09-15, snapshot_batch=p3probe) were run again through `databricks bundle run -t migration ow_tp_p3_analytics_daily`. Row counts and an order-independent md5 over every target table are byte-identical before and after (idempotency.before.json, idempotency.after.json, produced by databricks/migration/p3/recon/fingerprint_analytics_target.py): bronze 250, silver 249, gold summary 1, top users 13, hourly 129, top-user actions 81. The landing MERGE is keyed on the batch-scoped event_uid and each gold load is a REPLACE WHERE on the run date, so a rerun rewrites the same rows rather than doubling them."
+    "evidence": "The same job and the same batch (run_date=2026-09-15, snapshot_batch=p3probe) were run again through `databricks bundle run -t migration ow_tp_p3_analytics_daily`. Row counts and an order-independent md5 over every whole row (to_json(struct(*)), not the identifier alone, so a rerun that kept every key and changed a payload, an attribution or a size would fail this check) of every target table are byte-identical before and after (idempotency.before.json, idempotency.after.json, produced by databricks/migration/p3/recon/fingerprint_analytics_target.py): bronze 250, silver 249, gold summary 1, top users 13, hourly 129, top-user actions 81. The landing MERGE is keyed on the batch-scoped event_uid and each gold load is a REPLACE WHERE on the run date, so a rerun rewrites the same rows rather than doubling them."
   },
   "legacy_defects_reproduced": [
     "'document.created' is counted as an event and lands in the hourly breakdown, but not in documents_created: the legacy compares event types as exact snake_case literals (F-0.9).",
@@ -50,7 +50,9 @@
     "Loud failure on a target Postgres outage (P3-D02) is a declared behaviour change from the legacy, which swallowed the error (C-2.16). It is not exercised, for the same reason the publish path is unverified.",
     "SQS is read from a durable snapshot instead of being consumed destructively (P3-D01). The queue-consumption semantics of the legacy are deliberately not reproduced and so are not reconciled.",
     "Structure parity: the harness compares rows, not Delta table properties, comments, or grants on the landing volume.",
-    "Inputs outside the pinned fixture snapshot - other event types, other attribution shapes, a day with no events - are not exercised here; the empty-input and malformed-record contracts are covered by the wave-0 fixture probes, not by this run."
+    "Inputs outside the pinned fixture snapshot - other event types, other attribution shapes, a day with no events - are not exercised here; the empty-input and malformed-record contracts are covered by the wave-0 fixture probes, not by this run. In particular the publisher's empty-day path (no gold row and no silver events for the date publishes nothing and succeeds, matching the legacy's early exit 0) is reasoned from the legacy and unit-level SQL, not from a live empty-day run.",
+    "Scheduled source capture: the job's snapshot_batch now defaults to the trigger date rather than a fixed id, so a scheduled run cannot silently re-read the reconciliation fixture; nothing yet captures a per-day snapshot into the landing volume, so a scheduled run fails loudly on the missing directory. Building that capture is a STOP E item and is not exercised here.",
+    "Alias-only batches: the silver load picks the event-type column once per batch (eventType if any record carries the key, else event_type, else the literal 'unknown'), matching the legacy's frame-level check. The fixture batch carries eventType on every record, so the alias and neither-column branches are covered by reasoning against the legacy, not by this run."
   ],
   "verdict": "PASS"
 }

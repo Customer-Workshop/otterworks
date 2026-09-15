@@ -5,16 +5,19 @@
   "tolerance_version": "v1",
   "seed": 0,
   "depth": "full",
-  "params": {},
+  "params": {
+    "run_date": "2026-09-15",
+    "batch": "p3probe"
+  },
   "snapshot": null,
   "cost": {
     "source_statements": 20,
     "source_rows_fetched": 224,
     "target_statements": 16,
     "target_rows_fetched": 224,
-    "elapsed_s": 7.815
+    "elapsed_s": 10.046
   },
-  "generated_at": "2026-09-15T16:15:12.529964+00:00",
+  "generated_at": "2026-09-15T17:07:16.410685+00:00",
   "tiers": [
     {
       "tier": 1,

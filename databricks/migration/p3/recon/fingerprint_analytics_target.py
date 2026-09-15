@@ -14,14 +14,16 @@ from databricks.sdk import WorkspaceClient
 
 WAREHOUSE = "565cd2fd713738c4"
 
-UID_DIGEST = ("SELECT count(*), md5(concat_ws('|', sort_array(collect_list(event_uid)))) "
-              "FROM {table}")
-ROW_DIGEST = ("SELECT count(*), md5(concat_ws('|', sort_array(collect_list(to_json(struct(*)))))) "
-              "FROM {table} WHERE summary_date = CAST(:run_date AS DATE)")
+# Whole rows, not keys: a rerun that kept every identifier and changed a payload, an
+# attribution or a size would keep the count and the key digest and still be a different
+# table, which is exactly the failure this evidence exists to catch.
+ALL_ROWS = ("SELECT count(*), md5(concat_ws('|', sort_array(collect_list(to_json(struct(*)))))) "
+            "FROM {table}")
+ROW_DIGEST = ALL_ROWS + " WHERE summary_date = CAST(:run_date AS DATE)"
 
 TABLES = (
-    ("bronze.analytics_events_raw", UID_DIGEST, False),
-    ("silver.analytics_events_daily", UID_DIGEST, False),
+    ("bronze.analytics_events_raw", ALL_ROWS, False),
+    ("silver.analytics_events_daily", ALL_ROWS, False),
     ("gold.analytics_daily_summary", ROW_DIGEST, True),
     ("gold.analytics_daily_top_users", ROW_DIGEST, True),
     ("gold.analytics_daily_hourly", ROW_DIGEST, True),

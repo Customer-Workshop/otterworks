@@ -9,11 +9,6 @@ variables:
   landing_path:
     description: Governed landing volume for the analytics event snapshots.
     default: /Volumes/ow_tp/bronze/landing/analytics
-  snapshot_batch:
-    description: >-
-      Immutable input snapshot the run lands and recomputes from (P3-D01). A batch id, not a
-      date: the same batch re-landed is a no-op, which is what makes a rerun safe.
-    default: p3probe
   pg_host:
     description: Serving Postgres host that analytics_daily_summary lives on. Not a secret; the password is one.
     default: analytics-db.otterworks.internal
@@ -61,8 +56,15 @@ resources:
         # the ETL box". A scheduled run passes the trigger date; a backfill passes any date.
         - name: run_date
           default: "{{job.trigger.time.iso_date}}"
+        # Deliberately the trigger date and not a fixed id. A scheduled run must read the
+        # snapshot captured for its own day; defaulting to a reusable batch would let every
+        # date re-land and re-count the same events, because the landing task reads an
+        # already-captured directory and the silver scope takes every SQS row whatever date
+        # it carries. With no directory for the date, landing fails loudly instead. Capturing
+        # that per-day snapshot is not part of this unit and is a STOP E item; a recon or
+        # backfill run passes --params snapshot_batch=<id> explicitly.
         - name: snapshot_batch
-          default: ${var.snapshot_batch}
+          default: "{{job.trigger.time.iso_date}}"
       tasks:
         - task_key: land_events
           spark_python_task:
@@ -161,9 +163,13 @@ resources:
           min_retry_interval_millis: 300000
           retry_on_timeout: true
 
+        # Not a sibling of the other three: it joins gold.analytics_daily_top_users to pick
+        # the users whose breakdown it writes, so it has to run after that table's REPLACE
+        # WHERE has committed. Depending on load_silver alone would let it read the previous
+        # run's ranking and still report success.
         - task_key: load_gold_top_user_actions
           depends_on:
-            - task_key: load_silver
+            - task_key: load_gold_top_users
           spark_python_task:
             python_file: sql/apply_p3_sql.py
             parameters:

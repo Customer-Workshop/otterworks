@@ -11,15 +11,43 @@
 -- The estate has attribute pairs that differ only in case (the audit table's `Timestamp`
 -- against `timestamp`), and a case-insensitive read would quietly repair record shapes the
 -- legacy could not read.
+--
+-- The event-type choice is made once for the whole batch, not per row, because the legacy
+-- makes it on the frame: `if 'event_type' in df.columns and 'eventType' not in df.columns`
+-- copies the whole alias column, and a frame with neither column gets the literal 'unknown'
+-- everywhere. A row-local coalesce would be a different function: it would repair a single
+-- record that carries only the alias inside a batch that otherwise uses `eventType`, which
+-- the legacy leaves untyped.
 INSERT INTO ow_tp.silver.analytics_events_daily
 REPLACE WHERE summary_date = CAST(:run_date AS DATE) AND snapshot_batch = :batch
+WITH scoped AS (
+  SELECT *
+  FROM ow_tp.bronze.analytics_events_raw
+  WHERE snapshot_batch = :batch
+    AND (source_stream = 'sqs' OR startswith(event_date, :run_date))
+),
+-- Key presence, not a non-null value: pandas creates the column as soon as one record
+-- carries the key, even where the value is null, so a batch whose eventType is present
+-- and null everywhere still has the column and must not fall through to the alias.
+shape AS (
+  SELECT
+    max(CASE WHEN array_contains(json_object_keys(payload), 'eventType') THEN 1 ELSE 0 END)
+      AS has_event_type_column,
+    max(CASE WHEN array_contains(json_object_keys(payload), 'event_type') THEN 1 ELSE 0 END)
+      AS has_alias_column
+  FROM scoped
+)
 SELECT
   event_uid,
   CAST(:run_date AS DATE) AS summary_date,
   snapshot_batch,
   source_stream,
   ingest_ordinal,
-  get_json_object(payload, '$.eventType') AS event_type,
+  CASE
+    WHEN shape.has_event_type_column = 1 THEN get_json_object(payload, '$.eventType')
+    WHEN shape.has_alias_column = 1 THEN get_json_object(payload, '$.event_type')
+    ELSE 'unknown'
+  END AS event_type,
   -- The legacy walks the five fields in order and overwrites while the running value is
   -- still the literal 'unknown', so a field whose value *is* 'unknown' does not stop the
   -- walk. nullif on 'unknown' reproduces that; the default is 'unknown' either way.
@@ -43,6 +71,4 @@ SELECT
   get_json_object(payload, '$.documentId') AS document_id,
   get_json_object(payload, '$.fileId') AS file_id,
   try_cast(get_json_object(payload, '$.sizeBytes') AS BIGINT) AS size_bytes
-FROM ow_tp.bronze.analytics_events_raw
-WHERE snapshot_batch = :batch
-  AND (source_stream = 'sqs' OR startswith(event_date, :run_date))
+FROM scoped CROSS JOIN shape

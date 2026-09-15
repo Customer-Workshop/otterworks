@@ -54,8 +54,9 @@ unit does not create it: substituting another unit's DDL is what the wave forbid
 already exists on the shared branch, so the foreign key was created for real and this
 evidence covers it.
 
-Derived dialect rule from the sibling unit (`timestamp`, never `timestamptz`, for zoneless
-Oracle datetimes) does not apply here — this table has no datetime column.
+Ledger decision D-010 (Oracle `TIMESTAMP` → Postgres `timestamp(6)`, never `timestamptz`)
+does not change this table: `INVOICE_LINES` has no datetime column. This evidence is the
+re-run against the corrected mapping specs, so the run matches the current manifest.
 
 ## Idempotency
 

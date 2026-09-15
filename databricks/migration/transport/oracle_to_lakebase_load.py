@@ -101,6 +101,16 @@ def quantize(value, target_type: str):
     return Decimal(value).quantize(Decimal(1).scaleb(-scale))
 
 
+def generated_columns(pg, schema: str, table_name: str) -> set[str]:
+    """Names of the target's stored generated columns, read from the target catalog."""
+    with pg.cursor() as cur:
+        rows = cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = %s AND table_name = %s AND is_generated = 'ALWAYS'",
+            (schema, table_name)).fetchall()
+    return {r[0] for r in rows}
+
+
 def load_table(table: dict, ora, pg, schema: str) -> dict:
     source_table = qualified(table["source_table"])
     target = f'{ident(schema)}.{ident(table["target_table"])}'
@@ -110,6 +120,10 @@ def load_table(table: dict, ora, pg, schema: str) -> dict:
     tgt_cols = [ident(f["target"]) for f in fields]
     key_cols = [ident(c) for c in table["key"]["target"]]
     key_idx = [tgt_cols.index(c) for c in key_cols]
+    # A derived companion the target computes for itself (a stored generated column) rejects
+    # any explicit value, so only the writable ones are carried in the insert.
+    computed = generated_columns(pg, schema, table["target_table"])
+    derived = [d for d in derived if d["target"] not in computed]
     raw_idx = [[f["target"] for f in fields].index(d["raw"]) for d in derived]
     tgt_cols += [ident(d["target"]) for d in derived]
 

@@ -1,0 +1,8 @@
+{
+  "cluster": "otterworks-demos M0",
+  "databases": ["ow_billing_migration"],
+  "catalogs": ["ow_billing_migration"],
+  "legacy_sources": ["OW_BILLING"],
+  "guard_mode": "block",
+  "note": "The only place any migration session may write. No grants, users, or writes anywhere else (AGENTS.md rule 2). 'catalogs' mirrors 'databases' so the co-installed factory guard hook can parse this file."
+}

@@ -1,0 +1,7 @@
+{
+  "version": "0",
+  "status": "empty — filled by playbook 2 (inventory & model), approved at STOP B",
+  "source_family": "oracle",
+  "target_db": "ow_billing_migration",
+  "collections": []
+}

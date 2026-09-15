@@ -30,6 +30,9 @@ VERIFY_MACRO = "!dbx_data_reconciliation"
 SOURCE = {"family": "databricks", "secret": "OW_BILLING_RO_DSN",
           "params": {"source_schema": "OW_BILLING"}}
 CANON = "databricks/migration/recon/canonicalization.oracle.json"
+# Concurrent live reads the Oracle source may see across a whole wave. Every batch takes one
+# at its gate, so the fan-out width IS that concurrency: width can never exceed the cap.
+SOURCE_QUERY_CAP = 4
 TOL = ".migration/03_recon_tolerances.json"
 
 # unit -> (title, track, depth, targets, source objects)
@@ -112,18 +115,28 @@ CONVERSION RULES THAT ARE NOT NEGOTIABLE (from the approved analysis)
     INVOICES/INVOICE_LINES (Lakebase) are NOT legacy INVOICE_HEADER/INVOICE_LINE (Delta).
   - Every schedule you create lands PAUSED.
 
-RECON GATE (the only merge authority)
-  Official harness only: `dbx-recon`. No hand-written comparison SQL, ever.
+RECON GATE (the only merge authority, and it is DEGRADED on this run)
+  D10-01 was DENIED: the security group stays shut, so there is no Lakehouse Federation and
+  no `--family databricks` read of Oracle. The owner directed the JDBC route instead
+  (plan decision P1-D10). `dbx-recon run --family oracle` still refuses at the CLI - do not
+  try to make it accept - so the gate runs the harness ENGINE with a repo-local Oracle
+  source adapter: databricks/migration/recon/run_degraded_recon.py. Every tier, tolerance
+  and canonicalization rule is the harness's own; only the source connector is outside the
+  tested matrix.
+  Consequence, and you must carry it verbatim: every pipeline-1 verdict is graded DEGRADED
+  with official_verdict=false and reason=d10_01_denied. Never call it an official harness
+  verdict - not in summary.md, not in result.json, not in your PR body, not in your report.
+  Everything else is computed in full: money exact, row counts exact, 1e-9 relative on other
+  floats, ISO-canonicalised dates, declared anomaly sets compared as sets, idempotency proven
+  by rerun, unverified paths listed explicitly. Recompute from the target platform - never
+  from CDC output this unit produced.
+  Source-side op SQL is ORACLE dialect (it runs on Oracle, not Databricks) and its result
+  columns carry quoted lowercase aliases so they match the target side by name.
   Fixture first (mode=fixture, never merge evidence), then exactly one merge-evidence run.
   Cap: 3 full recon runs; on the third failure stop and report status=FAIL with a short
-  failure_class. Evidence goes to .migration/recon/<unit_id>/ (summary.md + result.json) and
-  into the PR body. The exact command for each of your units is below.
-  Source side reads Oracle through Lakehouse Federation as `--family databricks`
-  (`--family oracle` is an untested adapter and the CLI refuses it). Federation needs
-  D10-01 (port 1521 open to the Databricks serverless NAT range). If D10-01 is still open
-  when you reach your gate: run the gate in the mode the plan's degraded path names, mark
-  the verdict DEGRADED in summary.md, and report status=BLOCKED with `d10_01_federation`.
-  Never invent an unofficial comparison and never call a fixture PASS a merge verdict.
+  failure_class. Evidence goes to .migration/recon/<unit_id>/ (summary.md + result.json,
+  plus DEGRADED.md) and into the PR body. The exact command for each unit is below.
+  Never invent a hand-written comparison and never call a fixture PASS a merge verdict.
 """.rstrip()
 
 
@@ -136,12 +149,14 @@ def gate_cmd(unit: str) -> str:
         mode, kind, secret, schema = "live", "databricks", "DATABRICKS_MIGRATION_SQL", "silver"
     ops = (f"    --ops .migration/units/{unit}/ops.json \\\n"
            if (UNITS / unit / "ops.json").exists() else "")
-    return (f"  dbx-recon run --unit {unit} --family databricks \\\n"
+    return (f"  python3 databricks/migration/recon/with_oracle_secret.py "
+            f"OW_TP_ORACLE_RO ow-tp/oracle/ow_billing_ro -- \\\n"
+            f"  python3 databricks/migration/recon/run_degraded_recon.py --unit {unit} \\\n"
             f"    --mapping .migration/units/{unit}/mapping_spec.json \\\n"
             f"{ops}"
             f"    --tolerances {TOL} \\\n"
             f"    --canonicalization {CANON} \\\n"
-            f"    --mode {mode} --source-dsn-secret {SOURCE['secret']} \\\n"
+            f"    --mode {mode} --source-dsn-secret OW_TP_ORACLE_RO \\\n"
             f"    --target-kind {kind} --target-secret {secret} \\\n"
             f"    --target-catalog ow_tp --target-schema {schema} \\\n"
             f"    --allowed-targets-file .migration/allowed_targets.json \\\n"
@@ -248,22 +263,24 @@ Wave 0 is serial and everything else waits on it. Deliver, in this order:
       - log_msg: PRAGMA AUTONOMOUS_TRANSACTION, commits even when the caller rolls back and
         swallows its own failures. Implement per plan decision P1-D1 (separate best-effort
         writer that cannot fail the caller and is not enrolled in the caller's transaction).
- 4. Lakehouse Federation: create the connection and catalog `ow_billing_fed` over
-    OW_BILLING. It is the recon source side and what the code units' Tier-4 ops query. It
-    needs D10-01 (port 1521 to the serverless NAT range). If D10-01 is still open, build
-    everything else, leave the connection uncreated, and say so in summary.md - do not ask
-    for the security-group change yourself.
+ 4. Recon source wiring, NOT Federation: D10-01 was denied, so `ow_billing_fed` is never
+    created and nothing may read Oracle from Databricks. Wire and smoke the JDBC route
+    instead - databricks/migration/recon/{oracle_jdbc_adapter,run_degraded_recon,
+    with_oracle_secret}.py - with one read-only Oracle query, and record in summary.md that
+    every pipeline-1 verdict from here on is DEGRADED, official_verdict=false,
+    reason=d10_01_denied. Do not ask for the security-group change.
  5. billing.rating_state: the explicit pkg_rating -> pkg_invoicing hand-off (plan decision
     P1-D4), keyed (tenant_id, period_id), holding the overage amount and the finalisation
     marker that Oracle kept in g_overage_amount. Pin the exact shape here, with a comment
     saying wave 3 codes against it: w3-a writes it and w3-b reads it, concurrently.
  6. billing.md5_parity_input(vector, input): the seed table the MD5 ops compare against.
-    Seed it, through Federation, with the exact inputs Oracle used for the ids it already
-    holds - `rating_result` = rating_results.period_id (pkg_rating:197), `invoice` =
+    Seed it over the same read-only JDBC path, with the exact inputs Oracle used for the ids
+    it already holds - `rating_result` = rating_results.period_id (pkg_rating:197), `invoice` =
     invoices.period_id || 'invoice' (pkg_invoicing:130-132), `invoice_line` =
     invoice_lines.invoice_id || line_no (pkg_invoicing:160). The ops then put Oracle's own
     ids next to billing.f_md5_uuid recomputed from the same inputs, which is the parity
-    proof. Neither side calls an Oracle package: Federation exposes rows, not PL/SQL.
+    proof. Neither side calls an Oracle package: calling one would need an Oracle view over
+    it, which is source DDL and forbidden.
  7. Data recon for this unit is the billing_audit_log schema-parity check only (the table is
     empty; the operational copy billing.billing_audit_log is this unit's, the silver copy is
     U-19's): record it as NOT DATA-PROVEN. The merge evidence is the three MD5 ops.
@@ -323,7 +340,11 @@ Lakebase units in wave 4. State the generation in both mapping specs and in your
    expect the size-tiered recon path. Full row-level diff still applies (below 5,000,000).
 """),
     ]),
-    (2, 5, [
+    # Width 4, not 5: this wave has five batches and every one of them takes a live Oracle
+    # read at its gate, so a width of 5 can put five concurrent queries on a source whose cap
+    # is four. The five batches still run; at most four are in flight. Recorded as a
+    # deviation from "width 5 for waves 2-4" in the plan.
+    (2, 4, [
         ("w2-a", ["p1-subscriptions", "p1-pkg-plans"],
          ["billing.subscriptions", "billing.fn_plan_entitlements", "billing.sp_assign_plan"],
          """
@@ -384,7 +405,8 @@ BILLING_AUDIT_LOG (empty) into Delta plus its retention job.
    live run to compare against (the Oracle jobs are DISABLED) - state that gap plainly.
 """),
     ]),
-    (3, 5, [
+    # Same cap reason as wave 2; this wave has four batches, so nothing is serialized by it.
+    (3, 4, [
         ("w3-a", ["p1-rating-periods", "p1-rating-results", "p1-pkg-rating"],
          ["billing.rating_periods", "billing.rating_results", "billing.sp_finalize_rating",
           "billing.fn_usage_rating", "billing.fn_usage_summary"],
@@ -504,6 +526,11 @@ def main() -> int:
     WAVES.mkdir(parents=True, exist_ok=True)
     branches = wave_branches([w for w, _, _ in PLAN])
     for wave, width, batches in PLAN:
+        if width > SOURCE_QUERY_CAP:
+            raise SystemExit(
+                f"wave {wave}: width {width} exceeds source_query_cap {SOURCE_QUERY_CAP}; "
+                "every batch takes a live source read at its gate, so the fan-out width is "
+                "the concurrency the source sees")
         lb_branch, cut_from = branches[wave]
         units = [u for _, us, _, _ in batches for u in us]
         manifest = {
@@ -523,7 +550,7 @@ def main() -> int:
             "source": SOURCE,
             "base_branch": BASE_BRANCH,
             "controls": {
-                "source_query_cap": 4,
+                "source_query_cap": SOURCE_QUERY_CAP,
                 "recon_rerun_cap": 3,
                 "review_round_cap": 3,
                 "breaker_class": "3 same-class failures halts the wave and escalates",

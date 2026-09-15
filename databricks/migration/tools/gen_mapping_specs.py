@@ -55,34 +55,39 @@ UNITS_SPEC = {
 # so its mapping names the tables it mutates. Those tables are ALSO owned as data units by a
 # different child: a mapping is not a write target, and the unit ids stay disjoint.
 # unit_id -> ([(source table, key, track)], [(op name, source sql, target sql)])
-FED = "ow_billing_fed.ow_billing"  # Lakehouse Federation catalog.schema, created in wave 0
+# D10-01 (port 1521 to the Databricks serverless NAT range) was DENIED, so there is no
+# Lakehouse Federation. Source-side op SQL runs on ORACLE, over JDBC from the Devin CIDRs
+# through databricks/migration/recon/oracle_jdbc_adapter.py, and must therefore be Oracle
+# dialect. Aliases are quoted lowercase because Oracle folds unquoted names to upper case and
+# the harness's tier-4 diff matches result columns by exact name against a lowercase target.
+SRC = "ow_billing"  # Oracle schema, read-only
 
 CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, str, str]]]] = {
     # U-20's parity ops compare Oracle-COMPUTED ids against the converted function. Neither
-    # side calls an Oracle package: Lakehouse Federation exposes OW_BILLING rows to Databricks
-    # SQL, not PL/SQL, so an unqualified f_md5_uuid(...) in source_sql would resolve in
-    # Databricks and prove nothing. Instead the source side reads ids Oracle already produced
+    # side calls an Oracle package: the source side reads ids Oracle already produced
     # (pkg_rating:197, pkg_invoicing:130-160 give the exact derivation), and the target side
     # recomputes them from the same inputs, seeded into billing.md5_parity_input in wave 0.
-    # Both sides of every op therefore run on the engine the unit's --target-kind names.
+    # Calling f_md5_uuid on the source side would need an Oracle view over the package, which
+    # is source DDL and forbidden.
     "p1-pkg-ow-util": (
         [("billing_audit_log", ["log_id"], "lakebase")],
         [("f_md5_uuid_vs_oracle_rating_result_ids",
-          f"SELECT period_id AS input, id AS oracle_id FROM {FED}.rating_results ORDER BY period_id",
+          f'SELECT period_id AS "input", id AS "oracle_id" FROM {SRC}.rating_results ORDER BY period_id',
           "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
           "FROM billing.md5_parity_input WHERE vector = 'rating_result' ORDER BY input"),
          ("f_md5_uuid_vs_oracle_invoice_ids",
-          f"SELECT period_id || 'invoice' AS input, id AS oracle_id FROM {FED}.invoices ORDER BY input",
+          f'SELECT period_id || \'invoice\' AS "input", id AS "oracle_id" '
+          f'FROM {SRC}.invoices ORDER BY 1',
           "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
           "FROM billing.md5_parity_input WHERE vector = 'invoice' ORDER BY input"),
          ("f_md5_uuid_vs_oracle_invoice_line_ids",
-          f"SELECT invoice_id || CAST(line_no AS STRING) AS input, id AS oracle_id "
-          f"FROM {FED}.invoice_lines ORDER BY input",
+          f'SELECT invoice_id || TO_CHAR(line_no) AS "input", id AS "oracle_id" '
+          f'FROM {SRC}.invoice_lines ORDER BY 1',
           "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
           "FROM billing.md5_parity_input WHERE vector = 'invoice_line' ORDER BY input")]),
     # The other four packages have NO ops file, deliberately. Their entrypoints are PL/SQL, and
-    # the only way to put an Oracle-side result next to a target-side one through Federation
-    # would be an Oracle view over the package - source DDL, which is forbidden. Their merge
+    # the only way to put an Oracle-side result next to a target-side one would be an Oracle
+    # view over the package - source DDL, which is forbidden. Their merge
     # evidence is the live row parity of the tables they write (below) plus the fixture-run
     # behavioural diff the plan specifies; the plan records the live-entrypoint comparison as a
     # declared unverified path rather than pretending a gate exists.
@@ -105,7 +110,8 @@ CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, st
 DATA_UNIT_OPS: dict[str, list[tuple[str, str, str]]] = {
     "p1-codes": [(
         "f_code_desc_all",
-        f"SELECT code_type, code_val, code_desc AS d FROM {FED}.codes ORDER BY code_type, code_val",
+        f'SELECT code_type AS "code_type", code_val AS "code_val", code_desc AS "d" '
+        f"FROM {SRC}.codes ORDER BY code_type, code_val",
         "SELECT code_type, code_val, billing.f_code_desc(code_type, code_val) AS d "
         "FROM billing.codes ORDER BY code_type, code_val")],
 }
@@ -250,24 +256,33 @@ def build(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> dict:
 def date_ops(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> list[dict]:
     """Tier-4 op proving the parsed date column and the unparseable set, for one data unit.
 
-    Both sides read the SAME raw bytes: the source side is the federated Oracle column parsed
-    in Databricks SQL, the target side is the column the conversion wrote. That proves the
-    target parse and pins the NULL (unparseable) set as data, which is what the tolerance
-    record compares as an exact set. It does NOT execute Oracle's f_str2dt - Federation
-    exposes rows, not PL/SQL - so the plan carries it as a declared unverified path.
+    Both sides read the SAME raw bytes: the source side is the Oracle column parsed in Oracle,
+    the target side is the column the conversion wrote. That proves the target parse and pins
+    the NULL (unparseable) set as data, which is what the tolerance record compares as an exact
+    set.
+
+    The source parse is `TO_DATE(col DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY')`, which is
+    what `f_str2dt` does: a malformed date yields NULL rather than raising. A bare TO_DATE
+    would abort the whole op on the first bad string, and malformed strings are a declared
+    anomaly class here, not an error. It still does not execute `f_str2dt` itself (that needs
+    an Oracle view over the package, i.e. source DDL), so the plan carries the entrypoint
+    comparison as a declared unverified path.
     """
     src, tgt, key, _, _, track = UNITS_SPEC[unit_id]
     cols = date_columns(src, tables)
     if not cols:
         return []
     keys = ", ".join(key)
-    src_cols = ", ".join(f"to_date({c}, 'dd-MMM-yy') AS {c}{PARSED_SUFFIX}" for c in cols)
+    src_keys = ", ".join(f'{k} AS "{k}"' for k in key)
+    src_cols = ", ".join(
+        f"TO_DATE({c} DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') AS \"{c}{PARSED_SUFFIX}\""
+        for c in cols)
     tgt_cols = ", ".join(f"{c}{PARSED_SUFFIX}" for c in cols)
     tgt_table = f"billing.{tgt}" if track == "lakebase" else f"ow_tp.silver.{tgt}"
     return [{
         "name": f"str_date_parse_{tgt}",
         "object": unit_id,
-        "source_sql": (f"SELECT {keys}, {src_cols} FROM {FED}.{src} ORDER BY {keys}"),
+        "source_sql": (f"SELECT {src_keys}, {src_cols} FROM {SRC}.{src} ORDER BY {keys}"),
         "target_sql": (f"SELECT {keys}, {tgt_cols} FROM {tgt_table} ORDER BY {keys}"),
         "rules": ["null_missing_equiv"],
     }]

@@ -56,17 +56,18 @@ parent in `.migration/06_decisions.md`.
 | P1-D6 | Every converted load is idempotent: truncate-and-load or MERGE on the declared key. A recon rerun must not change target row counts. | Children are capped at 3 recon runs; a non-idempotent load makes rerun 2 meaningless. |
 | P1-D7 | Trailing spaces are stripped for recon on fixed-width `CHAR`/`NCHAR` only. `VARCHAR2` keeps its bytes. | Oracle blank-pads `CHAR`, so its trailing spaces carry nothing; a `VARCHAR2` trailing space is data, and stripping it would let real loss pass the gate. |
 | P1-D8 | One Lakebase branch per **wave**, created by the orchestrator before fan-out off the previous wave's branch. Children never create, reset or drop a branch; batches in a wave share it and are isolated by disjoint write targets. `allowed_targets.json` allowlists `mig-p1-w0/w1/w2`, so waves 3 and 4 continue on `mig-p1-w2`. | Per-batch creation of the same branch name races concurrent children, and re-cutting from `mig-p1-w0` each wave would drop everything earlier waves merged. Extending the allowlist is a parent decision, so the plan stays inside it. |
-| P1-D9 | Package behavioural parity is proved by the row parity of the tables the package writes, plus a fixture run-diff, not by a live Oracle entrypoint call. Only `pkg_ow_util`'s MD5 parity has a live gate, because Oracle already stored the ids it produced. | Lakehouse Federation exposes OW_BILLING rows, not PL/SQL. Calling an Oracle package from the source side would need an Oracle view over it — source DDL, which is forbidden. The live entrypoint comparison is a declared unverified path, not a fake gate. |
+| P1-D10 | D10-01 was denied, so there is no Federation read path. Recon reads Oracle over JDBC from the Devin CIDRs instead, driving the official harness as a library (`recon.engine.run_recon`) with a repo-local Oracle source adapter: every tier, canonicalisation rule and tolerance is the harness's own, only the source connector is outside the tested matrix. Consequence, recorded by owner decision: **every pipeline-1 unit's recon grade is DEGRADED and no artifact, PR body or wave brief may call it an official harness verdict.** The STOP E packet states this instead of presenting a green gate. | The owner declined the security-group change and directed the JDBC route with that consequence accepted. Driving the harness as a library keeps the comparison math official — hand-written comparison SQL would make the arithmetic unofficial too, which is a strictly worse trade. `dbx-recon --family oracle` refuses at the CLI by design, and that refusal is respected: nothing pretends the adapter is tested. |
+| P1-D9 | Package behavioural parity is proved by the row parity of the tables the package writes, plus a fixture run-diff, not by a live Oracle entrypoint call. Only `pkg_ow_util`'s MD5 parity has a live gate, because Oracle already stored the ids it produced. | The recon source path reads OW_BILLING rows, not PL/SQL. Calling an Oracle package from the source side would need an Oracle view over it — source DDL, which is forbidden. The live entrypoint comparison is a declared unverified path, not a fake gate. |
 
 ## 3. Dependencies — none left UNDECIDED
 
 | ID | State | Owner | Routing point | Closure condition | Lead time |
 |---|---|---|---|---|---|
-| D10-01 — open 1521 on `sg-0eaf11f4434260e1e` to the Databricks serverless NAT range | **BLOCKED — escalated at this STOP C** | engagement owner | STOP C reply | Federation catalog `ow_billing_fed` reads `OW_BILLING` and `dbx-recon --family databricks` connects to it | Asked 2026-09-15; needs a security-group change plus a Federation connection. Assume one business day after approval. Wave 0 can start without it; the first merge-evidence recon cannot. |
+| D10-01 — open 1521 on `sg-0eaf11f4434260e1e` to the Databricks serverless NAT range | **DENIED** by the owner at STOP C (2026-09-15) | engagement owner | closed | — | Closed as denied. There is no Lakehouse Federation on this run. The owner directed the JDBC-from-Devin route instead; see P1-D10 and §6. Consequence accepted in writing: every pipeline-1 recon grade is DEGRADED. |
 | D10-02 — Lakebase `ow-tp-billing` provisioned, branch `mig-p1-w0` | ACCEPTED (in progress, parent-owned) | parent | wave 0 start | Doctor's branch-create and schema-grant rows pass on `mig-p1-w0` (they did at last run) | none |
 | D10-03 — Kinesis stream + Debezium Server on EKS `otterworks-dev` | DEFERRED WITH CONDITION | parent | wave 0 batch w0-b | CDC stream lands rows in `ow_tp.bronze` and converges with a JDBC snapshot | Condition: if not delivered, w0-b falls back to JDBC + watermark (D-002), reports the CDC leg as follow-up, and does not block the pipeline |
 | D10-04 — confirm the service principal `dhrov_spa` is the migration identity | **CONFIRMED** by the owner at this STOP C | engagement owner | STOP C reply (one line, alongside D10-01) | Owner confirms; or names the PAT, which reopens STOP A | Reversible. Everything already runs as the SP object id `2e90bc1d-…`. |
-| D4-02 — application consumer census for invoice preview, invoice lines and overdue-account reads, and whether an API shim is needed | **OPEN — escalated at this STOP C** | engagement owner + application team | STOP C reply, or STOP D at the latest | A named list of services and connection strings that read those three surfaces, and a decision to repoint vs. shim | Blocks STOP E, not the waves. Asked now because a shim is application work with its own lead time. |
+| D4-02 — application consumer census for invoice preview, invoice lines and overdue-account reads, and whether an API shim is needed | **RULE DECIDED** at STOP C; census in progress (Devin, mechanical) | engagement owner + application team | STOP E | The census lands with a per-consumer call applying the owner's rule | Blocks STOP E, not the waves. Rule: package-entrypoint callers (`pkg_invoicing` preview, overdue/dunning entrypoints) go behind a thin temporary shim that preserves the call shape over Lakebase; direct table readers repoint to the Postgres wire protocol; anything fitting neither is flagged, not forced. The shim is temporary and the STOP E packet must name its removal owner. |
 | D6-01 — `pkg_ow_util` shared by all four packages, owned by wave 0 | IMPLEMENTED IN PLAN | parent | wave 0 batch w0-a | Wave 0 merges with the MD5 parity proof | none |
 | D8-01 — orphan rows and malformed strings are reproduced, not cleaned | IMPLEMENTED IN PLAN | parent | every unit gate | Anomaly sets compared as sets (tolerances v1) | none |
 | D9-01 — modern vs legacy invoice generation | IMPLEMENTED IN PLAN | parent | every mapping spec | `generation` field present in all 27 mappings (it is) | none |
@@ -92,13 +93,14 @@ Wave 0 is two serial batches and everything else waits on it.
 4. Recon wiring: the pinned canonicalization profile
    `databricks/migration/recon/canonicalization.oracle.json` (the 37 string-date columns, the
    Oracle NUMBER/CHAR/DATE rules) is the profile every unit passes to `dbx-recon`.
-5. Lakehouse Federation: create the `ow_billing_fed` connection and catalog. It is what the
-   recon source side reads. Blocked on D10-01.
+5. Recon source path: **no Federation** (D10-01 denied). Wave 0 installs the repo-local Oracle
+   JDBC source adapter and the degraded-recon driver every later unit calls, reading Oracle
+   read-only from the Devin CIDRs under `ow-tp/oracle/ow_billing_ro`.
 6. `billing.rating_state`: the P1-D4 hand-off table, pinned here so wave 3 can run wide.
 7. Convert `pkg_ow_util` (`f_md5_uuid`, `f_str2dt`, `f_code_desc`, `log_msg`) to PL/pgSQL plus
    the Delta-side equivalents. The MD5/UUID parity proof is this batch's reason to exist. It
    runs against ids Oracle itself produced: `billing.md5_parity_input` is seeded through
-   Federation with the exact inputs behind the stored ids (`rating_results.period_id`,
+   the read-only JDBC path with the exact inputs behind the stored ids (`rating_results.period_id`,
    `invoices.period_id || 'invoice'`, `invoice_lines.invoice_id || line_no`), and the three
    ops put those stored ids next to `billing.f_md5_uuid` recomputed from the same inputs.
    Add the NULL, empty-string and non-ASCII inputs as a fixture vector beside it. If parity
@@ -121,14 +123,17 @@ tables belongs to their own units. On failure or a missing D10-03: JDBC + waterm
 |---|---|---|---|---|
 | 0 | 1 (serial) | w0-a, w0-b | 2 | `.migration/waves/wave-0.json` |
 | 1 (pilot) | 3 | w1-a (U-01, U-02, U-11), w1-b (U-18), w1-c (U-16, U-17) | 6 | `wave-1.json` |
-| 2 | 5 | w2-a (U-03, U-21), w2-b (U-12), w2-c (U-13), w2-d (U-14, U-15), w2-e (U-19, U-26) | 8 | `wave-2.json` |
-| 3 | 5 | w3-a (U-04, U-05, U-22), w3-b (U-06, U-07, U-23), w3-c (U-08), w3-d (U-09, U-10, U-24) | 10 | `wave-3.json` |
+| 2 | 4 | w2-a (U-03, U-21), w2-b (U-12), w2-c (U-13), w2-d (U-14, U-15), w2-e (U-19, U-26) | 8 | `wave-2.json` |
+| 3 | 4 | w3-a (U-04, U-05, U-22), w3-b (U-06, U-07, U-23), w3-c (U-08), w3-d (U-09, U-10, U-24) | 10 | `wave-3.json` |
 | 4 | 1 (serial) | w4-a (U-25, created paused) | 1 | `wave-4.json` |
 
 **On the width discrepancy.** The engagement contract says pilot 3 then 5; the approved
-analysis describes wave 3 as "width 4". Both are satisfied: wave 3 has four batches, so a
-width cap of 5 is not binding. The manifests carry width 5 for waves 2 and 3 to match the
-recorded contract, and the batch count does the rest. No scope or ordering changed.
+analysis describes wave 3 as "width 4". Waves 2 and 3 ship at **width 4**, not 5, because the
+source query cap is 4 concurrent Oracle reads for a whole wave and every batch takes a live
+read at its gate — a width of 5 on wave 2 (five batches) would put five concurrent queries on
+the source. Wave 3 has four batches, so the cap is not binding there either way. All 27 units
+and the batch boundaries are unchanged; wave 2 runs five batches with at most four in flight.
+`gen_wave_manifests.py` now refuses to emit a wave whose width exceeds the cap.
 
 **Wave 3 runs four batches that depend on each other.** That is deliberate and it is why
 P1-D4 exists: w3-b (invoicing) reads rating state and credit notes, w3-d (dunning) reads
@@ -145,17 +150,16 @@ reviewer is the constraint at 2 batches per round:
 
 | Wave | Batches | Parallel child time | Gate + review | Notes |
 |---|---|---|---|---|
-| 0 | 2 serial | ~3 h | ~1 h | Federation setup is D10-01-dependent |
+| 0 | 2 serial | ~3 h | ~1 h | JDBC recon wiring replaces the Federation step (D10-01 denied) |
 | 1 | 3 | ~1.5 h | ~1.5 h | Pilot: add ~1 h to harvest dialect feedback into the skill before wave 2 |
 | 2 | 5 | ~1.5 h | ~2 h | `CUSTOMER_MASTER` (25k × 155 cols) is the long pole |
 | 3 | 4 | ~1.5 h | ~2 h | Plus the post-merge op-diff re-runs |
 | 4 | 1 | ~1 h | ~0.5 h | Job created paused |
 
 That is roughly 1.5–2 working sessions of Devin time end-to-end, and the schedule is
-dominated by two things that are not compute: the D10-01 lead time before any merge-evidence
-recon can run, and human review throughput. The source-query cap of 4 concurrent Oracle reads
-is not binding at these widths (worst case wave 2 wants 5, and the largest unit,
-`INVOICE_LINE` at 150,000 rows, is one chunked read).
+dominated by human review throughput. The source-query cap of 4 concurrent Oracle reads binds
+wave 2, which is why it runs its five batches at width 4; the largest unit, `INVOICE_LINE` at
+150,000 rows, is one chunked read.
 
 **Recon cost** (from `dbx-recon estimate`, summed per wave, in the manifests):
 
@@ -177,12 +181,13 @@ fixture PASS is never a merge verdict.
 Every child runs, per unit:
 
 ```
-dbx-recon run --unit <unit> --family databricks \
+python3 databricks/migration/recon/with_oracle_secret.py OW_TP_ORACLE_RO ow-tp/oracle/ow_billing_ro -- \
+python3 databricks/migration/recon/run_degraded_recon.py --unit <unit> \
   --mapping .migration/units/<unit>/mapping_spec.json \
   [--ops .migration/units/<unit>/ops.json] \
   --tolerances .migration/03_recon_tolerances.json \
   --canonicalization databricks/migration/recon/canonicalization.oracle.json \
-  --mode <transactional|live> --source-dsn-secret OW_BILLING_RO_DSN \
+  --mode <transactional|live> --source-dsn-secret OW_TP_ORACLE_RO \
   --target-kind <lakebase|databricks> --target-secret <OW_TP_LAKEBASE_DSN|DATABRICKS_MIGRATION_SQL> \
   --target-catalog ow_tp --target-schema <billing|silver> \
   --allowed-targets-file .migration/allowed_targets.json \
@@ -192,12 +197,16 @@ dbx-recon run --unit <unit> --family databricks \
 The exact command for each unit is in that unit's batch brief in the manifest, so no child
 composes one by hand. Operational units run `--mode transactional --target-kind lakebase`
 against their wave's Lakebase branch; analytical units run `--mode live --target-kind
-databricks`. The source side always reads Oracle through Lakehouse Federation as
-`--family databricks`; `--family oracle` is an untested adapter and the CLI refuses it.
+databricks`. The source side reads Oracle directly over JDBC (P1-D10, D10-01 denied);
+`dbx-recon run --family oracle` still refuses at the CLI and is not used.
 
-Both sides of an op run on the engine the unit's `--target-kind` names: the source SQL is
-Databricks SQL over the federated Oracle tables, the target SQL is Lakebase PL/pgSQL or
-DBSQL. No op calls an Oracle package, because Federation cannot (see P1-D9).
+Op SQL runs on two different engines: the source side is **Oracle dialect** against
+`OW_BILLING`, the target side is Lakebase PL/pgSQL or DBSQL. Source aliases are quoted
+lowercase so the tier-4 diff matches columns by name across Oracle's upper-case folding. The
+string-date parse on the source side is `TO_DATE(col DEFAULT NULL ON CONVERSION ERROR,
+'DD-MON-YY')` — the same NULL-on-bad-input behaviour as `f_str2dt`, so a malformed date is
+compared as an anomaly instead of aborting the run. No op calls an Oracle package: that would
+need an Oracle view over it, which is source DDL (see P1-D9).
 
 PASS requires all of:
 
@@ -235,11 +244,16 @@ a fixture run-diff: run the legacy package and the converted one over the same f
 and diff the written rows with the harness in fixture mode. The PR states the fixture grade
 explicitly; a fixture PASS alone is never a merge verdict, the live row parity is.
 
-**Degraded path while D10-01 is open.** Without Federation there is no supported live read of
-Oracle from the harness. A child that reaches its gate with D10-01 still open runs the gate on
-the fixture, marks the verdict DEGRADED in `summary.md`, and reports `status=BLOCKED` with
-`d10_01_federation`. Devin does not invent an unofficial comparison and does not merge on a
-degraded verdict. This is why D10-01 is a STOP C blocker rather than a footnote.
+**The recon path after D10-01 was denied (P1-D10).** There is no Federation, so no unit can
+produce an official harness verdict. Each gate instead runs the harness's own engine over a
+repo-local Oracle JDBC source adapter: same tiers, same canonicalisation profile, same frozen
+tolerances, money exact, counts exact, 1e-9 relative on other floats, ISO-canonicalised dates,
+anomaly sets compared as sets, idempotency proven by rerun. The target side is always read back
+from the target platform itself, never from the CDC output the unit produced. Every result is
+stamped `official_verdict: false`, `grade: DEGRADED`, `reason: d10_01_denied`, and each PR body
+and the wave brief repeat that wording. Unverified paths stay listed as unverified. A DEGRADED
+result is the agreed evidence standard for this run, and the STOP E packet says exactly that
+rather than presenting a green official gate.
 
 ## 7. Governance
 
@@ -266,22 +280,22 @@ catalog grants are a STOP E action and are not in the file.
 
 | Risk | Handling |
 |---|---|
-| D10-01 not approved | Every merge-evidence recon is DEGRADED and no unit merges. Escalated here. |
+| D10-01 denied (realised) | Every unit's recon grade is DEGRADED and nothing may be labelled official. The risk that remains is a reader mistaking a degraded verdict for a harness verdict, so the stamp is in the artifact, the PR body and the STOP E packet. |
 | MD5 parity fails in wave 0 | Pipeline stops; every downstream key depends on it. |
 | Debezium LogMiner against 26ai Free | JDBC + watermark fallback (D-002); the CDC leg is fixed beside the correctness path. |
 | Wave 3 intra-wave coupling | Contract pinned in wave 0, fixture-only development, post-merge op-diff re-run at the gate. Splittable into two serial waves if the pilot says so. |
 | `CUSTOMER_MASTER` wide diff | Alone in its batch, full depth, raw+parsed date columns compared separately. |
 | Oracle redo volume from supplemental logging | Hourly RMAN housekeeping already installed (D-001). Watch it; do not add source writes. |
 
-## 9. STOP C — what the user is being asked
+## 9. STOP C — outcome (approved 2026-09-15)
 
-Approve this plan and the wave manifests so wave 0 can start, and answer two dependencies:
+The owner approved the plan and the wave manifests, and answered the dependencies:
 
-1. **D10-01** — open port 1521 on `sg-0eaf11f4434260e1e` to the Databricks serverless NAT
-   range (us-east-1) and nothing else, so Lakehouse Federation can read `OW_BILLING`. Without
-   it every recon verdict is DEGRADED and no unit is merge-eligible.
-2. **D4-02** — who reads invoice preview, invoice lines and overdue accounts today, and do we
-   repoint them or build an API shim. Needed by STOP E, asked now for lead time.
-
-D10-04 (the service principal as migration identity) can be confirmed in the same reply; work
-already runs under it.
+- **D10-01: DENIED.** No security-group change, no Lakehouse Federation. Recon runs over JDBC
+  from the Devin CIDRs, every pipeline-1 unit is graded DEGRADED, and nothing may be presented
+  as an official harness verdict (P1-D10).
+- **D10-04: CONFIRMED.** The service principal is the migration identity.
+- **D4-02: rule decided**, census mechanical and in progress; it gates STOP E, not the waves.
+- Execution authorised: wave 0 serial, then the width-3 pilot of wave 1, feedback harvest, then
+  waves 2–4. Widths are 4, not the 5 named at STOP C, so the fan-out cannot exceed the
+  4-concurrent-read source cap; batch composition is unchanged.

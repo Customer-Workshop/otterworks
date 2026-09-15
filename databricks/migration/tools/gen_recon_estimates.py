@@ -71,6 +71,8 @@ def main() -> int:
         mode = "transactional" if spec["track"] == "lakebase" else "live"
         counts = {t["source_table"]: ROWS[t["source_table"].split(".")[-1]]
                   for t in spec["tables"]}
+        # delete=False so the subprocess can open the path on every platform; the finally
+        # below is what removes it, including when dbx-recon exits non-zero.
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
             json.dump(counts, fh)
             counts_path = fh.name
@@ -81,7 +83,10 @@ def main() -> int:
                "--row-counts", counts_path]
         if ops_count:
             cmd += ["--ops-count", str(ops_count)]
-        out = subprocess.run(cmd, capture_output=True, text=True)
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True)
+        finally:
+            Path(counts_path).unlink(missing_ok=True)
         if out.returncode != 0:
             print(out.stdout + out.stderr, file=sys.stderr)
             return out.returncode

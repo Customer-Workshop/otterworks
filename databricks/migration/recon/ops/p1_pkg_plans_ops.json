@@ -1,0 +1,22 @@
+[
+  {
+    "name": "fn_entitlement_projection_all_tenants_2026_06_01",
+    "object": "p1-pkg-plans",
+    "source_sql": "SELECT \"tenant_id\", \"plan_code\", \"tier\", \"monthly_fee\", \"included_units\", \"subscription_status\", \"effective_on\" FROM (SELECT t.id AS \"tenant_id\", p.code AS \"plan_code\", DECODE(p.tier_cd, 1, 'starter', 2, 'growth', 3, 'scale', 'UNKNOWN') AS \"tier\", TO_CHAR(p.monthly_fee, 'FM99999999990.00') AS \"monthly_fee\", TO_CHAR(p.included_units) AS \"included_units\", DECODE(s.status_cd, 10, 'active', 20, 'suspended', 30, 'cancelled', 'UNKNOWN') AS \"subscription_status\", TO_CHAR(GREATEST(s.starts_on, TO_DATE('2026-06-01', 'YYYY-MM-DD')), 'YYYY-MM-DD HH24:MI:SS') AS \"effective_on\", ROW_NUMBER() OVER (PARTITION BY t.id ORDER BY s.starts_on DESC, s.id) AS rn FROM ow_billing.tenants t, ow_billing.subscriptions s, ow_billing.plans p WHERE s.tenant_id = t.id AND p.id (+) = s.plan_id AND s.starts_on <= TO_DATE('2026-06-01', 'YYYY-MM-DD') AND (s.ends_on IS NULL OR s.ends_on >= TO_DATE('2026-06-01', 'YYYY-MM-DD'))) WHERE rn = 1 ORDER BY 1",
+    "target_sql": "SELECT e.tenant_id, e.plan_code, e.tier, to_char(e.monthly_fee, 'FM99999999990.00') AS monthly_fee, e.included_units::text AS included_units, e.subscription_status, to_char(e.effective_on, 'YYYY-MM-DD HH24:MI:SS') AS effective_on FROM billing.tenants t CROSS JOIN LATERAL billing.fn_plan_entitlements(t.id, timestamp '2026-06-01 00:00:00') e ORDER BY 1",
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "entitlement_keeps_orphan_plan_ids",
+    "object": "p1-pkg-plans",
+    "source_sql": "SELECT COUNT(*) AS \"orphan_subscription_rows\" FROM ow_billing.subscriptions s WHERE NOT EXISTS (SELECT 1 FROM ow_billing.plans p WHERE p.id = s.plan_id)",
+    "target_sql": "SELECT COUNT(*) AS orphan_subscription_rows FROM billing.subscriptions s WHERE NOT EXISTS (SELECT 1 FROM billing.plans p WHERE p.id = s.plan_id)",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  }
+]

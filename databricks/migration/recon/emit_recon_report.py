@@ -179,7 +179,11 @@ def main() -> int:
         "unit": result["unit"],
         "namespace": args.namespace,
         "generated_at": result["generated_at"],
-        "run_mode": result["mode"],
+        # The report schema knows two run modes, fixture and live; the harness has more
+        # names for a live run (`transactional` reads both sides inside one consistency
+        # window). Its own name is kept beside the mapped one rather than lost.
+        "run_mode": "fixture" if result["mode"] == "fixture" else "live",
+        "harness_run_mode": result["mode"],
         "checks": checks,
         "values_recomputed_from_target": True,
         "idempotency_rerun": rerun,

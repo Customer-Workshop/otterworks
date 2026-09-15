@@ -3,7 +3,8 @@
   "unit": "p1-pkg-dunning",
   "namespace": "demo",
   "generated_at": "2026-09-15T10:14:42.125696+00:00",
-  "run_mode": "transactional",
+  "run_mode": "live",
+  "harness_run_mode": "transactional",
   "checks": [
     {
       "id": "tier0_consistency_window",

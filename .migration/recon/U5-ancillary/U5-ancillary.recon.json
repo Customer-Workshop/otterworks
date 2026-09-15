@@ -1,0 +1,148 @@
+{
+  "kind": "recon-report",
+  "unit": "U5-ancillary",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T05:24:47.049085+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "no findings",
+      "actual": "0 findings over 3 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "no findings",
+      "actual": "0 findings over 9 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "no findings",
+      "actual": "0 findings over 6 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier4_app_level_parity",
+      "expected": "no findings",
+      "actual": "0 findings over 6 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "count_credit_notes",
+      "expected": 5,
+      "actual": 5,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_notifications",
+      "expected": 1,
+      "actual": 1,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_audit_log",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U5-ancillary/idempotency.json"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": [],
+    "note": "the frozen 37/50/31 budget lives in CUSTOMER_MASTER and INVOICE_LINE, which belong to other wave 1 batches; none of this batch's three tables carries a budgeted anomaly, and none was found"
+  },
+  "unverified_paths": [
+    "notifications.kind is decoded through CODES NOTIF_KIND, so the source integer and the target string never compare raw. It is graded by tier 4 parity operations (notifications_kind_decode, notifications_kind_counts) that decode on the SQL side, not by tier 3.",
+    "The harness ships no yn_to_bool, csv_split_trim or parse_date_string rule. None of the three fields in this batch needs one, so no field here is left ungraded by that gap; the rules stay raised as profile feedback in .migration/canonicalization.json and the harness was not patched.",
+    "audit_log is empty at source (0 rows), so its field grading and its TTL index are structurally exercised but not value-exercised. The 90-day TTL on loggedAt was created and read back, but no document has ever been old enough for the TTL monitor to remove, so expiry itself is untested.",
+    "notifications holds a single row, so the unique index on (tenantId, kind, sentAt) is proven unique over a population of one, not under a collision. The reload proof shows it does not duplicate on a second load.",
+    "Money parity for credit_notes is graded on values that are whole units (5, 25, 30, 55), so the 0.01 money-aggregate tolerance is not exercised by a fractional cent.",
+    "The repo self-check asks for an ow_tp / ow-tp- namespace prefix. The engagement intake fixes the target database as ow_billing_migration, so the prefix rule is deliberately not met; .migration/allowed_targets.json is the control instead.",
+    "Scale is the demo estate on an Atlas M0 cluster. Nothing here is a statement about production volumes.",
+    "The load reads Oracle in one read-only transaction, so it is snapshot-consistent; it is not serialised against a second concurrent loader, which the wave manifest's disjoint write targets prevent rather than the code."
+  ],
+  "counts_from_target": {
+    "credit_notes": 5,
+    "notifications": 1,
+    "audit_log": 0
+  },
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "runs": [
+    ".migration/recon/U5-ancillary/fixture/result.json",
+    ".migration/recon/U5-ancillary/live/result.json"
+  ],
+  "wave": 1,
+  "batch": "w1-b04",
+  "branch": "tp-run/mongodb-20260915T045208Z",
+  "mapping_version": "1",
+  "tolerance_version": "1",
+  "target_db": "ow_billing_migration",
+  "collections": [
+    "credit_notes",
+    "notifications",
+    "audit_log"
+  ],
+  "merge_authority": "live",
+  "indexes_from_target": {
+    "credit_notes": [
+      "_id_",
+      "tenantId_1_issuedOn_1"
+    ],
+    "notifications": [
+      "_id_",
+      "tenantId_1_kind_1_sentAt_1 (unique)"
+    ],
+    "audit_log": [
+      "_id_",
+      "loggedAt_1 (TTL, expireAfterSeconds 7776000)"
+    ]
+  },
+  "tiers": {
+    "tier1_counts": {
+      "passed": true,
+      "checks_run": 3
+    },
+    "tier2_aggregates": {
+      "passed": true,
+      "checks_run": 9
+    },
+    "tier3_keyed_diffs": {
+      "passed": true,
+      "checks_run": 6,
+      "mode": "full_diff on every collection; no sampling"
+    },
+    "tier4_app_parity": {
+      "passed": true,
+      "checks_run": 6,
+      "ops": ".migration/recon/U5-ancillary/inputs/U5-ancillary.json"
+    }
+  },
+  "preflight": {
+    "platform": "atlas",
+    "manifest": ".tp-preflight/atlas-capabilities.json",
+    "passed": true
+  },
+  "source_access": "SELECT/WITH only, in a single read-only transaction; no DDL or DML against OW_BILLING",
+  "secrets": [
+    "ORACLE_BILLING_URI",
+    "MONGODB_ATLAS_URI"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "set_at": "2026-09-15",
+  "mode": "live",
+  "full_diff_row_threshold": 100000,
+  "sample_size": 10000,
+  "numeric_abs_tol": 0,
+  "aggregate_rel_tol": 0,
+  "money_aggregate_abs_tol": 0.01,
+  "source_concurrency": 2,
+  "rerun_cap": 3,
+  "breaker_threshold": 3,
+  "null_missing_equiv": true,
+  "empty_string_policy": "null",
+  "anomaly_budget": {
+    "source": "testdata/legacy/manifests/demo.json",
+    "namespace": "demo",
+    "seed": 714559852,
+    "compare_as": "set",
+    "expected": {
+      "orphaned_rows": 37,
+      "dirty_dates": 50,
+      "malformed_csv_lists": 31
+    },
+    "on_mismatch": "fail_and_report_finding"
+  }
+}

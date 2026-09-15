@@ -1,0 +1,78 @@
+{
+  "unit": "U5-ancillary",
+  "mode": "live",
+  "mapping_version": "1",
+  "tolerance_version": "1",
+  "seed": 714559852,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-15T05:24:47.049085+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {
+        "source_counts": {
+          "CREDIT_NOTES": 5,
+          "NOTIFICATIONS": 1,
+          "BILLING_AUDIT_LOG": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 9,
+      "stats": {
+        "deferred_to_tier3": [
+          "credit_notes.tenantId",
+          "credit_notes.amount",
+          "credit_notes.remainingAmount",
+          "notifications.tenantId",
+          "audit_log.module",
+          "audit_log.message"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {
+        "credit_notes": {
+          "mode": "full_diff",
+          "population": 5,
+          "duplicate_source_key_count": 0
+        },
+        "notifications": {
+          "mode": "full_diff",
+          "population": 1,
+          "duplicate_source_key_count": 0
+        },
+        "audit_log": {
+          "mode": "full_diff",
+          "population": 0,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

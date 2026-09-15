@@ -1,0 +1,173 @@
+{
+  "version": "1",
+  "source_family": "oracle",
+  "unit": "U5-ancillary",
+  "collections": [
+    {
+      "collection": "credit_notes",
+      "unit": "U5-ancillary",
+      "root_table": "CREDIT_NOTES",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "ISSUED_ON",
+          "target": "issuedOn",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "AMOUNT",
+          "target": "amount",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "REMAINING_AMOUNT",
+          "target": "remainingAmount",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "tenantId": 1,
+            "issuedOn": 1
+          }
+        }
+      ],
+      "cardinality": "credit_notes == count(CREDIT_NOTES)"
+    },
+    {
+      "collection": "notifications",
+      "unit": "U5-ancillary",
+      "root_table": "NOTIFICATIONS",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "SENT_AT",
+          "target": "sentAt",
+          "source_type": "TIMESTAMP(6)",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "tenantId": 1,
+            "kind": 1,
+            "sentAt": 1
+          },
+          "unique": true
+        }
+      ],
+      "cardinality": "notifications == count(NOTIFICATIONS)",
+      "fields_decoded_graded_by_op": [
+        {
+          "source": "KIND_CD",
+          "target": "kind",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "NOTIF_KIND"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        }
+      ]
+    },
+    {
+      "collection": "audit_log",
+      "unit": "U5-ancillary",
+      "root_table": "BILLING_AUDIT_LOG",
+      "key": {
+        "source": [
+          "LOG_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "LOGGED_AT",
+          "target": "loggedAt",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "MODULE",
+          "target": "module",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MESSAGE",
+          "target": "message",
+          "source_type": "VARCHAR2(4000)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "loggedAt": 1
+          },
+          "expireAfterSeconds": 7776000,
+          "note": "TTL 90 days, matching JOB_PURGE_AUDIT_LOG (Open item 4)"
+        }
+      ],
+      "cardinality": "audit_log == count(BILLING_AUDIT_LOG)"
+    }
+  ]
+}

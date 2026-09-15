@@ -1,0 +1,32 @@
+{
+  "unit": "U5-ancillary",
+  "before": {
+    "credit_notes": {
+      "count": 5,
+      "sha256": "fe2631de965bf1e431e95d720b585b26a2d31f3d63555ed0768faa557b322a93"
+    },
+    "notifications": {
+      "count": 1,
+      "sha256": "93828ade0ea3a3d79477b65a2b74559e7f7586d8da7b2aeaecea890491cbd40a"
+    },
+    "audit_log": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "after": {
+    "credit_notes": {
+      "count": 5,
+      "sha256": "fe2631de965bf1e431e95d720b585b26a2d31f3d63555ed0768faa557b322a93"
+    },
+    "notifications": {
+      "count": 1,
+      "sha256": "93828ade0ea3a3d79477b65a2b74559e7f7586d8da7b2aeaecea890491cbd40a"
+    },
+    "audit_log": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "identical": true
+}

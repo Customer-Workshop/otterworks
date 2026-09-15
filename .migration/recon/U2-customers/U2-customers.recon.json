@@ -1,7 +1,7 @@
 {
   "kind": "recon-report",
   "unit": "U2-customers",
-  "namespace": "demo",
+  "namespace": "ow_billing_migration",
   "generated_at": "2026-09-15T05:36:26.657427+00:00",
   "run_mode": "live",
   "checks": [
@@ -81,7 +81,9 @@
     "flags.dunningExempt: DUNNING_EXEMPT_YN is null on every row, and no Y/N column holds a value outside Y/N, so the invalid-flag branch (null plus raw kept) never runs.",
     "dropped_columns guard: FLAG_*/UDF_* are all null today; the halt path that fires when one is populated has never fired.",
     "Tier 4 recorded operations grade the transformations the harness has no rule for (Y/N to boolean, CSV split/trim, DD-MON-YY parsing, CODES decode, positional addresses[] paths). Those are graded by recomputed aggregate, not element by element against a harness rule.",
-    "Atlas M0: index builds and batch sizes were sized for a demo cluster, not for a production-scale load."
+    "Atlas M0: index builds and batch sizes were sized for a demo cluster, not for a production-scale load.",
+    "The live run predates a reload that re-encoded legacy.custSeqNo as BSON long, the type the spec declares; no value changed, and the fixture run was repeated against the reloaded target and stayed green.",
+    "The live run also predates the widened CSV and second-address-line Tier 4 operations (every list position rather than the first few, and the second non-null line rather than a COALESCE over the tail). Those wider operations have been run in fixture mode only, because the unit gets one live run."
   ],
   "counts_from_target": {
     "customers": 25000,

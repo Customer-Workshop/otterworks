@@ -40,6 +40,13 @@ UNVERIFIED_PATHS = [
     "element against a harness rule.",
     "Atlas M0: index builds and batch sizes were sized for a demo cluster, not for a "
     "production-scale load.",
+    "The live run predates a reload that re-encoded legacy.custSeqNo as BSON long, the "
+    "type the spec declares; no value changed, and the fixture run was repeated against "
+    "the reloaded target and stayed green.",
+    "The live run also predates the widened CSV and second-address-line Tier 4 operations "
+    "(every list position rather than the first few, and the second non-null line rather "
+    "than a COALESCE over the tail). Those wider operations have been run in fixture mode "
+    "only, because the unit gets one live run.",
 ]
 
 

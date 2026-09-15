@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from bson.int64 import Int64
 from pymongo import ASCENDING, DESCENDING, ReplaceOne
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -81,6 +82,12 @@ ACCOUNT_ID = re.compile(r"^\d+$")
 
 def integer(value: Any) -> int | None:
     return None if value is None else int(value)
+
+
+def long(value: Any) -> Int64 | None:
+    """The spec declares NUMBER(12,0) keys as BSON long; the driver would otherwise encode
+    a value that happens to fit in 32 bits as an int."""
+    return None if value is None else Int64(value)
 
 
 def account_id_list(value: Any) -> tuple[list[str], bool]:
@@ -153,7 +160,7 @@ def customer_body(row: dict, codes) -> dict:
         "legacy": {"sysKey": row["LEGACY_SYS_KEY"],
                    "mainframeAcctNo": row["MAINFRAME_ACCT_NO"],
                    "conversionBatchNo": integer(row["CONVERSION_BATCH_NO"]),
-                   "custSeqNo": integer(row["CUST_SEQ_NO"])},
+                   "custSeqNo": long(row["CUST_SEQ_NO"])},
         "audit": {"createdBy": row["CREATED_BY"],
                   "createdAt": utc(row["CREATED_DT"]),
                   "updatedBy": row["UPDATED_BY"],
@@ -224,8 +231,8 @@ def build_customer_history(conn, codes):
     columns = ", ".join(HISTORY_COLUMNS)
     for r in rows(conn, f"SELECT {columns} FROM customer_master_hist"):
         at = parse_dt(r["HIST_DT"])
-        doc = {"_id": int(r["HIST_ID"]),
-               "histId": int(r["HIST_ID"]),
+        doc = {"_id": long(r["HIST_ID"]),
+               "histId": long(r["HIST_ID"]),
                "op": r["HIST_OP"],
                "customerId": r["CUST_ID"],
                "at": at}

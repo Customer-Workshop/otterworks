@@ -99,28 +99,51 @@ def month_op(name: str, column: str, target: str, why: str) -> dict:
     }
 
 
+def positions(column: str) -> str:
+    """One row per item actually present in the list, however long the list is. The loader
+    splits the whole string, so a fixed set of positions would leave its tail ungraded."""
+    return (f"LATERAL (SELECT LEVEL AS pos FROM dual "
+            f"CONNECT BY LEVEL <= REGEXP_COUNT({column}, ',') + 1)")
+
+
+def well_formed(column: str) -> str:
+    """The list the loader accepts: not blank, and no empty item (a leading, trailing or
+    doubled separator)."""
+    return (f"CASE WHEN TRIM({column}) IS NOT NULL "
+            f"AND NOT REGEXP_LIKE({column}, '^[[:space:]]*,') "
+            f"AND NOT REGEXP_LIKE({column}, ',[[:space:]]*$') "
+            f"AND NOT REGEXP_LIKE({column}, ',[[:space:]]*,') THEN {column} END")
+
+
 def related_items_sql() -> str:
-    """Account ids per list position: count and sum on each side. Only rows whose list is
-    well formed contribute, which is the same set the loader parses."""
-    parts = []
-    for i in range(1, 5):
-        item = f"TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, {i})))"
-        alias = (' AS "pos"', ' AS "n"', ' AS "total"') if i == 1 else ("", "", "")
-        parts.append(f"SELECT {i}{alias[0]}, COUNT({item}){alias[1]}, "
-                     f"SUM(NVL({item}, 0)){alias[2]} FROM v")
+    """Account ids per list position: count and sum on each side, for every position in the
+    list. Only rows whose list is well formed contribute, which is the set the loader
+    parses."""
+    item = "TO_NUMBER(TRIM(REGEXP_SUBSTR(v.s, '[^,]+', 1, p.pos)))"
     return ("WITH v AS (SELECT CASE WHEN REGEXP_LIKE(related_acct_ids, "
             f"'{NUMERIC_LIST}') THEN related_acct_ids END AS s FROM customer_master) "
-            + " UNION ALL ".join(parts))
+            f'SELECT p.pos AS "pos", COUNT({item}) AS "n", SUM({item}) AS "total" '
+            f"FROM v, {positions('v.s')} p WHERE v.s IS NOT NULL GROUP BY p.pos")
 
 
 def promo_items_sql() -> str:
-    parts = []
-    for i in range(1, 4):
-        item = f"TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, {i}))"
-        alias = (' AS "pos"', ' AS "item"', ' AS "n"') if i == 1 else ("", "", "")
-        parts.append(f"SELECT {i}{alias[0]}, {item}{alias[1]}, COUNT(*){alias[2]} "
-                     f"FROM customer_master GROUP BY {item}")
-    return " UNION ALL ".join(parts)
+    """Every promo code in its position, for a list of any length."""
+    item = "TRIM(REGEXP_SUBSTR(v.s, '[^,]+', 1, p.pos))"
+    return (f"WITH v AS (SELECT {well_formed('promo_codes_csv')} AS s FROM customer_master) "
+            f'SELECT p.pos AS "pos", {item} AS "item", COUNT(*) AS "n" '
+            f"FROM v, {positions('v.s')} p WHERE v.s IS NOT NULL GROUP BY p.pos, {item}")
+
+
+def second_non_null(prefix: str, count: int) -> str:
+    """The second non-null column in column order: what lands in lines[1] once the loader
+    has dropped the nulls. A COALESCE over the tail picks the wrong column when an earlier
+    one is null."""
+    branches = []
+    for first in range(1, count):
+        tail = ", ".join(f"{prefix}{j}" for j in range(first + 1, count + 1))
+        rest = tail if first + 1 == count else f"COALESCE({tail})"
+        branches.append(f"WHEN {prefix}{first} IS NOT NULL THEN {rest}")
+    return "CASE " + " ".join(branches) + " END"
 
 
 def positional_list(field: str, index: int) -> dict:
@@ -222,19 +245,15 @@ def ops() -> list[dict]:
         },
         {
             "name": "csv_related_account_items", "collection": CUSTOMERS,
-            "why": "the account ids themselves, per position: count and sum on each side.",
+            "why": "the account ids themselves, in every position of the list: count and "
+                   "sum on each side.",
             "rules": ["null_missing_equiv"],
             "source_sql": related_items_sql(),
             "target_pipeline": [
-                {"$project": {"items": {"$map": {
-                    "input": {"$range": [0, 4]}, "as": "i",
-                    "in": {"pos": {"$add": ["$$i", 1]},
-                           "v": {"$arrayElemAt": ["$relatedAccountIds", "$$i"]}}}}}},
-                {"$unwind": "$items"},
-                {"$group": {"_id": "$items.pos",
-                            "n": {"$sum": {"$cond": [
-                                {"$eq": [{"$type": "$items.v"}, "missing"]}, 0, 1]}},
-                            "total": {"$sum": {"$toLong": {"$ifNull": ["$items.v", 0]}}}}},
+                {"$project": {"v": {"$ifNull": ["$relatedAccountIds", []]}}},
+                {"$unwind": {"path": "$v", "includeArrayIndex": "i"}},
+                {"$group": {"_id": {"$add": ["$i", 1]}, "n": {"$sum": 1},
+                            "total": {"$sum": {"$toLong": "$v"}}}},
                 {"$project": {"_id": 0, "pos": "$_id", "n": 1, "total": 1}},
             ],
         },
@@ -245,13 +264,9 @@ def ops() -> list[dict]:
             "rules": ["empty_string_is_null", "null_missing_equiv"],
             "source_sql": promo_items_sql(),
             "target_pipeline": [
-                {"$project": {"items": {"$map": {
-                    "input": {"$range": [0, 3]}, "as": "i",
-                    "in": {"pos": {"$add": ["$$i", 1]},
-                           "item": {"$ifNull": [
-                               {"$arrayElemAt": ["$promoCodes", "$$i"]}, None]}}}}}},
-                {"$unwind": "$items"},
-                {"$group": {"_id": {"pos": "$items.pos", "item": "$items.item"},
+                {"$project": {"v": {"$ifNull": ["$promoCodes", []]}}},
+                {"$unwind": {"path": "$v", "includeArrayIndex": "i"}},
+                {"$group": {"_id": {"pos": {"$add": ["$i", 1]}, "item": "$v"},
                             "n": {"$sum": 1}}},
                 {"$project": {"_id": 0, "pos": "$_id.pos", "item": "$_id.item", "n": 1}},
             ],
@@ -301,12 +316,11 @@ def ops() -> list[dict]:
                 "SELECT "
                 + " + ".join(f"CASE WHEN addr_line_{i} IS NULL THEN 0 ELSE 1 END"
                              for i in range(1, 7))
-                + ' AS "lineCount", COALESCE('
-                + ", ".join(f"addr_line_{i}" for i in range(2, 7))
-                + ') AS "line2", COUNT(*) AS "n" FROM customer_master GROUP BY '
+                + ' AS "lineCount", ' + second_non_null("addr_line_", 6)
+                + ' AS "line2", COUNT(*) AS "n" FROM customer_master GROUP BY '
                 + " + ".join(f"CASE WHEN addr_line_{i} IS NULL THEN 0 ELSE 1 END"
                              for i in range(1, 7))
-                + ", COALESCE(" + ", ".join(f"addr_line_{i}" for i in range(2, 7)) + ")"),
+                + ", " + second_non_null("addr_line_", 6)),
             "target_pipeline": [
                 {"$project": {"lines": {"$ifNull": [
                     {"$arrayElemAt": ["$addresses.lines", 0]}, []]}}},

@@ -110,7 +110,7 @@
           "source": "sent_at",
           "target": "sent_at",
           "source_type": "TIMESTAMP",
-          "target_type": "timestamptz",
+          "target_type": "timestamp(6)",
           "rules": []
         }
       ]

@@ -92,7 +92,8 @@
         "billing.fn_usage_summary"
       ],
       "runtime_writes": [
-        "billing.rating_state"
+        "billing.rating_state",
+        "billing.billing_audit_log"
       ],
       "verify_depth": "full",
       "lakebase_branch": "mig-p1-w2",
@@ -102,18 +103,14 @@
       "id": "w3-b",
       "units": [
         "p1-invoices",
-        "p1-invoice-lines",
-        "p1-pkg-invoicing"
+        "p1-invoice-lines"
       ],
       "write_targets": [
         "billing.invoices",
-        "billing.invoice_lines",
-        "billing.sp_issue_invoice",
-        "billing.fn_invoice_preview",
-        "billing.fn_invoice_lines"
+        "billing.invoice_lines"
       ],
       "runtime_writes": [
-        "billing.credit_notes"
+        "billing.billing_audit_log"
       ],
       "verify_depth": "full",
       "lakebase_branch": "mig-p1-w2",
@@ -135,7 +132,8 @@
       ],
       "runtime_writes": [
         "billing.tenants",
-        "billing.subscriptions"
+        "billing.subscriptions",
+        "billing.billing_audit_log"
       ],
       "verify_depth": "full",
       "lakebase_branch": "mig-p1-w2",

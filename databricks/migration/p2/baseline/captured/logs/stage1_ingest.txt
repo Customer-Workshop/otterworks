@@ -1,0 +1,11 @@
+make: Entering directory '/home/ubuntu/repos/otterworks'
+lock file present, another ingest may be running, continuing anyway
+Tue Sep 15 12:13:53 UTC 2026 sftp_ingest_poll starting, drop=/tmp/ow-p2-baseline/sftp-drop/upload
+Tue Sep 15 12:13:54 UTC 2026 ingested CUSTBILL_DEV_001.dat (3430 bytes)
+Tue Sep 15 12:13:55 UTC 2026 ingested CUSTBILL_DEV_002.dat (3430 bytes)
+Tue Sep 15 12:13:56 UTC 2026 ingested CUSTBILL_PROBE_001.dat (951 bytes)
+Tue Sep 15 12:13:57 UTC 2026 ingested CUSTBILL_PROBE_002.dat (67 bytes)
+Tue Sep 15 12:13:58 UTC 2026 ingested CUSTBILL_PROBE_003.dat (67 bytes)
+Tue Sep 15 12:13:59 UTC 2026 ingested CUSTBILL_PROBE_004.dat (0 bytes)
+Tue Sep 15 12:14:03 UTC 2026 sftp_ingest_poll done
+make: Leaving directory '/home/ubuntu/repos/otterworks'

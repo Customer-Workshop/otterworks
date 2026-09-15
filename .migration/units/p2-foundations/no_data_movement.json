@@ -1,0 +1,11 @@
+{
+  "unit": "p2-foundations",
+  "reason": "Wave-0 foundation unit: record contract, schedule model, landing conventions and the captured legacy baseline. It creates no Databricks object and moves no data, so it has no source-to-target field mapping and no recon of its own.",
+  "evidence": [
+    "docs/migration/Pipeline2_custbill_record_contract.md",
+    "docs/migration/Pipeline2_schedule_model.md",
+    "docs/migration/Pipeline2_custbill_plan.md",
+    "databricks/migration/p2/baseline/captured"
+  ],
+  "declared_at": "p2 wave 0"
+}

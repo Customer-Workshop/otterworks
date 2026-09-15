@@ -1,0 +1,21 @@
+# Pipeline 2, wave 0 close — PASS: contract, schedule model and plan pinned; no data moved
+
+Landed: 1 of 1 batch, 1 of 1 unit (`p2-foundations`). Wave 0 produces contracts and conventions, not data, so there is nothing for row parity to compare and no recon verdict is claimed. The evidence is a captured legacy baseline: the real `sftp_ingest_poll.ksh` → `parse_custbill_fixedwidth.sh` → `finance_excel_report.pl` chain was run over the standard fixture and over a 19-case adversarial probe fixture, and its `.psv`, `.csv` and `.xls` bytes are committed under `databricks/migration/p2/baseline/captured/` as the source side every later wave reconciles against.
+Failed: none. Blocked: none. Circuit breaker: 0 of 3.
+
+**Behaviour changes, stated here and not only in a recon JSON:**
+- **P2-D01 — the target cannot parse a half-written file; the legacy can.** Ingest polls every 15 minutes and parse runs 5 minutes behind it with no handshake, so the legacy report is sometimes produced from a partially-written `.dat`. The target lands atomically and makes parse a dependency edge. Output differs from the legacy only on a run the legacy would have got wrong, and the case cannot be exercised against pinned inputs — it is a behaviour change we accepted at STOP C, not a tested equivalence, and it is repeated in the STOP E packet.
+- The target never deletes source files, writes no `/tmp` lock files (the legacy leaves them behind forever), and fails loudly where the legacy stages end in `|| true`. Operational only; row content unaffected.
+- sendmail is dropped in favour of the job's failure notification (D4-01/D-007), to be confirmed at STOP E.
+
+**Gold completeness is a hard rule, not a preference (contract C-6.3).** Gold holds every record the legacy chain produced, byte for byte, corrupt ones included. Quarantine is an extra observability table and never a gate: `count(gold)` matches the legacy report and `count(silver)` matches the legacy psv lines *regardless of how many rows quarantine holds*. An expectation that would drop a record from gold halts the unit and goes back to the user; it is never reconciled around.
+
+Everything else is deliberate bug-for-bug reproduction: a `|` inside a name shifts every later field and corrupts the totals, `usd` and `USD` are separate groups, `1 ` and `01` are separate groups, dates are string-sliced with no calendar check, an unsigned amount field yields negative money, a customer id starting with `HDR` is deleted as a header, and the `.xls` is a byte-identical copy of the CSV. All of it is captured in the probe baseline, so a later "fix" shows up as a recon failure.
+
+Preflight: factory-doctor `ready=false`, 16 ok, 1 unverified. `hook_platform_loaded` is ok (live guard block on nonce `f57f274c`); `recon_drivers` went from missing to `['databricks']` after installing `databricks-sql-connector` in the session. The single blocking row is `source_principal_read_only=unverified` — the doctor has no privilege query for a Databricks-family source, so it cannot prove the recon credential is read-only. Pipeline 2's source is files on disk, not a live database, so nothing reads a source principal in waves 0–3; recorded rather than worked around, and it is re-checked before any live read.
+
+Guard block to record: `git stash` was refused by the migration guard because a stash rewrites the working copy including `.migration/`. That is the guard behaving correctly. I did not route around it — I dropped the stash and brought the branch up to date with a merge from the working branch instead of a rebase, which also keeps pipeline 1's merged wave-4 commits intact underneath mine. Wave-0 base: `d86b28e1`.
+
+Scope for the next waves is unchanged: wave 1 `p2-sftp-ingest` (atomic landing + bronze), wave 2 `p2-custbill-parse` (byte slicing, expectations, quarantine, silver), wave 3 `p2-finance-close` (gold + byte-compatible CSV/`.xls`), wave 4 `p2-orchestration` (Lakeflow Job, real dependencies, PAUSED schedule) plus an independent verifier that migrates zero units and writes nothing. Every wave is a single batch, so `run_workflow` fan-out is not used and the pipeline-1 environment gap is not hit.
+
+Awaiting manual merge: https://github.com/Cognition-Partner-Workshops/otterworks/pull/1599 (I do not merge my own PRs.)

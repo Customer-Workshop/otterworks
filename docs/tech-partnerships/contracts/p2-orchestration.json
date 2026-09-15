@@ -1,0 +1,41 @@
+{
+  "unit": "p2-orchestration",
+  "source_artifact_path": "etl/legacy-extra/run_all.sh",
+  "target_objects": [
+    "ow_tp_p2_custbill_ingest",
+    "ow_tp_p2_finance_close"
+  ],
+  "golden_baseline_location": "databricks/migration/p2/baseline/captured/logs/ (stage1_ingest.txt, stage2_parse.txt, stage3_close.txt, stage2_parse_rerun.txt: the legacy stage order, exit behaviour and rerun no-op) plus etl/crontab and etl/legacy-extra/crontab as committed",
+  "trigger_granularity": "per-batch",
+  "encoding_policy": {
+    "input_encoding": "not applicable - this unit moves no data. It converts two crontabs and a shell driver into job definitions",
+    "byte_transparency": "not applicable",
+    "invalid_bytes": "not applicable"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "No records pass through this unit. The policy is inherited from the units it schedules; nothing is filtered or dropped at the orchestration layer."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "A run with nothing in the landing path completes green with zero rows processed, as the legacy does. An empty run is not a failure."
+  },
+  "acceptance_checks": [
+    {"id": "D1", "description": "Stage order is expressed as depends_on edges, not sleeps: land_files -> custbill_pipeline, and await_silver -> gold_close -> export_csv_xls. No task waits on a timer."},
+    {"id": "D2", "description": "Both jobs are created with the schedule PAUSED. No live schedule exists after deploy."},
+    {"id": "D3", "description": "max_concurrent_runs is 1 on both jobs, so a run cannot overlap its predecessor the way the */15 cron does."},
+    {"id": "D4", "description": "Each task has 2 retries with a 5-minute minimum interval, and a task failure fails the run - no `|| true` equivalent anywhere."},
+    {"id": "D5", "description": "on_failure notification is configured at the job, replacing the sendmail step; the destination is a bundle variable and is left unset in the migration target."},
+    {"id": "D6", "description": "No cluster is created. All tasks run serverless or on warehouse 565cd2fd713738c4."},
+    {"id": "D7", "description": "Every job name is prefixed ow_tp_p2_ and nothing outside catalog ow_tp is touched."}
+  ],
+  "planted_anomalies": [
+    {"id": "ANOM-ORCH-01", "description": "run_all.sh uses two `sleep 600` calls as its only dependency mechanism, so a slow stage is silently read half-finished by the next one.", "status": "must-detect"},
+    {"id": "ANOM-ORCH-02", "description": "Every stage in run_all.sh ends in `|| true`, so the driver exits 0 even when a stage fails and nothing alerts.", "status": "must-detect"},
+    {"id": "ANOM-ORCH-03", "description": "Ingest runs */15 and parse runs at 5-59/15, a fixed 5-minute guess that can read a file ingest is still copying; the two jobs also overlap their own previous runs.", "status": "must-detect"},
+    {"id": "ANOM-ORCH-04", "description": "Three lock files are created under /tmp and never removed, so they log 'stale' forever and enforce no mutual exclusion.", "status": "must-detect"},
+    {"id": "ANOM-ORCH-05", "description": "finance_excel_report.pl at 02:10 overlaps analytics_daily.py at 02:00 on the same box, contending for the same parsed directory.", "status": "coverage_gap", "reason": "analytics_daily.py belongs to pipeline 3 and is out of this child's scope, so the contention cannot be exercised end to end here. The schedule model removes the overlap by construction (separate serverless jobs, no shared box) and pipeline 3 inherits that model."},
+    {"id": "ANOM-ORCH-06", "description": "run_all.sh on Sunday 06:00 reruns the whole chain, which mostly re-emits the same cumulative totals under a new filename.", "status": "coverage_gap", "reason": "Whether the Sunday file is relied on is a business question, raised as decision P2-D05 at STOP E. The job is deliberately not created until the user answers, so there is nothing to test yet."}
+  ]
+}

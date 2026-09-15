@@ -1,0 +1,48 @@
+{
+  "version": "map-p2-v1",
+  "unit": "p2-sftp-ingest",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "Source side is the legacy chain's own landed bytes, captured by running sftp_ingest_poll.ksh over the pinned fixture set and loaded verbatim into ow_tp.bronze.custbill_legacy_baseline_raw. Target side is recomputed by the Lakeflow pipeline from the same .dat inputs. One row per physical record, byte-exact.",
+  "tables": [
+    {
+      "object": "custbill_raw",
+      "source_table": "ow_tp.bronze.custbill_legacy_baseline_raw",
+      "target_table": "custbill_raw",
+      "key": {
+        "source": ["source_file", "record_no"],
+        "target": ["source_file", "record_no"]
+      },
+      "fields": [
+        {
+          "source": "source_file",
+          "target": "source_file",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "record_no",
+          "target": "record_no",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "raw_record",
+          "target": "raw_record",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "record_bytes",
+          "target": "record_bytes",
+          "source_type": "INT",
+          "target_type": "INT",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

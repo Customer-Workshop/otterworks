@@ -1,0 +1,38 @@
+{
+  "unit": "p2-sftp-ingest",
+  "source_artifact_path": "etl/legacy-extra/jobs/sftp_ingest_poll.ksh",
+  "target_objects": [
+    "/Volumes/ow_tp/bronze/landing/custbill/",
+    "ow_tp.bronze.custbill_raw",
+    "ow_tp.bronze.custbill_files"
+  ],
+  "golden_baseline_location": "databricks/migration/p2/baseline/captured/inputs/",
+  "trigger_granularity": "per-file",
+  "encoding_policy": {
+    "input_encoding": "none - the file is bytes. Read binary and decode ISO-8859-1 so every byte round-trips losslessly and no decode can fail (contract C-1.3, C-1.4)",
+    "byte_transparency": "full: the landed bytes are identical to the bytes the producer dropped, including CR, 0x80-0xFF and any UTF-8 sequence, which is stored as its individual bytes",
+    "invalid_bytes": "there is no such thing here - every byte 0x00-0xFF is valid input and is preserved. Nothing is replaced, dropped or substituted"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Bronze does not interpret records: one row per physical line, raw bytes plus source_file and record_no. Malformation is attributed downstream in p2-custbill-parse. No row is ever NULL; a missing field is the empty string (C-3.6)."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "A zero-byte CUSTBILL*.dat lands and is recorded in ow_tp.bronze.custbill_files with 0 records. It produces no bronze rows and no error, matching the legacy (C-1.6)."
+  },
+  "acceptance_checks": [
+    {"id": "A1", "description": "Every CUSTBILL*.dat in the pinned fixture set lands exactly once; bronze row count equals the total physical line count of the inputs."},
+    {"id": "A2", "description": "Landed bytes are identical to the source bytes: per-file SHA-256 of the landed object equals that of the input."},
+    {"id": "A3", "description": "A second run of the unit adds no rows and re-lands no file (file-level exactly-once on the ledger), proven by an actual rerun."},
+    {"id": "A4", "description": "No source file is deleted by the target. The legacy rm is not reproduced."},
+    {"id": "A5", "description": "Landing writes only under /Volumes/ow_tp/bronze/landing/custbill/ and no object outside catalog ow_tp is created."}
+  ],
+  "planted_anomalies": [
+    {"id": "ANOM-ING-01", "description": "The legacy stability check is a 1-second double-stat, so a file still being written can be picked up and parsed. The target lands atomically (staging name + rename), which removes the race.", "status": "coverage_gap", "reason": "Recon runs against pinned, stable fixtures, so the race cannot be exercised. Behaviour change is recorded as decision P2-D01 and approved at STOP C; it is listed as an unverified path in every recon report."},
+    {"id": "ANOM-ING-02", "description": "The legacy copies to incoming/ and archive/ and then rm's the drop file, swallowing every failure with `|| true`, so a file can be deleted after a failed copy.", "status": "must-detect"},
+    {"id": "ANOM-ING-03", "description": "/tmp/sftp_ingest.lock is created and never removed, so the lock provides no mutual exclusion and every later run logs 'stale'.", "status": "must-detect"},
+    {"id": "ANOM-ING-04", "description": "Archive copies are named <file>.<YYYYMMDDHHMMSS>, so two runs in the same second collide and one silently overwrites the other.", "status": "coverage_gap", "reason": "Sub-second collision is not reproducible in a fixture run. The target replaces timestamp naming with the file ledger, so the collision cannot occur; noted rather than tested."}
+  ]
+}

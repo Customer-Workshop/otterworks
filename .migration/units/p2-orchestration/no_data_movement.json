@@ -1,0 +1,10 @@
+{
+  "unit": "p2-orchestration",
+  "reason": "Wave-4 orchestration unit: the Lakeflow Jobs that replace cron and run_all.sh. It moves no data of its own - every row it produces is produced by the pipeline and the gold unit, which are reconciled in waves 1-3. Its evidence is the job graph (task dependencies instead of sleep 600), the retry and failure-notification settings, and the fact that its schedules are created PAUSED.",
+  "evidence": [
+    "docs/migration/Pipeline2_schedule_model.md",
+    "docs/tech-partnerships/contracts/p2-orchestration.json",
+    "databricks/migration/p2/databricks.yml"
+  ],
+  "declared_at": "p2 wave 0"
+}

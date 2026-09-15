@@ -1,0 +1,62 @@
+{
+  "version": "map-p2-v1",
+  "unit": "p2-finance-close",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "Source side is the CSV written by finance_excel_report.pl over the pinned fixture set, loaded verbatim into ow_tp.bronze.custbill_legacy_baseline_close (one row per report line, header excluded, sort_key = the raw 'currency|rec_type' byte string the Perl sorts on). Target side is ow_tp.gold.custbill_finance_close, recomputed from silver. total_amount is money: exact, no tolerance. row_order carries the ASCII byte ordering of contract C-7.5 so an ordering regression fails the gate instead of passing as a set match. The byte-identity of the exported .csv and .xls is checked separately and reported as evidence, not as a harness field.",
+  "tables": [
+    {
+      "object": "custbill_finance_close",
+      "source_table": "bronze.custbill_legacy_baseline_close",
+      "target_table": "custbill_finance_close",
+      "key": {
+        "source": ["sort_key"],
+        "target": ["sort_key"]
+      },
+      "fields": [
+        {
+          "source": "sort_key",
+          "target": "sort_key",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "row_order",
+          "target": "row_order",
+          "source_type": "INT",
+          "target_type": "INT",
+          "rules": []
+        },
+        {
+          "source": "currency",
+          "target": "currency",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "record_type",
+          "target": "record_type",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "record_count",
+          "target": "record_count",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "total_amount",
+          "target": "total_amount",
+          "source_type": "DECIMAL(38,2)",
+          "target_type": "DECIMAL(38,2)",
+          "rules": ["decimal_round"]
+        }
+      ]
+    }
+  ]
+}

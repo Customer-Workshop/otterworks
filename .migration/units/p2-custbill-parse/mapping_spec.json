@@ -1,0 +1,83 @@
+{
+  "version": "map-p2-v1",
+  "unit": "p2-custbill-parse",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "Source side is the .psv written by parse_custbill_fixedwidth.sh over the pinned fixture set, loaded verbatim into ow_tp.bronze.custbill_legacy_baseline_psv (one row per psv line, fields split positionally on '|' exactly as the downstream Perl does). Target side is ow_tp.silver.custbill, recomputed by the Lakeflow pipeline from the raw .dat inputs. No rule normalises whitespace: the contract says trailing spaces survive on bill_date, bill_amt and rec_type, so any rstrip here would hide a real difference. psv_line is the delimiter-collision witness (contract C-5.1).",
+  "tables": [
+    {
+      "object": "custbill",
+      "source_table": "bronze.custbill_legacy_baseline_psv",
+      "target_table": "custbill",
+      "key": {
+        "source": ["source_file", "record_no"],
+        "target": ["source_file", "record_no"]
+      },
+      "fields": [
+        {
+          "source": "source_file",
+          "target": "source_file",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "record_no",
+          "target": "record_no",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "cust_id",
+          "target": "cust_id",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "cust_name",
+          "target": "cust_name",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "bill_date",
+          "target": "bill_date",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "bill_amt",
+          "target": "bill_amt",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "currency",
+          "target": "currency",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "rec_type",
+          "target": "rec_type",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "psv_line",
+          "target": "psv_line",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

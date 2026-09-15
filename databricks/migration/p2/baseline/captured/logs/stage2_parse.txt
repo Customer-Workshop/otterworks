@@ -1,0 +1,11 @@
+make: Entering directory '/home/ubuntu/repos/otterworks'
+parse lock exists, probably stale, proceeding
+Tue Sep 15 12:14:03 UTC 2026 parse_custbill starting
+Tue Sep 15 12:14:03 UTC 2026 parsed CUSTBILL_DEV_001: 50 records (trailer says 50)
+Tue Sep 15 12:14:03 UTC 2026 parsed CUSTBILL_DEV_002: 50 records (trailer says 50)
+Tue Sep 15 12:14:03 UTC 2026 parsed CUSTBILL_PROBE_001: 14 records (trailer says 15)
+Tue Sep 15 12:14:03 UTC 2026 parsed CUSTBILL_PROBE_002: 1 records (trailer says ?)
+Tue Sep 15 12:14:03 UTC 2026 parsed CUSTBILL_PROBE_003: 1 records (trailer says ?)
+Tue Sep 15 12:14:03 UTC 2026 parsed CUSTBILL_PROBE_004: 0 records (trailer says ?)
+Tue Sep 15 12:14:03 UTC 2026 parse_custbill done
+make: Leaving directory '/home/ubuntu/repos/otterworks'

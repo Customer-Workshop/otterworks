@@ -1,0 +1,89 @@
+{
+  "wave": 0,
+  "pipeline": "p2",
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": "!dbx_unit_migration",
+  "verify_macro": "!dbx_data_reconciliation",
+  "width": 1,
+  "breaker_threshold": 3,
+  "auto_merge": false,
+  "child_minutes": 90,
+  "verify_depth": "none",
+  "capabilities": {
+    "identity": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": [
+      "ow_tp"
+    ],
+    "guard_mode": "block",
+    "stop_mode": "soft",
+    "ready": true
+  },
+  "source": {
+    "family": "databricks",
+    "secret": "DATABRICKS_MIGRATION_SQL",
+    "params": {
+      "source_schema": "bronze"
+    }
+  },
+  "base_branch": "tp-run/databricks-20260915T045714Z",
+  "controls": {
+    "source_query_cap": 4,
+    "recon_rerun_cap": 3,
+    "review_round_cap": 3,
+    "breaker_class": "3 same-class failures halts the wave and escalates",
+    "idempotency": "every converted stage is re-runnable: bronze is file-level exactly-once on a processed-file ledger, silver is a deterministic function of bronze, gold is a full recompute of silver. Idempotency is proven by an actual second run, never asserted",
+    "namespace_isolation": "a batch writes only its declared write_targets plus its declared runtime_writes; DDL for a table belongs to exactly one unit",
+    "fixture_vs_live": "develop against the legacy fixture set (make legacy-etl-gen-data / legacy-etl-run), then exactly one merge-evidence recon run per unit; a fixture PASS is never merge evidence",
+    "fanout": "serial by construction - the CUSTBILL chain is four dependency-ordered stages, so every wave is a single batch. run_workflow is not used: it exists for waves with more than one batch, and a one-child workflow would only re-import pipeline 1's runner-environment failure for no parallelism. The manifest keeps the fan-out shape so the collision check, the breaker and the wave close still apply"
+  },
+  "batches": [
+    {
+      "id": "p2-w0-a",
+      "units": [
+        "p2-foundations"
+      ],
+      "write_targets": [],
+      "runtime_writes": [],
+      "verify_depth": "none",
+      "brief": "BATCH p2-w0-a - wave 0 of the OtterWorks pipeline-2 migration (CUSTBILL batch chain -> Lakeflow).\n\nUNITS\n  - p2-foundations: landing conventions, the CUSTBILL record contract, the cron -> Lakeflow\n    schedule model, the probe fixture and the captured legacy baseline.\n\nWHAT THIS BATCH IS\nWave 0 is serial and everything waits on it. It writes no Databricks object. It produces the\nSTOP C artifact: the plan, the record contract pinned from observed legacy behaviour (not\nfrom the copybook comment), and the schedule model pipeline 3 inherits.\n\nThe contract is the deliverable. Byte transparency, encoding, malformed-record policy,\nextra delimited fields, NULL attribution, empty input and trailing-whitespace semantics are\neach declared with a clause id and a probe tag before any unit is built.\n\nNO DATA MOVES, so there is no recon verdict for this unit. Verify depth is none and the PR\nsays so explicitly rather than implying a pass.\n\nREAD FIRST (committed on the base branch)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline2_custbill_plan.md            (this plan: scope, waves, gate)\n  docs/migration/Pipeline2_custbill_record_contract.md (the behavioural contract, clause ids)\n  docs/migration/Pipeline2_schedule_model.md           (cron -> Lakeflow Job model)\n  docs/migration/OtterWorks_target_state.md            (target layout and conventions)\n\nSOURCE (read-only)\n  Legacy files under etl/legacy-extra/. The legacy scripts are never modified. The recon\n  source side is their own captured output, loaded verbatim into\n  ow_tp.bronze.custbill_legacy_baseline_*; the target side recomputes from the raw .dat\n  inputs and never reads those baseline tables.\n\nTARGETS\n  Unity Catalog ow_tp (bronze/silver/gold), volumes under /Volumes/ow_tp/, jobs and\n  pipelines named ow_tp_p2_*, secret scope ow_tp. Warehouse 565cd2fd713738c4.\n  Never create a cluster. Every schedule lands PAUSED.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding to report, never something to route around."
+    }
+  ],
+  "behaviour_changes": [
+    {
+      "id": "P2-D01",
+      "change": "The legacy can parse a half-written file (1-second double-stat, parse 5 minutes later). The target lands atomically and sequences parse as a dependency edge, so it cannot.",
+      "approved": "STOP C",
+      "testable": false,
+      "why_untestable": "Requires racing a producer mid-write; pinned fixtures cannot exercise it.",
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet",
+        "recon report unverified paths"
+      ]
+    },
+    {
+      "id": "P2-OPS-01",
+      "change": "The target never deletes source files, writes no /tmp lock files, and fails loudly where the legacy stages end in '|| true'.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief"
+      ]
+    },
+    {
+      "id": "D4-01",
+      "change": "sendmail is dropped; the Lakeflow Job's failure notification replaces it.",
+      "approved": "parent, confirm at STOP E",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet"
+      ]
+    }
+  ],
+  "invariants": {
+    "gold_completeness": "Gold contains every record the legacy chain produced, byte for byte, including the corrupt ones. Quarantine is an additional observability table and is NEVER a gate on the output (contract C-6.3).",
+    "on_violation": "If any expectation would drop a record from gold, the unit HALTS and reports to the parent. It is never reconciled around."
+  }
+}

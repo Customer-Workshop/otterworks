@@ -1,0 +1,10 @@
+[
+  {"rule": "identity", "applies_to": "*", "params": {}},
+  {"rule": "decimal_round", "applies_to": "DECIMAL(38,2)->DECIMAL(38,2) only (total_amount). Money is exact: half_even at 2 places is a no-op on values that are already 2dp on both sides, and exists so a scale drift fails loudly instead of being rounded away", "params": {"mode": "half_even", "places": 2}},
+  {"rule": "empty_string_is_null", "applies_to": "NOTHING - declared unused. The CUSTBILL chain has no NULLs: a missing field is the empty string and stays the empty string (contract C-3.6). Applying this rule would erase the difference between an absent field and a blank one", "params": {}},
+  {"rule": "rstrip_spaces", "applies_to": "NOTHING - declared unused. The legacy strips trailing spaces from cust_id, cust_name and currency only, inside the parser, and that stripping is part of the converted logic, not a comparison rule. bill_date, bill_amt and rec_type keep their trailing spaces (contract C-3.1) and stripping them at compare time would hide a real difference", "params": {}},
+  {"rule": "datetime_utc_truncate_ms", "applies_to": "NOTHING - declared unused. bill_date is a STRING produced by slicing, not a date: it is frequently not a valid calendar date (contract C-3.5) and is compared as bytes", "params": {}},
+  {"rule": "collation_casefold", "applies_to": "NOTHING - declared unused. Case is significant: usd and USD are different groups in the legacy report (contract C-7.3)", "params": {}},
+  {"rule": "null_missing_equiv", "applies_to": "NOTHING - declared unused, see empty_string_is_null", "params": {}},
+  {"rule": "uuid_normalize", "applies_to": "NOTHING - declared unused. No identifier in this estate is a UUID", "params": {}}
+]

@@ -1,0 +1,42 @@
+{
+  "unit": "p2-finance-close",
+  "source_artifact_path": "etl/legacy-extra/jobs/finance_excel_report.pl",
+  "target_objects": [
+    "ow_tp.gold.custbill_finance_close",
+    "/Volumes/ow_tp/gold/exports/custbill/"
+  ],
+  "golden_baseline_location": "databricks/migration/p2/baseline/captured/reports/",
+  "trigger_granularity": "per-batch",
+  "encoding_policy": {
+    "input_encoding": "none - the report splits the psv line on '|' bytes and never decodes. Exports are written back as ISO-8859-1 so a Latin-1 or byte-shifted UTF-8 name round-trips to the same bytes the legacy wrote",
+    "byte_transparency": "full: currency and record-type labels are raw byte strings, so 'usd' and 'USD' stay different groups and UNKNOWN(<raw>) keeps the raw value including trailing spaces",
+    "invalid_bytes": "none rejected; the CSV is written unquoted and unescaped exactly as the legacy does, so a comma inside a value corrupts the file in both systems"
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Aggregation reads positional fields 1, 5 and 6 of the re-split psv line, so a delimiter collision shifts the group key. That is reproduced (C-5.1). Rows whose field 1 is empty are skipped (C-7.2). A row with an empty currency and record type still forms a group, keyed on the empty string, and sorts last."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "With no parsed input the report is written header-only - 'Currency,RecordType,RecordCount,TotalAmount' plus LF, no data rows, no error (C-7.8). The gold table is emptied for the run, not left stale."
+  },
+  "acceptance_checks": [
+    {"id": "C1", "description": "Gold rows equal the captured CSV row for row: currency, record type label, record count and total amount, compared on the raw group key."},
+    {"id": "C2", "description": "Money is exact. A one-cent difference is a failure, not a tolerance. Totals are summed in DECIMAL(38,2), not float."},
+    {"id": "C3", "description": "Row order matches ASCII byte order of the raw 'currency|rec_type' key: digits before uppercase before lowercase, and the empty key last (C-7.5)."},
+    {"id": "C4", "description": "Label mapping is exactly 01->INVOICE, 02->CREDIT, everything else->UNKNOWN(<raw>) with trailing spaces preserved (C-7.4)."},
+    {"id": "C5", "description": "The exported CSV is byte-identical to the captured legacy CSV, header included, LF line endings, no quoting."},
+    {"id": "C6", "description": "The exported .xls is byte-identical to the exported CSV; it is not a workbook and is documented as such (C-7.11)."},
+    {"id": "C7", "description": "The report aggregates every parsed file retained, not a single day's slice, so totals are cumulative and grow every run (C-7.1)."},
+    {"id": "C8", "description": "A second run writes byte-identical outputs and leaves gold row counts unchanged, proven by an actual rerun."}
+  ],
+  "planted_anomalies": [
+    {"id": "ANOM-CLOSE-01", "description": "The report is cumulative over every retained psv file, so the 'daily' finance close silently restates all history and the Sunday run_all re-run re-emits the same totals under a new filename.", "status": "must-detect"},
+    {"id": "ANOM-CLOSE-02", "description": "Grouping is on raw bytes, so 'usd' and 'USD', and '1 ' and '01', are different groups in the same report.", "status": "must-detect"},
+    {"id": "ANOM-CLOSE-03", "description": "The CSV is written with no quoting or escaping, so a comma in any value corrupts the file.", "status": "must-detect"},
+    {"id": "ANOM-CLOSE-04", "description": "The .xls is a byte copy of the CSV produced by `cp`, so the extension misrepresents the format to every consumer that opens it.", "status": "must-detect"},
+    {"id": "ANOM-CLOSE-05", "description": "Totals are accumulated as IEEE doubles, so above abs(total) ~9.0e13 the legacy loses cents while the DECIMAL target does not.", "status": "coverage_gap", "reason": "The fixture set totals ~5e5, six orders of magnitude below the divergence bound, and inflating amounts to reach it would not be the legacy's real data. The bound is derived (C-7.9) and reported as an anomaly if a live total ever approaches it."},
+    {"id": "ANOM-CLOSE-06", "description": "Output is mailed through a sendmail pipe whose binary has been absent for years; the failure is swallowed, so nobody has received this report in years and nobody noticed.", "status": "must-detect"}
+  ]
+}

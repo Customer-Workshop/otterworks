@@ -1,0 +1,6 @@
+make: Entering directory '/home/ubuntu/repos/otterworks'
+finance report lock present, running anyway
+Tue Sep 15 12:14:04 2026 finance_excel_report starting
+Tue Sep 15 12:14:04 2026 wrote /tmp/ow-p2-baseline/reports/finance_billing_20260915.xls
+Tue Sep 15 12:14:04 2026 finance_excel_report done
+make: Leaving directory '/home/ubuntu/repos/otterworks'

@@ -1,0 +1,5 @@
+make: Entering directory '/home/ubuntu/repos/otterworks'
+parse lock exists, probably stale, proceeding
+Tue Sep 15 12:14:04 UTC 2026 parse_custbill starting
+Tue Sep 15 12:14:04 UTC 2026 parse_custbill done
+make: Leaving directory '/home/ubuntu/repos/otterworks'

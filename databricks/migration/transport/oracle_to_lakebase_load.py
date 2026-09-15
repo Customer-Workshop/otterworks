@@ -178,23 +178,38 @@ def advance_sequence(cur, table: dict, target: str, schema: str) -> None:
     sequence (`seq_<table>`, the converted Oracle sequence). A key column declared GENERATED
     BY DEFAULT owns an implicit sequence which an explicit insert does not move, so it would
     hand out 1 again and collide with a migrated row.
+
+    Either way the sequence only ever goes forwards: an Oracle sequence does not rewind when
+    its top rows are deleted, so neither may this one, or a rerun would reissue keys the
+    source has already handed out. An empty table leaves the sequence where it is.
     """
     identity = table.get("identity")
     if identity:
         sequence = f'{ident(schema)}.{ident("seq_" + table["target_table"])}'
         (exists,) = cur.execute("SELECT to_regclass(%s) IS NOT NULL", (sequence,)).fetchone()
         if exists:
-            column = ident(identity["target"])
-            cur.execute(f"SELECT setval('{sequence}', coalesce(max({column}), 0) + 1, false) "
-                        f"FROM {target}")
+            forward(cur, sequence, target, ident(identity["target"]))
             return
     for col in (ident(c) for c in table["key"]["target"]):
         (sequence,) = cur.execute("SELECT pg_get_serial_sequence(%s, %s)",
                                   (target, col)).fetchone()
         if sequence:
-            cur.execute(
-                f"SELECT setval(%s, coalesce((SELECT max({col}) FROM {target}), 0) + 1, false)",
-                (sequence,))
+            forward(cur, sequence, target, col)
+
+
+def forward(cur, sequence: str, target: str, column: str) -> None:
+    """setval the sequence to the data's next value, or leave it alone if it is already past.
+
+    `setval` is absolute, so it can hand back numbers the sequence has already issued: rows
+    deleted off the top, a rolled-back insert or a cached block all leave the sequence ahead
+    of max(column).
+    """
+    last, is_called = cur.execute(
+        f"SELECT last_value, is_called FROM {sequence}").fetchone()
+    (from_data,) = cur.execute(
+        f"SELECT coalesce(max({column}), 0) + 1 FROM {target}").fetchone()
+    nxt = max(last + 1 if is_called else last, from_data)
+    cur.execute("SELECT setval(%s, %s, false)", (sequence, nxt))
 
 
 def main(argv: list[str] | None = None) -> int:

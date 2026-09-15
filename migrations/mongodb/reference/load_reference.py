@@ -2,7 +2,8 @@
 
 Everything else in the migration depends on these four collections, so they land first
 and alone. The load is idempotent: each document is replaced by its source primary key,
-so re-running leaves the target identical.
+so re-running leaves the target identical. A document whose source row has gone is deleted,
+so the target converges on the source key set rather than keeping a ghost.
 
     python migrations/mongodb/reference/load_reference.py [--drop]
 
@@ -114,19 +115,24 @@ def load(drop: bool = False) -> dict[str, int]:
         for name in COLLECTIONS:
             if drop:
                 db[name].drop()
-            ops, n = [], 0
+            ops, n, seen = [], 0, set()
             for doc in BUILDERS[name](conn, codes):
                 ops.append(ReplaceOne({"_id": doc["_id"]}, doc, upsert=True))
+                seen.add(doc["_id"])
                 n += 1
                 if len(ops) == 1000:
                     db[name].bulk_write(ops, ordered=False)
                     ops = []
             if ops:
                 db[name].bulk_write(ops, ordered=False)
+            stale = [i for i in db[name].distinct("_id") if i not in seen]
+            if stale:
+                db[name].delete_many({"_id": {"$in": stale}})
             for keys, opts in INDEXES[name]:
                 db[name].create_index(list(keys.items()), **opts)
             counts[name] = n
-            print(f"{name}: {n} documents")
+            print(f"{name}: {n} documents"
+                  + (f", {len(stale)} stale removed" if stale else ""))
     finally:
         conn.close()
     return counts

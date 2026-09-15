@@ -1,0 +1,13 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-customer-master-hist",
+  "run_id": "ae7c13bb-a691-4d8c-bfd4-6d8ebbca761a",
+  "finished_at": "2026-09-15T08:04:48.264176+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.silver.customer_master_hist",
+      "rows": 0,
+      "content_hash": null
+    }
+  ]
+}

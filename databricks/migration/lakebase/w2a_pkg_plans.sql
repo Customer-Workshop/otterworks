@@ -116,6 +116,11 @@ COMMENT ON FUNCTION billing.fn_plan_entitlements(text, timestamp) IS
 --     same column list, the same bind order and the same literal status 10.
 --   * The audit line keeps the source's text, including the Oracle member name, so the
 --     billing_audit_log rows compare byte for byte.
+--   * Oracle reads an empty VARCHAR2 as NULL and Postgres does not, so both id parameters
+--     are normalised with NULLIF first: an empty tenant or plan id then matches nothing and
+--     fails the insert's NOT NULL, as it does on Oracle, instead of writing a row with an
+--     empty id. The message and the hash use concat(), which folds NULL to '' the way
+--     Oracle's `||` does, so a NULL argument produces the same text on both platforms.
 --
 -- NOT reproduced here, and out of this unit's declared write targets: Oracle's
 -- TRG_SUBSCRIPTIONS_HIST writes a SUBSCRIPTIONS_HIST row for every UPDATE below. That table
@@ -126,18 +131,20 @@ CREATE OR REPLACE PROCEDURE billing.sp_assign_plan(p_tenant_id text, p_plan_id t
 LANGUAGE plpgsql
 AS $$
 DECLARE
+    v_tenant_id text := NULLIF(p_tenant_id, '');
+    v_plan_id   text := NULLIF(p_plan_id, '');
     c_open_subs CURSOR FOR
         SELECT id, status_cd
           FROM billing.subscriptions
-         WHERE tenant_id = p_tenant_id
+         WHERE tenant_id = v_tenant_id
            AND ends_on IS NULL
            AND starts_on < p_effective_on
            FOR UPDATE;
     r        record;
     v_new_id varchar(36);
 BEGIN
-    PERFORM billing.log_msg('PLANS', 'sp_change_plan tenant=' || p_tenant_id ||
-        ' plan=' || p_plan_id || ' eff=' || to_char(p_effective_on, 'YYYY-MM-DD'));
+    PERFORM billing.log_msg('PLANS', concat('sp_change_plan tenant=', v_tenant_id,
+        ' plan=', v_plan_id, ' eff=', to_char(p_effective_on, 'YYYY-MM-DD')));
 
     OPEN c_open_subs;
     LOOP
@@ -151,10 +158,10 @@ BEGIN
     CLOSE c_open_subs;
 
     v_new_id := billing.f_md5_uuid(
-        p_tenant_id || p_plan_id || to_char(p_effective_on, 'YYYY-MM-DD'));
+        concat(v_tenant_id, v_plan_id, to_char(p_effective_on, 'YYYY-MM-DD')));
 
     INSERT INTO billing.subscriptions (id, tenant_id, plan_id, starts_on, status_cd)
-    VALUES (v_new_id, p_tenant_id, p_plan_id, p_effective_on, 10);
+    VALUES (v_new_id, v_tenant_id, v_plan_id, p_effective_on, 10);
 END;
 $$;
 

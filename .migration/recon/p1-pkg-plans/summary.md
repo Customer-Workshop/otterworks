@@ -76,6 +76,11 @@ audit call persists.
   (P1-D4): what Oracle stashed in package state, the caller now receives in band. Their
   values are recorded in `behaviour_check.json` under `package_state_returned`.
 - `p_effective_on - 1` on an Oracle DATE is minus one **day**, so it is `INTERVAL '1 day'`.
+- Empty string is NULL on Oracle and is not on Postgres, so `sp_assign_plan` normalises both
+  id arguments with `NULLIF` and builds its message and hash with `concat()` (which folds
+  NULL to `''` the way Oracle's `||` does). `empty_id_probe.py` calls the procedure with an
+  empty plan id and gets the Postgres not-null violation that answers Oracle's ORA-01400,
+  instead of a subscription row holding an empty id.
 
 ## NOT DATA-PROVEN / unverified paths
 

@@ -1,0 +1,231 @@
+[
+  {
+    "name": "conv_status_decode_counts",
+    "collection": "invoices",
+    "why": "INVOICE_HEADER.STATUS_CD is decoded through CODES INV_STATUS; the source integer and the target string never compare raw.",
+    "source_sql": "SELECT NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')') AS \"status\", COUNT(*) AS \"n\" FROM invoice_header h LEFT JOIN codes c ON c.code_type = 'INV_STATUS' AND c.code_val = h.status_cd GROUP BY NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')')",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$group": {"_id": "$status", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "status": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "billing_status_decode_counts",
+    "collection": "invoices",
+    "why": "INVOICES.STATUS_CD is decoded through CODES INV_STATUS.",
+    "source_sql": "SELECT NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(i.status_cd) || ')') AS \"status\", COUNT(*) AS \"n\" FROM invoices i LEFT JOIN codes c ON c.code_type = 'INV_STATUS' AND c.code_val = i.status_cd GROUP BY NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(i.status_cd) || ')')",
+    "target_pipeline": [
+      {"$match": {"source": "billing"}},
+      {"$group": {"_id": "$status", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "status": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "dunning_status_decode_values",
+    "collection": "invoices",
+    "why": "DUNNING_ATTEMPTS.STATUS_CD is decoded through CODES DUN_STATUS; graded per attempt.",
+    "source_sql": "SELECT d.attempt_no AS \"attemptNo\", NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(d.status_cd) || ')') AS \"status\" FROM dunning_attempts d LEFT JOIN codes c ON c.code_type = 'DUN_STATUS' AND c.code_val = d.status_cd",
+    "target_pipeline": [
+      {"$match": {"source": "billing"}},
+      {"$unwind": "$dunning"},
+      {"$project": {"_id": 0, "attemptNo": "$dunning.attemptNo", "status": "$dunning.status"}}
+    ]
+  },
+  {
+    "name": "conv_invoice_date_month_counts",
+    "collection": "invoices",
+    "why": "INVOICE_DT is a DD-MON-YY string parsed to a date; no canonicalization rule compares a string with a date, so the parse is graded as a month distribution over all 18,750 headers.",
+    "source_sql": "SELECT TO_CHAR(TO_DATE(invoice_dt, 'DD-MON-YY'), 'YYYY-MM') AS \"month\", COUNT(*) AS \"n\" FROM invoice_header GROUP BY TO_CHAR(TO_DATE(invoice_dt, 'DD-MON-YY'), 'YYYY-MM')",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$group": {"_id": {"$dateToString": {"format": "%Y-%m", "date": "$invoiceDate"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "month": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_due_date_month_counts",
+    "collection": "invoices",
+    "why": "DUE_DT is a DD-MON-YY string parsed to a date; graded as a month distribution over all 18,750 headers.",
+    "source_sql": "SELECT TO_CHAR(TO_DATE(due_dt, 'DD-MON-YY'), 'YYYY-MM') AS \"month\", COUNT(*) AS \"n\" FROM invoice_header GROUP BY TO_CHAR(TO_DATE(due_dt, 'DD-MON-YY'), 'YYYY-MM')",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$group": {"_id": {"$dateToString": {"format": "%Y-%m", "date": "$dueDate"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "month": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_header_customer_name_counts",
+    "collection": "invoices",
+    "why": "CUST_NAME is carried on every INVOICE_LINE row and lifted to the header once; graded as headers per customer name. Headers with no lines carry no name, so the source is rooted on INVOICE_HEADER.",
+    "source_sql": "SELECT g.nm AS \"name\", COUNT(*) AS \"n\" FROM invoice_header h LEFT JOIN (SELECT invoice_id, MIN(cust_name) AS nm FROM invoice_line GROUP BY invoice_id) g ON g.invoice_id = h.invoice_id GROUP BY g.nm",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$group": {"_id": "$customer.name", "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "name": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_header_customer_distinct",
+    "collection": "invoices",
+    "why": "Distinct lifted customer numbers and names per header; null (a header with no lines) is excluded on both sides, as COUNT(DISTINCT) does.",
+    "source_sql": "SELECT COUNT(DISTINCT g.cn) AS \"custNos\", COUNT(DISTINCT g.nm) AS \"names\" FROM invoice_header h LEFT JOIN (SELECT invoice_id, MIN(cust_no) AS cn, MIN(cust_name) AS nm FROM invoice_line GROUP BY invoice_id) g ON g.invoice_id = h.invoice_id",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$group": {"_id": null, "custNos": {"$addToSet": "$customer.custNo"}, "names": {"$addToSet": "$customer.name"}}},
+      {"$project": {"_id": 0,
+                    "custNos": {"$size": {"$filter": {"input": "$custNos", "cond": {"$ne": ["$$this", null]}}}},
+                    "names": {"$size": {"$filter": {"input": "$names", "cond": {"$ne": ["$$this", null]}}}}}}
+    ]
+  },
+  {
+    "name": "conv_header_sample_parsed_values",
+    "collection": "invoices",
+    "why": "Exact per-header parity for the paths no rule can grade (parsed dates, lifted customer, decoded status) on the reproducible INVOICE_ID LIKE '00%' sample (61 headers).",
+    "source_sql": "SELECT h.invoice_id AS \"id\", TO_CHAR(TO_DATE(h.invoice_dt, 'DD-MON-YY'), 'YYYY-MM-DD') AS \"invoiceDate\", TO_CHAR(TO_DATE(h.due_dt, 'DD-MON-YY'), 'YYYY-MM-DD') AS \"dueDate\", NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(h.status_cd) || ')') AS \"status\", (SELECT MIN(l.cust_no) FROM invoice_line l WHERE l.invoice_id = h.invoice_id) AS \"custNo\", (SELECT MIN(l.cust_name) FROM invoice_line l WHERE l.invoice_id = h.invoice_id) AS \"custName\" FROM invoice_header h LEFT JOIN codes c ON c.code_type = 'INV_STATUS' AND c.code_val = h.status_cd WHERE h.invoice_id LIKE '00%'",
+    "target_pipeline": [
+      {"$match": {"source": "conversion", "_id": {"$regex": "^00"}}},
+      {"$project": {"_id": 0, "id": "$_id", "status": 1, "custNo": "$customer.custNo", "custName": "$customer.name",
+                    "invoiceDate": {"$dateToString": {"format": "%Y-%m-%d", "date": "$invoiceDate"}},
+                    "dueDate": {"$dateToString": {"format": "%Y-%m-%d", "date": "$dueDate"}}}}
+    ]
+  },
+  {
+    "name": "conv_line_posted_counts",
+    "collection": "invoices",
+    "why": "POSTED_YN becomes a boolean; no rule compares 'Y' with true, so the flag is graded as a distribution over all 149,963 embedded lines.",
+    "source_sql": "SELECT CASE WHEN l.posted_yn = 'Y' THEN 'true' WHEN l.posted_yn = 'N' THEN 'false' WHEN l.posted_yn IS NULL THEN 'null' ELSE 'other' END AS \"posted\", COUNT(*) AS \"n\" FROM invoice_line l WHERE EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id) GROUP BY CASE WHEN l.posted_yn = 'Y' THEN 'true' WHEN l.posted_yn = 'N' THEN 'false' WHEN l.posted_yn IS NULL THEN 'null' ELSE 'other' END",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$unwind": "$lines"},
+      {"$group": {"_id": {"$switch": {"branches": [
+        {"case": {"$eq": ["$lines.posted", true]}, "then": "true"},
+        {"case": {"$eq": ["$lines.posted", false]}, "then": "false"},
+        {"case": {"$eq": [{"$ifNull": ["$lines.posted", "__null"]}, "__null"]}, "then": "null"}],
+        "default": "other"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "posted": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_line_gl_accounts_shape_counts",
+    "collection": "invoices",
+    "why": "GL_ACCT_CSV becomes an array; no rule compares a CSV string with an array, so the split is graded by token count and joined length over all 149,963 lines.",
+    "source_sql": "SELECT LENGTH(l.gl_acct_csv) - LENGTH(REPLACE(l.gl_acct_csv, ',')) + 1 AS \"accounts\", LENGTH(l.gl_acct_csv) AS \"chars\", COUNT(*) AS \"n\" FROM invoice_line l WHERE EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id) GROUP BY LENGTH(l.gl_acct_csv) - LENGTH(REPLACE(l.gl_acct_csv, ',')) + 1, LENGTH(l.gl_acct_csv)",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$unwind": "$lines"},
+      {"$project": {"accounts": {"$size": "$lines.glAccounts"},
+                    "joined": {"$reduce": {"input": "$lines.glAccounts", "initialValue": "",
+                                           "in": {"$cond": [{"$eq": ["$$value", ""]}, "$$this",
+                                                            {"$concat": ["$$value", ",", "$$this"]}]}}}}},
+      {"$group": {"_id": {"accounts": "$accounts", "chars": {"$strLenCP": "$joined"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "accounts": "$_id.accounts", "chars": "$_id.chars", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_line_service_period_from_counts",
+    "collection": "invoices",
+    "why": "SERVICE_PERIOD is an 'MMYYYY-MMYYYY' string parsed to {from,to}; the lower bound is graded as a month distribution over all 149,963 lines.",
+    "source_sql": "SELECT TO_CHAR(TO_DATE(SUBSTR(l.service_period, 1, 6), 'MMYYYY'), 'YYYY-MM') AS \"month\", COUNT(*) AS \"n\" FROM invoice_line l WHERE EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id) GROUP BY TO_CHAR(TO_DATE(SUBSTR(l.service_period, 1, 6), 'MMYYYY'), 'YYYY-MM')",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$unwind": "$lines"},
+      {"$group": {"_id": {"$dateToString": {"format": "%Y-%m", "date": "$lines.servicePeriod.from"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "month": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_line_service_period_to_counts",
+    "collection": "invoices",
+    "why": "The upper bound of the parsed SERVICE_PERIOD, graded as a month distribution over all 149,963 lines.",
+    "source_sql": "SELECT TO_CHAR(TO_DATE(SUBSTR(l.service_period, 8, 6), 'MMYYYY'), 'YYYY-MM') AS \"month\", COUNT(*) AS \"n\" FROM invoice_line l WHERE EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id) GROUP BY TO_CHAR(TO_DATE(SUBSTR(l.service_period, 8, 6), 'MMYYYY'), 'YYYY-MM')",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$unwind": "$lines"},
+      {"$group": {"_id": {"$dateToString": {"format": "%Y-%m", "date": "$lines.servicePeriod.to"}}, "n": {"$sum": 1}}},
+      {"$project": {"_id": 0, "month": "$_id", "n": 1}}
+    ]
+  },
+  {
+    "name": "conv_line_sample_parsed_values",
+    "collection": "invoices",
+    "why": "Exact per-line parity for posted, glAccounts and both servicePeriod bounds on the reproducible LINE_ID LIKE '00%' sample (576 lines).",
+    "source_sql": "SELECT l.line_id AS \"lineId\", CASE WHEN l.posted_yn = 'Y' THEN 'true' WHEN l.posted_yn = 'N' THEN 'false' WHEN l.posted_yn IS NULL THEN 'null' ELSE 'other' END AS \"posted\", l.gl_acct_csv AS \"glAccounts\", TO_CHAR(TO_DATE(SUBSTR(l.service_period, 1, 6), 'MMYYYY'), 'YYYY-MM-DD') AS \"periodFrom\", TO_CHAR(TO_DATE(SUBSTR(l.service_period, 8, 6), 'MMYYYY'), 'YYYY-MM-DD') AS \"periodTo\" FROM invoice_line l WHERE l.line_id LIKE '00%' AND EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id)",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$unwind": "$lines"},
+      {"$match": {"lines.lineId": {"$regex": "^00"}}},
+      {"$project": {"_id": 0, "lineId": "$lines.lineId",
+                    "posted": {"$switch": {"branches": [
+                      {"case": {"$eq": ["$lines.posted", true]}, "then": "true"},
+                      {"case": {"$eq": ["$lines.posted", false]}, "then": "false"},
+                      {"case": {"$eq": [{"$ifNull": ["$lines.posted", "__null"]}, "__null"]}, "then": "null"}],
+                      "default": "other"}},
+                    "glAccounts": {"$reduce": {"input": "$lines.glAccounts", "initialValue": "",
+                                               "in": {"$cond": [{"$eq": ["$$value", ""]}, "$$this",
+                                                                {"$concat": ["$$value", ",", "$$this"]}]}}},
+                    "periodFrom": {"$dateToString": {"format": "%Y-%m-%d", "date": "$lines.servicePeriod.from"}},
+                    "periodTo": {"$dateToString": {"format": "%Y-%m-%d", "date": "$lines.servicePeriod.to"}}}}
+    ]
+  },
+  {
+    "name": "orphan_line_parsed_values",
+    "collection": "invoice_lines_orphaned",
+    "why": "All 37 orphaned lines, compared value by value on the same ungraded paths, including the dangling invoiceId.",
+    "source_sql": "SELECT l.line_id AS \"id\", l.invoice_id AS \"invoiceId\", CASE WHEN l.posted_yn = 'Y' THEN 'true' WHEN l.posted_yn = 'N' THEN 'false' WHEN l.posted_yn IS NULL THEN 'null' ELSE 'other' END AS \"posted\", l.gl_acct_csv AS \"glAccounts\", TO_CHAR(TO_DATE(SUBSTR(l.service_period, 1, 6), 'MMYYYY'), 'YYYY-MM-DD') AS \"periodFrom\", TO_CHAR(TO_DATE(SUBSTR(l.service_period, 8, 6), 'MMYYYY'), 'YYYY-MM-DD') AS \"periodTo\" FROM invoice_line l WHERE NOT EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id)",
+    "target_pipeline": [
+      {"$project": {"_id": 0, "id": "$_id", "invoiceId": 1,
+                    "posted": {"$switch": {"branches": [
+                      {"case": {"$eq": ["$posted", true]}, "then": "true"},
+                      {"case": {"$eq": ["$posted", false]}, "then": "false"},
+                      {"case": {"$eq": [{"$ifNull": ["$posted", "__null"]}, "__null"]}, "then": "null"}],
+                      "default": "other"}},
+                    "glAccounts": {"$reduce": {"input": "$glAccounts", "initialValue": "",
+                                               "in": {"$cond": [{"$eq": ["$$value", ""]}, "$$this",
+                                                                {"$concat": ["$$value", ",", "$$this"]}]}}},
+                    "periodFrom": {"$dateToString": {"format": "%Y-%m-%d", "date": "$servicePeriod.from"}},
+                    "periodTo": {"$dateToString": {"format": "%Y-%m-%d", "date": "$servicePeriod.to"}}}}
+    ]
+  },
+  {
+    "name": "conv_money_totals",
+    "collection": "invoices",
+    "why": "Money aggregates the tolerance record grades to 0.01: header totals and embedded line amounts, which Tier 2 defers for decimal_round fields.",
+    "source_sql": "SELECT ROUND(SUM(h.total_amt), 2) AS \"total\", COUNT(*) AS \"headers\" FROM invoice_header h",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$group": {"_id": null, "total": {"$sum": "$totals.total"}, "headers": {"$sum": 1}}},
+      {"$project": {"_id": 0, "total": {"$round": ["$total", 2]}, "headers": 1}}
+    ],
+    "rules": ["decimal_round"]
+  },
+  {
+    "name": "conv_line_money_totals",
+    "collection": "invoices",
+    "why": "Embedded conversion line money and quantity sums, recomputed on both stacks.",
+    "source_sql": "SELECT ROUND(SUM(l.amount), 2) AS \"amount\", ROUND(SUM(l.tax_amt), 2) AS \"taxAmt\", ROUND(SUM(l.qty), 3) AS \"qty\", COUNT(*) AS \"lines\" FROM invoice_line l WHERE EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = l.invoice_id)",
+    "target_pipeline": [
+      {"$match": {"source": "conversion"}},
+      {"$unwind": "$lines"},
+      {"$group": {"_id": null, "amount": {"$sum": "$lines.amount"}, "taxAmt": {"$sum": "$lines.taxAmt"},
+                  "qty": {"$sum": "$lines.qty"}, "lines": {"$sum": 1}}},
+      {"$project": {"_id": 0, "lines": 1, "amount": {"$round": ["$amount", 2]},
+                    "taxAmt": {"$round": ["$taxAmt", 2]}, "qty": {"$round": ["$qty", 3]}}}
+    ],
+    "rules": ["decimal_round"]
+  },
+  {
+    "name": "billing_money_totals",
+    "collection": "invoices",
+    "why": "Billing estate money: header subtotal/tax/total and embedded line amounts.",
+    "source_sql": "SELECT ROUND(SUM(i.subtotal), 2) AS \"subtotal\", ROUND(SUM(i.tax), 2) AS \"tax\", ROUND(SUM(i.total), 2) AS \"total\", COUNT(*) AS \"invoices\" FROM invoices i",
+    "target_pipeline": [
+      {"$match": {"source": "billing"}},
+      {"$group": {"_id": null, "subtotal": {"$sum": "$totals.subtotal"}, "tax": {"$sum": "$totals.tax"},
+                  "total": {"$sum": "$totals.total"}, "invoices": {"$sum": 1}}},
+      {"$project": {"_id": 0, "invoices": 1, "subtotal": {"$round": ["$subtotal", 2]},
+                    "tax": {"$round": ["$tax", 2]}, "total": {"$round": ["$total", 2]}}}
+    ],
+    "rules": ["decimal_round"]
+  }
+]

@@ -65,7 +65,11 @@
       ],
       "write_targets": [
         "ow_tp.bronze.p3_cleanup_legacy_delete_set",
-        "ow_tp.silver.storage_cleanup_candidates"
+        "ow_tp.bronze.p3_cleanup_inventory_raw",
+        "ow_tp.bronze.p3_cleanup_landing_runs",
+        "ow_tp.bronze.p3_cleanup_metadata_raw",
+        "ow_tp.silver.storage_cleanup_candidates",
+        "/Volumes/ow_tp/bronze/landing/analytics/"
       ],
       "runtime_writes": [],
       "verify_depth": "full",

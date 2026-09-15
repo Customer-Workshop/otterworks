@@ -1,0 +1,10 @@
+[
+  {"rule": "identity", "applies_to": "*", "params": {}},
+  {"rule": "decimal_round", "applies_to": "NOTHING - declared unused. size_bytes is an exact byte count from the S3 listing; rounding it would hide exactly the truncating-copy difference this unit compares sizes to catch", "params": {"mode": "half_even", "places": 0}},
+  {"rule": "empty_string_is_null", "applies_to": "NOTHING - declared unused. Both sides compare object keys, which are never empty. The empty metadata s3_key is handled where it matters, in the candidate SQL, which treats '' as no reference exactly as the legacy does", "params": {}},
+  {"rule": "rstrip_spaces", "applies_to": "NOTHING - declared unused. A trailing space is a legal and distinct S3 key; stripping it would merge two different objects", "params": {}},
+  {"rule": "datetime_utc_truncate_ms", "applies_to": "NOTHING - declared unused. The compared columns are a key and a size. run_date and computed_at are not part of the delete-set identity", "params": {}},
+  {"rule": "collation_casefold", "applies_to": "NOTHING - declared unused. S3 keys are case-sensitive, so folding case would treat two distinct objects as one", "params": {}},
+  {"rule": "null_missing_equiv", "applies_to": "NOTHING - declared unused. Neither side can carry a null in the compared columns: both are NOT NULL", "params": {}},
+  {"rule": "uuid_normalize", "applies_to": "NOTHING - declared unused. The key is a path, not a UUID, even though its last segment is hex", "params": {}}
+]

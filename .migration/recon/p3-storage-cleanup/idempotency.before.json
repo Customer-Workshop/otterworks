@@ -1,0 +1,21 @@
+{
+  "snapshot_batch": "p3probe",
+  "tables": {
+    "bronze.p3_cleanup_inventory_raw": {
+      "rows": 138,
+      "md5": "8356ec9abaefa1fb4f551d087158ff32"
+    },
+    "bronze.p3_cleanup_metadata_raw": {
+      "rows": 125,
+      "md5": "54782385db6b6f2112799df467038781"
+    },
+    "silver.storage_cleanup_candidates": {
+      "rows": 17,
+      "md5": "3ad88faaaedee0d0b9da249bfb8c71c4"
+    },
+    "bronze.p3_cleanup_legacy_delete_set": {
+      "rows": 17,
+      "md5": "75ca71662aa32b49d6f19b77ed2bfdb5"
+    }
+  }
+}

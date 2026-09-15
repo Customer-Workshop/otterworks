@@ -1,0 +1,56 @@
+{
+  "kind": "recon-report",
+  "unit": "p3-storage-cleanup",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T17:17:04.177583+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over ow_tp.bronze.p3_cleanup_legacy_delete_set (the objects the legacy actually removed from its clone)",
+      "checks_run": 1
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, same source table",
+      "checks_run": 2
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, keyed on (object_key, size_bytes)",
+      "checks_run": 17
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "This unit reconciles a decision, not a mutation. The source side is what storage_cleanup_daily.py removed from an isolated per-run clone of the pinned snapshot, derived in wave 0 as (snapshot contents) minus (clone contents after the run) with each removed object's size, and loaded into ow_tp.bronze.p3_cleanup_legacy_delete_set by a loader that imports none of the converted code. The target side is ow_tp.silver.storage_cleanup_candidates, computed in SQL from the same immutable snapshot with deletion disabled. The two sides share no mutable state: the legacy mutated a clone, the target only read the snapshot. Comparison is exact set equality on (object_key, size_bytes) - 17 objects on both sides, no row on either side alone. Size is part of the key because the legacy copies to quarantine before deleting, so a truncating copy would leave the key intact and only the bytes would show it.",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "The same job and batch (run_date=2026-09-15, snapshot_batch=p3probe) were run again through `databricks bundle run -t migration ow_tp_p3_storage_cleanup_daily`. Row counts and an order-independent md5 over every target table are identical before and after (idempotency.before.json / idempotency.after.json, from databricks/migration/p3/recon/fingerprint_cleanup_target.py): inventory 138, metadata 125, candidates 17, legacy delete set 17. Landing is a MERGE on (snapshot_batch, natural key) and the candidate load is an INSERT ... REPLACE WHERE on the batch, so a rerun rewrites the same rows rather than adding to them."
+  },
+  "legacy_defects_reproduced": [
+    "Only the files/ prefix is considered. The snapshot carries one object outside it (thumbnails/thumb-a79850b7b91664e4) which the legacy never lists and the target never selects, even though it is landed.",
+    "A metadata row whose s3_key is missing or empty is not a reference: the legacy skips it while building its referenced set, and the SQL matches that with a NOT EXISTS over non-empty keys rather than a NOT IN.",
+    "Metadata rows pointing at objects that no longer exist (5 in this snapshot) are kept and simply match nothing, exactly as the legacy's set does.",
+    "The quarantine key is the legacy's own layout, quarantined/<run_date>/<object_key>, recorded rather than written."
+  ],
+  "unverified_paths": [
+    "Deletion and quarantine: NOT PERFORMED and therefore not verified. By P3-D03 the converted unit computes the delete set and stops; there is no S3 copy or delete in it, the enable_deletes job parameter is false, and even set to true the run refuses, because the delete step is deliberately not implemented in this unit. The evidence here is that the decision matches, not that the action does.",
+    "The bucket etl/config.ini names for file storage does not exist in this estate, so the legacy cannot be deleting anything here. The recon ran against the pinned fixture snapshot and its clone, not against a live bucket. What production deletes is unknown from this repo and is a STOP E question.",
+    "AWS access by named secret is unexercised: ow_tp/aws_migration_access_key_id and ow_tp/aws_migration_secret_access_key do not exist in the workspace. The converted unit needs no AWS call because it reads the landed snapshot, so nothing fell back to the plaintext keys in etl/config.ini, but an S3-reading variant of this job has no credential evidence.",
+    "factory-doctor source_principal_read_only: still unverified. The doctor implements privilege queries for SQL Server and Postgres only, so a Databricks-family source can never satisfy the row (P3-D09). Fixing it needs a plugin change, not a runtime workaround.",
+    "The legacy's report object is written to a data-lake bucket that does not exist here, so the converted job prints its report instead of writing one. The report numbers (137 objects, 12.41% orphaned, 0.0004 GB) are computed on the same terms as the legacy's, but the two report artifacts were never compared.",
+    "Inputs outside the pinned snapshot - an empty listing, a bucket with no orphans, keys differing only in case - are not exercised by this run.",
+    "Structure parity: the harness compares rows, not Delta table properties, comments, or grants."
+  ],
+  "verdict": "PASS"
+}

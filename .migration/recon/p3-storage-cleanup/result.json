@@ -1,0 +1,63 @@
+{
+  "unit": "p3-storage-cleanup",
+  "mode": "live",
+  "mapping_version": "map-p3-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "batch": "p3probe"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 5,
+    "source_rows_fetched": 17,
+    "target_statements": 4,
+    "target_rows_fetched": 17,
+    "elapsed_s": 3.134
+  },
+  "generated_at": "2026-09-15T17:17:04.177583+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.p3_cleanup_legacy_delete_set": 17
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 17,
+      "stats": {
+        "storage_cleanup_candidates": {
+          "mode": "full_diff",
+          "population": 17,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

@@ -214,3 +214,95 @@ resources:
             # password itself comes from secret scope ow_tp at run time, never from here.
             dependencies:
               - psycopg2-binary==2.9.9
+
+    ow_tp_p3_storage_cleanup_daily:
+      name: ow_tp_p3_storage_cleanup_daily
+      # Legacy: 30 2 * * * on the ETL box.
+      schedule:
+        quartz_cron_expression: "0 30 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      queue:
+        enabled: true
+      webhook_notifications:
+        on_failure: ${var.failure_webhooks}
+      parameters:
+        - name: run_date
+          default: "{{job.trigger.time.iso_date}}"
+        - name: snapshot_batch
+          default: "{{job.trigger.time.iso_date}}"
+        # P3-D03. Deletion is a job parameter rather than a code constant so that turning
+        # it on is a visible, reviewable change to the job by a human who owns the bucket.
+        # It is "false" here and no migration run changes it. Even set to "true" the run
+        # fails unless the computed candidate set is exactly equal, on (key, size), to the
+        # legacy delete set — the flag authorises the action, it does not prove it is safe.
+        - name: enable_deletes
+          default: "false"
+      tasks:
+        - task_key: land_inventory
+          spark_python_task:
+            python_file: landing/land_storage_inventory.py
+            parameters:
+              - --snapshot-dir
+              - ${var.landing_path}/{{job.parameters.snapshot_batch}}
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+              - --skip-upload
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: create_tables
+          depends_on:
+            - task_key: land_inventory
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - storage_cleanup/10_create_silver_storage_cleanup_candidates.sql
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: compute_candidates
+          depends_on:
+            - task_key: create_tables
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - storage_cleanup/11_load_silver_storage_cleanup_candidates.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # Reports the numbers the legacy printed, checks the delete set against the legacy
+        # one, and deletes nothing. It is the last task because the candidate set is the
+        # product of this job; the report is a view of it.
+        - task_key: report_candidates
+          depends_on:
+            - task_key: compute_candidates
+          spark_python_task:
+            python_file: cleanup/apply_storage_cleanup.py
+            parameters:
+              - --run-date
+              - "{{job.parameters.run_date}}"
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+              - --enable-deletes
+              - "{{job.parameters.enable_deletes}}"
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "3"

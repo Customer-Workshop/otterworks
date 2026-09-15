@@ -1,0 +1,194 @@
+{
+  "wave": 1,
+  "pipeline": "p3",
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": "!dbx_unit_migration",
+  "verify_macro": "!dbx_data_reconciliation",
+  "width": 5,
+  "breaker_threshold": 3,
+  "auto_merge": false,
+  "child_minutes": 120,
+  "verify_depth": "full",
+  "capabilities": {
+    "identity": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": [
+      "ow_tp"
+    ],
+    "guard_mode": "block",
+    "stop_mode": "soft",
+    "ready": true
+  },
+  "source": {
+    "family": "databricks",
+    "secret": "DATABRICKS_MIGRATION_SQL",
+    "params": {
+      "source_schema": "bronze"
+    }
+  },
+  "base_branch": "tp-run/databricks-20260915T045714Z",
+  "controls": {
+    "source_query_cap": 4,
+    "recon_rerun_cap": 3,
+    "review_round_cap": 2,
+    "breaker_class": "3 same-class failures halts the wave and escalates",
+    "idempotency": "every converted job is a full recompute of its input partition for an explicit execution_date (P3-D08), so a second run overwrites with the same bytes. Proven by an actual rerun, never asserted",
+    "namespace_isolation": "a batch writes only its declared write_targets; DDL for a table belongs to exactly one unit. The five units share no output table, which is why this wave fans out at all",
+    "fixture_vs_live": "develop against the wave-0 fixture snapshot, then exactly one merge-evidence recon run per unit; a fixture PASS is never merge evidence",
+    "fanout": "five genuinely independent units, run through run_workflow at width 5. No unit reads another's output in this wave - user_activity_daily does, which is why it is wave 2 and not here",
+    "schedules": "no unit in this wave creates a schedule. Orchestration is wave 3, and every schedule it creates lands PAUSED"
+  },
+  "batches": [
+    {
+      "id": "p3-w1-a",
+      "units": [
+        "p3-analytics-daily"
+      ],
+      "write_targets": [
+        "ow_tp.bronze.analytics_events_raw",
+        "ow_tp.bronze.p3_analytics_legacy_baseline",
+        "ow_tp.bronze.p3_analytics_legacy_top_users",
+        "ow_tp.bronze.p3_analytics_legacy_hourly",
+        "ow_tp.gold.analytics_daily_summary",
+        "ow_tp.gold.analytics_daily_top_users",
+        "ow_tp.gold.analytics_daily_hourly",
+        "/Volumes/ow_tp/bronze/landing/analytics/events/"
+      ],
+      "runtime_writes": [],
+      "verify_depth": "full",
+      "brief": "BATCH p3-w1-a - etl/scripts/analytics_daily.py (452 lines) -> Lakeflow Job +\nSQL on Delta.\n\nWHAT THIS BATCH IS\nThe daily product-analytics aggregate. The Python is a query written in loops;\nit belongs in SQL on Delta. Use PySpark only for the genuinely row-wise part\n(envelope parsing on ingest), not for the aggregation.\n\nTraps, all of them contract:\n - SQS is destructive: receive+delete drains the queue, so a rerun of the\n   legacy sees less input than the first run. P3-D01: land events durably in\n   ow_tp.bronze.analytics_events_raw and recompute from there. That is what\n   makes the target idempotent at all;\n - event types are matched as EXACT snake_case literals (F-0.9). A dotted\n   'document.created' raises total_events and the hourly bucket and attributes\n   its user, but contributes to no document or file metric. Reproduce that.\n   Do NOT normalise the two vocabularies together - it changes the numbers;\n - active_users EXCLUDES the literal 'unknown'; top_users INCLUDES it and it is\n   usually the largest row (C-2.7). The two disagree by design;\n - the eventType/event_type fallback is COLUMN-level, not row-level (C-2.9):\n   if any row has eventType, rows missing it get NaN, not 'unknown';\n - malformed and absent timestamps both fall into hour '00' (C-2.8), and hour\n   is a zero-padded string, not an int;\n - the Postgres upsert failure is SWALLOWED by the legacy (C-2.16). P3-D02:\n   the target fails the task loudly instead. Approved behaviour change;\n - F-0.10: one non-numeric sizeBytes makes the legacy's pandas .sum() raise and\n   the whole run exits 1 having written nothing. The estate cannot currently\n   produce it (file-service types size_bytes u64), so it is a latent fault:\n   state what the target does with such a record rather than inheriting it.\n\nRECON\n  python3 databricks/migration/recon/with_databricks_sql_token.py DATABRICKS_MIGRATION_SQL -- \\\n  python3 -m recon.cli run --unit p3-analytics-daily --family databricks \\\n    --mapping .migration/units/p3-analytics-daily/mapping_spec.json \\\n    --tolerances .migration/03_recon_tolerances.json \\\n    --mode live --source-dsn-secret DATABRICKS_MIGRATION_SQL \\\n    --target-kind databricks --target-secret DATABRICKS_MIGRATION_SQL \\\n    --target-catalog ow_tp --target-schema gold \\\n    --allowed-targets-file .migration/allowed_targets.json \\\n    --seed 0 --depth full --out .migration/recon/p3-analytics-daily/\n\nREAD FIRST (committed on the base branch)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline3_analytics_plan.md            (scope, waves, gate, STOP E questions)\n  docs/migration/Pipeline3_analytics_record_contract.md (behavioural contract, clause ids)\n  docs/migration/Pipeline2_schedule_model.md            (cron -> Lakeflow Job model: INHERIT IT)\n  docs/migration/OtterWorks_target_state.md             (target layout and conventions)\n\nSOURCE (read-only)\n  etl/scripts/*.py and the analytics-service Scala batch job. Legacy code is NEVER modified.\n  The recon source side is the legacy's OWN captured output, already captured in wave 0 under\n  .migration/recon/p3/baselines/ and reproducible with:\n    python3 scripts/tp_seed/gen_p3_fixture.py --ns <ns> --run-date $(date -u +%F) --out <dir> --legacy-clone\n    python3 scripts/tp_seed/capture_p3_baseline.py --ns <ns> --snapshot <dir>/<ns> --out <out>\n  The fixture run_date must equal today: these scripts date themselves from datetime.now()\n  and the capture refuses to run on a stale fixture rather than produce a boundary probe\n  that is not on the boundary.\n\nTARGETS\n  Unity Catalog ow_tp (bronze/silver/gold), volumes under /Volumes/ow_tp/bronze/landing/analytics/,\n  jobs named ow_tp_p3_*, secret scope ow_tp. Warehouse 565cd2fd713738c4.\n  Never create a cluster. Every schedule lands PAUSED.\n  Converted code references secret NAMES only: ow_tp/aws_migration_access_key_id,\n  ow_tp/aws_migration_secret_access_key, ow_tp/analytics_postgres_password. No literal from\n  etl/config.ini reaches code, a log, a notebook output or a PR body.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding to report, never something to route around."
+    },
+    {
+      "id": "p3-w1-b",
+      "units": [
+        "p3-storage-cleanup"
+      ],
+      "write_targets": [
+        "ow_tp.bronze.p3_cleanup_legacy_delete_set",
+        "ow_tp.silver.storage_cleanup_candidates"
+      ],
+      "runtime_writes": [],
+      "verify_depth": "full",
+      "brief": "BATCH p3-w1-b - etl/scripts/storage_cleanup_daily.py (217 lines) -> Lakeflow Job.\nTHE ONE-WAY DOOR. Read this batch's brief twice.\n\nWHAT THIS BATCH IS\nThe legacy lists S3 objects under files/, scans DynamoDB for referenced\ns3_keys, copies the orphans to quarantine and DELETES the originals. It has no\ndry-run flag.\n\nP3-D03, approved at STOP C, is binding:\n - the converted job COMPUTES and PERSISTS the delete set and does not delete;\n - deletion sits behind an explicit human-set enable flag, default OFF;\n - the flag is only unlocked after exact set equality against the legacy\n   delete set on (key, size) - key alone would not catch a truncating copy;\n - nothing in this wave turns the flag on. Not once, not for a test.\n\nBaseline isolation is not optional: the legacy runs against a per-run clone\nbucket seeded from the immutable snapshot, the target reads the snapshot only\nand writes no S3 at all. The two sides must never share mutable objects, or\nthe target would be reading state the legacy already deleted.\n\nAlso a STOP E fact, not something to fix: the bucket config.ini points at does\nnot exist in this estate, so the legacy cannot be deleting anything here.\n\nRECON\n  python3 databricks/migration/recon/with_databricks_sql_token.py DATABRICKS_MIGRATION_SQL -- \\\n  python3 -m recon.cli run --unit p3-storage-cleanup --family databricks \\\n    --mapping .migration/units/p3-storage-cleanup/mapping_spec.json \\\n    --tolerances .migration/03_recon_tolerances.json \\\n    --mode live --source-dsn-secret DATABRICKS_MIGRATION_SQL \\\n    --target-kind databricks --target-secret DATABRICKS_MIGRATION_SQL \\\n    --target-catalog ow_tp --target-schema silver \\\n    --allowed-targets-file .migration/allowed_targets.json \\\n    --seed 0 --depth full --out .migration/recon/p3-storage-cleanup/\n\nREAD FIRST (committed on the base branch)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline3_analytics_plan.md            (scope, waves, gate, STOP E questions)\n  docs/migration/Pipeline3_analytics_record_contract.md (behavioural contract, clause ids)\n  docs/migration/Pipeline2_schedule_model.md            (cron -> Lakeflow Job model: INHERIT IT)\n  docs/migration/OtterWorks_target_state.md             (target layout and conventions)\n\nSOURCE (read-only)\n  etl/scripts/*.py and the analytics-service Scala batch job. Legacy code is NEVER modified.\n  The recon source side is the legacy's OWN captured output, already captured in wave 0 under\n  .migration/recon/p3/baselines/ and reproducible with:\n    python3 scripts/tp_seed/gen_p3_fixture.py --ns <ns> --run-date $(date -u +%F) --out <dir> --legacy-clone\n    python3 scripts/tp_seed/capture_p3_baseline.py --ns <ns> --snapshot <dir>/<ns> --out <out>\n  The fixture run_date must equal today: these scripts date themselves from datetime.now()\n  and the capture refuses to run on a stale fixture rather than produce a boundary probe\n  that is not on the boundary.\n\nTARGETS\n  Unity Catalog ow_tp (bronze/silver/gold), volumes under /Volumes/ow_tp/bronze/landing/analytics/,\n  jobs named ow_tp_p3_*, secret scope ow_tp. Warehouse 565cd2fd713738c4.\n  Never create a cluster. Every schedule lands PAUSED.\n  Converted code references secret NAMES only: ow_tp/aws_migration_access_key_id,\n  ow_tp/aws_migration_secret_access_key, ow_tp/analytics_postgres_password. No literal from\n  etl/config.ini reaches code, a log, a notebook output or a PR body.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding to report, never something to route around."
+    },
+    {
+      "id": "p3-w1-c",
+      "units": [
+        "p3-audit-archive"
+      ],
+      "write_targets": [
+        "ow_tp.bronze.p3_audit_legacy_archive",
+        "ow_tp.bronze.p3_audit_legacy_run",
+        "ow_tp.silver.audit_archive",
+        "ow_tp.silver.audit_archive_run"
+      ],
+      "runtime_writes": [],
+      "verify_depth": "full",
+      "brief": "BATCH p3-w1-c - etl/scripts/audit_archive_weekly.py (224 lines) -> Lakeflow Job.\n\nWHAT THIS BATCH IS\nWeekly archive of audit events older than 90 days. Three record shapes give\nthree different legacy behaviours and ALL THREE are contract (F-0.4/a/b):\n - A-estate (what audit-service actually writes: id/Id/Timestamp): the scan\n   filters on lowercase 'timestamp', DynamoDB treats a missing attribute as a\n   non-match, so it matches ZERO records, exits 0, and writes no archive and no\n   compliance report. The target must also produce nothing. An empty target is\n   the PASS here, not a gap;\n - A-tsonly (lowercase timestamp, no event_id): archive uploaded, then an\n   uncaught KeyError -> exit 1. Archive-written-then-fail is a real path and a\n   retry re-uploads under the same key;\n - A-full (lowercase timestamp + event_id): archive uploaded, every delete\n   raises on the wrong key schema and is swallowed by `except: pass`, and the\n   compliance report claims events_deleted_from_source 0.\n\nP3-D04: the target archives and NEVER deletes from DynamoDB. Both sides report\nzero source deletions; assert that agreement, do not assume it.\n\nRECON\n  python3 databricks/migration/recon/with_databricks_sql_token.py DATABRICKS_MIGRATION_SQL -- \\\n  python3 -m recon.cli run --unit p3-audit-archive --family databricks \\\n    --mapping .migration/units/p3-audit-archive/mapping_spec.json \\\n    --tolerances .migration/03_recon_tolerances.json \\\n    --mode live --source-dsn-secret DATABRICKS_MIGRATION_SQL \\\n    --target-kind databricks --target-secret DATABRICKS_MIGRATION_SQL \\\n    --target-catalog ow_tp --target-schema silver \\\n    --allowed-targets-file .migration/allowed_targets.json \\\n    --seed 0 --depth full --out .migration/recon/p3-audit-archive/\n\nREAD FIRST (committed on the base branch)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline3_analytics_plan.md            (scope, waves, gate, STOP E questions)\n  docs/migration/Pipeline3_analytics_record_contract.md (behavioural contract, clause ids)\n  docs/migration/Pipeline2_schedule_model.md            (cron -> Lakeflow Job model: INHERIT IT)\n  docs/migration/OtterWorks_target_state.md             (target layout and conventions)\n\nSOURCE (read-only)\n  etl/scripts/*.py and the analytics-service Scala batch job. Legacy code is NEVER modified.\n  The recon source side is the legacy's OWN captured output, already captured in wave 0 under\n  .migration/recon/p3/baselines/ and reproducible with:\n    python3 scripts/tp_seed/gen_p3_fixture.py --ns <ns> --run-date $(date -u +%F) --out <dir> --legacy-clone\n    python3 scripts/tp_seed/capture_p3_baseline.py --ns <ns> --snapshot <dir>/<ns> --out <out>\n  The fixture run_date must equal today: these scripts date themselves from datetime.now()\n  and the capture refuses to run on a stale fixture rather than produce a boundary probe\n  that is not on the boundary.\n\nTARGETS\n  Unity Catalog ow_tp (bronze/silver/gold), volumes under /Volumes/ow_tp/bronze/landing/analytics/,\n  jobs named ow_tp_p3_*, secret scope ow_tp. Warehouse 565cd2fd713738c4.\n  Never create a cluster. Every schedule lands PAUSED.\n  Converted code references secret NAMES only: ow_tp/aws_migration_access_key_id,\n  ow_tp/aws_migration_secret_access_key, ow_tp/analytics_postgres_password. No literal from\n  etl/config.ini reaches code, a log, a notebook output or a PR body.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding to report, never something to route around."
+    },
+    {
+      "id": "p3-w1-d",
+      "units": [
+        "p3-usage-rollup"
+      ],
+      "write_targets": [
+        "ow_tp.bronze.p3_usage_legacy_rollup",
+        "ow_tp.bronze.usage_events_raw",
+        "ow_tp.gold.usage_rollup",
+        "/Volumes/ow_tp/bronze/landing/analytics/usage/"
+      ],
+      "runtime_writes": [],
+      "verify_depth": "full",
+      "brief": "BATCH p3-w1-d - UsageRollupJob.scala + UsageRollupAggregator.scala (150 lines)\n-> SQL on Delta. One unit: the aggregator is only ever called by the job.\n\nWHAT THIS BATCH IS\nP3-D06: this becomes SQL on Delta. NO spark_jar_task, NO cluster. Nothing in\nthe aggregation needs the JVM - it is a group-by with a signed running total.\n\n - the input uses the DOTTED analytics-service vocabulary ('document.created',\n   'file.uploaded'), NOT the snake_case vocabulary analytics_daily consumes\n   (F-0.9). Do not share an event-type mapping between the two units;\n - storage_bytes is signed: storage.allocated adds, storage.released\n   subtracts, so it can legitimately go negative. Do not clamp it at zero;\n - F-0.6, a STOP E question and not yours to resolve: the estate's CronJob\n   writes this rollup to an emptyDir that is destroyed on pod exit, so nothing\n   in this repo consumes the output. Migrate it (P3-D07: it is cheap and the\n   Delta table is durable and useful), and carry the question of whether its\n   input and consumer are real into STOP E. Claim nothing about production.\n\nRECON\n  python3 databricks/migration/recon/with_databricks_sql_token.py DATABRICKS_MIGRATION_SQL -- \\\n  python3 -m recon.cli run --unit p3-usage-rollup --family databricks \\\n    --mapping .migration/units/p3-usage-rollup/mapping_spec.json \\\n    --tolerances .migration/03_recon_tolerances.json \\\n    --mode live --source-dsn-secret DATABRICKS_MIGRATION_SQL \\\n    --target-kind databricks --target-secret DATABRICKS_MIGRATION_SQL \\\n    --target-catalog ow_tp --target-schema gold \\\n    --allowed-targets-file .migration/allowed_targets.json \\\n    --seed 0 --depth full --out .migration/recon/p3-usage-rollup/\n\nREAD FIRST (committed on the base branch)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline3_analytics_plan.md            (scope, waves, gate, STOP E questions)\n  docs/migration/Pipeline3_analytics_record_contract.md (behavioural contract, clause ids)\n  docs/migration/Pipeline2_schedule_model.md            (cron -> Lakeflow Job model: INHERIT IT)\n  docs/migration/OtterWorks_target_state.md             (target layout and conventions)\n\nSOURCE (read-only)\n  etl/scripts/*.py and the analytics-service Scala batch job. Legacy code is NEVER modified.\n  The recon source side is the legacy's OWN captured output, already captured in wave 0 under\n  .migration/recon/p3/baselines/ and reproducible with:\n    python3 scripts/tp_seed/gen_p3_fixture.py --ns <ns> --run-date $(date -u +%F) --out <dir> --legacy-clone\n    python3 scripts/tp_seed/capture_p3_baseline.py --ns <ns> --snapshot <dir>/<ns> --out <out>\n  The fixture run_date must equal today: these scripts date themselves from datetime.now()\n  and the capture refuses to run on a stale fixture rather than produce a boundary probe\n  that is not on the boundary.\n\nTARGETS\n  Unity Catalog ow_tp (bronze/silver/gold), volumes under /Volumes/ow_tp/bronze/landing/analytics/,\n  jobs named ow_tp_p3_*, secret scope ow_tp. Warehouse 565cd2fd713738c4.\n  Never create a cluster. Every schedule lands PAUSED.\n  Converted code references secret NAMES only: ow_tp/aws_migration_access_key_id,\n  ow_tp/aws_migration_secret_access_key, ow_tp/analytics_postgres_password. No literal from\n  etl/config.ini reaches code, a log, a notebook output or a PR body.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding to report, never something to route around."
+    },
+    {
+      "id": "p3-w1-e",
+      "units": [
+        "p3-search-reindex"
+      ],
+      "write_targets": [],
+      "runtime_writes": [],
+      "verify_depth": "none",
+      "brief": "BATCH p3-w1-e - etl/scripts/search_reindex_weekly.py (319 lines)\n-> NO DATABRICKS JOB. This batch writes a document, not a pipeline.\n\nP3-D05, approved at STOP C: this unit is REMOVED from Databricks scope. It\nreads two live in-cluster HTTP services (document-service, file-service) and\nwrites a MeiliSearch index (F-0.7). No step of it touches anything Databricks\ncan host, there is no target table, and there would be nothing to reconcile.\n\nThe deliverable is an honest coverage-gap record: what the job does, why it\ndoes not belong on Databricks, what stays running service-side, and who owns\nit. Do NOT create a placeholder job, a stub notebook, or a schedule to make\nthe pipeline look complete. A fake job that cannot be reconciled is worse than\na declared gap.\n\nNo recon is due: there is no converted unit to reconcile.\n\nREAD FIRST (committed on the base branch)\n  .migration/00_context.md, 01_conventions.md, 03_recon_tolerances.{md,json},\n  04_dependency_register.md, 06_decisions.md, allowed_targets.json\n  docs/migration/Pipeline3_analytics_plan.md            (scope, waves, gate, STOP E questions)\n  docs/migration/Pipeline3_analytics_record_contract.md (behavioural contract, clause ids)\n  docs/migration/Pipeline2_schedule_model.md            (cron -> Lakeflow Job model: INHERIT IT)\n  docs/migration/OtterWorks_target_state.md             (target layout and conventions)\n\nSOURCE (read-only)\n  etl/scripts/*.py and the analytics-service Scala batch job. Legacy code is NEVER modified.\n  The recon source side is the legacy's OWN captured output, already captured in wave 0 under\n  .migration/recon/p3/baselines/ and reproducible with:\n    python3 scripts/tp_seed/gen_p3_fixture.py --ns <ns> --run-date $(date -u +%F) --out <dir> --legacy-clone\n    python3 scripts/tp_seed/capture_p3_baseline.py --ns <ns> --snapshot <dir>/<ns> --out <out>\n  The fixture run_date must equal today: these scripts date themselves from datetime.now()\n  and the capture refuses to run on a stale fixture rather than produce a boundary probe\n  that is not on the boundary.\n\nTARGETS\n  Unity Catalog ow_tp (bronze/silver/gold), volumes under /Volumes/ow_tp/bronze/landing/analytics/,\n  jobs named ow_tp_p3_*, secret scope ow_tp. Warehouse 565cd2fd713738c4.\n  Never create a cluster. Every schedule lands PAUSED.\n  Converted code references secret NAMES only: ow_tp/aws_migration_access_key_id,\n  ow_tp/aws_migration_secret_access_key, ow_tp/analytics_postgres_password. No literal from\n  etl/config.ini reaches code, a log, a notebook output or a PR body.\n  The guard (hooks/dbx_guard.py) blocks anything outside .migration/allowed_targets.json.\n  A block is a finding to report, never something to route around."
+    }
+  ],
+  "behaviour_changes": [
+    {
+      "id": "P3-D01",
+      "change": "SQS receive+delete is destructive, so the legacy is not re-runnable. The target lands events durably in bronze and recomputes from there.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet"
+      ]
+    },
+    {
+      "id": "P3-D02",
+      "change": "The legacy swallows a Postgres/serving-layer failure and reports success. The target fails the task loudly.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet"
+      ]
+    },
+    {
+      "id": "P3-D03",
+      "change": "The legacy deletes from S3 unconditionally. The target computes the delete set and does not delete until a human sets an enable flag, gated on exact (key, size) set equality.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet",
+        "recon report unverified paths"
+      ]
+    },
+    {
+      "id": "P3-D04",
+      "change": "The target archives audit events but never deletes from DynamoDB. The legacy intends to delete and fails to; the target does not intend to.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet"
+      ]
+    },
+    {
+      "id": "P3-D05",
+      "change": "search_reindex_weekly.py is removed from Databricks scope and stays service-side. Declared coverage gap, no substitute job.",
+      "approved": "STOP C",
+      "testable": false,
+      "why_untestable": "There is no converted unit to test; the gap itself is the record.",
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet"
+      ]
+    },
+    {
+      "id": "P3-D06",
+      "change": "The Scala rollup becomes SQL on Delta rather than a spark_jar_task.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief"
+      ]
+    },
+    {
+      "id": "P3-D08",
+      "change": "execution_date becomes an explicit job parameter. The legacy derives it from datetime.now() at start, so it has no backfill path at all.",
+      "approved": "STOP C",
+      "testable": true,
+      "must_be_stated_in": [
+        "wave brief",
+        "STOP E packet"
+      ]
+    }
+  ],
+  "invariants": {
+    "no_deletion": "No unit in this wave deletes anything from S3 or DynamoDB, on any code path, under any flag value reachable in this wave.",
+    "secrets_by_name": "No literal from etl/config.ini appears in converted code, a log, a notebook output, an artefact or a PR body.",
+    "empty_is_a_result": "Where the legacy produces nothing (A-estate, empty input), the target produces nothing and the recon compares two empty sets. An empty target is never reported as a coverage gap.",
+    "on_violation": "Any of the above would be a halt reported to the parent, never reconciled around."
+  }
+}

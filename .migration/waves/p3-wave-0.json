@@ -1,0 +1,70 @@
+{
+  "wave": 0,
+  "pipeline": "p3",
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "child_macro": null,
+  "verify_macro": null,
+  "width": 1,
+  "breaker_threshold": 3,
+  "auto_merge": false,
+  "child_minutes": 0,
+  "verify_depth": "none",
+  "capabilities": {
+    "identity": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "catalogs": [
+      "ow_tp"
+    ],
+    "guard_mode": "block",
+    "stop_mode": "soft",
+    "ready": true
+  },
+  "base_branch": "tp-run/databricks-20260915T045714Z",
+  "serial": true,
+  "why_serial": "Wave 0 is the shared foundation every other pipeline-3 unit reconciles against: the behavioural contract, the named-secret mapping, the deterministic fixture generator and the legacy baseline capture. Running it in parallel with anything would mean units building against a contract that is still moving.",
+  "batches": [
+    {
+      "id": "p3-w0-a",
+      "units": [
+        "p3-foundations"
+      ],
+      "write_targets": [],
+      "runtime_writes": [
+        ".migration/recon/p3/baselines/"
+      ],
+      "verify_depth": "none",
+      "brief": "BATCH p3-w0-a - wave 0 of the OtterWorks pipeline-3 migration (serial, no fan-out). Shared conventions, secret-name mapping, fixture generation and legacy baseline capture. Produces no target table and no recon report."
+    }
+  ],
+  "deliverables": {
+    "contract": "docs/migration/Pipeline3_analytics_record_contract.md",
+    "plan": "docs/migration/Pipeline3_analytics_plan.md",
+    "fixture_generator": "scripts/tp_seed/gen_p3_fixture.py",
+    "baseline_capture": "scripts/tp_seed/capture_p3_baseline.py",
+    "baselines": ".migration/recon/p3/baselines/",
+    "mapping_specs": ".migration/units/p3-*/mapping_spec.json"
+  },
+  "secret_name_mapping": {
+    "why": "etl/config.ini commits plaintext AWS keys, a Postgres password and a MeiliSearch key (F-0.8). Converted code carries names, never values. Rotating the exposed originals is the customer's job and is a STOP E follow-up, not a migration task.",
+    "map": {
+      "config.ini [aws] access_key": "ow_tp/aws_migration_access_key_id",
+      "config.ini [aws] secret_key": "ow_tp/aws_migration_secret_access_key",
+      "config.ini [database] password": "ow_tp/analytics_postgres_password",
+      "config.ini [services] meilisearch_api_key": "not mapped - p3-search-reindex is out of Databricks scope (P3-D05)"
+    }
+  },
+  "baseline_findings": {
+    "storage_cleanup_daily.py": "exit 0, deleted exactly the 17 expected orphan objects",
+    "audit_archive_weekly.py [A-estate]": "exit 0, no archive, no report, 0 deleted",
+    "audit_archive_weekly.py [A-full]": "exit 0, archive written, 0 deleted (swallowed)",
+    "audit_archive_weekly.py [A-tsonly]": "exit 1 after the archive was written, 0 deleted",
+    "analytics_daily.py": "exit 0, 4 S3 objects; 249 total_events from 28 document_created + 1 document.created, documents_created 28 - F-0.9 confirmed on a live run, not just by reading"
+  },
+  "doctor": {
+    "result": "17 ok, 1 unverified",
+    "unverified": {
+      "source_principal_read_only": "The doctor has no privilege query for the databricks source family, so it cannot test the source principal by itself. It is also the wrong question for pipeline 3: the legacy source is Python scripts reading S3, DynamoDB and SQS, not a SQL database. The recon source side is the legacy job output captured in wave 0 and loaded into ow_tp.bronze baseline tables, which the migration principal writes by design. No pipeline-3 unit reads or writes Oracle, and none writes any legacy store. Pipeline 2 closed with this same row unverified; carried into STOP E rather than asserted green."
+    },
+    "hook_probe": "blocked, nonce matched the workspace report"
+  }
+}

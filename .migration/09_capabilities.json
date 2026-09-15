@@ -59,7 +59,7 @@
     },
     {
       "data": {},
-      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__0ac623ad",
+      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__ba2867fc",
       "id": "hook_guard_functional",
       "status": "ok"
     },
@@ -109,16 +109,31 @@
     {
       "data": {
         "mappings": {
-          "p2-finance-close": {
+          "p3-analytics-daily": {
+            "detail": "no object declares delete_evidence (drain-before-run contract applies)",
+            "status": "ok"
+          },
+          "p3-audit-archive": {
+            "detail": "no object declares delete_evidence (drain-before-run contract applies)",
+            "status": "ok"
+          },
+          "p3-storage-cleanup": {
+            "detail": "no object declares delete_evidence (drain-before-run contract applies)",
+            "status": "ok"
+          },
+          "p3-usage-rollup": {
             "detail": "no object declares delete_evidence (drain-before-run contract applies)",
             "status": "ok"
           }
         },
         "units": [
-          "p2-finance-close"
+          "p3-analytics-daily",
+          "p3-storage-cleanup",
+          "p3-audit-archive",
+          "p3-usage-rollup"
         ]
       },
-      "detail": "p2-finance-close: no object declares delete_evidence (drain-before-run contract applies)",
+      "detail": "p3-analytics-daily: no object declares delete_evidence (drain-before-run contract applies); p3-storage-cleanup: no object declares delete_evidence (drain-before-run contract applies); p3-audit-archive: no object declares delete_evidence (drain-before-run contract applies); p3-usage-rollup: no object declares delete_evidence (drain-before-run contract applies)",
       "id": "delete_evidence",
       "status": "ok"
     },
@@ -126,7 +141,13 @@
       "data": {
         "family": "databricks",
         "tables": [
-          "ow_tp.bronze.custbill_legacy_baseline_close"
+          "ow_tp.bronze.p3_analytics_legacy_baseline",
+          "ow_tp.bronze.p3_analytics_legacy_top_users",
+          "ow_tp.bronze.p3_analytics_legacy_hourly",
+          "ow_tp.bronze.p3_cleanup_legacy_delete_set",
+          "ow_tp.bronze.p3_audit_legacy_archive",
+          "ow_tp.bronze.p3_audit_legacy_run",
+          "ow_tp.bronze.p3_usage_legacy_rollup"
         ]
       },
       "detail": "databricks: no privilege query implemented for this family (untested), so the source principal's write privileges are unknown; confirm SELECT-only grants by hand and record it",
@@ -169,9 +190,22 @@
       "detail": "default warehouse resolved: 565cd2fd713738c4",
       "id": "databricks_warehouse",
       "status": "ok"
+    },
+    {
+      "data": {
+        "catalog_owner": "dhrov.subramanian@cognition.ai",
+        "exists": true,
+        "missing": [],
+        "owner": "dhrov.subramanian@cognition.ai",
+        "principal": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+        "schema": "ow_tp.gold"
+      },
+      "detail": "principal 2e90bc1d-e9a1-4703-8c48-ad28ebb1864d can create and write tables in ow_tp.gold (owner dhrov.subramanian@cognition.ai)",
+      "id": "analytical_target_grants",
+      "status": "ok"
     }
   ],
-  "generated_at": "2026-09-15T13:32:51Z",
+  "generated_at": "2026-09-15T14:21:08Z",
   "identity": {
     "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
     "service_principal": true,
@@ -182,7 +216,7 @@
   "role": "child",
   "schema": "dbx-migration-factory/capabilities/1",
   "summary": {
-    "ok": 16,
+    "ok": 17,
     "unverified": 1
   },
   "workspace": "/home/ubuntu/repos/otterworks"

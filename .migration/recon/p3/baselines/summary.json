@@ -1,0 +1,58 @@
+{
+  "analytics_daily": {
+    "exit_code": 0,
+    "objects_written": [
+      "analytics/daily/year=2026/month=09/day=15/hourly_breakdown.json.gz",
+      "analytics/daily/year=2026/month=09/day=15/summary.json.gz",
+      "analytics/daily/year=2026/month=09/day=15/top_users.jsonl.gz",
+      "reports/analytics/daily/2026-09-15/report.json"
+    ],
+    "postgres_error_swallowed": true,
+    "summary": {
+      "active_documents": 20,
+      "active_files": 15,
+      "active_users": 12,
+      "bytes_uploaded": 707318377,
+      "comments_added": 31,
+      "documents_created": 28,
+      "documents_edited": 46,
+      "files_deleted": 37,
+      "files_shared": 37,
+      "files_uploaded": 35,
+      "total_events": 249
+    }
+  },
+  "audit_archive": {
+    "A-estate": {
+      "deleted": 0,
+      "exit_code": 0,
+      "wrote_archive": false
+    },
+    "A-full": {
+      "deleted": 0,
+      "exit_code": 0,
+      "wrote_archive": true
+    },
+    "A-tsonly": {
+      "deleted": 0,
+      "exit_code": 1,
+      "wrote_archive": true
+    }
+  },
+  "audit_cutoff": "2026-06-17T00:00:00Z",
+  "captured": [
+    "analytics-daily",
+    "audit-archive",
+    "storage-cleanup"
+  ],
+  "captured_on": "2026-09-15",
+  "fixture_run_date": "2026-09-15",
+  "kind": "p3-baseline-summary",
+  "ns": "p3probe",
+  "snapshot": "/tmp/p3fix/p3probe",
+  "storage_cleanup": {
+    "deleted": 17,
+    "exit_code": 0,
+    "matches_expected": true
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "version": "map-p3-v1",
+  "unit": "p3-audit-archive",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "Three record shapes, three legacy behaviours (F-0.4/a/b), and all three are contract. Source side is the legacy's archive output per shape, loaded into ow_tp.bronze.p3_audit_legacy_archive with a shape column; target side is ow_tp.silver.audit_archive. For A-estate the legacy produces NOTHING \u2014 zero archived rows, no compliance report \u2014 and the target must produce nothing too, so the reconciled value is an empty set on both sides and an empty target is the pass, not a gap. For A-tsonly the legacy writes the archive and then exits 1 on a KeyError; the archive contents are still contract, so the rows are compared and the exit code is recorded as a behavioural clause rather than a row. Deletion is not reconciled at all: the legacy deletes nothing on any shape (every delete_item raises on the wrong key schema and is swallowed), and the target never deletes by P3-D04, so both sides report zero source deletions and that agreement is asserted explicitly rather than assumed.",
+  "tables": [
+    {
+      "object": "audit_archive",
+      "source_table": "ow_tp.bronze.p3_audit_legacy_archive",
+      "target_table": "audit_archive",
+      "key": {
+        "source": [
+          "probe_shape",
+          "event_id"
+        ],
+        "target": [
+          "probe_shape",
+          "event_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "probe_shape",
+          "target": "probe_shape",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": [
+            "A-estate | A-tsonly | A-full; the shape is part of the key because the same event_id can appear under more than one probe"
+          ]
+        },
+        {
+          "source": "event_id",
+          "target": "event_id",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "archived_timestamp",
+          "target": "archived_timestamp",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": [
+            "ISO-canonicalised per the frozen posture; the legacy emits .NET round-trip 'O' format on A-estate records and a plain ISO string on the others"
+          ]
+        },
+        {
+          "source": "payload_json",
+          "target": "payload_json",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": [
+            "the archived record body, compared as a canonicalised JSON string"
+          ]
+        }
+      ]
+    },
+    {
+      "object": "audit_archive_run",
+      "source_table": "ow_tp.bronze.p3_audit_legacy_run",
+      "target_table": "audit_archive_run",
+      "key": {
+        "source": [
+          "probe_shape"
+        ],
+        "target": [
+          "probe_shape"
+        ]
+      },
+      "fields": [
+        {
+          "source": "probe_shape",
+          "target": "probe_shape",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "events_archived",
+          "target": "events_archived",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "events_deleted_from_source",
+          "target": "events_deleted_from_source",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "0 on every shape on both sides (F-0.4a, P3-D04)"
+          ]
+        }
+      ]
+    }
+  ]
+}

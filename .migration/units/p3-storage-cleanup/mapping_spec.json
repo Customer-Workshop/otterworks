@@ -1,0 +1,40 @@
+{
+  "version": "map-p3-v1",
+  "unit": "p3-storage-cleanup",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "This unit reconciles a DECISION, not a mutation. The legacy deletes; the target computes the same delete set and, by P3-D03, does not act on it until a human sets the enable flag. Source side is the set of objects the legacy actually removed from its isolated per-run clone bucket, derived as (pinned inventory snapshot) minus (clone contents after the legacy run), loaded into ow_tp.bronze.p3_cleanup_legacy_delete_set. Target side is ow_tp.silver.storage_cleanup_candidates, computed from the same immutable snapshot with deletion disabled. The two sides never share mutable state: the legacy mutates a clone, the target only reads the snapshot. The comparison is exact set equality on (key, size) \u2014 size is in the key because a key-only match would not catch a truncating copy, and the legacy copies to quarantine before deleting. Set equality is the gate that unlocks the enable flag; anything less than exact leaves deletion off.",
+  "tables": [
+    {
+      "object": "storage_cleanup_delete_set",
+      "source_table": "ow_tp.bronze.p3_cleanup_legacy_delete_set",
+      "target_table": "storage_cleanup_candidates",
+      "key": {
+        "source": [
+          "object_key",
+          "size_bytes"
+        ],
+        "target": [
+          "object_key",
+          "size_bytes"
+        ]
+      },
+      "fields": [
+        {
+          "source": "object_key",
+          "target": "object_key",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "size_bytes",
+          "target": "size_bytes",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

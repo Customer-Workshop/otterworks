@@ -1,0 +1,91 @@
+{
+  "version": "map-p3-v1",
+  "unit": "p3-usage-rollup",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "Source side is the Scala job's own output for the pinned seed file, loaded into ow_tp.bronze.p3_usage_legacy_rollup; target side is ow_tp.gold.usage_rollup, recomputed in SQL on Delta from the same seed (P3-D06: no JAR task, no cluster). The input keeps the dotted analytics-service vocabulary ('document.created', 'file.uploaded') \u2014 this unit does NOT share the snake_case vocabulary of analytics_daily (F-0.9), and normalising the two together would be wrong here as well. storage_bytes is a signed running total: 'storage.allocated' adds and 'storage.released' subtracts, so it can legitimately go negative and is compared exact rather than clamped. Capturing this baseline requires running the legacy Scala job, whose output the estate discards to an emptyDir (F-0.6); the baseline reads it from the container before exit rather than from any consumer, because there is no consumer.",
+  "tables": [
+    {
+      "object": "usage_rollup",
+      "source_table": "ow_tp.bronze.p3_usage_legacy_rollup",
+      "target_table": "usage_rollup",
+      "key": {
+        "source": [
+          "tenant_id",
+          "period"
+        ],
+        "target": [
+          "tenant_id",
+          "period"
+        ]
+      },
+      "fields": [
+        {
+          "source": "tenant_id",
+          "target": "tenant_id",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "period",
+          "target": "period",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "documents_created",
+          "target": "documents_created",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "documents_edited",
+          "target": "documents_edited",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "documents_viewed",
+          "target": "documents_viewed",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "files_uploaded",
+          "target": "files_uploaded",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "files_downloaded",
+          "target": "files_downloaded",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "storage_bytes",
+          "target": "storage_bytes",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "signed; allocated minus released, may be negative"
+          ]
+        },
+        {
+          "source": "event_count",
+          "target": "event_count",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "version": "map-p3-v1",
+  "unit": "p3-orchestration",
+  "track": "none",
+  "generation": "schedule",
+  "notes": "The Lakeflow Job wiring for pipeline 3, inheriting pipeline 2's schedule model unchanged: task edges rather than cron offsets, retries with a five-minute interval, max_concurrent_runs 1, and every schedule created PAUSED. Two constraints from pipeline 2 are load-bearing here: no two jobs may start the same pipeline directly (a pipeline allows one active update, and job-level queueing is per job, so the second job fails with 'Pipeline update already in progress'), so a job needing another's pipeline output reaches it with a run_job_task on the owning job; and Databricks drops task-level retry policy on a run_job_task, so retries are set on the owning job's tasks and no retry value is asserted on the run_job_task itself. It moves no data, so there is no row-level parity; its evidence is the deployed job definitions and their PAUSED state.",
+  "tables": []
+}

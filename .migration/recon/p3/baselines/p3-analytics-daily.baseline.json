@@ -1,0 +1,445 @@
+{
+  "duration_s": 5.616,
+  "dynamodb_seeded": 165,
+  "exit_code": 0,
+  "objects_written": [
+    "analytics/daily/year=2026/month=09/day=15/hourly_breakdown.json.gz",
+    "analytics/daily/year=2026/month=09/day=15/summary.json.gz",
+    "analytics/daily/year=2026/month=09/day=15/top_users.jsonl.gz",
+    "reports/analytics/daily/2026-09-15/report.json"
+  ],
+  "outputs": {
+    "analytics/daily/year=2026/month=09/day=15/hourly_breakdown.json.gz": {
+      "bytes": 463,
+      "content": {
+        "00": {
+          "comment_added": 3,
+          "document_created": 2,
+          "document_deleted": 1,
+          "file_deleted": 2,
+          "file_shared": 5,
+          "file_uploaded": 1
+        },
+        "01": {
+          "comment_added": 2,
+          "document_created": 1,
+          "document_deleted": 1,
+          "document_edited": 4,
+          "file_deleted": 1,
+          "file_uploaded": 2
+        },
+        "02": {
+          "comment_added": 2,
+          "document_created": 1,
+          "document_deleted": 1,
+          "document_edited": 3,
+          "file_deleted": 1,
+          "file_shared": 3,
+          "file_uploaded": 3
+        },
+        "03": {
+          "NaN": 1,
+          "comment_added": 2,
+          "document_created": 1,
+          "document_edited": 1,
+          "file_shared": 1,
+          "file_uploaded": 2
+        },
+        "04": {
+          "NaN": 1,
+          "comment_added": 1,
+          "document_created": 4,
+          "document_deleted": 1,
+          "document_edited": 1,
+          "file_deleted": 1,
+          "file_shared": 1,
+          "file_uploaded": 2
+        },
+        "05": {
+          "comment_added": 1,
+          "document_deleted": 4,
+          "document_edited": 3,
+          "file_deleted": 3,
+          "file_shared": 2
+        },
+        "06": {
+          "comment_added": 1,
+          "document_created": 4,
+          "document_edited": 3,
+          "file_deleted": 4,
+          "file_shared": 3
+        },
+        "07": {
+          "comment_added": 2,
+          "document_created": 2,
+          "document_deleted": 3,
+          "document_edited": 2,
+          "file_deleted": 2,
+          "file_shared": 1
+        },
+        "08": {
+          "comment_added": 1,
+          "document_deleted": 1,
+          "document_edited": 2,
+          "file_deleted": 3,
+          "file_shared": 2
+        },
+        "09": {
+          "comment_added": 1,
+          "document.created": 1,
+          "document_created": 2,
+          "document_edited": 2,
+          "file_deleted": 1,
+          "file_uploaded": 1
+        },
+        "10": {
+          "comment_added": 2,
+          "document_created": 2,
+          "document_deleted": 1,
+          "document_edited": 2,
+          "file_deleted": 1,
+          "file_shared": 3
+        },
+        "11": {
+          "comment_added": 1,
+          "file_deleted": 3,
+          "file_uploaded": 2
+        },
+        "12": {
+          "comment_added": 1,
+          "document_edited": 3,
+          "file_deleted": 3,
+          "file_uploaded": 2
+        },
+        "13": {
+          "comment_added": 1,
+          "document_created": 2,
+          "document_deleted": 1,
+          "document_edited": 1,
+          "file_deleted": 1,
+          "file_shared": 1,
+          "file_uploaded": 1
+        },
+        "14": {
+          "comment_added": 2,
+          "document_deleted": 1,
+          "document_edited": 1,
+          "file_deleted": 2,
+          "file_shared": 1
+        },
+        "15": {
+          "comment_added": 1,
+          "document_deleted": 4,
+          "document_edited": 1,
+          "file_deleted": 2,
+          "file_shared": 3,
+          "file_uploaded": 1
+        },
+        "16": {
+          "document_created": 1,
+          "file_shared": 2,
+          "file_uploaded": 2
+        },
+        "17": {
+          "comment_added": 2,
+          "document_deleted": 3
+        },
+        "18": {
+          "comment_added": 3,
+          "document_deleted": 2,
+          "document_edited": 1,
+          "file_deleted": 2,
+          "file_shared": 1,
+          "file_uploaded": 1
+        },
+        "19": {
+          "document_created": 1,
+          "document_deleted": 2,
+          "document_edited": 3,
+          "file_shared": 1,
+          "file_uploaded": 5
+        },
+        "20": {
+          "document_created": 2,
+          "document_deleted": 1,
+          "document_edited": 3,
+          "file_shared": 1,
+          "file_uploaded": 3
+        },
+        "21": {
+          "document_created": 2,
+          "document_deleted": 3,
+          "document_edited": 3,
+          "file_deleted": 1,
+          "file_shared": 1,
+          "file_uploaded": 2
+        },
+        "22": {
+          "comment_added": 2,
+          "document_created": 1,
+          "document_edited": 2,
+          "file_deleted": 2,
+          "file_shared": 2,
+          "file_uploaded": 1
+        },
+        "23": {
+          "document_deleted": 2,
+          "document_edited": 5,
+          "file_deleted": 2,
+          "file_shared": 3,
+          "file_uploaded": 4
+        }
+      },
+      "sha256": "a740e8f4203a7366f6b312dbbe985d28eef47c03cc56a4c388243c53a90d3fb0"
+    },
+    "analytics/daily/year=2026/month=09/day=15/summary.json.gz": {
+      "bytes": 153,
+      "content": {
+        "active_documents": 20,
+        "active_files": 15,
+        "active_users": 12,
+        "bytes_uploaded": 707318377,
+        "comments_added": 31,
+        "documents_created": 28,
+        "documents_edited": 46,
+        "files_deleted": 37,
+        "files_shared": 37,
+        "files_uploaded": 35,
+        "total_events": 249
+      },
+      "sha256": "590d3a65ce7f69598a0cceb4d23cf142678d27982449b1992d5cb353e2bd9b59"
+    },
+    "analytics/daily/year=2026/month=09/day=15/top_users.jsonl.gz": {
+      "bytes": 518,
+      "content": [
+        {
+          "actions": {
+            "NaN": 1,
+            "comment_added": 2,
+            "document_created": 4,
+            "document_deleted": 7,
+            "document_edited": 5,
+            "file_deleted": 3,
+            "file_shared": 4,
+            "file_uploaded": 4
+          },
+          "total": 30,
+          "user_id": "usr-9b9d219b86902e97"
+        },
+        {
+          "actions": {
+            "comment_added": 1,
+            "document_created": 3,
+            "document_deleted": 4,
+            "document_edited": 7,
+            "file_deleted": 4,
+            "file_shared": 4,
+            "file_uploaded": 5
+          },
+          "total": 28,
+          "user_id": "usr-5129ef63c36c749e"
+        },
+        {
+          "actions": {
+            "comment_added": 2,
+            "document_created": 3,
+            "document_deleted": 3,
+            "document_edited": 7,
+            "file_deleted": 4,
+            "file_shared": 1,
+            "file_uploaded": 5
+          },
+          "total": 25,
+          "user_id": "usr-5c7f7fcc375ee4ba"
+        },
+        {
+          "actions": {
+            "comment_added": 6,
+            "document_created": 5,
+            "document_edited": 1,
+            "file_deleted": 7,
+            "file_shared": 3,
+            "file_uploaded": 3
+          },
+          "total": 25,
+          "user_id": "usr-13b438a3ad8dafef"
+        },
+        {
+          "actions": {
+            "comment_added": 2,
+            "document_created": 1,
+            "document_deleted": 6,
+            "document_edited": 8,
+            "file_shared": 6,
+            "file_uploaded": 1
+          },
+          "total": 24,
+          "user_id": "usr-1c1f4ba0c1842180"
+        },
+        {
+          "actions": {
+            "comment_added": 5,
+            "document_created": 3,
+            "document_deleted": 3,
+            "document_edited": 2,
+            "file_deleted": 3,
+            "file_shared": 5,
+            "file_uploaded": 3
+          },
+          "total": 24,
+          "user_id": "usr-85e9a6f6523725f8"
+        },
+        {
+          "actions": {
+            "comment_added": 2,
+            "document_created": 2,
+            "document_deleted": 3,
+            "document_edited": 3,
+            "file_deleted": 5,
+            "file_shared": 4,
+            "file_uploaded": 3
+          },
+          "total": 22,
+          "user_id": "usr-a20080b3876eebf8"
+        },
+        {
+          "actions": {
+            "NaN": 1,
+            "comment_added": 2,
+            "document.created": 1,
+            "document_created": 2,
+            "document_deleted": 2,
+            "document_edited": 5,
+            "file_deleted": 2,
+            "file_shared": 1,
+            "file_uploaded": 3
+          },
+          "total": 19,
+          "user_id": "usr-59acd01959a8ee6e"
+        },
+        {
+          "actions": {
+            "comment_added": 2,
+            "document_created": 1,
+            "document_deleted": 2,
+            "document_edited": 4,
+            "file_deleted": 2,
+            "file_shared": 3,
+            "file_uploaded": 2
+          },
+          "total": 16,
+          "user_id": "usr-d25d8e6825d502b1"
+        },
+        {
+          "actions": {
+            "comment_added": 1,
+            "document_deleted": 2,
+            "document_edited": 1,
+            "file_deleted": 5,
+            "file_shared": 3,
+            "file_uploaded": 3
+          },
+          "total": 15,
+          "user_id": "usr-772c86d1710b5025"
+        },
+        {
+          "actions": {
+            "comment_added": 3,
+            "document_created": 1,
+            "document_edited": 1,
+            "file_deleted": 2,
+            "file_shared": 2,
+            "file_uploaded": 2
+          },
+          "total": 11,
+          "user_id": "usr-69e698ccecdc2250"
+        },
+        {
+          "actions": {
+            "comment_added": 3,
+            "document_created": 3,
+            "file_shared": 1,
+            "file_uploaded": 1
+          },
+          "total": 8,
+          "user_id": "usr-3fb28fc0e4da4949"
+        },
+        {
+          "actions": {
+            "document_edited": 2
+          },
+          "total": 2,
+          "user_id": "unknown"
+        }
+      ],
+      "sha256": "0467c16bfa2f94ecec65d10e0a9ff8b901168a54872953400226e870a6eeec39"
+    },
+    "reports/analytics/daily/2026-09-15/report.json": {
+      "bytes": 908,
+      "content": {
+        "document_metrics": {
+          "comments": 31,
+          "created": 28,
+          "edited": 46
+        },
+        "file_metrics": {
+          "bytes_uploaded": 707318377,
+          "deleted": 37,
+          "shared": 37,
+          "uploaded": 35
+        },
+        "generated_at": "2026-09-15T14:17:22.635624+00:00",
+        "highlights": {
+          "most_active_users": [
+            "usr-9b9d219b86902e97",
+            "usr-5129ef63c36c749e",
+            "usr-5c7f7fcc375ee4ba",
+            "usr-13b438a3ad8dafef",
+            "usr-1c1f4ba0c1842180"
+          ],
+          "peak_hour": {
+            "event_count": 16,
+            "hour": "23"
+          }
+        },
+        "report_date": "2026-09-15",
+        "report_type": "daily_analytics",
+        "summary": {
+          "active_documents": 20,
+          "active_files": 15,
+          "active_users": 12,
+          "bytes_uploaded": 707318377,
+          "comments_added": 31,
+          "documents_created": 28,
+          "documents_edited": 46,
+          "files_deleted": 37,
+          "files_shared": 37,
+          "files_uploaded": 35,
+          "total_events": 249
+        }
+      },
+      "sha256": "ba96f5373c057c5aa6ca408870248297717711020e6c755285d4771d5a7d4c25"
+    }
+  },
+  "postgres_error_swallowed": true,
+  "queue_remaining": 0,
+  "script": "analytics_daily.py",
+  "sqs_poll_failed": false,
+  "sqs_seeded": 85,
+  "started_at": "2026-09-15T14:17:17.108818+00:00",
+  "stderr": "",
+  "stdout": "[2026-09-15 14:17:17] analytics_daily.py starting...\n[2026-09-15 14:17:17] Processing analytics for date: 2026-09-15\n[2026-09-15 14:17:17] Polling SQS queue: https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics\n[2026-09-15 14:17:22] No more messages after 85 processed\n[2026-09-15 14:17:22] Extracted 85 events from SQS\n[2026-09-15 14:17:22] Extracted 164 events from DynamoDB for 2026-09-15\n[2026-09-15 14:17:22] Total events to process: 249\n[2026-09-15 14:17:22] Aggregation complete: 249 events, 12 active users, 20 documents, 15 files\n[2026-09-15 14:17:22] Uploaded summary to s3://otterworks-data-lake/analytics/daily/year=2026/month=09/day=15/summary.json.gz\n[2026-09-15 14:17:22] Loaded analytics data to s3://otterworks-data-lake/analytics/daily/year=2026/month=09/day=15\n[2026-09-15 14:17:22] Connecting to PostgreSQL at localhost:5432/otterworks_analytics\n[2026-09-15 14:17:22] ERROR: PostgreSQL update failed: connection to server at \"localhost\" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user \"etl_user\"\nconnection to server at \"localhost\" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user \"etl_user\"\n\n[2026-09-15 14:17:22] Generated daily analytics report: 249 events, 12 active users\n[2026-09-15 14:17:22] analytics_daily.py completed successfully\n",
+  "summary": {
+    "active_documents": 20,
+    "active_files": 15,
+    "active_users": 12,
+    "bytes_uploaded": 707318377,
+    "comments_added": 31,
+    "documents_created": 28,
+    "documents_edited": 46,
+    "files_deleted": 37,
+    "files_shared": 37,
+    "files_uploaded": 35,
+    "total_events": 249
+  }
+}

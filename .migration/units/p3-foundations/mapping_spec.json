@@ -1,0 +1,8 @@
+{
+  "version": "map-p3-v1",
+  "unit": "p3-foundations",
+  "track": "none",
+  "generation": "none",
+  "notes": "Wave-0 shared conventions, named-secret mapping, the deterministic fixture generator and the legacy baseline capture. It converts no data and writes no target table, so there is no row-level parity to assert and no recon report is due for it. Its evidence is the baseline artefacts under .migration/recon/p3/baselines/, which every other pipeline-3 unit reconciles against.",
+  "tables": []
+}

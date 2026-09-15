@@ -1,0 +1,68 @@
+{
+  "version": "map-p3-v1",
+  "unit": "p3-user-activity",
+  "track": "delta",
+  "generation": "legacy-file",
+  "notes": "Depends on p3-analytics-daily: the legacy reads that job's S3 summary plus the data lake, so the target reads ow_tp.gold.analytics_daily_summary and the dependency is a Lakeflow task edge, not a time offset. Source side is the legacy's S3 output loaded into ow_tp.bronze.p3_user_activity_legacy_baseline; target side is ow_tp.gold.user_activity_daily. Because the input is the upstream unit's output, this recon is only meaningful once p3-analytics-daily is green: a difference here is ambiguous until the upstream is pinned.",
+  "tables": [
+    {
+      "object": "user_activity_daily",
+      "source_table": "ow_tp.bronze.p3_user_activity_legacy_baseline",
+      "target_table": "user_activity_daily",
+      "key": {
+        "source": [
+          "activity_date",
+          "user_id"
+        ],
+        "target": [
+          "activity_date",
+          "user_id"
+        ]
+      },
+      "fields": [
+        {
+          "source": "activity_date",
+          "target": "activity_date",
+          "source_type": "DATE",
+          "target_type": "DATE",
+          "rules": []
+        },
+        {
+          "source": "user_id",
+          "target": "user_id",
+          "source_type": "STRING",
+          "target_type": "STRING",
+          "rules": []
+        },
+        {
+          "source": "event_count",
+          "target": "event_count",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "documents_touched",
+          "target": "documents_touched",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "files_touched",
+          "target": "files_touched",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        },
+        {
+          "source": "active_hours",
+          "target": "active_hours",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": []
+        }
+      ]
+    }
+  ]
+}

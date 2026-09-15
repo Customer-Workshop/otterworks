@@ -1,0 +1,51 @@
+{
+  "anchor": "2026-08-01T00:00:00Z",
+  "audit_cutoff": "2026-06-17T00:00:00Z",
+  "checksums": {
+    "analytics_dynamodb_events.json": "5c434a9ebb306c5730880072404d63f6dde6c68b6c6524260647b83e57ba7e1e",
+    "analytics_sqs_events.json": "d2219e3b19c101f3277cf4b247d3e10f5e54988fb8bace9f22d0de3b064b0078",
+    "audit_events.json": "5dcdabbdf078a2c2bc2f5e1c5454f7b9c1842ecdb5e8a41e285d0d6863962220",
+    "expected_orphans.json": "10ed66bd4409699defe54881a2c2e2718eb0d57e58c9d6e15135a5bedbd38aed",
+    "file_inventory.json": "8086410587ae48d9011b759c5110e1e80cbb501694126c33369fce178f862156",
+    "file_metadata.json": "561a577e3ab768b3403137816802dce76237e98b2e71b3b53e2aa7cde8ab44ef",
+    "usage-events.ndjson": "19589b4edf69ce21b6a7e2f1be451d5fb8dda8be818f96c4580f61c48cd10f08",
+    "usage_events.json": "b86009a9f75a2dbfa91dd7bd01a7f485f43e4ef061f6eb8461b4da2d12595f82"
+  },
+  "counts": {
+    "analytics_dynamodb": 165,
+    "analytics_sqs": 85,
+    "audit_A-estate": 58,
+    "audit_A-full": 58,
+    "audit_A-tsonly": 58,
+    "expected_orphans": 17,
+    "file_objects": 138,
+    "usage_events": 463
+  },
+  "expected": {
+    "audit": {
+      "A-estate": "scan matches 0 (filter names `timestamp`, records carry `Timestamp`); exit 0; no archive object, no compliance report",
+      "A-full": "archive uploaded, all deletes fail on the id-only key schema and are swallowed, events_deleted_from_source = 0",
+      "A-tsonly": "archive uploaded, then KeyError on event_id at :141 (outside the try) -> exit 1"
+    },
+    "storage_cleanup": {
+      "dangling_metadata": "5 metadata rows point at absent objects; they subtract nothing and must not crash the job",
+      "delete_set": "expected_orphans.json, compared as a set of (key, size)",
+      "not_in_delete_set": "objects outside the files/ prefix, and objects with a live metadata row"
+    }
+  },
+  "kind": "p3-fixture-manifest",
+  "ns": "p3probe",
+  "retention_days": 90,
+  "run_date": "2026-09-15",
+  "snapshot_dir": "/tmp/p3fix/p3probe",
+  "stores": {
+    "analytics_table": "otterworks-analytics-events",
+    "audit_table": "otterworks-audit-events",
+    "file_metadata_table": "otterworks-file-metadata",
+    "legacy_clone_buckets": {
+      "otterworks-file-quarantine": 0,
+      "otterworks-file-storage": 138
+    },
+    "sqs_queue_url": "http://sqs.us-east-1.localhost.localstack.cloud:4566/123456789012/otterworks-analytics"
+  }
+}

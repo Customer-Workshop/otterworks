@@ -1,0 +1,189 @@
+{
+  "delete_set_matches_expected": true,
+  "deleted_keys": [
+    "files/usr-0637be1bc717ec6d/orphan-7314172c1bc29e01",
+    "files/usr-3a51ca4187bf3eb3/orphan-136fd177b47206e0",
+    "files/usr-46f0b130395f1606/orphan-5a12fbd7d5133e61",
+    "files/usr-6bb65943cf1e9d46/orphan-64d62a715031ee37",
+    "files/usr-adeb6958c1f05d05/orphan-0e8162c5e83cd1be",
+    "files/usr-adeb6958c1f05d05/orphan-84db7d76a4287825",
+    "files/usr-adeb6958c1f05d05/orphan-85b392c2a7e7c04f",
+    "files/usr-adeb6958c1f05d05/orphan-8c288485da6e6301",
+    "files/usr-adeb6958c1f05d05/orphan-a79850b7b91664e4",
+    "files/usr-c2e66ee7e86c0134/orphan-3189a1a39589c3de",
+    "files/usr-c2e66ee7e86c0134/orphan-53b97a99a0fb84e1",
+    "files/usr-c2e66ee7e86c0134/orphan-8cf65637ac47c231",
+    "files/usr-fb12bb23c8de80a4/orphan-2b883f138b34df88",
+    "files/usr-fb12bb23c8de80a4/orphan-8af8360ac372cb1a",
+    "files/usr-fb12bb23c8de80a4/orphan-daf4375f00ebd88c",
+    "files/usr-ffcdff55dedb3fdc/orphan-405cf274bc4bd93c",
+    "files/usr-ffcdff55dedb3fdc/orphan-991a8a3c07128298"
+  ],
+  "deleted_with_size": [
+    {
+      "key": "files/usr-0637be1bc717ec6d/orphan-7314172c1bc29e01",
+      "size": 512
+    },
+    {
+      "key": "files/usr-3a51ca4187bf3eb3/orphan-136fd177b47206e0",
+      "size": 512
+    },
+    {
+      "key": "files/usr-46f0b130395f1606/orphan-5a12fbd7d5133e61",
+      "size": 512
+    },
+    {
+      "key": "files/usr-6bb65943cf1e9d46/orphan-64d62a715031ee37",
+      "size": 512
+    },
+    {
+      "key": "files/usr-adeb6958c1f05d05/orphan-0e8162c5e83cd1be",
+      "size": 512
+    },
+    {
+      "key": "files/usr-adeb6958c1f05d05/orphan-84db7d76a4287825",
+      "size": 512
+    },
+    {
+      "key": "files/usr-adeb6958c1f05d05/orphan-85b392c2a7e7c04f",
+      "size": 512
+    },
+    {
+      "key": "files/usr-adeb6958c1f05d05/orphan-8c288485da6e6301",
+      "size": 512
+    },
+    {
+      "key": "files/usr-adeb6958c1f05d05/orphan-a79850b7b91664e4",
+      "size": 512
+    },
+    {
+      "key": "files/usr-c2e66ee7e86c0134/orphan-3189a1a39589c3de",
+      "size": 512
+    },
+    {
+      "key": "files/usr-c2e66ee7e86c0134/orphan-53b97a99a0fb84e1",
+      "size": 512
+    },
+    {
+      "key": "files/usr-c2e66ee7e86c0134/orphan-8cf65637ac47c231",
+      "size": 512
+    },
+    {
+      "key": "files/usr-fb12bb23c8de80a4/orphan-2b883f138b34df88",
+      "size": 512
+    },
+    {
+      "key": "files/usr-fb12bb23c8de80a4/orphan-8af8360ac372cb1a",
+      "size": 512
+    },
+    {
+      "key": "files/usr-fb12bb23c8de80a4/orphan-daf4375f00ebd88c",
+      "size": 512
+    },
+    {
+      "key": "files/usr-ffcdff55dedb3fdc/orphan-405cf274bc4bd93c",
+      "size": 512
+    },
+    {
+      "key": "files/usr-ffcdff55dedb3fdc/orphan-991a8a3c07128298",
+      "size": 512
+    }
+  ],
+  "duration_s": 0.383,
+  "exit_code": 0,
+  "expected_orphan_keys": [
+    "files/usr-0637be1bc717ec6d/orphan-7314172c1bc29e01",
+    "files/usr-3a51ca4187bf3eb3/orphan-136fd177b47206e0",
+    "files/usr-46f0b130395f1606/orphan-5a12fbd7d5133e61",
+    "files/usr-6bb65943cf1e9d46/orphan-64d62a715031ee37",
+    "files/usr-adeb6958c1f05d05/orphan-0e8162c5e83cd1be",
+    "files/usr-adeb6958c1f05d05/orphan-84db7d76a4287825",
+    "files/usr-adeb6958c1f05d05/orphan-85b392c2a7e7c04f",
+    "files/usr-adeb6958c1f05d05/orphan-8c288485da6e6301",
+    "files/usr-adeb6958c1f05d05/orphan-a79850b7b91664e4",
+    "files/usr-c2e66ee7e86c0134/orphan-3189a1a39589c3de",
+    "files/usr-c2e66ee7e86c0134/orphan-53b97a99a0fb84e1",
+    "files/usr-c2e66ee7e86c0134/orphan-8cf65637ac47c231",
+    "files/usr-fb12bb23c8de80a4/orphan-2b883f138b34df88",
+    "files/usr-fb12bb23c8de80a4/orphan-8af8360ac372cb1a",
+    "files/usr-fb12bb23c8de80a4/orphan-daf4375f00ebd88c",
+    "files/usr-ffcdff55dedb3fdc/orphan-405cf274bc4bd93c",
+    "files/usr-ffcdff55dedb3fdc/orphan-991a8a3c07128298"
+  ],
+  "objects_after": 120,
+  "objects_before": 137,
+  "quarantined_objects": [
+    {
+      "key": "quarantined/2026-09-15/files/usr-0637be1bc717ec6d/orphan-7314172c1bc29e01",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-3a51ca4187bf3eb3/orphan-136fd177b47206e0",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-46f0b130395f1606/orphan-5a12fbd7d5133e61",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-6bb65943cf1e9d46/orphan-64d62a715031ee37",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-adeb6958c1f05d05/orphan-0e8162c5e83cd1be",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-adeb6958c1f05d05/orphan-84db7d76a4287825",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-adeb6958c1f05d05/orphan-85b392c2a7e7c04f",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-adeb6958c1f05d05/orphan-8c288485da6e6301",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-adeb6958c1f05d05/orphan-a79850b7b91664e4",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-c2e66ee7e86c0134/orphan-3189a1a39589c3de",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-c2e66ee7e86c0134/orphan-53b97a99a0fb84e1",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-c2e66ee7e86c0134/orphan-8cf65637ac47c231",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-fb12bb23c8de80a4/orphan-2b883f138b34df88",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-fb12bb23c8de80a4/orphan-8af8360ac372cb1a",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-fb12bb23c8de80a4/orphan-daf4375f00ebd88c",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-ffcdff55dedb3fdc/orphan-405cf274bc4bd93c",
+      "size": 512
+    },
+    {
+      "key": "quarantined/2026-09-15/files/usr-ffcdff55dedb3fdc/orphan-991a8a3c07128298",
+      "size": 512
+    }
+  ],
+  "script": "storage_cleanup_daily.py",
+  "started_at": "2026-09-15T14:17:23.237385+00:00",
+  "stderr": "",
+  "stdout": "[2026-09-15 14:17:23] storage_cleanup_daily.py starting...\n[2026-09-15 14:17:23] Listing objects in s3://otterworks-file-storage/files/\n[2026-09-15 14:17:23] Found 137 objects in S3 (70144 bytes total)\n[2026-09-15 14:17:23] Scanning DynamoDB table otterworks-file-metadata for metadata references...\n[2026-09-15 14:17:23] Found 125 S3 keys referenced in metadata\n[2026-09-15 14:17:23] Found 17 orphaned objects (0.01 MB)\n[2026-09-15 14:17:23] Moving 17 orphaned objects to quarantine...\n[2026-09-15 14:17:23] Quarantined 17 objects (0 failed) to s3://otterworks-file-quarantine/quarantined/2026-09-15/\n[2026-09-15 14:17:23] Storage cleanup report: 17 orphans quarantined, 0.0000 GB freed, ~$0.0000/month saved\n[2026-09-15 14:17:23] storage_cleanup_daily.py completed successfully\n"
+}

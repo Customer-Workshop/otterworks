@@ -156,6 +156,38 @@ produced it:
    scratch. They never read a baseline table.
 3. The harness compares the two, recomputing from the target platform.
 
+### Two of the legacy jobs mutate the fixture they read
+
+Step 1 above is not safe as written for `p3-storage-cleanup` or `p3-analytics-daily`. Both
+legacy scripts destroy their own input: the cleanup job copies each orphan to quarantine and
+then `delete_object`s the original, and `analytics_daily.py` deletes every SQS batch it reads
+(F-0.1). Running the legacy first and then pointing the target at "the same raw inputs" would
+hand the target a bucket the legacy had already emptied, and the delete-set equality gate in
+§5 would be comparing two different inputs — it would pass trivially and prove nothing.
+
+So wave 0 pins the input before the legacy touches it, and gives each side its own state:
+
+- **Snapshot first, then run.** The fixture seeder writes an immutable input snapshot — for
+  the cleanup unit, the full `list_objects_v2` listing (key, size, `last_modified`) of the
+  file bucket plus the projected `s3_key` scan of `otterworks-file-metadata`; for analytics,
+  the SQS-shaped payload file and the DynamoDB scan. The snapshot is written to the landing
+  volume and is the declared input of **both** sides. It is produced before any legacy
+  invocation and is never regenerated from post-run state.
+- **Disjoint state per side.** The legacy runs against a per-run clone of the bucket
+  (`ow-tp-p3-legacy-<run>`), seeded from the snapshot; the target reads the snapshot only and
+  writes nothing to S3 at all. The two never share a mutable object.
+- **Reseed between probes.** Each legacy probe re-seeds its clone from the snapshot first, so
+  probe order cannot change probe results and a rerun is meaningful.
+
+This keeps the legacy estate itself read-only — the clone is an `ow-tp-`-prefixed migration
+resource, not the estate's bucket — and makes "equal delete sets" a real claim: both sides
+derived a set from one pinned listing, independently.
+
+The audit unit needs the same care for a different reason. F-0.4 says the legacy behaves
+three different ways depending on record shape, so wave 0 runs all three probes (`A-estate`,
+`A-tsonly`, `A-full`) against separately seeded table slices, and `A-estate` — the shape the
+audit-service actually writes — has "produced nothing" as its expected baseline.
+
 Idempotency is proven by an actual second run of each unit, not asserted. For
 `p3-analytics-daily` that is only possible because of P3-D01: the legacy itself cannot be run
 twice on the same input, which is recorded as an unverified path rather than papered over.
@@ -166,8 +198,8 @@ Per-unit gate:
 |---|---|
 | `p3-analytics-daily` | row parity on the four gold outputs + byte compare of the three gzip members (`mtime=0` makes them reproducible) |
 | `p3-user-activity` | row parity on gold + byte compare of `activity_report.json` modulo `generated_at` |
-| `p3-storage-cleanup` | **set equality of the delete set** (key + size), plus row parity on the report |
-| `p3-audit-archive` | set equality of archived `event_id`s including the three cutoff boundary probes, plus byte compare of the gzip archive member |
+| `p3-storage-cleanup` | **set equality of the delete set** (key + size) derived by both sides from the same pinned pre-run inventory snapshot, plus row parity on the report |
+| `p3-audit-archive` | all three F-0.4 probes: `A-estate` must produce no archive on either side, `A-tsonly` and `A-full` compare as set equality of archived ids including the three cutoff boundary probes, plus byte compare of the gzip archive member |
 | `p3-usage-rollup` | row parity of `usage_rollup_daily` against the real Scala job's JSON over the same pinned NDJSON input |
 | `p3-search-reindex` | no recon: no data movement (P3-D05) |
 | `p3-orchestration` | structural only: no data movement |
@@ -221,3 +253,17 @@ distribution-list address.
 
 No production repoint, no schedule activation, no cutover, no credential rotation, no merge of
 my own PRs, and no approval of any stop on the user's behalf. Pipeline 3 parks at STOP E.
+
+## 10. Questions carried to STOP E
+
+Each is stated as a fact about what is in this repository, with no claim about what a
+production deployment does. None is answered by guessing.
+
+| # | What we found | The question |
+|---:|---|---|
+| 1 | The Scala usage rollup runs nightly at 02:00 UTC from a Helm CronJob, reads a seed file baked into the image, and writes to an `emptyDir` that is destroyed on pod exit (F-0.5, F-0.6). | Does the real job have a real input and a real consumer? If not, is migrating it worth doing at all? |
+| 2 | `storage_cleanup_daily.py` reads bucket `otterworks-file-storage` from `config.ini`; the estate's file storage is `otterworks-files`, so the job dies on its first list call (F-0.3). | Is the production config different, and if so has this job been deleting objects? Nothing here can answer that. |
+| 3 | `audit_archive_weekly.py` filters on lowercase `timestamp`; the audit-service writes uppercase `Timestamp` and no `event_id`, so the scan matches nothing and the job exits 0 having archived nothing (F-0.4). Where records *do* carry `timestamp`, deletes fail on the key schema and are swallowed (F-0.4a) or the job crashes after uploading (F-0.4b). | Has audit archival been silently archiving nothing? This is a retention/compliance question, not a migration one, and it needs an owner. |
+| 4 | `analytics_daily.py` deletes the SQS messages it reads (F-0.1), and neither the queue nor `otterworks-analytics-events` exists in this estate (F-0.2). | The SQS path is reconciled against a payload-file stand-in, not a live queue. That is an unverified path and is listed as one. |
+| 5 | `config.ini` holds plaintext AWS keys, a Postgres password and a MeiliSearch key, committed to source history (F-0.8). | Rotation, by their owner. Converted code uses names only; the exposure in history is not something a migration can undo. |
+| 6 | `search_reindex_weekly.py` writes MeiliSearch and reads two in-cluster HTTP services (F-0.7, P3-D05). | Confirmed out of Databricks scope as a coverage gap. Who owns it service-side after cutover? |

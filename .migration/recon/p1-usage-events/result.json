@@ -1,0 +1,80 @@
+{
+  "unit": "p1-usage-events",
+  "mode": "live",
+  "mapping_version": "map-p1-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 8,
+    "source_rows_fetched": 885,
+    "target_statements": 7,
+    "target_rows_fetched": 885,
+    "elapsed_s": 4.626
+  },
+  "generated_at": "2026-09-15T07:07:23.681324+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.usage_events": 814
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 5,
+      "stats": {
+        "deferred_to_tier3": [
+          "usage_events.id",
+          "usage_events.tenant_id"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 814,
+      "stats": {
+        "usage_events": {
+          "mode": "full_diff",
+          "population": 814,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "degraded": {
+    "grade": "DEGRADED",
+    "official_verdict": false,
+    "reason": "d10_01_denied",
+    "source_adapter": "Oracle read over JDBC from the Devin CIDRs with a repo-local source adapter (databricks/migration/recon/oracle_jdbc_adapter.py). The harness supplies every tier, canonicalisation rule and tolerance; the connector is outside its tested matrix, so `dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
+  }
+}

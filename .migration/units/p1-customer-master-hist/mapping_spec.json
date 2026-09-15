@@ -1432,91 +1432,91 @@
         {
           "raw": "signup_dt",
           "target": "signup_dt_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "last_activity_dt",
           "target": "last_activity_dt_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "last_invoice_dt",
           "target": "last_invoice_dt_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "last_payment_dt",
           "target": "last_payment_dt_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "terminate_dt",
           "target": "terminate_dt_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_01",
           "target": "udf_dt_01_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_02",
           "target": "udf_dt_02_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_03",
           "target": "udf_dt_03_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_04",
           "target": "udf_dt_04_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_05",
           "target": "udf_dt_05_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_06",
           "target": "udf_dt_06_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_07",
           "target": "udf_dt_07_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_08",
           "target": "udf_dt_08_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_09",
           "target": "udf_dt_09_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         },
         {
           "raw": "udf_dt_10",
           "target": "udf_dt_10_parsed",
-          "target_type": "DATE",
+          "target_type": "TIMESTAMP_NTZ",
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         }
       ],

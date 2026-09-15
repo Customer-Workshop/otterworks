@@ -1,0 +1,31 @@
+[
+  {
+    "name": "dunning_weekend_shift_calendar",
+    "object": "p1-pkg-dunning",
+    "source_sql": "SELECT TO_CHAR(DATE '2026-09-01' + (LEVEL - 1), 'YYYY-MM-DD') AS \"as_of\", TO_CHAR(DATE '2026-09-01' + (LEVEL - 1) + DECODE(TO_CHAR(DATE '2026-09-01' + (LEVEL - 1), 'DY', 'NLS_DATE_LANGUAGE=ENGLISH'), 'SAT', 2, 'SUN', 1, 0), 'YYYY-MM-DD') AS \"scheduled_for\" FROM dual CONNECT BY LEVEL <= 21 ORDER BY 1",
+    "target_sql": "SELECT to_char(g.d, 'YYYY-MM-DD') AS as_of, to_char(g.d + (CASE EXTRACT(ISODOW FROM g.d) WHEN 6 THEN 2 WHEN 7 THEN 1 ELSE 0 END) * INTERVAL '1 day', 'YYYY-MM-DD') AS scheduled_for FROM generate_series(DATE '2026-09-01', DATE '2026-09-21', INTERVAL '1 day') AS g(d) ORDER BY 1",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "dunning_attempt_id_formula",
+    "object": "p1-pkg-dunning",
+    "source_sql": "SELECT id AS \"id\", pkg_ow_util.f_md5_uuid(invoice_id || TO_CHAR(attempt_no)) AS \"derived_id\" FROM ow_billing.dunning_attempts ORDER BY 1",
+    "target_sql": "SELECT id, billing.f_md5_uuid(invoice_id || attempt_no::text) AS derived_id FROM billing.dunning_attempts ORDER BY 1",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "suspension_notification_id_formula",
+    "object": "p1-pkg-dunning",
+    "source_sql": "SELECT id AS \"id\", pkg_ow_util.f_md5_uuid(tenant_id || 'suspension' || TO_CHAR(TRUNC(CAST(sent_at AS DATE)), 'YYYY-MM-DD')) AS \"derived_id\" FROM ow_billing.notifications WHERE kind_cd = 3 ORDER BY 1",
+    "target_sql": "SELECT id, billing.f_md5_uuid(tenant_id || 'suspension' || to_char(date_trunc('day', sent_at), 'YYYY-MM-DD')) AS derived_id FROM billing.notifications WHERE kind_cd = 3 ORDER BY 1",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  }
+]

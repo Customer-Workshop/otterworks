@@ -163,7 +163,10 @@ export class CollaborationManager {
 
       if (!socket.connected) {
         socket.leave(room);
-        if (awareness.getDocumentUserCount(documentId) === 0) {
+        // Other joiners enter the room before loading the doc, so an empty
+        // room means nobody else is mid-join.
+        const roomEmpty = (io.sockets.adapter.rooms.get(room)?.size ?? 0) === 0;
+        if (roomEmpty && awareness.getDocumentUserCount(documentId) === 0) {
           this.persistAndCleanupDocument(documentId);
         }
         return;

@@ -3,12 +3,14 @@
   "unit": "p3-audit-archive",
   "track": "delta",
   "generation": "legacy-file",
-  "notes": "Three record shapes, three legacy behaviours (F-0.4/a/b), and all three are contract. Source side is the legacy's archive output per shape, loaded into ow_tp.bronze.p3_audit_legacy_archive with a shape column; target side is ow_tp.silver.audit_archive. For A-estate the legacy produces NOTHING \u2014 zero archived rows, no compliance report \u2014 and the target must produce nothing too, so the reconciled value is an empty set on both sides and an empty target is the pass, not a gap. For A-tsonly the legacy writes the archive and then exits 1 on a KeyError; the archive contents are still contract, so the rows are compared and the exit code is recorded as a behavioural clause rather than a row. Deletion is not reconciled at all: the legacy deletes nothing on any shape (every delete_item raises on the wrong key schema and is swallowed), and the target never deletes by P3-D04, so both sides report zero source deletions and that agreement is asserted explicitly rather than assumed.",
+  "notes": "Three record shapes, three legacy behaviours (F-0.4/a/b), and all three are contract. Source side is the legacy's archive output per shape, loaded into ow_tp.bronze.p3_audit_legacy_archive with a shape column; target side is ow_tp.silver.audit_archive. For A-estate the legacy produces NOTHING \u2014 zero archived rows, no compliance report \u2014 and the target must produce nothing too, so the reconciled value is an empty set on both sides and an empty target is the pass, not a gap. For A-tsonly the legacy writes the archive and then exits 1 on a KeyError; the archive contents are still contract, so the rows are compared and the exit code is recorded as a behavioural clause rather than a row. Deletion is not reconciled at all: the legacy deletes nothing on any shape (every delete_item raises on the wrong key schema and is swallowed), and the target never deletes by P3-D04, so both sides report zero source deletions and that agreement is asserted explicitly rather than assumed. Both objects are scoped to the snapshot batch on both sides (P3-D11): the baseline tables are rebuilt for one batch, while the target loads REPLACE only their own batch and keep earlier ones, so an unscoped comparison reads one source batch against every retained target batch. No tolerance is changed and no field is dropped.",
   "tables": [
     {
       "object": "audit_archive",
       "source_table": "ow_tp.bronze.p3_audit_legacy_archive",
       "target_table": "audit_archive",
+      "root_where": "batch = '${batch}'",
+      "target_where": "snapshot_batch = '${batch}' AND run_date = DATE '${run_date}'",
       "key": {
         "source": [
           "probe_shape",
@@ -57,6 +59,8 @@
       "object": "audit_archive_run",
       "source_table": "ow_tp.bronze.p3_audit_legacy_run",
       "target_table": "audit_archive_run",
+      "root_where": "batch = '${batch}'",
+      "target_where": "snapshot_batch = '${batch}' AND run_date = DATE '${run_date}'",
       "key": {
         "source": [
           "probe_shape"

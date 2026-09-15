@@ -6,8 +6,8 @@
   "seed": 0,
   "depth": "full",
   "params": {
-    "run_date": "2026-09-15",
-    "batch": "p3probe"
+    "batch": "p3probe",
+    "run_date": "2026-09-15"
   },
   "snapshot": null,
   "cost": {
@@ -15,9 +15,9 @@
     "source_rows_fetched": 84,
     "target_statements": 8,
     "target_rows_fetched": 84,
-    "elapsed_s": 8.04
+    "elapsed_s": 7.198
   },
-  "generated_at": "2026-09-15T20:19:33.837347+00:00",
+  "generated_at": "2026-09-15T22:04:26.115432+00:00",
   "tiers": [
     {
       "tier": 1,

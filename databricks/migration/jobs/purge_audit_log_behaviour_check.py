@@ -11,15 +11,17 @@ specifies, and that is what this check exercises, against the deployed SQL text 
   2. retention: with `retention_days = 90`, a row older than 90 days is deleted and a row
      inside the window is kept - the legacy `logged_at < SYSDATE - 90`;
   3. parameterised retention: the same text with `retention_days = 1` deletes a row the
-     90-day run kept, so the constant really is a parameter now;
+     90-day run kept, so the constant really is a parameter now. The purge is unscoped,
+     so this short window only runs when the probe rows are the whole table; otherwise it
+     is skipped and recorded untested rather than deleting rows it did not write;
   4. swallowed error: a run whose parameter makes the statement fail raises nothing and
      reports success, reproducing `EXCEPTION WHEN OTHERS THEN NULL` (plan decision P1-D2).
      The same predicate without the handler is run as a control, so the evidence shows the
      handler swallowing a real failure rather than a parameter that quietly did nothing;
   5. rerun safety: a second run with the same parameter deletes nothing more.
 
-The probe rows are written and removed by this program, and it fails if the table is not
-empty again at the end - the target's steady state is the source's: no rows.
+The probe rows are written and removed by this program, and it fails unless the table is
+back to the row count it started at.
 
 usage (with DATABRICKS_HOST / DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET set):
   python3 databricks/migration/jobs/purge_audit_log_behaviour_check.py --out evidence.json
@@ -106,8 +108,21 @@ def main(argv: list[str] | None = None) -> int:
         failing = purge(cur, text, "not-a-number")
         after_failing = messages(cur)
         unhandled = purge(cur, BARE_DELETE, "not-a-number")
-        retention_1 = purge(cur, text, "1")
-        after_1 = messages(cur)
+
+        # `retention_days = 1` is the proof that the constant really is a parameter, but
+        # the purge is unscoped: it would delete any row older than a day, including rows
+        # this check did not write. Only run it when the probe rows are the whole table.
+        cur.execute(f"SELECT count(*) FROM {TARGET} WHERE module <> '{PROBE_MODULE}' "
+                    "OR module IS NULL")
+        foreign_rows = cur.fetchone()[0]
+        if foreign_rows:
+            retention_1 = {"retention_days": "1", "raised": None, "skipped":
+                           f"{foreign_rows} rows this check did not write; a one-day "
+                           "window would delete them"}
+            after_1 = None
+        else:
+            retention_1 = purge(cur, text, "1")
+            after_1 = messages(cur)
 
         cur.execute(CLEANUP)
         cur.execute(f"SELECT count(*) FROM {TARGET}")
@@ -131,11 +146,13 @@ def main(argv: list[str] | None = None) -> int:
         "rerun_changed_nothing": after_rerun == after_90,
         "error_swallowed": failing["raised"] is None,
         "control_without_handler_raised": unhandled["raised"] is not None,
-        "recent_row_purged_at_1": after_1 == [],
-        "table_left_empty": rows_after == 0,
+        "recent_row_purged_at_1": after_1 == [] if after_1 is not None else "untested",
+        # the probe rows are gone and nothing else was left behind
+        "table_restored": rows_after == rows_before,
     }
     evidence["checks"] = checks
-    evidence["verdict"] = "PASS" if all(checks.values()) else "FAIL"
+    evidence["verdict"] = ("PASS" if all(v is True or v == "untested"
+                                         for v in checks.values()) else "FAIL")
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)

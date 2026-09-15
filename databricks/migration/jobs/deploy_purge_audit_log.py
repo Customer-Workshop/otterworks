@@ -49,8 +49,19 @@ SQL_FILE = Path(__file__).with_name("ow_tp_p1_purge_audit_log.sql")
 
 
 def upsert_query(w: WorkspaceClient, text: str, parent_path: str) -> str:
-    existing = next((q for q in w.queries.list(page_size=100)
-                     if q.display_name == QUERY_NAME), None)
+    # A display name is not an identity in Databricks: another principal can own a visible
+    # query of the same name. Match on the folder this program deploys into as well, and
+    # refuse to guess when more than one query still matches.
+    # the list response carries no parent_path, so each name match is read back in full;
+    # the service echoes the folder with a `/Workspace` prefix the create call does not take
+    named = [w.queries.get(id=q.id) for q in w.queries.list(page_size=100)
+             if q.display_name == QUERY_NAME]
+    matches = [q for q in named
+               if (q.parent_path or "").removeprefix("/Workspace") == parent_path]
+    if len(matches) > 1:
+        raise SystemExit(f"{len(matches)} queries named {QUERY_NAME} under {parent_path}: "
+                         "refusing to pick one")
+    existing = matches[0] if matches else None
     if existing is None:
         created = w.queries.create(query=sqlsvc.CreateQueryRequestQuery(
             display_name=QUERY_NAME, query_text=text, warehouse_id=WAREHOUSE,

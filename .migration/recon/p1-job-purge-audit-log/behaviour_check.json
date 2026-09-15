@@ -4,8 +4,8 @@
   "rows_before": 0,
   "rows_after": 0,
   "identity_allocated_without_explicit_key": [
-    5,
-    6
+    7,
+    8
   ],
   "retention_90": {
     "retention_days": "90",
@@ -44,7 +44,7 @@
     "error_swallowed": true,
     "control_without_handler_raised": true,
     "recent_row_purged_at_1": true,
-    "table_left_empty": true
+    "table_restored": true
   },
   "verdict": "PASS"
 }

@@ -1,7 +1,374 @@
 {
-  "version": "0",
-  "status": "empty — filled by playbook 2 (inventory & model), approved at STOP B",
+  "version": "1",
   "source_family": "oracle",
+  "source_schema": "OW_BILLING",
   "target_db": "ow_billing_migration",
-  "collections": []
+  "prd": "target-data-model-prd v1.0",
+  "identity_rule": "_id is the source primary key value, unchanged (UUID string, or the NUMBER sequence key where the source uses one). No ObjectIds, no crosswalk.",
+  "collections": [
+    {
+      "collection": "plans",
+      "unit": "U1-reference",
+      "root_table": "PLANS",
+      "key": {"source": ["ID"], "target": "_id"},
+      "fields": [
+        {"source": "CODE", "target": "code", "source_type": "VARCHAR2(50)", "bson_type": "string", "rules": ["empty_string_is_null", "null_missing_equiv"]},
+        {"source": "TIER_CD", "target": "tier", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "PLAN_TIER"}, "rules": ["null_missing_equiv"]},
+        {"source": "MONTHLY_FEE", "target": "monthlyFee", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "INCLUDED_UNITS", "target": "includedUnits", "source_type": "NUMBER(10,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+        {"source": "OVERAGE_RATE", "target": "overageRate", "source_type": "NUMBER(12,6)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "ACTIVE_YN", "target": "active", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]}
+      ],
+      "indexes": [{"keys": {"code": 1}, "unique": true}],
+      "cardinality": "plans == count(PLANS)"
+    },
+    {
+      "collection": "codes",
+      "unit": "U1-reference",
+      "root_table": "CODES",
+      "key": {"source": ["CODE_TYPE", "CODE_VAL"], "target": "_id", "compose": "CODE_TYPE || ':' || CODE_VAL"},
+      "fields": [
+        {"source": "CODE_TYPE", "target": "codeType", "source_type": "VARCHAR2(30)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "CODE_VAL", "target": "codeVal", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"]},
+        {"source": "CODE_DESC", "target": "codeDesc", "source_type": "VARCHAR2(80)", "bson_type": "string", "rules": ["empty_string_is_null"]}
+      ],
+      "indexes": [{"keys": {"codeType": 1, "codeVal": 1}, "unique": true}],
+      "cardinality": "codes == count(CODES)",
+      "note": "PRD 4.5: kept only for readers that still compare integers; retired when the last one is repointed."
+    },
+    {
+      "collection": "tenants",
+      "unit": "U1-reference",
+      "root_table": "TENANTS",
+      "key": {"source": ["ID"], "target": "_id"},
+      "fields": [
+        {"source": "NAME", "target": "name", "source_type": "VARCHAR2(200)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "TAX_EXEMPT_YN", "target": "taxExempt", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]},
+        {"source": "STATUS_CD", "target": "status", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "TENANT_STATUS"}, "rules": ["null_missing_equiv"]}
+      ],
+      "embeds": [
+        {
+          "array_path": "subscriptions",
+          "child_table": "SUBSCRIPTIONS",
+          "parent_key": ["TENANT_ID"],
+          "key": {"source": ["ID"], "target": "id"},
+          "fields": [
+            {"source": "PLAN_ID", "target": "planId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+            {"source": "STARTS_ON", "target": "startsOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+            {"source": "ENDS_ON", "target": "endsOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+            {"source": "STATUS_CD", "target": "status", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "SUB_STATUS"}, "rules": ["null_missing_equiv"]},
+            {"source": "SUSPENDED_ON", "target": "suspendedOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]}
+          ]
+        }
+      ],
+      "indexes": [{"keys": {"name": 1}, "unique": true}],
+      "cardinality": "tenants == count(TENANTS); sum(tenants.subscriptions[]) == count(SUBSCRIPTIONS)"
+    },
+    {
+      "collection": "subscription_history",
+      "unit": "U1-reference",
+      "root_table": "SUBSCRIPTIONS_HIST",
+      "key": {"source": ["HIST_ID"], "target": "_id"},
+      "fields": [
+        {"source": "HIST_DT", "target": "at", "source_type": "VARCHAR2(20)", "bson_type": "date", "parse": {"format": "DD-MON-YY HH24:MI:SS", "on_fail": {"target": null, "raw_to": "legacy.histDtRaw"}}, "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "HIST_OP", "target": "op", "source_type": "VARCHAR2(3)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "ID", "target": "subscriptionId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "PLAN_ID", "target": "planId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "STARTS_ON", "target": "startsOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+        {"source": "ENDS_ON", "target": "endsOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+        {"source": "STATUS_CD", "target": "status", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "SUB_STATUS"}, "rules": ["null_missing_equiv"]},
+        {"source": "SUSPENDED_ON", "target": "suspendedOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]}
+      ],
+      "indexes": [{"keys": {"subscriptionId": 1, "at": -1}}],
+      "cardinality": "subscription_history == count(SUBSCRIPTIONS_HIST)",
+      "retention": "none in v1 (Open item 4)"
+    },
+    {
+      "collection": "customers",
+      "unit": "U2-customers",
+      "root_table": "CUSTOMER_MASTER",
+      "key": {"source": ["CUST_ID"], "target": "_id"},
+      "fields": [
+        {"source": "CUST_NO", "target": "custNo", "source_type": "VARCHAR2(20)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "CUST_NAME", "target": "name", "source_type": "VARCHAR2(200)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "LEGAL_NAME", "target": "legalName", "source_type": "VARCHAR2(200)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "DBA_NAME", "target": "dbaName", "source_type": "VARCHAR2(200)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "CUST_TYPE_CD", "target": "type", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "CUST_TYPE"}, "rules": ["null_missing_equiv"]},
+        {"source": "STATUS_CD", "target": "status", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "CUST_STATUS", "unknown_value_policy": "keep_decoded_unknown"}, "rules": ["null_missing_equiv"]},
+        {"source": "SUB_STATUS_CD", "target": "subStatus", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "CUST_STATUS"}, "rules": ["null_missing_equiv"]},
+        {"source": "SEGMENT_CD", "target": "segment", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "note": "no CODES rows: integer unchanged (PRD 5, Open item 5)"},
+        {"source": "REGION_CD", "target": "region", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "note": "no CODES rows: integer unchanged"},
+        {"source": "TERRITORY_CD", "target": "territory", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "note": "100% NULL in source"},
+        {"source": "CHANNEL_CD", "target": "channel", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "note": "100% NULL in source"},
+        {"source": "RATE_CLASS_CD", "target": "rateClass", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "note": "100% NULL in source"},
+        {"source": "TAX_EXEMPT_YN", "target": "flags.taxExempt", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]},
+        {"source": "CREDIT_HOLD_YN", "target": "flags.creditHold", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]},
+        {"source": "DUNNING_EXEMPT_YN", "target": "flags.dunningExempt", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]},
+        {"source": "VIP_YN", "target": "flags.vip", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]},
+        {"source": "CITY", "target": "addresses.0.city", "source_type": "VARCHAR2(100)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "STATE_CD", "target": "addresses.0.state", "source_type": "VARCHAR2(2)", "bson_type": "string", "rules": ["rstrip_spaces", "empty_string_is_null"]},
+        {"source": "ZIP", "target": "addresses.0.zip", "source_type": "VARCHAR2(10)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "ZIP4", "target": "addresses.0.zip4", "source_type": "VARCHAR2(4)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "COUNTRY_CD", "target": "addresses.0.country", "source_type": "VARCHAR2(3)", "bson_type": "string", "rules": ["rstrip_spaces", "empty_string_is_null"]},
+        {"source": "MAIL_CITY", "target": "addresses.1.city", "source_type": "VARCHAR2(100)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "MAIL_STATE_CD", "target": "addresses.1.state", "source_type": "VARCHAR2(2)", "bson_type": "string", "rules": ["rstrip_spaces", "empty_string_is_null"]},
+        {"source": "MAIL_ZIP", "target": "addresses.1.zip", "source_type": "VARCHAR2(10)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "SIGNUP_DT", "target": "dates.signupAt", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.signupDtRaw"}}, "expected_parse_failures": 50, "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "LAST_ACTIVITY_DT", "target": "dates.lastActivityAt", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.lastActivityDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+        {"source": "LAST_INVOICE_DT", "target": "dates.lastInvoiceAt", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.lastInvoiceDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+        {"source": "LAST_PAYMENT_DT", "target": "dates.lastPaymentAt", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.lastPaymentDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+        {"source": "TERMINATE_DT", "target": "dates.terminatedAt", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.terminateDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms", "null_missing_equiv"]},
+        {"source": "CUR_BAL_AMT", "target": "balances.current", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "PAST_DUE_AMT", "target": "balances.pastDue", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "YTD_BILLED_AMT", "target": "balances.ytdBilled", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "LTD_BILLED_AMT", "target": "balances.ltdBilled", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "YTD_PAID_AMT", "target": "balances.ytdPaid", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "CREDIT_LIMIT_AMT", "target": "balances.creditLimit", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "RELATED_ACCT_IDS", "target": "relatedAccountIds", "source_type": "VARCHAR2(400)", "bson_type": "array", "parse": {"csv": true, "on_fail": {"target": [], "raw_to": "legacy.relatedAcctIdsRaw"}}, "expected_parse_failures": 31, "rules": ["csv_split_trim"]},
+        {"source": "CHILD_ACCT_IDS", "target": "childAccountIds", "source_type": "VARCHAR2(400)", "bson_type": "array", "parse": {"csv": true, "on_fail": {"target": [], "raw_to": "legacy.childAcctIdsRaw"}}, "expected_parse_failures": 0, "rules": ["csv_split_trim"]},
+        {"source": "PROMO_CODES_CSV", "target": "promoCodes", "source_type": "VARCHAR2(400)", "bson_type": "array", "parse": {"csv": true, "on_fail": {"target": [], "raw_to": "legacy.promoCodesRaw"}}, "expected_parse_failures": 0, "rules": ["csv_split_trim"]},
+        {"source": "CONTACT_NOTES", "target": "contactNotes", "source_type": "VARCHAR2(2000)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "LEGACY_SYS_KEY", "target": "legacy.sysKey", "source_type": "VARCHAR2(30)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "MAINFRAME_ACCT_NO", "target": "legacy.mainframeAcctNo", "source_type": "VARCHAR2(20)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "CONVERSION_BATCH_NO", "target": "legacy.conversionBatchNo", "source_type": "NUMBER(8,0)", "bson_type": "int", "rules": ["null_missing_equiv"]},
+        {"source": "CUST_SEQ_NO", "target": "legacy.custSeqNo", "source_type": "NUMBER(12,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+        {"source": "CREATED_BY", "target": "audit.createdBy", "source_type": "VARCHAR2(30)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "CREATED_DT", "target": "audit.createdAt", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "UPDATED_BY", "target": "audit.updatedBy", "source_type": "VARCHAR2(30)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "UPDATED_DT", "target": "audit.updatedAt", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "ROW_VERSION_NO", "target": "audit.version", "source_type": "NUMBER(8,0)", "bson_type": "int", "rules": ["null_missing_equiv"]}
+      ],
+      "composed_fields": [
+        {"target": "addresses.0.lines", "sources": ["ADDR_LINE_1", "ADDR_LINE_2", "ADDR_LINE_3", "ADDR_LINE_4", "ADDR_LINE_5", "ADDR_LINE_6"], "rule": "non-null, in column order; array of strings", "kind_literal": "physical"},
+        {"target": "addresses.1.lines", "sources": ["MAIL_ADDR_LINE_1", "MAIL_ADDR_LINE_2", "MAIL_ADDR_LINE_3", "MAIL_ADDR_LINE_4", "MAIL_ADDR_LINE_5", "MAIL_ADDR_LINE_6"], "rule": "non-null, in column order", "kind_literal": "mailing"},
+        {"target": "phones", "sources": ["PHONE1", "PHONE2", "PHONE3", "PHONE4"], "kinds_from": ["PHONE1_TYPE_CD", "PHONE2_TYPE_CD", "PHONE3_TYPE_CD", "PHONE4_TYPE_CD"], "rule": "one element per non-null phone: {number, kind}; kind decoded via CODES type PHONE_TYPE"},
+        {"target": "emails", "sources": ["EMAIL_1", "EMAIL_2", "EMAIL_3"], "rule": "non-null, in column order; array of strings"}
+      ],
+      "dropped_columns": [
+        {"columns": ["CUST_NAME_UPPER"], "reason": "PRD 4.1: trigger-derived; replaced by the collation-2 index on name"},
+        {"columns": ["FLAG_01..FLAG_20", "UDF_01..UDF_40", "UDF_AMT_01..UDF_AMT_10", "UDF_DT_01..UDF_DT_10"], "count": 80, "reason": "PRD Open item 1: profiling found 0 non-null values across 25,000 rows, so the PRD's drop condition is met"},
+        {"columns": ["FAX"], "reason": "carried as a phones[] element with kind decoded from CODES PHONE_TYPE where a fax type code is present; no separate field in the PRD shape"}
+      ],
+      "embeds": [
+        {
+          "array_path": "attributes",
+          "child_table": "ENTITY_ATTR_VALUE",
+          "child_where": "ENTITY_TYPE = 'CUSTOMER'",
+          "parent_key": ["ENTITY_ID"],
+          "key": {"source": ["EAV_ID"], "target": "eavId"},
+          "fields": [
+            {"source": "ATTR_NAME", "target": "name", "source_type": "VARCHAR2(100)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+            {"source": "ATTR_VALUE", "target": "value", "source_type": "VARCHAR2(4000)", "bson_type": "string", "rules": ["empty_string_is_null"], "note": "PRD 4.1: values stay strings in v1"},
+            {"source": "CREATED_DT", "target": "createdAt", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.createdDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms"]}
+          ]
+        }
+      ],
+      "indexes": [
+        {"keys": {"tenantId": 1, "custNo": 1}, "unique": true},
+        {"keys": {"name": 1}, "collation": {"locale": "en", "strength": 2}},
+        {"keys": {"emails": 1}},
+        {"keys": {"tenantId": 1, "status": 1}},
+        {"keys": {"attributes.name": 1}, "sparse": true}
+      ],
+      "cardinality": "customers == count(CUSTOMER_MASTER) == 25000; sum(customers.attributes[]) == count(ENTITY_ATTR_VALUE where entity_type='CUSTOMER') == 8333"
+    },
+    {
+      "collection": "customer_history",
+      "unit": "U2-customers",
+      "root_table": "CUSTOMER_MASTER_HIST",
+      "key": {"source": ["HIST_ID"], "target": "_id"},
+      "inherits_field_rules_from": "customers",
+      "fields": [
+        {"source": "HIST_ID", "target": "histId", "source_type": "NUMBER(12,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+        {"source": "HIST_OP", "target": "op", "source_type": "VARCHAR2(3)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "HIST_DT", "target": "at", "source_type": "VARCHAR2(20)", "bson_type": "date", "parse": {"format": "DD-MON-YY HH24:MI:SS", "on_fail": {"target": null, "raw_to": "legacy.histDtRaw"}}, "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "CUST_ID", "target": "customerId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]}
+      ],
+      "note": "Every other field is the customers mapping applied to the same-named _HIST column, including the 80 dropped flag/udf columns.",
+      "indexes": [{"keys": {"customerId": 1, "at": -1}}],
+      "cardinality": "customer_history == count(CUSTOMER_MASTER_HIST)",
+      "retention": "none in v1 (Open item 4)"
+    },
+    {
+      "collection": "invoices",
+      "unit": "U3-invoices",
+      "root_table": "INVOICE_HEADER",
+      "additional_root_table": "INVOICES",
+      "key": {"source": ["INVOICE_ID"], "target": "_id"},
+      "discriminator": {"target": "source", "values": {"INVOICE_HEADER": "conversion", "INVOICES": "billing"}},
+      "fields": [
+        {"source": "INVOICE_NO", "target": "invoiceNo", "source_type": "VARCHAR2(30)", "bson_type": "string", "rules": ["empty_string_is_null"], "estate": "conversion"},
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"], "estate": "both"},
+        {"source": "CUST_ID", "target": "customer.id", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"], "estate": "conversion"},
+        {"source": "INVOICE_LINE.CUST_NO", "target": "customer.custNo", "source_type": "VARCHAR2(20)", "bson_type": "string", "rules": ["empty_string_is_null"], "estate": "conversion", "note": "PRD 4.3: the name/number copied onto every line is lifted to the header once; all lines of a header carry the same value"},
+        {"source": "INVOICE_LINE.CUST_NAME", "target": "customer.name", "source_type": "VARCHAR2(200)", "bson_type": "string", "rules": ["empty_string_is_null"], "estate": "conversion"},
+        {"source": "INVOICE_DT", "target": "invoiceDate", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.invoiceDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms"], "estate": "conversion"},
+        {"source": "DUE_DT", "target": "dueDate", "source_type": "VARCHAR2(9)", "bson_type": "date", "parse": {"format": "DD-MON-YY", "on_fail": {"target": null, "raw_to": "legacy.dueDtRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms"], "estate": "conversion"},
+        {"source": "STATUS_CD", "target": "status", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "INV_STATUS"}, "rules": ["null_missing_equiv"], "estate": "both"},
+        {"source": "TOTAL_AMT", "target": "totals.total", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"], "estate": "conversion", "note": "PRD 4.3: conversion rows have total only; subtotal and tax are absent, not zero"},
+        {"source": "BATCH_NO", "target": "legacy.batchNo", "source_type": "NUMBER(8,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "estate": "conversion"},
+        {"source": "INVOICES.ISSUED_AT", "target": "invoiceDate", "source_type": "TIMESTAMP(6)", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"], "estate": "billing"},
+        {"source": "INVOICES.PERIOD_ID", "target": "periodId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"], "estate": "billing"},
+        {"source": "INVOICES.SUBTOTAL", "target": "totals.subtotal", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"], "estate": "billing"},
+        {"source": "INVOICES.TAX", "target": "totals.tax", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"], "estate": "billing"},
+        {"source": "INVOICES.TOTAL", "target": "totals.total", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"], "estate": "billing"}
+      ],
+      "embeds": [
+        {
+          "array_path": "lines",
+          "child_table": "INVOICE_LINE",
+          "parent_key": ["INVOICE_ID"],
+          "key": {"source": ["LINE_ID"], "target": "lineId"},
+          "estate": "conversion",
+          "fields": [
+            {"source": "LINE_NO", "target": "lineNo", "source_type": "NUMBER(6,0)", "bson_type": "int", "rules": ["null_missing_equiv"]},
+            {"source": "LINE_TYPE_CD", "target": "type", "source_type": "NUMBER(4,0)", "bson_type": "int", "rules": ["null_missing_equiv"], "note": "no CODES type for invoice line types: integer unchanged (PRD 5)"},
+            {"source": "ITEM_DESC", "target": "description", "source_type": "VARCHAR2(400)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+            {"source": "QTY", "target": "qty", "source_type": "NUMBER(12,3)", "bson_type": "decimal", "rules": ["decimal_round"]},
+            {"source": "UNIT_PRICE", "target": "unitPrice", "source_type": "NUMBER(14,4)", "bson_type": "decimal", "rules": ["decimal_round"]},
+            {"source": "AMOUNT", "target": "amount", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+            {"source": "TAX_AMT", "target": "taxAmt", "source_type": "NUMBER(14,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+            {"source": "SERVICE_PERIOD", "target": "servicePeriod", "source_type": "VARCHAR2(20)", "bson_type": "object", "parse": {"format": "MMYYYY-MMYYYY", "to": {"from": "date", "to": "date"}, "on_fail": {"target": null, "raw_to": "legacy.servicePeriodRaw"}}, "expected_parse_failures": 0, "rules": ["datetime_utc_truncate_ms"]},
+            {"source": "POSTED_YN", "target": "posted", "source_type": "CHAR(1)", "bson_type": "bool", "rules": ["rstrip_spaces", "yn_to_bool", "null_missing_equiv"]},
+            {"source": "GL_ACCT_CSV", "target": "glAccounts", "source_type": "VARCHAR2(200)", "bson_type": "array", "parse": {"csv": true, "on_fail": {"target": [], "raw_to": "legacy.glAcctCsvRaw"}}, "expected_parse_failures": 0, "rules": ["csv_split_trim"]},
+            {"source": "BATCH_NO", "target": "batchNo", "source_type": "NUMBER(8,0)", "bson_type": "int", "rules": ["null_missing_equiv"]},
+            {"source": "SRC_SYSTEM", "target": "srcSystem", "source_type": "VARCHAR2(10)", "bson_type": "string", "rules": ["empty_string_is_null"]}
+          ]
+        },
+        {
+          "array_path": "lines",
+          "child_table": "INVOICE_LINES",
+          "parent_key": ["INVOICE_ID"],
+          "key": {"source": ["ID"], "target": "lineId"},
+          "estate": "billing",
+          "fields": [
+            {"source": "LINE_NO", "target": "lineNo", "source_type": "NUMBER(6,0)", "bson_type": "int", "rules": ["null_missing_equiv"]},
+            {"source": "LINE_TYPE", "target": "type", "source_type": "VARCHAR2(10)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+            {"source": "DESCRIPTION", "target": "description", "source_type": "VARCHAR2(400)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+            {"source": "AMOUNT", "target": "amount", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"]}
+          ]
+        },
+        {
+          "array_path": "dunning",
+          "child_table": "DUNNING_ATTEMPTS",
+          "parent_key": ["INVOICE_ID"],
+          "key": {"source": ["ATTEMPT_NO"], "target": "attemptNo"},
+          "estate": "billing",
+          "fields": [
+            {"source": "SCHEDULED_FOR", "target": "scheduledFor", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+            {"source": "STATUS_CD", "target": "status", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "DUN_STATUS"}, "rules": ["null_missing_equiv"]}
+          ]
+        }
+      ],
+      "indexes": [
+        {"keys": {"tenantId": 1, "invoiceDate": -1}},
+        {"keys": {"customer.id": 1, "invoiceDate": -1}},
+        {"keys": {"invoiceNo": 1}, "unique": true, "sparse": true},
+        {"keys": {"status": 1, "dueDate": 1}}
+      ],
+      "cardinality": "invoices == count(INVOICE_HEADER) + count(INVOICES) == 18753; sum(invoices.lines[]) + invoice_lines_orphaned == count(INVOICE_LINE) + count(INVOICE_LINES) == 150002; sum(invoices.dunning[]) == count(DUNNING_ATTEMPTS)"
+    },
+    {
+      "collection": "invoice_lines_orphaned",
+      "unit": "U3-invoices",
+      "root_table": "INVOICE_LINE",
+      "root_where": "NOT EXISTS (SELECT 1 FROM INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID)",
+      "key": {"source": ["LINE_ID"], "target": "_id"},
+      "inherits_field_rules_from": "invoices.lines[conversion]",
+      "fields": [
+        {"source": "INVOICE_ID", "target": "invoiceId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"], "note": "the dangling reference, kept as-is. No header is invented."}
+      ],
+      "expected_count": 37,
+      "cardinality": "invoice_lines_orphaned == 37 exactly (anomaly budget); a different number is a finding"
+    },
+    {
+      "collection": "usage_events",
+      "unit": "U4-usage",
+      "root_table": "USAGE_EVENTS",
+      "key": {"source": ["ID"], "target": "_id"},
+      "collection_type": "standard",
+      "fields": [
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "OCCURRED_AT", "target": "occurredAt", "source_type": "TIMESTAMP(6)", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "UNITS", "target": "units", "source_type": "NUMBER(10,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+        {"source": "KIND_CD", "target": "kind", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "USAGE_KIND"}, "rules": ["null_missing_equiv"]}
+      ],
+      "validator": {"$jsonSchema": {"bsonType": "object", "required": ["tenantId", "occurredAt", "units", "kind"], "properties": {"units": {"bsonType": ["long", "int"], "minimum": 1}, "kind": {"enum": ["api", "storage", "compute"]}}}},
+      "validator_source": "trg_usage_events_check (units > 0, kind in enum)",
+      "indexes": [{"keys": {"tenantId": 1, "occurredAt": 1}}],
+      "cardinality": "usage_events == count(USAGE_EVENTS)"
+    },
+    {
+      "collection": "rating_periods",
+      "unit": "U4-usage",
+      "root_table": "RATING_PERIODS",
+      "key": {"source": ["ID"], "target": "_id"},
+      "fields": [
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "PERIOD_START", "target": "periodStart", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "PERIOD_END", "target": "periodEnd", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]}
+      ],
+      "embeds": [
+        {
+          "array_path": "results",
+          "child_table": "RATING_RESULTS",
+          "parent_key": ["PERIOD_ID"],
+          "key": {"source": ["ID"], "target": "id"},
+          "fields": [
+            {"source": "SUBSCRIPTION_ID", "target": "subscriptionId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+            {"source": "USED_UNITS", "target": "usedUnits", "source_type": "NUMBER(10,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+            {"source": "QUOTA_UNITS", "target": "quotaUnits", "source_type": "NUMBER(10,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+            {"source": "ROLLOVER_UNITS", "target": "rolloverUnits", "source_type": "NUMBER(10,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+            {"source": "BILLABLE_UNITS", "target": "billableUnits", "source_type": "NUMBER(10,0)", "bson_type": "long", "rules": ["null_missing_equiv"]},
+            {"source": "OVERAGE_AMOUNT", "target": "overageAmount", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+            {"source": "CREATED_AT", "target": "createdAt", "source_type": "TIMESTAMP(6)", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]}
+          ]
+        }
+      ],
+      "indexes": [{"keys": {"tenantId": 1, "periodStart": -1}}],
+      "cardinality": "rating_periods == count(RATING_PERIODS); sum(rating_periods.results[]) == count(RATING_RESULTS)"
+    },
+    {
+      "collection": "credit_notes",
+      "unit": "U5-ancillary",
+      "root_table": "CREDIT_NOTES",
+      "key": {"source": ["ID"], "target": "_id"},
+      "fields": [
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "ISSUED_ON", "target": "issuedOn", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "AMOUNT", "target": "amount", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"]},
+        {"source": "REMAINING_AMOUNT", "target": "remainingAmount", "source_type": "NUMBER(12,2)", "bson_type": "decimal", "rules": ["decimal_round"]}
+      ],
+      "indexes": [{"keys": {"tenantId": 1, "issuedOn": 1}}],
+      "cardinality": "credit_notes == count(CREDIT_NOTES)"
+    },
+    {
+      "collection": "notifications",
+      "unit": "U5-ancillary",
+      "root_table": "NOTIFICATIONS",
+      "key": {"source": ["ID"], "target": "_id"},
+      "fields": [
+        {"source": "TENANT_ID", "target": "tenantId", "source_type": "VARCHAR2(36)", "bson_type": "string", "rules": ["null_missing_equiv"]},
+        {"source": "KIND_CD", "target": "kind", "source_type": "NUMBER(4,0)", "bson_type": "string", "decode": {"codes_type": "NOTIF_KIND"}, "rules": ["null_missing_equiv"]},
+        {"source": "SENT_AT", "target": "sentAt", "source_type": "TIMESTAMP(6)", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]}
+      ],
+      "indexes": [{"keys": {"tenantId": 1, "kind": 1, "sentAt": 1}, "unique": true}],
+      "cardinality": "notifications == count(NOTIFICATIONS)"
+    },
+    {
+      "collection": "audit_log",
+      "unit": "U5-ancillary",
+      "root_table": "BILLING_AUDIT_LOG",
+      "key": {"source": ["LOG_ID"], "target": "_id"},
+      "fields": [
+        {"source": "LOGGED_AT", "target": "loggedAt", "source_type": "DATE", "bson_type": "date", "rules": ["datetime_utc_truncate_ms"]},
+        {"source": "MODULE", "target": "module", "source_type": "VARCHAR2(30)", "bson_type": "string", "rules": ["empty_string_is_null"]},
+        {"source": "MESSAGE", "target": "message", "source_type": "VARCHAR2(4000)", "bson_type": "string", "rules": ["empty_string_is_null"]}
+      ],
+      "indexes": [{"keys": {"loggedAt": 1}, "expireAfterSeconds": 7776000, "note": "TTL 90 days, matching JOB_PURGE_AUDIT_LOG (Open item 4)"}],
+      "cardinality": "audit_log == count(BILLING_AUDIT_LOG)"
+    }
+  ]
 }

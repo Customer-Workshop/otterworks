@@ -1,0 +1,26 @@
+{
+  "wave": 0,
+  "repo": "github.com/Cognition-Partner-Workshops/otterworks",
+  "branch": "tp-run/mongodb-20260915T045208Z",
+  "child_macro": "!mongo_unit_migration",
+  "verify_macro": "!mongo_reconciliation",
+  "width": 1,
+  "breaker_threshold": 3,
+  "auto_merge": true,
+  "child_minutes": 45,
+  "execution": "in-session (1 batch; the orchestrator playbook runs waves of 1-2 batches here, not through migration-fanout)",
+  "batches": [
+    {
+      "id": "w0-b01",
+      "units": ["plans", "codes", "tenants", "subscription_history"],
+      "write_targets": [
+        "ow_billing_migration.plans",
+        "ow_billing_migration.codes",
+        "ow_billing_migration.tenants",
+        "ow_billing_migration.subscription_history"
+      ],
+      "brief": "Reference data for the OW_BILLING -> Atlas migration. Everything in wave 1 depends on it, so it runs first and alone.\n\nSOURCE: Oracle Free 23c, PDB FREEPDB1, schema OW_BILLING, container otterworks-oracle-billing-oracle-billing-1, namespace demo, seed 714559852. DSN secret name: ORACLE_BILLING_URI. READ-ONLY: there is no read-only account on this fixture, so every statement you send must be SELECT or WITH. No DDL, no DML, no session settings that change data. (AGENTS.md rule 1; .migration/06_access_checklist.md A2.)\n\nTARGET: Atlas M0, project otterworks-demos, database ow_billing_migration. URI secret name: MONGODB_ATLAS_URI. Write nowhere else; .migration/allowed_targets.json is the allowlist and the harness enforces it.\n\nCAPABILITY PREFLIGHT: /home/ubuntu/repos/otterworks/.tp-preflight/atlas-capabilities.json - 8 probes, all verified, 0 denied paths, checked 2026-09-15T04:52Z (project/cluster/db-user/access-list read, access-list create+delete, VM IP listed, DB user insert+delete). M0: demo scale only, no sharding, no free-tier-unsupported features, keep index counts modest.\n\nMAPPING: .migration/03_mapping_spec.json, collections plans, codes, tenants, subscription_history. Implement it exactly. The PRD is the target model; do not add a collection or a field it does not call for. tenants embeds SUBSCRIPTIONS as tenants.subscriptions[] keyed on the subscription ID. codes uses the composite _id CODE_TYPE:CODE_VAL. Every other _id is the source primary key unchanged - no ObjectIds, no crosswalk.\n\nTOLERANCES: .migration/02_tolerances.json. Exact numeric and date parity; money aggregates to 0.01. Canonicalization: .migration/canonicalization.json.\n\nEXPECTED COUNTS: plans 3, codes 32, tenants 69 (60 in namespace demo plus 9 static baseline), subscriptions 69 embedded, subscription_history 0 (the table is trigger-fed and empty; an empty collection is the correct result, not a failure).\n\nRECON: run the harness in fixture mode while developing, then one live run inside the source concurrency cap of 2. Tier 1 count parity is the gate. Recompute from the target; never copy load-side numbers into the report. Artifact must be *.recon.json with \"kind\": \"recon-report\".\n\nPR: one PR for this batch into tp-run/mongodb-20260915T045208Z. It must pass `make tp-smoke`. Follow .agents/skills/tp-pre-pr-self-check/SKILL.md before opening it. Do not edit .migration/. Do not merge your own PR.",
+      "notes": "subscription_history is grouped here rather than with a wave-1 unit because it shares SUBSCRIPTIONS' shape and the PRD's four parallel units do not name it. Flagged at STOP B."
+    }
+  ]
+}

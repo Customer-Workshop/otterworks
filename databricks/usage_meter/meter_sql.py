@@ -175,6 +175,11 @@ WHEN NOT MATCHED THEN INSERT *"""
 # Rows arriving from bronze since the silver watermark, typed once and reused by the
 # reject and the merge statements.
 def _typed_batch(ns: Namespace, watermark: str, high: str) -> str:
+    return _typed(ns, f"""WHERE r.ingested_at > CAST('{watermark}' AS TIMESTAMP_NTZ)
+  AND r.ingested_at <= CAST('{high}' AS TIMESTAMP_NTZ)""")
+
+
+def _typed(ns: Namespace, where: str = "") -> str:
     return f"""SELECT r.event_id,
        r.tenant_id,
        TRY_CAST(r.occurred_at AS TIMESTAMP_NTZ) AS occurred_at,
@@ -190,8 +195,7 @@ FROM {ns.raw} r
 LEFT JOIN (SELECT CAST(code_val AS SMALLINT) AS code_val, code_desc AS code_name
            FROM ow_tp.bronze.codes WHERE code_type = 'USAGE_KIND') c
   ON TRY_CAST(r.kind_cd AS SMALLINT) = c.code_val
-WHERE r.ingested_at > CAST('{watermark}' AS TIMESTAMP_NTZ)
-  AND r.ingested_at <= CAST('{high}' AS TIMESTAMP_NTZ)"""
+{where}"""
 
 
 _REJECT_REASON = """CASE
@@ -203,6 +207,25 @@ _REJECT_REASON = """CASE
   WHEN kind_cd IS NULL THEN 'unparseable usage kind'
   WHEN metric IS NULL THEN 'unknown usage kind'
 END"""
+
+
+def _not_quarantined(ns: Namespace, alias: str) -> str:
+    """True for a bronze row that is not the row a reject was recorded for.
+
+    One `COPY INTO` load stamps every row with the same `ingested_at`, so the
+    file and the arrival time do not identify a row on their own: a good and a
+    bad copy of one event id in one file share both. The whole raw payload is
+    compared, which is what the rejects table stores.
+    """
+    return f"""NOT EXISTS (
+    SELECT 1 FROM {ns.rejects} x
+    WHERE x.event_id <=> {alias}.event_id
+      AND x.tenant_id <=> {alias}.tenant_id
+      AND x.occurred_at <=> {alias}.occurred_at_raw
+      AND x.units <=> {alias}.units_raw
+      AND x.kind_cd <=> {alias}.kind_cd_raw
+      AND x.source_file <=> {alias}.source_file
+      AND x.ingested_at <=> {alias}.ingested_at)"""
 
 
 def quarantine_rejects(ns: Namespace, watermark: str, high: str) -> str:
@@ -233,7 +256,7 @@ WHEN NOT MATCHED THEN INSERT (
 def merge_silver(ns: Namespace, watermark: str, high: str) -> str:
     """Dedupe on event id, first arrival wins; a later copy only bumps the counters.
 
-    Two properties the obvious version does not have:
+    Three properties the obvious version does not have:
 
     * `COPY INTO` stamps every row of one load with the same `ingested_at`, so
       ordering on it alone cannot separate two copies that landed together. One
@@ -241,23 +264,35 @@ def merge_silver(ns: Namespace, watermark: str, high: str) -> str:
       each column independently, so a silver row is always one real event.
     * `seen_count` and `last_seen_at` are counted over every copy in bronze, not
       added to what is already in silver, so a retried stage converges on the
-      same numbers instead of inventing arrivals.
+      same numbers instead of inventing arrivals. Copies already recorded in the
+      rejects table are left out, so a rejected copy of the id cannot backdate
+      `first_seen_at` and make a timely event look late. Membership of that table
+      is the persisted decision; re-deriving it would let a row rejected for an
+      unknown usage kind turn valid later, once the code is added.
+    * The matched branch rewrites `first_seen_at` and the two fields derived from
+      it, so a row that predates this rule is corrected, not left contaminated.
     """
     return f"""MERGE INTO {ns.events} t
 USING (
   WITH batch AS (
-    SELECT *, {_REJECT_REASON} AS reject_reason
-    FROM ({_typed_batch(ns, watermark, high)})
+    SELECT b.*, {_REJECT_REASON} AS reject_reason
+    FROM ({_typed_batch(ns, watermark, high)}) b
+    WHERE {_not_quarantined(ns, "b")}
   ),
   valid AS (SELECT * FROM batch WHERE reject_reason IS NULL),
+  history AS (
+    SELECT h.event_id, h.ingested_at
+    FROM ({_typed(ns)}) h
+    WHERE {_not_quarantined(ns, "h")}
+  ),
   arrivals AS (
-    SELECT r.event_id,
+    SELECT event_id,
            COUNT(*) AS seen_count,
-           MIN(r.ingested_at) AS first_seen_at,
-           MAX(r.ingested_at) AS last_seen_at
-    FROM {ns.raw} r
-    WHERE r.event_id IN (SELECT event_id FROM valid)
-    GROUP BY r.event_id
+           MIN(ingested_at) AS first_seen_at,
+           MAX(ingested_at) AS last_seen_at
+    FROM history
+    WHERE event_id IN (SELECT event_id FROM valid)
+    GROUP BY event_id
   ),
   ranked AS (
     SELECT *, ROW_NUMBER() OVER (
@@ -273,8 +308,13 @@ USING (
 ) s
 ON t.event_id = s.event_id
 WHEN MATCHED THEN UPDATE SET
+  t.first_seen_at = s.first_seen_at,
   t.last_seen_at = GREATEST(t.last_seen_at, s.last_seen_at),
-  t.seen_count = s.seen_count
+  t.seen_count = s.seen_count,
+  t.arrival_lag_seconds =
+    CAST(UNIX_TIMESTAMP(s.first_seen_at) - UNIX_TIMESTAMP(t.occurred_at) AS BIGINT),
+  t.is_late =
+    (UNIX_TIMESTAMP(s.first_seen_at) - UNIX_TIMESTAMP(t.occurred_at)) > {LATE_THRESHOLD_SECONDS}
 WHEN NOT MATCHED THEN INSERT (
   event_id, tenant_id, occurred_at, event_date, period_start, period_end,
   kind_cd, metric, units, first_seen_at, last_seen_at, seen_count,

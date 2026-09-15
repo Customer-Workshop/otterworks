@@ -123,3 +123,51 @@ independently of this row.
 been dead for years, so the estate does not reveal who reads the month-end close today or
 what artifact they accept. Pipeline 2 cannot state acceptance criteria without it. Not
 blocking now; blocking at pipeline 2's STOP C.
+
+---
+
+## D-009 — The util package's audit write is declared, not dropped
+
+**Date:** 2026-09-15 · **Decided by:** owner (relayed by the parent) · **Status:** accepted
+
+`pkg_ow_util.log_msg` inserts into the audit table, and every other package calls it, so any
+unit converting a package inherits a write to `billing.billing_audit_log` that its own batch
+does not declare. It halted wave 2 (w2-a) and then wave 3 twice (`p1-pkg-rating`,
+`p1-pkg-invoicing`); a third batch (`p1-pkg-dunning`) converted without the logging to stay
+inside its declared scope, which is the wrong resolution — the logging is legacy behaviour we
+preserve.
+
+Decision: declare `billing.billing_audit_log` as a runtime write on every batch whose unit
+converts a package (w3-a, w3-b, w3-d here), restore the dropped `log_msg` calls in
+`p1-pkg-dunning`, and re-run the collision check. `sp_issue_invoice` also calls
+`pkg_rating.sp_finalize_rating`, so `p1-pkg-invoicing` genuinely writes
+`billing.rating_periods` and `billing.rating_results`; those are declared too rather than
+re-cutting the unit boundary this late.
+
+Consequence on sequencing: a runtime write is only safe once the owning unit merged in an
+earlier wave, because same-wave batches share one Lakebase branch and would otherwise race.
+Wave 3 owns the two rating tables, so `p1-pkg-invoicing` moves from batch w3-b to a new
+wave-4 batch `w4-b` (wave 4 width 2). The unit boundary is unchanged; only its wave is.
+Manifests revalidate at 27 units / 47 write targets / 11 runtime writes / no collisions.
+
+Carried to STOP E as one named finding: the util package writes the audit log from inside
+every other package, so a manifest that does not model it produces an undeclared write in
+every package unit.
+
+---
+
+## D-010 — Oracle TIMESTAMP maps to Postgres `timestamp`, not `timestamptz`
+
+**Date:** 2026-09-15 · **Decided by:** parent (delegated non-blocking call) · **Status:** accepted
+
+Six frozen mapping specs typed an Oracle `TIMESTAMP` column as Postgres `timestamptz`
+(`p1-invoices`, `p1-rating-results`, `p1-notifications`, `p1-pkg-invoicing`, `p1-pkg-rating`,
+`p1-pkg-dunning`). Plain Oracle `TIMESTAMP` carries no zone, so a zone-aware target column
+reads back as a different value and fails tier 3 on every row. All three wave-3 batches found
+it independently.
+
+This is a spec defect corrected after the freeze, not a tolerance change: tolerances stay
+frozen, money stays exact, and canonicalization is untouched. The six specs now read
+`timestamp(6)` and `gen_mapping_specs.py` emits `timestamp(p)` for the `TIMESTAMP` base type,
+so the defect cannot be regenerated. STOP E records that six columns were re-typed after the
+specs were frozen, and why.

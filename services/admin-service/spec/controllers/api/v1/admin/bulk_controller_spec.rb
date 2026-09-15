@@ -34,5 +34,25 @@ RSpec.describe Api::V1::Admin::BulkController do
       post :users, params: { operation: 'suspend', user_ids: [] }
       expect(response).to have_http_status(:bad_request)
     end
+
+    it 'lets a super admin update roles in bulk' do
+      post :users, params: { operation: 'update_role', user_ids: user_ids, role: 'editor' }
+      expect(response).to have_http_status(:ok)
+      expect(users.map { |u| u.reload.role }.uniq).to eq(['editor'])
+    end
+
+    it 'forbids non-super-admins from updating roles in bulk' do
+      set_jwt_env(request, role: 'admin')
+      post :users, params: { operation: 'update_role', user_ids: user_ids, role: 'super_admin' }
+      expect(response).to have_http_status(:forbidden)
+      expect(users.map { |u| u.reload.role }.uniq).to eq(['viewer'])
+    end
+
+    it 'forbids a caller from changing their own role in bulk' do
+      set_jwt_env(request, user_id: users.first.id, role: 'super_admin')
+      post :users, params: { operation: 'update_role', user_ids: user_ids, role: 'editor' }
+      expect(response).to have_http_status(:forbidden)
+      expect(users.map { |u| u.reload.role }.uniq).to eq(['viewer'])
+    end
   end
 end

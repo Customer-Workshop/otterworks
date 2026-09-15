@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::API
+  ROLE_MANAGER_ROLES = %w[super_admin].freeze
+
   before_action :set_request_metadata
 
   rescue_from StandardError do |e|
@@ -30,6 +32,14 @@ class ApplicationController < ActionController::API
 
   def current_user_role
     request.env['jwt.user_role']
+  end
+
+  def role_manager?
+    ROLE_MANAGER_ROLES.include?(current_user_role)
+  end
+
+  def render_forbidden(message = 'Forbidden')
+    render json: { error: message }, status: :forbidden
   end
 
   def set_request_metadata

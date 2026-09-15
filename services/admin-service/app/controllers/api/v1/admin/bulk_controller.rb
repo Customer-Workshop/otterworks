@@ -11,6 +11,13 @@ module Api
             return render json: { error: 'user_ids must be a non-empty array' }, status: :bad_request
           end
 
+          if operation == 'update_role'
+            return render_forbidden('Only super admins can change roles') unless role_manager?
+            if user_ids.map(&:to_s).include?(current_user_id.to_s)
+              return render_forbidden('Cannot change your own role')
+            end
+          end
+
           result = BulkOperationsService.process(
             operation: operation,
             user_ids: user_ids,

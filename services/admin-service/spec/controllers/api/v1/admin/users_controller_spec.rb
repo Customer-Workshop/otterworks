@@ -64,8 +64,58 @@ RSpec.describe Api::V1::Admin::UsersController do
     end
 
     it 'returns errors for invalid params' do
-      put :update, params: { id: user.id, user: { role: 'invalid_role' } }
+      put :update, params: { id: user.id, user: { email: 'not-an-email' } }
       expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'ignores role in the update payload' do
+      put :update, params: { id: user.id, user: { display_name: 'New Name', role: 'super_admin' } }
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.role).to eq('viewer')
+    end
+
+    it 'does not let a caller promote their own account via update' do
+      set_jwt_env(request, user_id: user.id, role: 'viewer')
+      put :update, params: { id: user.id, user: { role: 'super_admin' } }
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.role).to eq('viewer')
+    end
+  end
+
+  describe 'PUT #update_role' do
+    let(:user) { create(:admin_user) }
+
+    it 'lets a super admin change another user\'s role' do
+      put :update_role, params: { id: user.id, role: 'editor' }
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)['role']).to eq('editor')
+      expect(user.reload.role).to eq('editor')
+    end
+
+    it 'rejects an invalid role' do
+      put :update_role, params: { id: user.id, role: 'invalid_role' }
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(user.reload.role).to eq('viewer')
+    end
+
+    it 'returns 400 when role is missing' do
+      put :update_role, params: { id: user.id }
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    %w[admin editor viewer].each do |caller_role|
+      it "forbids a #{caller_role} from changing roles" do
+        set_jwt_env(request, role: caller_role)
+        put :update_role, params: { id: user.id, role: 'super_admin' }
+        expect(response).to have_http_status(:forbidden)
+        expect(user.reload.role).to eq('viewer')
+      end
+    end
+
+    it 'forbids a caller from changing their own role' do
+      set_jwt_env(request, user_id: user.id, role: 'super_admin')
+      put :update_role, params: { id: user.id, role: 'viewer' }
+      expect(response).to have_http_status(:forbidden)
     end
   end
 

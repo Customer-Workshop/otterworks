@@ -2,7 +2,8 @@ module Api
   module V1
     module Admin
       class UsersController < ApplicationController
-        before_action :set_user, only: %i[show update destroy suspend activate]
+        before_action :set_user, only: %i[show update destroy suspend activate update_role]
+        before_action :authorize_role_change, only: :update_role
 
         # GET /api/v1/admin/users
         def index
@@ -29,7 +30,7 @@ module Api
 
         # PUT /api/v1/admin/users/:id
         def update
-          previous_attributes = @user.attributes.slice('role', 'display_name', 'email')
+          previous_attributes = @user.attributes.slice('display_name', 'email')
 
           if @user.update(user_params)
             AuditLogger.log(
@@ -38,7 +39,26 @@ module Api
               resource_id: @user.id,
               request: request,
               changes_made: { before: previous_attributes,
-                              after: @user.attributes.slice('role', 'display_name', 'email') }
+                              after: @user.attributes.slice('display_name', 'email') }
+            )
+            render json: @user, serializer: AdminUserSerializer, include_quota: true
+          else
+            render json: { error: 'Validation failed', details: @user.errors.full_messages },
+                   status: :unprocessable_entity
+          end
+        end
+
+        # PUT /api/v1/admin/users/:id/role
+        def update_role
+          previous_role = @user.role
+
+          if @user.update(role: params.require(:role))
+            AuditLogger.log(
+              action: 'user.role_updated',
+              resource_type: 'AdminUser',
+              resource_id: @user.id,
+              request: request,
+              changes_made: { before: { role: previous_role }, after: { role: @user.role } }
             )
             render json: @user, serializer: AdminUserSerializer, include_quota: true
           else
@@ -96,8 +116,14 @@ module Api
           @user = AdminUser.includes(:storage_quota).find(params[:id]) # nosemgrep: ruby.rails.security.brakeman.check-unscoped-find.check-unscoped-find
         end
 
+        def authorize_role_change
+          return render_forbidden('Only super admins can change roles') unless role_manager?
+
+          render_forbidden('Cannot change your own role') if @user.id.to_s == current_user_id.to_s
+        end
+
         def user_params
-          params.require(:user).permit(:email, :display_name, :role, :avatar_url) # nosemgrep: ruby.lang.security.model-attr-accessible.model-attr-accessible
+          params.require(:user).permit(:email, :display_name, :avatar_url)
         end
       end
     end

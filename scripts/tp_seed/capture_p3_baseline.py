@@ -573,6 +573,58 @@ def capture_analytics_daily(snapshot: Path, out: Path, ns: str) -> dict:
     return result
 
 
+# ── usage rollup (Scala) ───────────────────────────────────────
+
+
+def capture_usage_rollup(snapshot: Path, out: Path) -> dict:
+    """Run the legacy Scala UsageRollupJob over the snapshot's NDJSON and keep its report.
+
+    The JVM does the arithmetic, not this script. Reimplementing the aggregator in
+    Python here would make the baseline agree with a converted job for whatever reason
+    the reimplementation got wrong.
+
+    The estate runs this job with its output on an emptyDir that the pod discards on
+    exit (F-0.6), so there is no downstream artefact to read. The capture points
+    ROLLUP_OUTPUT at a file it owns and reads the report the job wrote before exiting.
+
+    sbt fetches its launcher from Maven Central, which rate-limits these hosts. Pass an
+    already-downloaded launcher in P3_SBT_LAUNCH to skip the fetch.
+    """
+    service = REPO / "services" / "analytics-service"
+    report = out / "usage_rollup_legacy.json"
+    launcher = os.environ.get("P3_SBT_LAUNCH")
+    if launcher:
+        cmd = ["java", "-jar", launcher, "runMain com.otterworks.analytics.batch.UsageRollupJob"]
+    elif shutil.which("sbt"):
+        cmd = ["sbt", "runMain com.otterworks.analytics.batch.UsageRollupJob"]
+    else:
+        raise SystemExit(
+            "no sbt on PATH and P3_SBT_LAUNCH is unset, so the legacy Scala job cannot "
+            "be run. Record the usage baseline as unverified rather than substituting a "
+            "Python reimplementation of the aggregator.")
+
+    started = datetime.now(tz=timezone.utc)
+    proc = subprocess.run(
+        cmd, cwd=str(service), capture_output=True, text=True, timeout=1800, check=False,
+        env={**os.environ, "TZ": "UTC", "LC_ALL": "C", "LANG": "C",
+             "ROLLUP_INPUT": str(snapshot / "usage-events.ndjson"),
+             "ROLLUP_OUTPUT": str(report)})
+    result = {
+        "job": "UsageRollupJob.scala",
+        "exit_code": proc.returncode,
+        "stdout": proc.stdout,
+        "stderr": proc.stderr,
+        "started_at": started.isoformat(),
+        "duration_s": round((datetime.now(tz=timezone.utc) - started).total_seconds(), 3),
+        "input": str(snapshot / "usage-events.ndjson"),
+        "report": json.loads(report.read_text()) if report.exists() else None,
+    }
+    report.unlink(missing_ok=True)
+    (out / "p3-usage-rollup.baseline.json").write_text(
+        json.dumps(result, sort_keys=True, indent=2) + "\n")
+    return result
+
+
 def legacy_analytics_date() -> str:
     """The partition date analytics_daily.py will compute for a run started now."""
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
@@ -602,7 +654,8 @@ def main() -> int:
     ap.add_argument("--snapshot", required=True,
                     help="the immutable snapshot directory written by gen_p3_fixture.py")
     ap.add_argument("--out", default=".migration/baselines/p3")
-    ap.add_argument("--only", choices=["analytics-daily", "storage-cleanup", "audit-archive"],
+    ap.add_argument("--only", choices=["analytics-daily", "storage-cleanup", "audit-archive",
+                                      "usage-rollup"],
                     action="append")
     ap.add_argument("--allow-date-drift", action="store_true",
                     help="run even when the fixture's run_date is not today; "
@@ -638,7 +691,8 @@ def main() -> int:
     # A contradictory run must not become the thing the target reconciles to.
     staging = Path(tempfile.mkdtemp(prefix="p3-baseline-"))
 
-    wanted = set(args.only or ["analytics-daily", "storage-cleanup", "audit-archive"])
+    wanted = set(args.only or ["analytics-daily", "storage-cleanup", "audit-archive",
+                               "usage-rollup"])
     summary: dict = {"kind": "p3-baseline-summary", "ns": args.ns,
                      "snapshot": str(snapshot), "captured": sorted(wanted),
                      "fixture_run_date": manifest["run_date"], "captured_on": today,
@@ -654,6 +708,20 @@ def main() -> int:
 
     summary["assertions_failed"] = failures
     summary["valid"] = not failures
+
+    # A --only run replaces the probes it ran and leaves the rest of the committed
+    # summary alone. Writing a fresh summary would delete the other units' evidence
+    # from the file while their baseline JSONs stayed on disk, which reads as "those
+    # probes were never captured".
+    committed = out / "summary.json"
+    if committed.exists():
+        previous = json.loads(committed.read_text())
+        captured_on = {**previous.get("captured_on_by_probe", {}),
+                       **{probe: today for probe in sorted(wanted)}}
+        summary = {**previous, **summary,
+                   "captured": sorted(set(previous.get("captured", [])) | wanted),
+                   "captured_on_by_probe": captured_on,
+                   "assertions_failed": failures}
     (staging / "summary.json").write_text(json.dumps(summary, sort_keys=True, indent=2) + "\n")
 
     if failures:
@@ -757,6 +825,28 @@ def run_probes(snapshot: Path, out: Path, ns: str, wanted: set[str],
             print(f"audit_archive_weekly.py [{shape}]: exit {o['exit_code']}, "
                   f"archive written: {o['wrote_archive']}, "
                   f"source rows deleted: {o['rows_deleted_from_source']}")
+
+    if "usage-rollup" in wanted:
+        manifest = json.loads((snapshot / "manifest.json").read_text())
+        r = capture_usage_rollup(snapshot, out)
+        check(r["exit_code"] == 0,
+              f"UsageRollupJob.scala exited {r['exit_code']}, expected 0")
+        report = r["report"] or {}
+        seeded = manifest.get("counts", {}).get("usage_events")
+        check(bool(report.get("rollups")),
+              "UsageRollupJob.scala wrote no rollups; there is nothing to reconcile against")
+        check(report.get("totalEvents") == seeded,
+              f"the rollups account for {report.get('totalEvents')} events but the "
+              f"snapshot seeded {seeded}; the JVM did not read the whole file")
+        summary["usage_rollup"] = {
+            "exit_code": r["exit_code"],
+            "day_count": report.get("dayCount"),
+            "total_events": report.get("totalEvents"),
+            "window": [report.get("windowStart"), report.get("windowEnd")],
+        }
+        print(f"UsageRollupJob.scala: exit {r['exit_code']}, "
+              f"{report.get('dayCount')} daily rollups over "
+              f"{report.get('totalEvents')} events")
 
 
 if __name__ == "__main__":

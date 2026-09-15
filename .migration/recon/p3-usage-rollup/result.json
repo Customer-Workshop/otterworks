@@ -1,0 +1,63 @@
+{
+  "unit": "p3-usage-rollup",
+  "mode": "live",
+  "mapping_version": "map-p3-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {
+    "batch": "p3probe"
+  },
+  "snapshot": null,
+  "cost": {
+    "source_statements": 5,
+    "source_rows_fetched": 7,
+    "target_statements": 4,
+    "target_rows_fetched": 7,
+    "elapsed_s": 2.195
+  },
+  "generated_at": "2026-09-15T18:00:44.900209+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.p3_usage_legacy_rollup": 7
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 12,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 7,
+      "stats": {
+        "usage_rollup": {
+          "mode": "full_diff",
+          "population": 7,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

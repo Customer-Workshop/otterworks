@@ -9,6 +9,8 @@
       "object": "usage_rollup",
       "source_table": "ow_tp.bronze.p3_usage_legacy_rollup",
       "target_table": "usage_rollup",
+      "root_where": "snapshot_batch = '${batch}'",
+      "target_where": "snapshot_batch = '${batch}'",
       "key": {
         "source": [
           "date"
@@ -21,112 +23,98 @@
         {
           "source": "date",
           "target": "date",
-          "source_type": "STRING",
+          "source_type": "DATE",
           "target_type": "DATE",
-          "rules": [
-            "ISO-8601 yyyy-MM-dd, UTC calendar day of the event timestamp"
-          ]
+          "note": "ISO-8601 yyyy-MM-dd, UTC calendar day of the event timestamp",
+          "rules": []
         },
         {
           "source": "totalEvents",
           "target": "total_events",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "every event of the day, including types with no counter of their own"
-          ]
+          "note": "every event of the day, including types with no counter of their own",
+          "rules": []
         },
         {
           "source": "activeUsers",
           "target": "active_users",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "distinct userId, unattributed values counted as themselves rather than dropped"
-          ]
+          "note": "distinct userId, unattributed values counted as themselves rather than dropped",
+          "rules": []
         },
         {
           "source": "documentsCreated",
           "target": "documents_created",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "eventType == 'document.created' exactly"
-          ]
+          "note": "eventType == 'document.created' exactly",
+          "rules": []
         },
         {
           "source": "documentsViewed",
           "target": "documents_viewed",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "eventType == 'document.viewed' exactly"
-          ]
+          "note": "eventType == 'document.viewed' exactly",
+          "rules": []
         },
         {
           "source": "documentsEdited",
           "target": "documents_edited",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "eventType == 'document.edited' exactly"
-          ]
+          "note": "eventType == 'document.edited' exactly",
+          "rules": []
         },
         {
           "source": "filesUploaded",
           "target": "files_uploaded",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "eventType == 'file.uploaded' exactly"
-          ]
+          "note": "eventType == 'file.uploaded' exactly",
+          "rules": []
         },
         {
           "source": "filesDownloaded",
           "target": "files_downloaded",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "eventType == 'file.downloaded' exactly"
-          ]
+          "note": "eventType == 'file.downloaded' exactly",
+          "rules": []
         },
         {
           "source": "collabSessions",
           "target": "collab_sessions",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "eventType == 'collab.session_started' only; session_ended is not counted"
-          ]
+          "note": "eventType == 'collab.session_started' only; session_ended is not counted",
+          "rules": []
         },
         {
           "source": "storageAllocatedBytes",
           "target": "storage_allocated_bytes",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "sum of metadata['bytes'] over 'storage.allocated' events",
-            "missing or non-numeric contributes 0; negative subtracts"
-          ]
+          "note": "sum of metadata['bytes'] over 'storage.allocated' events; missing or non-numeric contributes 0, negative subtracts",
+          "rules": []
         },
         {
           "source": "storageReleasedBytes",
           "target": "storage_released_bytes",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "sum of metadata['bytes'] over 'storage.released' events",
-            "missing or non-numeric contributes 0; negative subtracts"
-          ]
+          "note": "sum of metadata['bytes'] over 'storage.released' events; missing or non-numeric contributes 0, negative subtracts",
+          "rules": []
         },
         {
           "source": "netStorageBytes",
           "target": "net_storage_bytes",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "allocated minus released; signed, may be negative"
-          ]
+          "note": "allocated minus released; signed, may be negative",
+          "rules": []
         }
       ]
     }

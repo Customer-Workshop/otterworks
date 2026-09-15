@@ -1,0 +1,54 @@
+{
+  "kind": "recon-report",
+  "unit": "p3-usage-rollup",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T17:47:49.062272+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over ow_tp.bronze.p3_usage_legacy_rollup (the rollups UsageRollupJob.scala itself produced)",
+      "checks_run": 1
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, same source table, one check per mapped field",
+      "checks_run": 12
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, keyed on date, all 12 fields compared exact",
+      "checks_run": 7
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "Source side is the JVM's own output: scripts/tp_seed/capture_p3_baseline.py --only usage-rollup runs UsageRollupJob.scala over the pinned seed file and the report is loaded into ow_tp.bronze.p3_usage_legacy_rollup by a loader that imports none of the converted code. A Python reimplementation of the aggregator was deliberately not used as the baseline: it would agree with the SQL for the same wrong reason. Target side is ow_tp.gold.usage_rollup, recomputed in SQL on Delta from the same seed landed into ow_tp.bronze.usage_events_raw. 7 UTC days, 471 events, all 12 DailyUsageRollup fields compared exact including the signed byte totals (net_storage_bytes is negative on every day in this seed, so a clamped or absolute-value target would fail here rather than pass).",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "The same job and batch (snapshot_batch=p3probe) were run twice through `databricks bundle run -t migration ow_tp_p3_usage_rollup_daily`. Row counts and an order-independent md5 over every row of both target tables are identical before and after (idempotency.before.json / idempotency.after.json, from databricks/migration/p3/recon/fingerprint_usage_target.py): usage_events_raw 471 rows md5 a8b088cbf7b1ff758097f0295d7c4b90, usage_rollup 7 rows md5 559f21581a10e8517ba63be78219549c. Only landed_at and generated_at are excluded, because they are clock readings a rerun is meant to change. Landing is a MERGE on (snapshot_batch, source_line) and the rollup load is an INSERT ... REPLACE WHERE on the batch, so a rerun rewrites the same rows rather than doubling them. The key is the NDJSON line rather than the event id, because the legacy aggregates every record it reads and two records may legitimately carry the same id; a merge on the id would both drop a duplicate and fail the rerun as ambiguous."
+  },
+  "legacy_defects_reproduced": [
+    "Event types are matched exactly on the dotted analytics-service vocabulary ('document.created', 'file.uploaded'). This unit does not share analytics_daily's snake_case vocabulary, and an event type outside the counted set still contributes to total_events and to active_users.",
+    "collab.session_started is counted and collab.session_ended is not, so collab_sessions is starts only.",
+    "Bytes come from metadata['bytes'] and nowhere else; a missing or non-numeric value contributes 0 rather than failing the day, and a negative value subtracts.",
+    "active_users is a distinct count over userId as written, with no exclusion of unattributed values."
+  ],
+  "unverified_paths": [
+    "Nothing consumes the rollup. The estate schedules UsageRollupJob.scala from the analytics-service Helm chart at 02:00 UTC and writes its report into an emptyDir the pod discards on exit (F-0.6), so the baseline was read from the job's own output before exit rather than from a downstream reader. Whether this job should run at all, and who should read ow_tp.gold.usage_rollup, is a STOP E question; the converted job is PAUSED.",
+    "Only the pinned seed file is exercised. An empty input, a malformed NDJSON line (fatal in EventLoader.scala), and a day with no storage events are not covered by this run.",
+    "factory-doctor source_principal_read_only: still unverified. The doctor implements privilege queries for SQL Server and Postgres only, so a Databricks-family source can never satisfy the row (P3-D09). Fixing it needs a plugin change, not a runtime workaround.",
+    "Named secrets are unexercised by this unit: it reads the landed snapshot and needs no AWS or Postgres call. ow_tp/aws_migration_access_key_id, ow_tp/aws_migration_secret_access_key and ow_tp/analytics_postgres_password still do not exist in the workspace, and nothing here fell back to the plaintext values in etl/config.ini.",
+    "Structure parity: the harness compares rows, not Delta table properties, comments, or grants."
+  ],
+  "verdict": "PASS"
+}

@@ -1,0 +1,10 @@
+[
+  {"rule": "identity", "applies_to": "*", "params": {}},
+  {"rule": "decimal_round", "applies_to": "NOTHING - declared unused. Every compared value is a count or an exact byte total; rounding would hide a byte the target attributed to the wrong day", "params": {"mode": "half_even", "places": 0}},
+  {"rule": "empty_string_is_null", "applies_to": "NOTHING - declared unused. The only string compared is the date, which is never empty on either side", "params": {}},
+  {"rule": "rstrip_spaces", "applies_to": "NOTHING - declared unused. Nothing compared here carries free text", "params": {}},
+  {"rule": "datetime_utc_truncate_ms", "applies_to": "NOTHING - declared unused. The compared date is a whole UTC calendar day computed from the event instant; the report's generatedAt is not compared at all", "params": {}},
+  {"rule": "collation_casefold", "applies_to": "NOTHING - declared unused. Event types are matched inside the aggregation, not compared as values, and the legacy matches them case-sensitively", "params": {}},
+  {"rule": "null_missing_equiv", "applies_to": "NOTHING - declared unused. Every compared column is NOT NULL on the target, and the legacy emits all twelve fields on every rollup", "params": {}},
+  {"rule": "uuid_normalize", "applies_to": "NOTHING - declared unused. No identifier is compared: the key is the date", "params": {}}
+]

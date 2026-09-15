@@ -329,6 +329,75 @@ resources:
           spec:
             client: "3"
 
+    ow_tp_p3_usage_rollup_daily:
+      name: ow_tp_p3_usage_rollup_daily
+      # The estate schedules UsageRollupJob.scala from the analytics-service Helm chart at
+      # 02:00 UTC, not from the ETL crontab, and writes its report to an emptyDir the pod
+      # discards on exit (F-0.6). The schedule is kept as found, PAUSED; whether anything
+      # should consume the rollup at all is a STOP E question.
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      queue:
+        enabled: true
+      webhook_notifications:
+        on_failure: ${var.failure_webhooks}
+      parameters:
+        # As on ow_tp_p3_analytics_daily: landing reads an already-captured snapshot
+        # directory for the run's own date and fails loudly when there is none. A recon or
+        # backfill run passes --params snapshot_batch=<id>.
+        - name: snapshot_batch
+          default: "{{job.trigger.time.iso_date}}"
+      tasks:
+        # P3-D06: no spark_jar_task. The aggregator is a group-by, so the events are landed
+        # once and the rollup is SQL on Delta; nothing in the Scala needs the JVM.
+        - task_key: land_usage_events
+          spark_python_task:
+            python_file: landing/land_usage_events.py
+            parameters:
+              - --snapshot-dir
+              - ${var.landing_path}/usage/{{job.parameters.snapshot_batch}}
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+              - --skip-upload
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: create_tables
+          depends_on:
+            - task_key: land_usage_events
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - usage_rollup/10_create_gold_usage_rollup.sql
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_gold_usage_rollup
+          depends_on:
+            - task_key: create_tables
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - usage_rollup/11_load_gold_usage_rollup.sql
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "3"
+
     ow_tp_p3_storage_cleanup_daily:
       name: ow_tp_p3_storage_cleanup_daily
       # Legacy: 30 2 * * * on the ETL box.

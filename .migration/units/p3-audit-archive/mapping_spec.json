@@ -25,9 +25,8 @@
           "target": "probe_shape",
           "source_type": "STRING",
           "target_type": "STRING",
-          "rules": [
-            "A-estate | A-tsonly | A-full; the shape is part of the key because the same event_id can appear under more than one probe"
-          ]
+          "note": "A-estate | A-tsonly | A-full; the shape is part of the key because the same event_id can appear under more than one probe",
+          "rules": []
         },
         {
           "source": "event_id",
@@ -41,18 +40,16 @@
           "target": "archived_timestamp",
           "source_type": "STRING",
           "target_type": "STRING",
-          "rules": [
-            "ISO-canonicalised per the frozen posture; the legacy emits .NET round-trip 'O' format on A-estate records and a plain ISO string on the others"
-          ]
+          "note": "compared as the string the record carried, because that is the string the legacy compared against its cutoff",
+          "rules": []
         },
         {
           "source": "payload_json",
           "target": "payload_json",
           "source_type": "STRING",
           "target_type": "STRING",
-          "rules": [
-            "the archived record body, compared as a canonicalised JSON string"
-          ]
+          "note": "the archived record body; both sides write it as canonical JSON (sorted keys, compact separators), so it compares as a plain string",
+          "rules": []
         }
       ]
     },
@@ -88,9 +85,8 @@
           "target": "events_deleted_from_source",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": [
-            "0 on every shape on both sides (F-0.4a, P3-D04)"
-          ]
+          "note": "0 on every shape on both sides (F-0.4a, P3-D04)",
+          "rules": []
         }
       ]
     }

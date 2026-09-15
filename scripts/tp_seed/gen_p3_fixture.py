@@ -105,7 +105,11 @@ LOCALSTACK_ACCOUNT_ID = "123456789012"
 def _aws_kwargs() -> dict:
     endpoint = os.environ.get("AWS_ENDPOINT_URL")
     if not endpoint:
-        return {}
+        raise SystemExit(
+            "AWS_ENDPOINT_URL is unset. This generator seeds buckets and tables; "
+            "without an endpoint boto3 resolves to whatever real account the session "
+            "is authenticated to. Point it at the local estate, e.g. "
+            "AWS_ENDPOINT_URL=http://localhost:4566.")
     return {"endpoint_url": endpoint,
             "aws_access_key_id": LOCALSTACK_ACCOUNT_ID,
             "aws_secret_access_key": LOCALSTACK_ACCOUNT_ID}

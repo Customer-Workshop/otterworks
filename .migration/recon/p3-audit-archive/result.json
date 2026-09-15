@@ -1,0 +1,71 @@
+{
+  "unit": "p3-audit-archive",
+  "mode": "live",
+  "mapping_version": "map-p3-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 10,
+    "source_rows_fetched": 84,
+    "target_statements": 8,
+    "target_rows_fetched": 84,
+    "elapsed_s": 3.656
+  },
+  "generated_at": "2026-09-15T17:33:44.753868+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.p3_audit_legacy_archive": 82,
+          "ow_tp.bronze.p3_audit_legacy_run": 2
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 7,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 84,
+      "stats": {
+        "audit_archive": {
+          "mode": "full_diff",
+          "population": 82,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "audit_archive_run": {
+          "mode": "full_diff",
+          "population": 2,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

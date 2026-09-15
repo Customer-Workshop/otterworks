@@ -1,0 +1,57 @@
+{
+  "kind": "recon-report",
+  "unit": "p3-audit-archive",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T17:33:44.753868+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over ow_tp.bronze.p3_audit_legacy_archive and ow_tp.bronze.p3_audit_legacy_run (the archive the legacy actually wrote to S3, read back and loaded)",
+      "checks_run": 2
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, same source tables",
+      "checks_run": 7
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, archive keyed on (probe_shape, event_id), compliance report keyed on probe_shape",
+      "checks_run": 84
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "Three record shapes, three legacy behaviours, all three contract. The source side is the legacy's own GZIP JSONL archive and compliance report, captured in wave 0 by running audit_archive_weekly.py against an isolated clone of the pinned snapshot and read back out of the archive bucket. A-estate (Id/Timestamp, no lowercase timestamp) archives nothing on both sides: DynamoDB reads the missing attribute as a non-match, and the target's selection requires a non-null lowercase timestamp, so neither side has a row and neither has a compliance report row. An empty target is the pass here. A-tsonly and A-full each archive 41 records; the bodies are compared whole, as canonical JSON, not as counts. A-tsonly's legacy run exits 1 after the archive is written (KeyError('event_id') in the delete loop); the archive contents are still contract and are compared, and the exit code is recorded as a behavioural fact rather than a reconciled row. Deletion is compared explicitly: 0 source rows deleted on both sides, the legacy because every delete_item raises on the wrong key schema and is swallowed, the target because it never deletes (P3-D04).",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "The landing, archive-load and compliance-report steps were run a second time with the same run_date=2026-09-15 and snapshot_batch=p3probe. Row counts and an order-independent md5 over every target table are identical before and after (idempotency.before.json / idempotency.after.json, from databricks/migration/p3/recon/fingerprint_audit_target.py): events raw 174, landing receipt 1, archive 82, compliance report 2. Landing is a MERGE on (snapshot_batch, probe_shape, event_id); the archive and report loads are INSERT ... REPLACE WHERE on (snapshot_batch, run_date), so a rerun rewrites the same rows rather than appending. Operational clock columns (landed_at, archived_at, generated_at) are excluded from the fingerprint: they are readings, not output."
+  },
+  "legacy_defects_reproduced": [
+    "Eligibility uses the lowercase `timestamp` attribute and only that one. Records carrying `Timestamp` instead are not archived, which is why the A-estate shape - the shape the audit-service actually writes - produces an empty archive (F-0.4).",
+    "The 90-day cutoff is compared as a string, against a cutoff string built the same way the legacy builds it (2026-06-17T00:00:00Z), and the comparison is strict less-than.",
+    "The compliance report reports events_scanned equal to events_archived, as the legacy's report does, and 0 source deletions.",
+    "No compliance report row exists for a shape that archived nothing, matching the legacy's early exit before the report is written."
+  ],
+  "unverified_paths": [
+    "Source deletion: NOT PERFORMED and therefore not verified. By P3-D04 the converted unit archives and never deletes from DynamoDB. Both sides report 0 deletions, but for different reasons: the legacy's deletes fail on the wrong key schema and the error is swallowed, the target's do not exist. What a fixed-key-schema legacy would delete in production is unknown from this repo and is a STOP E question.",
+    "The archive artifact differs in form: the legacy writes one GZIP JSONL object to S3 with StorageClass GLACIER, the target holds the same bodies as Delta rows in ow_tp.silver.audit_archive. The record bodies were compared; the object, its compression, and its storage class were not.",
+    "The legacy's compliance report carries hard-coded booleans (retention policy applied, archive verified and similar assertions the script never checks). They are deliberately not copied into the target report, so those fields have no counterpart and were not compared.",
+    "A-tsonly's legacy exit code 1 is recorded as a behavioural fact, not reconciled. The converted job has no equivalent failure because it does not run a delete loop.",
+    "AWS access by named secret is unexercised: ow_tp/aws_migration_access_key_id and ow_tp/aws_migration_secret_access_key do not exist in the workspace. The converted unit needs no AWS call because it reads the landed snapshot, so nothing fell back to the plaintext keys in etl/config.ini, but a DynamoDB-reading variant of this job has no credential evidence.",
+    "factory-doctor source_principal_read_only: still unverified. The doctor implements privilege queries for SQL Server and Postgres only, so a Databricks-family source can never satisfy the row (P3-D09). Fixing it needs a plugin change, not a runtime workaround.",
+    "Inputs outside the pinned snapshot - an empty table, a record with neither event_id nor id, a timestamp exactly on the cutoff - are not exercised by this run.",
+    "Structure parity: the harness compares rows, not Delta table properties, comments, or grants."
+  ],
+  "verdict": "PASS"
+}

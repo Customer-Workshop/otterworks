@@ -1,0 +1,10 @@
+[
+  {"rule": "identity", "applies_to": "* - including payload_json, which needs no JSON rule because both writers (load_legacy_baseline_audit.py and land_audit_events.py) serialise the record with sorted keys and compact separators before storing it, so the bodies already compare as identical strings", "params": {}},
+  {"rule": "decimal_round", "applies_to": "NOTHING - declared unused. The compared numbers are record counts and a deletion count, all exact integers", "params": {"mode": "half_even", "places": 0}},
+  {"rule": "empty_string_is_null", "applies_to": "NOTHING - declared unused, and it would change the answer. The whole unit turns on the difference between an absent lowercase `timestamp` and a present one: DynamoDB skipped the records that lack the attribute, so treating '' and NULL alike here would blur the one distinction the archive set is built from", "params": {}},
+  {"rule": "rstrip_spaces", "applies_to": "NOTHING - declared unused. event_id and the payload are opaque; trimming either would edit archived evidence", "params": {}},
+  {"rule": "datetime_utc_truncate_ms", "applies_to": "NOTHING - declared unused. archived_timestamp is compared as the string the record carried, because that is what the legacy compared against its cutoff. Parsing it into an instant would make two differently-written but equal times match here while the legacy treated them differently", "params": {}},
+  {"rule": "collation_casefold", "applies_to": "NOTHING - declared unused, and it would hide F-0.4. `timestamp` and `Timestamp` are different attributes to DynamoDB; folding case would make the estate shape look archivable when the legacy archives nothing from it", "params": {}},
+  {"rule": "null_missing_equiv", "applies_to": "archived_timestamp only. A record the legacy never archived has no row on either side, so this only covers a column that is NULL because the attribute was absent", "params": {}},
+  {"rule": "uuid_normalize", "applies_to": "NOTHING - declared unused. event_id is a service-issued string compared byte for byte; normalising it could merge two archived records", "params": {}}
+]

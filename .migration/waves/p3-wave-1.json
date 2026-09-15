@@ -81,10 +81,13 @@
         "p3-audit-archive"
       ],
       "write_targets": [
+        "ow_tp.bronze.p3_audit_events_raw",
+        "ow_tp.bronze.p3_audit_landing_runs",
         "ow_tp.bronze.p3_audit_legacy_archive",
         "ow_tp.bronze.p3_audit_legacy_run",
         "ow_tp.silver.audit_archive",
-        "ow_tp.silver.audit_archive_run"
+        "ow_tp.silver.audit_archive_run",
+        "/Volumes/ow_tp/bronze/landing/analytics/"
       ],
       "runtime_writes": [],
       "verify_depth": "full",

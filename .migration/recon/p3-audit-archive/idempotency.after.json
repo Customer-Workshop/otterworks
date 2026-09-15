@@ -1,0 +1,29 @@
+{
+  "snapshot_batch": "p3probe",
+  "tables": {
+    "bronze.p3_audit_events_raw": {
+      "rows": 174,
+      "md5": "cd8561e2a99f8873c762561e7c41f8d4"
+    },
+    "bronze.p3_audit_landing_runs": {
+      "rows": 1,
+      "md5": "c42e4707cbb92312ace507452f33562b"
+    },
+    "silver.audit_archive": {
+      "rows": 82,
+      "md5": "ed2463a57b5c7e05a3a0ae746ed18809"
+    },
+    "silver.audit_archive_run": {
+      "rows": 2,
+      "md5": "5198707e1f4b3e5df04c5055ddd7c273"
+    },
+    "bronze.p3_audit_legacy_archive": {
+      "rows": 82,
+      "md5": "a498b73b6f7e1c27f11d2adabbd47e4d"
+    },
+    "bronze.p3_audit_legacy_run": {
+      "rows": 2,
+      "md5": "d81fe2dee522395333f48d88f79f61da"
+    }
+  }
+}

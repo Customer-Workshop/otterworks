@@ -1,0 +1,377 @@
+{
+  "kind": "recon-report",
+  "unit": "ow_tp_dunning_risk",
+  "namespace": "ow_tp",
+  "generated_at": "2026-09-15T12:20:24+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "features_invoice_covers_every_migrated_invoice",
+      "expected": 18750,
+      "actual": 18750,
+      "source_of_truth": "ow_tp.silver.invoice_header",
+      "result": "pass"
+    },
+    {
+      "id": "features_account_covers_every_billing_account",
+      "expected": 25000,
+      "actual": 25000,
+      "source_of_truth": "ow_tp.bronze.customer_master",
+      "result": "pass"
+    },
+    {
+      "id": "scored_invoices_equal_open_invoices",
+      "expected": 8252,
+      "actual": 8252,
+      "source_of_truth": "ow_tp.silver.invoice_header status_cd IN (20,40)",
+      "result": "pass"
+    },
+    {
+      "id": "risk_score_within_0_100",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.gold.dunning_risk_invoice",
+      "result": "pass"
+    },
+    {
+      "id": "risk_band_matches_risk_score",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.gold.dunning_risk_invoice",
+      "result": "pass"
+    },
+    {
+      "id": "risk_score_equals_sum_of_named_rule_points",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.gold.dunning_risk_rules",
+      "result": "pass"
+    },
+    {
+      "id": "every_reason_code_resolves_to_a_rule",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.gold.dunning_risk_rules",
+      "result": "pass"
+    },
+    {
+      "id": "unavailable_features_are_null_not_zero",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.silver.dunning_risk_features_invoice",
+      "result": "pass"
+    },
+    {
+      "id": "every_scored_row_declares_its_unscored_signals",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.gold.dunning_risk_invoice",
+      "result": "pass"
+    },
+    {
+      "id": "no_scored_row_is_outside_the_legacy_dunning_population",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "ow_tp.gold.dunning_risk_invoice",
+      "result": "pass"
+    },
+    {
+      "id": "backtest_auc_out_of_time",
+      "expected": "no claim of predictive lift (0.5 is chance)",
+      "actual": 0.4946,
+      "source_of_truth": "ow_tp.gold.dunning_risk_backtest",
+      "result": "pass"
+    },
+    {
+      "id": "idempotent:ow_tp.silver.dunning_risk_features_invoice",
+      "expected": {
+        "rows": 18750,
+        "hash": "40281917547716"
+      },
+      "actual": {
+        "rows": 18750,
+        "hash": "40281917547716"
+      },
+      "source_of_truth": "digest of the table before and after a full rerun",
+      "result": "pass"
+    },
+    {
+      "id": "idempotent:ow_tp.silver.dunning_risk_features_account",
+      "expected": {
+        "rows": 25000,
+        "hash": "53660988993139"
+      },
+      "actual": {
+        "rows": 25000,
+        "hash": "53660988993139"
+      },
+      "source_of_truth": "digest of the table before and after a full rerun",
+      "result": "pass"
+    },
+    {
+      "id": "idempotent:ow_tp.gold.dunning_risk_rules",
+      "expected": {
+        "rows": 13,
+        "hash": "34611449576"
+      },
+      "actual": {
+        "rows": 13,
+        "hash": "34611449576"
+      },
+      "source_of_truth": "digest of the table before and after a full rerun",
+      "result": "pass"
+    },
+    {
+      "id": "idempotent:ow_tp.gold.dunning_risk_invoice",
+      "expected": {
+        "rows": 8252,
+        "hash": "17738074097686"
+      },
+      "actual": {
+        "rows": 8252,
+        "hash": "17738074097686"
+      },
+      "source_of_truth": "digest of the table before and after a full rerun",
+      "result": "pass"
+    },
+    {
+      "id": "idempotent:ow_tp.gold.dunning_risk_account",
+      "expected": {
+        "rows": 25000,
+        "hash": "53928212452267"
+      },
+      "actual": {
+        "rows": 25000,
+        "hash": "53928212452267"
+      },
+      "source_of_truth": "digest of the table before and after a full rerun",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_database",
+      "expected": "ow_tp",
+      "actual": "ow_tp",
+      "source_of_truth": "Lakebase",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_rows:billing.dunning_risk_rules",
+      "expected": 13,
+      "actual": 13,
+      "source_of_truth": "billing.dunning_risk_rules on branch mig-p1-w0",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_rows:billing.dunning_risk_invoice",
+      "expected": 8252,
+      "actual": 8252,
+      "source_of_truth": "billing.dunning_risk_invoice on branch mig-p1-w0",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_rows:billing.dunning_risk_account",
+      "expected": 5133,
+      "actual": 5133,
+      "source_of_truth": "billing.dunning_risk_account on branch mig-p1-w0",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_constraint:ck_dunning_risk_account_score",
+      "expected": true,
+      "actual": true,
+      "source_of_truth": "pg_constraint",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_constraint:ck_dunning_risk_invoice_band",
+      "expected": true,
+      "actual": true,
+      "source_of_truth": "pg_constraint",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_constraint:ck_dunning_risk_invoice_score",
+      "expected": true,
+      "actual": true,
+      "source_of_truth": "pg_constraint",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_constraint:pk_dunning_risk_account",
+      "expected": true,
+      "actual": true,
+      "source_of_truth": "pg_constraint",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_constraint:pk_dunning_risk_invoice",
+      "expected": true,
+      "actual": true,
+      "source_of_truth": "pg_constraint",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_constraint:pk_dunning_risk_rules",
+      "expected": true,
+      "actual": true,
+      "source_of_truth": "pg_constraint",
+      "result": "pass"
+    },
+    {
+      "id": "lakebase_no_timestamptz",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "information_schema.columns",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "all six SQL files re-executed between two digests of the five derived tables; row counts and content hashes (excluding built_at) unchanged"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "due_dt_before_invoice_dt",
+      "tenant_key_space_disjoint",
+      "payment_lateness_history_mostly_absent",
+      "non_aging_signals_do_not_discriminate"
+    ],
+    "actual_set": [
+      "due_dt_before_invoice_dt",
+      "tenant_key_space_disjoint",
+      "payment_lateness_history_mostly_absent",
+      "non_aging_signals_do_not_discriminate"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "observations": {
+    "due_dt_before_invoice_dt_rows": 9409,
+    "usage_to_invoice_tenant_overlap": 0,
+    "invoices_without_payment_lateness_history": 16944,
+    "score_distribution_open_invoices": {
+      "MEDIUM": 7549,
+      "HIGH": 618,
+      "LOW": 69,
+      "CRITICAL": 16
+    },
+    "backtest": {
+      "rule_lift:PRIOR_OVERDUE_MED:closed_2021_plus": {
+        "n": 286,
+        "value": 0.188811
+      },
+      "rule_lift:EXPOSURE_HALF_LIMIT:closed_2021_plus": {
+        "n": 22,
+        "value": 0.181818
+      },
+      "rule_lift:SIZE_3X_NORM:closed_2021_plus": {
+        "n": 23,
+        "value": 0.347826
+      },
+      "rule_lift:CREDIT_HOLD:closed_2021_plus": {
+        "n": 115,
+        "value": 0.182609
+      },
+      "rule_lift:VIP_SUPPRESS:closed_2021_plus": {
+        "n": 26,
+        "value": 0.192308
+      },
+      "rule_lift:SIZE_1_5X_NORM:closed_2021_plus": {
+        "n": 184,
+        "value": 0.190217
+      },
+      "rule_lift:EXPOSURE_OVER_LIMIT:closed_2021_plus": {
+        "n": 21,
+        "value": 0.142857
+      },
+      "rule_lift:PRIOR_OVERDUE_HIGH:closed_2021_plus": {
+        "n": 138,
+        "value": 0.202899
+      },
+      "coverage:past_due_vs_limit:closed_all": {
+        "n": 2601,
+        "value": 0.19636
+      },
+      "coverage:dunning_outcome_label:closed_all": {
+        "n": 0,
+        "value": 0.0
+      },
+      "baseline:overdue_rate:closed_all": {
+        "n": 13246,
+        "value": 0.207459
+      },
+      "band_outcome:LOW:closed_2021_plus": {
+        "n": 3578,
+        "value": 0.20654
+      },
+      "band_outcome:HIGH:closed_2021_plus": {
+        "n": 3,
+        "value": 0.666667
+      },
+      "band_outcome:MEDIUM:closed_2021_plus": {
+        "n": 257,
+        "value": 0.178988
+      },
+      "band_outcome:LOW:closed_all": {
+        "n": 12661,
+        "value": 0.207251
+      },
+      "band_outcome:HIGH:closed_all": {
+        "n": 3,
+        "value": 0.666667
+      },
+      "band_outcome:MEDIUM:closed_all": {
+        "n": 582,
+        "value": 0.209622
+      },
+      "discrimination:auc:closed_2021_plus": {
+        "n": 3838,
+        "value": 0.494597
+      },
+      "discrimination:auc:closed_all": {
+        "n": 13246,
+        "value": 0.501178
+      },
+      "coverage:amt_vs_account_norm:closed_all": {
+        "n": 11982,
+        "value": 0.90457
+      },
+      "coverage:prior_overdue_rate:closed_all": {
+        "n": 11982,
+        "value": 0.90457
+      },
+      "baseline:overdue_rate:closed_2021_plus": {
+        "n": 3838,
+        "value": 0.205055
+      }
+    },
+    "backtest_band_outcome_closed_all": {
+      "LOW": {
+        "n": 12661,
+        "value": 0.207251
+      },
+      "HIGH": {
+        "n": 3,
+        "value": 0.666667
+      },
+      "MEDIUM": {
+        "n": 582,
+        "value": 0.209622
+      }
+    }
+  },
+  "unverified_paths": [
+    "The score was never backtested against a dunning outcome. billing.dunning_attempts holds one row on Lakebase, on a tenant key space that does not intersect the invoice history, so 'did the dunning attempt recover the money' is untestable here. The label used is 'the invoice ended status 40'.",
+    "prior_overdue_rate reads the current status of earlier invoices because no invoice status history was migrated, so the backtest can see outcomes that were not knowable at the time. It flatters the score and the score still does not discriminate.",
+    "credit_hold_yn, past_due_amt and credit_limit_amt are today's values on the billing master, not their values at invoice time. Same direction of bias.",
+    "Requested features not built: previous dunning attempts and their outcomes, credit notes, and plan. Their sources reached Lakebase but not Delta and are on the disjoint tenant key space. usage trend was not built for the same key reason. All four are NULL columns carrying the reason, not defaults.",
+    "The Lakebase publish is not a task in the Lakeflow job. It runs through with_lakebase_dsn.py, which checks the branch against .migration/allowed_targets.json in the repo checkout; wiring it into the job would mean minting credentials in the workspace outside that check. The job was therefore verified end to end for the six Delta tasks only.",
+    "The job has never been run. It was created PAUSED and its task graph, retries and warehouse were read back from the Jobs API, but no run has executed through the scheduler; the six statements were executed directly against the warehouse instead.",
+    "No foreign key from billing.dunning_risk_invoice to billing.invoices. The three invoices on this branch are on the other key space, so the constraint would fail on load. Structure was verified by reading pg_constraint; referential integrity to the OLTP invoice table was not established.",
+    "Lakebase writes were exercised on branch mig-p1-w0 only. Nothing in this change was run against Lakebase production, and the behaviour of these tables there is unverified.",
+    "tenure_days is measured from the account's first migrated invoice. SIGNUP_DT is a DD-MON-YY string whose century is ambiguous, so it was not parsed and true tenure is unverified.",
+    "The 14/28/56/84 aging thresholds are multiples of the one interval the legacy estate declares (pkg_dunning.sp_suspend_overdue). They were not fitted and their calibration against recovery rates is unverified."
+  ]
+}

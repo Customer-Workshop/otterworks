@@ -5,8 +5,8 @@
 - Mode: `transactional` (both sides live: PASS scoped to the consistency window that held and the target's applied CDC watermark)
 - Merge eligible: no - degraded, see DEGRADED.md
 - Mapping `map-p1-v1` / tolerances `v1` / seed `0` / depth `full`
-- Generated: 2026-09-15T08:56:39.566590+00:00
-- Cost: source 16 statements / 5 rows fetched; target 12 statements / 4 rows; 1.17s
+- Generated: 2026-09-15T10:33:48.881706+00:00
+- Cost: source 16 statements / 5 rows fetched; target 12 statements / 4 rows; 1.089s
 - Consistency window: source isolation `snapshot`, target isolation `repeatable_read`, held
 - **WARNING: UNVERIFIED schema_parity: notifications: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed**
 

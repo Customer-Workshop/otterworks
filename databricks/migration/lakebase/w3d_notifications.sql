@@ -22,8 +22,12 @@
 -- (tenant_id, kind_cd, sent_at) - the key behind pkg_dunning's NOT EXISTS dedupe, which is
 -- what stops a second sweep on the same day sending a second suspension notice.
 --
--- The Oracle foreign key fk_notif_tenant is deliberately NOT recreated (D8-01 orphans are
--- reproduced, and billing.tenants is another unit's load).
+-- The Oracle foreign key is recreated with the name, referenced column and delete rule the
+-- source declares (ALL_CONSTRAINTS on OW_BILLING: FK_NOTIF_TENANT -> TENANTS(ID),
+-- DELETE_RULE 'NO ACTION', NOT DEFERRABLE, VALIDATED). Oracle has no ON UPDATE clause at
+-- all, so the key carries none here. D8-01 keeps orphan rows that exist inside the migrated
+-- data; the source has none to reproduce, because the key is enabled and validated there.
+-- billing.tenants is referenced only: this unit adds no DDL to it.
 
 CREATE SCHEMA IF NOT EXISTS billing;
 
@@ -36,9 +40,23 @@ CREATE TABLE IF NOT EXISTS billing.notifications (
     CONSTRAINT uq_notifications UNIQUE (tenant_id, kind_cd, sent_at)
 );
 
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS, so the key is guarded on pg_constraint to
+-- keep the file rerunnable (P1-D6).
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conname = 'fk_notif_tenant'
+                      AND conrelid = 'billing.notifications'::regclass) THEN
+        ALTER TABLE billing.notifications
+            ADD CONSTRAINT fk_notif_tenant FOREIGN KEY (tenant_id)
+            REFERENCES billing.tenants (id);
+    END IF;
+END;
+$$;
+
 COMMENT ON TABLE billing.notifications IS
     'Migration unit p1-notifications (U-10) from Oracle OW_BILLING.NOTIFICATIONS.';
 COMMENT ON COLUMN billing.notifications.kind_cd IS
     'Magic kind code, billing.codes(''NOTIF_KIND''): 1 invoice, 2 dunning, 3 suspension.';
 COMMENT ON COLUMN billing.notifications.tenant_id IS
-    'References billing.tenants(id) in the source; not enforced here, see D8-01 orphans.';
+    'References billing.tenants(id), enforced by fk_notif_tenant as Oracle declares it.';

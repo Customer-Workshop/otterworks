@@ -9,8 +9,8 @@
 - Tolerance version: `v1`
 - Seed: `0`
 - Tier 3 depth: `full`
-- Generated: 2026-09-15T08:54:44.520283+00:00
-- Cost: `{"source_statements": 5, "source_rows_fetched": 1, "target_statements": 5, "target_rows_fetched": 1, "elapsed_s": 0.016}`
+- Generated: 2026-09-15T10:33:43.939906+00:00
+- Cost: `{"source_statements": 5, "source_rows_fetched": 1, "target_statements": 5, "target_rows_fetched": 1, "elapsed_s": 0.018}`
 
 | Tier | Name | Checks | Result |
 |---|---|---|---|

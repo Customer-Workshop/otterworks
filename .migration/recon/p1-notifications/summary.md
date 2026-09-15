@@ -11,7 +11,9 @@ is `recon.summary.md`.
   merge evidence), then exactly one merge-evidence run
   (`--mode transactional --depth full --seed 0`).
 - Tiers 0–3 and 5–6 PASS. Source-side constraint, index and identity parity (tiers 5–7) is
-  **unverified** on the JDBC route.
+  **unverified** on the JDBC route. The foreign key below was therefore read from Oracle's
+  `ALL_CONSTRAINTS` directly and checked back off Lakebase with `pg_get_constraintdef`,
+  outside the harness.
 - Idempotency: two loads, two digests (`load_digest_run1.json`, `load_digest_run2.json`),
   identical row count and content hash read back off Lakebase.
 - Recon values are recomputed from Lakebase and Oracle directly.
@@ -33,7 +35,15 @@ is `recon.summary.md`.
 - `uq_notifications (tenant_id, kind_cd, sent_at)` is declared: it is the dedupe key
   `sp_suspend_overdue` reads with `NOT EXISTS`, which is what makes a second sweep on the
   same day write nothing.
-- No foreign key to `tenants`: orphan rows are reproduced, not cleaned (D8-01).
+- Oracle's foreign key is recreated under its source name:
+  `fk_notif_tenant (tenant_id) -> billing.tenants(id)`. `ALL_CONSTRAINTS` gives
+  `DELETE_RULE = 'NO ACTION'`, `NOT DEFERRABLE`, `IMMEDIATE`, `VALIDATED`, and Oracle has no
+  `ON UPDATE` clause, so the key carries no delete or update action here. An earlier
+  revision left it out on a D8-01 reading; that was wrong. D8-01 reproduces orphan rows that
+  exist in the source, and the key is enabled and validated on Oracle, so none can exist.
+  Checked on the target before the key was added: zero rows in `billing.notifications` fail
+  the reference. The DDL stays rerunnable — the key is added inside a `DO` block guarded on
+  `pg_constraint`, because Postgres has no `ADD CONSTRAINT IF NOT EXISTS` (P1-D6).
 - Kind codes stay magic numbers (1 invoice, 2 dunning, 3 suspension).
 
 ## Evidence

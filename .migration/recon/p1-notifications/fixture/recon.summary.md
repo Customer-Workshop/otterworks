@@ -5,8 +5,8 @@
 - Mode: `fixture` (fixture data: NOT a merge verdict, run live once before merging)
 - Merge eligible: no - degraded, see DEGRADED.md
 - Mapping `map-p1-v1` / tolerances `v1` / seed `0` / depth `full`
-- Generated: 2026-09-15T08:54:44.520283+00:00
-- Cost: source 5 statements / 1 rows fetched; target 5 statements / 1 rows; 0.016s
+- Generated: 2026-09-15T10:33:43.939906+00:00
+- Cost: source 5 statements / 1 rows fetched; target 5 statements / 1 rows; 0.018s
 
 | Tier | Checks | Result |
 |---|---|---|

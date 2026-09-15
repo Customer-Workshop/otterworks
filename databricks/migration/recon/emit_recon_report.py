@@ -149,13 +149,21 @@ def main() -> int:
     result_path = Path(args.result)
     result = json.loads(result_path.read_text())
 
-    checks = [{"id": f"tier{t['tier']}_{t['name']}",
-               "expected": "pass",
-               "actual": "pass" if t["passed"] else "fail",
-               "result": "pass" if t["passed"] else "fail",
-               "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
-               "checks_run": t["checks_run"]}
-              for t in result["tiers"]]
+    def check(t: dict) -> dict:
+        # A tier the degraded source could not feed comes back passed=true and names what
+        # it could not read in `stats.unverified`; machine consumers read `result`, so it
+        # is reported skipped and unverified rather than as a verified pass. Zero checks
+        # alone is not that case - tier 6 legitimately runs none when the consistency
+        # window already proves stillness - so the marker decides, not the count.
+        ran = not t.get("stats", {}).get("unverified")
+        return {"id": f"tier{t['tier']}_{t['name']}",
+                "expected": "pass",
+                "actual": ("pass" if t["passed"] else "fail") if ran else "unverified",
+                "result": ("pass" if t["passed"] else "fail") if ran else "skipped",
+                "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+                "checks_run": t["checks_run"]}
+
+    checks = [check(t) for t in result["tiers"]]
 
     rerun = idempotency(result["unit"], args.idempotency_digest)
     actual = measure(result["unit"], args.anomaly)
@@ -179,7 +187,11 @@ def main() -> int:
         "unit": result["unit"],
         "namespace": args.namespace,
         "generated_at": result["generated_at"],
-        "run_mode": result["mode"],
+        # The report schema knows two run modes, fixture and live; the harness has more
+        # names for a live run (`transactional` reads both sides inside one consistency
+        # window). Its own name is kept beside the mapped one rather than lost.
+        "run_mode": "fixture" if result["mode"] == "fixture" else "live",
+        "harness_run_mode": result["mode"],
         "checks": checks,
         "values_recomputed_from_target": True,
         "idempotency_rerun": rerun,

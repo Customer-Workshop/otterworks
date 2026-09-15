@@ -1,7 +1,22 @@
 {
   "catalogs": ["ow_tp"],
+  "guard_mode": "block",
+  "target_hosts": ["dbc-8bc9474f-40ae.cloud.databricks.com"],
+  "bundle_targets": ["migration"],
+  "forbidden_bundle_targets": ["prod", "production"],
+  "lakebase_projects": ["ow-tp-billing"],
+  "lakebase_branches": ["mig-p1-w0", "mig-p1-w1", "mig-p1-w2", "mig-p2-w1", "mig-p3-w1"],
+  "legacy_sources": [
+    "OW_BILLING",
+    "FREEPDB1",
+    "52.201.36.9",
+    "ow-tp/oracle/ow_billing_ro",
+    "ow-tp/oracle/admin",
+    "ow-tp/oracle/dbzuser",
+    "OW_BILLING_RO_DSN"
+  ],
   "notes": {
-    "ow_tp": "Unity Catalog catalog (schemas bronze/silver/gold) AND the Lakebase branch database name in project ow-tp-billing (schema billing). Nothing else is writable by any migration session.",
+    "ow_tp": "Unity Catalog catalog (schemas bronze/silver/gold) AND the Lakebase branch database in project ow-tp-billing (schema billing). Nothing else is writable by any migration session.",
     "denied": ["tech-partnerships branch", "Lakebase project loan-servicing-migration", "Lakebase production branch", "any Oracle object"]
   }
 }

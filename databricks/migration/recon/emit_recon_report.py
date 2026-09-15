@@ -149,13 +149,19 @@ def main() -> int:
     result_path = Path(args.result)
     result = json.loads(result_path.read_text())
 
-    checks = [{"id": f"tier{t['tier']}_{t['name']}",
-               "expected": "pass",
-               "actual": "pass" if t["passed"] else "fail",
-               "result": "pass" if t["passed"] else "fail",
-               "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
-               "checks_run": t["checks_run"]}
-              for t in result["tiers"]]
+    def check(t: dict) -> dict:
+        # A tier the harness could not run at all (no source metadata under d10_01_denied)
+        # carries passed=true with zero checks. Machine consumers read `result`, so that
+        # tier is reported skipped and unverified rather than as a verified pass.
+        ran = t["checks_run"] > 0
+        return {"id": f"tier{t['tier']}_{t['name']}",
+                "expected": "pass",
+                "actual": ("pass" if t["passed"] else "fail") if ran else "unverified",
+                "result": ("pass" if t["passed"] else "fail") if ran else "skipped",
+                "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+                "checks_run": t["checks_run"]}
+
+    checks = [check(t) for t in result["tiers"]]
 
     rerun = idempotency(result["unit"], args.idempotency_digest)
     actual = measure(result["unit"], args.anomaly)

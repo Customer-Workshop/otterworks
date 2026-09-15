@@ -31,6 +31,10 @@ public final class TestTokens {
         return token(userId, "refresh", KEY);
     }
 
+    public static String untypedToken(String userId) {
+        return token(userId, null, KEY);
+    }
+
     public static String tokenSignedWithOtherKey(String userId) {
         SecretKey other = Keys.hmacShaKeyFor(
                 "some-other-secret-that-report-service-does-not-share-9876543210".getBytes(StandardCharsets.UTF_8));

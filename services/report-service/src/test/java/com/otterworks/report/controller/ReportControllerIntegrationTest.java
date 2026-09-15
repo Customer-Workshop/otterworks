@@ -249,6 +249,29 @@ public class ReportControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    public void getReportWithTokenMissingTypeClaimReturns401() throws Exception {
+        Long id = createReportAndReturnId("Untyped Token Report",
+                ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "idor-victim");
+
+        mockMvc.perform(get("/api/v1/reports/" + id)
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + TestTokens.untypedToken("idor-victim")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void oversizedTokenSubjectReturns401() throws Exception {
+        StringBuilder subject = new StringBuilder();
+        for (int i = 0; i < 300; i++) {
+            subject.append('u');
+        }
+
+        mockMvc.perform(get("/api/v1/reports")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(subject.toString())))
+                .andExpect(status().isUnauthorized());
+    }
+
     // ---- GET /api/v1/reports ----
 
     @Test

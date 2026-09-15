@@ -35,6 +35,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ACCESS_TOKEN_TYPE = "access";
+    private static final int MAX_SUBJECT_LENGTH = 255;
 
     private final JwtParser parser;
 
@@ -75,14 +77,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         try {
             Claims claims = parser.parseSignedClaims(token).getPayload();
-            if ("refresh".equals(claims.get("type", String.class))) {
+            if (!ACCESS_TOKEN_TYPE.equals(claims.get("type", String.class))) {
                 return null;
             }
             String subject = claims.getSubject();
             if (!StringUtils.hasText(subject)) {
                 subject = claims.get("user_id", String.class);
             }
-            return StringUtils.hasText(subject) ? subject.trim() : null;
+            if (!StringUtils.hasText(subject)) {
+                return null;
+            }
+            subject = subject.trim();
+            return subject.length() <= MAX_SUBJECT_LENGTH ? subject : null;
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("Rejected bearer token: {}", e.getMessage());
             return null;

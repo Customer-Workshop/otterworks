@@ -53,15 +53,15 @@ public class ReportService {
     }
 
     /**
-     * Create a new report request and start async generation.
+     * Create a new report request owned by {@code userId} and start async generation.
      */
     @Transactional
-    public Report createReport(ReportRequest request) {
+    public Report createReport(ReportRequest request, String userId) {
         Report report = new Report();
         report.setReportName(request.getReportName());
         report.setCategory(request.getCategory());
         report.setReportType(request.getReportType());
-        report.setRequestedBy(request.getRequestedBy());
+        report.setRequestedBy(userId);
         report.setStatus(ReportStatus.PENDING);
         report.setCreatedAt(new Date()); // LEGACY: new Date() instead of Instant.now()
 
@@ -97,10 +97,10 @@ public class ReportService {
     }
 
     /**
-     * Get a report by ID.
+     * Get a report by ID, only if it belongs to {@code userId}.
      */
-    public Optional<Report> getReport(Long id) {
-        return reportRepository.findById(id);
+    public Optional<Report> getReportForUser(Long id, String userId) {
+        return reportRepository.findByIdAndRequestedBy(id, userId);
     }
 
     /**
@@ -111,19 +111,21 @@ public class ReportService {
     }
 
     /**
-     * List reports by status.
+     * List a user's reports filtered by status.
      */
-    public List<Report> getReportsByStatus(ReportStatus status) {
-        return reportRepository.findByStatusOrderByCreatedAtAsc(status);
+    public List<Report> getReportsByUserAndStatus(String userId, ReportStatus status) {
+        return reportRepository.findByRequestedByAndStatusOrderByCreatedAtDesc(userId, status);
     }
 
     /**
-     * Delete a report and its generated file.
+     * Delete a report owned by {@code userId} and its generated file.
      * File deletion is deferred to afterCommit to avoid inconsistency on rollback.
+     *
+     * @return false if no report with this id belongs to the user
      */
     @Transactional
-    public boolean deleteReport(Long id) {
-        Optional<Report> optReport = reportRepository.findById(id);
+    public boolean deleteReport(Long id, String userId) {
+        Optional<Report> optReport = reportRepository.findByIdAndRequestedBy(id, userId);
         if (!optReport.isPresent()) {
             return false;
         }
@@ -132,8 +134,8 @@ public class ReportService {
         final String filePath = report.getFilePath();
 
         // Delete DB record first
-        reportRepository.deleteById(id);
-        logger.info("Deleted report: {}", id);
+        reportRepository.delete(report);
+        logger.info("Deleted report: id={}, by={}", id, userId);
 
         // Defer file deletion until after transaction commits so a rollback
         // doesn't leave the DB record pointing to a missing file.

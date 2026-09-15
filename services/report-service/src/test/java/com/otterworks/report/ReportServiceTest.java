@@ -47,6 +47,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 public class ReportServiceTest {
 
+    private static final String USER_ID_HEADER = "X-User-ID";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -68,11 +70,11 @@ public class ReportServiceTest {
         request.setReportName("Test Usage Report");
         request.setCategory(ReportCategory.USAGE_ANALYTICS);
         request.setReportType(ReportType.PDF);
-        request.setRequestedBy("test-user-001");
         request.setDateFrom(new Date(System.currentTimeMillis() - 86400000L * 30)); // 30 days ago
         request.setDateTo(new Date());
 
         mockMvc.perform(post("/api/v1/reports")
+                        .header(USER_ID_HEADER, "test-user-001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -80,6 +82,7 @@ public class ReportServiceTest {
                 .andExpect(jsonPath("$.reportName", is("Test Usage Report")))
                 .andExpect(jsonPath("$.category", is("USAGE_ANALYTICS")))
                 .andExpect(jsonPath("$.reportType", is("PDF")))
+                .andExpect(jsonPath("$.requestedBy", is("test-user-001")))
                 // @Async generation may complete before response is serialized
                 .andExpect(jsonPath("$.status", anyOf(is("PENDING"), is("GENERATING"), is("COMPLETED"))));
     }
@@ -90,9 +93,9 @@ public class ReportServiceTest {
         request.setReportName("Audit Log Export");
         request.setCategory(ReportCategory.AUDIT_LOG);
         request.setReportType(ReportType.CSV);
-        request.setRequestedBy("test-user-002");
 
         mockMvc.perform(post("/api/v1/reports")
+                        .header(USER_ID_HEADER, "test-user-002")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -105,9 +108,9 @@ public class ReportServiceTest {
         request.setReportName("User Activity Summary");
         request.setCategory(ReportCategory.USER_ACTIVITY);
         request.setReportType(ReportType.EXCEL);
-        request.setRequestedBy("test-user-003");
 
         mockMvc.perform(post("/api/v1/reports")
+                        .header(USER_ID_HEADER, "test-user-003")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -116,14 +119,15 @@ public class ReportServiceTest {
 
     @Test
     public void getReportNotFoundShouldReturn404() throws Exception {
-        mockMvc.perform(get("/api/v1/reports/99999"))
+        mockMvc.perform(get("/api/v1/reports/99999")
+                        .header(USER_ID_HEADER, "test-user"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void listReportsShouldReturnEmptyList() throws Exception {
         mockMvc.perform(get("/api/v1/reports")
-                        .param("userId", "nonexistent-user"))
+                        .header(USER_ID_HEADER, "nonexistent-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reports").isArray())
                 .andExpect(jsonPath("$.total", is(0)));
@@ -134,10 +138,10 @@ public class ReportServiceTest {
         ReportRequest request = new ReportRequest();
         request.setCategory(ReportCategory.AUDIT_LOG);
         request.setReportType(ReportType.PDF);
-        request.setRequestedBy("test-user");
         // Missing reportName — should fail validation
 
         mockMvc.perform(post("/api/v1/reports")
+                        .header(USER_ID_HEADER, "test-user")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -145,7 +149,8 @@ public class ReportServiceTest {
 
     @Test
     public void downloadNonExistentReportShouldReturn404() throws Exception {
-        mockMvc.perform(get("/api/v1/reports/99999/download"))
+        mockMvc.perform(get("/api/v1/reports/99999/download")
+                        .header(USER_ID_HEADER, "test-user"))
                 .andExpect(status().isNotFound());
     }
 }

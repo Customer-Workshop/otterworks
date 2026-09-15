@@ -1,0 +1,105 @@
+"""Recompute the customers unit's evidence from Atlas, never from load-side numbers.
+
+    python migrations/mongodb/customers/target_evidence.py <out.json>
+
+Writes the counts, the planted-anomaly set and the unverified paths that
+recon_report.py merges into the unit's recon-report artifact.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from common.ow_mongo import mongo_db  # noqa: E402
+
+EXPECTED_ANOMALIES = [
+    "customers.legacy.signupDtRaw (unparseable SIGNUP_DT) = 50",
+    "customers.legacy.relatedAcctIdsRaw (malformed RELATED_ACCT_IDS) = 31",
+]
+
+UNVERIFIED_PATHS = [
+    "customer_history: CUSTOMER_MASTER_HIST is empty in this estate, so the history "
+    "mapping, its HIST_DT parsing and its {customerId, at} index are untravelled code.",
+    "phones[] fax element: FAX is null on every row, so the branch that appends a fax "
+    "number with PHONE_TYPE 'fax' never runs.",
+    "addresses[].country and .zip4, territory, channel, rateClass: null on every source "
+    "row, so only the null path is exercised.",
+    "childAccountIds: CHILD_ACCT_IDS is null on every row, and no PROMO_CODES_CSV value "
+    "is malformed, so only relatedAccountIds exercises the malformed-list branch.",
+    "flags.dunningExempt: DUNNING_EXEMPT_YN is null on every row, and no Y/N column holds "
+    "a value outside Y/N, so the invalid-flag branch (null plus raw kept) never runs.",
+    "dropped_columns guard: FLAG_*/UDF_* are all null today; the halt path that fires "
+    "when one is populated has never fired.",
+    "Tier 4 recorded operations grade the transformations the harness has no rule for "
+    "(Y/N to boolean, CSV split/trim, DD-MON-YY parsing, CODES decode, positional "
+    "addresses[] paths). Those are graded by recomputed aggregate, not element by "
+    "element against a harness rule.",
+    "Atlas M0: index builds and batch sizes were sized for a demo cluster, not for a "
+    "production-scale load.",
+]
+
+
+PROFILE_FEEDBACK = [
+    "The harness canonicalizer implements decimal_round, datetime_utc_truncate_ms, "
+    "rstrip_spaces, empty_string_is_null, null_missing_equiv, collation_casefold, "
+    "uuid_normalize and identity. It has no rule for yn_to_bool, csv_split_trim or "
+    "parse_date_string, and it cannot compare an integer CODES value against its decoded "
+    "string. Those five transformations are graded by tier 4 recorded operations "
+    "(source_sql plus target_pipeline) instead. The harness was not patched.",
+    "The harness validates target field paths as identifiers, so the mapping spec's "
+    "positional paths (addresses.0.city and friends) cannot be graded as tier 2/3 fields. "
+    "The unit's mapping slice moves them into tier 4 operations; the spec is unchanged.",
+    "The harness requires an embed to be scoped on both sides or neither. The spec scopes "
+    "ENTITY_ATTR_VALUE with child_where entity_type='CUSTOMER' and needs no target scope, "
+    "so the slice adds target_where {} (every document) to satisfy the check.",
+]
+
+FINDINGS = [
+    "The brief says STATUS_CD 99 has no CODES row and must decode as UNKNOWN(99). In the "
+    "seeded estate CODES holds CUST_STATUS 99 = 'conversion-limbo', so "
+    "PKG_OW_UTIL.f_code_desc returns 'conversion-limbo' and the loader does the same for "
+    "all 473 rows. Both sides of recon use f_code_desc semantics, so parity is unaffected; "
+    "the brief's note about the missing CODES row does not match the data.",
+]
+
+
+def main(argv: list[str]) -> int:
+    db = mongo_db()
+    counts = {
+        "customers": db.customers.count_documents({}),
+        "customer_history": db.customer_history.count_documents({}),
+        "customers.attributes_elements": next(iter(db.customers.aggregate(
+            [{"$group": {"_id": None, "n": {"$sum": {"$size": "$attributes"}}}}])),
+            {"n": 0})["n"],
+    }
+    actual = [
+        f"customers.legacy.signupDtRaw (unparseable SIGNUP_DT) = "
+        f"{db.customers.count_documents({'legacy.signupDtRaw': {'$exists': True}})}",
+        f"customers.legacy.relatedAcctIdsRaw (malformed RELATED_ACCT_IDS) = "
+        f"{db.customers.count_documents({'legacy.relatedAcctIdsRaw': {'$exists': True}})}",
+    ]
+    extra = {
+        "counts_from_target": counts,
+        "planted_anomaly_detections": {
+            "expected_set": EXPECTED_ANOMALIES,
+            "actual_set": actual,
+            "missing": [a for a in EXPECTED_ANOMALIES if a not in actual],
+            "unexpected": [a for a in actual if a not in EXPECTED_ANOMALIES],
+        },
+        "unverified_paths": UNVERIFIED_PATHS,
+        "profile_feedback": PROFILE_FEEDBACK,
+        "findings": FINDINGS,
+    }
+    text = json.dumps(extra, indent=2)
+    print(text)
+    if len(argv) > 1:
+        Path(argv[1]).write_text(text + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

@@ -3,8 +3,8 @@
 - Mode: `live`
 - Merge eligible: yes (fixture/continuous evidence never merges)
 - Mapping `map-p2-v1` / tolerances `v1` / seed `0` / depth `full`
-- Generated: 2026-09-15T12:51:35.113865+00:00
-- Cost: source 5 statements / 116 rows fetched; target 4 statements / 116 rows; 2.95s
+- Generated: 2026-09-15T13:06:58.852011+00:00
+- Cost: source 5 statements / 116 rows fetched; target 4 statements / 116 rows; 2.462s
 
 | Tier | Checks | Result |
 |---|---|---|

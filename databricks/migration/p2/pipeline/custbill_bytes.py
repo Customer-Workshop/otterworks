@@ -35,6 +35,24 @@ def split_records(content: bytes) -> list[tuple[int, str, int]]:
     return [(i + 1, part.decode(ENCODING), len(part)) for i, part in enumerate(parts)]
 
 
+def byte_offsets(records: list[tuple[int, str, int]]) -> list[int]:
+    """Zero-based offset of each record's first byte in the file it came from.
+
+    Records are not fixed length in practice - short, long, blank and CR-carrying
+    lines all occur - so `record_no` alone does not locate a record in the file.
+    Because the split is on LF, record n starts after every earlier record's bytes
+    plus one separator byte each. The silver pipeline computes the same sum with a
+    window over `custbill_raw`; this is the definition it implements, and the one
+    `test_byte_offsets_locate_the_record` checks against the captured files.
+    """
+    offsets = []
+    at = 0
+    for _record_no, _raw_record, record_bytes in records:
+        offsets.append(at)
+        at += record_bytes + 1
+    return offsets
+
+
 def is_header_or_trailer(raw_record: str) -> bool:
     """True for a line the legacy `sed -e '/^HDR/d' -e '/^TRL/d'` deletes."""
     return raw_record.encode(ENCODING).startswith(HEADER_PREFIXES)

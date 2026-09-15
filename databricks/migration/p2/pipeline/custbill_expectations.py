@@ -25,8 +25,10 @@ SILVER_EXPECTATIONS: dict[str, str] = {
     "bill_date_valid_iso": "try_to_date(bill_date, 'yyyy-MM-dd') IS NOT NULL",
     # C-3.3: anything that is not 12 digits still parses, as a prefix.
     "bill_amt_all_digits": "bill_amt_raw RLIKE '^[0-9]{12}$'",
-    # C-3.4: the copybook says unsigned; a leading '-' says otherwise.
-    "bill_amt_non_negative": "CAST(bill_amt AS DECIMAL(38,2)) >= 0",
+    # C-3.4: the copybook says unsigned; a leading '-' says otherwise. try_cast,
+    # because a prefix parse of '9e999999999' formats as 'inf' and an ANSI CAST of
+    # that raises - a check that aborts the pipeline is not a warn-only check.
+    "bill_amt_non_negative": "COALESCE(try_cast(bill_amt AS DECIMAL(38,2)) >= 0, false)",
     # C-7.3: the group key is a raw byte string, so 'usd' is its own currency.
     "currency_known": "currency IN ('USD', 'EUR', 'GBP')",
     "rec_type_known": "rec_type IN ('01', '02')",
@@ -36,13 +38,17 @@ SILVER_EXPECTATIONS: dict[str, str] = {
     "ascii_only": "raw_record RLIKE '^[\\\\x00-\\\\x7F]*$'",
 }
 
-# Two per-file checks. The HDR/TRL deletion happens before parsing, so a shadowed
-# data record never reaches silver at all and cannot be checked row by row; it is
-# counted per file instead. C-4.3, ETL-0187: logged since 2011, never enforced -
-# and still not enforced here, it raises a warning and changes no row.
+# The name quarantine records for a data record the HDR/TRL deletion removed. The
+# deletion happens before parsing, so the record has no silver row to fail an
+# expectation on; it is attributed in quarantine directly (C-6.1) and counted per
+# file in the audit below.
+SHADOWED_EXPECTATION = "not_hdr_trl_shadowed"
+
+# Two per-file checks. C-4.3, ETL-0187: logged since 2011, never enforced - and
+# still not enforced here, it raises a warning and changes no row.
 FILE_AUDIT_EXPECTATIONS: dict[str, str] = {
     "trailer_count_matches": "trailer_count IS NULL OR trailer_count = parsed_count",
-    "not_hdr_trl_shadowed": "shadowed_count = 0",
+    SHADOWED_EXPECTATION: "shadowed_count = 0",
 }
 
 

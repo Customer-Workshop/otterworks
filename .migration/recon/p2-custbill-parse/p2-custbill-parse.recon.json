@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "p2-custbill-parse",
   "namespace": "demo",
-  "generated_at": "2026-09-15T12:51:35.113865+00:00",
+  "generated_at": "2026-09-15T13:15:00.000000+00:00",
   "run_mode": "live",
   "checks": [
     {
@@ -35,7 +35,7 @@
       "actual": "pass",
       "result": "pass",
       "source_of_truth": "ow_tp.silver.custbill vs ow_tp.bronze.custbill_quarantine, queried through the migration warehouse",
-      "evidence": "116 silver rows against 116 legacy psv lines; 14 quarantined rows, 0 of them missing from silver. Every expectation is warn-only (expect_all), so no record is filtered out of silver or out of gold's input (contract C-6.3, P2-D02)."
+      "evidence": "116 silver rows against 116 legacy psv lines; 15 quarantined rows. 14 of them are expectation failures and all 14 are still in silver. The 15th is the HDR-shadowed record, which the legacy sed deletes before parsing, so it is absent from the legacy output too and quarantine reports it with psv_line NULL and failed_expectations ['not_hdr_trl_shadowed']. Every expectation is warn-only (expect_all), so no expectation removes a record from silver or from gold's input (contract C-6.3, P2-D02)."
     }
   ],
   "values_recomputed_from_target": true,
@@ -43,7 +43,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "second pipeline update 688607b2-f7f7-40a3-9448-c71be248e7f0 and a third, 53d45dcb-86a5-4bce-bc3e-6e60e576b93c, from the committed source; silver 116 rows / md5 115f7e40240d7529b6bc48ec0a922ccd, quarantine 14 rows / md5 158d9647f29bfa8713db13190b1deef3, trailer audit 6 rows / md5 c286f2cd16e1168b779e31521c768835 - identical before and after (idempotency.before.json, idempotency.after.json)"
+    "evidence": "pipeline update 8d500c0e-10b6-4685-b9ec-dff3f1b20a56, rerun from the committed source after the review fixes; silver 116 rows / md5 115f7e40240d7529b6bc48ec0a922ccd, quarantine 15 rows / md5 cde9f90726dcbf5300535477ccdfea66, trailer audit 6 rows / md5 c286f2cd16e1168b779e31521c768835 - identical before and after (idempotency.before.json, idempotency.after.json). Silver is byte-identical to the pre-review-fix runs; only quarantine grew, by the one shadowed record."
   },
   "planted_anomaly_detections": {
     "compared_as": "set of (expectation, rows failing it) over ow_tp.bronze.custbill_quarantine, per the frozen tolerances",
@@ -56,7 +56,8 @@
       {"anomaly": "ascii_only", "count": 2},
       {"anomaly": "cust_id_nonempty", "count": 2},
       {"anomaly": "bill_amt_non_negative", "count": 1},
-      {"anomaly": "no_delimiter_collision", "count": 1}
+      {"anomaly": "no_delimiter_collision", "count": 1},
+      {"anomaly": "not_hdr_trl_shadowed", "count": 1}
     ],
     "actual_set": [
       {"anomaly": "rec_len_65", "count": 5},
@@ -67,15 +68,17 @@
       {"anomaly": "ascii_only", "count": 2},
       {"anomaly": "cust_id_nonempty", "count": 2},
       {"anomaly": "bill_amt_non_negative", "count": 1},
-      {"anomaly": "no_delimiter_collision", "count": 1}
+      {"anomaly": "no_delimiter_collision", "count": 1},
+      {"anomaly": "not_hdr_trl_shadowed", "count": 1}
     ],
     "missing": [],
     "unexpected": [],
+    "quarantine_locator": "Every quarantine row carries byte_offset, the zero-based offset of the record's first byte in its landed file, so a reader can seek straight to it; records are not fixed length in practice, so record_no alone does not locate one. Checked two ways: test_byte_offsets_locate_the_record slices every captured file at the computed offsets, and the pipeline's window sum over custbill_raw returns the same values (record 15 of CUSTBILL_PROBE_001.dat at 805).",
     "derivation": "expected_set enumerated by hand from databricks/migration/p2/baseline/gen_probe_fixture.py before the quarantine table was read: the short, long and blank records plus the UTF-8 and CRLF probes are the five over/under-length records; the UTF-8 record's multibyte name shifts date, currency and rec_type into the neighbouring fields, which is why those counts exceed the number of deliberately bad values."
   },
   "trailer_audit": {
     "enforced": false,
-    "finding": "CUSTBILL_PROBE_001.dat declares a trailer of 15 and parses 14: the record whose customer id starts HDRFAKE is deleted by the legacy sed as if it were a header. The target reproduces that loss exactly (C-4.1/C-4.2) and surfaces it in ow_tp.bronze.custbill_trailer_audit as shadowed_count=1 instead of silently swallowing it. Audit only - it never changes output."
+    "finding": "CUSTBILL_PROBE_001.dat declares a trailer of 15 and parses 14: the record whose customer id starts HDRFAKE is deleted by the legacy sed as if it were a header. The target reproduces that loss exactly (C-4.1/C-4.2) and surfaces it in ow_tp.bronze.custbill_trailer_audit as shadowed_count=1 instead of silently swallowing it. Audit only - it never changes output. The record is also attributed individually in ow_tp.bronze.custbill_quarantine, with its byte offset and failed_expectations ['not_hdr_trl_shadowed'], so the loss is traceable to a record and not only to a per-file count."
   },
   "unverified_paths": [
     "P2-D01, the landing race: the legacy poller can parse a half-written .dat, the target lands atomically and sequences parse behind it. Named behaviour change, not exercisable against pinned inputs.",

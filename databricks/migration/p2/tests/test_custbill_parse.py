@@ -189,8 +189,9 @@ def test_every_contract_expectation_is_declared_and_warn_only() -> None:
         "no_delimiter_collision",
         "ascii_only",
     }
-    # not_hdr_trl_shadowed is per file, not per row: the deletion happens before
-    # parsing, so the record it removes never reaches a silver row to check.
+    # not_hdr_trl_shadowed is not a silver expectation: the deletion happens before
+    # parsing, so the record it removes never reaches a silver row to check. It is
+    # counted per file in the audit and attributed per record in quarantine.
     declared = set(SILVER_EXPECTATIONS) | set(FILE_AUDIT_EXPECTATIONS)
     missing = (contract | {"not_hdr_trl_shadowed"}) - declared
     check("every contract expectation is declared", not missing, repr(missing))

@@ -24,12 +24,14 @@ import custbill_parse
 from custbill_bytes import is_header_or_trailer
 from custbill_expectations import (
     FILE_AUDIT_EXPECTATIONS,
+    SHADOWED_EXPECTATION,
     SILVER_EXPECTATIONS,
     failed_expectations_sql,
 )
 from custbill_parse import RECORD_BYTES, parse_record
 from pyspark import cloudpickle
 from pyspark import pipelines as dp
+from pyspark.sql import Window
 from pyspark.sql import functions as F
 from pyspark.sql.types import IntegerType, StringType, StructField, StructType
 
@@ -83,7 +85,7 @@ def custbill_parsed():
 
 @dp.materialized_view(
     name="custbill_quarantine",
-    comment="Copy of every silver row that failed an expectation, with the names of the checks it failed. Observability only - these rows are in silver and in gold.",
+    comment="Every record that failed an expectation, or that the HDR/TRL rule deleted, with its byte offset and the names of the checks it failed. Observability only - it is never a filter.",
 )
 def custbill_quarantine():
     """A copy, not a diversion.
@@ -92,22 +94,71 @@ def custbill_quarantine():
     processed these rows into the finance report, so removing them here would put
     the target out of parity with the thing it replaces (C-6.1). If this table is
     ever turned into a filter it is a post-cutover decision by the user (P2-D02).
+
+    Two populations, and the difference matters when reading the table:
+
+    - rows that failed an expectation. They are in silver and in gold, unchanged.
+    - rows the `sed '/^HDR/d'` prefix rule deleted before parsing. The legacy lost
+      them, so the target loses them too and `psv_line` is NULL - they are here to
+      be *attributable* (C-6.1), not to be reinstated. Reinstating one would put
+      a record in gold that the legacy report never had.
     """
-    return (
+    offsets = _record_byte_offsets()
+    failed = (
         spark.read.table("ow_tp.silver.custbill")  # noqa: F821
         .withColumn(
             "failed_expectations",
             F.expr(failed_expectations_sql(SILVER_EXPECTATIONS)),
         )
         .where(F.size("failed_expectations") > 0)
+        .select("source_file", "record_no", "raw_record", "record_bytes", "psv_line", "failed_expectations")
+    )
+    shadowed = _shadowed_data_records().select(
+        "source_file",
+        "record_no",
+        "raw_record",
+        "record_bytes",
+        F.lit(None).cast("string").alias("psv_line"),
+        F.array(F.lit(SHADOWED_EXPECTATION)).alias("failed_expectations"),
+    )
+    return (
+        failed.unionByName(shadowed)
+        .join(offsets, ["source_file", "record_no"])
         .select(
             "source_file",
             "record_no",
+            "byte_offset",
             "raw_record",
             "record_bytes",
             "psv_line",
             "failed_expectations",
             F.current_timestamp().alias("quarantined_at"),
+        )
+    )
+
+
+def _record_byte_offsets():
+    """Zero-based offset of each record's first byte in its landed file.
+
+    `record_no` alone does not locate a malformed record in the file, because the
+    records are not fixed length in practice - short, long, blank and CR-carrying
+    lines all occur. Offsets are derived here rather than carried from bronze so
+    the ingest unit's table stays as landed: the split is on LF, so record n starts
+    after the bytes of every earlier record plus their one separator byte each.
+    """
+    preceding = (
+        Window.partitionBy("source_file")
+        .orderBy("record_no")
+        .rowsBetween(Window.unboundedPreceding, -1)
+    )
+    return (
+        spark.read.table("custbill_raw")  # noqa: F821
+        .select(
+            "source_file",
+            "record_no",
+            F.coalesce(F.sum(F.col("record_bytes") + F.lit(1)).over(preceding), F.lit(0))
+            .cast("bigint")
+            .alias("byte_offset"),
         )
     )
 

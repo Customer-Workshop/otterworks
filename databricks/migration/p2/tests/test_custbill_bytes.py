@@ -16,6 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "databricks/migration/p2/pipeline"))
 
 from custbill_bytes import (
+    byte_offsets,
     data_records,
     is_header_or_trailer,
     split_records,
@@ -59,6 +60,26 @@ def test_record_count_matches_the_legacy_psv() -> None:
         check(f"record count {dat.name}", got == expected, f"bronze {got} vs legacy psv {expected}")
 
 
+def test_byte_offsets_locate_the_record() -> None:
+    """The offset quarantine reports must find the record in the file (C-6.1)."""
+    for path in sorted((CAPTURED / "inputs").glob("*.dat")):
+        raw = path.read_bytes()
+        records = split_records(raw)
+        wrong = [
+            (rec[0], offset)
+            for rec, offset in zip(records, byte_offsets(records))
+            if raw[offset : offset + rec[2]] != rec[1].encode(ENCODING)
+        ]
+        check(f"offsets locate every record in {path.name}", not wrong, repr(wrong[:3]))
+
+
+def test_byte_offsets_survive_uneven_records() -> None:
+    """Short, blank, long and CR-carrying lines all shift what follows them."""
+    content = b"short\n\n" + b"x" * 80 + b"\nwith-cr\r\n"
+    offsets = byte_offsets(split_records(content))
+    check("offsets follow record length", offsets == [0, 6, 7, 88], repr(offsets))
+
+
 def test_blank_line_is_a_record() -> None:
     got = split_records(b"A\n\nB\n")
     check("blank line kept", len(got) == 3 and got[1][1] == "", repr(got))
@@ -89,6 +110,8 @@ def test_high_bytes_survive() -> None:
 if __name__ == "__main__":
     test_round_trip_is_lossless()
     test_record_count_matches_the_legacy_psv()
+    test_byte_offsets_locate_the_record()
+    test_byte_offsets_survive_uneven_records()
     test_blank_line_is_a_record()
     test_no_trailing_newline()
     test_cr_stays_inside_the_record()

@@ -8,9 +8,14 @@ tier, tolerance and canonicalization rule is still the harness's own. See `DEGRA
 
 Merge-evidence run: `--mode transactional --depth full --seed 0`, against the live source.
 Fixture runs (`fixture/`) came first and are development evidence only, never a merge
-verdict. This evidence is the re-run after `fk_inv_period` was added to the target (below);
-each directed correction round used one fixture run and one merge-evidence run, inside the
-three-run cap.
+verdict. This evidence is the re-run after `fk_inv_period` was added to the target (below).
+
+Full count, so the record is exact: six full runs in three rounds — the initial conversion,
+the D-010 retype and this constraint fix — each round one fixture run plus one live
+merge-evidence run, so three live Oracle reads. The batch's own cap is three full runs and
+one live read per unit; rounds two and three were directed corrections from the wave owner
+after the unit had already reported, and are recorded here rather than treated as headroom
+this unit had. Any further round is a wave-owner decision, not this unit's to take.
 
 ## What was compared
 

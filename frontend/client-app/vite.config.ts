@@ -12,11 +12,18 @@ const apiProxy = {
     changeOrigin: true,
   },
 };
+// The dev/preview proxy stands in for the API gateway on the local billing fixture:
+// it presents the billing service's shared token so the fixture screens stay usable.
 const billingProxy = {
   "/billing-api": {
     target: process.env.BILLING_SERVICE_URL || "http://localhost:12109",
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/billing-api/, ""),
+    headers: {
+      Authorization: `Bearer ${
+        process.env.BILLING_SERVICE_TOKEN || "billing-svc-local-dev-token-change-me"
+      }`,
+    },
   },
 };
 

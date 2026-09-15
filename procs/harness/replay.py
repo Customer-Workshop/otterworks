@@ -116,12 +116,16 @@ def request_json(
         raise OSError(f"unsupported target URL: {base_url}")
     connection_type = http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
     connection = connection_type(parsed.netloc, timeout=5)
+    headers = {"Content-Type": "application/json"}
+    token = os.getenv("BILLING_SVC_TOKEN", "")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     try:
         connection.request(
             method,
             f"{parsed.path.rstrip('/')}{path}",
             body=data,
-            headers={"Content-Type": "application/json"},
+            headers=headers,
         )
         response = connection.getresponse()
         raw = response.read()

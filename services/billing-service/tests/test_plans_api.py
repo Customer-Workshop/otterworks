@@ -11,6 +11,7 @@ from app.domain import SubscriptionRow
 
 TENANT = UUID("00000000-0000-0000-0000-000000000001")
 PLAN = UUID("10000000-0000-0000-0000-000000000002")
+TENANT_HEADERS = {"X-User-ID": "user-001", "X-Tenant-ID": str(TENANT)}
 CREATED = SubscriptionRow(
     UUID("20000000-0000-0000-0000-000000000003"),
     TENANT,
@@ -45,8 +46,12 @@ def test_repeated_plan_change_returns_conflict(monkeypatch) -> None:
     monkeypatch.setattr(main, "change_plan", fake_change_plan)
     with TestClient(main.app) as client:
         payload = {"plan_id": str(PLAN), "effective_on": "2026-03-01"}
-        first = client.post(f"/api/tenants/{TENANT}/plan-change", json=payload)
-        second = client.post(f"/api/tenants/{TENANT}/plan-change", json=payload)
+        first = client.post(
+            f"/api/tenants/{TENANT}/plan-change", json=payload, headers=TENANT_HEADERS
+        )
+        second = client.post(
+            f"/api/tenants/{TENANT}/plan-change", json=payload, headers=TENANT_HEADERS
+        )
 
     assert first.status_code == 200
     assert second.status_code == 409

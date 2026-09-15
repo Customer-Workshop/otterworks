@@ -42,7 +42,7 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "loader run at 2026-09-15T07:54:01+00:00 and rerun at 2026-09-15T07:54:11+00:00; target state identical: ow_tp.silver.invoice_line 150000 rows, xxhash64 xor -1852379910498030974"
+    "evidence": "loader run at 2026-09-15T07:57:03.738239+00:00 and rerun at 2026-09-15T07:57:12.746403+00:00; target state identical: ow_tp.silver.invoice_line 150000 rows, xxhash64 xor -1852379910498030974"
   },
   "planted_anomaly_detections": {
     "expected_set": [

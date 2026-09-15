@@ -1,7 +1,8 @@
 {
   "kind": "target-state-digest",
   "unit": "p1-invoice-line",
-  "finished_at": "2026-09-15T07:54:01+00:00",
+  "run_id": "b7887fdc-a46a-4d0d-a54b-ef522142b476",
+  "finished_at": "2026-09-15T07:57:03.738239+00:00",
   "tables": [
     {
       "table": "ow_tp.silver.invoice_line",

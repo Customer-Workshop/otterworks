@@ -33,11 +33,20 @@ def _secret(name: str) -> str:
     return value
 
 
-def oracle_connect():
-    """Read-only Oracle connection. DSN secret format: user/password/host:port/service."""
+def oracle_connect(snapshot: bool = True):
+    """Read-only Oracle connection. DSN secret format: user/password/host:port/service.
+
+    With snapshot=True the session opens a read-only transaction, so every query the loader
+    runs sees one committed state of the source. Without it, Oracle's default read-committed
+    isolation gives each statement its own snapshot and a parent can be copied from a later
+    moment than its children.
+    """
     import oracledb
     user, password, dsn = _secret(ORACLE_DSN_SECRET).split("/", 2)
-    return oracledb.connect(user=user, password=password, dsn=dsn)
+    conn = oracledb.connect(user=user, password=password, dsn=dsn)
+    if snapshot:
+        conn.cursor().execute("SET TRANSACTION READ ONLY")
+    return conn
 
 
 def mongo_db(database: str = TARGET_DB, allowed: Iterable[str] = (TARGET_DB,)):
@@ -86,7 +95,9 @@ def yn(value: Any) -> bool | None:
 def parse_dt(value: Any) -> _dt.datetime | None:
     """Parse the estate's DD-MON-YY[ HH24:MI:SS] strings; unparseable input is null.
 
-    Mirrors PKG_OW_UTIL.f_str2dt, including its two-digit-year window.
+    Mirrors PKG_OW_UTIL.f_str2dt, which is TO_DATE(str, 'DD-MON-YY'): the YY format keeps
+    the current century, so '31-DEC-99' is 2099, not 1999 (RR's 1950/2049 window is a
+    different format mask and is not what the source uses).
     """
     if value is None or isinstance(value, _dt.datetime):
         return value
@@ -97,7 +108,7 @@ def parse_dt(value: Any) -> _dt.datetime | None:
     month = _MONTHS.get(mon.upper())
     if month is None:
         return None
-    year = 2000 + int(yy) if int(yy) < 50 else 1900 + int(yy)
+    year = (_dt.datetime.now(_dt.timezone.utc).year // 100) * 100 + int(yy)
     try:
         return _dt.datetime(year, month, int(day),
                             int(hh or 0), int(mi or 0), int(ss or 0),

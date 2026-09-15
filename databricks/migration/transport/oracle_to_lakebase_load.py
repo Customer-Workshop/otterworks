@@ -178,23 +178,33 @@ def advance_sequence(cur, table: dict, target: str, schema: str) -> None:
     sequence (`seq_<table>`, the converted Oracle sequence). A key column declared GENERATED
     BY DEFAULT owns an implicit sequence which an explicit insert does not move, so it would
     hand out 1 again and collide with a migrated row.
+
+    Either sequence only ever moves forwards: an Oracle sequence does not rewind when its top
+    rows are deleted, so neither may this one, or a rerun would reissue keys the source has
+    already handed out.
     """
     identity = table.get("identity")
     if identity:
         sequence = f'{ident(schema)}.{ident("seq_" + table["target_table"])}'
         (exists,) = cur.execute("SELECT to_regclass(%s) IS NOT NULL", (sequence,)).fetchone()
         if exists:
-            column = ident(identity["target"])
-            cur.execute(f"SELECT setval('{sequence}', coalesce(max({column}), 0) + 1, false) "
-                        f"FROM {target}")
+            advance_to(cur, sequence, ident(identity["target"]), target)
             return
     for col in (ident(c) for c in table["key"]["target"]):
         (sequence,) = cur.execute("SELECT pg_get_serial_sequence(%s, %s)",
                                   (target, col)).fetchone()
         if sequence:
-            cur.execute(
-                f"SELECT setval(%s, coalesce((SELECT max({col}) FROM {target}), 0) + 1, false)",
-                (sequence,))
+            advance_to(cur, sequence, col, target)
+
+
+def advance_to(cur, sequence: str, column: str, target: str) -> None:
+    """setval the sequence to the higher of its current position and max(column) + 1."""
+    last, is_called = cur.execute(
+        f"SELECT last_value, is_called FROM {sequence}").fetchone()
+    (from_data,) = cur.execute(
+        f"SELECT coalesce(max({column}), 0) + 1 FROM {target}").fetchone()
+    cur.execute("SELECT setval(%s, %s, false)",
+                (sequence, max(last + 1 if is_called else last, from_data)))
 
 
 def main(argv: list[str] | None = None) -> int:

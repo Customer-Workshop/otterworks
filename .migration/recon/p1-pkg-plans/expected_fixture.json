@@ -1,0 +1,64 @@
+{
+  "source": "oracle-fixture",
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "plan_id": "10000000-0000-0000-0000-000000000002",
+  "effective_on": "2026-06-01 00:00:00",
+  "entitlement_on": "2026-06-01 00:00:00",
+  "pre_rows": [
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01 00:00:00",
+      "ends_on": null,
+      "status_cd": "10",
+      "suspended_on": null
+    }
+  ],
+  "entitlement_pre": [
+    {
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_code": "STARTER",
+      "tier": "starter",
+      "monthly_fee": "49",
+      "included_units": "100",
+      "subscription_status": "active",
+      "effective_on": "2026-06-01 00:00:00"
+    }
+  ],
+  "post_rows": [
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000001",
+      "starts_on": "2026-01-01 00:00:00",
+      "ends_on": "2026-05-31 00:00:00",
+      "status_cd": "10",
+      "suspended_on": null
+    },
+    {
+      "id": "4b9647f7-8344-5aac-7748-e3ce3a1f8833",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_id": "10000000-0000-0000-0000-000000000002",
+      "starts_on": "2026-06-01 00:00:00",
+      "ends_on": null,
+      "status_cd": "10",
+      "suspended_on": null
+    }
+  ],
+  "entitlement_post": [
+    {
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "plan_code": "GROWTH",
+      "tier": "growth",
+      "monthly_fee": "149",
+      "included_units": "500",
+      "subscription_status": "active",
+      "effective_on": "2026-06-01 00:00:00"
+    }
+  ],
+  "uncancel_probe": {
+    "raised": null,
+    "status_after_uncancel": 30
+  }
+}

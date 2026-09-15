@@ -1,0 +1,184 @@
+{
+  "unit": "p1-pkg-plans",
+  "mode": "transactional",
+  "mapping_version": "map-p1-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 80,
+    "source_rows_fetched": 337,
+    "target_statements": 77,
+    "target_rows_fetched": 273,
+    "elapsed_s": 8.783
+  },
+  "generated_at": "2026-09-15T08:05:03.244882+00:00",
+  "tiers": [
+    {
+      "tier": 0,
+      "name": "consistency_window",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "isolation": {
+          "source": "snapshot",
+          "target": "repeatable_read"
+        },
+        "strength": {
+          "source": "snapshot",
+          "target": "snapshot"
+        },
+        "markers": {
+          "subscriptions": {
+            "source_open": [
+              "69",
+              "fe6f5e18-3d44-a720-dc37-a89edff1cbf6"
+            ],
+            "source_close": [
+              "69",
+              "fe6f5e18-3d44-a720-dc37-a89edff1cbf6"
+            ],
+            "target_open": [
+              69,
+              "fe6f5e18-3d44-a720-dc37-a89edff1cbf6"
+            ],
+            "target_close": [
+              69,
+              "fe6f5e18-3d44-a720-dc37-a89edff1cbf6"
+            ],
+            "in_flight_at_open": 0
+          }
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "source_counts": {
+          "OW_BILLING.subscriptions": 69
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 7,
+      "stats": {
+        "deferred_to_tier3": [
+          "subscriptions.id",
+          "subscriptions.tenant_id",
+          "subscriptions.plan_id"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 69,
+      "stats": {
+        "subscriptions": {
+          "mode": "full_diff",
+          "population": 69,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 5,
+      "name": "pk_set_diff",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "subscriptions": {
+          "ranges": 66,
+          "population": 69,
+          "fingerprint": "unavailable: every range streamed",
+          "mismatched_ranges": 66,
+          "keys_streamed": 268,
+          "missing_on_target": 0,
+          "extra_on_target": 0,
+          "in_flight_missing": 0,
+          "in_flight_updates": 0,
+          "in_flight_deletes": 0,
+          "delete_evidence": {
+            "status": "absent",
+            "kind": null,
+            "applied_position": null,
+            "horizon": [
+              null,
+              null
+            ],
+            "events": 0,
+            "in_flight_deletes": 0,
+            "aged_deletes": 0,
+            "reinserted": 0,
+            "detail": ""
+          },
+          "rows_ahead_on_target": 0,
+          "rows_behind_on_target": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 6,
+      "name": "cdc_lag_ordering",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "subscriptions": {
+          "watermark": null,
+          "note": "no watermark declared: the window markers alone prove stillness",
+          "in_flight_deletes": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 7,
+      "name": "schema_parity",
+      "passed": true,
+      "checks_run": 0,
+      "stats": {
+        "unverified": [
+          "subscriptions: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed"
+        ]
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [
+    "UNVERIFIED schema_parity: subscriptions: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed"
+  ],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "degraded": {
+    "grade": "DEGRADED",
+    "official_verdict": false,
+    "reason": "d10_01_denied",
+    "source_adapter": "Oracle read over JDBC from the Devin CIDRs with a repo-local source adapter (databricks/migration/recon/oracle_jdbc_adapter.py). The harness supplies every tier, canonicalisation rule and tolerance; the connector is outside its tested matrix, so `dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
+  }
+}

@@ -23,7 +23,10 @@ PAYLOAD = {"plan_id": str(PLAN), "effective_on": "2026-03-01"}
 
 
 def access_token(
-    user_id: str = USER_A, secret: str = JWT_SECRET, token_type: str = "access"
+    user_id: str = USER_A,
+    secret: str = JWT_SECRET,
+    token_type: str = "access",
+    algorithm: str = "HS256",
 ) -> str:
     now = datetime.now(UTC)
     claims = {
@@ -32,7 +35,7 @@ def access_token(
         "iat": now,
         "exp": now + timedelta(hours=1),
     }
-    return jwt.encode(claims, secret, algorithm="HS256")
+    return jwt.encode(claims, secret, algorithm=algorithm)
 
 
 def bearer(token: str) -> dict[str, str]:
@@ -126,6 +129,20 @@ def test_user_can_act_on_own_tenant(client: TestClient) -> None:
     assert read.status_code == 200
     assert read.json()["tenant_id"] == str(TENANT_A)
     assert write.status_code == 200
+
+
+# auth-service signs with jjwt's key-strength default: a 64-byte JWT_SECRET yields HS512.
+@pytest.mark.parametrize("algorithm", ["HS256", "HS384", "HS512"])
+def test_user_token_accepted_for_every_hmac_algorithm_auth_service_emits(
+    client: TestClient, algorithm: str
+) -> None:
+    response = client.get(
+        f"/api/tenants/{TENANT_A}/entitlement",
+        params={"on": "2026-02-28"},
+        headers=bearer(access_token(algorithm=algorithm)),
+    )
+
+    assert response.status_code == 200
 
 
 def test_forwarded_identity_headers_are_not_trusted(client: TestClient) -> None:

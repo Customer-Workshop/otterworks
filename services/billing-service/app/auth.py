@@ -24,7 +24,7 @@ from app.config import settings
 from app.db import connect
 from app.repository import PostgresPlansRepository
 
-JWT_ALGORITHMS = ("HS256", "HS384")
+JWT_ALGORITHMS = ("HS256", "HS384", "HS512")
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "p1-pkg-dunning",
   "namespace": "demo",
-  "generated_at": "2026-09-15T10:14:42.125696+00:00",
+  "generated_at": "2026-09-15T10:59:02.322605+00:00",
   "run_mode": "live",
   "harness_run_mode": "transactional",
   "checks": [
@@ -77,7 +77,7 @@
   },
   "unverified_paths": [
     "source-side constraint, index and identity metadata (tiers 5-7): the Oracle JDBC adapter reads none under d10_01_denied",
-    "end-to-end execution of sp_schedule_dunning / sp_suspend_overdue / fn_overdue_accounts: a sweep writes dunning_attempts, notifications, tenants, subscriptions and billing_audit_log on the shared wave branch, which are the rows recon compares against Oracle, so it was not run here; the wave gate runs the end-to-end op diff",
+    "end-to-end execution of sp_schedule_dunning / sp_suspend_overdue / fn_overdue_accounts: a sweep writes dunning_attempts, notifications, tenants, subscriptions and billing_audit_log on the shared wave branch, which are the rows recon compares against Oracle, so it was not run here; the routines were called once inside a rolled-back transaction to show the audit rows they write (.migration/recon/p1-pkg-dunning/audit_log_writes.md), and the wave gate runs the end-to-end op diff",
     "behavioural idempotency of sp_suspend_overdue (a second sweep on the same day writes nothing): needs that same sweep",
     "the Oracle side is read through a repo-local JDBC adapter outside the harness tested matrix (degraded, official_verdict=false)"
   ],

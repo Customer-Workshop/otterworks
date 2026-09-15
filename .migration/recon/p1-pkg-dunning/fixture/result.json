@@ -8,13 +8,13 @@
   "params": {},
   "snapshot": null,
   "cost": {
-    "source_statements": 14,
-    "source_rows_fetched": 45,
-    "target_statements": 13,
-    "target_rows_fetched": 45,
-    "elapsed_s": 0.049
+    "source_statements": 10,
+    "source_rows_fetched": 2,
+    "target_statements": 9,
+    "target_rows_fetched": 2,
+    "elapsed_s": 0.6
   },
-  "generated_at": "2026-09-15T10:15:35.531649+00:00",
+  "generated_at": "2026-09-15T10:58:56.249492+00:00",
   "tiers": [
     {
       "tier": 1,
@@ -70,14 +70,6 @@
           "duplicate_source_key_count": 0
         }
       },
-      "findings": []
-    },
-    {
-      "tier": 4,
-      "name": "app_level_parity",
-      "passed": true,
-      "checks_run": 4,
-      "stats": {},
       "findings": []
     }
   ],

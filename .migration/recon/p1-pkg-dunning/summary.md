@@ -40,8 +40,11 @@ What was verified of the conversion, in the fixture run's tier-4 ops
   `load_digest_run2.json`), identical. Behavioural idempotency of `sp_suspend_overdue` (a
   second sweep on the same day writes nothing, by the `NOT EXISTS` dedupe) is **not**
   proven here — it needs a sweep, and a sweep is the shared-branch write above.
-- The audit-write path was exercised directly on the wave branch inside a transaction that
-  was rolled back: `billing.log_msg('DUNNING', …)` inserted one row and left none behind.
+- The audit-write path was exercised through the routines themselves on the wave branch,
+  inside a transaction that was rolled back: one `CALL billing.sp_schedule_dunning` and one
+  `CALL billing.sp_suspend_overdue` wrote the two `billing.billing_audit_log` rows Oracle
+  writes at the same two points, and the rollback left the branch unchanged. The rows and
+  the reason for the rollback are in `audit_log_writes.md`.
 - Source-side constraint, index and identity parity (tiers 5–7) is **unverified** on the
   JDBC route.
 
@@ -80,3 +83,4 @@ What was verified of the conversion, in the fixture run's tier-4 ops
 | `DEGRADED.md` | why this is not an official verdict |
 | `load_digest_run1.json`, `load_digest_run2.json` | the rerun that proves target-state idempotency |
 | `fixture/` | the fixture run, including the four tier-4 ops; development evidence only |
+| `audit_log_writes.md` | the `billing_audit_log` rows the installed routines write, read back from a rolled-back call |

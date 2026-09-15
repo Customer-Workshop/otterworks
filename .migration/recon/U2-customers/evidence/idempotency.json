@@ -1,0 +1,23 @@
+{
+  "before": {
+    "customers": {
+      "count": 25000,
+      "sha256": "970b66312c1b55eb08aeaff831a10333ef65bcae23f83577bf7f3293ccf906f8"
+    },
+    "customer_history": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "after": {
+    "customers": {
+      "count": 25000,
+      "sha256": "970b66312c1b55eb08aeaff831a10333ef65bcae23f83577bf7f3293ccf906f8"
+    },
+    "customer_history": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "unchanged": true
+}

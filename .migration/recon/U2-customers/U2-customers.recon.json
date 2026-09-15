@@ -1,0 +1,105 @@
+{
+  "kind": "recon-report",
+  "unit": "U2-customers",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T05:36:26.657427+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "no findings",
+      "actual": "0 findings over 3 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "no findings",
+      "actual": "0 findings over 29 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "no findings",
+      "actual": "0 findings over 33333 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "tier4_app_level_parity",
+      "expected": "no findings",
+      "actual": "0 findings over 26 checks",
+      "source_of_truth": "oracle OW_BILLING via the recon harness",
+      "result": "pass"
+    },
+    {
+      "id": "count_customers",
+      "expected": 25000,
+      "actual": 25000,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_customer_history",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    },
+    {
+      "id": "count_customers.attributes_elements",
+      "expected": 8333,
+      "actual": 8333,
+      "source_of_truth": "recomputed from ow_billing_migration after the load",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": ".migration/recon/U2-customers/evidence/idempotency.json"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "customers.legacy.signupDtRaw (unparseable SIGNUP_DT) = 50",
+      "customers.legacy.relatedAcctIdsRaw (malformed RELATED_ACCT_IDS) = 31"
+    ],
+    "actual_set": [
+      "customers.legacy.signupDtRaw (unparseable SIGNUP_DT) = 50",
+      "customers.legacy.relatedAcctIdsRaw (malformed RELATED_ACCT_IDS) = 31"
+    ],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "customer_history: CUSTOMER_MASTER_HIST is empty in this estate, so the history mapping, its HIST_DT parsing and its {customerId, at} index are untravelled code.",
+    "phones[] fax element: FAX is null on every row, so the branch that appends a fax number with PHONE_TYPE 'fax' never runs.",
+    "addresses[].country and .zip4, territory, channel, rateClass: null on every source row, so only the null path is exercised.",
+    "childAccountIds: CHILD_ACCT_IDS is null on every row, and no PROMO_CODES_CSV value is malformed, so only relatedAccountIds exercises the malformed-list branch.",
+    "flags.dunningExempt: DUNNING_EXEMPT_YN is null on every row, and no Y/N column holds a value outside Y/N, so the invalid-flag branch (null plus raw kept) never runs.",
+    "dropped_columns guard: FLAG_*/UDF_* are all null today; the halt path that fires when one is populated has never fired.",
+    "Tier 4 recorded operations grade the transformations the harness has no rule for (Y/N to boolean, CSV split/trim, DD-MON-YY parsing, CODES decode, positional addresses[] paths). Those are graded by recomputed aggregate, not element by element against a harness rule.",
+    "Atlas M0: index builds and batch sizes were sized for a demo cluster, not for a production-scale load."
+  ],
+  "counts_from_target": {
+    "customers": 25000,
+    "customer_history": 0,
+    "customers.attributes_elements": 8333
+  },
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "runs": [
+    ".migration/recon/U2-customers/fixture/result.json",
+    ".migration/recon/U2-customers/live/result.json"
+  ],
+  "profile_feedback": [
+    "The harness canonicalizer implements decimal_round, datetime_utc_truncate_ms, rstrip_spaces, empty_string_is_null, null_missing_equiv, collation_casefold, uuid_normalize and identity. It has no rule for yn_to_bool, csv_split_trim or parse_date_string, and it cannot compare an integer CODES value against its decoded string. Those five transformations are graded by tier 4 recorded operations (source_sql plus target_pipeline) instead. The harness was not patched.",
+    "The harness validates target field paths as identifiers, so the mapping spec's positional paths (addresses.0.city and friends) cannot be graded as tier 2/3 fields. The unit's mapping slice moves them into tier 4 operations; the spec is unchanged.",
+    "The harness requires an embed to be scoped on both sides or neither. The spec scopes ENTITY_ATTR_VALUE with child_where entity_type='CUSTOMER' and needs no target scope, so the slice adds target_where {} (every document) to satisfy the check."
+  ],
+  "findings": [
+    "The brief says STATUS_CD 99 has no CODES row and must decode as UNKNOWN(99). In the seeded estate CODES holds CUST_STATUS 99 = 'conversion-limbo', so PKG_OW_UTIL.f_code_desc returns 'conversion-limbo' and the loader does the same for all 473 rows. Both sides of recon use f_code_desc semantics, so parity is unaffected; the brief's note about the missing CODES row does not match the data."
+  ]
+}

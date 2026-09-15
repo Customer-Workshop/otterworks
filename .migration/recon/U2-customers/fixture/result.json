@@ -1,0 +1,96 @@
+{
+  "unit": "U2-customers",
+  "mode": "fixture",
+  "mapping_version": "1",
+  "tolerance_version": "1",
+  "seed": 714559852,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-15T05:33:22.610762+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 3,
+      "stats": {
+        "source_counts": {
+          "CUSTOMER_MASTER": 25000,
+          "CUSTOMER_MASTER_HIST": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 29,
+      "stats": {
+        "deferred_to_tier3": [
+          "customers.custNo",
+          "customers.tenantId",
+          "customers.name",
+          "customers.legalName",
+          "customers.dbaName",
+          "customers.segment",
+          "customers.region",
+          "customers.territory",
+          "customers.channel",
+          "customers.rateClass",
+          "customers.balances.current",
+          "customers.balances.pastDue",
+          "customers.balances.ytdBilled",
+          "customers.balances.ltdBilled",
+          "customers.balances.ytdPaid",
+          "customers.balances.creditLimit",
+          "customers.contactNotes",
+          "customers.legacy.sysKey",
+          "customers.legacy.mainframeAcctNo",
+          "customers.legacy.conversionBatchNo",
+          "customers.legacy.custSeqNo",
+          "customers.audit.createdBy",
+          "customers.audit.updatedBy",
+          "customers.audit.version",
+          "customer_history.histId",
+          "customer_history.op",
+          "customer_history.customerId"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 33333,
+      "stats": {
+        "customers": {
+          "mode": "full_diff",
+          "population": 25000,
+          "duplicate_source_key_count": 0
+        },
+        "embeds_graded": {
+          "customers.attributes": 8333
+        },
+        "customer_history": {
+          "mode": "full_diff",
+          "population": 0,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 26,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": false
+}

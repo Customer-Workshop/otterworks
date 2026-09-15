@@ -150,10 +150,12 @@ def main() -> int:
     result = json.loads(result_path.read_text())
 
     def check(t: dict) -> dict:
-        # A tier the harness could not run at all (no source metadata under d10_01_denied)
-        # carries passed=true with zero checks. Machine consumers read `result`, so that
-        # tier is reported skipped and unverified rather than as a verified pass.
-        ran = t["checks_run"] > 0
+        # A tier the degraded source could not feed comes back passed=true and names what
+        # it could not read in `stats.unverified`; machine consumers read `result`, so it
+        # is reported skipped and unverified rather than as a verified pass. Zero checks
+        # alone is not that case - tier 6 legitimately runs none when the consistency
+        # window already proves stillness - so the marker decides, not the count.
+        ran = not t.get("stats", {}).get("unverified")
         return {"id": f"tier{t['tier']}_{t['name']}",
                 "expected": "pass",
                 "actual": ("pass" if t["passed"] else "fail") if ran else "unverified",

@@ -267,17 +267,18 @@
  "recon_grade": "DEGRADED",
  "recon_grade_reason": "d10_01_denied: Lakehouse Federation to Oracle was refused, so recon reads Oracle over JDBC with a repo-local adapter outside the harness's tested matrix. Every wave-2 verdict is DEGRADED and none is an official harness verdict. Tiers 5-7 stay unverified and merge_eligible is false on every unit.",
  "run_id": null,
- "undeclared_write_targets": {
-  "w2-a": [
-   "billing.billing_audit_log (runtime write via log_msg in sp_assign_plan; batch declares runtime_writes: [])"
-  ],
-  "w2-d": [
-   "ow_tp.bronze.customer_master_hist",
-   "ow_tp.bronze.subscriptions_hist"
-  ]
- },
+ "undeclared_write_targets": {},
  "undeclared_write_targets_remediation": {
   "decision": "Human decision relayed by the parent: drop the bronze tables, declare the w2-a audit runtime write, re-run the collision check, resume wave 3. The audit write is legacy behaviour the migration is meant to preserve, so it is declared rather than engineered away.",
+  "found": {
+   "w2-a": [
+    "billing.billing_audit_log (runtime write via log_msg in sp_assign_plan; batch declared runtime_writes: [])"
+   ],
+   "w2-d": [
+    "ow_tp.bronze.customer_master_hist",
+    "ow_tp.bronze.subscriptions_hist"
+   ]
+  },
   "w2-a": "billing.billing_audit_log added to the w2-a batch's runtime_writes in .migration/waves/wave-2.json; sp_assign_plan is unchanged.",
   "w2-d": "ow_tp.bronze.customer_master_hist and ow_tp.bronze.subscriptions_hist dropped after confirming both held 0 rows; ow_tp.bronze now holds only codes, customer_master, invoice_header and invoice_line."
  },

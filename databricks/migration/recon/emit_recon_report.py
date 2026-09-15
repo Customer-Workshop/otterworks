@@ -31,11 +31,16 @@ WAREHOUSE = "565cd2fd713738c4"
 CATALOG = "ow_tp"
 
 # An anomaly probe is a read, run with the migration service principal: one statement,
-# starting at `SELECT count(`, reading nothing outside the migration catalog.
+# starting at `SELECT count(`, naming every table it reads as a bare three-part name inside
+# the migration catalog. Quoting is refused rather than parsed, so an identifier cannot hide
+# a catalog behind a backtick.
 PROBE = re.compile(r"^\s*SELECT\s+count\s*\(", re.IGNORECASE)
 FORBIDDEN = re.compile(
     r"\b(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|COPY|SET)\b",
     re.IGNORECASE)
+SOURCE = re.compile(r"\b(?:FROM|JOIN)\s+(\(|[^\s,(]+)", re.IGNORECASE)
+QUOTES = re.compile(r"[`\"\[\]]")
+TABLE = re.compile(rf"^{CATALOG}\.[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", re.IGNORECASE)
 
 
 def sql_conn():
@@ -56,9 +61,16 @@ def check_probe(name: str, query: str) -> str:
         raise SystemExit(f"anomaly probe {name!r} must be a single statement")
     if not PROBE.match(query) or FORBIDDEN.search(query):
         raise SystemExit(f"anomaly probe {name!r} must be a read-only SELECT count(...)")
-    for ref in re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_][\w.]*)", query, re.IGNORECASE):
-        if not ref.lower().startswith(f"{CATALOG}."):
-            raise SystemExit(f"anomaly probe {name!r} reads {ref}, outside {CATALOG}")
+    if QUOTES.search(query):
+        raise SystemExit(f"anomaly probe {name!r} must name its tables unquoted")
+    refs = SOURCE.findall(query)
+    if not refs:
+        raise SystemExit(f"anomaly probe {name!r} names no table")
+    for ref in refs:
+        if not TABLE.match(ref):
+            raise SystemExit(
+                f"anomaly probe {name!r} reads {ref}: every source must be a bare "
+                f"{CATALOG}.<schema>.<table> name")
     return query
 
 

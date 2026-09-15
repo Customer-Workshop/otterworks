@@ -12,6 +12,7 @@ export interface AuthenticatedUser {
 
 export interface AuthenticatedSocket extends Socket {
   user?: AuthenticatedUser;
+  token?: string;
 }
 
 interface JwtPayload {
@@ -22,6 +23,16 @@ interface JwtPayload {
   roles?: string[];
   iat?: number;
   exp?: number;
+}
+
+export function verifyToken(token: string, jwtSecret: string): AuthenticatedUser {
+  const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+  return {
+    userId: decoded.sub,
+    email: decoded.email || '',
+    displayName: decoded.name || decoded.display_name || 'Anonymous',
+    roles: decoded.roles || [],
+  };
 }
 
 export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
@@ -37,17 +48,14 @@ export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
     }
 
     try {
-      const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+      const user = verifyToken(token, jwtSecret);
 
-      (socket as AuthenticatedSocket).user = {
-        userId: decoded.sub,
-        email: decoded.email || '',
-        displayName: decoded.name || decoded.display_name || 'Anonymous',
-        roles: decoded.roles || [],
-      };
+      const authSocket = socket as AuthenticatedSocket;
+      authSocket.user = user;
+      authSocket.token = token;
 
       logger.debug(
-        { socketId: socket.id, userId: decoded.sub },
+        { socketId: socket.id, userId: user.userId },
         'connection_authenticated',
       );
       next();
@@ -59,6 +67,10 @@ export function createAuthMiddleware(jwtSecret: string, logger: Logger) {
       next(new Error('Invalid or expired token'));
     }
   };
+}
+
+export function extractTokenFromSocket(socket: Socket): string | undefined {
+  return (socket as AuthenticatedSocket).token;
 }
 
 export function extractUserFromSocket(socket: Socket): AuthenticatedUser {

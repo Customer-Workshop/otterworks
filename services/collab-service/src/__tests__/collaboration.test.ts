@@ -10,6 +10,7 @@ import { PresenceHandler } from '../handlers/presence';
 import { MetricsCollector } from '../metrics';
 import { createAuthMiddleware } from '../middleware/auth';
 import { RedisAdapter } from '../services/redis-adapter';
+import type { DocumentAccessChecker } from '../services/document-access';
 
 const JWT_SECRET = 'test-secret-key-for-unit-tests';
 let PORT: number;
@@ -38,6 +39,16 @@ const mockRedis = {
   disconnect: jest.fn(),
   ping: jest.fn().mockResolvedValue(true),
 } as unknown as jest.Mocked<RedisAdapter>;
+
+const FORBIDDEN_DOC_PREFIX = 'forbidden-';
+const INTRUDER_USER = 'user-intruder';
+
+const mockDocumentAccess: jest.Mocked<DocumentAccessChecker> = {
+  canAccess: jest.fn(
+    async (documentId: string, userId: string, token: string): Promise<boolean> =>
+      !!token && userId !== INTRUDER_USER && !documentId.startsWith(FORBIDDEN_DOC_PREFIX),
+  ),
+};
 
 const mockLogger = {
   info: jest.fn(),
@@ -77,6 +88,7 @@ describe('CollaborationManager', () => {
       documentStore,
       awareness,
       presenceHandler,
+      documentAccess: mockDocumentAccess,
       metrics,
       logger: mockLogger,
       persistIntervalMs: 600000, // long interval so it doesn't fire during tests
@@ -215,6 +227,122 @@ describe('CollaborationManager', () => {
 
       client1.disconnect();
       client2.disconnect();
+    });
+  });
+
+  describe('Document Authorization', () => {
+    function joinDocument(
+      client: ClientSocket,
+      documentId: string,
+    ): Promise<{ success: boolean; error?: string }> {
+      return new Promise((resolve) => {
+        client.emit('join-document', { documentId }, (res: { success: boolean }) =>
+          resolve(res),
+        );
+      });
+    }
+
+    function expectNoEvent(client: ClientSocket, event: string, ms = 200): Promise<void> {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, ms);
+        client.once(event, (data) => {
+          clearTimeout(timer);
+          reject(new Error(`unexpected ${event}: ${JSON.stringify(data)}`));
+        });
+      });
+    }
+
+    it('should check document access with the caller identity and token on join', async () => {
+      const client = await connectClient('user-authz-1', 'Alice');
+
+      const response = await joinDocument(client, 'doc-authz-check');
+
+      expect(response.success).toBe(true);
+      expect(mockDocumentAccess.canAccess).toHaveBeenCalledWith(
+        'doc-authz-check',
+        'user-authz-1',
+        expect.any(String),
+      );
+      client.disconnect();
+    });
+
+    it('should refuse to join and not sync state for a document the user cannot access', async () => {
+      const client = await connectClient(INTRUDER_USER, 'Mallory');
+      const noSync = expectNoEvent(client, 'sync-document');
+
+      const response = await joinDocument(client, 'doc-victim');
+
+      expect(response).toEqual({ success: false, error: 'Access denied' });
+      await noSync;
+      expect(awareness.getUserDocument(client.id as string)).toBeFalsy();
+      expect(manager.getDocument('doc-victim')).toBeUndefined();
+      client.disconnect();
+    });
+
+    it('should not apply or broadcast updates from a socket that has not joined the document', async () => {
+      const owner = await connectClient('user-authz-owner', 'Alice');
+      const intruder = await connectClient(INTRUDER_USER, 'Mallory');
+      await joinDocument(owner, 'doc-authz-update');
+      const denied = await joinDocument(intruder, 'doc-authz-update');
+      expect(denied.success).toBe(false);
+
+      const tempDoc = new Y.Doc();
+      tempDoc.getText('content').insert(0, 'tampered');
+      const update = Buffer.from(Y.encodeStateAsUpdate(tempDoc)).toString('base64');
+
+      const ownerSawNothing = expectNoEvent(owner, 'document-update');
+      const errorPromise = new Promise<{ error: string }>((resolve) => {
+        intruder.on('document-update-error', (data) => resolve(data));
+      });
+
+      intruder.emit('document-update', { documentId: 'doc-authz-update', update });
+
+      const err = await errorPromise;
+      expect(err.error).toBe('Access denied');
+      await ownerSawNothing;
+      expect(manager.getDocument('doc-authz-update')?.getText('content').toString()).toBe(
+        '',
+      );
+      expect(mockRedis.set).not.toHaveBeenCalled();
+
+      owner.disconnect();
+      intruder.disconnect();
+    });
+
+    it('should not return history or create snapshots for a socket outside the document', async () => {
+      const owner = await connectClient('user-authz-owner-2', 'Alice');
+      const intruder = await connectClient(INTRUDER_USER, 'Mallory');
+      await joinDocument(owner, 'doc-authz-history');
+
+      const historyError = new Promise<{ error: string }>((resolve) => {
+        intruder.on('history-error', (data) => resolve(data));
+      });
+      const snapshotError = new Promise<{ error: string }>((resolve) => {
+        intruder.on('snapshot-error', (data) => resolve(data));
+      });
+      const noHistory = expectNoEvent(intruder, 'document-history');
+      const noSnapshot = expectNoEvent(intruder, 'snapshot-created');
+
+      intruder.emit('request-history', { documentId: 'doc-authz-history' });
+      intruder.emit('request-snapshot', { documentId: 'doc-authz-history' });
+
+      expect((await historyError).error).toBe('Access denied');
+      expect((await snapshotError).error).toBe('Access denied');
+      await Promise.all([noHistory, noSnapshot]);
+      expect(mockRedis.lrange).not.toHaveBeenCalled();
+      expect(mockRedis.lpush).not.toHaveBeenCalled();
+
+      owner.disconnect();
+      intruder.disconnect();
+    });
+
+    it('should deny access to a forbidden document even for an otherwise valid user', async () => {
+      const client = await connectClient('user-authz-2', 'Alice');
+
+      const response = await joinDocument(client, `${FORBIDDEN_DOC_PREFIX}doc`);
+
+      expect(response.success).toBe(false);
+      client.disconnect();
     });
   });
 

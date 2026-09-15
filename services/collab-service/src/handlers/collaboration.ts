@@ -3,7 +3,8 @@ import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import { DocumentStore } from '../services/document-store';
 import { AwarenessService, type CursorPosition } from '../services/awareness';
-import { extractUserFromSocket } from '../middleware/auth';
+import { extractTokenFromSocket, extractUserFromSocket } from '../middleware/auth';
+import type { DocumentAccessChecker } from '../services/document-access';
 import { MetricsCollector } from '../metrics';
 import { PresenceHandler } from './presence';
 
@@ -24,6 +25,7 @@ export interface CollaborationDeps {
   documentStore: DocumentStore;
   awareness: AwarenessService;
   presenceHandler: PresenceHandler;
+  documentAccess: DocumentAccessChecker;
   metrics: MetricsCollector;
   logger: Logger;
   persistIntervalMs: number;
@@ -106,12 +108,28 @@ export class CollaborationManager {
     data: { documentId: string },
     ack?: (response: { success: boolean; error?: string }) => void,
   ): Promise<void> {
-    const { documentId } = data;
-    const { io, awareness, presenceHandler, metrics, logger } = this.deps;
+    const { documentId } = data ?? {};
+    const { io, awareness, presenceHandler, documentAccess, metrics, logger } = this.deps;
     const user = extractUserFromSocket(socket);
+    const token = extractTokenFromSocket(socket);
     const room = `doc:${documentId}`;
 
     try {
+      const allowed =
+        typeof documentId === 'string' &&
+        documentId.length > 0 &&
+        !!token &&
+        (await documentAccess.canAccess(documentId, user.userId, token));
+      if (!allowed) {
+        logger.warn(
+          { documentId, userId: user.userId, socketId: socket.id },
+          'join_document_denied',
+        );
+        metrics.connectionErrors.inc({ reason: 'access_denied' });
+        if (ack) ack({ success: false, error: 'Access denied' });
+        return;
+      }
+
       // If socket is already in another document, leave it first
       const oldDocId = awareness.getUserDocument(socket.id);
       if (oldDocId && oldDocId !== documentId) {
@@ -205,6 +223,23 @@ export class CollaborationManager {
     logger.info({ documentId: trackedDocId, socketId: socket.id }, 'user_left_document');
   }
 
+  /**
+   * Document-scoped events are only honoured from sockets that passed the
+   * access check in `join-document` and are still in that document's room.
+   */
+  private isDocumentMember(socket: Socket, documentId: string): boolean {
+    if (typeof documentId !== 'string' || !socket.rooms.has(`doc:${documentId}`)) {
+      const { metrics, logger } = this.deps;
+      logger.warn(
+        { documentId, socketId: socket.id, userId: extractUserFromSocket(socket).userId },
+        'document_event_denied_not_member',
+      );
+      metrics.connectionErrors.inc({ reason: 'access_denied' });
+      return false;
+    }
+    return true;
+  }
+
   private async handleDocumentUpdate(
     socket: Socket,
     data: { documentId: string; update: unknown },
@@ -213,6 +248,11 @@ export class CollaborationManager {
     const { documentId, update } = data;
     const room = `doc:${documentId}`;
     const user = extractUserFromSocket(socket);
+
+    if (!this.isDocumentMember(socket, documentId)) {
+      socket.emit('document-update-error', { documentId, error: 'Access denied' });
+      return;
+    }
 
     const doc = this.documents.get(documentId);
     if (!doc) {
@@ -278,6 +318,7 @@ export class CollaborationManager {
     },
   ): void {
     const { awareness, metrics } = this.deps;
+    if (!this.isDocumentMember(socket, data.documentId)) return;
     const updatedAwareness = awareness.updateCursor(
       socket.id,
       data.cursor,
@@ -303,6 +344,7 @@ export class CollaborationManager {
     data: { documentId: string; isTyping: boolean },
   ): void {
     const { awareness } = this.deps;
+    if (!this.isDocumentMember(socket, data.documentId)) return;
     const updated = awareness.setTyping(socket.id, data.isTyping);
 
     if (updated) {
@@ -326,6 +368,7 @@ export class CollaborationManager {
     const { metrics } = this.deps;
     const user = extractUserFromSocket(socket);
     const room = `doc:${data.documentId}`;
+    if (!this.isDocumentMember(socket, data.documentId)) return;
 
     const fullComment: CommentAnnotation = {
       ...data.comment,
@@ -351,6 +394,7 @@ export class CollaborationManager {
     const { metrics } = this.deps;
     const user = extractUserFromSocket(socket);
     const room = `doc:${data.documentId}`;
+    if (!this.isDocumentMember(socket, data.documentId)) return;
 
     const payload = {
       commentId: data.commentId,
@@ -371,6 +415,7 @@ export class CollaborationManager {
     const { metrics } = this.deps;
     const user = extractUserFromSocket(socket);
     const room = `doc:${data.documentId}`;
+    if (!this.isDocumentMember(socket, data.documentId)) return;
 
     socket.to(room).emit('comment-deleted', {
       commentId: data.commentId,
@@ -387,6 +432,11 @@ export class CollaborationManager {
     const { documentStore, logger } = this.deps;
     const user = extractUserFromSocket(socket);
     const { documentId, label } = data;
+
+    if (!this.isDocumentMember(socket, documentId)) {
+      socket.emit('snapshot-error', { documentId, error: 'Access denied' });
+      return;
+    }
 
     const doc = this.documents.get(documentId);
     if (!doc) {
@@ -424,6 +474,11 @@ export class CollaborationManager {
   ): Promise<void> {
     const { documentStore, logger } = this.deps;
     const { documentId, limit } = data;
+
+    if (!this.isDocumentMember(socket, documentId)) {
+      socket.emit('history-error', { documentId, error: 'Access denied' });
+      return;
+    }
 
     try {
       const snapshots = await documentStore.getSnapshots(documentId, limit || 20);
@@ -572,6 +627,7 @@ export function setupCollaborationHandlers(
   documentStore: DocumentStore,
   awareness: AwarenessService,
   presenceHandler: PresenceHandler,
+  documentAccess: DocumentAccessChecker,
   metrics: MetricsCollector,
   logger: Logger,
   persistIntervalMs = 30000,
@@ -582,6 +638,7 @@ export function setupCollaborationHandlers(
     documentStore,
     awareness,
     presenceHandler,
+    documentAccess,
     metrics,
     logger,
     persistIntervalMs,

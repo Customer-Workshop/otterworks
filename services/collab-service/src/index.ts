@@ -2,15 +2,18 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { WebSocketServer } from 'ws';
-import jwt from 'jsonwebtoken';
 import cors from 'cors';
 import helmet from 'helmet';
 import pino from 'pino';
 import { loadConfig } from './config';
 import { MetricsCollector } from './metrics';
-import { createAuthMiddleware } from './middleware/auth';
+import { createAuthMiddleware, verifyToken } from './middleware/auth';
 import { RedisAdapter } from './services/redis-adapter';
 import { DocumentStore } from './services/document-store';
+import {
+  DocumentServiceAccessChecker,
+  documentIdFromRoomName,
+} from './services/document-access';
 import { AwarenessService } from './services/awareness';
 import { PresenceHandler } from './handlers/presence';
 import { setupCollaborationHandlers } from './handlers/collaboration';
@@ -114,6 +117,14 @@ const documentStore = new DocumentStore(redisAdapter, logger, {
 
 const awareness = new AwarenessService(logger);
 const presenceHandler = new PresenceHandler(awareness, logger);
+const documentAccess = new DocumentServiceAccessChecker(
+  {
+    baseUrl: config.documentService.url,
+    timeoutMs: config.documentService.timeoutMs,
+    cacheTtlMs: config.documentService.accessCacheTtlMs,
+  },
+  logger,
+);
 
 // Setup collaboration handlers
 const collabManager = setupCollaborationHandlers(
@@ -121,6 +132,7 @@ const collabManager = setupCollaborationHandlers(
   documentStore,
   awareness,
   presenceHandler,
+  documentAccess,
   metrics,
   logger,
   config.persistence.intervalMs,
@@ -135,11 +147,17 @@ wss.on('connection', (conn, req) => {
 });
 
 // Route WebSocket upgrades: Socket.IO paths go to Socket.IO, all others to y-websocket
-httpServer.on('upgrade', (request, socket, head) => {
+httpServer.on('upgrade', async (request, socket, head) => {
   if (request.url?.startsWith('/socket.io')) {
     // Socket.IO handles its own upgrades via its internal listener
     return;
   }
+
+  const reject = (status: number, reason: string, message: string): void => {
+    logger.warn(`y-websocket_connection_rejected: ${message}`);
+    socket.write(`HTTP/1.1 ${status} ${reason}\r\n\r\n`);
+    socket.destroy();
+  };
 
   // JWT authentication for y-websocket connections
   const url = new URL(request.url || '', `http://${request.headers.host}`);
@@ -148,20 +166,29 @@ httpServer.on('upgrade', (request, socket, head) => {
     request.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {
-    logger.warn('y-websocket_connection_rejected: no token');
-    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-    socket.destroy();
+    reject(401, 'Unauthorized', 'no token');
     return;
   }
 
+  let userId: string;
   try {
-    jwt.verify(token, config.jwt.secret);
+    userId = verifyToken(token, config.jwt.secret).userId;
   } catch {
-    logger.warn('y-websocket_connection_rejected: invalid token');
-    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-    socket.destroy();
+    reject(401, 'Unauthorized', 'invalid token');
     return;
   }
+
+  // setupWSConnection keys the shared Y.Doc off the URL path, so authorize the
+  // caller against that document before completing the upgrade.
+  const roomName = url.pathname.slice(1);
+  const documentId = roomName ? documentIdFromRoomName(roomName) : '';
+  const allowed = await documentAccess.canAccess(documentId, userId, token);
+  if (!allowed) {
+    reject(403, 'Forbidden', 'document access denied');
+    return;
+  }
+
+  if (socket.destroyed) return;
 
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);

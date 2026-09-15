@@ -132,6 +132,10 @@ pub async fn upload_file(
         return Err(ServiceError::BadRequest("file field is required".into()));
     }
 
+    if let Some(target) = &folder_id {
+        authorize_folder(&meta, target, &owner).await?;
+    }
+
     let file_id = Uuid::new_v4();
     let s3_key = format!("files/{}/{}", owner, file_id);
     let now = Utc::now();
@@ -212,7 +216,10 @@ pub async fn get_file_metadata(
         .parse()
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
     let file = authorize_file(&meta, &file_id, &caller, FileAccess::Read).await?;
-    let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    let mut shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    if file.owner_id != caller {
+        shares.retain(|s| s.shared_with == caller);
+    }
     Ok(HttpResponse::Ok().json(FileDetailResponse {
         file,
         shared_with: shares,
@@ -612,15 +619,20 @@ pub async fn list_folders(
 }
 
 pub async fn create_folder(
+    req: HttpRequest,
     meta: web::Data<MetadataClient>,
     body: web::Json<CreateFolderRequest>,
 ) -> Result<HttpResponse, ServiceError> {
+    let caller = caller_id(&req)?;
+    if let Some(parent) = &body.parent_id {
+        authorize_folder(&meta, parent, &caller).await?;
+    }
     let now = Utc::now();
     let folder = Folder {
         id: Uuid::new_v4(),
         name: body.name.clone(),
         parent_id: body.parent_id,
-        owner_id: body.owner_id,
+        owner_id: caller,
         created_at: now,
         updated_at: now,
     };

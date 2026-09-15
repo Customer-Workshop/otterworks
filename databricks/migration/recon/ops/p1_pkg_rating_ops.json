@@ -1,0 +1,24 @@
+[
+  {
+    "name": "usage_summary_all_tenants_2026_02",
+    "object": "p1-pkg-rating",
+    "source_sql": "SELECT t.id AS \"tenant_id\", DECODE(u.kind_cd, 1, 'api', 2, 'storage', 3, 'compute', 'UNKNOWN') AS \"kind\", TO_CHAR(COUNT(*)) AS \"event_count\", TO_CHAR(NVL(SUM(u.units), 0)) AS \"units\" FROM ow_billing.tenants t, ow_billing.usage_events u WHERE u.tenant_id = t.id AND TO_CHAR(u.occurred_at, 'YYYYMMDD') BETWEEN TO_CHAR(TO_DATE('2026-02-01', 'YYYY-MM-DD'), 'YYYYMMDD') AND TO_CHAR(TO_DATE('2026-02-28', 'YYYY-MM-DD'), 'YYYYMMDD') GROUP BY t.id, DECODE(u.kind_cd, 1, 'api', 2, 'storage', 3, 'compute', 'UNKNOWN') ORDER BY 1, 2",
+    "target_sql": "SELECT t.id AS tenant_id, s.kind, s.event_count::text AS event_count, s.units::text AS units FROM billing.tenants t CROSS JOIN LATERAL billing.fn_usage_summary(t.id, timestamp '2026-02-01 00:00:00', timestamp '2026-02-28 00:00:00') s ORDER BY 1, 2",
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  },
+  {
+    "name": "usage_rating_projection_all_tenants_2026_02",
+    "object": "p1-pkg-rating",
+    "source_sql": "WITH sub AS (SELECT tenant_id, status_cd, suspended_on, plan_id FROM (SELECT s.tenant_id, s.status_cd, s.suspended_on, s.plan_id, ROW_NUMBER() OVER (PARTITION BY s.tenant_id ORDER BY s.starts_on DESC, s.id) AS rn FROM ow_billing.subscriptions s WHERE s.starts_on <= TO_DATE('2026-02-28', 'YYYY-MM-DD') AND (s.ends_on IS NULL OR s.ends_on >= TO_DATE('2026-02-01', 'YYYY-MM-DD'))) WHERE rn = 1), usg AS (SELECT u.tenant_id, SUM(NVL(u.units, 0)) AS used FROM ow_billing.usage_events u WHERE TO_CHAR(u.occurred_at, 'YYYYMMDD') BETWEEN TO_CHAR(TO_DATE('2026-02-01', 'YYYY-MM-DD'), 'YYYYMMDD') AND TO_CHAR(TO_DATE('2026-02-28', 'YYYY-MM-DD'), 'YYYYMMDD') GROUP BY u.tenant_id), pri AS (SELECT rp.tenant_id, SUM(NVL(rr.rollover_units, 0)) AS prior_units FROM ow_billing.rating_results rr, ow_billing.rating_periods rp WHERE rp.id = rr.period_id AND rp.period_start < TO_DATE('2026-02-01', 'YYYY-MM-DD') AND rp.period_start >= ADD_MONTHS(TO_DATE('2026-02-01', 'YYYY-MM-DD'), -3) GROUP BY rp.tenant_id), base AS (SELECT t.id AS tenant_id, sub.status_cd, sub.suspended_on, p.included_units AS included, p.overage_rate AS rate, NVL(usg.used, 0) AS used, NVL(pri.prior_units, 0) AS prior0 FROM ow_billing.tenants t LEFT JOIN sub ON sub.tenant_id = t.id LEFT JOIN usg ON usg.tenant_id = t.id LEFT JOIN pri ON pri.tenant_id = t.id LEFT JOIN ow_billing.plans p ON p.id = sub.plan_id), calc AS (SELECT tenant_id, status_cd, suspended_on, used, included, rate, LEAST(prior0, NVL(2 * included, prior0)) AS rollover FROM base), tiers AS (SELECT tenant_id, status_cd, suspended_on, used, included, rate, rollover, GREATEST(NVL(used - rollover - included, 0), 0) AS billable FROM calc), amt AS (SELECT tenant_id, status_cd, suspended_on, used, included, rollover, billable, LEAST(billable, 101) AS first_tier, GREATEST(billable - 101, 0) AS second_tier, ROUND(LEAST(billable, 101) * rate + GREATEST(billable - 101, 0) * rate * 1.5, 2) AS overage FROM tiers) SELECT tenant_id AS \"tenant_id\", TO_CHAR(used) AS \"used_units\", TO_CHAR(included) AS \"quota_units\", TO_CHAR(rollover) AS \"rollover_units\", TO_CHAR(CASE WHEN status_cd = 20 AND suspended_on IS NOT NULL AND suspended_on BETWEEN TO_DATE('2026-02-01', 'YYYY-MM-DD') AND TO_DATE('2026-02-28', 'YYYY-MM-DD') THEN ROUND(billable * ((TO_DATE('2026-02-28', 'YYYY-MM-DD') - suspended_on + 1) / (TO_DATE('2026-02-28', 'YYYY-MM-DD') - TO_DATE('2026-02-01', 'YYYY-MM-DD') + 1))) ELSE billable END) AS \"billable_units\", TO_CHAR(first_tier) AS \"first_tier_units\", TO_CHAR(second_tier) AS \"second_tier_units\", TO_CHAR(CASE WHEN status_cd = 20 AND suspended_on IS NOT NULL AND suspended_on BETWEEN TO_DATE('2026-02-01', 'YYYY-MM-DD') AND TO_DATE('2026-02-28', 'YYYY-MM-DD') THEN ROUND(overage * ((TO_DATE('2026-02-28', 'YYYY-MM-DD') - suspended_on + 1) / (TO_DATE('2026-02-28', 'YYYY-MM-DD') - TO_DATE('2026-02-01', 'YYYY-MM-DD') + 1)), 2) ELSE overage END, 'FM99999999990.00') AS \"overage_amount\" FROM amt ORDER BY 1",
+    "target_sql": "SELECT t.id AS tenant_id, r.used_units::text AS used_units, r.quota_units::text AS quota_units, r.rollover_units::text AS rollover_units, r.billable_units::text AS billable_units, r.first_tier_units::text AS first_tier_units, r.second_tier_units::text AS second_tier_units, to_char(r.overage_amount, 'FM99999999990.00') AS overage_amount FROM billing.tenants t CROSS JOIN LATERAL billing.fn_usage_rating(t.id, timestamp '2026-02-01 00:00:00', timestamp '2026-02-28 00:00:00') r ORDER BY 1",
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  }
+]

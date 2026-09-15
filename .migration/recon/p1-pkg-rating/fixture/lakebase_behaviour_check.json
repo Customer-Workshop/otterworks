@@ -1,0 +1,28 @@
+{
+  "unit": "p1-pkg-rating",
+  "kind": "behaviour-run-diff",
+  "expected_source": "oracle-fixture",
+  "scenarios": {
+    "rollover": {
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "suspended": {
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "tier_two": {
+      "tenant_id": "9cc3e480-8bac-946d-1475-6bdaaa87a386",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "no_subscription": {
+      "tenant_id": "no-such-tenant",
+      "status": "PASS",
+      "mismatches": []
+    }
+  },
+  "status": "PASS"
+}

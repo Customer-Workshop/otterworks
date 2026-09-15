@@ -1,0 +1,216 @@
+> **DEGRADED - not an official harness verdict.** The Oracle side is read over JDBC with a repo-local adapter (reason: `d10_01_denied`); `official_verdict` is false. Merge eligibility below is the data verdict under the owner's STOP C exception, not the harness certifying the source. See DEGRADED.md.
+
+# Recon report: unit `p1-pkg-rating`
+
+- **Verdict: PASS**
+- Mode: `transactional` (both sides live: PASS scoped to the consistency window that held and the target's applied CDC watermark)
+- Merge eligible: no - degraded, see DEGRADED.md
+- Mapping version: `map-p1-v1`
+- Tolerance version: `v1`
+- Seed: `0`
+- Tier 3 depth: `full`
+- Generated: 2026-09-15T11:24:56.091863+00:00
+- Cost: `{"source_statements": 35, "source_rows_fetched": 264, "target_statements": 29, "target_rows_fetched": 258, "elapsed_s": 3.105}`
+- **WARNING: UNVERIFIED schema_parity: rating_periods: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed**
+- **WARNING: UNVERIFIED schema_parity: rating_results: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed**
+
+| Tier | Name | Checks | Result |
+|---|---|---|---|
+| 0 | consistency_window | 2 | PASS |
+| 1 | counts_through_mapping | 2 | PASS |
+| 2 | per_field_aggregates | 13 | PASS |
+| 3 | keyed_diffs | 6 | PASS |
+| 4 | app_level_parity | 2 | PASS |
+| 5 | pk_set_diff | 2 | PASS |
+| 6 | cdc_lag_ordering | 0 | PASS |
+| 7 | schema_parity | 0 | PASS |
+
+## Tier 0 coverage
+```json
+{
+  "isolation": {
+    "source": "snapshot",
+    "target": "repeatable_read"
+  },
+  "strength": {
+    "source": "snapshot",
+    "target": "snapshot"
+  },
+  "markers": {
+    "rating_periods": {
+      "source_open": [
+        "3",
+        "40000000-0000-0000-0000-000000000003"
+      ],
+      "source_close": [
+        "3",
+        "40000000-0000-0000-0000-000000000003"
+      ],
+      "target_open": [
+        3,
+        "40000000-0000-0000-0000-000000000003"
+      ],
+      "target_close": [
+        3,
+        "40000000-0000-0000-0000-000000000003"
+      ],
+      "in_flight_at_open": 0
+    },
+    "rating_results": {
+      "source_open": [
+        "3",
+        "50000000-0000-0000-0000-000000000003"
+      ],
+      "source_close": [
+        "3",
+        "50000000-0000-0000-0000-000000000003"
+      ],
+      "target_open": [
+        3,
+        "50000000-0000-0000-0000-000000000003"
+      ],
+      "target_close": [
+        3,
+        "50000000-0000-0000-0000-000000000003"
+      ],
+      "in_flight_at_open": 0
+    }
+  }
+}
+```
+
+## Tier 1 coverage
+```json
+{
+  "source_counts": {
+    "OW_BILLING.rating_periods": 3,
+    "OW_BILLING.rating_results": 3
+  }
+}
+```
+
+## Tier 2 coverage
+```json
+{
+  "deferred_to_tier3": [
+    "rating_periods.id",
+    "rating_periods.tenant_id",
+    "rating_results.id",
+    "rating_results.period_id",
+    "rating_results.subscription_id",
+    "rating_results.overage_amount"
+  ]
+}
+```
+
+## Tier 3 coverage
+```json
+{
+  "rating_periods": {
+    "mode": "full_diff",
+    "population": 3,
+    "null_key_rows": {
+      "source": 0,
+      "target": 0
+    },
+    "duplicate_source_key_count": 0
+  },
+  "rating_results": {
+    "mode": "full_diff",
+    "population": 3,
+    "null_key_rows": {
+      "source": 0,
+      "target": 0
+    },
+    "duplicate_source_key_count": 0
+  }
+}
+```
+
+## Tier 5 coverage
+```json
+{
+  "rating_periods": {
+    "ranges": 5,
+    "population": 3,
+    "fingerprint": "unavailable: every range streamed",
+    "mismatched_ranges": 5,
+    "keys_streamed": 14,
+    "missing_on_target": 0,
+    "extra_on_target": 0,
+    "in_flight_missing": 0,
+    "in_flight_updates": 0,
+    "in_flight_deletes": 0,
+    "delete_evidence": {
+      "status": "absent",
+      "kind": null,
+      "applied_position": null,
+      "horizon": [
+        null,
+        null
+      ],
+      "events": 0,
+      "in_flight_deletes": 0,
+      "aged_deletes": 0,
+      "reinserted": 0,
+      "detail": ""
+    },
+    "rows_ahead_on_target": 0,
+    "rows_behind_on_target": 0
+  },
+  "rating_results": {
+    "ranges": 5,
+    "population": 3,
+    "fingerprint": "unavailable: every range streamed",
+    "mismatched_ranges": 5,
+    "keys_streamed": 14,
+    "missing_on_target": 0,
+    "extra_on_target": 0,
+    "in_flight_missing": 0,
+    "in_flight_updates": 0,
+    "in_flight_deletes": 0,
+    "delete_evidence": {
+      "status": "absent",
+      "kind": null,
+      "applied_position": null,
+      "horizon": [
+        null,
+        null
+      ],
+      "events": 0,
+      "in_flight_deletes": 0,
+      "aged_deletes": 0,
+      "reinserted": 0,
+      "detail": ""
+    },
+    "rows_ahead_on_target": 0,
+    "rows_behind_on_target": 0
+  }
+}
+```
+
+## Tier 6 coverage
+```json
+{
+  "rating_periods": {
+    "watermark": null,
+    "note": "no watermark declared: the window markers alone prove stillness",
+    "in_flight_deletes": 0
+  },
+  "rating_results": {
+    "watermark": null,
+    "note": "no watermark declared: the window markers alone prove stillness",
+    "in_flight_deletes": 0
+  }
+}
+```
+
+## Tier 7 coverage
+```json
+{
+  "unverified": [
+    "rating_periods: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed",
+    "rating_results: OracleJdbcSourceAdapter reads no constraint metadata: tiers 5-7 are part of the degraded surface and are reported as unverified, not guessed"
+  ]
+}
+```

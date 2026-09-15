@@ -1,0 +1,399 @@
+{
+  "source": "oracle-fixture",
+  "period_start": "2026-02-01 00:00:00",
+  "period_end": "2026-02-28 00:00:00",
+  "scenarios": {
+    "rollover": {
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "usage_rating": [
+        {
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00",
+          "used_units": "260",
+          "quota_units": "100",
+          "rollover_units": "200",
+          "billable_units": "0",
+          "first_tier_units": "0",
+          "second_tier_units": "0",
+          "overage_amount": "0"
+        }
+      ],
+      "usage_summary": [
+        {
+          "kind": "api",
+          "event_count": "1",
+          "units": "260"
+        }
+      ],
+      "rating_periods_pre": [
+        {
+          "id": "40000000-0000-0000-0000-000000000003",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2025-11-01 00:00:00",
+          "period_end": "2025-11-30 00:00:00"
+        },
+        {
+          "id": "40000000-0000-0000-0000-000000000001",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2025-12-01 00:00:00",
+          "period_end": "2025-12-31 00:00:00"
+        },
+        {
+          "id": "40000000-0000-0000-0000-000000000002",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2026-01-01 00:00:00",
+          "period_end": "2026-01-31 00:00:00"
+        }
+      ],
+      "rating_results_pre": [
+        {
+          "id": "50000000-0000-0000-0000-000000000003",
+          "period_id": "40000000-0000-0000-0000-000000000003",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2025-11-30 00:00:00"
+        },
+        {
+          "id": "50000000-0000-0000-0000-000000000001",
+          "period_id": "40000000-0000-0000-0000-000000000001",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2025-12-31 00:00:00"
+        },
+        {
+          "id": "50000000-0000-0000-0000-000000000002",
+          "period_id": "40000000-0000-0000-0000-000000000002",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2026-01-31 00:00:00"
+        }
+      ],
+      "overage_state": "0",
+      "rating_periods_post": [
+        {
+          "id": "40000000-0000-0000-0000-000000000003",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2025-11-01 00:00:00",
+          "period_end": "2025-11-30 00:00:00"
+        },
+        {
+          "id": "40000000-0000-0000-0000-000000000001",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2025-12-01 00:00:00",
+          "period_end": "2025-12-31 00:00:00"
+        },
+        {
+          "id": "40000000-0000-0000-0000-000000000002",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2026-01-01 00:00:00",
+          "period_end": "2026-01-31 00:00:00"
+        },
+        {
+          "id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_results_post": [
+        {
+          "id": "50000000-0000-0000-0000-000000000003",
+          "period_id": "40000000-0000-0000-0000-000000000003",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2025-11-30 00:00:00"
+        },
+        {
+          "id": "50000000-0000-0000-0000-000000000001",
+          "period_id": "40000000-0000-0000-0000-000000000001",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2025-12-31 00:00:00"
+        },
+        {
+          "id": "50000000-0000-0000-0000-000000000002",
+          "period_id": "40000000-0000-0000-0000-000000000002",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2026-01-31 00:00:00"
+        },
+        {
+          "id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+          "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "260",
+          "quota_units": "100",
+          "rollover_units": "0",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_periods_rerun": [
+        {
+          "id": "40000000-0000-0000-0000-000000000003",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2025-11-01 00:00:00",
+          "period_end": "2025-11-30 00:00:00"
+        },
+        {
+          "id": "40000000-0000-0000-0000-000000000001",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2025-12-01 00:00:00",
+          "period_end": "2025-12-31 00:00:00"
+        },
+        {
+          "id": "40000000-0000-0000-0000-000000000002",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2026-01-01 00:00:00",
+          "period_end": "2026-01-31 00:00:00"
+        },
+        {
+          "id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_results_rerun": [
+        {
+          "id": "50000000-0000-0000-0000-000000000003",
+          "period_id": "40000000-0000-0000-0000-000000000003",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2025-11-30 00:00:00"
+        },
+        {
+          "id": "50000000-0000-0000-0000-000000000001",
+          "period_id": "40000000-0000-0000-0000-000000000001",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2025-12-31 00:00:00"
+        },
+        {
+          "id": "50000000-0000-0000-0000-000000000002",
+          "period_id": "40000000-0000-0000-0000-000000000002",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "0",
+          "quota_units": "100",
+          "rollover_units": "100",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2026-01-31 00:00:00"
+        },
+        {
+          "id": "175fe5b7-8f91-1c3a-8586-1ef5c455fc9a",
+          "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+          "subscription_id": "20000000-0000-0000-0000-000000000001",
+          "used_units": "260",
+          "quota_units": "100",
+          "rollover_units": "0",
+          "billable_units": "0",
+          "overage_amount": "0",
+          "created_at": "2026-02-28 00:00:00"
+        }
+      ]
+    },
+    "suspended": {
+      "tenant_id": "00000000-0000-0000-0000-000000000002",
+      "usage_rating": [
+        {
+          "tenant_id": "00000000-0000-0000-0000-000000000002",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00",
+          "used_units": "700",
+          "quota_units": "500",
+          "rollover_units": "0",
+          "billable_units": "100",
+          "first_tier_units": "101",
+          "second_tier_units": "99",
+          "overage_amount": "4.37"
+        }
+      ],
+      "usage_summary": [
+        {
+          "kind": "api",
+          "event_count": "1",
+          "units": "700"
+        }
+      ],
+      "rating_periods_pre": [],
+      "rating_results_pre": [],
+      "overage_state": "4.37",
+      "rating_periods_post": [
+        {
+          "id": "d0a28620-e069-c023-6976-04338ccc3014",
+          "tenant_id": "00000000-0000-0000-0000-000000000002",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_results_post": [
+        {
+          "id": "69cf3f79-36c2-d64b-0445-e13857750c72",
+          "period_id": "d0a28620-e069-c023-6976-04338ccc3014",
+          "subscription_id": "20000000-0000-0000-0000-000000000002",
+          "used_units": "700",
+          "quota_units": "500",
+          "rollover_units": "0",
+          "billable_units": "100",
+          "overage_amount": "4.37",
+          "created_at": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_periods_rerun": [
+        {
+          "id": "d0a28620-e069-c023-6976-04338ccc3014",
+          "tenant_id": "00000000-0000-0000-0000-000000000002",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_results_rerun": [
+        {
+          "id": "69cf3f79-36c2-d64b-0445-e13857750c72",
+          "period_id": "d0a28620-e069-c023-6976-04338ccc3014",
+          "subscription_id": "20000000-0000-0000-0000-000000000002",
+          "used_units": "700",
+          "quota_units": "500",
+          "rollover_units": "0",
+          "billable_units": "100",
+          "overage_amount": "4.37",
+          "created_at": "2026-02-28 00:00:00"
+        }
+      ]
+    },
+    "tier_two": {
+      "tenant_id": "9cc3e480-8bac-946d-1475-6bdaaa87a386",
+      "usage_rating": [
+        {
+          "tenant_id": "9cc3e480-8bac-946d-1475-6bdaaa87a386",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00",
+          "used_units": "11448",
+          "quota_units": "2000",
+          "rollover_units": "0",
+          "billable_units": "9448",
+          "first_tier_units": "101",
+          "second_tier_units": "9347",
+          "overage_amount": "282.43"
+        }
+      ],
+      "usage_summary": [
+        {
+          "kind": "api",
+          "event_count": "16",
+          "units": "6425"
+        },
+        {
+          "kind": "compute",
+          "event_count": "5",
+          "units": "2573"
+        },
+        {
+          "kind": "storage",
+          "event_count": "4",
+          "units": "2450"
+        }
+      ],
+      "rating_periods_pre": [],
+      "rating_results_pre": [],
+      "overage_state": "282.43",
+      "rating_periods_post": [
+        {
+          "id": "d4b53fb7-7a7e-bbe1-4027-11c4885c4ac2",
+          "tenant_id": "9cc3e480-8bac-946d-1475-6bdaaa87a386",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_results_post": [
+        {
+          "id": "52c04b12-89ad-a2f6-474b-4fa1592e80b8",
+          "period_id": "d4b53fb7-7a7e-bbe1-4027-11c4885c4ac2",
+          "subscription_id": "dc88360b-ae50-3ee7-6be0-6064b11c3ad6",
+          "used_units": "11448",
+          "quota_units": "2000",
+          "rollover_units": "0",
+          "billable_units": "9448",
+          "overage_amount": "282.43",
+          "created_at": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_periods_rerun": [
+        {
+          "id": "d4b53fb7-7a7e-bbe1-4027-11c4885c4ac2",
+          "tenant_id": "9cc3e480-8bac-946d-1475-6bdaaa87a386",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00"
+        }
+      ],
+      "rating_results_rerun": [
+        {
+          "id": "52c04b12-89ad-a2f6-474b-4fa1592e80b8",
+          "period_id": "d4b53fb7-7a7e-bbe1-4027-11c4885c4ac2",
+          "subscription_id": "dc88360b-ae50-3ee7-6be0-6064b11c3ad6",
+          "used_units": "11448",
+          "quota_units": "2000",
+          "rollover_units": "0",
+          "billable_units": "9448",
+          "overage_amount": "282.43",
+          "created_at": "2026-02-28 00:00:00"
+        }
+      ]
+    },
+    "no_subscription": {
+      "tenant_id": "no-such-tenant",
+      "usage_rating": [
+        {
+          "tenant_id": "no-such-tenant",
+          "period_start": "2026-02-01 00:00:00",
+          "period_end": "2026-02-28 00:00:00",
+          "used_units": "0",
+          "quota_units": null,
+          "rollover_units": "0",
+          "billable_units": "0",
+          "first_tier_units": "0",
+          "second_tier_units": "0",
+          "overage_amount": null
+        }
+      ],
+      "usage_summary": [],
+      "rating_periods_pre": [],
+      "rating_results_pre": []
+    }
+  }
+}

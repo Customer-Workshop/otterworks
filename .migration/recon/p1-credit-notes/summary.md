@@ -50,6 +50,18 @@ Proven by rerun, not inferred: the loader ran twice against the fixture and once
 reporting `source_rows=5 target_rows=5 deleted=0` every time. It deletes target keys the
 source no longer has before upserting, so a rerun converges rather than accumulating.
 
+Re-proven after the shared loader changed on this branch (`advance_sequence`, derived-field
+and trigger handling, none of which this unit's mapping uses). The target's five rows were
+read back with `compare_fixture_target.py`, the source's with `read_source_rows.py`, and
+they matched, so a further load could only be a no-op; the loader then ran again and the
+target digest was unchanged:
+
+    rows=5 sha256=067460f700ce9ccc8ef5e8e9da95639703aa881944b357bcb3fa4fed3b777ba4
+
+before and after. Both reads are of the target platform and the source, never of the
+loader's own output, and the rerun used the fixture, so the one live read still stands at
+one.
+
 ## NOT DATA-PROVEN / unverified paths
 
 - Tiers 5–7 source-side metadata (constraints, indexes, identity): the JDBC adapter reads no
@@ -59,8 +71,10 @@ source no longer has before upserting, so a rerun converges rather than accumula
   privilege query for the Oracle family. The unit used the read-only credential
   (`ow-tp/oracle/ow_billing_ro`) and issued no DDL or DML against Oracle, but the grants
   themselves were not machine-checked.
-- The harness writes `result.json` / `report.md`, not the `*.recon.json` machine-readable
-  report schema with `"kind": "recon-report"`; that checklist item does not apply to this
-  harness version and is recorded here rather than claimed green.
+- No `*.recon.json` (`"kind": "recon-report"`) is emitted. `emit_recon_report.py` recounts
+  declared anomaly classes over `ow_tp.silver.*` on the SQL warehouse and reads two
+  target-state digests of Delta tables, so it covers the Delta track; the Lakebase units
+  (`p1-tenants`, `p1-plans`, `p1-codes`, and this one) ship `result.json` instead. Recorded
+  here rather than claimed green.
 - Wave 3's burn-down of `remaining_amount` has no target-side implementation yet, so no
   evidence covers it.

@@ -1,0 +1,67 @@
+{
+  "kind": "recon-report",
+  "unit": "p1-customer-master-hist",
+  "target": "ow_tp.silver.customer_master_hist",
+  "columns_compared": 158,
+  "verdict": "PASS",
+  "grade": "DEGRADED",
+  "official_verdict": false,
+  "degraded_reason": "d10_01_denied",
+  "data_proven": false,
+  "data_proven_note": "source and target both hold zero rows; this run proves schema parity and an empty-set assertion only, never row content",
+  "mode": "live",
+  "depth": "full",
+  "seed": 0,
+  "mapping_version": "map-p1-v1",
+  "tolerance_version": "v1",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 1
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 158
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 0
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 1
+    }
+  ],
+  "unverified_paths": [
+    "tier 5 constraint parity (JDBC route reads no source catalog metadata)",
+    "tier 6 index parity (same)",
+    "tier 7 identity/sequence parity (same)",
+    "row-level content, money precision, DD-MON-YY parsing and anomaly sets (no rows exist to compare)",
+    "source principal read-only privilege check (factory-doctor has no Oracle privilege query; source access is read-only by secret and by SET TRANSACTION READ ONLY)"
+  ],
+  "idempotency": {
+    "proven_by": "rerun of the silver load with digest comparison",
+    "digest": [
+      {
+        "table": "ow_tp.silver.customer_master_hist",
+        "rows": 0,
+        "content_hash": null
+      }
+    ]
+  },
+  "evidence": {
+    "result": ".migration/recon/p1-customer-master-hist/result.json",
+    "summary": ".migration/recon/p1-customer-master-hist/summary.md",
+    "harness_summary": ".migration/recon/p1-customer-master-hist/recon.summary.md",
+    "degraded": ".migration/recon/p1-customer-master-hist/DEGRADED.md",
+    "report": ".migration/recon/p1-customer-master-hist/report.md"
+  }
+}

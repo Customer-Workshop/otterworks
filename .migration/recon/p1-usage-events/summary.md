@@ -94,6 +94,12 @@ against the local fixture. Secrets are referenced by name only.
   The doctor row stays unverified because the check itself is not implemented, not because
   the grants are unknown. Every other doctor row is `ok`, including `hook_platform_loaded`
   (nonce probe blocked) — the guard is live and blocked three commands during this unit.
+- The loader orders nothing between snapshots. It merges a complete snapshot and deletes
+  keys the snapshot does not carry, so two overlapping loads finishing out of order would
+  let the older one undo the newer one. Safe here because the unit takes exactly one live
+  source read and runs the load once, with no CDC or schedule behind it; a recurring loader
+  (wave 3, when `pkg_rating` is converted) needs a snapshot fence checked and merged in one
+  atomic protocol, not two statements.
 - Machine-readable schema: this unit uses the harness's own `result.json`, as wave 0 did.
   No `*.recon.json` / `"kind": "recon-report"` artifact is produced, because the harness
   does not emit that schema; `result.json` is the machine-readable evidence.

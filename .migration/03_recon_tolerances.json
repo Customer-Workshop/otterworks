@@ -1,0 +1,8 @@
+{
+  "version": "v1",
+  "full_diff_row_threshold": 5000000,
+  "sample_size": 100000,
+  "numeric_abs_tol": 0.0,
+  "aggregate_rel_tol": 1e-09,
+  "source_concurrency": 4
+}

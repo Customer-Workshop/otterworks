@@ -1,0 +1,7 @@
+{
+  "catalogs": ["ow_tp"],
+  "notes": {
+    "ow_tp": "Unity Catalog catalog (schemas bronze/silver/gold) AND the Lakebase branch database name in project ow-tp-billing (schema billing). Nothing else is writable by any migration session.",
+    "denied": ["tech-partnerships branch", "Lakebase project loan-servicing-migration", "Lakebase production branch", "any Oracle object"]
+  }
+}

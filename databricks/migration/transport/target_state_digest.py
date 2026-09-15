@@ -3,6 +3,10 @@
 
 Row count plus an order-independent hash of every row, read back from the target platform
 itself rather than from the loader's own output.
+
+The digest is SHA-256 of the sorted per-row SHA-256 hashes: sorting makes it independent of
+row order, and nothing reduces a row to a short checksum on the way, so two different table
+states cannot share a digest by summing to the same number.
 """
 from __future__ import annotations
 
@@ -23,7 +27,8 @@ def digest(table: str) -> dict:
         cur.execute(f"SELECT count(*) FROM {BRONZE}.{table}")
         rows = cur.fetchone()[0]
         cur.execute(
-            f"SELECT bigint(sum(crc32(to_json(struct(*))))) FROM {BRONZE}.{table}")
+            "SELECT sha2(array_join(array_sort(collect_list(row_hash)), ''), 256) FROM "
+            f"(SELECT sha2(to_json(struct(*)), 256) AS row_hash FROM {BRONZE}.{table})")
         content = cur.fetchone()[0]
     return {"table": table, "rows": rows, "content_digest": content}
 

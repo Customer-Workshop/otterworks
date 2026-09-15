@@ -21,7 +21,8 @@ pass never runs against a watermark-filtered stage, which would empty the table.
 tables need a periodic --full-refresh run to converge deletes; each run's JSON says whether
 deletes were converged. A complete snapshot that reads zero rows means the source table is
 empty, so the target is emptied too; an empty incremental read means nothing new arrived and
-leaves the target alone.
+leaves the target alone; a first complete snapshot of an empty source still registers the
+target table, from the source's column metadata, so it exists and holds no rows.
 
 usage (under with_oracle_secret.py, with DATABRICKS_* in the environment):
   python3 jdbc_watermark_load.py --table codes --keys code_type,code_val
@@ -123,7 +124,24 @@ def arrow_table(columns, rows):
     return pa.table(cols)
 
 
-def read_source(table: str, watermark_column: str | None, since) -> tuple[list[str], list]:
+def delta_type(desc) -> str:
+    """Delta type for one Oracle cursor-description column.
+
+    Only used to register an empty table when the source has no rows; a table with rows is
+    created from the Parquet stage, which carries the same decisions from arrow_table().
+    """
+    _, typ, _, _, precision, scale, _ = desc
+    if typ is oracledb.DB_TYPE_NUMBER:
+        return f"DECIMAL({precision or 38},{scale if scale is not None else 10})"
+    if typ in (oracledb.DB_TYPE_DATE, oracledb.DB_TYPE_TIMESTAMP,
+               oracledb.DB_TYPE_TIMESTAMP_TZ, oracledb.DB_TYPE_TIMESTAMP_LTZ):
+        return "TIMESTAMP"
+    if typ in (oracledb.DB_TYPE_BINARY_DOUBLE, oracledb.DB_TYPE_BINARY_FLOAT):
+        return "DOUBLE"
+    return "STRING"
+
+
+def read_source(table: str, watermark_column: str | None, since) -> tuple[list, list]:
     where = ""
     binds: list = []
     if watermark_column and since is not None:
@@ -134,9 +152,9 @@ def read_source(table: str, watermark_column: str | None, since) -> tuple[list[s
     with oracle_conn() as conn, conn.cursor() as cur:
         cur.execute("SET TRANSACTION READ ONLY")
         cur.execute(sql, binds)
-        columns = [d[0] for d in cur.description]
+        description = list(cur.description)
         rows = cur.fetchall()
-    return columns, rows
+    return description, rows
 
 
 def current_watermark(cur, table: str, watermark_column: str | None):
@@ -165,20 +183,28 @@ def main() -> int:
     with sql_conn() as conn, conn.cursor() as cur:
         since = (None if args.full_refresh
                  else current_watermark(cur, table, watermark_column))
-        columns, rows = read_source(table, watermark_column, since)
+        description, rows = read_source(table, watermark_column, since)
+        columns = [d[0] for d in description]
         # The stage holds every live key only when nothing filtered the read.
         full_snapshot = since is None
         if not rows:
             # An empty complete snapshot means the source table is empty, which is a real
-            # state the target has to reach. An empty incremental read means nothing new.
-            emptied = False
+            # state the target has to reach: the table has to exist and hold no rows, so a
+            # first load of an empty source registers it from the source's own column
+            # metadata. An empty incremental read means nothing new arrived.
+            created = emptied = False
             if full_snapshot:
+                cols = ", ".join(f"{d[0].lower()} {delta_type(d)}" for d in description)
                 cur.execute(f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{table}'")
                 if cur.fetchall():
                     cur.execute(f"DELETE FROM {CATALOG}.{SCHEMA}.{table}")
                     emptied = True
+                else:
+                    cur.execute(f"CREATE TABLE {CATALOG}.{SCHEMA}.{table} ({cols})")
+                    created = True
             print(json.dumps({"table": table, "rows": 0, "watermark_since": str(since),
-                              "full_snapshot": full_snapshot, "target_emptied": emptied,
+                              "full_snapshot": full_snapshot, "target_created": created,
+                              "target_emptied": emptied,
                               "deletes_converged": full_snapshot}))
             return 0
 

@@ -75,9 +75,15 @@ def md5_uuid(expr: str) -> str:
             f"SUBSTR({h},17,4)||'-'||SUBSTR({h},21,12)")
 
 
-CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, str, str]]]] = {
+# Default canonicalization for a recorded op whose result columns are all text.
+OP_TEXT_RULES = ["empty_string_is_null", "null_missing_equiv"]
+
+CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple]]] = {
     # U-20's parity ops compare the hash ORACLE COMPUTES for an input against the hash the
-    # converted function computes for the same input. Neither side calls the Oracle package:
+    # converted function computes for the same input, over the DISTINCT inputs the estate
+    # hashes (the seed table billing.md5_parity_input keys on the input, and a repeated
+    # input proves nothing extra about a deterministic function). Neither side calls the
+    # Oracle package:
     # the read-only user has no EXECUTE on it (ORA-41900) and granting it is source DDL, so
     # the source side inlines the package body's own expression (01_pkg_util.sql).
     #
@@ -89,18 +95,18 @@ CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, st
     "p1-pkg-ow-util": (
         [("billing_audit_log", ["log_id"], "lakebase")],
         [("f_md5_uuid_vs_oracle_rating_result_inputs",
-          f'SELECT period_id AS "input", {md5_uuid("period_id")} AS "hashed" '
-          f"FROM {SRC}.rating_results ORDER BY period_id",
+          f'SELECT DISTINCT period_id AS "input", {md5_uuid("period_id")} AS "hashed" '
+          f"FROM {SRC}.rating_results ORDER BY 1",
           "SELECT input AS input, billing.f_md5_uuid(input) AS hashed "
           "FROM billing.md5_parity_input WHERE vector = 'rating_result' ORDER BY input"),
          ("f_md5_uuid_vs_oracle_invoice_inputs",
-          f'SELECT period_id || \'invoice\' AS "input", '
+          f'SELECT DISTINCT period_id || \'invoice\' AS "input", '
           f"""{md5_uuid("period_id || 'invoice'")} AS "hashed" """
           f"FROM {SRC}.invoices ORDER BY 1",
           "SELECT input AS input, billing.f_md5_uuid(input) AS hashed "
           "FROM billing.md5_parity_input WHERE vector = 'invoice' ORDER BY input"),
          ("f_md5_uuid_vs_oracle_invoice_line_inputs",
-          f'SELECT invoice_id || TO_CHAR(line_no) AS "input", '
+          f'SELECT DISTINCT invoice_id || TO_CHAR(line_no) AS "input", '
           f'{md5_uuid("invoice_id || TO_CHAR(line_no)")} AS "hashed" '
           f"FROM {SRC}.invoice_lines ORDER BY 1",
           "SELECT input AS input, billing.f_md5_uuid(input) AS hashed "
@@ -127,7 +133,7 @@ CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, st
 
 # Ops that belong to a DATA unit because they need that unit's migrated table.
 # f_code_desc is a lookup of codes.code_desc, so the Oracle row IS the expected value.
-DATA_UNIT_OPS: dict[str, list[tuple[str, str, str]]] = {
+DATA_UNIT_OPS: dict[str, list[tuple]] = {
     "p1-codes": [(
         "f_code_desc_all",
         f'SELECT code_type AS "code_type", code_val AS "code_val", code_desc AS "d" '
@@ -330,9 +336,11 @@ def build_code(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> tuple[
         "behavioural": True,
         "tables": objs,
     }
+    # Tier 4 applies an op's rules to every column it returns, so decimal_round is only
+    # carried by an op that actually returns a number; on text it raises ConversionSyntax.
     ops_doc = [{"name": name, "object": unit_id, "source_sql": ssql, "target_sql": tsql,
-                "rules": ["decimal_round", "empty_string_is_null", "null_missing_equiv"]}
-               for name, ssql, tsql in ops]
+                "rules": list(rest[0]) if rest else OP_TEXT_RULES}
+               for name, ssql, tsql, *rest in ops]
     return spec, ops_doc
 
 
@@ -349,8 +357,8 @@ def main() -> int:
                        json.dumps(build(unit_id, tables), indent=2) + "\n"))
         ops = date_ops(unit_id, tables) + [
             {"name": name, "object": unit_id, "source_sql": ssql, "target_sql": tsql,
-             "rules": ["empty_string_is_null", "null_missing_equiv"]}
-            for name, ssql, tsql in DATA_UNIT_OPS.get(unit_id, [])]
+             "rules": list(rest[0]) if rest else OP_TEXT_RULES}
+            for name, ssql, tsql, *rest in DATA_UNIT_OPS.get(unit_id, [])]
         if ops:
             wanted.append((UNITS / unit_id / "ops.json", json.dumps(ops, indent=2) + "\n"))
     for unit_id in CODE_UNITS:

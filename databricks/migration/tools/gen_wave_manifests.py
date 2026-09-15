@@ -146,7 +146,10 @@ def gate_cmd(unit: str) -> str:
     if track == "lakebase":
         mode, kind, secret, schema = "transactional", "lakebase", "OW_TP_LAKEBASE_DSN", "billing"
     else:
-        mode, kind, secret, schema = "live", "databricks", "DATABRICKS_MIGRATION_SQL", "silver"
+        # Delta units land curated tables in silver; the transport unit is the raw landing
+        # itself, so its own recon reads ow_tp.bronze, where it writes.
+        schema = "bronze" if unit == "p1-cdc-transport" else "silver"
+        mode, kind, secret = "live", "databricks", "DATABRICKS_MIGRATION_SQL"
     ops = (f"    --ops .migration/units/{unit}/ops.json \\\n"
            if (UNITS / unit / "ops.json").exists() else "")
     return (f"  python3 databricks/migration/recon/with_oracle_secret.py "

@@ -22,11 +22,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 
 from databricks import sql as dbsql
 
 WAREHOUSE = "565cd2fd713738c4"
+CATALOG = "ow_tp"
+
+# An anomaly probe is a read, run with the migration service principal: one statement,
+# starting at `SELECT count(`, reading nothing outside the migration catalog.
+PROBE = re.compile(r"^\s*SELECT\s+count\s*\(", re.IGNORECASE)
+FORBIDDEN = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|COPY|SET)\b",
+    re.IGNORECASE)
 
 
 def sql_conn():
@@ -41,14 +50,26 @@ def sql_conn():
         credentials_provider=lambda: oauth_service_principal(cfg))
 
 
+def check_probe(name: str, query: str) -> str:
+    query = query.strip().rstrip(";").strip()
+    if ";" in query:
+        raise SystemExit(f"anomaly probe {name!r} must be a single statement")
+    if not PROBE.match(query) or FORBIDDEN.search(query):
+        raise SystemExit(f"anomaly probe {name!r} must be a read-only SELECT count(...)")
+    for ref in re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_][\w.]*)", query, re.IGNORECASE):
+        if not ref.lower().startswith(f"{CATALOG}."):
+            raise SystemExit(f"anomaly probe {name!r} reads {ref}, outside {CATALOG}")
+    return query
+
+
 def measure(pairs: list[str]) -> list[dict]:
     """Each `name=SQL` recounted on the target; the count is the anomaly-set member."""
     if not pairs:
         return []
+    probes = [(n, check_probe(n, q)) for n, _, q in (p.partition("=") for p in pairs)]
     out = []
     with sql_conn() as conn, conn.cursor() as cur:
-        for pair in pairs:
-            name, _, query = pair.partition("=")
+        for name, query in probes:
             cur.execute(query)
             out.append({"anomaly": name, "count": cur.fetchone()[0]})
     return out
@@ -62,6 +83,8 @@ def main() -> int:
                     help="declared anomaly class as name=SQL, recounted on the target")
     ap.add_argument("--expect", action="append", default=[],
                     help="expected anomaly class as name=count")
+    ap.add_argument("--idempotency-result", required=True, choices=["pass", "fail"],
+                    help="outcome of the actual loader rerun")
     ap.add_argument("--idempotency-evidence", required=True)
     ap.add_argument("--unverified", action="append", default=[])
     ap.add_argument("--out")
@@ -88,6 +111,12 @@ def main() -> int:
     missing = [a for a in expected if key(a) not in {key(b) for b in actual}]
     unexpected = [a for a in actual if key(a) not in {key(b) for b in expected}]
 
+    # The harness verdict covers the harness's own tiers; the anomaly set and the rerun are
+    # extra gates emitted here, so a failure in either has to survive into the artifact.
+    verdict = result["verdict"]
+    if missing or unexpected or args.idempotency_result != "pass":
+        verdict = "FAIL"
+
     report = {
         "kind": "recon-report",
         "unit": result["unit"],
@@ -97,20 +126,20 @@ def main() -> int:
         "checks": checks,
         "values_recomputed_from_target": True,
         "idempotency_rerun": {"performed": True,
-                              "result": "pass",
+                              "result": args.idempotency_result,
                               "evidence": args.idempotency_evidence},
         "planted_anomaly_detections": {"expected_set": expected,
                                        "actual_set": actual,
                                        "missing": missing,
                                        "unexpected": unexpected},
         "unverified_paths": args.unverified,
-        "verdict": result["verdict"],
+        "verdict": verdict,
         "degraded": result["degraded"],
     }
     out = Path(args.out) if args.out else result_path.with_name(f"{result['unit']}.recon.json")
     out.write_text(json.dumps(report, indent=2) + "\n")
-    print(out)
-    return 0
+    print(f"{out} verdict={verdict}")
+    return 0 if verdict == "PASS" else 1
 
 
 if __name__ == "__main__":

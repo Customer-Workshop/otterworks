@@ -49,6 +49,11 @@ SILVER = "silver"
 WAREHOUSE = "565cd2fd713738c4"
 IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
 
+# A declared type is a type name with optional precision/scale, nothing else: the mapping
+# spec is rendered straight into DDL, so it is a SQL-injection surface like any other input.
+TYPE = re.compile(r"^[A-Z_]+(\(\d+(,\s*\d+)?\))?$")
+GENERATION = re.compile(r"^[a-z][a-z0-9_ -]*$")
+
 # f_str2dt: Oracle TO_DATE(raw,'DD-MON-YY','NLS_DATE_LANGUAGE=ENGLISH'), NULL on error.
 # Spark's `yy` pivots on 2000-2099, which is Oracle's current-century rule for this run.
 PARSE_DATE = "try_to_timestamp({col}, 'dd-MMM-yy')"
@@ -62,6 +67,12 @@ def ident(name: str) -> str:
     if not IDENT.match(name or ""):
         raise SystemExit(f"refusing non-identifier {name!r}")
     return name
+
+
+def sql_type(name: str) -> str:
+    if not TYPE.match((name or "").strip()):
+        raise SystemExit(f"refusing non-type {name!r}")
+    return name.strip()
 
 
 def sql_conn():
@@ -86,11 +97,12 @@ def field_expr(field: dict) -> str:
         expr = f"regexp_replace({expr}, ' +$', '')"
     if "empty_string_is_null" in rules:
         expr = f"nullif({expr}, '')"
-    return f"cast({expr} AS {field['target_type']}) AS {ident(field['target'])}"
+    return f"cast({expr} AS {sql_type(field['target_type'])}) AS {ident(field['target'])}"
 
 
 def derived_type(derived: dict) -> str:
-    return DERIVED_TYPE.get(derived["target_type"], derived["target_type"])
+    declared = sql_type(derived["target_type"])
+    return DERIVED_TYPE.get(declared, declared)
 
 
 def select_sql(table: dict) -> str:
@@ -103,7 +115,9 @@ def select_sql(table: dict) -> str:
 
 
 def create_sql(table: dict, generation: str) -> str:
-    cols = [(ident(f["target"]), f["target_type"]) for f in table["fields"]]
+    if not GENERATION.match(generation or ""):
+        raise SystemExit(f"refusing non-generation {generation!r}")
+    cols = [(ident(f["target"]), sql_type(f["target_type"])) for f in table["fields"]]
     cols += [(ident(d["target"]), derived_type(d)) for d in table.get("derived_fields", [])]
     body = ", ".join(f"{name} {typ}" for name, typ in cols)
     target = ident(table["target_table"])

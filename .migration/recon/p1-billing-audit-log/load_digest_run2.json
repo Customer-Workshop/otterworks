@@ -1,0 +1,13 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-billing-audit-log",
+  "run_id": "7ddb0a8dd07a4c6cb75e9b871c3e5e86",
+  "finished_at": "2026-09-15T08:14:59.519735+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.silver.billing_audit_log",
+      "rows": 0,
+      "content_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

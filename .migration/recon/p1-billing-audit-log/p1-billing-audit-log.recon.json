@@ -1,0 +1,50 @@
+{
+  "kind": "recon-report",
+  "unit": "p1-billing-audit-log",
+  "target": "ow_tp.silver.billing_audit_log",
+  "columns_compared": 4,
+  "verdict": "PASS",
+  "grade": "DEGRADED",
+  "official_verdict": false,
+  "degraded_reason": "d10_01_denied",
+  "data_proven": false,
+  "data_proven_note": "source and target both hold zero rows; this run proves schema parity and an empty-set assertion only, never row content",
+  "mode": "live",
+  "depth": "full",
+  "seed": 0,
+  "mapping_version": "map-p1-v1",
+  "tolerance_version": "v1",
+  "tiers": [
+    {"tier": 1, "name": "counts_through_mapping", "passed": true, "checks_run": 1},
+    {"tier": 2, "name": "per_field_aggregates", "passed": true, "checks_run": 4},
+    {"tier": 3, "name": "keyed_diffs", "passed": true, "checks_run": 0}
+  ],
+  "unverified_paths": [
+    "tier 5 constraint parity (JDBC route reads no source catalog metadata)",
+    "tier 6 index parity (same)",
+    "tier 7 identity/sequence parity (same): the identity's behaviour was proven on the target only, by the U-26 behaviour check",
+    "row content, timestamp precision and empty-string handling (no rows exist to compare)",
+    "source principal read-only privilege check (no Oracle privilege query in the preflight; source access is read-only by secret and by SET TRANSACTION READ ONLY)"
+  ],
+  "idempotency": {
+    "proven_by": "the silver load was rerun against the same snapshot and the target-state digests matched",
+    "digest": [
+      {
+        "table": "ow_tp.silver.billing_audit_log",
+        "rows": 0,
+        "content_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ]
+  },
+  "evidence": {
+    "result": ".migration/recon/p1-billing-audit-log/result.json",
+    "summary": ".migration/recon/p1-billing-audit-log/summary.md",
+    "harness_summary": ".migration/recon/p1-billing-audit-log/recon.summary.md",
+    "degraded": ".migration/recon/p1-billing-audit-log/DEGRADED.md",
+    "report": ".migration/recon/p1-billing-audit-log/report.md",
+    "idempotency_digests": [
+      ".migration/recon/p1-billing-audit-log/load_digest_run1.json",
+      ".migration/recon/p1-billing-audit-log/load_digest_run2.json"
+    ]
+  }
+}

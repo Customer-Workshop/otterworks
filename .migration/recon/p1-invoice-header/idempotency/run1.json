@@ -1,0 +1,13 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-invoice-header",
+  "run_id": "0ca7d319-0860-4dd2-8587-33e7307e12a6",
+  "finished_at": "2026-09-15T07:57:33.688749+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.silver.invoice_header",
+      "rows": 18750,
+      "content_hash": "6485504668485628591"
+    }
+  ]
+}

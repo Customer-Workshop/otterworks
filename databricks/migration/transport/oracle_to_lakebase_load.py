@@ -128,8 +128,9 @@ def load_table(table: dict, ora, pg, schema: str) -> dict:
               f"WHERE ({', '.join(c + '::text' for c in key_cols)}) NOT IN "
               f"(SELECT * FROM unnest({', '.join(['%s::text[]'] * len(key_cols))}))")
 
+    # Rows the source dropped go first: a value under a UNIQUE constraint that moved to a new
+    # key would otherwise collide with its retiring owner and abort the whole load.
     with pg.cursor() as cur:
-        cur.executemany(insert, prepared)
         if keys:
             columns = [[str(k[i]) for k in keys] for i in range(len(key_cols))]
             cur.execute(delete, columns)
@@ -137,6 +138,7 @@ def load_table(table: dict, ora, pg, schema: str) -> dict:
         else:  # an empty source truncates the target rather than leaving it stale
             cur.execute(f"DELETE FROM {target}")
             removed = cur.rowcount
+        cur.executemany(insert, prepared)
         (count,) = cur.execute(f"SELECT count(*) FROM {target}").fetchone()
     return {"object": table["object"], "source_rows": len(prepared),
             "target_rows": count, "deleted": removed}
@@ -157,6 +159,14 @@ def main(argv: list[str] | None = None) -> int:
     catalog = ident(args.target_catalog)
     if catalog not in allowed.get("catalogs", []) and catalog not in allowed:
         raise SystemExit(f"--target-catalog {catalog!r} is not in {args.allowed_targets_file}")
+    # The allowlist file names the catalog, not the schema, so the schema is pinned here:
+    # `billing` is the only Lakebase schema pipeline 1 may write, and the loader refuses the
+    # rest rather than trusting whatever the caller passes.
+    schema = ident(args.target_schema)
+    allowed_schemas = allowed.get("lakebase_schemas", ["billing"])
+    if schema not in allowed_schemas:
+        raise SystemExit(f"--target-schema {schema!r} is not writable by a migration session "
+                         f"(allowed: {', '.join(allowed_schemas)})")
 
     spec = json.loads(args.mapping.read_text())
     dsn = os.environ.get(args.target_secret)
@@ -168,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         if database != catalog:
             raise SystemExit(f"target DSN connects to {database!r}, not the allowlisted "
                              f"{catalog!r}")
-        results = [load_table(t, ora, pg, args.target_schema) for t in spec["tables"]]
+        results = [load_table(t, ora, pg, schema) for t in spec["tables"]]
         pg.commit()
 
     for r in results:

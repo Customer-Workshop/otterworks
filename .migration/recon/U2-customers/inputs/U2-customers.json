@@ -1,0 +1,1440 @@
+[
+  {
+    "name": "decode_status",
+    "collection": "customers",
+    "why": "STATUS_CD is decoded through CODES CUST_STATUS, so the source integer and the target string never compare raw.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN m.status_cd IS NULL THEN NULL ELSE NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(m.status_cd) || ')') END AS \"status\", COUNT(*) AS \"n\" FROM customer_master m LEFT JOIN codes c ON c.code_type = 'CUST_STATUS' AND c.code_val = m.status_cd GROUP BY CASE WHEN m.status_cd IS NULL THEN NULL ELSE NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(m.status_cd) || ')') END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": "$status",
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "status": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "decode_sub_status",
+    "collection": "customers",
+    "why": "SUB_STATUS_CD is decoded through CODES CUST_STATUS.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN m.sub_status_cd IS NULL THEN NULL ELSE NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(m.sub_status_cd) || ')') END AS \"subStatus\", COUNT(*) AS \"n\" FROM customer_master m LEFT JOIN codes c ON c.code_type = 'CUST_STATUS' AND c.code_val = m.sub_status_cd GROUP BY CASE WHEN m.sub_status_cd IS NULL THEN NULL ELSE NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(m.sub_status_cd) || ')') END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": "$subStatus",
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "subStatus": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "decode_type",
+    "collection": "customers",
+    "why": "CUST_TYPE_CD is decoded through CODES CUST_TYPE.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN m.cust_type_cd IS NULL THEN NULL ELSE NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(m.cust_type_cd) || ')') END AS \"type\", COUNT(*) AS \"n\" FROM customer_master m LEFT JOIN codes c ON c.code_type = 'CUST_TYPE' AND c.code_val = m.cust_type_cd GROUP BY CASE WHEN m.cust_type_cd IS NULL THEN NULL ELSE NVL(c.code_desc, 'UNKNOWN(' || TO_CHAR(m.cust_type_cd) || ')') END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": "$type",
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "type": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "yn_taxExempt",
+    "collection": "customers",
+    "why": "tax_exempt_yn becomes flags.taxExempt; the harness has no yn_to_bool rule.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN tax_exempt_yn IS NULL THEN 'null' WHEN TRIM(tax_exempt_yn) = 'Y' THEN 'true' WHEN TRIM(tax_exempt_yn) = 'N' THEN 'false' ELSE 'other' END AS \"value\", COUNT(*) AS \"n\" FROM customer_master GROUP BY CASE WHEN tax_exempt_yn IS NULL THEN 'null' WHEN TRIM(tax_exempt_yn) = 'Y' THEN 'true' WHEN TRIM(tax_exempt_yn) = 'N' THEN 'false' ELSE 'other' END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$switch": {
+              "branches": [
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.taxExempt",
+                      true
+                    ]
+                  },
+                  "then": "true"
+                },
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.taxExempt",
+                      false
+                    ]
+                  },
+                  "then": "false"
+                },
+                {
+                  "case": {
+                    "$gt": [
+                      "$legacy.taxExemptYnRaw",
+                      null
+                    ]
+                  },
+                  "then": "other"
+                }
+              ],
+              "default": "null"
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "value": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "yn_creditHold",
+    "collection": "customers",
+    "why": "credit_hold_yn becomes flags.creditHold; the harness has no yn_to_bool rule.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN credit_hold_yn IS NULL THEN 'null' WHEN TRIM(credit_hold_yn) = 'Y' THEN 'true' WHEN TRIM(credit_hold_yn) = 'N' THEN 'false' ELSE 'other' END AS \"value\", COUNT(*) AS \"n\" FROM customer_master GROUP BY CASE WHEN credit_hold_yn IS NULL THEN 'null' WHEN TRIM(credit_hold_yn) = 'Y' THEN 'true' WHEN TRIM(credit_hold_yn) = 'N' THEN 'false' ELSE 'other' END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$switch": {
+              "branches": [
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.creditHold",
+                      true
+                    ]
+                  },
+                  "then": "true"
+                },
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.creditHold",
+                      false
+                    ]
+                  },
+                  "then": "false"
+                },
+                {
+                  "case": {
+                    "$gt": [
+                      "$legacy.creditHoldYnRaw",
+                      null
+                    ]
+                  },
+                  "then": "other"
+                }
+              ],
+              "default": "null"
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "value": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "yn_dunningExempt",
+    "collection": "customers",
+    "why": "dunning_exempt_yn becomes flags.dunningExempt; the harness has no yn_to_bool rule.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN dunning_exempt_yn IS NULL THEN 'null' WHEN TRIM(dunning_exempt_yn) = 'Y' THEN 'true' WHEN TRIM(dunning_exempt_yn) = 'N' THEN 'false' ELSE 'other' END AS \"value\", COUNT(*) AS \"n\" FROM customer_master GROUP BY CASE WHEN dunning_exempt_yn IS NULL THEN 'null' WHEN TRIM(dunning_exempt_yn) = 'Y' THEN 'true' WHEN TRIM(dunning_exempt_yn) = 'N' THEN 'false' ELSE 'other' END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$switch": {
+              "branches": [
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.dunningExempt",
+                      true
+                    ]
+                  },
+                  "then": "true"
+                },
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.dunningExempt",
+                      false
+                    ]
+                  },
+                  "then": "false"
+                },
+                {
+                  "case": {
+                    "$gt": [
+                      "$legacy.dunningExemptYnRaw",
+                      null
+                    ]
+                  },
+                  "then": "other"
+                }
+              ],
+              "default": "null"
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "value": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "yn_vip",
+    "collection": "customers",
+    "why": "vip_yn becomes flags.vip; the harness has no yn_to_bool rule.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN vip_yn IS NULL THEN 'null' WHEN TRIM(vip_yn) = 'Y' THEN 'true' WHEN TRIM(vip_yn) = 'N' THEN 'false' ELSE 'other' END AS \"value\", COUNT(*) AS \"n\" FROM customer_master GROUP BY CASE WHEN vip_yn IS NULL THEN 'null' WHEN TRIM(vip_yn) = 'Y' THEN 'true' WHEN TRIM(vip_yn) = 'N' THEN 'false' ELSE 'other' END",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$switch": {
+              "branches": [
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.vip",
+                      true
+                    ]
+                  },
+                  "then": "true"
+                },
+                {
+                  "case": {
+                    "$eq": [
+                      "$flags.vip",
+                      false
+                    ]
+                  },
+                  "then": "false"
+                },
+                {
+                  "case": {
+                    "$gt": [
+                      "$legacy.vipYnRaw",
+                      null
+                    ]
+                  },
+                  "then": "other"
+                }
+              ],
+              "default": "null"
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "value": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "parse_signup_dt",
+    "collection": "customers",
+    "why": "SIGNUP_DT is a 'DD-MON-YY' string; graded as a month distribution over all 25,000 rows, with the unparseable rows in the '~null' bucket.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT NVL(TO_CHAR(TO_DATE(signup_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY'), 'YYYY-MM'), '~null') AS \"month\", COUNT(*) AS \"n\" FROM customer_master GROUP BY NVL(TO_CHAR(TO_DATE(signup_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY'), 'YYYY-MM'), '~null')",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$ifNull": [
+              {
+                "$dateToString": {
+                  "format": "%Y-%m",
+                  "date": "$dates.signupAt"
+                }
+              },
+              "~null"
+            ]
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "month": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "parse_last_activity_dt",
+    "collection": "customers",
+    "why": "LAST_ACTIVITY_DT is a 'DD-MON-YY' string.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT NVL(TO_CHAR(TO_DATE(last_activity_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY'), 'YYYY-MM'), '~null') AS \"month\", COUNT(*) AS \"n\" FROM customer_master GROUP BY NVL(TO_CHAR(TO_DATE(last_activity_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY'), 'YYYY-MM'), '~null')",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$ifNull": [
+              {
+                "$dateToString": {
+                  "format": "%Y-%m",
+                  "date": "$dates.lastActivityAt"
+                }
+              },
+              "~null"
+            ]
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "month": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "signup_dt_unparseable_raw",
+    "collection": "customers",
+    "why": "the 50 unparseable SIGNUP_DT values: the date is null and the raw string is kept under legacy.signupDtRaw.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT signup_dt AS \"raw\", COUNT(*) AS \"n\" FROM customer_master WHERE signup_dt IS NOT NULL AND TO_DATE(signup_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') IS NULL GROUP BY signup_dt",
+    "target_pipeline": [
+      {
+        "$match": {
+          "legacy.signupDtRaw": {
+            "$exists": true
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$legacy.signupDtRaw",
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "raw": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "parse_remaining_date_strings",
+    "collection": "customers",
+    "why": "the three date strings that are null on every row: a parse that invented or dropped a value would show here.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT 'lastInvoiceAt' AS \"field\", COUNT(last_invoice_dt) AS \"n\" FROM customer_master UNION ALL SELECT 'lastPaymentAt', COUNT(last_payment_dt) FROM customer_master UNION ALL SELECT 'terminatedAt', COUNT(terminate_dt) FROM customer_master",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": null,
+          "lastInvoiceAt": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": "$dates.lastInvoiceAt"
+                    },
+                    "date"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "lastPaymentAt": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": "$dates.lastPaymentAt"
+                    },
+                    "date"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "terminatedAt": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": "$dates.terminatedAt"
+                    },
+                    "date"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "rows": [
+            {
+              "field": "lastInvoiceAt",
+              "n": "$lastInvoiceAt"
+            },
+            {
+              "field": "lastPaymentAt",
+              "n": "$lastPaymentAt"
+            },
+            {
+              "field": "terminatedAt",
+              "n": "$terminatedAt"
+            }
+          ]
+        }
+      },
+      {
+        "$unwind": "$rows"
+      },
+      {
+        "$replaceRoot": {
+          "newRoot": "$rows"
+        }
+      }
+    ]
+  },
+  {
+    "name": "csv_related_account_list_lengths",
+    "collection": "customers",
+    "why": "RELATED_ACCT_IDS splits into an array; -1 is the malformed bucket (empty item, stray separator, or an item that is not an account id), which becomes [] plus legacy.relatedAcctIdsRaw.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN related_acct_ids IS NULL THEN 0 WHEN REGEXP_LIKE(related_acct_ids, '^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$') THEN REGEXP_COUNT(related_acct_ids, ',') + 1 ELSE -1 END AS \"len\", COUNT(*) AS \"n\" FROM customer_master GROUP BY CASE WHEN related_acct_ids IS NULL THEN 0 WHEN REGEXP_LIKE(related_acct_ids, '^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$') THEN REGEXP_COUNT(related_acct_ids, ',') + 1 ELSE -1 END",
+    "target_pipeline": [
+      {
+        "$project": {
+          "len": {
+            "$cond": [
+              {
+                "$gt": [
+                  {
+                    "$size": {
+                      "$ifNull": [
+                        "$relatedAccountIds",
+                        []
+                      ]
+                    }
+                  },
+                  0
+                ]
+              },
+              {
+                "$size": "$relatedAccountIds"
+              },
+              {
+                "$cond": [
+                  {
+                    "$gt": [
+                      "$legacy.relatedAcctIdsRaw",
+                      null
+                    ]
+                  },
+                  -1,
+                  0
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$len",
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "len": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "csv_related_account_malformed_raw",
+    "collection": "customers",
+    "why": "the 31 malformed RELATED_ACCT_IDS values, compared as a set.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT related_acct_ids AS \"raw\", COUNT(*) AS \"n\" FROM customer_master WHERE related_acct_ids IS NOT NULL AND NOT REGEXP_LIKE(related_acct_ids, '^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$') GROUP BY related_acct_ids",
+    "target_pipeline": [
+      {
+        "$match": {
+          "legacy.relatedAcctIdsRaw": {
+            "$exists": true
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$legacy.relatedAcctIdsRaw",
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "raw": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "csv_related_account_items",
+    "collection": "customers",
+    "why": "the account ids themselves, per position: count and sum on each side.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "WITH v AS (SELECT CASE WHEN REGEXP_LIKE(related_acct_ids, '^[[:space:]]*[0-9]+[[:space:]]*(,[[:space:]]*[0-9]+[[:space:]]*)*$') THEN related_acct_ids END AS s FROM customer_master) SELECT 1 AS \"pos\", COUNT(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 1)))) AS \"n\", SUM(NVL(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 1))), 0)) AS \"total\" FROM v UNION ALL SELECT 2, COUNT(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 2)))), SUM(NVL(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 2))), 0)) FROM v UNION ALL SELECT 3, COUNT(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 3)))), SUM(NVL(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 3))), 0)) FROM v UNION ALL SELECT 4, COUNT(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 4)))), SUM(NVL(TO_NUMBER(TRIM(REGEXP_SUBSTR(s, '[^,]+', 1, 4))), 0)) FROM v",
+    "target_pipeline": [
+      {
+        "$project": {
+          "items": {
+            "$map": {
+              "input": {
+                "$range": [
+                  0,
+                  4
+                ]
+              },
+              "as": "i",
+              "in": {
+                "pos": {
+                  "$add": [
+                    "$$i",
+                    1
+                  ]
+                },
+                "v": {
+                  "$arrayElemAt": [
+                    "$relatedAccountIds",
+                    "$$i"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "$unwind": "$items"
+      },
+      {
+        "$group": {
+          "_id": "$items.pos",
+          "n": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": "$items.v"
+                    },
+                    "missing"
+                  ]
+                },
+                0,
+                1
+              ]
+            }
+          },
+          "total": {
+            "$sum": {
+              "$toLong": {
+                "$ifNull": [
+                  "$items.v",
+                  0
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "pos": "$_id",
+          "n": 1,
+          "total": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "csv_promo_codes_items",
+    "collection": "customers",
+    "why": "PROMO_CODES_CSV splits into promoCodes[]; every code is compared in its position.",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT 1 AS \"pos\", TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, 1)) AS \"item\", COUNT(*) AS \"n\" FROM customer_master GROUP BY TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, 1)) UNION ALL SELECT 2, TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, 2)), COUNT(*) FROM customer_master GROUP BY TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, 2)) UNION ALL SELECT 3, TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, 3)), COUNT(*) FROM customer_master GROUP BY TRIM(REGEXP_SUBSTR(promo_codes_csv, '[^,]+', 1, 3))",
+    "target_pipeline": [
+      {
+        "$project": {
+          "items": {
+            "$map": {
+              "input": {
+                "$range": [
+                  0,
+                  3
+                ]
+              },
+              "as": "i",
+              "in": {
+                "pos": {
+                  "$add": [
+                    "$$i",
+                    1
+                  ]
+                },
+                "item": {
+                  "$ifNull": [
+                    {
+                      "$arrayElemAt": [
+                        "$promoCodes",
+                        "$$i"
+                      ]
+                    },
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "$unwind": "$items"
+      },
+      {
+        "$group": {
+          "_id": {
+            "pos": "$items.pos",
+            "item": "$items.item"
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "pos": "$_id.pos",
+          "item": "$_id.item",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "csv_child_account_ids_absent",
+    "collection": "customers",
+    "why": "CHILD_ACCT_IDS is null on every row: childAccountIds must be empty everywhere, with no raw kept.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT COUNT(child_acct_ids) AS \"populated\", COUNT(*) AS \"docs\" FROM customer_master",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": null,
+          "populated": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$or": [
+                    {
+                      "$gt": [
+                        {
+                          "$size": {
+                            "$ifNull": [
+                              "$childAccountIds",
+                              []
+                            ]
+                          }
+                        },
+                        0
+                      ]
+                    },
+                    {
+                      "$gt": [
+                        "$legacy.childAcctIdsRaw",
+                        null
+                      ]
+                    }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "docs": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "populated": 1,
+          "docs": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "address_physical_scalars",
+    "collection": "customers",
+    "why": "addresses[0] is the physical address; its scalar fields sit behind an array index, which the harness's field paths cannot address.",
+    "rules": [
+      "rstrip_spaces",
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT city AS \"city\", state_cd AS \"state\", zip AS \"zip\", zip4 AS \"zip4\", country_cd AS \"country\", COUNT(*) AS \"n\" FROM customer_master GROUP BY city, state_cd, zip, zip4, country_cd",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "city": {
+              "$ifNull": [
+                {
+                  "$arrayElemAt": [
+                    "$addresses.city",
+                    0
+                  ]
+                },
+                null
+              ]
+            },
+            "state": {
+              "$ifNull": [
+                {
+                  "$arrayElemAt": [
+                    "$addresses.state",
+                    0
+                  ]
+                },
+                null
+              ]
+            },
+            "zip": {
+              "$ifNull": [
+                {
+                  "$arrayElemAt": [
+                    "$addresses.zip",
+                    0
+                  ]
+                },
+                null
+              ]
+            },
+            "zip4": {
+              "$ifNull": [
+                {
+                  "$arrayElemAt": [
+                    "$addresses.zip4",
+                    0
+                  ]
+                },
+                null
+              ]
+            },
+            "country": {
+              "$ifNull": [
+                {
+                  "$arrayElemAt": [
+                    "$addresses.country",
+                    0
+                  ]
+                },
+                null
+              ]
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "n": 1,
+          "city": "$_id.city",
+          "state": "$_id.state",
+          "zip": "$_id.zip",
+          "zip4": "$_id.zip4",
+          "country": "$_id.country"
+        }
+      }
+    ]
+  },
+  {
+    "name": "address_physical_lines",
+    "collection": "customers",
+    "why": "addresses[0].lines keeps the non-null ADDR_LINE_n columns in column order; compared as line count plus the second line's value.",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT CASE WHEN addr_line_1 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_2 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_3 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_4 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_5 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_6 IS NULL THEN 0 ELSE 1 END AS \"lineCount\", COALESCE(addr_line_2, addr_line_3, addr_line_4, addr_line_5, addr_line_6) AS \"line2\", COUNT(*) AS \"n\" FROM customer_master GROUP BY CASE WHEN addr_line_1 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_2 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_3 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_4 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_5 IS NULL THEN 0 ELSE 1 END + CASE WHEN addr_line_6 IS NULL THEN 0 ELSE 1 END, COALESCE(addr_line_2, addr_line_3, addr_line_4, addr_line_5, addr_line_6)",
+    "target_pipeline": [
+      {
+        "$project": {
+          "lines": {
+            "$ifNull": [
+              {
+                "$arrayElemAt": [
+                  "$addresses.lines",
+                  0
+                ]
+              },
+              []
+            ]
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": {
+            "lineCount": {
+              "$size": "$lines"
+            },
+            "line2": {
+              "$ifNull": [
+                {
+                  "$arrayElemAt": [
+                    "$lines",
+                    1
+                  ]
+                },
+                null
+              ]
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "lineCount": "$_id.lineCount",
+          "line2": "$_id.line2",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "address_physical_line1_digest",
+    "collection": "customers",
+    "why": "ADDR_LINE_1 has 25,000 near-unique values, so it is compared as a digest rather than row by row.",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT COUNT(addr_line_1) AS \"n\", COUNT(DISTINCT addr_line_1) AS \"distinctLines\", MIN(addr_line_1) AS \"mn\", MAX(addr_line_1) AS \"mx\" FROM customer_master",
+    "target_pipeline": [
+      {
+        "$project": {
+          "line1": {
+            "$arrayElemAt": [
+              {
+                "$ifNull": [
+                  {
+                    "$arrayElemAt": [
+                      "$addresses.lines",
+                      0
+                    ]
+                  },
+                  []
+                ]
+              },
+              0
+            ]
+          }
+        }
+      },
+      {
+        "$match": {
+          "line1": {
+            "$type": "string"
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": null,
+          "n": {
+            "$sum": 1
+          },
+          "lines": {
+            "$addToSet": "$line1"
+          },
+          "mn": {
+            "$min": "$line1"
+          },
+          "mx": {
+            "$max": "$line1"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "n": 1,
+          "mn": 1,
+          "mx": 1,
+          "distinctLines": {
+            "$size": "$lines"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "address_mailing_element",
+    "collection": "customers",
+    "why": "addresses[1] is the mailing address: the element is always present in the declared position, and every mailing column is null in the source.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT COUNT(*) AS \"elements\", COUNT(mail_city) AS \"city\", COUNT(mail_state_cd) AS \"state\", COUNT(mail_zip) AS \"zip\", COUNT(mail_addr_line_1) AS \"line1\" FROM customer_master",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": null,
+          "elements": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$arrayElemAt": [
+                        "$addresses.kind",
+                        1
+                      ]
+                    },
+                    "mailing"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "city": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": {
+                        "$ifNull": [
+                          {
+                            "$arrayElemAt": [
+                              "$addresses.city",
+                              1
+                            ]
+                          },
+                          null
+                        ]
+                      }
+                    },
+                    "string"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "state": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": {
+                        "$ifNull": [
+                          {
+                            "$arrayElemAt": [
+                              "$addresses.state",
+                              1
+                            ]
+                          },
+                          null
+                        ]
+                      }
+                    },
+                    "string"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "zip": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    {
+                      "$type": {
+                        "$ifNull": [
+                          {
+                            "$arrayElemAt": [
+                              "$addresses.zip",
+                              1
+                            ]
+                          },
+                          null
+                        ]
+                      }
+                    },
+                    "string"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "line1": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$gt": [
+                    {
+                      "$size": {
+                        "$ifNull": [
+                          {
+                            "$arrayElemAt": [
+                              "$addresses.lines",
+                              1
+                            ]
+                          },
+                          []
+                        ]
+                      }
+                    },
+                    0
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "elements": 1,
+          "city": 1,
+          "state": 1,
+          "zip": 1,
+          "line1": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "phones_kind_decode",
+    "collection": "customers",
+    "why": "PHONE1..4 collapse into phones[]; each kind is decoded through CODES PHONE_TYPE, so the integer and the string never compare raw.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT SUM(CASE WHEN phone1 IS NOT NULL AND phone1_type_cd = 1 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone2 IS NOT NULL AND phone2_type_cd = 1 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone3 IS NOT NULL AND phone3_type_cd = 1 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone4 IS NOT NULL AND phone4_type_cd = 1 THEN 1 ELSE 0 END) AS \"main\", SUM(CASE WHEN phone1 IS NOT NULL AND phone1_type_cd = 2 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone2 IS NOT NULL AND phone2_type_cd = 2 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone3 IS NOT NULL AND phone3_type_cd = 2 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone4 IS NOT NULL AND phone4_type_cd = 2 THEN 1 ELSE 0 END) AS \"billing\", SUM(CASE WHEN phone1 IS NOT NULL AND phone1_type_cd = 3 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone2 IS NOT NULL AND phone2_type_cd = 3 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone3 IS NOT NULL AND phone3_type_cd = 3 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone4 IS NOT NULL AND phone4_type_cd = 3 THEN 1 ELSE 0 END) AS \"fax\", SUM(CASE WHEN phone1 IS NOT NULL AND phone1_type_cd = 4 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone2 IS NOT NULL AND phone2_type_cd = 4 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone3 IS NOT NULL AND phone3_type_cd = 4 THEN 1 ELSE 0 END) + SUM(CASE WHEN phone4 IS NOT NULL AND phone4_type_cd = 4 THEN 1 ELSE 0 END) AS \"after-hours\", SUM(CASE WHEN phone1 IS NOT NULL THEN 1 ELSE 0 END) + SUM(CASE WHEN phone2 IS NOT NULL THEN 1 ELSE 0 END) + SUM(CASE WHEN phone3 IS NOT NULL THEN 1 ELSE 0 END) + SUM(CASE WHEN phone4 IS NOT NULL THEN 1 ELSE 0 END) AS \"elements\" FROM customer_master",
+    "target_pipeline": [
+      {
+        "$unwind": "$phones"
+      },
+      {
+        "$group": {
+          "_id": null,
+          "elements": {
+            "$sum": 1
+          },
+          "main": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    "$phones.kind",
+                    "main"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "billing": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    "$phones.kind",
+                    "billing"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "fax": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    "$phones.kind",
+                    "fax"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          "after-hours": {
+            "$sum": {
+              "$cond": [
+                {
+                  "$eq": [
+                    "$phones.kind",
+                    "after-hours"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "elements": 1,
+          "main": 1,
+          "billing": 1,
+          "fax": 1,
+          "after-hours": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "phones_number_digest",
+    "collection": "customers",
+    "why": "the phone numbers themselves, as a digest over every non-null slot.",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT COUNT(*) AS \"elements\", COUNT(DISTINCT p) AS \"distinctNumbers\", MIN(p) AS \"mn\", MAX(p) AS \"mx\" FROM (SELECT phone1 AS p FROM customer_master WHERE phone1 IS NOT NULL UNION ALL SELECT phone2 AS p FROM customer_master WHERE phone2 IS NOT NULL UNION ALL SELECT phone3 AS p FROM customer_master WHERE phone3 IS NOT NULL UNION ALL SELECT phone4 AS p FROM customer_master WHERE phone4 IS NOT NULL)",
+    "target_pipeline": [
+      {
+        "$unwind": "$phones"
+      },
+      {
+        "$group": {
+          "_id": null,
+          "elements": {
+            "$sum": 1
+          },
+          "numbers": {
+            "$addToSet": "$phones.number"
+          },
+          "mn": {
+            "$min": "$phones.number"
+          },
+          "mx": {
+            "$max": "$phones.number"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "elements": 1,
+          "mn": 1,
+          "mx": 1,
+          "distinctNumbers": {
+            "$size": "$numbers"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "emails_digest",
+    "collection": "customers",
+    "why": "EMAIL_1..3 collapse into emails[]; compared as a digest over every non-null slot.",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT COUNT(*) AS \"elements\", COUNT(DISTINCT e) AS \"distinctEmails\", MIN(e) AS \"mn\", MAX(e) AS \"mx\" FROM (SELECT email_1 AS e FROM customer_master WHERE email_1 IS NOT NULL UNION ALL SELECT email_2 AS e FROM customer_master WHERE email_2 IS NOT NULL UNION ALL SELECT email_3 AS e FROM customer_master WHERE email_3 IS NOT NULL)",
+    "target_pipeline": [
+      {
+        "$unwind": "$emails"
+      },
+      {
+        "$group": {
+          "_id": null,
+          "elements": {
+            "$sum": 1
+          },
+          "addresses": {
+            "$addToSet": "$emails"
+          },
+          "mn": {
+            "$min": "$emails"
+          },
+          "mx": {
+            "$max": "$emails"
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "elements": 1,
+          "mn": 1,
+          "mx": 1,
+          "distinctEmails": {
+            "$size": "$addresses"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "attributes_created_dt_parse",
+    "collection": "customers",
+    "why": "ENTITY_ATTR_VALUE.CREATED_DT is a 'DD-MON-YY' string inside the embedded attributes[]; graded as a month distribution over all 8,333 elements.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT NVL(TO_CHAR(TO_DATE(created_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY'), 'YYYY-MM'), '~null') AS \"month\", COUNT(*) AS \"n\" FROM entity_attr_value WHERE entity_type = 'CUSTOMER' GROUP BY NVL(TO_CHAR(TO_DATE(created_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY'), 'YYYY-MM'), '~null')",
+    "target_pipeline": [
+      {
+        "$unwind": "$attributes"
+      },
+      {
+        "$group": {
+          "_id": {
+            "$ifNull": [
+              {
+                "$dateToString": {
+                  "format": "%Y-%m",
+                  "date": "$attributes.createdAt"
+                }
+              },
+              "~null"
+            ]
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "month": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "attributes_per_customer",
+    "collection": "customers",
+    "why": "attributes[] is an array, not a map: a repeated (entity, attr_name) pair must stay a separate element, so the per-customer element count is compared as a distribution.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT NVL(e.cnt, 0) AS \"size\", COUNT(*) AS \"n\" FROM customer_master m LEFT JOIN (SELECT entity_id, COUNT(*) AS cnt FROM entity_attr_value WHERE entity_type = 'CUSTOMER' GROUP BY entity_id) e ON e.entity_id = m.cust_id GROUP BY NVL(e.cnt, 0)",
+    "target_pipeline": [
+      {
+        "$group": {
+          "_id": {
+            "$size": {
+              "$ifNull": [
+                "$attributes",
+                []
+              ]
+            }
+          },
+          "n": {
+            "$sum": 1
+          }
+        }
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "size": "$_id",
+          "n": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "history_rows",
+    "collection": "customer_history",
+    "why": "CUSTOMER_MASTER_HIST is trigger-fed and empty; the op compares the row set itself, so a row appearing on either side is a finding.",
+    "rules": [
+      "null_missing_equiv"
+    ],
+    "source_sql": "SELECT hist_id AS \"id\", hist_op AS \"op\" FROM customer_master_hist",
+    "target_pipeline": [
+      {
+        "$project": {
+          "_id": 0,
+          "id": "$histId",
+          "op": "$op"
+        }
+      }
+    ]
+  }
+]

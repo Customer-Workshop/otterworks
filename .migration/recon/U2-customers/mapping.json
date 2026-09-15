@@ -1,0 +1,841 @@
+{
+  "version": "1",
+  "source_family": "oracle",
+  "unit": "U2-customers",
+  "collections": [
+    {
+      "collection": "customers",
+      "unit": "U2-customers",
+      "root_table": "CUSTOMER_MASTER",
+      "key": {
+        "source": [
+          "CUST_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "CUST_NO",
+          "target": "custNo",
+          "source_type": "VARCHAR2(20)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CUST_NAME",
+          "target": "name",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LEGAL_NAME",
+          "target": "legalName",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "DBA_NAME",
+          "target": "dbaName",
+          "source_type": "VARCHAR2(200)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "SEGMENT_CD",
+          "target": "segment",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "note": "no CODES rows: integer unchanged (PRD 5, Open item 5)"
+        },
+        {
+          "source": "REGION_CD",
+          "target": "region",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "note": "no CODES rows: integer unchanged"
+        },
+        {
+          "source": "TERRITORY_CD",
+          "target": "territory",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "note": "100% NULL in source"
+        },
+        {
+          "source": "CHANNEL_CD",
+          "target": "channel",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "note": "100% NULL in source"
+        },
+        {
+          "source": "RATE_CLASS_CD",
+          "target": "rateClass",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "note": "100% NULL in source"
+        },
+        {
+          "source": "CUR_BAL_AMT",
+          "target": "balances.current",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "PAST_DUE_AMT",
+          "target": "balances.pastDue",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "YTD_BILLED_AMT",
+          "target": "balances.ytdBilled",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "LTD_BILLED_AMT",
+          "target": "balances.ltdBilled",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "YTD_PAID_AMT",
+          "target": "balances.ytdPaid",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "CREDIT_LIMIT_AMT",
+          "target": "balances.creditLimit",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "CONTACT_NOTES",
+          "target": "contactNotes",
+          "source_type": "VARCHAR2(2000)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "LEGACY_SYS_KEY",
+          "target": "legacy.sysKey",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "MAINFRAME_ACCT_NO",
+          "target": "legacy.mainframeAcctNo",
+          "source_type": "VARCHAR2(20)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CONVERSION_BATCH_NO",
+          "target": "legacy.conversionBatchNo",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CUST_SEQ_NO",
+          "target": "legacy.custSeqNo",
+          "source_type": "NUMBER(12,0)",
+          "bson_type": "long",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CREATED_BY",
+          "target": "audit.createdBy",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CREATED_DT",
+          "target": "audit.createdAt",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "UPDATED_BY",
+          "target": "audit.updatedBy",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "UPDATED_DT",
+          "target": "audit.updatedAt",
+          "source_type": "DATE",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "ROW_VERSION_NO",
+          "target": "audit.version",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        }
+      ],
+      "composed_fields": [
+        {
+          "target": "addresses.0.lines",
+          "sources": [
+            "ADDR_LINE_1",
+            "ADDR_LINE_2",
+            "ADDR_LINE_3",
+            "ADDR_LINE_4",
+            "ADDR_LINE_5",
+            "ADDR_LINE_6"
+          ],
+          "rule": "non-null, in column order; array of strings",
+          "kind_literal": "physical"
+        },
+        {
+          "target": "addresses.1.lines",
+          "sources": [
+            "MAIL_ADDR_LINE_1",
+            "MAIL_ADDR_LINE_2",
+            "MAIL_ADDR_LINE_3",
+            "MAIL_ADDR_LINE_4",
+            "MAIL_ADDR_LINE_5",
+            "MAIL_ADDR_LINE_6"
+          ],
+          "rule": "non-null, in column order",
+          "kind_literal": "mailing"
+        },
+        {
+          "target": "phones",
+          "sources": [
+            "PHONE1",
+            "PHONE2",
+            "PHONE3",
+            "PHONE4"
+          ],
+          "kinds_from": [
+            "PHONE1_TYPE_CD",
+            "PHONE2_TYPE_CD",
+            "PHONE3_TYPE_CD",
+            "PHONE4_TYPE_CD"
+          ],
+          "rule": "one element per non-null phone: {number, kind}; kind decoded via CODES type PHONE_TYPE"
+        },
+        {
+          "target": "emails",
+          "sources": [
+            "EMAIL_1",
+            "EMAIL_2",
+            "EMAIL_3"
+          ],
+          "rule": "non-null, in column order; array of strings"
+        }
+      ],
+      "dropped_columns": [
+        {
+          "columns": [
+            "CUST_NAME_UPPER"
+          ],
+          "reason": "PRD 4.1: trigger-derived; replaced by the collation-2 index on name"
+        },
+        {
+          "columns": [
+            "FLAG_01..FLAG_20",
+            "UDF_01..UDF_40",
+            "UDF_AMT_01..UDF_AMT_10",
+            "UDF_DT_01..UDF_DT_10"
+          ],
+          "count": 80,
+          "reason": "PRD Open item 1: profiling found 0 non-null values across 25,000 rows, so the PRD's drop condition is met"
+        },
+        {
+          "columns": [
+            "FAX"
+          ],
+          "reason": "carried as a phones[] element with kind decoded from CODES PHONE_TYPE where a fax type code is present; no separate field in the PRD shape"
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "attributes",
+          "child_table": "ENTITY_ATTR_VALUE",
+          "child_where": "ENTITY_TYPE = 'CUSTOMER'",
+          "parent_key": [
+            "ENTITY_ID"
+          ],
+          "key": {
+            "source": [
+              "EAV_ID"
+            ],
+            "target": "eavId"
+          },
+          "fields": [
+            {
+              "source": "ATTR_NAME",
+              "target": "name",
+              "source_type": "VARCHAR2(100)",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "ATTR_VALUE",
+              "target": "value",
+              "source_type": "VARCHAR2(4000)",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ],
+              "note": "PRD 4.1: values stay strings in v1"
+            }
+          ],
+          "fields_ungraded_pending_profile_rule": [
+            {
+              "source": "CREATED_DT",
+              "target": "createdAt",
+              "source_type": "VARCHAR2(9)",
+              "bson_type": "date",
+              "parse": {
+                "format": "DD-MON-YY",
+                "on_fail": {
+                  "target": null,
+                  "raw_to": "legacy.createdDtRaw"
+                }
+              },
+              "expected_parse_failures": 0,
+              "rules": [
+                "datetime_utc_truncate_ms"
+              ],
+              "grading": "tier4_op",
+              "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+            }
+          ],
+          "target_where": "{}"
+        }
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "tenantId": 1,
+            "custNo": 1
+          },
+          "unique": true
+        },
+        {
+          "keys": {
+            "name": 1
+          },
+          "collation": {
+            "locale": "en",
+            "strength": 2
+          }
+        },
+        {
+          "keys": {
+            "emails": 1
+          }
+        },
+        {
+          "keys": {
+            "tenantId": 1,
+            "status": 1
+          }
+        },
+        {
+          "keys": {
+            "attributes.name": 1
+          },
+          "sparse": true
+        }
+      ],
+      "cardinality": "customers == count(CUSTOMER_MASTER) == 25000; sum(customers.attributes[]) == count(ENTITY_ATTR_VALUE where entity_type='CUSTOMER') == 8333",
+      "fields_ungraded_pending_profile_rule": [
+        {
+          "source": "TAX_EXEMPT_YN",
+          "target": "flags.taxExempt",
+          "source_type": "CHAR(1)",
+          "bson_type": "bool",
+          "rules": [
+            "rstrip_spaces",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs yn_to_bool"
+        },
+        {
+          "source": "CREDIT_HOLD_YN",
+          "target": "flags.creditHold",
+          "source_type": "CHAR(1)",
+          "bson_type": "bool",
+          "rules": [
+            "rstrip_spaces",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs yn_to_bool"
+        },
+        {
+          "source": "DUNNING_EXEMPT_YN",
+          "target": "flags.dunningExempt",
+          "source_type": "CHAR(1)",
+          "bson_type": "bool",
+          "rules": [
+            "rstrip_spaces",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs yn_to_bool"
+        },
+        {
+          "source": "VIP_YN",
+          "target": "flags.vip",
+          "source_type": "CHAR(1)",
+          "bson_type": "bool",
+          "rules": [
+            "rstrip_spaces",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs yn_to_bool"
+        },
+        {
+          "source": "SIGNUP_DT",
+          "target": "dates.signupAt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.signupDtRaw"
+            }
+          },
+          "expected_parse_failures": 50,
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        },
+        {
+          "source": "LAST_ACTIVITY_DT",
+          "target": "dates.lastActivityAt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.lastActivityDtRaw"
+            }
+          },
+          "expected_parse_failures": 0,
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        },
+        {
+          "source": "LAST_INVOICE_DT",
+          "target": "dates.lastInvoiceAt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.lastInvoiceDtRaw"
+            }
+          },
+          "expected_parse_failures": 0,
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        },
+        {
+          "source": "LAST_PAYMENT_DT",
+          "target": "dates.lastPaymentAt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.lastPaymentDtRaw"
+            }
+          },
+          "expected_parse_failures": 0,
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        },
+        {
+          "source": "TERMINATE_DT",
+          "target": "dates.terminatedAt",
+          "source_type": "VARCHAR2(9)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.terminateDtRaw"
+            }
+          },
+          "expected_parse_failures": 0,
+          "rules": [
+            "datetime_utc_truncate_ms",
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        },
+        {
+          "source": "RELATED_ACCT_IDS",
+          "target": "relatedAccountIds",
+          "source_type": "VARCHAR2(400)",
+          "bson_type": "array",
+          "parse": {
+            "csv": true,
+            "on_fail": {
+              "target": [],
+              "raw_to": "legacy.relatedAcctIdsRaw"
+            }
+          },
+          "expected_parse_failures": 31,
+          "rules": [],
+          "grading": "tier4_op",
+          "why_ungraded": "needs csv_split_trim"
+        },
+        {
+          "source": "CHILD_ACCT_IDS",
+          "target": "childAccountIds",
+          "source_type": "VARCHAR2(400)",
+          "bson_type": "array",
+          "parse": {
+            "csv": true,
+            "on_fail": {
+              "target": [],
+              "raw_to": "legacy.childAcctIdsRaw"
+            }
+          },
+          "expected_parse_failures": 0,
+          "rules": [],
+          "grading": "tier4_op",
+          "why_ungraded": "needs csv_split_trim"
+        },
+        {
+          "source": "PROMO_CODES_CSV",
+          "target": "promoCodes",
+          "source_type": "VARCHAR2(400)",
+          "bson_type": "array",
+          "parse": {
+            "csv": true,
+            "on_fail": {
+              "target": [],
+              "raw_to": "legacy.promoCodesRaw"
+            }
+          },
+          "expected_parse_failures": 0,
+          "rules": [],
+          "grading": "tier4_op",
+          "why_ungraded": "needs csv_split_trim"
+        }
+      ],
+      "fields_decoded_graded_by_op": [
+        {
+          "source": "CUST_TYPE_CD",
+          "target": "type",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "CUST_TYPE"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        },
+        {
+          "source": "STATUS_CD",
+          "target": "status",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "CUST_STATUS",
+            "unknown_value_policy": "keep_decoded_unknown"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        },
+        {
+          "source": "SUB_STATUS_CD",
+          "target": "subStatus",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "string",
+          "decode": {
+            "codes_type": "CUST_STATUS"
+          },
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "decoded through CODES, so the source integer and the target string never compare raw; graded by a Tier 4 parity op"
+        }
+      ],
+      "fields_positional_graded_by_op": [
+        {
+          "source": "CITY",
+          "target": "addresses.0.city",
+          "source_type": "VARCHAR2(100)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "STATE_CD",
+          "target": "addresses.0.state",
+          "source_type": "VARCHAR2(2)",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "ZIP",
+          "target": "addresses.0.zip",
+          "source_type": "VARCHAR2(10)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "ZIP4",
+          "target": "addresses.0.zip4",
+          "source_type": "VARCHAR2(4)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "COUNTRY_CD",
+          "target": "addresses.0.country",
+          "source_type": "VARCHAR2(3)",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "MAIL_CITY",
+          "target": "addresses.1.city",
+          "source_type": "VARCHAR2(100)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "MAIL_STATE_CD",
+          "target": "addresses.1.state",
+          "source_type": "VARCHAR2(2)",
+          "bson_type": "string",
+          "rules": [
+            "rstrip_spaces",
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        },
+        {
+          "source": "MAIL_ZIP",
+          "target": "addresses.1.zip",
+          "source_type": "VARCHAR2(10)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "positional path inside addresses[]: the harness grades identifier paths only"
+        }
+      ]
+    },
+    {
+      "collection": "customer_history",
+      "unit": "U2-customers",
+      "root_table": "CUSTOMER_MASTER_HIST",
+      "key": {
+        "source": [
+          "HIST_ID"
+        ],
+        "target": "_id"
+      },
+      "inherits_field_rules_from": "customers",
+      "fields": [
+        {
+          "source": "HIST_ID",
+          "target": "histId",
+          "source_type": "NUMBER(12,0)",
+          "bson_type": "long",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "HIST_OP",
+          "target": "op",
+          "source_type": "VARCHAR2(3)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "CUST_ID",
+          "target": "customerId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        }
+      ],
+      "note": "Every other field is the customers mapping applied to the same-named _HIST column, including the 80 dropped flag/udf columns.",
+      "indexes": [
+        {
+          "keys": {
+            "customerId": 1,
+            "at": -1
+          }
+        }
+      ],
+      "cardinality": "customer_history == count(CUSTOMER_MASTER_HIST)",
+      "retention": "none in v1 (Open item 4)",
+      "fields_ungraded_pending_profile_rule": [
+        {
+          "source": "HIST_DT",
+          "target": "at",
+          "source_type": "VARCHAR2(20)",
+          "bson_type": "date",
+          "parse": {
+            "format": "DD-MON-YY HH24:MI:SS",
+            "on_fail": {
+              "target": null,
+              "raw_to": "legacy.histDtRaw"
+            }
+          },
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ],
+          "grading": "tier4_op",
+          "why_ungraded": "needs parse_date_string (the source stores this date as a string)"
+        }
+      ]
+    }
+  ]
+}

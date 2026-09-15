@@ -62,9 +62,9 @@ class ExportArchive:
         ``FileNotFoundError`` when the export does not exist or the name
         escapes the archive directory.
         """
-        self.resolve_export_path(name)
+        path = self.resolve_export_path(name)
         logger.debug("export_read", name=name)
-        fd = self._open_export(name)
+        fd = self._open_export(name, path)
         try:
             with open(fd, encoding="utf-8") as handle:
                 fd = -1
@@ -73,10 +73,11 @@ class ExportArchive:
             if fd != -1:
                 os.close(fd)
 
-    def _open_export(self, name: str) -> int:
+    def _open_export(self, name: str, path: str) -> int:
         """Open ``name`` relative to ``base_dir`` one segment at a time with
         ``O_NOFOLLOW`` so no component, including parent directories, can be
-        a symlink. Returns a file descriptor to a regular file."""
+        a symlink. Returns a file descriptor to a regular file. ``path`` is
+        the resolved location, reported in any ``OSError`` raised."""
         *dirs, leaf = self._split_name(name)
         fd = os.open(os.path.realpath(self.base_dir), _OPEN_FLAGS | os.O_DIRECTORY)
         try:
@@ -85,6 +86,8 @@ class ExportArchive:
                 os.close(fd)
                 fd = next_fd
             leaf_fd = os.open(leaf, _OPEN_FLAGS, dir_fd=fd)
+        except OSError as exc:
+            raise OSError(exc.errno, exc.strerror, path) from None
         finally:
             os.close(fd)
         if not stat.S_ISREG(os.fstat(leaf_fd).st_mode):

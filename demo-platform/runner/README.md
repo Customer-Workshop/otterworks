@@ -34,7 +34,9 @@ Non-secret (control-plane metadata): `OP`, `TENANT_ID`, `TIER`, `TTL`,
 `AWS_REGION`, `EKS_CLUSTER` (default `otterworks-dev`), `ACTOR`.
 
 Secrets (from Kubernetes Secret refs — **env only, never argv**): `DB_PASSWORD`,
-`JWT_SECRET`, `SECRET_KEY_BASE`. AWS creds come from the pod's IRSA role.
+`JWT_SECRET`, `SECRET_KEY_BASE`, and optionally `AUTH_BOOTSTRAP_ADMIN_PASSWORD`
+(the tenant's initial auth-service ADMIN; without it a tenant has no admin
+account). AWS creds come from the pod's IRSA role.
 
 ## Example Job (deploy)
 

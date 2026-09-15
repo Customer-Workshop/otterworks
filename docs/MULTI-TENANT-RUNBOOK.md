@@ -29,6 +29,8 @@ export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_DEFAULT_REGION=us-eas
 export DB_PASSWORD='<shared RDS master password>'
 # Stable across redeploys so issued JWTs / Rails sessions stay valid:
 export JWT_SECRET='<hex>' SECRET_KEY_BASE='<hex>'
+# Initial auth-service ADMIN for each tenant (no default; omit -> tenant has no admin):
+export AUTH_BOOTSTRAP_ADMIN_PASSWORD='<strong password>'
 ```
 
 Env vars do not persist between separate shell commands in some runners —

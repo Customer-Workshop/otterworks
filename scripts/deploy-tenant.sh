@@ -22,6 +22,8 @@
 #
 # Required env: AWS creds (exported), DB_PASSWORD. Stable JWT_SECRET /
 #   SECRET_KEY_BASE recommended across redeploys (auto-generated if unset).
+#   AUTH_BOOTSTRAP_ADMIN_PASSWORD (optional) creates the tenant's initial
+#   auth-service ADMIN; without it the tenant has no admin account.
 # ------------------------------------------------------------------------------
 set -euo pipefail
 

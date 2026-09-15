@@ -14,7 +14,7 @@ Deploys the OtterWorks **Demo Platform control plane** into the
   ingress class `nginx`);
 - a templated **Secret** `demo-ops-dashboard` holding `DASHBOARD_PASSCODE` +
   `SESSION_SECRET` (and optionally `DB_PASSWORD` / `JWT_SECRET` /
-  `SECRET_KEY_BASE`);
+  `SECRET_KEY_BASE` / `AUTH_BOOTSTRAP_ADMIN_PASSWORD`);
 - the **reaper v2 CronJob** (runs the runner image with `OP=reap`).
 
 ## Prerequisites

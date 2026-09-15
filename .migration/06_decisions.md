@@ -89,7 +89,14 @@ run proceeds on the SP. Raised to the owner the same hour; reversible on reply.
 
 ## D-006 — Lakehouse Federation is required after all
 
-**Date:** 2026-09-15 · **Decided by:** open — recommended to owner · **Status:** OPEN (D10-01)
+**Date:** 2026-09-15 · **Decided by:** user (relayed at STOP C) · **Status:** DENIED (D10-01)
+
+**Outcome:** the security group is not opened, so there is no Lakehouse Federation on this
+run. The user directed reconciling pipeline 1 over JDBC from the Devin CIDRs instead, with
+the consequence accepted in writing: every pipeline-1 unit carries `recon_grade=DEGRADED`,
+`official_verdict=false`, `reason=d10_01_denied`, `merge_eligible=false`, and no artifact, PR
+body or brief calls a JDBC comparison an official Oracle harness verdict. What that route
+does not cover is listed in the STOP E packet.
 
 The intake declined federation to avoid opening the security group. The recon harness then
 turned out to refuse the Oracle source adapter outright (untested, raises before connecting),

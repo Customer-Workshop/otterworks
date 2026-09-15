@@ -1,0 +1,224 @@
+{
+ "auto_merge": false,
+ "base_sha": "e697b8d1",
+ "batches": [
+  {
+   "branch": "child session w4-c, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/d63a400605764306aaeb30c4b6215128",
+   "id": "w4-c",
+   "official_verdict": false,
+   "one_line_summary": "usage_events on the operational track: 814 rows into Lakebase billing.usage_events on branch mig-p1-w2, the unit D-011 added so pkg_rating has a table to read. The verifier recomputed Oracle, Lakebase and Delta independently - 814 rows and the same row digest in all three, columns zoneless, Oracle constraint names preserved.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1595",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PASS",
+   "runtime_writes": [],
+   "skill_feedback": [
+    "Fixture-first plus a shared target is a trap for the idempotency rerun: the fixture is a subset of the same keys and the loader deletes source-dropped keys, so replaying the fixture load after the live load would have deleted the rest of the table. Prove idempotency with a second live load and record the deviation.",
+    "The degraded recon driver needs PYTHONPATH pointed at the plugin harness; it is not importable from the snapshot's python3."
+   ],
+   "status": "PASS",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-usage-events-oltp/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1595",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": 814,
+     "unit": "p1-usage-events-oltp"
+    }
+   ],
+   "units": [
+    "p1-usage-events-oltp"
+   ],
+   "write_targets": [
+    "billing.usage_events"
+   ]
+  },
+  {
+   "branch": "child session w4-d, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/8fb88567b9824667a4dc20ab42eaa8cd",
+   "id": "w4-d",
+   "official_verdict": false,
+   "one_line_summary": "pkg_rating converted and installed on Lakebase - sp_finalize_rating, fn_usage_rating and fn_usage_summary - the wave-3 unit that was blocked on the missing table. The verifier read all three against the Oracle package and ran fn_usage_summary live read-only over 6 tenants x 3 periods, 18 of 18 exact. The two writing routines could not be executed read-only.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1596",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PASS",
+   "runtime_writes": [
+    "billing.rating_periods",
+    "billing.rating_results",
+    "billing.rating_state",
+    "billing.billing_audit_log"
+   ],
+   "skill_feedback": [
+    "Oracle reserved words bite in op SQL: prior, level and size as column aliases fail with ORA-00923, which reads like a syntax error rather than a naming one.",
+    "Oracle LEAST/GREATEST return NULL if any argument is NULL; Postgres ignores NULLs. A NULL-plan path that depends on the Oracle behaviour has to be written explicitly.",
+    "Oracle ADD_MONTHS is month-end aware; minus interval '3 months' is not an equivalent.",
+    "The read-only Oracle user has no EXECUTE, so a live package call has to be inlined and package-call equality stays fixture-only."
+   ],
+   "status": "PASS",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-pkg-rating/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1596",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": null,
+     "unit": "p1-pkg-rating"
+    }
+   ],
+   "units": [
+    "p1-pkg-rating"
+   ],
+   "write_targets": [
+    "billing.sp_finalize_rating",
+    "billing.fn_usage_rating",
+    "billing.fn_usage_summary"
+   ]
+  },
+  {
+   "branch": "child session w4-a, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/016d87074cdf458dbf5fdb4bee1815b4",
+   "id": "w4-a",
+   "official_verdict": false,
+   "one_line_summary": "The nightly dunning job runs as Lakeflow job ow_tp_p1_nightly_dunning, created paused on cron 0 0 2 * * ? UTC, which matches the legacy DBMS_SCHEDULER entry. Zero runs ever. The verifier confirmed the deployed script is byte-identical to the PR file and calls sp_schedule_dunning then sp_suspend_overdue under one commit.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1594",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PASS",
+   "runtime_writes": [],
+   "skill_feedback": [
+    "A legacy job that is disabled at source gives no live run to compare against, so job equivalence is fixture-only: say so rather than grading the schedule match as behavioural parity.",
+    "Create the converted job paused. A job that starts itself on a migration branch writes rows no source run produced."
+   ],
+   "status": "PASS",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-job-nightly-dunning/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1594",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": null,
+     "unit": "p1-job-nightly-dunning"
+    }
+   ],
+   "units": [
+    "p1-job-nightly-dunning"
+   ],
+   "write_targets": [
+    "ow_tp_p1_nightly_dunning"
+   ]
+  },
+  {
+   "branch": "child session w4-b, one branch per unit PR",
+   "child_session": "https://partner-workshops.devinenterprise.com/sessions/775d003bd6604b468892d10d871da459",
+   "id": "w4-b",
+   "official_verdict": false,
+   "one_line_summary": "pkg_invoicing converted and installed - sp_issue_invoice, fn_invoice_preview and fn_invoice_lines - including the transitive sp_finalize_rating call, the credit-note burn-down with its running-counter quirk, the delete-and-reinsert of invoice lines and log_msg. fn_invoice_lines matched Oracle live read-only; the two writing routines could not be executed read-only.",
+   "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1597",
+   "recon_cost": null,
+   "recon_grade": "DEGRADED",
+   "recon_mode": "transactional",
+   "recon_verdict": "PASS",
+   "runtime_writes": [
+    "billing.credit_notes",
+    "billing.billing_audit_log",
+    "billing.rating_periods",
+    "billing.rating_results",
+    "billing.rating_state",
+    "billing.invoices",
+    "billing.invoice_lines"
+   ],
+   "skill_feedback": [
+    "Oracle's unformatted TO_CHAR(number) drops a trailing .00 and the leading zero; numeric::text does not, so any log or audit message carrying a number diverges unless it is normalised.",
+    "DUP_VAL_ON_INDEX is not always ON CONFLICT: when the source's UPDATE branch touches fewer columns than the INSERT, ON CONFLICT DO UPDATE silently resets the rest. Insert-then-catch unique_violation is the faithful form.",
+    "An idempotency digest over a target with a sequence PK or a localtimestamp default never matches; exclude those columns by name and record the exclusion instead of reading it as a parity failure."
+   ],
+   "status": "PASS",
+   "unit_results": [
+    {
+     "evidence_path": ".migration/recon/p1-pkg-invoicing/",
+     "official_verdict": false,
+     "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1597",
+     "recon_grade": "DEGRADED",
+     "recon_mode": "transactional",
+     "recon_verdict": "PASS",
+     "rows": null,
+     "unit": "p1-pkg-invoicing"
+    }
+   ],
+   "units": [
+    "p1-pkg-invoicing"
+   ],
+   "write_targets": [
+    "billing.sp_issue_invoice",
+    "billing.fn_invoice_preview",
+    "billing.fn_invoice_lines"
+   ]
+  }
+ ],
+ "breaker_threshold": 3,
+ "breaker_tripped_on": null,
+ "close_blocked_on": null,
+ "close_note": "Wave 4 closes with all four units PASS and the independent verifier agreeing on all four, every verdict DEGRADED and none an official harness verdict. It also clears wave 3's one blocked unit: D-011 added p1-usage-events-oltp on the operational track, and pkg_rating then pkg_invoicing ran behind it in a serialized chain. Two package units close as converted, not runtime-proven: no converted routine has been executed and committed anywhere, so billing.billing_audit_log and billing.rating_state both hold zero rows and the audit path and the rating-to-invoicing hand-off are unexercised. Three items are reported rather than fixed and carry to STOP E: log_msg is inside the caller's transaction and so deviates from wave 0's P1-D1, Oracle FK_SUB_PLAN and FK_SUB_TENANT are missing from billing.subscriptions, and TRG_USAGE_EVENTS_CHECK has no Postgres equivalent on the new operational usage_events table. The wave-2 empty-source caveat still stands verbatim.",
+ "closed": true,
+ "launch_mechanism": "child_sessions",
+ "launch_reason": "Same environment gap as waves 1-3, which the parent directed be used without asking again: the process run_workflow starts inherits no environment, so DATABRICKS_HOST / DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET and the AWS pair are absent and the pre-flight factory-doctor fails databricks_identity. Persisting credentials to a file or CLI profile to get past it stays refused. Four child Devin sessions ran the same batch contract: manifest and write-target collision check before launch, one PR per unit into the working branch, children write only .migration/recon/<unit>/, the orchestrator is the single writer of these wave artifacts, the same 3-same-class circuit breaker, and an independent verifier that migrated none of the units.",
+ "manifest_sha": "2297c43a2afd",
+ "manifest_width": 1,
+ "official_verdict": false,
+ "recon_cap_exceptions": [
+  "p1-pkg-rating used two of its three runs plus one aborted attempt that failed before any comparison (ORA-00923: an op aliased a column 'prior', an Oracle reserved word). Inside the cap, recorded for the run history."
+ ],
+ "recon_grade": "DEGRADED",
+ "recon_grade_reason": "d10_01_denied: Lakehouse Federation to Oracle was refused, so recon reads Oracle over JDBC with a repo-local adapter outside the harness's tested matrix. Every wave-4 verdict is DEGRADED and none is an official harness verdict. Tiers 5-7 stay unverified and merge_eligible is false on every unit.",
+ "run_id": null,
+ "scope_change": {
+  "from": "not in the original plan",
+  "reason": "D-011: pkg_rating reads usage_events row-at-a-time and the operational track had no copy, so wave 3's p1-pkg-rating reported BLOCKED. The user added the operational copy as a wave-4 unit with billing.usage_events as its declared write target; the Delta copy stays as the analytical one and the two reconcile against Oracle independently, never against each other. p1-pkg-rating was re-placed from w3-a to w4-d behind it, and p1-pkg-invoicing from w3-b to w4-b behind that.",
+  "to": "wave 4, batch w4-c",
+  "unit": "p1-usage-events-oltp"
+ },
+ "serialization_note": "Wave 4 ran at width 1 because w4-c -> w4-d -> w4-b is a dependency chain and the manifest schema has no way to express batch dependencies. A wider wave would have started pkg_rating before its table existed and turned a timing race into another BLOCKED result. w4-a is independent of the chain and ran alongside it.",
+ "undeclared_write_targets": {},
+ "unreported_write_targets": [],
+ "verify": {
+  "changed_paths": [],
+  "close_conditions": [
+   "Before cutover the owner authorizes one committed live run of the converted routines, so the audit-write path and the rating_state hand-off are proven rather than installed.",
+   "log_msg is moved out of the caller's transaction to meet P1-D1, which needs an out-of-database writer and a named owner (P1-D1a).",
+   "Oracle FK_SUB_PLAN and FK_SUB_TENANT are added to billing.subscriptions by the unit that owns that table.",
+   "An equivalent of Oracle TRG_USAGE_EVENTS_CHECK (units > 0, known kind) is installed on billing.usage_events, as a CHECK constraint or trigger, before the operational table takes application writes.",
+   "A named owner and a stated mechanism exist for keeping the two usage_events copies in step (billing.usage_events and ow_tp.silver.usage_events), each refreshed from Oracle/CDC and never from the other copy."
+  ],
+  "findings": [
+   "All four units AGREE on an independent recompute. usage_events: Oracle 814, Lakebase 814, Delta 814, identical SHA-256 row digest in all three and empty set differences both ways; the two tracks also agree with each other. pkg_rating and pkg_invoicing read faithful to the Oracle packages, including the YYYYMMDD string-date comparison, the three-month rollover window with its month-end quirk, the 101-unit tier boundary, suspension proration, tax 0.0825, the credit burn-down order and its running-counter quirk, and log_msg at every Oracle call point. fn_usage_summary matched Oracle live on 18 of 18 tenant-periods and fn_invoice_lines matched live.",
+   "The nightly dunning job exists paused on cron 0 0 2 * * ? UTC with zero runs, matching the legacy FREQ=DAILY;BYHOUR=2;BYMINUTE=0 entry, which is itself disabled at source - so the equivalence is a schedule and script match, not a behavioural one.",
+   "No converted routine has ever run for real: billing.billing_audit_log holds 0 rows and billing.rating_state holds 0 rows on mig-p1-w2. Every execution so far was a fixture or a rolled-back transaction, so the audit-write path and the rating-to-invoicing hand-off are unexercised in the delivered state.",
+   "DEVIATION, not just a divergence: wave 0's P1-D1 required log_msg to be a best-effort writer not enrolled in the caller's transaction. The installed billing.log_msg is a plain PL/pgSQL function inside the caller's transaction, so a caller rollback loses an audit row Oracle would keep. This is wave-0 work (U-20) inherited by U-22 and U-23, not a wave-4 unit defect, and it is the same gap as P1-D1a. Carried to STOP E; not fixed here, because it needs an out-of-database writer and an owner.",
+   "SCHEMA DEFECT, not fixed: Oracle FK_SUB_PLAN and FK_SUB_TENANT are absent from billing.subscriptions. Same class as the four foreign keys the wave-3 verifier found - invisible to row parity. The owning unit is in an earlier, already-merged wave, so this is reported rather than patched from wave 4.",
+   "COVERAGE GAP, not fixed: Oracle's TRG_USAGE_EVENTS_CHECK (units > 0, known kind) has no Postgres equivalent on billing.usage_events. w4-c disclosed it rather than routing around it - adding it would have been DDL outside the unit's declared scope - but usage_events is the operational front door that will take writes, so the rule is simply absent there today.",
+   "No undeclared writes. Unity Catalog objects were all last altered at 09:03 UTC, before the wave-4 branches opened at 11:15; ow_tp.silver.usage_events has no version after wave 1's 07:06; Lakebase billing contains exactly the declared new objects; every shared table still matches Oracle row for row, so the rolled-back runtime writes left no residue.",
+   "Unverified on the JDBC route: tiers 5-7 source metadata. The read-only Oracle user sees no rows in ALL_TRIGGERS, so the verifier could not confirm from the live database that the trigger exists - it is in repo source only. Live execution of the three writing routines is unverifiable without a write.",
+   "Verifier posture: 0 units migrated, 0 writes. Lakebase sessions ran with default_transaction_read_only=on, Oracle under the read-only secret, Databricks with SELECT and describe/get only. It edited no ledger file and opened no PR."
+  ],
+  "session": "https://partner-workshops.devinenterprise.com/sessions/11effe8f798c48889bb8ce4a97407791",
+  "units_migrated": 0,
+  "verdict": "AGREE",
+  "wave_should_close": true
+ },
+ "wave": 4,
+ "width": 2,
+ "width_note": "The committed manifest declares width 1 for the dependency chain. Two children were live at once only where it is safe: w4-a, which is independent of the chain, ran alongside it, and the independent verifier ran after the last unit. Recorded rather than silently reconciled: the manifest width was not edited.",
+ "write_target_overlaps": []
+}

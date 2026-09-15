@@ -42,6 +42,11 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 STABLE
+-- Oracle has no session zone; P1-D3 declares the estate UTC. billing.invoices is w3-b's
+-- and its mapping still types issued_at as timestamptz, so a date cast would otherwise
+-- follow the caller's TimeZone. Pinning it here makes the business date UTC whichever
+-- type that column lands as, and whatever the caller's session is set to.
+SET TimeZone TO 'UTC'
 AS $$
     SELECT i.tenant_id,
            i.id AS invoice_id,
@@ -81,6 +86,7 @@ CREATE OR REPLACE PROCEDURE billing.sp_schedule_dunning(
     INOUT p_last_run_dt   timestamp(0) DEFAULT NULL
 )
 LANGUAGE plpgsql
+SET TimeZone TO 'UTC'          -- UTC business dates regardless of the caller (P1-D3)
 AS $$
 DECLARE
     v_attempt smallint;
@@ -113,7 +119,10 @@ BEGIN
                 id, tenant_id, invoice_id, attempt_no, scheduled_for, status_cd
             ) VALUES (
                 billing.f_md5_uuid(v_inv.id || v_attempt::text),
-                v_inv.tenant_id, v_inv.id, v_attempt, v_next, 10
+                -- Oracle widens the count in an unrestricted NUMBER and then inserts it
+                -- into NUMBER(4): attempt 10000 raises inside the swallow and schedules
+                -- nothing. smallint would take it, so the four-digit bound is restated.
+                v_inv.tenant_id, v_inv.id, v_attempt::numeric(4,0), v_next, 10
             );
             p_scheduled_cnt := p_scheduled_cnt + 1;
         EXCEPTION
@@ -137,6 +146,7 @@ $$;
 -- nothing.
 CREATE OR REPLACE PROCEDURE billing.sp_suspend_overdue(IN p_as_of timestamp(0))
 LANGUAGE plpgsql
+SET TimeZone TO 'UTC'          -- UTC business dates regardless of the caller (P1-D3)
 AS $$
 DECLARE
     v_active  integer;

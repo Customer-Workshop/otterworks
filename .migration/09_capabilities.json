@@ -1,0 +1,188 @@
+{
+  "blocking": [],
+  "checks": [
+    {
+      "data": {},
+      "detail": ".migration/ has all 10 required files",
+      "id": "workspace",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "stop_mode": "soft"
+      },
+      "detail": "stop_mode: soft",
+      "id": "stop_mode",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "catalogs": [
+          "ow_tp"
+        ],
+        "guard_mode": "block",
+        "legacy_sources": 7
+      },
+      "detail": "catalogs=['ow_tp'] guard_mode=block",
+      "id": "allowed_targets",
+      "status": "ok"
+    },
+    {
+      "data": {
+        ".migration/03_recon_tolerances.json": "clean",
+        ".migration/allowed_targets.json": "clean"
+      },
+      "detail": "allowed_targets.json and 03_recon_tolerances.json are byte-equal to HEAD",
+      "id": "allowlist_committed",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "allowlist": [
+          "ow_tp"
+        ],
+        "expected": [
+          "ow_tp"
+        ]
+      },
+      "detail": "allowlist catalogs match the contract: ['ow_tp']",
+      "id": "allowlist_matches_contract",
+      "status": "ok"
+    },
+    {
+      "data": {},
+      "detail": "hooks.json registers dbx_guard.py (PreToolUse)",
+      "id": "hooks_files",
+      "status": "ok"
+    },
+    {
+      "data": {},
+      "detail": "dbx_guard.py blocks the probe command when invoked directly and names __dbx_guard_probe__a4b40cf4",
+      "id": "hook_guard_functional",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "probe_nonce": "f57f274c"
+      },
+      "detail": "live probe was BLOCKED: the platform is running hooks.json",
+      "id": "hook_platform_loaded",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "found": {
+          "databricks-core": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-core",
+          "databricks-dabs": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-dabs",
+          "databricks-dbsql": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-dbsql",
+          "databricks-jobs": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-jobs",
+          "databricks-lakebase": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-lakebase",
+          "databricks-lakeflow-connect": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-lakeflow-connect",
+          "databricks-pipelines": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-pipelines",
+          "databricks-unity-catalog": "/opt/.devin/plugins/cache/github.com_databricks_databricks-agent-skills_plugins_databricks_claude-ae11e7d0/0.2.10/skills/databricks-unity-catalog"
+        }
+      },
+      "detail": "all 8 routed official skills present",
+      "id": "official_databricks_plugin",
+      "status": "ok"
+    },
+    {
+      "data": {},
+      "detail": "dbx-recon selftest PASS: 9 canonicalization rules exercised via dbx-recon",
+      "id": "recon_harness",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "drivers": {
+          "databricks": true,
+          "postgres": false,
+          "sqlserver": false
+        }
+      },
+      "detail": "installed adapters: ['databricks']",
+      "id": "recon_drivers",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "mappings": {},
+        "units": []
+      },
+      "detail": "not applicable at setup: no unit mapping exists yet under .migration/units/*/mapping_spec.json",
+      "id": "delete_evidence",
+      "status": "skipped"
+    },
+    {
+      "data": {},
+      "detail": "not applicable at setup: no unit mapping exists yet under .migration/units/*/mapping_spec.json",
+      "id": "source_principal_read_only",
+      "status": "skipped"
+    },
+    {
+      "data": {
+        "path": "/home/ubuntu/.local/share/mise/shims/databricks"
+      },
+      "detail": "Databricks CLI v1.12.1",
+      "id": "databricks_cli",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "auth_kind": "oauth-m2m (env)",
+        "env_set": [
+          "DATABRICKS_HOST",
+          "DATABRICKS_CLIENT_ID",
+          "DATABRICKS_CLIENT_SECRET"
+        ]
+      },
+      "detail": "auth: oauth-m2m (env); migration sessions should run as the migration service principal via DATABRICKS_CLIENT_ID/SECRET from named secrets",
+      "id": "databricks_auth_kind",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+        "service_principal": true,
+        "userName": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d"
+      },
+      "detail": "authenticated as 2e90bc1d-e9a1-4703-8c48-ad28ebb1864d (service principal) on https://dbc-8bc9474f-40ae.cloud.databricks.com",
+      "id": "databricks_identity",
+      "status": "ok"
+    },
+    {
+      "data": {},
+      "detail": "default warehouse resolved: 565cd2fd713738c4",
+      "id": "databricks_warehouse",
+      "status": "ok"
+    },
+    {
+      "data": {
+        "catalog_owner": "dhrov.subramanian@cognition.ai",
+        "exists": true,
+        "missing": [],
+        "owner": "dhrov.subramanian@cognition.ai",
+        "principal": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d",
+        "schema": "ow_tp.silver"
+      },
+      "detail": "principal 2e90bc1d-e9a1-4703-8c48-ad28ebb1864d can create and write tables in ow_tp.silver (owner dhrov.subramanian@cognition.ai)",
+      "id": "analytical_target_grants",
+      "status": "ok"
+    }
+  ],
+  "generated_at": "2026-09-15T05:03:56Z",
+  "identity": {
+    "host": "https://dbc-8bc9474f-40ae.cloud.databricks.com",
+    "service_principal": true,
+    "userName": "2e90bc1d-e9a1-4703-8c48-ad28ebb1864d"
+  },
+  "plugin_root": "/opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_dbx-migration-plugin-5890f19a/0.2.1",
+  "ready": true,
+  "role": "orchestrator",
+  "schema": "dbx-migration-factory/capabilities/1",
+  "summary": {
+    "ok": 16,
+    "skipped": 2
+  },
+  "workspace": "/home/ubuntu/repos/otterworks"
+}

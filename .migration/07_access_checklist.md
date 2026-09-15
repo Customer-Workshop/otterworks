@@ -6,7 +6,7 @@ Names only. No values appear here or in any artifact.
 
 | Role | Identity | Auth | Verified |
 |---|---|---|---|
-| Migration principal (Databricks) | service principal `dhrov_spa`, application id `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d` | OAuth M2M — `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET`, host `DATABRICKS_HOST` | yes — `databricks current-user me` |
+| Migration principal (Databricks) | service principal `2e90bc1d-e9a1-4703-8c48-ad28ebb1864d` (display name `dhrov_spa`) | OAuth M2M — `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET`, host `DATABRICKS_HOST` | yes — `databricks current-user me` |
 | Fallback (not used) | PAT `DATABRICKS_DEMO_TOKEN` on `DATABRICKS_DEMO_HOST` | personal access token, resolves to a human user | rejected for unattended work (D-005) |
 | Source reader | Oracle `OW_BILLING_RO` | AWS Secrets Manager `ow-tp/oracle/ow_billing_ro` | yes — connects; `CREATE TABLE` probe fails ORA-01031 |
 | Source admin | Oracle admin | `ow-tp/oracle/admin` | used once, for the approved DDL in D-001, and never again |

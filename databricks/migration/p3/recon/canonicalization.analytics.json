@@ -1,0 +1,10 @@
+[
+  {"rule": "identity", "applies_to": "*", "params": {}},
+  {"rule": "decimal_round", "applies_to": "NOTHING - declared unused. Every measure in this unit is a count, and bytes_uploaded is an integer byte total the legacy produces with int(sum(...)); rounding anything here would round away a real difference", "params": {"mode": "half_even", "places": 0}},
+  {"rule": "empty_string_is_null", "applies_to": "NOTHING - declared unused. The empty string is load-bearing on the source side: the legacy's attribution walk treats '' as an unset field and moves to the next one (contract C-2.6), and that is reproduced in the converted SQL, not at compare time", "params": {}},
+  {"rule": "rstrip_spaces", "applies_to": "NOTHING - declared unused. No field here is fixed-width or padded; event types and user ids are compared as bytes", "params": {}},
+  {"rule": "datetime_utc_truncate_ms", "applies_to": "NOTHING - declared unused. summary_date is a DATE and hour is the two-character string the legacy wrote, not a timestamp: the legacy reads the hour as written and never converts a zone (contract C-2.8), so a UTC normalisation would move events between hours", "params": {}},
+  {"rule": "collation_casefold", "applies_to": "NOTHING - declared unused. Case is significant throughout: the estate carries attribute pairs that differ only in case, and event types are matched as exact literals (F-0.9)", "params": {}},
+  {"rule": "null_missing_equiv", "applies_to": "NOTHING - declared unused. A missing event type is not a missing value here: the legacy serialises it as the literal key 'NaN' and the target writes the same literal, so the two sides compare as strings", "params": {}},
+  {"rule": "uuid_normalize", "applies_to": "NOTHING - declared unused. user_id, documentId and fileId are opaque strings, not UUIDs", "params": {}}
+]

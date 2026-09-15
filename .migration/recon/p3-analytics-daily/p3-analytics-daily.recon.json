@@ -1,0 +1,56 @@
+{
+  "kind": "recon-report",
+  "unit": "p3-analytics-daily",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T16:15:12.529964+00:00",
+  "run_mode": "live",
+  "checks": [
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, Databricks source adapter over the independently loaded legacy output tables ow_tp.bronze.p3_analytics_legacy_baseline / _top_users / _hourly / _top_user_actions",
+      "checks_run": 4
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, same four source tables",
+      "checks_run": 25
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx-recon harness engine, same four source tables",
+      "checks_run": 224
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "comparison_note": "The source side is the legacy analytics_daily.py's own S3 output for the pinned fixture day (summary.json.gz, top_users.jsonl.gz, hourly_breakdown.json.gz), loaded into ow_tp.bronze.p3_analytics_legacy_* by a loader that imports none of the converted code. The target side recomputes summary, top users, hourly (hour x exact event type) and per-user actions from ow_tp.silver.analytics_events_daily and never reads those baseline tables. Counts are exact; bytes_uploaded is an integer byte total compared exact, not at the 1e-9 float tolerance. active_users (excludes the literal 'unknown') and top_users (includes it) are compared separately, so a target that reconciled the two would fail. Event types are compared as exact literals, so the dotted 'document.created' raises total_events without raising documents_created, and a row the legacy frame could not type keeps its literal 'NaN' key on both sides.",
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "The same job and the same batch (run_date=2026-09-15, snapshot_batch=p3probe) were run again through `databricks bundle run -t migration ow_tp_p3_analytics_daily`. Row counts and an order-independent md5 over every target table are byte-identical before and after (idempotency.before.json, idempotency.after.json, produced by databricks/migration/p3/recon/fingerprint_analytics_target.py): bronze 250, silver 249, gold summary 1, top users 13, hourly 129, top-user actions 81. The landing MERGE is keyed on the batch-scoped event_uid and each gold load is a REPLACE WHERE on the run date, so a rerun rewrites the same rows rather than doubling them."
+  },
+  "legacy_defects_reproduced": [
+    "'document.created' is counted as an event and lands in the hourly breakdown, but not in documents_created: the legacy compares event types as exact snake_case literals (F-0.9).",
+    "A row whose event type the legacy frame could not produce is serialised under the literal key 'NaN'; the target writes the same literal rather than a NULL.",
+    "The attribution walk stops at the first of ownerId, editedBy, authorId, deletedBy, userId that is neither null nor empty, and falls back to the literal 'unknown' (C-2.6); 'unknown' is excluded from active_users but kept in top_users (C-2.7).",
+    "A timestamp that is absent, not a string, or unparseable lands in hour '00' rather than being dropped (C-2.8).",
+    "bytes_uploaded sums only exact 'file_uploaded' events."
+  ],
+  "unverified_paths": [
+    "Postgres serving publish: UNVERIFIED. The converted publisher reads its password from the named secret ow_tp/analytics_postgres_password, per the brief. That secret does not exist in the workspace (scope ow_tp holds sftp_host, sftp_user, sftp_password), so publish_summary fails on secret lookup and the Postgres upsert has never run against the target. No plaintext fallback was added and no value from etl/config.ini was used. Provisioning the secret is a customer action; until then this leg has no parity evidence. The Delta leg (landing, silver, gold) is unaffected and is what the harness reconciled.",
+    "factory-doctor source_principal_read_only: still unverified. The doctor implements privilege queries for SQL Server and Postgres only, so a Databricks-family source can never satisfy the row (P3-D09). Fixing it needs a plugin change, not a runtime workaround.",
+    "Loud failure on a target Postgres outage (P3-D02) is a declared behaviour change from the legacy, which swallowed the error (C-2.16). It is not exercised, for the same reason the publish path is unverified.",
+    "SQS is read from a durable snapshot instead of being consumed destructively (P3-D01). The queue-consumption semantics of the legacy are deliberately not reproduced and so are not reconciled.",
+    "Structure parity: the harness compares rows, not Delta table properties, comments, or grants on the landing volume.",
+    "Inputs outside the pinned fixture snapshot - other event types, other attribution shapes, a day with no events - are not exercised here; the empty-input and malformed-record contracts are covered by the wave-0 fixture probes, not by this run."
+  ],
+  "verdict": "PASS"
+}

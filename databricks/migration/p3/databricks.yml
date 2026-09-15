@@ -1,0 +1,210 @@
+bundle:
+  name: ow_tp_p3_analytics
+
+# Pipeline 3 (product analytics). Deployed by the migration service principal only.
+# Same shape as pipeline 2's bundle (docs/migration/Pipeline2_schedule_model.md): no prod
+# target, every schedule PAUSED, serverless only, no cluster definitions anywhere.
+
+variables:
+  landing_path:
+    description: Governed landing volume for the analytics event snapshots.
+    default: /Volumes/ow_tp/bronze/landing/analytics
+  snapshot_batch:
+    description: >-
+      Immutable input snapshot the run lands and recomputes from (P3-D01). A batch id, not a
+      date: the same batch re-landed is a no-op, which is what makes a rerun safe.
+    default: p3probe
+  pg_host:
+    description: Serving Postgres host that analytics_daily_summary lives on. Not a secret; the password is one.
+    default: analytics-db.otterworks.internal
+  pg_database:
+    default: otterworks_analytics
+  pg_user:
+    default: analytics_etl
+  failure_webhooks:
+    description: >-
+      on_failure destinations. Empty in the migration target on purpose: a migration session
+      does not wire a live pager. Cutover sets it to [{id: <notification destination id>}].
+    type: complex
+    default: []
+
+targets:
+  migration:
+    default: true
+    mode: development
+    workspace:
+      host: https://dbc-8bc9474f-40ae.cloud.databricks.com
+    presets:
+      trigger_pause_status: PAUSED
+
+resources:
+  jobs:
+    ow_tp_p3_analytics_daily:
+      name: ow_tp_p3_analytics_daily
+      # Legacy: 0 2 * * * on the ETL box, colliding with finance_excel_report.pl at 02:10.
+      # Nothing is shared between them now, so the collision is gone rather than rescheduled.
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      # The legacy has no mutual exclusion at all and its input was destructive, so two runs
+      # could eat each other's events. Landing is idempotent now, but concurrent runs would
+      # still race on the same gold partition; one at a time, and a late run queues.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      queue:
+        enabled: true
+      webhook_notifications:
+        on_failure: ${var.failure_webhooks}
+      parameters:
+        # C-1.2 / P3-D08: the date is an explicit parameter instead of "whatever today is on
+        # the ETL box". A scheduled run passes the trigger date; a backfill passes any date.
+        - name: run_date
+          default: "{{job.trigger.time.iso_date}}"
+        - name: snapshot_batch
+          default: ${var.snapshot_batch}
+      tasks:
+        - task_key: land_events
+          spark_python_task:
+            python_file: landing/land_analytics_events.py
+            parameters:
+              - --snapshot-dir
+              - ${var.landing_path}/{{job.parameters.snapshot_batch}}
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+              - --skip-upload
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: create_tables
+          depends_on:
+            - task_key: land_events
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - analytics_daily/10_create_silver_analytics_events.sql
+              - analytics_daily/20_create_gold_analytics_daily_summary.sql
+              - analytics_daily/30_create_gold_analytics_daily_top_users.sql
+              - analytics_daily/40_create_gold_analytics_daily_hourly.sql
+              - analytics_daily/50_create_gold_analytics_daily_top_user_actions.sql
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_silver
+          depends_on:
+            - task_key: create_tables
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - analytics_daily/11_load_silver_analytics_events.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # The four gold loads read the same silver partition and write four disjoint tables.
+        # They are siblings rather than a chain: none of them reads another's output, and a
+        # failed one is retried on its own instead of re-running the other three.
+        - task_key: load_gold_summary
+          depends_on:
+            - task_key: load_silver
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - analytics_daily/21_load_gold_analytics_daily_summary.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_gold_top_users
+          depends_on:
+            - task_key: load_silver
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - analytics_daily/31_load_gold_analytics_daily_top_users.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_gold_hourly
+          depends_on:
+            - task_key: load_silver
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - analytics_daily/41_load_gold_analytics_daily_hourly.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: load_gold_top_user_actions
+          depends_on:
+            - task_key: load_silver
+          spark_python_task:
+            python_file: sql/apply_p3_sql.py
+            parameters:
+              - analytics_daily/51_load_gold_analytics_daily_top_user_actions.sql
+              - --param
+              - run_date={{job.parameters.run_date}}
+              - --param
+              - batch={{job.parameters.snapshot_batch}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # P3-D02: the legacy swallowed a Postgres failure and still wrote its report. This
+        # task fails the run instead, and it runs last so a serving outage cannot stop the
+        # Delta outputs from being produced — the day is recoverable by a retry alone.
+        - task_key: publish_summary
+          depends_on:
+            - task_key: load_gold_summary
+          spark_python_task:
+            python_file: serving/publish_analytics_summary.py
+            parameters:
+              - --run-date
+              - "{{job.parameters.run_date}}"
+              - --batch
+              - "{{job.parameters.snapshot_batch}}"
+              - --pg-host
+              - ${var.pg_host}
+              - --pg-database
+              - ${var.pg_database}
+              - --pg-user
+              - ${var.pg_user}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "3"
+            # The serving publish is the only task with a dependency beyond the SDK; the
+            # password itself comes from secret scope ow_tp at run time, never from here.
+            dependencies:
+              - psycopg2-binary==2.9.9

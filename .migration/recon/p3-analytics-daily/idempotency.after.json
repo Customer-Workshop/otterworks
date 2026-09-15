@@ -1,0 +1,29 @@
+{
+  "run_date": "2026-09-15",
+  "tables": {
+    "bronze.analytics_events_raw": {
+      "rows": 250,
+      "md5": "64a7082f98a8c5c47175af3d752f62f0"
+    },
+    "silver.analytics_events_daily": {
+      "rows": 249,
+      "md5": "0574fc71bf0d6756df3a79e8f8f13b29"
+    },
+    "gold.analytics_daily_summary": {
+      "rows": 1,
+      "md5": "cc46bc8b4840db699caacc3fc0e35006"
+    },
+    "gold.analytics_daily_top_users": {
+      "rows": 13,
+      "md5": "c551feda5282768fb868f5ae2f042888"
+    },
+    "gold.analytics_daily_hourly": {
+      "rows": 129,
+      "md5": "765d27276fe37ef9c7ff3fefb2c46a01"
+    },
+    "gold.analytics_daily_top_user_actions": {
+      "rows": 81,
+      "md5": "4f1e1531e3a543de24b3dcb3b0a62c5a"
+    }
+  }
+}

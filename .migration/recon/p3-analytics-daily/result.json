@@ -1,0 +1,91 @@
+{
+  "unit": "p3-analytics-daily",
+  "mode": "live",
+  "mapping_version": "map-p3-v1",
+  "tolerance_version": "v1",
+  "seed": 0,
+  "depth": "full",
+  "params": {},
+  "snapshot": null,
+  "cost": {
+    "source_statements": 20,
+    "source_rows_fetched": 224,
+    "target_statements": 16,
+    "target_rows_fetched": 224,
+    "elapsed_s": 7.815
+  },
+  "generated_at": "2026-09-15T16:15:12.529964+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {
+        "source_counts": {
+          "ow_tp.bronze.p3_analytics_legacy_baseline": 1,
+          "ow_tp.bronze.p3_analytics_legacy_top_users": 13,
+          "ow_tp.bronze.p3_analytics_legacy_hourly": 129,
+          "ow_tp.bronze.p3_analytics_legacy_top_user_actions": 81
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 25,
+      "stats": {},
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 224,
+      "stats": {
+        "analytics_daily_summary": {
+          "mode": "full_diff",
+          "population": 1,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "analytics_daily_top_users": {
+          "mode": "full_diff",
+          "population": 13,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "analytics_daily_hourly": {
+          "mode": "full_diff",
+          "population": 129,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        },
+        "analytics_daily_top_user_actions": {
+          "mode": "full_diff",
+          "population": 81,
+          "null_key_rows": {
+            "source": 0,
+            "target": 0
+          },
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

@@ -75,7 +75,10 @@ def main() -> int:
     targets: dict[str, str] = {}
     target_wave: dict[str, int] = {}
     runtime: list[tuple[str, int, str]] = []  # (target, wave, where)
-    for path in sorted(WAVES.glob("wave-*.json")):
+    # the fan-out workflow writes wave-<N>.result.json beside the manifests; only the
+    # manifests are validated here
+    for path in sorted(p for p in WAVES.glob("wave-*.json")
+                       if re.fullmatch(r"wave-\d+\.json", p.name)):
         manifest = json.loads(path.read_text())
         validate(manifest)
         validate(manifest, doctor)

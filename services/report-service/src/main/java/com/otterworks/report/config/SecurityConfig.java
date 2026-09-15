@@ -1,5 +1,6 @@
 package com.otterworks.report.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,6 +25,9 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
+    @Value("${jwt.secret:}")
+    private String jwtSecret;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         // LEGACY: Uses deprecated antMatchers() and authorizeRequests()
@@ -33,7 +37,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
-            .addFilterBefore(new GatewayIdentityFilter(), AnonymousAuthenticationFilter.class)
+            .addFilterBefore(new JwtAuthenticationFilter(jwtSecret), AnonymousAuthenticationFilter.class)
             .exceptionHandling()
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             .and()

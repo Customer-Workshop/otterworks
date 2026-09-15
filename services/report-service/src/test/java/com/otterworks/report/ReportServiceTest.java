@@ -9,6 +9,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Date;
 
+import static com.otterworks.report.TestTokens.bearer;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -47,8 +49,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 public class ReportServiceTest {
 
-    private static final String USER_ID_HEADER = "X-User-ID";
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -74,7 +74,7 @@ public class ReportServiceTest {
         request.setDateTo(new Date());
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "test-user-001")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("test-user-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -95,7 +95,7 @@ public class ReportServiceTest {
         request.setReportType(ReportType.CSV);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "test-user-002")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("test-user-002"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -110,7 +110,7 @@ public class ReportServiceTest {
         request.setReportType(ReportType.EXCEL);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "test-user-003")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("test-user-003"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -120,14 +120,14 @@ public class ReportServiceTest {
     @Test
     public void getReportNotFoundShouldReturn404() throws Exception {
         mockMvc.perform(get("/api/v1/reports/99999")
-                        .header(USER_ID_HEADER, "test-user"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("test-user")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void listReportsShouldReturnEmptyList() throws Exception {
         mockMvc.perform(get("/api/v1/reports")
-                        .header(USER_ID_HEADER, "nonexistent-user"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("nonexistent-user")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reports").isArray())
                 .andExpect(jsonPath("$.total", is(0)));
@@ -141,7 +141,7 @@ public class ReportServiceTest {
         // Missing reportName — should fail validation
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "test-user")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("test-user"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -150,7 +150,7 @@ public class ReportServiceTest {
     @Test
     public void downloadNonExistentReportShouldReturn404() throws Exception {
         mockMvc.perform(get("/api/v1/reports/99999/download")
-                        .header(USER_ID_HEADER, "test-user"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("test-user")))
                 .andExpect(status().isNotFound());
     }
 }

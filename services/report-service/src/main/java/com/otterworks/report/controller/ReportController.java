@@ -50,9 +50,9 @@ import java.util.stream.Collectors;
  * - No pagination on list endpoint
  * - Manual response mapping without MapStruct or similar
  *
- * The caller identity comes from the security context populated by
- * {@link com.otterworks.report.config.GatewayIdentityFilter}; every endpoint is scoped
- * to the reports owned by that caller.
+ * The caller identity is the subject of the verified access token, populated by
+ * {@link com.otterworks.report.config.JwtAuthenticationFilter}; every endpoint is
+ * scoped to the reports owned by that caller.
  */
 @RestController
 @RequestMapping("/api/v1/reports")

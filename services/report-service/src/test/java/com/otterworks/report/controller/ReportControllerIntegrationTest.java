@@ -1,6 +1,7 @@
 package com.otterworks.report.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.otterworks.report.TestTokens;
 import com.otterworks.report.model.ReportCategory;
 import com.otterworks.report.model.ReportRequest;
 import com.otterworks.report.model.ReportType;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -19,6 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static com.otterworks.report.TestTokens.bearer;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
@@ -38,8 +41,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * for every controller action. Uses a real Spring context with an H2
  * in-memory database (profile "test").
  *
- * Caller identity is supplied the way the API gateway does it in production:
- * via the {@code X-User-ID} header set after JWT validation.
+ * Caller identity is supplied the way clients do it in production: an
+ * auth-service style access token in {@code Authorization: Bearer}, signed with
+ * the test {@code jwt.secret} (see {@link com.otterworks.report.TestTokens}).
  *
  * Written in JUnit 4 style to match the current stack. After the JUnit 5
  * migration (Axis 4), replace:
@@ -51,8 +55,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class ReportControllerIntegrationTest {
-
-    private static final String USER_ID_HEADER = "X-User-ID";
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,7 +70,7 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.USAGE_ANALYTICS, ReportType.PDF);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-1")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-1"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -88,7 +90,7 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.AUDIT_LOG, ReportType.CSV);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-2")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-2"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -102,7 +104,7 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.STORAGE_SUMMARY, ReportType.EXCEL);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-3")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-3"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -117,7 +119,7 @@ public class ReportControllerIntegrationTest {
         request.setReportType(ReportType.PDF);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-4")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-4"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -130,7 +132,7 @@ public class ReportControllerIntegrationTest {
         request.setReportType(ReportType.CSV);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-5")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-5"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -143,7 +145,7 @@ public class ReportControllerIntegrationTest {
         request.setCategory(ReportCategory.USER_ACTIVITY);
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-6")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-6"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -167,7 +169,7 @@ public class ReportControllerIntegrationTest {
         request.setRequestedBy("victim-user");
 
         mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-10")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-10"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())
@@ -182,7 +184,7 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "integration-user-7");
 
         mockMvc.perform(get("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "integration-user-7"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-7")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(id.intValue())))
                 .andExpect(jsonPath("$.reportName", is("Fetch By Id Report")))
@@ -192,7 +194,7 @@ public class ReportControllerIntegrationTest {
     @Test
     public void getNonExistentReportReturns404() throws Exception {
         mockMvc.perform(get("/api/v1/reports/999999")
-                        .header(USER_ID_HEADER, "integration-user-7"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-7")))
                 .andExpect(status().isNotFound());
     }
 
@@ -211,8 +213,40 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "idor-victim");
 
         mockMvc.perform(get("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "idor-attacker"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("idor-attacker")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void getReportWithForgedUserIdHeaderReturns401() throws Exception {
+        Long id = createReportAndReturnId("Header Spoof Report",
+                ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "idor-victim");
+
+        mockMvc.perform(get("/api/v1/reports/" + id)
+                        .header("X-User-ID", "idor-victim"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void getReportWithTokenSignedByOtherKeyReturns401() throws Exception {
+        Long id = createReportAndReturnId("Forged Token Report",
+                ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "idor-victim");
+
+        mockMvc.perform(get("/api/v1/reports/" + id)
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + TestTokens.tokenSignedWithOtherKey("idor-victim")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void getReportWithRefreshTokenReturns401() throws Exception {
+        Long id = createReportAndReturnId("Refresh Token Report",
+                ReportCategory.SYSTEM_HEALTH, ReportType.PDF, "idor-victim");
+
+        mockMvc.perform(get("/api/v1/reports/" + id)
+                        .header(HttpHeaders.AUTHORIZATION,
+                                "Bearer " + TestTokens.refreshToken("idor-victim")))
+                .andExpect(status().isUnauthorized());
     }
 
     // ---- GET /api/v1/reports ----
@@ -228,7 +262,7 @@ public class ReportControllerIntegrationTest {
                 ReportType.PDF, userId + "-other");
 
         mockMvc.perform(get("/api/v1/reports")
-                        .header(USER_ID_HEADER, userId))
+                        .header(HttpHeaders.AUTHORIZATION, bearer(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reports").isArray())
                 .andExpect(jsonPath("$.total", is(2)))
@@ -242,7 +276,7 @@ public class ReportControllerIntegrationTest {
                 ReportType.CSV, victim);
 
         mockMvc.perform(get("/api/v1/reports")
-                        .header(USER_ID_HEADER, "list-attacker")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("list-attacker"))
                         .param("userId", victim))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reports").isArray())
@@ -252,7 +286,7 @@ public class ReportControllerIntegrationTest {
     @Test
     public void listReportsForUnknownUserReturnsEmptyArray() throws Exception {
         mockMvc.perform(get("/api/v1/reports")
-                        .header(USER_ID_HEADER, "nonexistent-user-xyz"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("nonexistent-user-xyz")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reports").isArray())
                 .andExpect(jsonPath("$.total", is(0)));
@@ -261,7 +295,7 @@ public class ReportControllerIntegrationTest {
     @Test
     public void listReportsByStatusReturnsArray() throws Exception {
         mockMvc.perform(get("/api/v1/reports")
-                        .header(USER_ID_HEADER, "integration-user-7")
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-7"))
                         .param("status", "COMPLETED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reports").isArray());
@@ -278,7 +312,7 @@ public class ReportControllerIntegrationTest {
     @Test
     public void downloadNonExistentReportReturns404() throws Exception {
         mockMvc.perform(get("/api/v1/reports/999999/download")
-                        .header(USER_ID_HEADER, "integration-user-8"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-8")))
                 .andExpect(status().isNotFound());
     }
 
@@ -288,7 +322,7 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.USAGE_ANALYTICS, ReportType.CSV, "idor-victim");
 
         mockMvc.perform(get("/api/v1/reports/" + id + "/download")
-                        .header(USER_ID_HEADER, "idor-attacker"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("idor-attacker")))
                 .andExpect(status().isNotFound());
     }
 
@@ -307,14 +341,14 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.USAGE_ANALYTICS, ReportType.PDF, "integration-user-8");
 
         MvcResult download = mockMvc.perform(get("/api/v1/reports/" + id + "/download")
-                        .header(USER_ID_HEADER, "integration-user-8"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-8")))
                 .andReturn();
 
         // Status is read after the download so it cannot go stale in the wrong direction:
         // generation only moves forward, so a report still pending here was pending during
         // the download too.
         MvcResult result = mockMvc.perform(get("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "integration-user-8"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-8")))
                 .andReturn();
         String statusVal = objectMapper.readTree(
                 result.getResponse().getContentAsString()).get("status").asText();
@@ -332,18 +366,18 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.COLLABORATION_METRICS, ReportType.CSV, "integration-user-9");
 
         mockMvc.perform(delete("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "integration-user-9"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-9")))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "integration-user-9"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-9")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void deleteNonExistentReportReturns404() throws Exception {
         mockMvc.perform(delete("/api/v1/reports/999999")
-                        .header(USER_ID_HEADER, "integration-user-9"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-9")))
                 .andExpect(status().isNotFound());
     }
 
@@ -353,11 +387,11 @@ public class ReportControllerIntegrationTest {
                 ReportCategory.COLLABORATION_METRICS, ReportType.CSV, "idor-victim");
 
         mockMvc.perform(delete("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "idor-attacker"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("idor-attacker")))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "idor-victim"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("idor-victim")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(id.intValue())));
     }
@@ -371,7 +405,7 @@ public class ReportControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(get("/api/v1/reports/" + id)
-                        .header(USER_ID_HEADER, "integration-user-9"))
+                        .header(HttpHeaders.AUTHORIZATION, bearer("integration-user-9")))
                 .andExpect(status().isOk());
     }
 
@@ -403,7 +437,7 @@ public class ReportControllerIntegrationTest {
                                          ReportType type, String ownerUserId) throws Exception {
         ReportRequest request = buildRequest(name, category, type);
         MvcResult result = mockMvc.perform(post("/api/v1/reports")
-                        .header(USER_ID_HEADER, ownerUserId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(ownerUserId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isAccepted())

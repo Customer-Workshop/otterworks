@@ -20,6 +20,12 @@ carries them and an aggregate would throw them away:
 
 A run date with no report row writes nothing and says so, rather than shipping an empty
 report the legacy never wrote.
+
+`reports/user-activity/latest/activity_report.json` is a shared pointer, and the legacy
+only ever wrote it for the day it ran. This job takes a run date, so a backfill of an older
+day would otherwise move the pointer backwards for every consumer reading it. The dated
+object is always written; the pointer is only overwritten when the run date is not older
+than the report already sitting there.
 """
 
 from __future__ import annotations
@@ -37,7 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(globals().get("__file__", "export_user_activity.py"))
                        .resolve().parent))
 
-from user_activity_report_objects import SUMMARY_KEYS, build
+from user_activity_report_objects import SUMMARY_KEYS, build, object_keys
 
 WAREHOUSE = "565cd2fd713738c4"
 EXPORT_ROOT = "/Volumes/ow_tp/gold/exports/user-activity"
@@ -119,6 +125,23 @@ def upload(w, root: str, key: str, payload: bytes) -> None:
     w.files.upload(f"{root}/{key}", io.BytesIO(payload), overwrite=True)
 
 
+def published_report_date(w, root: str, key: str) -> str | None:
+    """`report_date` of the object the latest pointer holds now, or None if there is none.
+
+    An unreadable or absent pointer is treated as no pointer: the export writes one.
+    """
+    from databricks.sdk.errors import NotFound
+
+    try:
+        body = w.files.download(f"{root}/{key}").contents.read()
+    except NotFound:
+        return None
+    try:
+        return json.loads(body)["report_date"]
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-date", required=True)
@@ -144,13 +167,22 @@ def main(argv: list[str] | None = None) -> int:
     objects = build(args.run_date, generated_at, lookback_days,
                     read_daily_summaries(w, args.run_date),
                     read_users(w, args.run_date))
+    root = args.export_root.rstrip("/")
+    latest_key = object_keys(args.run_date)["latest"]
+    published = published_report_date(w, root, latest_key)
+    held_back = published is not None and published > args.run_date
+
     written = {}
     for key, payload in sorted(objects.items()):
-        upload(w, args.export_root.rstrip("/"), key, payload)
+        if key == latest_key and held_back:
+            continue
+        upload(w, root, key, payload)
         written[key] = {"bytes": len(payload),
                         "sha256": hashlib.sha256(payload).hexdigest()}
     json.dump({"run_date": args.run_date, "export_root": args.export_root,
-               "generated_at": generated_at, "exported": written},
+               "generated_at": generated_at, "exported": written,
+               "latest_pointer": {"report_date": published,
+                                  "kept": held_back}},
               sys.stdout, indent=2, sort_keys=True)
     print()
     return 0

@@ -1,0 +1,50 @@
+{
+  "kind": "u26-behaviour-check",
+  "target": "ow_tp.silver.billing_audit_log",
+  "rows_before": 0,
+  "rows_after": 0,
+  "identity_allocated_without_explicit_key": [
+    5,
+    6
+  ],
+  "retention_90": {
+    "retention_days": "90",
+    "raised": null,
+    "remaining": [
+      "recent row"
+    ]
+  },
+  "rerun_90": {
+    "retention_days": "90",
+    "raised": null,
+    "remaining": [
+      "recent row"
+    ]
+  },
+  "failing_parameter": {
+    "retention_days": "not-a-number",
+    "raised": null,
+    "remaining": [
+      "recent row"
+    ]
+  },
+  "failing_parameter_without_handler": {
+    "retention_days": "not-a-number",
+    "raised": "ServerOperationError"
+  },
+  "retention_1": {
+    "retention_days": "1",
+    "raised": null,
+    "remaining": []
+  },
+  "checks": {
+    "identity_allocated": true,
+    "old_row_purged_at_90": true,
+    "rerun_changed_nothing": true,
+    "error_swallowed": true,
+    "control_without_handler_raised": true,
+    "recent_row_purged_at_1": true,
+    "table_left_empty": true
+  },
+  "verdict": "PASS"
+}

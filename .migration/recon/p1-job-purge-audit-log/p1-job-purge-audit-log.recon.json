@@ -1,0 +1,60 @@
+{
+  "kind": "recon-report",
+  "unit": "p1-job-purge-audit-log",
+  "target": "ow_tp_p1_purge_audit_log",
+  "target_table_acted_on": "ow_tp.silver.billing_audit_log",
+  "columns_compared": 4,
+  "verdict": "PASS",
+  "grade": "DEGRADED",
+  "official_verdict": false,
+  "degraded_reason": "d10_01_denied",
+  "data_proven": false,
+  "data_proven_note": "the table the job acts on holds zero rows on both sides; this run proves schema parity and an empty-set assertion only",
+  "behavioural": true,
+  "live_run_comparison": {
+    "available": false,
+    "why": "the Oracle scheduler job JOB_PURGE_AUDIT_LOG is DISABLED and has never run; the converted Lakeflow job is created PAUSED. No legacy run exists to compare a converted run against.",
+    "substitute_evidence": ".migration/recon/p1-job-purge-audit-log/behaviour_check.json"
+  },
+  "mode": "live",
+  "depth": "sampled",
+  "seed": 0,
+  "mapping_version": "map-p1-v1",
+  "tolerance_version": "v1",
+  "tiers": [
+    {"tier": 1, "name": "counts_through_mapping", "passed": true, "checks_run": 1},
+    {"tier": 2, "name": "per_field_aggregates", "passed": true, "checks_run": 4},
+    {"tier": 3, "name": "keyed_diffs", "passed": true, "checks_run": 0}
+  ],
+  "unverified_paths": [
+    "tier 5 constraint parity (JDBC route reads no source catalog metadata)",
+    "tier 6 index parity (same)",
+    "tier 7 identity/sequence parity (same)",
+    "converted-run vs legacy-run comparison (the Oracle job is DISABLED; the converted job is PAUSED and was never triggered)",
+    "the schedule firing at 03:30 (the schedule is paused by contract, so the trigger itself is untested)",
+    "row content under retention (no production rows exist; the retention window was exercised with probe rows written and removed by the behaviour check)"
+  ],
+  "behaviour_checks": {
+    "identity_allocated_without_explicit_key": true,
+    "old_row_purged_at_retention_90": true,
+    "rerun_changed_nothing": true,
+    "error_swallowed_by_handler": true,
+    "control_without_handler_raised": true,
+    "retention_parameter_honoured_at_1_day": true,
+    "table_left_empty": true
+  },
+  "job": {
+    "name": "ow_tp_p1_purge_audit_log",
+    "schedule": "0 30 3 * * ? (UTC)",
+    "pause_status": "PAUSED",
+    "parameters": [{"name": "retention_days", "default": "90"}]
+  },
+  "evidence": {
+    "result": ".migration/recon/p1-job-purge-audit-log/result.json",
+    "summary": ".migration/recon/p1-job-purge-audit-log/summary.md",
+    "harness_summary": ".migration/recon/p1-job-purge-audit-log/recon.summary.md",
+    "degraded": ".migration/recon/p1-job-purge-audit-log/DEGRADED.md",
+    "report": ".migration/recon/p1-job-purge-audit-log/report.md",
+    "behaviour_check": ".migration/recon/p1-job-purge-audit-log/behaviour_check.json"
+  }
+}

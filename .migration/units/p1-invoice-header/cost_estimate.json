@@ -8,7 +8,7 @@
   "row_counts": {
     "OW_BILLING.invoice_header": 18750
   },
-  "ops": 0,
+  "ops": 1,
   "estimate": {
     "mode": "live",
     "depth": "full",
@@ -19,15 +19,15 @@
       "tier1": 1,
       "tier2": 1,
       "tier3": 3,
-      "tier4": 0,
-      "total": 5
+      "tier4": 1,
+      "total": 6
     },
     "target_statements": {
       "tier1": 1,
       "tier2": 1,
       "tier3": 2,
-      "tier4": 0,
-      "total": 4
+      "tier4": 1,
+      "total": 5
     },
     "source_rows_fetched": 18750,
     "target_rows_fetched": 18750,

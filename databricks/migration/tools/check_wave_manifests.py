@@ -73,6 +73,8 @@ def main() -> int:
     allowed_branches = set(json.loads(ALLOWED.read_text())["lakebase_branches"])
     placed: dict[str, str] = {}
     targets: dict[str, str] = {}
+    target_wave: dict[str, int] = {}
+    runtime: list[tuple[str, int, str]] = []  # (target, wave, where)
     for path in sorted(WAVES.glob("wave-*.json")):
         manifest = json.loads(path.read_text())
         validate(manifest)
@@ -94,13 +96,29 @@ def main() -> int:
                     raise SystemExit(f"write-target collision on {target}: "
                                      f"{targets[target]} and {where}")
                 targets[target] = where
+                target_wave[target] = manifest["wave"]
+            for target in batch.get("runtime_writes", []):
+                runtime.append((target, manifest["wave"], where))
         print(f"{path.name}: ok - width {manifest['width']}, "
               f"{len(manifest['batches'])} batches, "
               f"{sum(len(b['units']) for b in manifest['batches'])} units")
+    # A runtime write is DML into a table another unit owns. It is safe only when that owner
+    # merged in a STRICTLY earlier wave: same-wave batches run concurrently on one Lakebase
+    # branch, so two writers there race with nothing to separate them.
+    for target, wave, where in runtime:
+        if target not in target_wave:
+            raise SystemExit(f"{where}: runtime write to {target}, which no batch owns")
+        if target_wave[target] >= wave:
+            raise SystemExit(
+                f"{where}: runtime write to {target} owned by {targets[target]} in wave "
+                f"{target_wave[target]}; the owner must merge in an earlier wave or the two "
+                "batches race on the shared branch")
+
     mapped = {d.name for d in UNITS.iterdir() if d.is_dir()}
     if mapped - set(placed):
         raise SystemExit(f"units with a mapping but no batch: {sorted(mapped - set(placed))}")
-    print(f"{len(placed)} units placed, {len(targets)} write targets, no collisions")
+    print(f"{len(placed)} units placed, {len(targets)} write targets, "
+          f"{len(runtime)} runtime writes, no collisions")
     return 0
 
 

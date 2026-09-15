@@ -2,7 +2,7 @@
   {
     "name": "str_date_parse_entity_attr_value",
     "object": "p1-entity-attr-value",
-    "source_sql": "SELECT eav_id AS \"eav_id\", TO_DATE(created_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') AS \"created_dt_parsed\" FROM ow_billing.entity_attr_value ORDER BY eav_id",
+    "source_sql": "SELECT eav_id AS \"eav_id\", TO_DATE(created_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY', 'NLS_DATE_LANGUAGE=ENGLISH') AS \"created_dt_parsed\" FROM ow_billing.entity_attr_value ORDER BY eav_id",
     "target_sql": "SELECT eav_id, created_dt_parsed FROM billing.entity_attr_value ORDER BY eav_id",
     "rules": [
       "null_missing_equiv"

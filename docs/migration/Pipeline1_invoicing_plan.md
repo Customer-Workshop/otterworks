@@ -123,21 +123,31 @@ tables belongs to their own units. On failure or a missing D10-03: JDBC + waterm
 |---|---|---|---|---|
 | 0 | 1 (serial) | w0-a, w0-b | 2 | `.migration/waves/wave-0.json` |
 | 1 (pilot) | 3 | w1-a (U-01, U-02, U-11), w1-b (U-18), w1-c (U-16, U-17) | 6 | `wave-1.json` |
-| 2 | 4 | w2-a (U-03, U-21), w2-b (U-12), w2-c (U-13), w2-d (U-14, U-15), w2-e (U-19, U-26) | 8 | `wave-2.json` |
-| 3 | 4 | w3-a (U-04, U-05, U-22), w3-b (U-06, U-07, U-23), w3-c (U-08), w3-d (U-09, U-10, U-24) | 10 | `wave-3.json` |
+| 2 | 4 | w2-a (U-03, U-21), w2-b (U-12), w2-c (U-13), w2-d (U-14, U-15), w2-e (U-19, U-26), w2-f (U-08) | 9 | `wave-2.json` |
+| 3 | 3 | w3-a (U-04, U-05, U-22), w3-b (U-06, U-07, U-23), w3-d (U-09, U-10, U-24) | 9 | `wave-3.json` |
 | 4 | 1 (serial) | w4-a (U-25, created paused) | 1 | `wave-4.json` |
 
 **On the width discrepancy.** The engagement contract says pilot 3 then 5; the approved
 analysis describes wave 3 as "width 4". Waves 2 and 3 ship at **width 4**, not 5, because the
 source query cap is 4 concurrent Oracle reads for a whole wave and every batch takes a live
-read at its gate — a width of 5 on wave 2 (five batches) would put five concurrent queries on
-the source. Wave 3 has four batches, so the cap is not binding there either way. All 27 units
-and the batch boundaries are unchanged; wave 2 runs five batches with at most four in flight.
+read at its gate — a width of 5 on wave 2 (six batches) would put five concurrent queries on
+the source. Wave 3 has three batches, so the cap is not binding there either way. All 27
+units are unchanged; wave 2 runs six batches with at most four in flight.
 `gen_wave_manifests.py` now refuses to emit a wave whose width exceeds the cap.
 
-**Wave 3 runs four batches that depend on each other.** That is deliberate and it is why
-P1-D4 exists: w3-b (invoicing) reads rating state and credit notes, w3-d (dunning) reads
-invoices. Each child codes against the contract pinned in wave 0 and reconciles against the
+**Credit notes (U-08) moved from wave 3 to wave 2.** Invoicing's credit burn-down UPDATEs
+`billing.credit_notes` while it runs. With the table's own unit beside it in wave 3, two
+batches would write it at once on the one Lakebase branch the wave shares — declaring the
+write in a PR body does not stop that. Loading it a wave earlier does: by the time invoicing
+runs, the table is merged and invoicing is its only writer. Every such cross-unit DML is now
+declared as `runtime_writes` on the batch, and `check_wave_manifests.py` fails the wave
+unless the table's owning unit sits in a strictly earlier wave. Wave 3's other case is the
+dunning suspension sweep, which UPDATEs `billing.tenants` (wave 1) and
+`billing.subscriptions` (wave 2); both already merge earlier, and both are now declared.
+
+**Wave 3 runs three batches that depend on each other.** That is deliberate and it is why
+P1-D4 exists: w3-b (invoicing) reads rating state, w3-d (dunning) reads invoices.
+Each child codes against the contract pinned in wave 0 and reconciles against the
 fixture, never against another child's in-flight branch. At wave close the orchestrator
 re-runs the Tier-4 op diffs of w3-b and w3-d after their inputs merge; a contract mismatch is
 a wave-level finding, not something a child routes around. If the pilot shows this coupling

@@ -53,7 +53,7 @@ PLACEMENT = {
     "p1-rating-periods": (3, "w3-a", "full"),
     "p1-rating-results": (3, "w3-a", "full"),
     "p1-pkg-rating": (3, "w3-a", "full"),
-    "p1-credit-notes": (3, "w3-c", "full"),
+    "p1-credit-notes": (2, "w2-f", "full"),
     "p1-invoices": (3, "w3-b", "full"),
     "p1-invoice-lines": (3, "w3-b", "full"),
     "p1-pkg-invoicing": (3, "w3-b", "full"),

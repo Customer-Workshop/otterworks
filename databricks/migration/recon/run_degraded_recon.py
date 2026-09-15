@@ -69,7 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--mapping", type=Path, required=True)
     p.add_argument("--tolerances", type=Path, required=True)
     p.add_argument("--canonicalization", type=Path, required=True)
-    p.add_argument("--mode", required=True, choices=["fixture", "live", "snapshot"])
+    p.add_argument("--mode", required=True,
+                   choices=["fixture", "live", "snapshot", "transactional"])
     p.add_argument("--source-dsn-secret", required=True,
                    help="ENV VAR NAME holding the read-only Oracle secret JSON")
     p.add_argument("--target-kind", default="lakebase", choices=["lakebase", "databricks"])

@@ -1,7 +1,7 @@
 {
   "unit": "p1-credit-notes",
-  "wave": 3,
-  "batch": "w3-c",
+  "wave": 2,
+  "batch": "w2-f",
   "depth": "full",
   "mode": "transactional",
   "rows": 5,

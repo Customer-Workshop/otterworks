@@ -226,7 +226,8 @@ def make_object(src: str, tgt: str, key: list[str], track: str,
     # against the same raw bytes parsed on the source side.
     parsed = [{"raw": c, "target": c + PARSED_SUFFIX,
                "target_type": "date" if track == "lakebase" else "DATE",
-               "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"}
+               "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, "
+                            "NULL on anything else"}
               for c, t in tables[src] if is_ddmonyy(c, t)]
     if parsed:
         obj["derived_fields"] = parsed
@@ -261,12 +262,16 @@ def date_ops(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> list[dic
     the NULL (unparseable) set as data, which is what the tolerance record compares as an exact
     set.
 
-    The source parse is `TO_DATE(col DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY')`, which is
-    what `f_str2dt` does: a malformed date yields NULL rather than raising. A bare TO_DATE
-    would abort the whole op on the first bad string, and malformed strings are a declared
-    anomaly class here, not an error. It still does not execute `f_str2dt` itself (that needs
-    an Oracle view over the package, i.e. source DDL), so the plan carries the entrypoint
-    comparison as a declared unverified path.
+    The source parse is `TO_DATE(col DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY',
+    'NLS_DATE_LANGUAGE=ENGLISH')`, which is what `f_str2dt` does: a malformed date yields NULL
+    rather than raising. A bare TO_DATE would abort the whole op on the first bad string, and
+    malformed strings are a declared anomaly class here, not an error. The month names are
+    English in the data and `f_str2dt` pins NLS_DATE_LANGUAGE explicitly; without that third
+    argument the parse inherits the session's NLS language, and a non-English session would
+    turn valid dates into NULLs that look exactly like the declared anomaly set.
+
+    It still does not execute `f_str2dt` itself (that needs an Oracle view over the package,
+    i.e. source DDL), so the plan carries the entrypoint comparison as an unverified path.
     """
     src, tgt, key, _, _, track = UNITS_SPEC[unit_id]
     cols = date_columns(src, tables)
@@ -275,7 +280,8 @@ def date_ops(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> list[dic
     keys = ", ".join(key)
     src_keys = ", ".join(f'{k} AS "{k}"' for k in key)
     src_cols = ", ".join(
-        f"TO_DATE({c} DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') AS \"{c}{PARSED_SUFFIX}\""
+        f"TO_DATE({c} DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY', "
+        f"'NLS_DATE_LANGUAGE=ENGLISH') AS \"{c}{PARSED_SUFFIX}\""
         for c in cols)
     tgt_cols = ", ".join(f"{c}{PARSED_SUFFIX}" for c in cols)
     tgt_table = f"billing.{tgt}" if track == "lakebase" else f"ow_tp.silver.{tgt}"

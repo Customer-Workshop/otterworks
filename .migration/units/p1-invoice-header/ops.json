@@ -2,7 +2,7 @@
   {
     "name": "str_date_parse_invoice_header",
     "object": "p1-invoice-header",
-    "source_sql": "SELECT invoice_id AS \"invoice_id\", TO_DATE(invoice_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') AS \"invoice_dt_parsed\", TO_DATE(due_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') AS \"due_dt_parsed\" FROM ow_billing.invoice_header ORDER BY invoice_id",
+    "source_sql": "SELECT invoice_id AS \"invoice_id\", TO_DATE(invoice_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY', 'NLS_DATE_LANGUAGE=ENGLISH') AS \"invoice_dt_parsed\", TO_DATE(due_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY', 'NLS_DATE_LANGUAGE=ENGLISH') AS \"due_dt_parsed\" FROM ow_billing.invoice_header ORDER BY invoice_id",
     "target_sql": "SELECT invoice_id, invoice_dt_parsed, due_dt_parsed FROM ow_tp.silver.invoice_header ORDER BY invoice_id",
     "rules": [
       "null_missing_equiv"

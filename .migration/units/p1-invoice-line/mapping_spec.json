@@ -198,7 +198,7 @@
           "raw": "invoice_dt",
           "target": "invoice_dt_parsed",
           "target_type": "DATE",
-          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         }
       ]
     }

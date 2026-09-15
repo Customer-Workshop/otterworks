@@ -164,7 +164,8 @@ def gate_cmd(unit: str) -> str:
 
 
 def brief(wave: int, batch_id: str, units: list[str], targets: list[str],
-          lakebase_branch: str | None, parent_branch: str | None, body: str) -> str:
+          runtime_writes: list[str], lakebase_branch: str | None, parent_branch: str | None,
+          body: str) -> str:
     unit_lines = "\n".join(f"  - {u}: {UNIT[u][0]} (track {UNIT[u][1]}, depth {UNIT[u][2]})"
                            for u in units)
     gates = "\n".join(gate_cmd(u) for u in units)
@@ -188,9 +189,36 @@ def brief(wave: int, batch_id: str, units: list[str], targets: list[str],
             f"WHAT THIS BATCH IS\n{body.strip()}\n\n"
             f"ISOLATION\n{lb}"
             f"  Declared write targets (write nowhere else): {', '.join(targets)}\n"
-            f"  Evidence you may write under .migration/: only .migration/recon/<your unit>/\n"
+            + (f"  Runtime writes into tables another unit owns the DDL for: "
+               f"{', '.join(runtime_writes)}.\n"
+               f"  Every one of those tables is merged by an EARLIER wave, so no batch running\n"
+               f"  beside you writes them; you issue DML only, never DDL, and you declare it in\n"
+               f"  your PR. If one is missing on the branch, report status=BLOCKED with\n"
+               f"  `runtime_write_target_missing`.\n" if runtime_writes else "")
+            + f"  Evidence you may write under .migration/: only .migration/recon/<your unit>/\n"
             f"{COMMON}\n\n"
             f"YOUR RECON GATE COMMANDS\n{gates}\n")
+
+
+def check_estimates_fresh() -> None:
+    """Refuse to build manifests from cost estimates that predate a unit's ops file.
+
+    The estimate is generated from the mapping AND the ops file, so an ops file written
+    afterwards leaves a committed estimate that silently understates every Tier-4 comparison
+    and every wave total built from it. Regenerate with gen_recon_estimates.py."""
+    stale = []
+    for d in sorted(p for p in UNITS.iterdir() if p.is_dir()):
+        est_file = d / "cost_estimate.json"
+        if not est_file.exists():
+            continue
+        ops_file = d / "ops.json"
+        ops = len(json.loads(ops_file.read_text())) if ops_file.exists() else 0
+        if json.loads(est_file.read_text()).get("ops", 0) != ops:
+            stale.append(d.name)
+    if stale:
+        raise SystemExit(
+            f"cost estimates are stale for {', '.join(stale)}: the recorded op count does not "
+            "match ops.json. Run databricks/migration/tools/gen_recon_estimates.py first.")
 
 
 def cost(units: list[str]) -> dict:
@@ -232,13 +260,19 @@ def wave_branches(waves: list[int]) -> dict[int, tuple[str, str | None]]:
     return out
 
 
+# Runtime writes are part of the isolation contract, not a footnote in a PR body: a batch that
+# UPDATEs a table another unit owns still races anything writing it at the same time. Every
+# runtime write below is therefore declared, and the checker requires the table's DDL owner to
+# sit in a STRICTLY EARLIER wave so no concurrent batch can touch it. That is why credit notes
+# moved out of wave 3 and into wave 2: invoicing burns them down while it runs.
 PLAN = [
-    # wave, width, [(batch_id, units, write_targets, body)]
+    # wave, width, [(batch_id, units, write_targets, runtime_writes, body)]
     (0, 1, [
         ("w0-a", ["p1-pkg-ow-util"],
          ["billing.f_md5_uuid", "billing.f_str2dt", "billing.f_code_desc", "billing.log_msg",
           "billing.rating_state", "billing.billing_audit_log", "billing.md5_parity_input",
           "ow_tp.silver.ow_util_fn", "/Volumes/ow_tp/bronze/landing"],
+         [],
          """
 Wave 0 is serial and everything else waits on it. Deliver, in this order:
  1. Shared scaffolding: Lakebase schema `billing` conventions on branch mig-p1-w0 (the
@@ -290,6 +324,7 @@ Do not convert any business table here. Do not enable any schedule.
 """),
         ("w0-b", ["p1-cdc-transport"],
          ["ow_tp.bronze.cdc_ow_billing", "ow_tp_p1_cdc_ingest"],
+         [],
          """
 The CDC transport, serial after w0-a: Debezium Server on the existing EKS cluster
 otterworks-dev -> Kinesis on-demand -> a Lakeflow pipeline `ow_tp_p1_cdc_ingest` with AUTO
@@ -308,6 +343,7 @@ watermark batch vs the snapshot, recorded as DEGRADED CDC evidence.
     (1, 3, [
         ("w1-a", ["p1-tenants", "p1-plans", "p1-codes"],
          ["billing.tenants", "billing.plans", "billing.codes"],
+         [],
          """
 Pilot batch: three tiny operational reference tables (69 / 3 / 32 rows) into Lakebase.
 Small on purpose - this batch calibrates the dialect rules for the whole run, so write down
@@ -320,6 +356,7 @@ Each table's indexes and constraints are part of its unit; Lakebase gets the equ
 """),
         ("w1-b", ["p1-usage-events"],
          ["ow_tp.silver.usage_events"],
+         [],
          """
 USAGE_EVENTS (814 rows) into Delta. Analytical track: this table is read by rating and later
 by a build session, and the application does not write it transactionally.
@@ -330,6 +367,7 @@ a baseline before wave 3 converts it.
 """),
         ("w1-c", ["p1-invoice-header", "p1-invoice-line"],
          ["ow_tp.silver.invoice_header", "ow_tp.silver.invoice_line"],
+         [],
          """
 The legacy reporting pair into Delta: INVOICE_HEADER (18,750) and INVOICE_LINE (150,000).
 THIS IS THE LEGACY GENERATION (D9-01). It is not modern INVOICES/INVOICE_LINES, which are
@@ -347,6 +385,7 @@ Lakebase units in wave 4. State the generation in both mapping specs and in your
     (2, 4, [
         ("w2-a", ["p1-subscriptions", "p1-pkg-plans"],
          ["billing.subscriptions", "billing.fn_plan_entitlements", "billing.sp_assign_plan"],
+         [],
          """
 SUBSCRIPTIONS (69 rows) plus pkg_plans, together because the package writes the table.
  - TRG_SUB_NO_UNCANCEL: a cancelled subscription can never be un-cancelled. The rule must
@@ -361,6 +400,7 @@ writes into billing.subscriptions after a controlled fixture run.
 """),
         ("w2-b", ["p1-customer-master"],
          ["billing.customer_master"],
+         [],
          """
 CUSTOMER_MASTER: 25,000 rows x 155 columns, alone in its batch because it is the single most
 likely unit to produce a wide diff and its child needs room to iterate.
@@ -375,6 +415,7 @@ likely unit to produce a wide diff and its child needs room to iterate.
 """),
         ("w2-c", ["p1-entity-attr-value"],
          ["billing.entity_attr_value"],
+         [],
          """
 ENTITY_ATTR_VALUE (8,333 rows): entity-attribute-value, everything typed as string. No type
 promotion in pipeline 1 - attr_value stays text. seq_entity_attr_value and
@@ -383,6 +424,7 @@ set, not deduplicated.
 """),
         ("w2-d", ["p1-customer-master-hist", "p1-subscriptions-hist"],
          ["ow_tp.silver.customer_master_hist", "ow_tp.silver.subscriptions_hist"],
+         [],
          """
 The two history tables into Delta: CUSTOMER_MASTER_HIST (158 cols) and SUBSCRIPTIONS_HIST.
 Both are EMPTY today, so recon proves schema parity and an empty-set assertion only. Record
@@ -392,6 +434,7 @@ data evidence. The trigger-maintained full-row-copy behaviour still has to be co
 """),
         ("w2-e", ["p1-billing-audit-log", "p1-job-purge-audit-log"],
          ["ow_tp.silver.billing_audit_log", "ow_tp_p1_purge_audit_log"],
+         [],
          """
 BILLING_AUDIT_LOG (empty) into Delta plus its retention job.
  - The table is written by pkg_ow_util.log_msg's autonomous transaction (converted in wave 0
@@ -404,12 +447,26 @@ BILLING_AUDIT_LOG (empty) into Delta plus its retention job.
  - Empty table: schema parity + empty-set assertion, recorded NOT DATA-PROVEN. The job has no
    live run to compare against (the Oracle jobs are DISABLED) - state that gap plainly.
 """),
+        ("w2-f", ["p1-credit-notes"],
+         ["billing.credit_notes"],
+         [],
+         """
+CREDIT_NOTES (5 rows). Small but load-bearing: wave 3's invoicing burn-down (w3-b) UPDATEs
+these rows in `issued_on, id` order, and that order is part of the contract. It sits in wave
+2 rather than beside invoicing so that nothing writes the table while invoicing does: the
+DDL lands and merges a whole wave earlier. Convert the table, its constraints and indexes,
+and state the ordering guarantee in the unit README. Do not implement the burn-down, and do
+not write billing.invoices or billing.invoice_lines.
+It depends only on billing.tenants (fk_cn_tenant), which merged in wave 1.
+"""),
     ]),
-    # Same cap reason as wave 2; this wave has four batches, so nothing is serialized by it.
-    (3, 4, [
+    # Same cap reason as wave 2. Three batches now: credit notes moved to wave 2 so invoicing
+    # is the only writer of that table while it runs.
+    (3, 3, [
         ("w3-a", ["p1-rating-periods", "p1-rating-results", "p1-pkg-rating"],
          ["billing.rating_periods", "billing.rating_results", "billing.sp_finalize_rating",
           "billing.fn_usage_rating", "billing.fn_usage_summary"],
+         [],
          """
 The rating chain: RATING_PERIODS (3), RATING_RESULTS (3) and pkg_rating
 (packages/03_pkg_rating.sql), together because the package writes both tables.
@@ -431,15 +488,18 @@ Traps called out in the source and the analysis:
         ("w3-b", ["p1-invoices", "p1-invoice-lines", "p1-pkg-invoicing"],
          ["billing.invoices", "billing.invoice_lines", "billing.sp_issue_invoice",
           "billing.fn_invoice_preview", "billing.fn_invoice_lines"],
+         ["billing.credit_notes"],  # runtime writes; DDL owner is w2-f, an earlier wave
          """
 Modern INVOICES (3) + INVOICE_LINES (2) + pkg_invoicing (packages/04_pkg_invoicing.sql).
 THIS IS THE MODERN GENERATION (D9-01), not legacy INVOICE_HEADER/INVOICE_LINE from wave 1.
-You run CONCURRENTLY with w3-a (rating) and w3-c (credit notes), which you consume:
+You run CONCURRENTLY with w3-a (rating), whose hand-off you consume:
  - rating hand-off: read `billing.rating_state` per the shape pinned in the plan (P1-D4).
    Code against that contract, not against w3-a's working tree, and stub it in your fixture.
- - credit notes: consume them in `issued_on, id` order; w3-c owns the table's DDL.
+ - credit notes: billing.credit_notes merged in wave 2 (w2-f) and nothing else writes it
+   now, so the burn-down's UPDATEs are yours alone. Consume them in `issued_on, id` order.
+   You own DML on that table, never its DDL.
 Never convert or write another batch's objects. At the wave gate the orchestrator re-runs
-your Tier-4 op diff after w3-a and w3-c merge; a contract mismatch surfaces there and is a
+your Tier-4 op diff after w3-a merges; a contract mismatch surfaces there and is a
 wave-level finding, not something you route around mid-flight.
 Traps:
  - tax rate hardcoded 0.0825 at :26 - keep the value, make it a named constant;
@@ -450,20 +510,13 @@ Traps:
  - rounding is applied per line AND again on the total. Both roundings stay.
 Money is exact in recon: a one-cent difference is a FAIL, not a tolerance.
 Runtime writes: billing.credit_notes rows are UPDATEd by the burn-down (DDL ownership stays
-with w3-c); declare that in your PR.
-"""),
-        ("w3-c", ["p1-credit-notes"],
-         ["billing.credit_notes"],
-         """
-CREDIT_NOTES (5 rows). Small but load-bearing: the invoicing credit burn-down (batch w3-b,
-running concurrently) consumes these rows in `issued_on, id` order and that order is part of
-the contract. Convert the table, its constraints and indexes, and state the ordering
-guarantee in the unit README. Do not implement the burn-down, and do not write
-billing.invoices or billing.invoice_lines.
+with w2-f, merged in wave 2); it is a declared runtime write on this batch, and it goes in
+your PR body too.
 """),
         ("w3-d", ["p1-dunning-attempts", "p1-notifications", "p1-pkg-dunning"],
          ["billing.dunning_attempts", "billing.notifications", "billing.sp_schedule_dunning",
           "billing.sp_suspend_overdue", "billing.fn_overdue_accounts"],
+         ["billing.tenants", "billing.subscriptions"],  # runtime writes; owners w1-a/w2-a
          """
 The dunning chain: DUNNING_ATTEMPTS (1), NOTIFICATIONS (1) and pkg_dunning
 (packages/05_pkg_dunning.sql). One batch, not three, because sp_suspend_overdue writes both
@@ -493,6 +546,7 @@ Do not create the nightly job here; that is U-25 in wave 4.
     (4, 1, [
         ("w4-a", ["p1-job-nightly-dunning"],
          ["ow_tp_p1_nightly_dunning"],
+         [],
          """
 U-25 JOB_NIGHTLY_DUNNING, serial and last, because it is the only unit that orchestrates the
 whole converted chain: it calls pkg_dunning (w3-d), which reads invoices (w3-b) and rating
@@ -523,6 +577,7 @@ def main() -> int:
     if caps["stop_mode"] != "soft":
         raise SystemExit(f"00_context.md records stop_mode={caps['stop_mode']!r}; auto_merge below "
                          "assumes the recorded mode. Re-derive it before generating manifests.")
+    check_estimates_fresh()
     WAVES.mkdir(parents=True, exist_ok=True)
     branches = wave_branches([w for w, _, _ in PLAN])
     for wave, width, batches in PLAN:
@@ -532,7 +587,7 @@ def main() -> int:
                 "every batch takes a live source read at its gate, so the fan-out width is "
                 "the concurrency the source sees")
         lb_branch, cut_from = branches[wave]
-        units = [u for _, us, _, _ in batches for u in us]
+        units = [u for _, us, _, _, _ in batches for u in us]
         manifest = {
             "wave": wave,
             "repo": REPO,
@@ -572,8 +627,9 @@ def main() -> int:
                     "declared key, no append-only inserts; recon reruns must not change target "
                     "row counts"),
                 "namespace_isolation": (
-                    "a batch writes only its declared write_targets; DDL for a table belongs to "
-                    "exactly one unit, runtime writes by another unit are declared in its PR"),
+                    "a batch writes only its declared write_targets plus its declared "
+                    "runtime_writes; DDL for a table belongs to exactly one unit, and a "
+                    "runtime write is only allowed where that owner merged in an earlier wave"),
                 "fixture_vs_live": (
                     "children own fixture runs (make oracle-billing-up) and take exactly one live "
                     "source read per unit; only a live/snapshot/transactional PASS is merge "
@@ -588,14 +644,18 @@ def main() -> int:
                     "id": bid,
                     "units": us,
                     "write_targets": tg,
+                    # DML into tables whose DDL a unit in an EARLIER wave owns. Declared, not
+                    # left to a PR body: the checker proves nothing running beside this batch
+                    # writes them, which is the only thing that makes the write safe.
+                    "runtime_writes": rw,
                     "verify_depth": "full" if any(UNIT[u][2] == "full" for u in us) else "sampled",
                     "lakebase_branch": (lb_branch if any(UNIT[u][1] == "lakebase" for u in us)
                                         else None),
-                    "brief": brief(wave, bid, us, tg,
+                    "brief": brief(wave, bid, us, tg, rw,
                                    lb_branch if any(UNIT[u][1] == "lakebase" for u in us) else None,
                                    cut_from, body),
                 }
-                for bid, us, tg, body in batches
+                for bid, us, tg, rw, body in batches
             ],
         }
         out = WAVES / f"wave-{wave}.json"

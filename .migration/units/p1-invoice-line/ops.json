@@ -2,7 +2,7 @@
   {
     "name": "str_date_parse_invoice_line",
     "object": "p1-invoice-line",
-    "source_sql": "SELECT line_id AS \"line_id\", TO_DATE(invoice_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY') AS \"invoice_dt_parsed\" FROM ow_billing.invoice_line ORDER BY line_id",
+    "source_sql": "SELECT line_id AS \"line_id\", TO_DATE(invoice_dt DEFAULT NULL ON CONVERSION ERROR, 'DD-MON-YY', 'NLS_DATE_LANGUAGE=ENGLISH') AS \"invoice_dt_parsed\" FROM ow_billing.invoice_line ORDER BY line_id",
     "target_sql": "SELECT line_id, invoice_dt_parsed FROM ow_tp.silver.invoice_line ORDER BY line_id",
     "rules": [
       "null_missing_equiv"

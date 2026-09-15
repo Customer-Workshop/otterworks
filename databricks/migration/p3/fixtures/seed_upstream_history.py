@@ -130,9 +130,12 @@ def main(argv: list[str] | None = None) -> int:
         for rank, row in enumerate(day["top_users"], start=1):
             uid = literal(row["user_id"])
             top_rows.append(f"(DATE{d}, {rank}, {uid}, {int(row['total'])})")
-            for action_type, count in row["actions"].items():
-                action_rows.append(
-                    f"(DATE{d}, {rank}, {uid}, {literal(action_type)}, {int(count)})")
+            # The key order of `actions` is the order the day's object was written in,
+            # and the report a day later copies it into `actions_by_type`. Seeding the
+            # rows without it would leave the dependent unit free to invent an order.
+            for position, (action_type, count) in enumerate(row["actions"].items(), start=1):
+                action_rows.append(f"(DATE{d}, {rank}, {uid}, {literal(action_type)}, "
+                                   f"{int(count)}, {position})")
 
     w = WorkspaceClient()
     for table in (SUMMARY_TABLE, TOP_USERS_TABLE, TOP_ACTIONS_TABLE):
@@ -142,7 +145,8 @@ def main(argv: list[str] | None = None) -> int:
     insert_rows(w, TOP_USERS_TABLE, ["summary_date", "rank", "user_id", "event_count"],
                 top_rows)
     insert_rows(w, TOP_ACTIONS_TABLE,
-                ["summary_date", "rank", "user_id", "event_type", "event_count"],
+                ["summary_date", "rank", "user_id", "event_type", "event_count",
+                 "action_ordinal"],
                 action_rows)
 
     counts = {}

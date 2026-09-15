@@ -1,7 +1,7 @@
-ow_tp_p3_analytics_daily: 0 0 2 * * ? UTC PAUSED conc=1 queue=True clusters=0 tasks=10
+ow_tp_p3_analytics_daily: 0 0 2 * * ? UTC PAUSED conc=1 queue=True clusters=0 tasks=11
 ow_tp_p3_storage_cleanup_daily: 0 30 2 * * ? UTC PAUSED conc=1 queue=True clusters=0 tasks=4
-ow_tp_p3_audit_archive_weekly: 0 0 3 ? * SUN UTC PAUSED conc=1 queue=True clusters=0 tasks=7
+ow_tp_p3_audit_archive_weekly: 0 0 3 ? * SUN UTC PAUSED conc=1 queue=True clusters=0 tasks=8
 ow_tp_p3_usage_rollup_daily: 0 0 2 * * ? UTC PAUSED conc=1 queue=True clusters=0 tasks=3
-ow_tp_p3_user_activity_daily: 0 0 5 * * ? UTC PAUSED conc=1 queue=True clusters=0 tasks=6 edges=['upstream_analytics_daily -> job 778915537808125']
+ow_tp_p3_user_activity_daily: 0 0 5 * * ? UTC PAUSED conc=1 queue=True clusters=0 tasks=9 edges=['upstream_analytics_daily -> job 778915537808125']
 
 OK: graph as declared, schedules paused in UTC, serverless only, full retry policy on owning tasks, no pipeline starts

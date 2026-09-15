@@ -106,6 +106,12 @@ EXPECTED = {
             "load_report_days": ["create_tables"],
             "load_user_summary": ["create_tables"],
             "load_user_actions": ["load_user_summary"],
+            # P3-Q3: the legacy activity report, its latest copy and the optional
+            # user_summaries.jsonl, rebuilt from gold and byte-compared.
+            "export_report_objects": ["load_report", "load_report_days",
+                                      "load_user_actions"],
+            "legacy_objects_cover_run_date": ["export_report_objects"],
+            "compare_report_objects": ["legacy_objects_cover_run_date:true"],
         },
     },
 }

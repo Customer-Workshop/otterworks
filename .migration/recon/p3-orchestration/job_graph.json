@@ -9,8 +9,9 @@
     "queue": true,
     "tasks": {
       "compare_report_objects": {
+        "condition": null,
         "depends_on": [
-          "export_report_objects"
+          "legacy_objects_cover_run_date:true"
         ],
         "environment_key": "serverless",
         "existing_cluster_id": null,
@@ -23,6 +24,7 @@
         "target_job_id": null
       },
       "create_tables": {
+        "condition": null,
         "depends_on": [
           "land_events"
         ],
@@ -37,6 +39,7 @@
         "target_job_id": null
       },
       "export_report_objects": {
+        "condition": null,
         "depends_on": [
           "load_gold_hourly",
           "load_gold_summary",
@@ -54,6 +57,7 @@
         "target_job_id": null
       },
       "land_events": {
+        "condition": null,
         "depends_on": [],
         "environment_key": "serverless",
         "existing_cluster_id": null,
@@ -65,7 +69,23 @@
         "retry_on_timeout": true,
         "target_job_id": null
       },
+      "legacy_objects_cover_run_date": {
+        "condition": "{{job.parameters.run_date}} EQUAL_TO {{job.parameters.legacy_objects_run_date}}",
+        "depends_on": [
+          "export_report_objects"
+        ],
+        "environment_key": null,
+        "existing_cluster_id": null,
+        "kind": "condition_task",
+        "max_retries": null,
+        "min_retry_interval_millis": null,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": null,
+        "target_job_id": null
+      },
       "load_gold_hourly": {
+        "condition": null,
         "depends_on": [
           "load_silver"
         ],
@@ -80,6 +100,7 @@
         "target_job_id": null
       },
       "load_gold_summary": {
+        "condition": null,
         "depends_on": [
           "load_silver"
         ],
@@ -94,6 +115,7 @@
         "target_job_id": null
       },
       "load_gold_top_user_actions": {
+        "condition": null,
         "depends_on": [
           "load_gold_top_users"
         ],
@@ -108,6 +130,7 @@
         "target_job_id": null
       },
       "load_gold_top_users": {
+        "condition": null,
         "depends_on": [
           "load_silver"
         ],
@@ -122,6 +145,7 @@
         "target_job_id": null
       },
       "load_silver": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -136,6 +160,7 @@
         "target_job_id": null
       },
       "publish_summary": {
+        "condition": null,
         "depends_on": [
           "load_gold_summary"
         ],
@@ -163,6 +188,7 @@
     "queue": true,
     "tasks": {
       "archive_events": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -177,8 +203,9 @@
         "target_job_id": null
       },
       "compare_archive_objects": {
+        "condition": null,
         "depends_on": [
-          "export_archive_objects"
+          "legacy_objects_cover_run_date:true"
         ],
         "environment_key": "serverless",
         "existing_cluster_id": null,
@@ -191,6 +218,7 @@
         "target_job_id": null
       },
       "create_tables": {
+        "condition": null,
         "depends_on": [
           "land_audit_events"
         ],
@@ -205,6 +233,7 @@
         "target_job_id": null
       },
       "export_archive_objects": {
+        "condition": null,
         "depends_on": [
           "archive_events",
           "write_compliance_report"
@@ -220,6 +249,7 @@
         "target_job_id": null
       },
       "land_audit_events": {
+        "condition": null,
         "depends_on": [],
         "environment_key": "serverless",
         "existing_cluster_id": null,
@@ -231,7 +261,23 @@
         "retry_on_timeout": true,
         "target_job_id": null
       },
+      "legacy_objects_cover_run_date": {
+        "condition": "{{job.parameters.run_date}} EQUAL_TO {{job.parameters.legacy_objects_run_date}}",
+        "depends_on": [
+          "export_archive_objects"
+        ],
+        "environment_key": null,
+        "existing_cluster_id": null,
+        "kind": "condition_task",
+        "max_retries": null,
+        "min_retry_interval_millis": null,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": null,
+        "target_job_id": null
+      },
       "report_run": {
+        "condition": null,
         "depends_on": [
           "write_compliance_report"
         ],
@@ -246,6 +292,7 @@
         "target_job_id": null
       },
       "write_compliance_report": {
+        "condition": null,
         "depends_on": [
           "archive_events"
         ],
@@ -273,6 +320,7 @@
     "queue": true,
     "tasks": {
       "compute_candidates": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -287,6 +335,7 @@
         "target_job_id": null
       },
       "create_tables": {
+        "condition": null,
         "depends_on": [
           "land_inventory"
         ],
@@ -301,6 +350,7 @@
         "target_job_id": null
       },
       "land_inventory": {
+        "condition": null,
         "depends_on": [],
         "environment_key": "serverless",
         "existing_cluster_id": null,
@@ -313,6 +363,7 @@
         "target_job_id": null
       },
       "report_candidates": {
+        "condition": null,
         "depends_on": [
           "compute_candidates"
         ],
@@ -340,6 +391,7 @@
     "queue": true,
     "tasks": {
       "create_tables": {
+        "condition": null,
         "depends_on": [
           "land_usage_events"
         ],
@@ -354,6 +406,7 @@
         "target_job_id": null
       },
       "land_usage_events": {
+        "condition": null,
         "depends_on": [],
         "environment_key": "serverless",
         "existing_cluster_id": null,
@@ -366,6 +419,7 @@
         "target_job_id": null
       },
       "load_gold_usage_rollup": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -392,7 +446,23 @@
     "pause_status": "PAUSED",
     "queue": true,
     "tasks": {
+      "compare_report_objects": {
+        "condition": null,
+        "depends_on": [
+          "legacy_objects_cover_run_date:true"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
       "create_tables": {
+        "condition": null,
         "depends_on": [
           "upstream_analytics_daily"
         ],
@@ -406,7 +476,40 @@
         "retry_on_timeout": true,
         "target_job_id": null
       },
+      "export_report_objects": {
+        "condition": null,
+        "depends_on": [
+          "load_report",
+          "load_report_days",
+          "load_user_actions"
+        ],
+        "environment_key": "serverless",
+        "existing_cluster_id": null,
+        "kind": "spark_python_task",
+        "max_retries": 2,
+        "min_retry_interval_millis": 300000,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": true,
+        "target_job_id": null
+      },
+      "legacy_objects_cover_run_date": {
+        "condition": "{{job.parameters.run_date}} EQUAL_TO {{job.parameters.legacy_objects_run_date}}",
+        "depends_on": [
+          "export_report_objects"
+        ],
+        "environment_key": null,
+        "existing_cluster_id": null,
+        "kind": "condition_task",
+        "max_retries": null,
+        "min_retry_interval_millis": null,
+        "new_cluster": false,
+        "pipeline_id": null,
+        "retry_on_timeout": null,
+        "target_job_id": null
+      },
       "load_report": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -421,6 +524,7 @@
         "target_job_id": null
       },
       "load_report_days": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -435,6 +539,7 @@
         "target_job_id": null
       },
       "load_user_actions": {
+        "condition": null,
         "depends_on": [
           "load_user_summary"
         ],
@@ -449,6 +554,7 @@
         "target_job_id": null
       },
       "load_user_summary": {
+        "condition": null,
         "depends_on": [
           "create_tables"
         ],
@@ -463,6 +569,7 @@
         "target_job_id": null
       },
       "upstream_analytics_daily": {
+        "condition": null,
         "depends_on": [],
         "environment_key": null,
         "existing_cluster_id": null,

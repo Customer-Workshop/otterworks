@@ -95,6 +95,7 @@ resources:
               - analytics_daily/30_create_gold_analytics_daily_top_users.sql
               - analytics_daily/40_create_gold_analytics_daily_hourly.sql
               - analytics_daily/50_create_gold_analytics_daily_top_user_actions.sql
+              - analytics_daily/55_add_action_ordinal_to_top_user_actions.sql
           environment_key: serverless
           max_retries: 2
           min_retry_interval_millis: 300000
@@ -626,6 +627,10 @@ resources:
           default: "{{job.trigger.time.iso_date}}"
         - name: snapshot_batch
           default: "{{job.trigger.time.iso_date}}"
+        # The run date the frozen legacy objects in exports/legacy_objects cover. See the
+        # gate below the export task.
+        - name: legacy_objects_run_date
+          default: "2026-09-15"
       tasks:
         # The dependency on analytics_daily as an edge, not a time offset. It is a
         # run_job_task on the owning job rather than a copy of the analytics tasks here:
@@ -658,6 +663,7 @@ resources:
               - user_activity/20_create_gold_user_activity_report_days.sql
               - user_activity/30_create_gold_user_activity_user_summary.sql
               - user_activity/40_create_gold_user_activity_user_actions.sql
+              - user_activity/45_add_action_ordinal.sql
           environment_key: serverless
           max_retries: 2
           min_retry_interval_millis: 300000
@@ -718,6 +724,59 @@ resources:
               - user_activity/41_load_gold_user_activity_user_actions.sql
               - --param
               - run_date={{job.parameters.run_date}}
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # The legacy's file interface, rebuilt from the tables this run wrote. The Delta
+        # tables stay the governed output; these objects are what a consumer reading the
+        # data lake sees, and they are gated as bytes below.
+        - task_key: export_report_objects
+          depends_on:
+            - task_key: load_report
+            - task_key: load_report_days
+            - task_key: load_user_actions
+          spark_python_task:
+            python_file: exports/export_user_activity.py
+            parameters:
+              - --run-date
+              - "{{job.parameters.run_date}}"
+          environment_key: serverless
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        # The byte gate the plan declared for this unit, restored: the objects are compared
+        # against the legacy's own bytes for the same date, which row parity over the
+        # tables does not prove. It reads back from the volume, so it checks what was
+        # written.
+        #
+        # The frozen legacy objects are one run of the legacy on one date. A later
+        # scheduled date has no legacy bytes to be compared against, so the byte gate is
+        # entered only for the date they cover: an uncovered date skips it rather than
+        # failing a run for an absence it cannot fix. Widening the gate means capturing
+        # legacy objects for the new date and moving this parameter; the comparator still
+        # fails loudly if it is run on a date the manifest does not cover.
+        - task_key: legacy_objects_cover_run_date
+          depends_on:
+            - task_key: export_report_objects
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.run_date}}"
+            right: "{{job.parameters.legacy_objects_run_date}}"
+
+        - task_key: compare_report_objects
+          depends_on:
+            - task_key: legacy_objects_cover_run_date
+              outcome: "true"
+          spark_python_task:
+            python_file: exports/compare_legacy_exports.py
+            parameters:
+              - --unit
+              - p3-user-activity
+              - --run-date
+              - "{{job.parameters.run_date}}"
           environment_key: serverless
           max_retries: 2
           min_retry_interval_millis: 300000

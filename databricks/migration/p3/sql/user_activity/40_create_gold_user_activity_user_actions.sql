@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS ow_tp.gold.user_activity_user_actions (
   rank INT NOT NULL,
   user_id STRING NOT NULL,
   action_type STRING NOT NULL COMMENT "the legacy's own key, including the literal 'NaN' for an event its frame could not type and the unnormalised dotted 'document.created' (F-0.9)",
-  action_count BIGINT NOT NULL
+  action_count BIGINT NOT NULL,
+  action_ordinal INT COMMENT 'position of this key inside the users actions_by_type object, 1-based'
 )
 USING DELTA
 COMMENT 'actions_by_type in user_activity_daily.py user_summaries, summed over the 30-day window'

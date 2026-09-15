@@ -35,8 +35,8 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "The deployed job was run twice with the same parameters (run_date=2026-09-15, snapshot_batch=p3probe). Row counts and an order-independent md5 over every row of all four target tables are identical before and after (idempotency.before.json / idempotency.after.json, from databricks/migration/p3/recon/fingerprint_user_activity_target.py): user_activity_report 1 row a749d182a4a8b21a1f8034d3cd8ab7e1, user_activity_report_days 30 rows 8eea7b6db63fa0f37bfd2432bab6ce09, user_activity_user_summary 500 rows 81faea79f354eed4278625c83d4c2fae, user_activity_user_actions 2610 rows 2e85b2300b691dec8e95525b06a833cd. Every load is an INSERT ... REPLACE WHERE on the report date, so a rerun rewrites the date rather than appending to it.",
-    "scope": "Both runs were partial runs of the deployed job covering its own five tasks. The upstream_analytics_daily run_job_task was not selected, because the analytics job cannot finish in this workspace: its publish_summary task fails on the missing ow_tp/analytics_postgres_password. The edge itself was exercised once, in a full run before these two: it queued the owning job, that job ran land_events through load_gold_top_user_actions green and failed only on publish_summary, and this job's downstream tasks were skipped as designed."
+    "evidence": "The deployed job was run twice with the same parameters (run_date=2026-09-15, snapshot_batch=p3probe). Row counts and an order-independent md5 over every row of all four target tables are identical before and after (idempotency.before.json / idempotency.after.json, from databricks/migration/p3/recon/fingerprint_user_activity_target.py): user_activity_report 1 row a749d182a4a8b21a1f8034d3cd8ab7e1, user_activity_report_days 30 rows 8eea7b6db63fa0f37bfd2432bab6ce09, user_activity_user_summary 500 rows 81faea79f354eed4278625c83d4c2fae, user_activity_user_actions 2610 rows 8c4ce64443d39575659cbb9426f8e8e2. Every load is an INSERT ... REPLACE WHERE on the report date, so a rerun rewrites the date rather than appending to it. The exported files are idempotent too: after a rerun the three objects under /Volumes/ow_tp/gold/exports/user-activity are byte-identical once generated_at is normalized (activity_report.json and its latest copy 159321 bytes sha256 511bdc3658a880e36ffa068c0ac4e58114de53dc8cc7fc3ea659c319a9b60dde normalized, user_summaries.jsonl 99455 bytes sha256 70f3bbfa7b11627485d0df9ce7dc5067bddddee5f06713d0545330538bc29e20 raw), and the byte gate passed on both runs.",
+    "scope": "Both runs were partial runs of the deployed job covering its own tasks. The upstream_analytics_daily run_job_task was not selected, because the analytics job cannot finish in this workspace: its publish_summary task fails on the missing ow_tp/analytics_postgres_password. The edge itself was exercised once, in a full run before these two: it queued the owning job, that job ran land_events through load_gold_top_user_actions green and failed only on publish_summary, and this job's downstream tasks were skipped as designed."
   },
   "legacy_defects_reproduced": [
     "active_days counts the days a user appears in a top-user file, not the days they were active. A user active every day but ranked on three of them reports 3, and the target reproduces that rather than counting real activity.",
@@ -51,8 +51,20 @@
     "The end-to-end chain (upstream analytics job then this report) cannot run green in this workspace: ow_tp/analytics_postgres_password does not exist, so analytics_daily's publish_summary fails and this job's tasks are skipped. The dependency edge and the skip were both observed; what is unverified is a green run through both jobs. No plaintext fallback from etl/config.ini was added.",
     "factory-doctor source_principal_read_only: still unverified. The doctor implements privilege queries for SQL Server and Postgres only, so a Databricks-family source can never satisfy the row (P3-D09). Fixing it needs a plugin change, not a runtime workaround.",
     "Only the pinned fixture day is exercised. An empty window (no summaries at all), a day where every history object is missing, and a window with fewer than 20 users are not covered by this run.",
-    "The optional user_summaries.jsonl the legacy writes has no separate target object; its rows are ow_tp.gold.user_activity_user_summary, and nothing reproduces the JSONL file itself.",
+    "Report file bytes ARE compared as of the P3-Q3 export restoration: export_report_objects rebuilds activity_report.json, its latest copy and the optional user_summaries.jsonl from the governed tables into /Volumes/ow_tp/gold/exports/user-activity, and compare_report_objects reads them back and compares them byte for byte against the legacy's own objects for 2026-09-15 (generated_at normalized in the report, nothing else). What is still not compared is the S3 destination itself: the target writes to a Unity Catalog volume.",
     "Structure parity: the harness compares rows, not Delta table properties, comments, or grants."
   ],
-  "verdict": "PASS"
+  "verdict": "PASS",
+  "file_byte_gate": {
+    "task": "compare_report_objects (ow_tp_p3_user_activity_daily)",
+    "run_date": "2026-09-15",
+    "export_root": "/Volumes/ow_tp/gold/exports/user-activity",
+    "verdict": "PASS",
+    "objects": {
+      "reports/user-activity/2026-09-15/activity_report.json": "159321 bytes, sha256 b21062a74c30f73f521dddd6bf00e36d40220c01925e28538cbedcf4488bf601, generated_at normalized",
+      "reports/user-activity/latest/activity_report.json": "159321 bytes, same document as the dated report, generated_at normalized",
+      "reports/user-activity/2026-09-15/user_summaries.jsonl": "99455 bytes, sha256 70f3bbfa7b11627485d0df9ce7dc5067bddddee5f06713d0545330538bc29e20, compared raw"
+    },
+    "note": "The bytes compared are read back from the governed volume after the export task wrote them, against the legacy's own objects frozen in databricks/migration/p3/exports/legacy_objects/p3-user-activity.json. Missing objects, byte mismatches and unexpected objects anywhere under the export root all fail the task. The gate only runs when the run date is the date the manifest covers; a run for any other date fails the comparison rather than skipping it silently."
+  }
 }

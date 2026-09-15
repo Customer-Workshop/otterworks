@@ -5,15 +5,11 @@
 -- OVERAGE_AMOUNT is NUMBER(12,2) and stays numeric(12,2): money never becomes a float, and the
 -- scale is what makes pkg_rating's ROUND(...,2) reproducible on the target.
 -- The four unit counters are NUMBER(10), which exceeds int4, so they are bigint.
--- CREATED_AT is an Oracle TIMESTAMP with no zone recorded. The mapping spec names timestamptz,
--- but the recon gate fails that: the source value is naive and a timestamptz target comes back
--- zone-aware, so tier 3 reports a field_diff on every row even though the wall clock matches
--- (2025-12-31 00:00 vs 2025-12-31 00:00+00). Wave 0 hit the same thing on
--- billing.billing_audit_log.logged_at and settled on a zone-less column
--- (w0a_pkg_ow_util.sql:127-141); this follows that precedent with timestamp(6), keeping Oracle's
--- default fractional-second precision rather than truncating to whole seconds. The UTC
--- assumption (plan decision P1-D3) is unchanged - it is declared, not stored.
--- The sibling DATE columns on rating_periods are timestamp(0): that difference is the source's.
+-- CREATED_AT is an Oracle TIMESTAMP, which records no zone, so it is timestamp(6) per decision
+-- D-010: a timestamptz target invents a zone the source never had and fails recon tier 3 on
+-- every row. Precision stays at Oracle's default 6 rather than truncating to whole seconds like
+-- the DATE-sourced columns on rating_periods do. The UTC assumption (plan decision P1-D3) is
+-- unchanged - it is declared, not stored.
 --
 -- Both Oracle foreign keys are reproduced with their original names. They are validated, not
 -- cleaned: D8-01 requires orphans to survive the migration, and the fixture and live source
@@ -38,9 +34,9 @@ CREATE TABLE IF NOT EXISTS billing.rating_results (
     CONSTRAINT fk_rr_sub FOREIGN KEY (subscription_id) REFERENCES billing.subscriptions (id)
 );
 
--- An earlier run of this script on the wave branch created created_at as timestamptz. The table
--- is this unit's own and empty until the load below, so bring it onto the zone-less type in
--- place rather than leaving two shapes behind on the branch.
+-- An earlier run of this script on the wave branch created created_at as timestamptz, before
+-- D-010 corrected the mapping. The table is this unit's own and empty until the load below, so
+-- bring it onto the zone-less type in place rather than leaving two shapes on the branch.
 ALTER TABLE billing.rating_results
     ALTER COLUMN created_at TYPE timestamp(6);
 

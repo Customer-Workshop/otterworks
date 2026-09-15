@@ -1,0 +1,13 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-subscriptions-hist",
+  "run_id": "8a9e8e7a-ba04-4619-b14e-48a9b78c920e",
+  "finished_at": "2026-09-15T08:04:52.757618+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.silver.subscriptions_hist",
+      "rows": 0,
+      "content_hash": null
+    }
+  ]
+}

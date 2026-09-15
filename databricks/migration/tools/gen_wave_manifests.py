@@ -401,7 +401,8 @@ Lakebase units in wave 4. State the generation in both mapping specs and in your
     (2, 4, [
         ("w2-a", ["p1-subscriptions", "p1-pkg-plans"],
          ["billing.subscriptions", "billing.fn_plan_entitlements", "billing.sp_assign_plan"],
-         [],
+         # sp_assign_plan logs through wave 0's log_msg, so it writes the audit table (D-009).
+         ["billing.billing_audit_log"],
          """
 SUBSCRIPTIONS (69 rows) plus pkg_plans, together because the package writes the table.
  - TRG_SUB_NO_UNCANCEL: a cancelled subscription can never be un-cancelled. The rule must
@@ -485,7 +486,7 @@ It depends only on billing.tenants (fk_cn_tenant), which merged in wave 1.
          # sp_finalize_rating writes the hand-off row wave 0 created the table for; the DDL
          # owner is a strictly earlier wave, so this is DML on someone else's table and has
          # to be declared rather than left implicit in the brief.
-         ["billing.rating_state"],
+         ["billing.rating_state", "billing.billing_audit_log"],
          """
 The rating chain: RATING_PERIODS (3), RATING_RESULTS (3) and pkg_rating
 (packages/03_pkg_rating.sql), together because the package writes both tables.
@@ -504,12 +505,14 @@ Traps called out in the source and the analysis:
    and report status=BLOCKED with `rating_state_contract`; do not redesign it unilaterally.
    fn_usage_summary orders by kind; keep it deterministic.
 """),
-        ("w3-b", ["p1-invoices", "p1-invoice-lines", "p1-pkg-invoicing"],
-         ["billing.invoices", "billing.invoice_lines", "billing.sp_issue_invoice",
-          "billing.fn_invoice_preview", "billing.fn_invoice_lines"],
-         ["billing.credit_notes"],  # runtime writes; DDL owner is w2-f, an earlier wave
+        ("w3-b", ["p1-invoices", "p1-invoice-lines"],
+         ["billing.invoices", "billing.invoice_lines"],
+         # billing_audit_log: every converted package logs through wave 0's log_msg (D-009).
+         ["billing.credit_notes", "billing.billing_audit_log"],
          """
-Modern INVOICES (3) + INVOICE_LINES (2) + pkg_invoicing (packages/04_pkg_invoicing.sql).
+Modern INVOICES (3) + INVOICE_LINES (2). pkg_invoicing left this batch for wave-4 w4-b
+under D-009: sp_issue_invoice calls sp_finalize_rating, so it writes w3-a's rating tables,
+and a runtime write is only safe once its owner merged in an earlier wave.
 THIS IS THE MODERN GENERATION (D9-01), not legacy INVOICE_HEADER/INVOICE_LINE from wave 1.
 You run CONCURRENTLY with w3-a (rating), whose hand-off you consume:
  - rating hand-off: read `billing.rating_state` per the shape pinned in the plan (P1-D4).
@@ -535,7 +538,8 @@ your PR body too.
         ("w3-d", ["p1-dunning-attempts", "p1-notifications", "p1-pkg-dunning"],
          ["billing.dunning_attempts", "billing.notifications", "billing.sp_schedule_dunning",
           "billing.sp_suspend_overdue", "billing.fn_overdue_accounts"],
-         ["billing.tenants", "billing.subscriptions"],  # runtime writes; owners w1-a/w2-a
+         # runtime writes; owners w1-a/w2-a, and wave 0 for the audit log (D-009)
+         ["billing.tenants", "billing.subscriptions", "billing.billing_audit_log"],
          """
 The dunning chain: DUNNING_ATTEMPTS (1), NOTIFICATIONS (1) and pkg_dunning
 (packages/05_pkg_dunning.sql). One batch, not three, because sp_suspend_overdue writes both
@@ -562,7 +566,7 @@ Traps:
 Do not create the nightly job here; that is U-25 in wave 4.
 """),
     ]),
-    (4, 1, [
+    (4, 2, [
         ("w4-a", ["p1-job-nightly-dunning"],
          ["ow_tp_p1_nightly_dunning"],
          [],
@@ -577,6 +581,33 @@ run-history equivalence on the fixture (one fixture run of the legacy job vs one
 converted job, same input state, same rows written) and state that gap plainly in summary.md
 and the PR. The data recon on billing.dunning_attempts is threshold/sampled only - the row
 contract belongs to w3-d, and you must not re-write its tables.
+"""),
+        ("w4-b", ["p1-pkg-invoicing"],
+         ["billing.sp_issue_invoice", "billing.fn_invoice_preview",
+          "billing.fn_invoice_lines"],
+         ["billing.credit_notes", "billing.billing_audit_log",
+          "billing.rating_periods", "billing.rating_results"],
+         """
+pkg_invoicing (packages/04_pkg_invoicing.sql) -> sp_issue_invoice, fn_invoice_preview,
+fn_invoice_lines. THIS IS THE MODERN GENERATION (D9-01), not legacy INVOICE_HEADER/
+INVOICE_LINE. It ran in wave 3 inside w3-b and halted on `undeclared_write_target`; D-009
+declared the writes and moved the unit here, because a runtime write is only safe once the
+owning unit merged in an earlier wave and wave 3 owns the rating tables.
+What it writes, all declared and all real legacy behaviour to preserve:
+ - billing.billing_audit_log, through the converted pkg_ow_util.log_msg. Keep the logging.
+ - billing.rating_periods and billing.rating_results, because sp_issue_invoice calls
+   pkg_rating.sp_finalize_rating. Call the converted procedure; do not re-convert it.
+ - billing.credit_notes, the burn-down's UPDATEs, in `issued_on, id` order. DML only.
+Read billing.rating_state for the package-global hand-off from pkg_rating
+(g_overage_amount): it is state, so make it explicit rather than incidental.
+Traps:
+ - tax rate hardcoded 0.0825 at :26 - keep the value, make it a named constant;
+ - EXECUTE IMMEDIATE delete of invoice lines -> plain DELETE, same rows;
+ - the credit burn-down decrements a running counter in a quirk the source says to preserve
+   verbatim (:180-190);
+ - rounding is applied per line AND again on the total. Both roundings stay.
+Money is exact in recon: a one-cent difference is a FAIL, not a tolerance. Oracle TIMESTAMP
+is zoneless -> Postgres timestamp, never timestamptz (D-010).
 """),
     ]),
 ]

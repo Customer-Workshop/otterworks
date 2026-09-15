@@ -1,7 +1,7 @@
 {
   "unit": "p1-pkg-invoicing",
-  "wave": 3,
-  "batch": "w3-b",
+  "wave": 4,
+  "batch": "w4-b",
   "depth": "full",
   "mode": "transactional",
   "rows": 5,

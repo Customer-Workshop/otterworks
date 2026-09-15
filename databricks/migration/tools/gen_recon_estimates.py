@@ -56,7 +56,9 @@ PLACEMENT = {
     "p1-credit-notes": (2, "w2-f", "full"),
     "p1-invoices": (3, "w3-b", "full"),
     "p1-invoice-lines": (3, "w3-b", "full"),
-    "p1-pkg-invoicing": (3, "w3-b", "full"),
+    # Wave 4, not 3: D-009 moved it out of w3-b so its runtime writes to the rating tables
+    # land after the wave that owns them.
+    "p1-pkg-invoicing": (4, "w4-b", "full"),
     "p1-dunning-attempts": (3, "w3-d", "full"),
     "p1-notifications": (3, "w3-d", "full"),
     "p1-pkg-dunning": (3, "w3-d", "full"),

@@ -256,11 +256,12 @@
  ],
  "breaker_threshold": 3,
  "breaker_tripped_on": null,
- "close_blocked_on": "undeclared_write_targets",
- "closed": false,
+ "close_blocked_on": null,
+ "close_note": "Wave 2 halted on the two undeclared write targets the verifier found and was released by a human decision, not by the orchestrator: drop the two empty bronze history tables and declare the billing_audit_log runtime write, then re-run the collision check. Both were done (see undeclared_write_targets_remediation) and the manifest revalidates clean: 27 units, 47 write targets, 5 runtime writes, no collisions. Closing covers scope only. The empty-source and unexercised-job limits below stand and carry into STOP E verbatim: p1-customer-master-hist, p1-subscriptions-hist and p1-billing-audit-log are schema-plus-empty-set assertions whose idempotency reruns prove nothing, and ow_tp_p1_purge_audit_log has zero runs. Wave 2 is not 'all units passed'.",
+ "closed": true,
  "launch_mechanism": "child_sessions",
  "launch_reason": "run_workflow was retried once for wave 2 as instructed and failed the same way it failed for wave 1: the process it starts inherits no environment, so DATABRICKS_HOST / DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET and the AWS pair are absent and the pre-flight factory-doctor fails databricks_identity (the retry got further and then died on ModuleNotFoundError: No module named 'recon'). Persisting the credentials to a CLI profile or any file to get past it stays refused. Six child Devin sessions ran the same batch contract instead: manifest and write-target collision check before launch, one PR per unit into the working branch, children write only .migration/recon/<unit>/, the orchestrator is the single writer of these wave artifacts, the same 3-same-class circuit breaker, and an independent verifier that migrated none of the units.",
- "manifest_sha": "5170ef148df6",
+ "manifest_sha": "736f8d7f4de7",
  "manifest_width": 4,
  "official_verdict": false,
  "recon_grade": "DEGRADED",
@@ -274,6 +275,11 @@
    "ow_tp.bronze.customer_master_hist",
    "ow_tp.bronze.subscriptions_hist"
   ]
+ },
+ "undeclared_write_targets_remediation": {
+  "decision": "Human decision relayed by the parent: drop the bronze tables, declare the w2-a audit runtime write, re-run the collision check, resume wave 3. The audit write is legacy behaviour the migration is meant to preserve, so it is declared rather than engineered away.",
+  "w2-a": "billing.billing_audit_log added to the w2-a batch's runtime_writes in .migration/waves/wave-2.json; sp_assign_plan is unchanged.",
+  "w2-d": "ow_tp.bronze.customer_master_hist and ow_tp.bronze.subscriptions_hist dropped after confirming both held 0 rows; ow_tp.bronze now holds only codes, customer_master, invoice_header and invoice_line."
  },
  "unreported_write_targets": [],
  "verify": {

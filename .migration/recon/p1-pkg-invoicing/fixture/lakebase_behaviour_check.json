@@ -1,0 +1,33 @@
+{
+  "unit": "p1-pkg-invoicing",
+  "kind": "behaviour-run-diff",
+  "expected_source": "oracle-fixture",
+  "scenarios": {
+    "credit_burn_down": {
+      "tenant_id": "00000000-0000-0000-0000-000000000004",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "burn_down_split": {
+      "tenant_id": "00000000-0000-0000-0000-000000000009",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "tax_exempt": {
+      "tenant_id": "00000000-0000-0000-0000-000000000003",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "rollover": {
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "status": "PASS",
+      "mismatches": []
+    },
+    "no_subscription": {
+      "tenant_id": "no-such-tenant",
+      "status": "PASS",
+      "mismatches": []
+    }
+  },
+  "status": "PASS"
+}

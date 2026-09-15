@@ -1,0 +1,50 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-pkg-invoicing",
+  "run_id": "4203f88ad0314d32915c3fbe6eaf778d",
+  "finished_at": "2026-09-15T11:41:36.172276+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.billing.credit_notes",
+      "rows": 5,
+      "content_hash": "24df4d9fee398ca588b531b20839ca1e"
+    },
+    {
+      "table": "ow_tp.billing.billing_audit_log",
+      "rows": 16,
+      "content_hash": "2e06911c05f007be444130c8fe984834",
+      "excluded_columns": [
+        "log_id",
+        "logged_at"
+      ]
+    },
+    {
+      "table": "ow_tp.billing.rating_periods",
+      "rows": 7,
+      "content_hash": "aff09f653274316f77c96f1e5ea0c645"
+    },
+    {
+      "table": "ow_tp.billing.rating_results",
+      "rows": 7,
+      "content_hash": "822e4b070d44c298a2a240d331be2910"
+    },
+    {
+      "table": "ow_tp.billing.rating_state",
+      "rows": 4,
+      "content_hash": "7d4f6df52731c20d11a5dab56ff70b0f",
+      "excluded_columns": [
+        "updated_at"
+      ]
+    },
+    {
+      "table": "ow_tp.billing.invoices",
+      "rows": 7,
+      "content_hash": "ea76bcd4583c1bb76cead6e646cd02ff"
+    },
+    {
+      "table": "ow_tp.billing.invoice_lines",
+      "rows": 22,
+      "content_hash": "0837c8c3a6067e81889eb93cf7d50d3d"
+    }
+  ]
+}

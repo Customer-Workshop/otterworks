@@ -1,0 +1,91 @@
+{
+  "kind": "recon-report",
+  "unit": "p1-pkg-invoicing",
+  "namespace": "demo",
+  "generated_at": "2026-09-15T11:33:38.438896+00:00",
+  "run_mode": "live",
+  "harness_run_mode": "transactional",
+  "checks": [
+    {
+      "id": "tier0_consistency_window",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier1_counts_through_mapping",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier2_per_field_aggregates",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 14
+    },
+    {
+      "id": "tier3_keyed_diffs",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 5
+    },
+    {
+      "id": "tier5_pk_set_diff",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 2
+    },
+    {
+      "id": "tier6_cdc_lag_ordering",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "pass",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 0
+    },
+    {
+      "id": "tier7_schema_parity",
+      "expected": "pass",
+      "actual": "unverified",
+      "result": "skipped",
+      "source_of_truth": "dbx recon harness engine, degraded Oracle JDBC source",
+      "checks_run": 0
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "loader run at 2026-09-15T11:35:05.957924+00:00 and rerun at 2026-09-15T11:35:06.241585+00:00; target state identical: ow_tp.billing.billing_audit_log 16 rows, xxhash64 xor 2e06911c05f007be444130c8fe984834; ow_tp.billing.credit_notes 5 rows, xxhash64 xor 24df4d9fee398ca588b531b20839ca1e; ow_tp.billing.invoice_lines 22 rows, xxhash64 xor 0837c8c3a6067e81889eb93cf7d50d3d; ow_tp.billing.invoices 7 rows, xxhash64 xor ea76bcd4583c1bb76cead6e646cd02ff; ow_tp.billing.rating_periods 7 rows, xxhash64 xor aff09f653274316f77c96f1e5ea0c645; ow_tp.billing.rating_results 7 rows, xxhash64 xor 822e4b070d44c298a2a240d331be2910; ow_tp.billing.rating_state 4 rows, xxhash64 xor 7d4f6df52731c20d11a5dab56ff70b0f"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": []
+  },
+  "unverified_paths": [
+    "source-side constraint, index and identity metadata (tiers 5-7): the Oracle JDBC adapter reads none under d10_01_denied",
+    "live Oracle invocation of pkg_invoicing: the read-only user has no EXECUTE on the package, so the package call is compared against the converted routines on the fixture only",
+    "rows sp_issue_invoice would write on the shared wave branch: every behaviour run and every idempotency digest is rolled back, because billing.invoices/invoice_lines are the tables recon compares against Oracle",
+    "log_msg audit-row parity under rollback (declared divergence P1-D1a): Oracle commits the audit row autonomously, Lakebase cannot"
+  ],
+  "verdict": "PASS",
+  "degraded": {
+    "grade": "DEGRADED",
+    "official_verdict": false,
+    "reason": "d10_01_denied",
+    "source_adapter": "Oracle read over JDBC from the Devin CIDRs with a repo-local source adapter (databricks/migration/recon/oracle_jdbc_adapter.py). The harness supplies every tier, canonicalisation rule and tolerance; the connector is outside its tested matrix, so `dbx-recon --family oracle` refuses it and this result is NOT an official harness verdict."
+  }
+}

@@ -1,0 +1,819 @@
+{
+  "source": "oracle-fixture",
+  "unit": "p1-pkg-invoicing",
+  "period_start": "2026-02-01 00:00:00",
+  "period_end": "2026-02-28 00:00:00",
+  "scenarios": {
+    "credit_burn_down": {
+      "tenant_id": "00000000-0000-0000-0000-000000000004",
+      "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+      "invoice_id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+      "preview": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02125",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "2.02125"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02125",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "2.02125"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "53.04",
+          "total": "-53.04"
+        }
+      ],
+      "credit_notes_pre": [
+        {
+          "id": "70000000-0000-0000-0000-000000000001",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "30",
+          "remaining_amount": "30"
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000002",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "30",
+          "remaining_amount": "30"
+        }
+      ],
+      "invoice": [
+        {
+          "id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "49",
+          "tax": "4.04",
+          "total": "0",
+          "status_cd": "20"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "-53.04"
+        }
+      ],
+      "credit_notes_post": [
+        {
+          "id": "70000000-0000-0000-0000-000000000001",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "30",
+          "remaining_amount": "0"
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000002",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "30",
+          "remaining_amount": "6.96"
+        }
+      ],
+      "audit": [
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000004 used=50 billable=0"
+        },
+        {
+          "module": "RATING",
+          "message": "finalized period=93503474-dde4-608b-cda9-1a7dbeedb1df"
+        },
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000004 used=50 billable=0"
+        },
+        {
+          "module": "INVOICING",
+          "message": "issued invoice=a4511ff5-6f77-90d0-0496-c188ef600b7b total=0"
+        }
+      ],
+      "invoice_rerun": [
+        {
+          "id": "a4511ff5-6f77-90d0-0496-c188ef600b7b",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "period_id": "93503474-dde4-608b-cda9-1a7dbeedb1df",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "49",
+          "tax": "4.04",
+          "total": "46.08",
+          "status_cd": "20"
+        }
+      ],
+      "lines_rerun": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "-6.96"
+        }
+      ],
+      "credit_notes_rerun": [
+        {
+          "id": "70000000-0000-0000-0000-000000000001",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "30",
+          "remaining_amount": "0"
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000002",
+          "tenant_id": "00000000-0000-0000-0000-000000000004",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "30",
+          "remaining_amount": "0"
+        }
+      ]
+    },
+    "burn_down_split": {
+      "tenant_id": "00000000-0000-0000-0000-000000000009",
+      "period_id": "5dc02199-0345-1f48-ab13-8eeefeba5910",
+      "invoice_id": "f947416b-6478-ac32-911a-12ca7f03a6fb",
+      "preview": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02125",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "2.02125"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02125",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "2.02125"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "53.04",
+          "total": "-53.04"
+        }
+      ],
+      "credit_notes_pre": [
+        {
+          "id": "70000000-0000-0000-0000-000000000005",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "issued_on": "2026-01-31 00:00:00",
+          "amount": "5",
+          "remaining_amount": "5"
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000006",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "55",
+          "remaining_amount": "55"
+        }
+      ],
+      "invoice": [
+        {
+          "id": "f947416b-6478-ac32-911a-12ca7f03a6fb",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "period_id": "5dc02199-0345-1f48-ab13-8eeefeba5910",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "49",
+          "tax": "4.04",
+          "total": "0",
+          "status_cd": "20"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "-53.04"
+        }
+      ],
+      "credit_notes_post": [
+        {
+          "id": "70000000-0000-0000-0000-000000000005",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "issued_on": "2026-01-31 00:00:00",
+          "amount": "5",
+          "remaining_amount": "0"
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000006",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "55",
+          "remaining_amount": "6.96"
+        }
+      ],
+      "audit": [
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000009 used=1 billable=0"
+        },
+        {
+          "module": "RATING",
+          "message": "finalized period=5dc02199-0345-1f48-ab13-8eeefeba5910"
+        },
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000009 used=1 billable=0"
+        },
+        {
+          "module": "INVOICING",
+          "message": "issued invoice=f947416b-6478-ac32-911a-12ca7f03a6fb total=0"
+        }
+      ],
+      "invoice_rerun": [
+        {
+          "id": "f947416b-6478-ac32-911a-12ca7f03a6fb",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "period_id": "5dc02199-0345-1f48-ab13-8eeefeba5910",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "49",
+          "tax": "4.04",
+          "total": "46.08",
+          "status_cd": "20"
+        }
+      ],
+      "lines_rerun": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "-6.96"
+        }
+      ],
+      "credit_notes_rerun": [
+        {
+          "id": "70000000-0000-0000-0000-000000000005",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "issued_on": "2026-01-31 00:00:00",
+          "amount": "5",
+          "remaining_amount": "0"
+        },
+        {
+          "id": "70000000-0000-0000-0000-000000000006",
+          "tenant_id": "00000000-0000-0000-0000-000000000009",
+          "issued_on": "2026-02-01 00:00:00",
+          "amount": "55",
+          "remaining_amount": "0"
+        }
+      ]
+    },
+    "tax_exempt": {
+      "tenant_id": "00000000-0000-0000-0000-000000000003",
+      "period_id": "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+      "invoice_id": "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+      "preview": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "SCALE",
+          "amount": "499",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "499"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "5.02",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "5.02"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "25",
+          "total": "-25"
+        }
+      ],
+      "credit_notes_pre": [
+        {
+          "id": "70000000-0000-0000-0000-000000000004",
+          "tenant_id": "00000000-0000-0000-0000-000000000003",
+          "issued_on": "2026-02-02 00:00:00",
+          "amount": "25",
+          "remaining_amount": "25"
+        }
+      ],
+      "invoice": [
+        {
+          "id": "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+          "tenant_id": "00000000-0000-0000-0000-000000000003",
+          "period_id": "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "504.02",
+          "tax": "0",
+          "total": "479.02",
+          "status_cd": "20"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "SCALE",
+          "amount": "499"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "5.02"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "0"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "0"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "-25"
+        }
+      ],
+      "credit_notes_post": [
+        {
+          "id": "70000000-0000-0000-0000-000000000004",
+          "tenant_id": "00000000-0000-0000-0000-000000000003",
+          "issued_on": "2026-02-02 00:00:00",
+          "amount": "25",
+          "remaining_amount": "0"
+        }
+      ],
+      "audit": [
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+        },
+        {
+          "module": "RATING",
+          "message": "finalized period=2b5f6b15-fd06-e41a-62c0-a3c8c59613a7"
+        },
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000003 used=2201 billable=201"
+        },
+        {
+          "module": "INVOICING",
+          "message": "issued invoice=a4ef6e84-14d9-3de7-292e-8276687bef7a total=479.02"
+        }
+      ],
+      "invoice_rerun": [
+        {
+          "id": "a4ef6e84-14d9-3de7-292e-8276687bef7a",
+          "tenant_id": "00000000-0000-0000-0000-000000000003",
+          "period_id": "2b5f6b15-fd06-e41a-62c0-a3c8c59613a7",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "504.02",
+          "tax": "0",
+          "total": "504.02",
+          "status_cd": "20"
+        }
+      ],
+      "lines_rerun": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "SCALE",
+          "amount": "499"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "5.02"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "0"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "0"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0"
+        }
+      ],
+      "credit_notes_rerun": [
+        {
+          "id": "70000000-0000-0000-0000-000000000004",
+          "tenant_id": "00000000-0000-0000-0000-000000000003",
+          "issued_on": "2026-02-02 00:00:00",
+          "amount": "25",
+          "remaining_amount": "0"
+        }
+      ]
+    },
+    "rollover": {
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+      "invoice_id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+      "preview": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02125",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "2.02125"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02125",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "2.02125"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        }
+      ],
+      "credit_notes_pre": [],
+      "invoice": [
+        {
+          "id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "49",
+          "tax": "4.04",
+          "total": "53.04",
+          "status_cd": "20"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0"
+        }
+      ],
+      "credit_notes_post": [],
+      "audit": [
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+        },
+        {
+          "module": "RATING",
+          "message": "finalized period=27cdd7d2-32b3-afc0-922c-e9858e767b6d"
+        },
+        {
+          "module": "RATING",
+          "message": "compute tenant=00000000-0000-0000-0000-000000000001 used=260 billable=0"
+        },
+        {
+          "module": "INVOICING",
+          "message": "issued invoice=109bb68d-8fc1-401b-9a8a-fa89e98e2388 total=53.04"
+        }
+      ],
+      "invoice_rerun": [
+        {
+          "id": "109bb68d-8fc1-401b-9a8a-fa89e98e2388",
+          "tenant_id": "00000000-0000-0000-0000-000000000001",
+          "period_id": "27cdd7d2-32b3-afc0-922c-e9858e767b6d",
+          "issued_at": "2026-02-28 00:00:00",
+          "subtotal": "49",
+          "tax": "4.04",
+          "total": "53.04",
+          "status_cd": "20"
+        }
+      ],
+      "lines_rerun": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": "STARTER",
+          "amount": "49"
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": "0"
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": "2.02"
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0"
+        }
+      ],
+      "credit_notes_rerun": []
+    },
+    "no_subscription": {
+      "tenant_id": "no-such-tenant",
+      "period_id": "abf1b21f-9eb6-f153-66be-276fef8a1275",
+      "invoice_id": "84a748f9-94a6-9c0b-a968-9d9576d181bf",
+      "preview": [
+        {
+          "line_no": "1",
+          "line_type": "plan",
+          "description": null,
+          "amount": null,
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": null
+        },
+        {
+          "line_no": "2",
+          "line_type": "usage",
+          "description": "usage overage",
+          "amount": null,
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": null
+        },
+        {
+          "line_no": "3",
+          "line_type": "tax",
+          "description": "regional tax",
+          "amount": null,
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": null
+        },
+        {
+          "line_no": "4",
+          "line_type": "tax",
+          "description": "local tax",
+          "amount": null,
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": null
+        },
+        {
+          "line_no": "5",
+          "line_type": "credit",
+          "description": "credit notes",
+          "amount": "0",
+          "tax_amount": "0",
+          "credit_applied": "0",
+          "total": "0"
+        }
+      ],
+      "credit_notes_pre": []
+    }
+  }
+}

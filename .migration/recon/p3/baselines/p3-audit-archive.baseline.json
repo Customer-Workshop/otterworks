@@ -9,7 +9,7 @@
   "observations": {
     "A-estate": {
       "archive_objects": [],
-      "duration_s": 0.226,
+      "duration_s": 0.225,
       "exit_code": 0,
       "records_seeded": 58,
       "rows_after": 58,
@@ -17,9 +17,9 @@
       "rows_deleted_from_source": 0,
       "script": "audit_archive_weekly.py",
       "shape": "A-estate",
-      "started_at": "2026-09-15T14:17:23.958665+00:00",
+      "started_at": "2026-09-15T14:34:32.767709+00:00",
       "stderr": "",
-      "stdout": "[2026-09-15 14:17:24] audit_archive_weekly.py starting...\n[2026-09-15 14:17:24] Archiving events older than 90 days (cutoff: 2026-06-17T00:00:00Z)\n[2026-09-15 14:17:24] Found 0 audit events older than 90 days\n[2026-09-15 14:17:24] No events to archive, exiting\n",
+      "stdout": "[2026-09-15 14:34:32] audit_archive_weekly.py starting...\n[2026-09-15 14:34:32] Archiving events older than 90 days (cutoff: 2026-06-17T00:00:00Z)\n[2026-09-15 14:34:32] Found 0 audit events older than 90 days\n[2026-09-15 14:34:32] No events to archive, exiting\n",
       "wrote_archive": false,
       "wrote_compliance_report": false
     },
@@ -34,7 +34,7 @@
           "size": 688
         }
       ],
-      "duration_s": 0.282,
+      "duration_s": 0.279,
       "exit_code": 0,
       "records_seeded": 58,
       "rows_after": 58,
@@ -42,9 +42,9 @@
       "rows_deleted_from_source": 0,
       "script": "audit_archive_weekly.py",
       "shape": "A-full",
-      "started_at": "2026-09-15T14:17:24.344033+00:00",
+      "started_at": "2026-09-15T14:34:33.168503+00:00",
       "stderr": "",
-      "stdout": "[2026-09-15 14:17:24] audit_archive_weekly.py starting...\n[2026-09-15 14:17:24] Archiving events older than 90 days (cutoff: 2026-06-17T00:00:00Z)\n[2026-09-15 14:17:24] Found 41 audit events older than 90 days\n[2026-09-15 14:17:24] Compressed 41 events to 0.00 MB\n[2026-09-15 14:17:24] Archived to s3://otterworks-audit-archive/audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz (GLACIER)\n[2026-09-15 14:17:24] Deleting 41 archived events from DynamoDB...\n[2026-09-15 14:17:24] Deleted 0 events from DynamoDB\n[2026-09-15 14:17:24] Compliance report: 41 archived, 0 deleted, stored at s3://otterworks-audit-archive/reports/compliance/audit-archive/2026-09-15/report.json\n[2026-09-15 14:17:24] audit_archive_weekly.py completed successfully\n",
+      "stdout": "[2026-09-15 14:34:33] audit_archive_weekly.py starting...\n[2026-09-15 14:34:33] Archiving events older than 90 days (cutoff: 2026-06-17T00:00:00Z)\n[2026-09-15 14:34:33] Found 41 audit events older than 90 days\n[2026-09-15 14:34:33] Compressed 41 events to 0.00 MB\n[2026-09-15 14:34:33] Archived to s3://otterworks-audit-archive/audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz (GLACIER)\n[2026-09-15 14:34:33] Deleting 41 archived events from DynamoDB...\n[2026-09-15 14:34:33] Deleted 0 events from DynamoDB\n[2026-09-15 14:34:33] Compliance report: 41 archived, 0 deleted, stored at s3://otterworks-audit-archive/reports/compliance/audit-archive/2026-09-15/report.json\n[2026-09-15 14:34:33] audit_archive_weekly.py completed successfully\n",
       "wrote_archive": true,
       "wrote_compliance_report": true
     },
@@ -55,7 +55,7 @@
           "size": 1849
         }
       ],
-      "duration_s": 0.264,
+      "duration_s": 0.261,
       "exit_code": 1,
       "records_seeded": 58,
       "rows_after": 58,
@@ -63,9 +63,9 @@
       "rows_deleted_from_source": 0,
       "script": "audit_archive_weekly.py",
       "shape": "A-tsonly",
-      "started_at": "2026-09-15T14:17:24.807945+00:00",
+      "started_at": "2026-09-15T14:34:33.621630+00:00",
       "stderr": "",
-      "stdout": "[2026-09-15 14:17:24] audit_archive_weekly.py starting...\n[2026-09-15 14:17:24] Archiving events older than 90 days (cutoff: 2026-06-17T00:00:00Z)\n[2026-09-15 14:17:25] Found 41 audit events older than 90 days\n[2026-09-15 14:17:25] Compressed 41 events to 0.00 MB\n[2026-09-15 14:17:25] Archived to s3://otterworks-audit-archive/audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz (GLACIER)\n[2026-09-15 14:17:25] Deleting 41 archived events from DynamoDB...\n[2026-09-15 14:17:25] FATAL: 'event_id'\n",
+      "stdout": "[2026-09-15 14:34:33] audit_archive_weekly.py starting...\n[2026-09-15 14:34:33] Archiving events older than 90 days (cutoff: 2026-06-17T00:00:00Z)\n[2026-09-15 14:34:33] Found 41 audit events older than 90 days\n[2026-09-15 14:34:33] Compressed 41 events to 0.00 MB\n[2026-09-15 14:34:33] Archived to s3://otterworks-audit-archive/audit-archive/year=2026/week=2026-09-15/audit_events.jsonl.gz (GLACIER)\n[2026-09-15 14:34:33] Deleting 41 archived events from DynamoDB...\n[2026-09-15 14:34:33] FATAL: 'event_id'\n",
       "wrote_archive": true,
       "wrote_compliance_report": false
     }

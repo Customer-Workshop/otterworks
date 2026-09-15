@@ -1,5 +1,5 @@
 {
-  "duration_s": 5.616,
+  "duration_s": 5.673,
   "dynamodb_seeded": 165,
   "exit_code": 0,
   "objects_written": [
@@ -388,7 +388,7 @@
           "shared": 37,
           "uploaded": 35
         },
-        "generated_at": "2026-09-15T14:17:22.635624+00:00",
+        "generated_at": "2026-09-15T14:34:31.555877+00:00",
         "highlights": {
           "most_active_users": [
             "usr-9b9d219b86902e97",
@@ -418,7 +418,7 @@
           "total_events": 249
         }
       },
-      "sha256": "ba96f5373c057c5aa6ca408870248297717711020e6c755285d4771d5a7d4c25"
+      "sha256": "c238b22e602d8a12411f110e07ec60bac0e16c6b39185691808a8c0d79b8aa94"
     }
   },
   "postgres_error_swallowed": true,
@@ -426,9 +426,9 @@
   "script": "analytics_daily.py",
   "sqs_poll_failed": false,
   "sqs_seeded": 85,
-  "started_at": "2026-09-15T14:17:17.108818+00:00",
+  "started_at": "2026-09-15T14:34:25.978089+00:00",
   "stderr": "",
-  "stdout": "[2026-09-15 14:17:17] analytics_daily.py starting...\n[2026-09-15 14:17:17] Processing analytics for date: 2026-09-15\n[2026-09-15 14:17:17] Polling SQS queue: https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics\n[2026-09-15 14:17:22] No more messages after 85 processed\n[2026-09-15 14:17:22] Extracted 85 events from SQS\n[2026-09-15 14:17:22] Extracted 164 events from DynamoDB for 2026-09-15\n[2026-09-15 14:17:22] Total events to process: 249\n[2026-09-15 14:17:22] Aggregation complete: 249 events, 12 active users, 20 documents, 15 files\n[2026-09-15 14:17:22] Uploaded summary to s3://otterworks-data-lake/analytics/daily/year=2026/month=09/day=15/summary.json.gz\n[2026-09-15 14:17:22] Loaded analytics data to s3://otterworks-data-lake/analytics/daily/year=2026/month=09/day=15\n[2026-09-15 14:17:22] Connecting to PostgreSQL at localhost:5432/otterworks_analytics\n[2026-09-15 14:17:22] ERROR: PostgreSQL update failed: connection to server at \"localhost\" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user \"etl_user\"\nconnection to server at \"localhost\" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user \"etl_user\"\n\n[2026-09-15 14:17:22] Generated daily analytics report: 249 events, 12 active users\n[2026-09-15 14:17:22] analytics_daily.py completed successfully\n",
+  "stdout": "[2026-09-15 14:34:26] analytics_daily.py starting...\n[2026-09-15 14:34:26] Processing analytics for date: 2026-09-15\n[2026-09-15 14:34:26] Polling SQS queue: https://sqs.us-east-1.amazonaws.com/123456789012/otterworks-analytics\n[2026-09-15 14:34:31] No more messages after 85 processed\n[2026-09-15 14:34:31] Extracted 85 events from SQS\n[2026-09-15 14:34:31] Extracted 164 events from DynamoDB for 2026-09-15\n[2026-09-15 14:34:31] Total events to process: 249\n[2026-09-15 14:34:31] Aggregation complete: 249 events, 12 active users, 20 documents, 15 files\n[2026-09-15 14:34:31] Uploaded summary to s3://otterworks-data-lake/analytics/daily/year=2026/month=09/day=15/summary.json.gz\n[2026-09-15 14:34:31] Loaded analytics data to s3://otterworks-data-lake/analytics/daily/year=2026/month=09/day=15\n[2026-09-15 14:34:31] Connecting to PostgreSQL at localhost:5432/otterworks_analytics\n[2026-09-15 14:34:31] ERROR: PostgreSQL update failed: connection to server at \"localhost\" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user \"etl_user\"\nconnection to server at \"localhost\" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user \"etl_user\"\n\n[2026-09-15 14:34:31] Generated daily analytics report: 249 events, 12 active users\n[2026-09-15 14:34:31] analytics_daily.py completed successfully\n",
   "summary": {
     "active_documents": 20,
     "active_files": 15,

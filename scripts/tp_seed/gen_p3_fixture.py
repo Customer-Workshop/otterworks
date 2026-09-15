@@ -41,7 +41,6 @@ change probe results.
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
 import json
 import os
@@ -84,9 +83,15 @@ ETL_EVENT_TYPES = [
     "document_created", "document_edited", "document_deleted",
     "comment_added", "file_uploaded", "file_shared", "file_deleted",
 ]
+# Every event type the rollup has a counter for, plus one it counts only into
+# totalEvents (`document.shared`) and the ended half of the collab pair, which
+# the aggregator does not count at all. Without both of those, a converted job
+# that counted every event as a collab session, or that summed the counters
+# into totalEvents, would reconcile green.
 ANALYTICS_SERVICE_EVENT_TYPES = [
-    "document.created", "document.edited", "document.viewed",
+    "document.created", "document.edited", "document.viewed", "document.shared",
     "file.uploaded", "file.downloaded", "storage.allocated", "storage.released",
+    "collab.session_started", "collab.session_ended",
 ]
 
 
@@ -335,8 +340,11 @@ def build_file_objects(ns: str) -> tuple[list[dict], list[dict], list[dict]]:
         owner = owners[rng.randrange(len(owners))]
         file_id = det_id(rng, "fil")
         key = f"files/{owner}/{file_id}"
-        size = rng.randint(128, 5_000_000)
-        objects.append({"key": key, "size": size, "body": bytes([i % 251]) * min(size, 512)})
+        # The declared size IS the body length. The cleanup recon compares
+        # (key, size) pairs, so an object whose body is shorter than the size
+        # the inventory claims would make every one of those pairs a fiction.
+        size = rng.randint(128, 65_536)
+        objects.append({"key": key, "size": size, "body": bytes([i % 251]) * size})
         metadata.append({
             "id": file_id, "ns": ns, "s3_key": key, "owner_id": owner,
             "size_bytes": size, "name": f"file-{i:05d}.bin",
@@ -349,8 +357,8 @@ def build_file_objects(ns: str) -> tuple[list[dict], list[dict], list[dict]]:
     for i in range(17):
         owner = owners[rng.randrange(len(owners))]
         key = f"files/{owner}/{det_id(rng, 'orphan')}"
-        size = rng.randint(128, 2_000_000)
-        objects.append({"key": key, "size": size, "body": bytes([i % 251]) * min(size, 512)})
+        size = rng.randint(128, 65_536)
+        objects.append({"key": key, "size": size, "body": bytes([i % 251]) * size})
         orphans.append({"key": key, "size": size})
 
     # Metadata rows pointing at objects that do not exist. The legacy treats
@@ -379,8 +387,19 @@ def build_file_objects(ns: str) -> tuple[list[dict], list[dict], list[dict]]:
 
 
 def build_usage_events(ns: str) -> list[dict]:
-    """Mirrors the shape UsageRollupAggregator consumes, with the byte-metadata
-    edge cases it silently tolerates: missing, non-numeric, and negative.
+    """NDJSON in the exact shape `EventLoader` deserialises, with the
+    byte-metadata edge cases the aggregator silently tolerates.
+
+    `AnalyticsEvent` is a spray-json `jsonFormat7`, so every one of eventId,
+    eventType, userId, resourceId, resourceType, metadata and timestamp must be
+    present or the line fails to parse and the whole job dies. metadata is a
+    `Map[String, String]`, so every value is a string, and the aggregator reads
+    byte counts from `metadata("bytes")` and nowhere else -- allocated and
+    released are distinguished by eventType, not by the key name
+    (UsageRollupAggregator.storageBytes).
+
+    The tolerated edges, all of which contribute zero without failing the day:
+    a missing `bytes` key, a non-numeric value, and a negative value.
     """
     rng = rng_for(ns, "usage")
     users = [det_id(rng, "usr") for _ in range(10)]
@@ -388,26 +407,33 @@ def build_usage_events(ns: str) -> list[dict]:
     for day_offset in range(7):
         day = ANCHOR - timedelta(days=day_offset)
         for _ in range(rng.randint(30, 90)):
+            event_type = ANALYTICS_SERVICE_EVENT_TYPES[
+                rng.randrange(len(ANALYTICS_SERVICE_EVENT_TYPES))]
+            resource_type = event_type.split(".", 1)[0].replace("storage", "file")
             ev = {
                 "eventId": det_id(rng, "uev"),
-                "eventType": ANALYTICS_SERVICE_EVENT_TYPES[
-                    rng.randrange(len(ANALYTICS_SERVICE_EVENT_TYPES))],
+                "eventType": event_type,
                 "userId": users[rng.randrange(len(users))],
-                "occurredAt": iso(day + timedelta(seconds=rng.randint(0, 86399))),
+                "resourceId": det_id(rng, "res"),
+                "resourceType": resource_type,
+                "metadata": {},
+                "timestamp": iso(day + timedelta(seconds=rng.randint(0, 86399))),
             }
             roll = rng.random()
-            if roll < 0.55:
-                ev["metadata"] = {"bytesAllocated": str(rng.randint(1024, 10_000_000))}
-            elif roll < 0.75:
-                ev["metadata"] = {"bytesReleased": str(rng.randint(1024, 5_000_000))}
-            elif roll < 0.85:
-                # Non-numeric: contributes zero, does not fail the day.
-                ev["metadata"] = {"bytesAllocated": "not-a-number"}
-            elif roll < 0.92:
-                ev["metadata"] = {}
-            # else: no metadata key at all
+            if roll < 0.70:
+                ev["metadata"] = {"bytes": str(rng.randint(1024, 10_000_000))}
+            elif roll < 0.80:
+                # Non-numeric: Try(...).getOrElse(0L) swallows it.
+                ev["metadata"] = {"bytes": "not-a-number"}
+            elif roll < 0.86:
+                # Negative: parses, so it subtracts from the day's total.
+                ev["metadata"] = {"bytes": str(-rng.randint(1, 4096))}
+            elif roll < 0.93:
+                # Present but no byte count at all.
+                ev["metadata"] = {"source": "seed"}
+            # else: empty metadata map
             out.append(ev)
-    out.sort(key=lambda e: (e["occurredAt"], e["eventId"]))
+    out.sort(key=lambda e: (e["timestamp"], e["eventId"]))
     return out
 
 

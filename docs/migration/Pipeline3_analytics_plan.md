@@ -100,6 +100,7 @@ by a durable landing table.
 | **P3-D05** | `search_reindex_weekly.py` has no Databricks target: it reads two in-cluster HTTP services and writes a MeiliSearch index. | **Remove from Databricks scope**; it stays a service-side job. Forcing it onto Databricks would add a warehouse-to-cluster network dependency and a job that cannot be reconciled, in exchange for nothing. | STOP C |
 | **P3-D06** | The Scala rollup is pure set-based aggregation (C-7.1, C-7.2) with no JVM-specific behaviour. | Convert to SQL on Delta. No JAR task, no cluster, no `spark_jar_task`. | STOP C |
 | **P3-D07** | The rollup's nightly CronJob reads a baked-in seed file and writes to an `emptyDir` (F-0.5, F-0.6). Migrating it produces a durable table nobody currently reads. | Migrate it — it is cheap and the output is obviously useful — but ask the user at STOP E whether the real production job has a real input and a real consumer, because this estate says it has neither. | STOP C + STOP E |
+| **P3-D09** | Wave 1 cannot run through `migration-fanout`. The workflow re-runs factory-doctor at launch and refuses unless `capabilities.ready == true`, and the doctor's `source_principal_read_only` row can only be satisfied by a source it has a privilege query for — SQL Server and Postgres. Pipeline 3's source family is `databricks`, so the row is `unverified` and readiness is false no matter what the workspace looks like. | Run wave 1 in-session as five sequential units under the same gate (one PR per unit, recon recomputed from the target, idempotency proven by rerun). Do **not** make the doctor green: the row is carried as unverified into every pipeline-3 recon report and into the STOP E packet. Closing it properly needs a Databricks privilege query in the doctor plugin — a plugin change, not a run-time workaround. | Wave 1 open |
 
 ### Behaviour changes, named
 
@@ -120,10 +121,11 @@ hard-coded 2019 storage price (C-4.7), and the hard-coded compliance booleans (C
 
 ## 4. Waves
 
-Wave 1 has five independent batches, so it runs through `migration-fanout` / `run_workflow`
-at width 5 — the first wave in this engagement wide enough to justify it. Waves 0, 2 and 3 are
-single-batch and run serially, with manifests still written in the fan-out shape so the
-collision check and the circuit breaker apply.
+Wave 1 has five independent batches and was planned at width 5 through `migration-fanout` /
+`run_workflow`. It runs sequentially in-session instead, per P3-D09: the fan-out gate cannot
+pass honestly for a `databricks`-family source. The wave manifest keeps the fan-out shape, so
+the write-target collision check and the circuit breaker still apply; only the parallelism is
+lost. Waves 0, 2 and 3 are single-batch and were always serial.
 
 | Wave | Units | Depends on | Verify depth |
 |---:|---|---|---|
@@ -231,7 +233,7 @@ STOP E packet as a follow-up with an owner, not fixed here.
   "catalogs": ["ow_tp"],
   "guard_mode": "block",
   "stop_mode": "soft",
-  "ready": true
+  "ready": false
 }
 ```
 
@@ -239,8 +241,11 @@ STOP E packet as a follow-up with an owner, not fixed here.
 `allowlist_matches_contract`, harness self-test, recon drivers, and both hook checks pass —
 the platform hook probe was run in this session and the guard blocked it, naming its nonce.
 The two fails are `delete_evidence` and `source_principal_read_only`, which need per-unit ids
-and a source-secret name; they clear once the unit mapping specs under `.migration/units/p3-*/`
-exist, which wave 0 adds. The doctor reruns before every wave.
+and a source-secret name. Wave 0's unit mapping specs cleared `delete_evidence`; the rerun
+after wave 0 is **17 ok, 1 unverified**, and the unverified row is `source_principal_read_only`,
+which cannot clear for this source family (P3-D09). Readiness is therefore honestly `false`,
+which is why wave 1 runs sequentially rather than through the fan-out workflow. The doctor
+reruns before every wave and the row is restated in every pipeline-3 recon report.
 
 ## 8. Repo gates before each PR
 
@@ -267,3 +272,5 @@ production deployment does. None is answered by guessing.
 | 4 | `analytics_daily.py` deletes the SQS messages it reads (F-0.1), and neither the queue nor `otterworks-analytics-events` exists in this estate (F-0.2). | The SQS path is reconciled against a payload-file stand-in, not a live queue. That is an unverified path and is listed as one. |
 | 5 | `config.ini` holds plaintext AWS keys, a Postgres password and a MeiliSearch key, committed to source history (F-0.8). | Rotation, by their owner. Converted code uses names only; the exposure in history is not something a migration can undo. |
 | 6 | `search_reindex_weekly.py` writes MeiliSearch and reads two in-cluster HTTP services (F-0.7, P3-D05). | Confirmed out of Databricks scope as a coverage gap. Who owns it service-side after cutover? |
+| 7 | `factory-doctor` closes `source_principal_read_only` as **unverified** for pipeline 3 and `.migration/09_capabilities.json` is `ready=false`. The doctor implements source privilege queries for SQL Server and Postgres only, so a `databricks`-family source can never satisfy the row (P3-D09). | Accept the unverified row, or fund a doctor plugin change adding a Databricks privilege query? Nothing at run time closes it, and wave 1 lost its fan-out to it. |
+| 8 | Three wave-0 `mapping_spec.json` files are invalid (no objects) and their `no_data_movement.json` replacements sit beside them: `.migration/units/p3-foundations/mapping_spec.json`, `.migration/units/p3-orchestration/mapping_spec.json`, `.migration/units/p3-search-reindex/mapping_spec.json`. Removing them is blocked by the migration guard (`.migration/units/` is not command-writable) and no sanctioned factory workflow records a file removal. | Ledger-hygiene gap. Who removes the three stale files, and through which recorded decision? The orchestrator-role doctor reads them until they are gone. |

@@ -1,0 +1,12 @@
+{
+  "unit": "p3-foundations",
+  "reason": "Wave-0 foundation unit: shared pipeline-3 conventions, the named-secret mapping, the deterministic fixture generator and the legacy baseline capture. It creates no Databricks object and moves no data, so it has no source-to-target field mapping and no recon of its own. Its evidence is the baseline artefacts every other pipeline-3 unit reconciles against.",
+  "evidence": [
+    "docs/migration/Pipeline3_analytics_plan.md",
+    "docs/migration/Pipeline3_analytics_record_contract.md",
+    "scripts/tp_seed/gen_p3_fixture.py",
+    "scripts/tp_seed/capture_p3_baseline.py",
+    ".migration/recon/p3/baselines"
+  ],
+  "declared_at": "p3 wave 0"
+}

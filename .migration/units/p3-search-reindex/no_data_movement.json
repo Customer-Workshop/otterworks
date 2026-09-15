@@ -1,0 +1,10 @@
+{
+  "unit": "p3-search-reindex",
+  "reason": "REMOVED FROM DATABRICKS SCOPE by P3-D05, approved at STOP C. search_reindex_weekly.py reads two live in-cluster HTTP services (document-service, file-service) and writes a MeiliSearch index (F-0.7). No step of it reads or writes anything Databricks can host, so a converted job would have no target table, nothing to reconcile, and a hard network dependency on services serverless compute cannot reach. It stays a service-side job, unchanged. This is a declared coverage gap, not a migrated unit: no Databricks job is created to stand in for it, and it is carried into the STOP E packet so the gap is visible to whoever owns the search path.",
+  "evidence": [
+    "docs/migration/Pipeline3_analytics_plan.md",
+    "docs/migration/Pipeline3_analytics_record_contract.md",
+    "etl/scripts/search_reindex_weekly.py"
+  ],
+  "declared_at": "p3 wave 0"
+}

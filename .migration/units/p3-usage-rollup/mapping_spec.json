@@ -3,7 +3,7 @@
   "unit": "p3-usage-rollup",
   "track": "delta",
   "generation": "legacy-file",
-  "notes": "Source side is the Scala job's own output for the pinned seed file, loaded into ow_tp.bronze.p3_usage_legacy_rollup; target side is ow_tp.gold.usage_rollup, recomputed in SQL on Delta from the same seed (P3-D06: no JAR task, no cluster). The input keeps the dotted analytics-service vocabulary ('document.created', 'file.uploaded') \u2014 this unit does NOT share the snake_case vocabulary of analytics_daily (F-0.9), and normalising the two together would be wrong here as well. storage_bytes is a signed running total: 'storage.allocated' adds and 'storage.released' subtracts, so it can legitimately go negative and is compared exact rather than clamped. Capturing this baseline requires running the legacy Scala job, whose output the estate discards to an emptyDir (F-0.6); the baseline reads it from the container before exit rather than from any consumer, because there is no consumer.",
+  "notes": "Source side is the Scala job's own output for the pinned seed file, loaded into ow_tp.bronze.p3_usage_legacy_rollup; target side is ow_tp.gold.usage_rollup, recomputed in SQL on Delta from the same seed (P3-D06: no JAR task, no cluster). DailyUsageRollup is one row per UTC calendar day and carries no tenant dimension, so the key is the date and nothing else. Every one of its twelve fields is mapped: dropping any of them would let a converted job that computes fewer metrics reconcile green. The input keeps the dotted analytics-service vocabulary ('document.created', 'file.uploaded') \u2014 this unit does NOT share the snake_case vocabulary of analytics_daily (F-0.9), and normalising the two together would be wrong here as well. Allocated and released bytes are read from metadata['bytes'] and separated by event type, never by a key name; a non-numeric or missing value contributes zero and a negative one subtracts, so net_storage_bytes can legitimately be negative and is compared exact rather than clamped. Capturing this baseline requires running the legacy Scala job, whose output the estate discards to an emptyDir (F-0.6); the baseline reads it from the container before exit rather than from any consumer, because there is no consumer.",
   "tables": [
     {
       "object": "usage_rollup",
@@ -11,79 +11,122 @@
       "target_table": "usage_rollup",
       "key": {
         "source": [
-          "tenant_id",
-          "period"
+          "date"
         ],
         "target": [
-          "tenant_id",
-          "period"
+          "date"
         ]
       },
       "fields": [
         {
-          "source": "tenant_id",
-          "target": "tenant_id",
+          "source": "date",
+          "target": "date",
           "source_type": "STRING",
-          "target_type": "STRING",
-          "rules": []
-        },
-        {
-          "source": "period",
-          "target": "period",
-          "source_type": "STRING",
-          "target_type": "STRING",
-          "rules": []
-        },
-        {
-          "source": "documents_created",
-          "target": "documents_created",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "documents_edited",
-          "target": "documents_edited",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "documents_viewed",
-          "target": "documents_viewed",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "files_uploaded",
-          "target": "files_uploaded",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "files_downloaded",
-          "target": "files_downloaded",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
-          "rules": []
-        },
-        {
-          "source": "storage_bytes",
-          "target": "storage_bytes",
-          "source_type": "BIGINT",
-          "target_type": "BIGINT",
+          "target_type": "DATE",
           "rules": [
-            "signed; allocated minus released, may be negative"
+            "ISO-8601 yyyy-MM-dd, UTC calendar day of the event timestamp"
           ]
         },
         {
-          "source": "event_count",
-          "target": "event_count",
+          "source": "totalEvents",
+          "target": "total_events",
           "source_type": "BIGINT",
           "target_type": "BIGINT",
-          "rules": []
+          "rules": [
+            "every event of the day, including types with no counter of their own"
+          ]
+        },
+        {
+          "source": "activeUsers",
+          "target": "active_users",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "distinct userId, unattributed values counted as themselves rather than dropped"
+          ]
+        },
+        {
+          "source": "documentsCreated",
+          "target": "documents_created",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "eventType == 'document.created' exactly"
+          ]
+        },
+        {
+          "source": "documentsViewed",
+          "target": "documents_viewed",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "eventType == 'document.viewed' exactly"
+          ]
+        },
+        {
+          "source": "documentsEdited",
+          "target": "documents_edited",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "eventType == 'document.edited' exactly"
+          ]
+        },
+        {
+          "source": "filesUploaded",
+          "target": "files_uploaded",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "eventType == 'file.uploaded' exactly"
+          ]
+        },
+        {
+          "source": "filesDownloaded",
+          "target": "files_downloaded",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "eventType == 'file.downloaded' exactly"
+          ]
+        },
+        {
+          "source": "collabSessions",
+          "target": "collab_sessions",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "eventType == 'collab.session_started' only; session_ended is not counted"
+          ]
+        },
+        {
+          "source": "storageAllocatedBytes",
+          "target": "storage_allocated_bytes",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "sum of metadata['bytes'] over 'storage.allocated' events",
+            "missing or non-numeric contributes 0; negative subtracts"
+          ]
+        },
+        {
+          "source": "storageReleasedBytes",
+          "target": "storage_released_bytes",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "sum of metadata['bytes'] over 'storage.released' events",
+            "missing or non-numeric contributes 0; negative subtracts"
+          ]
+        },
+        {
+          "source": "netStorageBytes",
+          "target": "net_storage_bytes",
+          "source_type": "BIGINT",
+          "target_type": "BIGINT",
+          "rules": [
+            "allocated minus released; signed, may be negative"
+          ]
         }
       ]
     }

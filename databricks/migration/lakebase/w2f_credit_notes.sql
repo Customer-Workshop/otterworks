@@ -23,7 +23,8 @@
 --    WHERE tenant_id = ? AND remaining_amount > 0 ORDER BY issued_on, id
 -- must stay oldest-first on (issued_on, id). The burn-down itself is NOT implemented here.
 
-CREATE SCHEMA IF NOT EXISTS billing;
+-- The billing schema and billing.tenants are wave-1 objects and must already exist; this
+-- unit creates neither, so a missing prerequisite fails here instead of being papered over.
 
 CREATE TABLE IF NOT EXISTS billing.credit_notes (
     id               varchar(36)   NOT NULL,

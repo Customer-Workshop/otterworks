@@ -9,7 +9,7 @@
   "child_minutes": 90,
   "verify_depth": "sampled",
   "cost_estimate": {
-    "source_statements": 102,
+    "source_statements": 101,
     "target_statements": 78,
     "source_rows_fetched": 33476,
     "target_rows_fetched": 33476

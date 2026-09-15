@@ -482,7 +482,10 @@ It depends only on billing.tenants (fk_cn_tenant), which merged in wave 1.
         ("w3-a", ["p1-rating-periods", "p1-rating-results", "p1-pkg-rating"],
          ["billing.rating_periods", "billing.rating_results", "billing.sp_finalize_rating",
           "billing.fn_usage_rating", "billing.fn_usage_summary"],
-         [],
+         # sp_finalize_rating writes the hand-off row wave 0 created the table for; the DDL
+         # owner is a strictly earlier wave, so this is DML on someone else's table and has
+         # to be declared rather than left implicit in the brief.
+         ["billing.rating_state"],
          """
 The rating chain: RATING_PERIODS (3), RATING_RESULTS (3) and pkg_rating
 (packages/03_pkg_rating.sql), together because the package writes both tables.

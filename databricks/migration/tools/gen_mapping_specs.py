@@ -40,7 +40,9 @@ UNITS_SPEC = {
     "p1-dunning-attempts":     ("dunning_attempts", "dunning_attempts", ["id"], None, None, "lakebase"),
     "p1-notifications":        ("notifications", "notifications", ["id"], ("sent_at", None), None, "lakebase"),
     "p1-codes":                ("codes", "codes", ["code_type", "code_val"], None, None, "lakebase"),
-    "p1-customer-master":      ("customer_master", "customer_master", ["cust_id"], ("updated_dt", None), "cust_seq_no", "lakebase"),
+    # updated_dt is nullable and no trigger maintains it, so it cannot bound in-flight rows:
+    # strict grading (watermark None) is the honest treatment.
+    "p1-customer-master":      ("customer_master", "customer_master", ["cust_id"], None, "cust_seq_no", "lakebase"),
     "p1-entity-attr-value":    ("entity_attr_value", "entity_attr_value", ["eav_id"], None, "eav_id", "lakebase"),
     "p1-customer-master-hist": ("customer_master_hist", "customer_master_hist", ["hist_id"], None, "hist_id", "delta"),
     "p1-subscriptions-hist":   ("subscriptions_hist", "subscriptions_hist", ["hist_id"], None, "hist_id", "delta"),

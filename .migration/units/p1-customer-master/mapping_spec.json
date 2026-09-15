@@ -1495,10 +1495,6 @@
           "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') with NLS_DATE_LANGUAGE=ENGLISH, NULL on anything else"
         }
       ],
-      "watermark": {
-        "source": "updated_dt",
-        "target": "updated_dt"
-      },
       "identity": {
         "source": "cust_seq_no",
         "target": "cust_seq_no"

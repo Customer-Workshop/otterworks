@@ -19,7 +19,9 @@ A full read (no --watermark-column, or --full-refresh) stages every live key and
 CAN converge deletes; it removes target rows whose key is absent from the stage. The delete
 pass never runs against a watermark-filtered stage, which would empty the table. Watermarked
 tables need a periodic --full-refresh run to converge deletes; each run's JSON says whether
-deletes were converged.
+deletes were converged. A complete snapshot that reads zero rows means the source table is
+empty, so the target is emptied too; an empty incremental read means nothing new arrived and
+leaves the target alone.
 
 usage (under with_oracle_secret.py, with DATABRICKS_* in the environment):
   python3 jdbc_watermark_load.py --table codes --keys code_type,code_val
@@ -167,8 +169,17 @@ def main() -> int:
         # The stage holds every live key only when nothing filtered the read.
         full_snapshot = since is None
         if not rows:
+            # An empty complete snapshot means the source table is empty, which is a real
+            # state the target has to reach. An empty incremental read means nothing new.
+            emptied = False
+            if full_snapshot:
+                cur.execute(f"SHOW TABLES IN {CATALOG}.{SCHEMA} LIKE '{table}'")
+                if cur.fetchall():
+                    cur.execute(f"DELETE FROM {CATALOG}.{SCHEMA}.{table}")
+                    emptied = True
             print(json.dumps({"table": table, "rows": 0, "watermark_since": str(since),
-                              "deletes_converged": False}))
+                              "full_snapshot": full_snapshot, "target_emptied": emptied,
+                              "deletes_converged": full_snapshot}))
             return 0
 
         run_id = uuid.uuid4().hex
@@ -194,11 +205,15 @@ def main() -> int:
             total = cur.fetchone()[0]
         finally:
             cur.execute(f"DROP TABLE IF EXISTS {stage}")
+            # The Parquet object exists only to seed the stage table; leaving it behind
+            # would grow the landing volume by one file per table per run forever.
+            WorkspaceClient().files.delete(staged)
 
     print(json.dumps({"table": table, "source_rows": len(rows), "target_rows": total,
                       "watermark_column": watermark_column,
                       "watermark_since": str(since), "full_snapshot": full_snapshot,
-                      "deletes_converged": full_snapshot, "staged": staged}))
+                      "deletes_converged": full_snapshot,
+                      "staged": staged, "staged_retained": False}))
     return 0
 
 

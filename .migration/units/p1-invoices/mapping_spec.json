@@ -49,9 +49,7 @@
           "target": "issued_at",
           "source_type": "TIMESTAMP",
           "target_type": "timestamptz",
-          "rules": [
-            "datetime_utc_truncate_ms"
-          ]
+          "rules": []
         },
         {
           "source": "subtotal",

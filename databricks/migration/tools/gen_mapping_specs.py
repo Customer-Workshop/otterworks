@@ -171,7 +171,11 @@ def target_types(col: str, otype: str, track: str) -> tuple[str, str, list[str]]
     elif base == "DATE":
         lb, dl, rules = "timestamp(0)", "TIMESTAMP", []
     elif base == "TIMESTAMP":
-        lb, dl, rules = "timestamptz", "TIMESTAMP", ["datetime_utc_truncate_ms"]
+        # Oracle's default is TIMESTAMP(6). Truncating a six-digit column to milliseconds
+        # would hide sub-millisecond loss, so the rule only applies where the declared
+        # precision is already at or below milliseconds.
+        lb, dl = "timestamptz", "TIMESTAMP"
+        rules = ["datetime_utc_truncate_ms"] if int(p or 6) <= 3 else []
     else:
         raise SystemExit(f"unmapped Oracle type {otype} on column {col}")
     return lb, dl, rules

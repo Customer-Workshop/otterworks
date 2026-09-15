@@ -40,9 +40,7 @@
           "target": "occurred_at",
           "source_type": "TIMESTAMP",
           "target_type": "TIMESTAMP",
-          "rules": [
-            "datetime_utc_truncate_ms"
-          ]
+          "rules": []
         },
         {
           "source": "units",

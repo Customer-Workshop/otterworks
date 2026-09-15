@@ -63,6 +63,34 @@ need catalog metadata this adapter does not read.
 """
 
 
+BANNER = (
+    "> **DEGRADED - not an official harness verdict.** The Oracle side is read over JDBC with a "
+    "repo-local adapter (reason: `{reason}`); `official_verdict` is false. Merge eligibility below "
+    "is the data verdict under the owner's STOP C exception, not the harness certifying the "
+    "source. See DEGRADED.md.\n\n"
+)
+
+
+def stamp_markdown(out_dir: Path) -> None:
+    """Carry the DEGRADED grade into the harness's own Markdown, not just result.json.
+
+    The harness writes its summary and report before it returns, so a reader who opens the
+    summary alone sees `Merge eligible: yes` with nothing saying the source connector is
+    outside the tested matrix - the opposite signal from the result the gate records.
+    """
+    for name in ("recon.summary.md", "report.md"):
+        path = out_dir / name
+        if not path.exists():
+            continue
+        text = path.read_text()
+        if text.startswith("> **DEGRADED"):
+            continue
+        lines = [(f"{line} - degraded, see DEGRADED.md"
+                  if line.startswith("- Merge eligible:") else line)
+                 for line in text.splitlines()]
+        path.write_text(BANNER.format(reason=REASON) + "\n".join(lines) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--unit", required=True)
@@ -121,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     (args.out / "DEGRADED.md").write_text(DEGRADED_MD.format(
         unit=args.unit, mode=args.mode, depth=result["depth"], verdict=result["verdict"],
         reason=REASON, note=ADAPTER_NOTE))
+    stamp_markdown(args.out)
 
     print(f"DEGRADED (not an official harness verdict) {result['verdict']}: unit={args.unit} "
           f"mode={args.mode} depth={result['depth']} mapping={spec.version} "

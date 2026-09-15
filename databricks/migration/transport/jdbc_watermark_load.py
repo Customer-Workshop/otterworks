@@ -257,8 +257,12 @@ def main() -> int:
         WorkspaceClient().files.upload(staged, buf, overwrite=True)
 
         stage = f"{CATALOG}.{SCHEMA}.{table}__stage_{run_id}"
-        cur.execute(f"CREATE TABLE {stage} AS SELECT * FROM parquet.`{staged}`")
         try:
+            # The Parquet object exists only to seed the stage table, so its cleanup starts
+            # at the upload, not at the first statement that happens to succeed: a stage
+            # table that fails to create would otherwise strand one file per attempt. The
+            # drop is nested so that a failing drop cannot skip the delete.
+            cur.execute(f"CREATE TABLE {stage} AS SELECT * FROM parquet.`{staged}`")
             cur.execute(f"CREATE TABLE IF NOT EXISTS {CATALOG}.{SCHEMA}.{table} "
                         f"AS SELECT * FROM {stage} WHERE 1=0")
             on = " AND ".join(f"t.{k} <=> s.{k}" for k in keys)
@@ -271,10 +275,10 @@ def main() -> int:
             cur.execute(f"SELECT count(*) FROM {CATALOG}.{SCHEMA}.{table}")
             total = cur.fetchone()[0]
         finally:
-            cur.execute(f"DROP TABLE IF EXISTS {stage}")
-            # The Parquet object exists only to seed the stage table; leaving it behind
-            # would grow the landing volume by one file per table per run forever.
-            WorkspaceClient().files.delete(staged)
+            try:
+                cur.execute(f"DROP TABLE IF EXISTS {stage}")
+            finally:
+                WorkspaceClient().files.delete(staged)
 
     print(json.dumps({"table": table, "source_rows": len(rows), "target_rows": total,
                       "watermark_column": watermark_column,

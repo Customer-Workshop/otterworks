@@ -1,7 +1,9 @@
+> **DEGRADED - not an official harness verdict.** The Oracle side is read over JDBC with a repo-local adapter (reason: `d10_01_denied`); `official_verdict` is false. Merge eligibility below is the data verdict under the owner's STOP C exception, not the harness certifying the source. See DEGRADED.md.
+
 # Recon summary: `p1-pkg-ow-util` - **PASS**
 
 - Mode: `transactional` (both sides live: PASS scoped to the consistency window that held and the target's applied CDC watermark)
-- Merge eligible: no (fixture/continuous evidence never merges)
+- Merge eligible: no (fixture/continuous evidence never merges) - degraded, see DEGRADED.md
 - Mapping `map-p1-v1` / tolerances `v1` / seed `0` / depth `full`
 - Generated: 2026-09-15T06:08:51.266848+00:00
 - Cost: source 12 statements / 7 rows fetched; target 11 statements / 7 rows; 1.124s

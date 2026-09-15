@@ -1,0 +1,2 @@
+rerun of the same load, same target, no DDL in between:
+loaded p1-dunning-attempts.dunning_attempts: source_rows=1 target_rows=1 deleted=0

@@ -1,0 +1,13 @@
+{
+  "kind": "target-state-digest",
+  "unit": "p1-dunning-attempts",
+  "run_id": "e8ddb9ea6ef6468687345af359d0ce67",
+  "finished_at": "2026-09-15T08:57:31.404681+00:00",
+  "tables": [
+    {
+      "table": "ow_tp.billing.dunning_attempts",
+      "rows": 1,
+      "content_hash": "3d0074925628fe396a184cd7cfd3039c"
+    }
+  ]
+}

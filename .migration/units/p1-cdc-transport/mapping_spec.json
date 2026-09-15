@@ -24,7 +24,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -41,7 +40,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -51,7 +49,6 @@
           "source_type": "VARCHAR2(20)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -61,7 +58,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -71,7 +67,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -81,7 +76,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -91,7 +85,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -101,7 +94,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -111,7 +103,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -121,7 +112,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -131,7 +121,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -141,7 +130,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -151,7 +139,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -161,7 +148,6 @@
           "source_type": "VARCHAR2(80)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -171,7 +157,6 @@
           "source_type": "VARCHAR2(4)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -181,7 +166,6 @@
           "source_type": "VARCHAR2(12)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -191,7 +175,6 @@
           "source_type": "VARCHAR2(6)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -201,7 +184,6 @@
           "source_type": "VARCHAR2(4)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -211,7 +193,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -221,7 +202,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -231,7 +211,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -241,7 +220,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -251,7 +229,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -261,7 +238,6 @@
           "source_type": "VARCHAR2(120)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -271,7 +247,6 @@
           "source_type": "VARCHAR2(80)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -281,7 +256,6 @@
           "source_type": "VARCHAR2(4)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -291,7 +265,6 @@
           "source_type": "VARCHAR2(12)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -301,7 +274,6 @@
           "source_type": "VARCHAR2(25)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -311,7 +283,6 @@
           "source_type": "VARCHAR2(25)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -321,7 +292,6 @@
           "source_type": "VARCHAR2(25)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -331,7 +301,6 @@
           "source_type": "VARCHAR2(25)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -369,7 +338,6 @@
           "source_type": "VARCHAR2(25)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -379,7 +347,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -389,7 +356,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -399,7 +365,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -409,7 +374,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -419,7 +383,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -429,7 +392,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -439,7 +401,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -449,7 +410,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -609,7 +569,6 @@
           "source_type": "VARCHAR2(2000)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -619,7 +578,6 @@
           "source_type": "VARCHAR2(2000)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -629,7 +587,6 @@
           "source_type": "VARCHAR2(1000)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -639,7 +596,6 @@
           "source_type": "VARCHAR2(4000)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -649,7 +605,6 @@
           "source_type": "VARCHAR2(50)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -659,7 +614,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -876,7 +830,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -886,7 +839,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -896,7 +848,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -906,7 +857,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -916,7 +866,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -926,7 +875,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -936,7 +884,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -946,7 +893,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -956,7 +902,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -966,7 +911,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -976,7 +920,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -986,7 +929,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -996,7 +938,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1006,7 +947,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1016,7 +956,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1026,7 +965,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1036,7 +974,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1046,7 +983,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1056,7 +992,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1066,7 +1001,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1076,7 +1010,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1086,7 +1019,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1096,7 +1028,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1106,7 +1037,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1116,7 +1046,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1126,7 +1055,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1136,7 +1064,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1146,7 +1073,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1156,7 +1082,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1166,7 +1091,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1176,7 +1100,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1186,7 +1109,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1196,7 +1118,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1206,7 +1127,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1216,7 +1136,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1226,7 +1145,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1236,7 +1154,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1246,7 +1163,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1256,7 +1172,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1266,7 +1181,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1366,7 +1280,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1376,7 +1289,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1386,7 +1298,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1396,7 +1307,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1406,7 +1316,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1416,7 +1325,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1426,7 +1334,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1436,7 +1343,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1446,7 +1352,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1456,7 +1361,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1466,7 +1370,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1483,7 +1386,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1500,6 +1402,98 @@
           "source_type": "NUMBER(8)",
           "target_type": "INT",
           "rules": []
+        }
+      ],
+      "derived_fields": [
+        {
+          "raw": "signup_dt",
+          "target": "signup_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "last_activity_dt",
+          "target": "last_activity_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "last_invoice_dt",
+          "target": "last_invoice_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "last_payment_dt",
+          "target": "last_payment_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "terminate_dt",
+          "target": "terminate_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_01",
+          "target": "udf_dt_01_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_02",
+          "target": "udf_dt_02_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_03",
+          "target": "udf_dt_03_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_04",
+          "target": "udf_dt_04_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_05",
+          "target": "udf_dt_05_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_06",
+          "target": "udf_dt_06_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_07",
+          "target": "udf_dt_07_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_08",
+          "target": "udf_dt_08_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_09",
+          "target": "udf_dt_09_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "udf_dt_10",
+          "target": "udf_dt_10_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
         }
       ]
     },
@@ -1522,7 +1516,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1532,7 +1525,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1542,7 +1534,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1552,7 +1543,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1562,7 +1552,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1572,7 +1561,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1599,6 +1587,20 @@
           "target_type": "INT",
           "rules": []
         }
+      ],
+      "derived_fields": [
+        {
+          "raw": "invoice_dt",
+          "target": "invoice_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "due_dt",
+          "target": "due_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        }
       ]
     },
     {
@@ -1620,7 +1622,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1630,7 +1631,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1640,7 +1640,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1650,7 +1649,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1660,7 +1658,6 @@
           "source_type": "VARCHAR2(20)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1670,7 +1667,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1680,7 +1676,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1704,7 +1699,6 @@
           "source_type": "VARCHAR2(400)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1750,7 +1744,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1760,7 +1753,6 @@
           "source_type": "VARCHAR2(20)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1780,7 +1772,6 @@
           "source_type": "VARCHAR2(200)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -1797,9 +1788,16 @@
           "source_type": "VARCHAR2(10)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
+        }
+      ],
+      "derived_fields": [
+        {
+          "raw": "invoice_dt",
+          "target": "invoice_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
         }
       ]
     }

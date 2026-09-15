@@ -23,7 +23,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "varchar(36)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -33,7 +32,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "varchar(36)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },

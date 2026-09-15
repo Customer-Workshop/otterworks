@@ -30,7 +30,6 @@
           "source_type": "VARCHAR2(20)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -40,7 +39,6 @@
           "source_type": "VARCHAR2(3)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -50,7 +48,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -60,7 +57,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -70,7 +66,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },

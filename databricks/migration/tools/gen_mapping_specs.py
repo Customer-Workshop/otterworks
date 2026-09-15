@@ -58,48 +58,56 @@ UNITS_SPEC = {
 FED = "ow_billing_fed.ow_billing"  # Lakehouse Federation catalog.schema, created in wave 0
 
 CODE_UNITS: dict[str, tuple[list[tuple[str, list[str], str]], list[tuple[str, str, str]]]] = {
+    # U-20's parity ops compare Oracle-COMPUTED ids against the converted function. Neither
+    # side calls an Oracle package: Lakehouse Federation exposes OW_BILLING rows to Databricks
+    # SQL, not PL/SQL, so an unqualified f_md5_uuid(...) in source_sql would resolve in
+    # Databricks and prove nothing. Instead the source side reads ids Oracle already produced
+    # (pkg_rating:197, pkg_invoicing:130-160 give the exact derivation), and the target side
+    # recomputes them from the same inputs, seeded into billing.md5_parity_input in wave 0.
+    # Both sides of every op therefore run on the engine the unit's --target-kind names.
     "p1-pkg-ow-util": (
-        [("billing_audit_log", ["log_id"], "delta")],
-        [("f_md5_uuid_vector",
-          f"SELECT v AS input, f_md5_uuid(v) AS id FROM {FED}.fixture_md5_vector ORDER BY v",
-          "SELECT input AS input, billing.f_md5_uuid(input) AS id FROM billing.fixture_md5_vector ORDER BY input"),
-         ("f_str2dt_vector",
-          f"SELECT v AS input, f_str2dt(v) AS dt FROM {FED}.fixture_date_vector ORDER BY v",
-          "SELECT input AS input, billing.f_str2dt(input) AS dt FROM billing.fixture_date_vector ORDER BY input"),
-         ("f_code_desc_all",
-          f"SELECT code_type, code_val, f_code_desc(code_type, code_val) AS d FROM {FED}.codes ORDER BY code_type, code_val",
-          "SELECT code_type, code_val, billing.f_code_desc(code_type, code_val) AS d FROM billing.codes ORDER BY code_type, code_val")]),
-    "p1-pkg-plans": (
-        [("subscriptions", ["id"], "lakebase")],
-        [("fn_plan_entitlements_all_tenants",
-          f"SELECT tenant_id, plan_id, entitlement, qty FROM {FED}.v_plan_entitlements_all ORDER BY tenant_id, entitlement",
-          "SELECT tenant_id, plan_id, entitlement, qty FROM billing.fn_plan_entitlements_all() ORDER BY tenant_id, entitlement")]),
+        [("billing_audit_log", ["log_id"], "lakebase")],
+        [("f_md5_uuid_vs_oracle_rating_result_ids",
+          f"SELECT period_id AS input, id AS oracle_id FROM {FED}.rating_results ORDER BY period_id",
+          "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
+          "FROM billing.md5_parity_input WHERE vector = 'rating_result' ORDER BY input"),
+         ("f_md5_uuid_vs_oracle_invoice_ids",
+          f"SELECT period_id || 'invoice' AS input, id AS oracle_id FROM {FED}.invoices ORDER BY input",
+          "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
+          "FROM billing.md5_parity_input WHERE vector = 'invoice' ORDER BY input"),
+         ("f_md5_uuid_vs_oracle_invoice_line_ids",
+          f"SELECT invoice_id || CAST(line_no AS STRING) AS input, id AS oracle_id "
+          f"FROM {FED}.invoice_lines ORDER BY input",
+          "SELECT input AS input, billing.f_md5_uuid(input) AS oracle_id "
+          "FROM billing.md5_parity_input WHERE vector = 'invoice_line' ORDER BY input")]),
+    # The other four packages have NO ops file, deliberately. Their entrypoints are PL/SQL, and
+    # the only way to put an Oracle-side result next to a target-side one through Federation
+    # would be an Oracle view over the package - source DDL, which is forbidden. Their merge
+    # evidence is the live row parity of the tables they write (below) plus the fixture-run
+    # behavioural diff the plan specifies; the plan records the live-entrypoint comparison as a
+    # declared unverified path rather than pretending a gate exists.
+    "p1-pkg-plans": ([("subscriptions", ["id"], "lakebase")], []),
     "p1-pkg-rating": (
-        [("rating_periods", ["id"], "lakebase"), ("rating_results", ["id"], "lakebase")],
-        [("fn_usage_rating_all",
-          f"SELECT * FROM {FED}.v_usage_rating_all ORDER BY tenant_id, period_id",
-          "SELECT * FROM billing.fn_usage_rating_all() ORDER BY tenant_id, period_id"),
-         ("fn_usage_summary_all",
-          f"SELECT * FROM {FED}.v_usage_summary_all ORDER BY tenant_id, kind",
-          "SELECT * FROM billing.fn_usage_summary_all() ORDER BY tenant_id, kind")]),
+        [("rating_periods", ["id"], "lakebase"), ("rating_results", ["id"], "lakebase")], []),
     "p1-pkg-invoicing": (
-        [("invoices", ["id"], "lakebase"), ("invoice_lines", ["id"], "lakebase")],
-        [("fn_invoice_preview_all",
-          f"SELECT * FROM {FED}.v_invoice_preview_all ORDER BY tenant_id",
-          "SELECT * FROM billing.fn_invoice_preview_all() ORDER BY tenant_id"),
-         ("fn_invoice_lines_all",
-          f"SELECT * FROM {FED}.v_invoice_lines_all ORDER BY invoice_id, line_no",
-          "SELECT * FROM billing.fn_invoice_lines_all() ORDER BY invoice_id, line_no")]),
+        [("invoices", ["id"], "lakebase"), ("invoice_lines", ["id"], "lakebase")], []),
     "p1-pkg-dunning": (
-        [("dunning_attempts", ["id"], "lakebase"), ("notifications", ["id"], "lakebase")],
-        [("fn_overdue_accounts",
-          f"SELECT * FROM {FED}.v_overdue_accounts ORDER BY issued_at, id",
-          "SELECT * FROM billing.fn_overdue_accounts() ORDER BY issued_at, id")]),
+        [("dunning_attempts", ["id"], "lakebase"), ("notifications", ["id"], "lakebase")], []),
     "p1-job-nightly-dunning": ([("dunning_attempts", ["id"], "lakebase")], []),
     "p1-job-purge-audit-log": ([("billing_audit_log", ["log_id"], "delta")], []),
     "p1-cdc-transport": (
         [("customer_master", ["cust_id"], "delta"), ("invoice_header", ["invoice_id"], "delta"),
          ("invoice_line", ["line_id"], "delta")], []),
+}
+
+# Ops that belong to a DATA unit because they need that unit's migrated table.
+# f_code_desc is a lookup of codes.code_desc, so the Oracle row IS the expected value.
+DATA_UNIT_OPS: dict[str, list[tuple[str, str, str]]] = {
+    "p1-codes": [(
+        "f_code_desc_all",
+        f"SELECT code_type, code_val, code_desc AS d FROM {FED}.codes ORDER BY code_type, code_val",
+        "SELECT code_type, code_val, billing.f_code_desc(code_type, code_val) AS d "
+        "FROM billing.codes ORDER BY code_type, code_val")],
 }
 
 CREATE_RE = re.compile(r"CREATE TABLE (\w+) \((.*?)\n\);", re.S)
@@ -129,9 +137,11 @@ def target_types(col: str, otype: str, track: str) -> tuple[str, str, list[str]]
         dl = "SMALLINT" if width <= 4 else ("INT" if width <= 9 else "BIGINT")
         rules = []
     elif base == "CHAR":
+        # Fixed-width: Oracle blank-pads, so trailing spaces carry no information. VARCHAR2
+        # keeps whatever was written, so stripping there would hide real data loss.
         lb, dl, rules = f"char({p})", "STRING", ["rstrip_spaces", "empty_string_is_null"]
     elif base == "VARCHAR2":
-        lb, dl, rules = f"varchar({p})", "STRING", ["rstrip_spaces", "empty_string_is_null"]
+        lb, dl, rules = f"varchar({p})", "STRING", ["empty_string_is_null"]
     elif base == "DATE":
         lb, dl, rules = "timestamp(0)", "TIMESTAMP", []
     elif base == "TIMESTAMP":
@@ -143,6 +153,45 @@ def target_types(col: str, otype: str, track: str) -> tuple[str, str, list[str]]
 
 LEGACY_TABLES = ("invoice_header", "invoice_line", "customer_master", "entity_attr_value",
                  "customer_master_hist")
+
+# The string-date columns of the analysis dictionary (section 3): DD-MON-YY text in a
+# VARCHAR2(9). They migrate RAW (byte-exact) PLUS a parsed date column, so an explicit list
+# is required - not every VARCHAR2(9) is a date and not every date column is 9 wide.
+# `hist_dt` is VARCHAR2(20) in a different, undocumented format: it migrates raw only and the
+# parse is an open item in the plan, because a parser that guesses is worse than none.
+DDMONYY_WIDTH = "VARCHAR2(9)"
+PARSED_SUFFIX = "_parsed"
+DDMONYY_COLUMNS = frozenset({
+    "signup_dt", "last_activity_dt", "last_invoice_dt", "last_payment_dt", "terminate_dt",
+    "udf_dt_01", "udf_dt_02", "udf_dt_03", "udf_dt_04", "udf_dt_05",
+    "udf_dt_06", "udf_dt_07", "udf_dt_08", "udf_dt_09", "udf_dt_10",
+    "created_dt", "invoice_dt", "due_dt",
+})
+# VARCHAR2(20), a different and undocumented format: raw only, no parse. Guessing a parser
+# here would silently mint wrong dates.
+RAW_ONLY_DATE_COLUMNS = frozenset({"hist_dt", "service_period"})
+
+
+def is_ddmonyy(col: str, otype: str) -> bool:
+    return otype == DDMONYY_WIDTH and col.lower() in DDMONYY_COLUMNS
+
+
+def check_date_columns(tables: dict[str, list[tuple[str, str]]]) -> None:
+    """Fail if the DDL grew a VARCHAR2(9) column the approved list does not name.
+
+    The list is explicit on purpose: a width is not a type. A new one is a dictionary
+    decision (parse it or keep it raw), not something this generator should infer."""
+    unknown = sorted({c for cols in tables.values() for c, t in cols
+                      if t == DDMONYY_WIDTH and c.lower() not in DDMONYY_COLUMNS
+                      and c.lower() not in RAW_ONLY_DATE_COLUMNS})
+    if unknown:
+        raise SystemExit(f"VARCHAR2(9) columns not in the approved string-date list: {unknown}. "
+                         "Add them to DDMONYY_COLUMNS (parsed companion) or "
+                         "RAW_ONLY_DATE_COLUMNS (raw only) with a dictionary decision.")
+
+
+def date_columns(src: str, tables: dict[str, list[tuple[str, str]]]) -> list[str]:
+    return [c for c, t in tables[src] if is_ddmonyy(c, t)]
 
 
 def make_object(src: str, tgt: str, key: list[str], track: str,
@@ -164,6 +213,17 @@ def make_object(src: str, tgt: str, key: list[str], track: str,
         "key": {"source": key, "target": key},
         "fields": fields,
     }
+    # Parsed companions for the DD-MON-YY string dates. They are NOT graded fields: there is
+    # no source column to compare them with (Oracle parses on read, in f_str2dt), so grading
+    # one against its raw string would fail every row. The contract is declared here and
+    # proved by the unit's `str_date_parse` op, which compares the target's parsed column
+    # against the same raw bytes parsed on the source side.
+    parsed = [{"raw": c, "target": c + PARSED_SUFFIX,
+               "target_type": "date" if track == "lakebase" else "DATE",
+               "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"}
+              for c, t in tables[src] if is_ddmonyy(c, t)]
+    if parsed:
+        obj["derived_fields"] = parsed
     if watermark:
         obj["watermark"] = {"source": watermark[0], "target": watermark[1] or watermark[0]}
     if identity:
@@ -187,6 +247,32 @@ def build(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> dict:
     }
 
 
+def date_ops(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> list[dict]:
+    """Tier-4 op proving the parsed date column and the unparseable set, for one data unit.
+
+    Both sides read the SAME raw bytes: the source side is the federated Oracle column parsed
+    in Databricks SQL, the target side is the column the conversion wrote. That proves the
+    target parse and pins the NULL (unparseable) set as data, which is what the tolerance
+    record compares as an exact set. It does NOT execute Oracle's f_str2dt - Federation
+    exposes rows, not PL/SQL - so the plan carries it as a declared unverified path.
+    """
+    src, tgt, key, _, _, track = UNITS_SPEC[unit_id]
+    cols = date_columns(src, tables)
+    if not cols:
+        return []
+    keys = ", ".join(key)
+    src_cols = ", ".join(f"to_date({c}, 'dd-MMM-yy') AS {c}{PARSED_SUFFIX}" for c in cols)
+    tgt_cols = ", ".join(f"{c}{PARSED_SUFFIX}" for c in cols)
+    tgt_table = f"billing.{tgt}" if track == "lakebase" else f"ow_tp.silver.{tgt}"
+    return [{
+        "name": f"str_date_parse_{tgt}",
+        "object": unit_id,
+        "source_sql": (f"SELECT {keys}, {src_cols} FROM {FED}.{src} ORDER BY {keys}"),
+        "target_sql": (f"SELECT {keys}, {tgt_cols} FROM {tgt_table} ORDER BY {keys}"),
+        "rules": ["null_missing_equiv"],
+    }]
+
+
 def build_code(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> tuple[dict, list[dict]]:
     """A code/orchestration/transport unit: the tables it writes plus its Tier-4 ops."""
     written, ops = CODE_UNITS[unit_id]
@@ -200,8 +286,7 @@ def build_code(unit_id: str, tables: dict[str, list[tuple[str, str]]]) -> tuple[
         "tables": objs,
     }
     ops_doc = [{"name": name, "object": unit_id, "source_sql": ssql, "target_sql": tsql,
-                "rules": ["decimal_round", "rstrip_spaces", "empty_string_is_null",
-                          "null_missing_equiv"]}
+                "rules": ["decimal_round", "empty_string_is_null", "null_missing_equiv"]}
                for name, ssql, tsql in ops]
     return spec, ops_doc
 
@@ -211,11 +296,18 @@ def main() -> int:
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args()
     tables = parse_tables()
+    check_date_columns(tables)
     drift: list[str] = []
     wanted: list[tuple[Path, str]] = []
     for unit_id in UNITS_SPEC:
         wanted.append((UNITS / unit_id / "mapping_spec.json",
                        json.dumps(build(unit_id, tables), indent=2) + "\n"))
+        ops = date_ops(unit_id, tables) + [
+            {"name": name, "object": unit_id, "source_sql": ssql, "target_sql": tsql,
+             "rules": ["empty_string_is_null", "null_missing_equiv"]}
+            for name, ssql, tsql in DATA_UNIT_OPS.get(unit_id, [])]
+        if ops:
+            wanted.append((UNITS / unit_id / "ops.json", json.dumps(ops, indent=2) + "\n"))
     for unit_id in CODE_UNITS:
         spec, ops = build_code(unit_id, tables)
         wanted.append((UNITS / unit_id / "mapping_spec.json", json.dumps(spec, indent=2) + "\n"))
@@ -228,6 +320,16 @@ def main() -> int:
             continue
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text)
+    # A unit that loses its ops must lose the file: a stale ops.json is a gate the recon
+    # harness would still run.
+    expected = {p for p, _ in wanted}
+    for stale in sorted(UNITS.glob("*/ops.json")):
+        if stale in expected:
+            continue
+        if args.check:
+            drift.append(f"{stale.relative_to(UNITS)} (stale, should not exist)")
+        else:
+            stale.unlink()
     if args.check and drift:
         print("mapping artifacts differ from the DDL for: " + ", ".join(drift))
         return 1

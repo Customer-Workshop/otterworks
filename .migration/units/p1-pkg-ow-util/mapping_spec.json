@@ -1,7 +1,7 @@
 {
   "version": "map-p1-v1",
   "unit": "p1-pkg-ow-util",
-  "track": "delta",
+  "track": "lakebase",
   "generation": "modern",
   "behavioural": true,
   "tables": [
@@ -22,23 +22,22 @@
           "source": "log_id",
           "target": "log_id",
           "source_type": "NUMBER(12)",
-          "target_type": "BIGINT",
+          "target_type": "bigint",
           "rules": []
         },
         {
           "source": "logged_at",
           "target": "logged_at",
           "source_type": "DATE",
-          "target_type": "TIMESTAMP",
+          "target_type": "timestamp(0)",
           "rules": []
         },
         {
           "source": "module",
           "target": "module",
           "source_type": "VARCHAR2(30)",
-          "target_type": "STRING",
+          "target_type": "varchar(30)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -46,9 +45,8 @@
           "source": "message",
           "target": "message",
           "source_type": "VARCHAR2(4000)",
-          "target_type": "STRING",
+          "target_type": "varchar(4000)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         }

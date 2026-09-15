@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[3]
 WAVES = ROOT / ".migration/waves"
 UNITS = ROOT / ".migration/units"
 CAPS_FILE = ROOT / ".migration/09_capabilities.json"
+ALLOWED_FILE = ROOT / ".migration/allowed_targets.json"
+PARENT_BRANCH = "mig-p1-w0"
 
 REPO = "github.com/Cognition-Partner-Workshops/otterworks"
 BASE_BRANCH = "tp-run/databricks-20260915T045714Z"
@@ -33,7 +35,7 @@ TOL = ".migration/03_recon_tolerances.json"
 # unit -> (title, track, depth, targets, source objects)
 # track: "lakebase" (operational) | "delta" (analytical)
 UNIT = {
-    "p1-pkg-ow-util":        ("U-20 pkg_ow_util (shared) + wave-0 scaffolding", "delta", "full"),
+    "p1-pkg-ow-util":        ("U-20 pkg_ow_util (shared) + wave-0 scaffolding", "lakebase", "full"),
     "p1-cdc-transport":      ("U-27 CDC transport (Debezium -> Kinesis -> Lakeflow AUTO CDC)", "delta", "threshold"),
     "p1-tenants":            ("U-01 TENANTS", "lakebase", "full"),
     "p1-plans":              ("U-02 PLANS", "lakebase", "full"),
@@ -147,12 +149,19 @@ def gate_cmd(unit: str) -> str:
 
 
 def brief(wave: int, batch_id: str, units: list[str], targets: list[str],
-          lakebase_branch: str | None, body: str) -> str:
+          lakebase_branch: str | None, parent_branch: str | None, body: str) -> str:
     unit_lines = "\n".join(f"  - {u}: {UNIT[u][0]} (track {UNIT[u][1]}, depth {UNIT[u][2]})"
                            for u in units)
     gates = "\n".join(gate_cmd(u) for u in units)
-    lb = (f"  Lakebase: create child branch `{lakebase_branch}` off `mig-p1-w0` at start, convert and\n"
-          f"  reconcile against it, and leave it for wave close (the orchestrator drops it).\n"
+    origin = (f"off `{parent_branch}` BEFORE this wave launched" if parent_branch else
+              "before this wave launched and carried it over from the previous wave")
+    lb = (f"  Lakebase: the orchestrator created branch `{lakebase_branch}` {origin},\n"
+          f"  so it already carries every object earlier waves merged.\n"
+          f"  Use it as it is: do NOT create, reset, re-branch or drop it - concurrent batches in\n"
+          f"  this wave share it, and creating it again races them. If it is missing, report\n"
+          f"  status=BLOCKED with `wave_branch_missing`; do not improvise one.\n"
+          f"  Batches stay out of each other's way by write target, not by branch: write only the\n"
+          f"  objects declared below.\n"
           f"  DSN at runtime: `databricks postgres generate-database-credential \\\n"
           f"    projects/ow-tp-billing/branches/{lakebase_branch}/endpoints/primary` -> export as\n"
           f"  OW_TP_LAKEBASE_DSN. 1-hour token, never stored, never printed.\n"
@@ -184,12 +193,37 @@ def cost(units: list[str]) -> dict:
     return agg
 
 
+def wave_branches(waves: list[int]) -> dict[int, tuple[str, str | None]]:
+    """wave -> (branch it converts on, branch that branch was cut from).
+
+    One Lakebase branch per WAVE, not per batch: the orchestrator creates it once off the
+    previous wave's branch before fan-out, so it carries every object earlier waves merged and
+    concurrent batches in the wave cannot race each other creating it. Batches are isolated by
+    disjoint write targets instead. Branch names must be in allowed_targets.json (the guard
+    blocks anything else, and that file is parent-owned); a wave with no allowed branch of its
+    own continues on the latest allowed one, which is safe because waves run in sequence."""
+    allowed = set(json.loads(ALLOWED_FILE.read_text())["lakebase_branches"])
+    out: dict[int, tuple[str, str | None]] = {}
+    current = PARENT_BRANCH
+    if current not in allowed:
+        raise SystemExit(f"parent branch {PARENT_BRANCH} is not in allowed_targets.json")
+    for wave in sorted(waves):
+        wanted = f"mig-p1-w{wave}"
+        if wanted in allowed and wanted != current:
+            out[wave] = (wanted, current)
+            current = wanted
+        else:
+            out[wave] = (current, None)
+    return out
+
+
 PLAN = [
-    # wave, width, lakebase branch, [(batch_id, units, write_targets, body)]
-    (0, 1, "mig-p1-w0", [
+    # wave, width, [(batch_id, units, write_targets, body)]
+    (0, 1, [
         ("w0-a", ["p1-pkg-ow-util"],
          ["billing.f_md5_uuid", "billing.f_str2dt", "billing.f_code_desc", "billing.log_msg",
-          "billing.rating_state", "ow_tp.silver.ow_util_fn", "/Volumes/ow_tp/bronze/landing"],
+          "billing.rating_state", "billing.billing_audit_log", "billing.md5_parity_input",
+          "ow_tp.silver.ow_util_fn", "/Volumes/ow_tp/bronze/landing"],
          """
 Wave 0 is serial and everything else waits on it. Deliver, in this order:
  1. Shared scaffolding: Lakebase schema `billing` conventions on branch mig-p1-w0 (the
@@ -223,9 +257,18 @@ Wave 0 is serial and everything else waits on it. Deliver, in this order:
     P1-D4), keyed (tenant_id, period_id), holding the overage amount and the finalisation
     marker that Oracle kept in g_overage_amount. Pin the exact shape here, with a comment
     saying wave 3 codes against it: w3-a writes it and w3-b reads it, concurrently.
- 6. Data recon for this unit is the billing_audit_log schema-parity check only (the table is
-    empty): record it as NOT DATA-PROVEN. The merge evidence is the MD5 parity vector plus
-    the Tier-4 op diff for the three functions.
+ 6. billing.md5_parity_input(vector, input): the seed table the MD5 ops compare against.
+    Seed it, through Federation, with the exact inputs Oracle used for the ids it already
+    holds - `rating_result` = rating_results.period_id (pkg_rating:197), `invoice` =
+    invoices.period_id || 'invoice' (pkg_invoicing:130-132), `invoice_line` =
+    invoice_lines.invoice_id || line_no (pkg_invoicing:160). The ops then put Oracle's own
+    ids next to billing.f_md5_uuid recomputed from the same inputs, which is the parity
+    proof. Neither side calls an Oracle package: Federation exposes rows, not PL/SQL.
+ 7. Data recon for this unit is the billing_audit_log schema-parity check only (the table is
+    empty; the operational copy billing.billing_audit_log is this unit's, the silver copy is
+    U-19's): record it as NOT DATA-PROVEN. The merge evidence is the three MD5 ops.
+    f_code_desc is graded at the wave-1 CODES gate (it needs billing.codes) and f_str2dt at
+    each string-date unit's `str_date_parse` op - do not invent an Oracle-side call here.
 Do not convert any business table here. Do not enable any schedule.
 """),
         ("w0-b", ["p1-cdc-transport"],
@@ -245,7 +288,7 @@ taken after the stream is caught up. On the fallback path, the convergence check
 watermark batch vs the snapshot, recorded as DEGRADED CDC evidence.
 """),
     ]),
-    (1, 3, "mig-p1-w1", [
+    (1, 3, [
         ("w1-a", ["p1-tenants", "p1-plans", "p1-codes"],
          ["billing.tenants", "billing.plans", "billing.codes"],
          """
@@ -280,7 +323,7 @@ Lakebase units in wave 4. State the generation in both mapping specs and in your
    expect the size-tiered recon path. Full row-level diff still applies (below 5,000,000).
 """),
     ]),
-    (2, 5, "mig-p1-w2", [
+    (2, 5, [
         ("w2-a", ["p1-subscriptions", "p1-pkg-plans"],
          ["billing.subscriptions", "billing.fn_plan_entitlements", "billing.sp_assign_plan"],
          """
@@ -341,7 +384,7 @@ BILLING_AUDIT_LOG (empty) into Delta plus its retention job.
    live run to compare against (the Oracle jobs are DISABLED) - state that gap plainly.
 """),
     ]),
-    (3, 5, "mig-p1-w3", [
+    (3, 5, [
         ("w3-a", ["p1-rating-periods", "p1-rating-results", "p1-pkg-rating"],
          ["billing.rating_periods", "billing.rating_results", "billing.sp_finalize_rating",
           "billing.fn_usage_rating", "billing.fn_usage_summary"],
@@ -425,7 +468,7 @@ Traps:
 Do not create the nightly job here; that is U-25 in wave 4.
 """),
     ]),
-    (4, 1, "mig-p1-w4", [
+    (4, 1, [
         ("w4-a", ["p1-job-nightly-dunning"],
          ["ow_tp_p1_nightly_dunning"],
          """
@@ -459,7 +502,9 @@ def main() -> int:
         raise SystemExit(f"00_context.md records stop_mode={caps['stop_mode']!r}; auto_merge below "
                          "assumes the recorded mode. Re-derive it before generating manifests.")
     WAVES.mkdir(parents=True, exist_ok=True)
-    for wave, width, lb_branch, batches in PLAN:
+    branches = wave_branches([w for w, _, _ in PLAN])
+    for wave, width, batches in PLAN:
+        lb_branch, cut_from = branches[wave]
         units = [u for _, us, _, _ in batches for u in us]
         manifest = {
             "wave": wave,
@@ -483,9 +528,18 @@ def main() -> int:
                 "review_round_cap": 3,
                 "breaker_class": "3 same-class failures halts the wave and escalates",
                 "lakebase_branch": lb_branch,
+                "lakebase_branch_cut_from": cut_from,
                 "lakebase_branch_lifecycle": (
-                    f"child branch {lb_branch} off mig-p1-w0 at wave start, dropped by the "
-                    "orchestrator at wave close; never the production branch"),
+                    (f"the orchestrator creates {lb_branch} off {cut_from} ONCE, before fan-out, "
+                     f"so it carries everything waves up to {wave - 1} merged"
+                     if cut_from else
+                     f"this wave continues on {lb_branch} (no separate branch is allowlisted for "
+                     f"wave {wave}; waves are sequential, so the state is still the previous "
+                     f"wave's output)")
+                    + ". Children never create, reset or drop a branch - concurrent batches share "
+                    "it and are isolated by disjoint write targets. The orchestrator keeps each "
+                    "branch until the next wave has been cut from it, then drops it at pipeline "
+                    "close; never the production branch"),
                 "idempotency": (
                     "every converted load is re-runnable: truncate-and-load or MERGE on the "
                     "declared key, no append-only inserts; recon reruns must not change target "
@@ -512,7 +566,7 @@ def main() -> int:
                                         else None),
                     "brief": brief(wave, bid, us, tg,
                                    lb_branch if any(UNIT[u][1] == "lakebase" for u in us) else None,
-                                   body),
+                                   cut_from, body),
                 }
                 for bid, us, tg, body in batches
             ],

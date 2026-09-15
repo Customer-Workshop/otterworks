@@ -38,7 +38,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -48,7 +47,6 @@
           "source_type": "VARCHAR2(4000)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         }

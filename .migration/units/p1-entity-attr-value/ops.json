@@ -1,0 +1,11 @@
+[
+  {
+    "name": "str_date_parse_entity_attr_value",
+    "object": "p1-entity-attr-value",
+    "source_sql": "SELECT eav_id, to_date(created_dt, 'dd-MMM-yy') AS created_dt_parsed FROM ow_billing_fed.ow_billing.entity_attr_value ORDER BY eav_id",
+    "target_sql": "SELECT eav_id, created_dt_parsed FROM billing.entity_attr_value ORDER BY eav_id",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "name": "str_date_parse_invoice_line",
+    "object": "p1-invoice-line",
+    "source_sql": "SELECT line_id, to_date(invoice_dt, 'dd-MMM-yy') AS invoice_dt_parsed FROM ow_billing_fed.ow_billing.invoice_line ORDER BY line_id",
+    "target_sql": "SELECT line_id, invoice_dt_parsed FROM ow_tp.silver.invoice_line ORDER BY line_id",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  }
+]

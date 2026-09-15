@@ -23,7 +23,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -33,7 +32,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -43,7 +41,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -53,7 +50,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -63,7 +59,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -73,7 +68,6 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "STRING",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -99,6 +93,20 @@
           "source_type": "NUMBER(8)",
           "target_type": "INT",
           "rules": []
+        }
+      ],
+      "derived_fields": [
+        {
+          "raw": "invoice_dt",
+          "target": "invoice_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
+        },
+        {
+          "raw": "due_dt",
+          "target": "due_dt_parsed",
+          "target_type": "DATE",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
         }
       ]
     }

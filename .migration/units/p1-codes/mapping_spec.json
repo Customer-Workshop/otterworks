@@ -25,7 +25,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "varchar(30)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -42,7 +41,6 @@
           "source_type": "VARCHAR2(80)",
           "target_type": "varchar(80)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         }

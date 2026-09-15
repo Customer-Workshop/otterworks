@@ -30,7 +30,6 @@
           "source_type": "VARCHAR2(30)",
           "target_type": "varchar(30)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -40,7 +39,6 @@
           "source_type": "VARCHAR2(36)",
           "target_type": "varchar(36)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -50,7 +48,6 @@
           "source_type": "VARCHAR2(100)",
           "target_type": "varchar(100)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -60,7 +57,6 @@
           "source_type": "VARCHAR2(4000)",
           "target_type": "varchar(4000)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -70,7 +66,6 @@
           "source_type": "VARCHAR2(10)",
           "target_type": "varchar(10)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
         },
@@ -80,9 +75,16 @@
           "source_type": "VARCHAR2(9)",
           "target_type": "varchar(9)",
           "rules": [
-            "rstrip_spaces",
             "empty_string_is_null"
           ]
+        }
+      ],
+      "derived_fields": [
+        {
+          "raw": "created_dt",
+          "target": "created_dt_parsed",
+          "target_type": "date",
+          "semantics": "f_str2dt: TO_DATE(raw,'DD-MON-YY') and NULL on anything else"
         }
       ],
       "identity": {

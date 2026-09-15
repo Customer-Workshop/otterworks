@@ -1,0 +1,11 @@
+[
+  {
+    "name": "str_date_parse_invoice_header",
+    "object": "p1-invoice-header",
+    "source_sql": "SELECT invoice_id, to_date(invoice_dt, 'dd-MMM-yy') AS invoice_dt_parsed, to_date(due_dt, 'dd-MMM-yy') AS due_dt_parsed FROM ow_billing_fed.ow_billing.invoice_header ORDER BY invoice_id",
+    "target_sql": "SELECT invoice_id, invoice_dt_parsed, due_dt_parsed FROM ow_tp.silver.invoice_header ORDER BY invoice_id",
+    "rules": [
+      "null_missing_equiv"
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "name": "f_code_desc_all",
+    "object": "p1-codes",
+    "source_sql": "SELECT code_type, code_val, code_desc AS d FROM ow_billing_fed.ow_billing.codes ORDER BY code_type, code_val",
+    "target_sql": "SELECT code_type, code_val, billing.f_code_desc(code_type, code_val) AS d FROM billing.codes ORDER BY code_type, code_val",
+    "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+    ]
+  }
+]

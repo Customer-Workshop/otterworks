@@ -44,6 +44,7 @@ from pathlib import Path
 
 from databricks import sql as dbsql
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import NotFound
 
 CATALOG = "ow_tp"
 SCHEMA = "silver"
@@ -133,9 +134,11 @@ def main(argv: list[str] | None = None) -> int:
     run_id = uuid.uuid4().hex
     staged = f"{VOLUME}/{TABLE}/{run_id}.parquet"
     workspace = WorkspaceClient()
-    with args.parquet.open("rb") as handle:
-        workspace.files.upload(staged, handle, overwrite=True)
     try:
+        # inside the try: an upload that fails after the server has written the file still
+        # leaves the staged copy behind, and it is a copy of source data
+        with args.parquet.open("rb") as handle:
+            workspace.files.upload(staged, handle, overwrite=True)
         with sql_conn() as conn, conn.cursor() as cur:
             ensure_table(cur)
             key_added = ensure_primary_key(cur)
@@ -153,7 +156,10 @@ def main(argv: list[str] | None = None) -> int:
                 digest_rows, content = cur.fetchone()
                 digest = {"rows": digest_rows, "content_digest": content}
     finally:
-        workspace.files.delete(staged)
+        try:
+            workspace.files.delete(staged)
+        except NotFound:
+            pass  # the upload never got far enough to create it
 
     if args.digest_out:
         finished = dt.datetime.now(dt.timezone.utc).isoformat(timespec="microseconds")

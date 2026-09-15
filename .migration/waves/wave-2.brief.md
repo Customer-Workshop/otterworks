@@ -1,0 +1,50 @@
+# Wave 2 close — HALTED, not closed
+
+Landed: 6 of 6 batches / 9 of 9 units passed their own recon, all DEGRADED (official_verdict=false, d10_01_denied) - not an official Oracle harness verdict.
+Independent verify: DISAGREE ON SCOPE, wave_should_close=false, 0 PRs merged (verifier migrated 0 units, wrote nothing, edited no ledger file, opened no PR).
+Failed: none at the unit level; the wave is halted on two undeclared write targets the verifier found (w2-d created ow_tp.bronze.customer_master_hist and ow_tp.bronze.subscriptions_hist; w2-a's sp_assign_plan writes billing.billing_audit_log through log_msg while the batch declares runtime_writes: []). An undeclared target is a halt, not a fix — it is escalated, not corrected here.
+Blocked on missing inputs: none.
+Held back by circuit breaker: none (0 same-class failures, threshold 3).
+Launch mechanism: child sessions, not run_workflow - retried once for wave 2 as instructed and it failed the same way (the process it starts inherits no environment, so DATABRICKS_HOST / DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET and the AWS pair are absent and the pre-flight factory-doctor fails databricks_identity; the retry then died on ModuleNotFoundError: No module named 'recon'). Writing credentials to a CLI profile or any file to get past it stays refused. Pre-launch manifest, write-target collision and undeclared-target checks ran clean against wave-2.json before any child started.
+Width: the committed manifest declares 4, the approved fallback is 5, and wave 2 has six batches launched in two groups (four, then two), so six children were live. Recorded, not silently reconciled; the manifest was not edited.
+Awaiting manual merge: https://github.com/Cognition-Partner-Workshops/otterworks/pull/1576, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1577, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1578, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1579, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1580, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1581, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1582, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1583, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1584
+Cost: per-unit recon cost stays in each unit's evidence under .migration/recon/<unit>/ on its unmerged unit branch; no aggregate is claimed here rather than restating numbers this session did not recompute. Verifier depth: full recompute of all nine units from Oracle read-only and from the target platform directly, inside the source query cap.
+
+Verifier findings:
+- Data parity is exact across all nine units: 0 row-count, money-sum, keyed-digest or date-canonicalisation differences, recomputed from Oracle read-only and from Lakebase branch mig-p1-w2 / Delta ow_tp directly, never from CDC output the units produced.
+- Type fidelity clean: no float money (numeric(12,2) / decimal), all timestamps zoneless (timestamp(0) / timestamp_ntz), raw DD-MON-YY strings byte-exact beside their parsed companions.
+- customer_master anomaly set recomputed: 50,000 non-null raw date cells, 50 unparseable, 325,050 expected NULL parsed companions against 325,050 in target, 0 mismatches. entity_attr_value duplicate logical tuples preserved exactly: 187 duplicated tuples / 192 extra rows on both sides.
+- WRITE-SCOPE BREACH 1 (undeclared target): w2-d created ow_tp.bronze.customer_master_hist and ow_tp.bronze.subscriptions_hist, both empty and CREATE TABLE only, neither in the batch's write_targets.
+- WRITE-SCOPE BREACH 2 (undeclared runtime write): w2-a's sp_assign_plan writes billing.billing_audit_log via log_msg while the batch declares runtime_writes: []. One insert observed, rolled back, 0 live rows.
+- Three units are empty-source assertions rather than data proofs: customer_master_hist, subscriptions_hist and billing_audit_log are empty at source, so PASS covers schema plus an empty set and the idempotency reruns are MERGEs over 0 rows.
+- ow_tp_p1_purge_audit_log exists and is PAUSED with zero runs; Oracle's job is disabled, so the job artifact has never been exercised on either side. The purge WRITE/DELETE commits on silver.billing_audit_log were ad-hoc runs, not the job.
+- silver.billing_audit_log schema was changed (SET TBLPROPERTIES and two CHANGE COLUMN) after the final MERGE the unit cites as its merge evidence.
+- p1-pkg-plans: the Oracle side of the tier-4 op inlines the package body instead of calling pkg_plans, fn_list_plans has no converted counterpart, and the never-invalidated package-global cache is not reproduced (Oracle keeps the previous g_last_plan_code on a swallowed exception; the Postgres function returns NULL).
+- Oracle FK_SUB_TENANT and FK_SUB_PLAN are enabled and validated at source but absent in Lakebase, disclosed and justified by D8-01 orphan preservation, and still a structural difference.
+- Idempotency corroborated from Lakebase pg_stat_user_tables (ins/upd/del): subscriptions 71/209/0, customer_master 25000/25000/0, entity_attr_value 8333/33332/0, credit_notes 5/10/0, wave-1 tables untouched.
+- The verifier used the mig-p1-w2 direct endpoint ep-sweet-waterfall-d1bp46ut; ep-dry-meadow-d1309m41 in the child briefs is the mig-p1-w0 endpoint.
+- Unverified by design on the JDBC route: tiers 5-7 (source-side constraint, index and identity parity), merge_eligible=false on every unit, and factory-doctor's source_principal_read_only, which has no Oracle privilege query behind it.
+
+Skill feedback to fold in before the next wave:
+- Source-side op SQL must schema-qualify every table (ow_billing.plans): OW_BILLING_RO has no synonyms, so an unqualified name fails ORA-00942 after the run starts.
+- Do not apply decimal_round to an op whose projection mixes numbers and text; the harness applies rules per column-set and dies on ConversionSyntax. Format with TO_CHAR on both sides and compare as strings.
+- The guard rejects shell for-loops the same way it rejects command substitution: an idempotency rerun is two invocations, not a loop.
+- Oracle DATE - 1 is minus one day: convert to INTERVAL '1 day', not - 1.
+- Backfill a table with converted triggers inside ALTER TABLE ... DISABLE TRIGGER USER / ENABLE TRIGGER USER, then setval(seq, max(key)+1), or the trigger rewrites derived columns on load and breaks byte-exact parity.
+- Explicit-value loads into GENERATED BY DEFAULT identity columns do not advance the sequence; advance it after the load, and only ever forwards.
+- A target sequence positioned from migrated rows can sit behind Oracle's LAST_NUMBER (Oracle caches 1,000); carrying the true position across needs the sequence named in the parent-owned mapping spec.
+- hist_dt and every converted timestamp must be converted to UTC explicitly; verified stable under three warehouse session timezones.
+- max(hist_id) + row_number() is single-writer-safe only; a durable id must derive from source-change metadata supplied by the parent unit.
+- A behaviour check that purges must run only when the probe rows are the whole table, else skip and record untested, so it cannot delete rows it did not write.
+- Databricks returns a workspace folder with a /Workspace prefix that the create call does not accept; normalise it or every rerun creates a duplicate query.
+- Oracle sorts VARCHAR2 under NLS_SORT=BINARY; a converted ORDER BY <varchar> only matches on a binary collation. Lakebase ow_tp is C.UTF-8 so wave-3's burn-down order holds; on any other collation the consumer needs COLLATE "C".
+- Do not CREATE SCHEMA in a unit that only declares a table: a missing prerequisite should fail rather than be created outside the write target.
+- Oracle DATE and bare TIMESTAMP are zoneless, so Delta must be TIMESTAMP_NTZ; gen_mapping_specs.py and the twelve committed unit specs need regenerating in one parent-owned change, not per unit.
+
+Per batch:
+- w2-a: unit recon PASS. subscriptions 69 rows plus fn_plan_entitlements and sp_assign_plan into Lakebase billing on branch mig-p1-w2; DEGRADED / official_verdict=false; undeclared runtime write to billing.billing_audit_log. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1580, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1581
+- w2-b: unit recon PASS. customer_master 25,000 rows into Lakebase billing, sequence and trigger converted; DEGRADED / official_verdict=false. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1577
+- w2-c: unit recon PASS. entity_attr_value 8,333 rows into Lakebase billing, duplicate logical tuples preserved; DEGRADED / official_verdict=false. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1576
+- w2-d: unit recon PASS on an empty source. customer_master_hist and subscriptions_hist into Delta silver; DEGRADED / official_verdict=false; two undeclared bronze tables created. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1578, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1579
+- w2-e: unit recon PASS on an empty source. billing_audit_log into Delta silver plus the paused ow_tp_p1_purge_audit_log job, which has never run; DEGRADED / official_verdict=false. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1583, https://github.com/Cognition-Partner-Workshops/otterworks/pull/1584
+- w2-f: unit recon PASS. credit_notes 5 rows into Lakebase billing; DEGRADED / official_verdict=false. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1582

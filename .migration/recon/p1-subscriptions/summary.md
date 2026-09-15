@@ -58,3 +58,12 @@ the source no longer has before upserting, so a rerun converges rather than accu
   targets; the history rows Oracle writes on every subscription update have no target rows
   until that unit lands.
 - No CDC watermark is declared for this table, so tier 6 ran zero checks.
+- **A recreated id would not reload.** The loader upserts, and the upsert's `DO UPDATE`
+  touches `status_cd`, so the no-uncancel trigger pins any target row already at 30. If
+  Oracle ever hard-deletes a cancelled subscription and re-inserts the same id as active,
+  the loader cannot move the target row back to 10. The estate does not produce that today
+  (ids come from `f_md5_uuid` over tenant + plan + effective date, and Oracle's own trigger
+  blocks 30 → 10), and the gate's tier-3 keyed diff would fail rather than pass such a row
+  silently. Making the loader delete-and-reinsert instead of upsert would change the write
+  semantics of the shared loader for every unit, so it is left to the owner and a recorded
+  decision.

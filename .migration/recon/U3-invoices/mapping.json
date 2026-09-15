@@ -1,0 +1,420 @@
+{
+  "version": "1",
+  "source_family": "oracle",
+  "unit": "U3-invoices",
+  "collections": [
+    {
+      "collection": "invoices",
+      "root_table": "INVOICE_HEADER",
+      "root_where": "invoice_id IS NOT NULL",
+      "target_where": "{\"source\": \"conversion\"}",
+      "key": {
+        "source": [
+          "INVOICE_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "INVOICE_NO",
+          "target": "invoiceNo",
+          "source_type": "VARCHAR2(30)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "CUST_ID",
+          "target": "customer.id",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "TOTAL_AMT",
+          "target": "totals.total",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "BATCH_NO",
+          "target": "legacy.batchNo",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "lines",
+          "child_table": "INVOICE_LINE",
+          "child_where": "EXISTS (SELECT 1 FROM invoice_header h WHERE h.invoice_id = invoice_line.invoice_id)",
+          "target_where": "{\"source\": \"conversion\"}",
+          "parent_key": [
+            "INVOICE_ID"
+          ],
+          "key": {
+            "source": [
+              "LINE_ID"
+            ],
+            "target": "lineId"
+          },
+          "fields": [
+            {
+              "source": "LINE_NO",
+              "target": "lineNo",
+              "source_type": "NUMBER(6,0)",
+              "bson_type": "int",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "LINE_TYPE_CD",
+              "target": "type",
+              "source_type": "NUMBER(4,0)",
+              "bson_type": "int",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "ITEM_DESC",
+              "target": "description",
+              "source_type": "VARCHAR2(400)",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "QTY",
+              "target": "qty",
+              "source_type": "NUMBER(12,3)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            },
+            {
+              "source": "UNIT_PRICE",
+              "target": "unitPrice",
+              "source_type": "NUMBER(14,4)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            },
+            {
+              "source": "AMOUNT",
+              "target": "amount",
+              "source_type": "NUMBER(14,2)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            },
+            {
+              "source": "TAX_AMT",
+              "target": "taxAmt",
+              "source_type": "NUMBER(14,2)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            },
+            {
+              "source": "BATCH_NO",
+              "target": "batchNo",
+              "source_type": "NUMBER(8,0)",
+              "bson_type": "int",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "SRC_SYSTEM",
+              "target": "srcSystem",
+              "source_type": "VARCHAR2(10)",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "collection": "invoices",
+      "root_table": "INVOICES",
+      "root_where": "id IS NOT NULL",
+      "target_where": "{\"source\": \"billing\"}",
+      "key": {
+        "source": [
+          "ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "TENANT_ID",
+          "target": "tenantId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "ISSUED_AT",
+          "target": "invoiceDate",
+          "source_type": "TIMESTAMP(6)",
+          "bson_type": "date",
+          "rules": [
+            "datetime_utc_truncate_ms"
+          ]
+        },
+        {
+          "source": "PERIOD_ID",
+          "target": "periodId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "SUBTOTAL",
+          "target": "totals.subtotal",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "TAX",
+          "target": "totals.tax",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "TOTAL",
+          "target": "totals.total",
+          "source_type": "NUMBER(12,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        }
+      ],
+      "embeds": [
+        {
+          "array_path": "lines",
+          "child_table": "INVOICE_LINES",
+          "child_where": "id IS NOT NULL",
+          "target_where": "{\"source\": \"billing\"}",
+          "parent_key": [
+            "INVOICE_ID"
+          ],
+          "key": {
+            "source": [
+              "ID"
+            ],
+            "target": "lineId"
+          },
+          "fields": [
+            {
+              "source": "LINE_NO",
+              "target": "lineNo",
+              "source_type": "NUMBER(6,0)",
+              "bson_type": "int",
+              "rules": [
+                "null_missing_equiv"
+              ]
+            },
+            {
+              "source": "LINE_TYPE",
+              "target": "type",
+              "source_type": "VARCHAR2(10)",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "DESCRIPTION",
+              "target": "description",
+              "source_type": "VARCHAR2(400)",
+              "bson_type": "string",
+              "rules": [
+                "empty_string_is_null"
+              ]
+            },
+            {
+              "source": "AMOUNT",
+              "target": "amount",
+              "source_type": "NUMBER(12,2)",
+              "bson_type": "decimal",
+              "rules": [
+                "decimal_round"
+              ]
+            }
+          ]
+        },
+        {
+          "array_path": "dunning",
+          "child_table": "DUNNING_ATTEMPTS",
+          "child_where": "id IS NOT NULL",
+          "target_where": "{\"source\": \"billing\"}",
+          "parent_key": [
+            "INVOICE_ID"
+          ],
+          "key": {
+            "source": [
+              "ATTEMPT_NO"
+            ],
+            "target": "attemptNo"
+          },
+          "fields": [
+            {
+              "source": "SCHEDULED_FOR",
+              "target": "scheduledFor",
+              "source_type": "DATE",
+              "bson_type": "date",
+              "rules": [
+                "datetime_utc_truncate_ms"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "collection": "invoice_lines_orphaned",
+      "root_table": "INVOICE_LINE",
+      "root_where": "NOT EXISTS (SELECT 1 FROM INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID)",
+      "target_where": "{}",
+      "key": {
+        "source": [
+          "LINE_ID"
+        ],
+        "target": "_id"
+      },
+      "fields": [
+        {
+          "source": "INVOICE_ID",
+          "target": "invoiceId",
+          "source_type": "VARCHAR2(36)",
+          "bson_type": "string",
+          "rules": [
+            "null_missing_equiv"
+          ],
+          "note": "the dangling reference, kept as-is. No header is invented."
+        },
+        {
+          "source": "LINE_NO",
+          "target": "lineNo",
+          "source_type": "NUMBER(6,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "LINE_TYPE_CD",
+          "target": "type",
+          "source_type": "NUMBER(4,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "ITEM_DESC",
+          "target": "description",
+          "source_type": "VARCHAR2(400)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        },
+        {
+          "source": "QTY",
+          "target": "qty",
+          "source_type": "NUMBER(12,3)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "UNIT_PRICE",
+          "target": "unitPrice",
+          "source_type": "NUMBER(14,4)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "AMOUNT",
+          "target": "amount",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "TAX_AMT",
+          "target": "taxAmt",
+          "source_type": "NUMBER(14,2)",
+          "bson_type": "decimal",
+          "rules": [
+            "decimal_round"
+          ]
+        },
+        {
+          "source": "BATCH_NO",
+          "target": "batchNo",
+          "source_type": "NUMBER(8,0)",
+          "bson_type": "int",
+          "rules": [
+            "null_missing_equiv"
+          ]
+        },
+        {
+          "source": "SRC_SYSTEM",
+          "target": "srcSystem",
+          "source_type": "VARCHAR2(10)",
+          "bson_type": "string",
+          "rules": [
+            "empty_string_is_null"
+          ]
+        }
+      ]
+    }
+  ]
+}

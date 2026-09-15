@@ -1,0 +1,25 @@
+{
+  "check": "idempotency_rerun",
+  "method": "sha256 of every document, re-run of the same load without --drop, re-hash",
+  "before": {
+    "invoices": {
+      "count": 18753,
+      "sha256": "9e579d90c74aa62cba53e79cbed31bc78bead18f638a1ec14e8b3452dfe02e61"
+    },
+    "invoice_lines_orphaned": {
+      "count": 37,
+      "sha256": "daf25293522bf667af2d81a65c2aff92aec511e895cf8735efbf4a803e9313dd"
+    }
+  },
+  "after": {
+    "invoices": {
+      "count": 18753,
+      "sha256": "9e579d90c74aa62cba53e79cbed31bc78bead18f638a1ec14e8b3452dfe02e61"
+    },
+    "invoice_lines_orphaned": {
+      "count": 37,
+      "sha256": "daf25293522bf667af2d81a65c2aff92aec511e895cf8735efbf4a803e9313dd"
+    }
+  },
+  "unchanged": true
+}

@@ -1,0 +1,91 @@
+{
+  "unit": "U3-invoices",
+  "mode": "live",
+  "mapping_version": "1",
+  "tolerance_version": "1",
+  "seed": 714559852,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-15T05:40:04.699317+00:00",
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 6,
+      "stats": {
+        "source_counts": {
+          "INVOICE_HEADER": 18750,
+          "INVOICES": 3,
+          "INVOICE_LINE": 37
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 21,
+      "stats": {
+        "deferred_to_tier3": [
+          "invoices.invoiceNo",
+          "invoices.tenantId",
+          "invoices.customer.id",
+          "invoices.totals.total",
+          "invoices.legacy.batchNo",
+          "invoices.tenantId",
+          "invoices.periodId",
+          "invoices.totals.subtotal",
+          "invoices.totals.tax",
+          "invoices.totals.total",
+          "invoice_lines_orphaned.invoiceId",
+          "invoice_lines_orphaned.lineNo",
+          "invoice_lines_orphaned.type",
+          "invoice_lines_orphaned.description",
+          "invoice_lines_orphaned.qty",
+          "invoice_lines_orphaned.unitPrice",
+          "invoice_lines_orphaned.amount",
+          "invoice_lines_orphaned.taxAmt",
+          "invoice_lines_orphaned.batchNo",
+          "invoice_lines_orphaned.srcSystem"
+        ]
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 168756,
+      "stats": {
+        "invoices": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "embeds_graded": {
+          "invoices.lines": 2,
+          "invoices.dunning": 1
+        },
+        "invoice_lines_orphaned": {
+          "mode": "full_diff",
+          "population": 37,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 17,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true
+}

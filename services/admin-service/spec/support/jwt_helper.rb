@@ -1,5 +1,5 @@
 module JwtHelper
-  def jwt_token(user_id: SecureRandom.uuid, email: 'admin@otterworks.com', role: 'super_admin')
+  def jwt_token(user_id: SecureRandom.uuid, email: 'admin@otterworks.com', role: 'super_admin', roles: nil)
     payload = {
       sub: user_id,
       email: email,
@@ -7,6 +7,7 @@ module JwtHelper
       exp: 24.hours.from_now.to_i,
       iat: Time.current.to_i
     }
+    payload[:roles] = roles if roles
     secret = Rails.application.secrets.jwt_secret
     JWT.encode(payload, secret, 'HS256')
   end
@@ -16,10 +17,11 @@ module JwtHelper
     { 'Authorization' => "Bearer #{token}" }
   end
 
-  def set_jwt_env(request, user_id: SecureRandom.uuid, email: 'admin@otterworks.com', role: 'super_admin')
+  def set_jwt_env(request, user_id: SecureRandom.uuid, email: 'admin@otterworks.com', role: 'super_admin', roles: [])
     request.env['jwt.user_id'] = user_id
     request.env['jwt.user_email'] = email
     request.env['jwt.user_role'] = role
+    request.env['jwt.user_roles'] = roles
   end
 end
 

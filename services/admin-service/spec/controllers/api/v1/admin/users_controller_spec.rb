@@ -92,6 +92,20 @@ RSpec.describe Api::V1::Admin::UsersController do
       expect(user.reload.role).to eq('editor')
     end
 
+    it 'accepts an auth-service token carrying OWNER in the roles array' do
+      set_jwt_env(request, role: nil, roles: %w[OWNER USER])
+      put :update_role, params: { id: user.id, role: 'editor' }
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.role).to eq('editor')
+    end
+
+    it 'forbids an auth-service ADMIN token from changing roles' do
+      set_jwt_env(request, role: nil, roles: %w[ADMIN USER])
+      put :update_role, params: { id: user.id, role: 'super_admin' }
+      expect(response).to have_http_status(:forbidden)
+      expect(user.reload.role).to eq('viewer')
+    end
+
     it 'rejects an invalid role' do
       put :update_role, params: { id: user.id, role: 'invalid_role' }
       expect(response).to have_http_status(:unprocessable_entity)

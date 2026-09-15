@@ -1,5 +1,6 @@
 class ApplicationController < ActionController::API
-  ROLE_MANAGER_ROLES = %w[super_admin].freeze
+  # admin-service `super_admin` and auth-service `OWNER` are the same tier
+  ROLE_MANAGER_ROLES = %w[super_admin owner].freeze
 
   before_action :set_request_metadata
 
@@ -34,8 +35,12 @@ class ApplicationController < ActionController::API
     request.env['jwt.user_role']
   end
 
+  def current_user_roles
+    (Array(request.env['jwt.user_roles']) + [current_user_role]).compact.map { |r| r.to_s.downcase }
+  end
+
   def role_manager?
-    ROLE_MANAGER_ROLES.include?(current_user_role)
+    current_user_roles.intersect?(ROLE_MANAGER_ROLES)
   end
 
   def render_forbidden(message = 'Forbidden')

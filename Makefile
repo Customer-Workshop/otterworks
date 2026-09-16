@@ -1,20 +1,16 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
 
 SHELL := /bin/bash
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-tp-preflight: ## Check platform capabilities (PLATFORM=databricks|atlas|aws)
-	@test "$(PLATFORM)" = databricks -o "$(PLATFORM)" = atlas -o "$(PLATFORM)" = aws || { echo "PLATFORM must be databricks, atlas, or aws" >&2; exit 2; }
+tp-preflight: ## Check platform capabilities (PLATFORM=atlas|aws)
+	@test "$(PLATFORM)" = atlas -o "$(PLATFORM)" = aws || { echo "PLATFORM must be atlas or aws" >&2; exit 2; }
 	@case "$(PLATFORM)" in \
-		databricks) $(MAKE) tp-preflight-databricks ;; \
 		atlas) $(MAKE) tp-preflight-atlas ;; \
 		aws) $(MAKE) tp-preflight-aws ;; \
 	esac
-
-tp-preflight-databricks: ## Check Databricks capability paths and emit a manifest
-	scripts/tp-preflight-databricks.sh
 
 tp-preflight-atlas: ## Check MongoDB Atlas capability paths and emit a manifest
 	scripts/tp-preflight-atlas.sh
@@ -30,24 +26,6 @@ tp-validate-contracts: ## Validate JSON contracts (intentionally fails until pro
 
 tp-validate-recon: ## Validate recon reports (FILE=<path>; no reports is valid, other JSON is informational)
 	uv run --no-project --with jsonschema==4.25.1 --with rfc3339-validator==0.1.4 python3 scripts/tp_validate.py recon $(FILE)
-
-tp-fixture-land: ## Land source artifacts in the local Databricks transport fixture (NS=<ns>)
-	python3 scripts/tp_databricks/local_fixture.py land --ns $${NS:-fixture} --source $${FIXTURE_SOURCE:-etl/legacy-extra}
-
-tp-fixture-verify: ## Verify local fixture bytes and checksums (NS=<ns>)
-	python3 scripts/tp_databricks/local_fixture.py verify --ns $${NS:-fixture}
-
-tp-fixture-clean: ## Remove local Databricks transport fixture (NS=<ns>)
-	python3 scripts/tp_databricks/local_fixture.py clean --ns $${NS:-fixture}
-
-# Live Databricks billing-history showcase (needs DATABRICKS_DEMO_HOST/TOKEN).
-# Serverless SQL only; every schedule it creates stays PAUSED.
-dbx-showcase: ## Run a showcase step (CMD=<provision|land|expectations|backfill|recon|timetravel|lineage|dashboard|alert|pipeline|run-pipeline|recon-job|run-job|drift|status|demo-preflight|teardown> NS=<ns>)
-	@test -n "$(CMD)" || { echo "usage: make dbx-showcase CMD=<step> [NS=<ns>] [ARGS=...]"; exit 2; }
-	python3 scripts/tp_dbx/showcase.py --ns $${NS:-demo} $(CMD) $(ARGS)
-
-dbx-showcase-help: ## List the Databricks billing-history showcase steps
-	python3 scripts/tp_dbx/showcase.py --help
 
 PROCS_COMPOSE = docker compose -f docker-compose.procs.yml -p otterworks-procs-$(NS)
 PROCS_UV = uv run --with psycopg[binary]==3.2.9 --with pyyaml==6.0.2
@@ -583,10 +561,6 @@ legacy-etl-run: ## Run one legacy batch job (JOB=<name>, see legacy-etl-list)
 	  run_all)                    command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }; RUN_ALL_SLEEP=$${RUN_ALL_SLEEP:-0} $(TP_DET) etl/legacy-extra/run_all.sh ;; \
 	  *) echo "unknown JOB '$(JOB)' (see: make legacy-etl-list)"; exit 1 ;; \
 	esac
-
-tp-legacy-pain: ## Legacy-pain opener: blast radius + baseline + silent corruption (ACT=blast|baseline|poison|all|clean)
-	@command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }
-	$(TP_DET) scripts/tp_dbx/legacy_pain.sh $${ACT:-all}
 
 legacy-sftp-up: ## Start the optional localhost-only SFTP drop fixture
 	mkdir -p $${OTTERWORKS_LEGACY_ROOT:-/tmp/otterworks-legacy}/sftp-drop/upload

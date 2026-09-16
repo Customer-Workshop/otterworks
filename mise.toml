@@ -1,5 +1,4 @@
 [tools]
-"aqua:databricks/cli" = "1.12.1"
 aws-cli = { version = "2.36.24", symlink_bins = "true" }
 "pipx:check-jsonschema" = "0.38.0"
 "pipx:checkov" = "3.3.11"

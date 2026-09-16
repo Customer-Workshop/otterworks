@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-search-service
+  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/otterworks-search-service
   tag: ""  # Set at deploy time (ECR uses IMMUTABLE tags)
   pullPolicy: IfNotPresent
 
@@ -16,14 +16,14 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   hosts:
-    - host: search-service.otterworks.workshop.example.com
+    - host: search-service.otterworks.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: search-service-tls
       hosts:
-        - search-service.otterworks.workshop.example.com
+        - search-service.otterworks.example.com
 
 resources:
   limits:

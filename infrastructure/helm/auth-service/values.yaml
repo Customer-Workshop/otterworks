@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-auth-service
+  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/otterworks-auth-service
   tag: ""  # Set at deploy time (ECR uses IMMUTABLE tags)
   pullPolicy: IfNotPresent
 
@@ -16,14 +16,14 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   hosts:
-    - host: auth-service.otterworks.workshop.example.com
+    - host: auth-service.otterworks.example.com
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: auth-service-tls
       hosts:
-        - auth-service.otterworks.workshop.example.com
+        - auth-service.otterworks.example.com
 
 resources:
   limits:

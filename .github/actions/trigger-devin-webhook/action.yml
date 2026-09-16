@@ -1,0 +1,66 @@
+name: Trigger Devin webhook
+description: POST a JSON payload to a Devin automation webhook and report the outcome in the step summary.
+
+inputs:
+  webhook-url:
+    description: Devin automation webhook URL
+    required: true
+  webhook-secret:
+    description: Value for the X-Webhook-Secret header
+    required: true
+  request-body:
+    description: JSON request body
+    required: true
+  summary-heading:
+    description: Markdown heading written to the step summary on success
+    required: true
+  summary-text:
+    description: Markdown body written to the step summary on success
+    required: true
+
+outputs:
+  session-url:
+    description: Devin session URL returned by the webhook, if any
+    value: ${{ steps.post.outputs.session_url }}
+
+runs:
+  using: composite
+  steps:
+    - id: post
+      shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        WEBHOOK_SECRET: ${{ inputs.webhook-secret }}
+        REQUEST_BODY: ${{ inputs.request-body }}
+        SUMMARY_HEADING: ${{ inputs.summary-heading }}
+        SUMMARY_TEXT: ${{ inputs.summary-text }}
+      run: |
+        HTTP_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+          -H "X-Webhook-Secret: ${WEBHOOK_SECRET}" \
+          -H "Content-Type: application/json" \
+          -d "$REQUEST_BODY" \
+          "${WEBHOOK_URL}")
+
+        HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '/^HTTP_STATUS:/d')
+        HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep '^HTTP_STATUS:' | cut -d: -f2)
+
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "Devin automation webhook triggered successfully (HTTP ${HTTP_CODE})"
+
+          SESSION_URL=$(echo "$HTTP_BODY" | jq -r '.url // empty')
+          echo "session_url=${SESSION_URL}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## ${SUMMARY_HEADING}"
+            echo ""
+            echo "${SUMMARY_TEXT}"
+            if [ -n "$SESSION_URL" ]; then
+              echo ""
+              echo "**Session:** ${SESSION_URL}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "::error::Failed to trigger Devin webhook (HTTP ${HTTP_CODE})"
+          echo "$HTTP_BODY"
+          exit 1
+        fi

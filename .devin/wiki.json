@@ -7,7 +7,7 @@
   "pages": [
     {
       "title": "OtterWorks Overview",
-      "purpose": "High-level introduction to OtterWorks: what it is, its purpose as a polyglot microservices demo platform, the overall architecture diagram, key design principles (Golden App, planted bugs, multi-tenant demos), and links to all major sections.",
+      "purpose": "High-level introduction to OtterWorks: what it is, its purpose as a polyglot microservices platform for multi-tenant document management, the overall architecture diagram, key design principles, and links to all major sections.",
       "page_notes": [
         {
           "content": ""
@@ -243,7 +243,7 @@
     },
     {
       "title": "Multi-Tenant Demo Platform",
-      "purpose": "Overview of the multi-tenant workshop infrastructure: the concept of ephemeral tenant namespaces on a shared EKS cluster, the demo-platform ops dashboard, and the runner job system. Links to child pages for the deployment scripts and the ops dashboard.",
+      "purpose": "Overview of the multi-tenant platform infrastructure: the concept of ephemeral tenant namespaces on a shared EKS cluster, the platform ops dashboard, and the runner job system. Links to child pages for the deployment scripts and the ops dashboard.",
       "page_notes": [
         {
           "content": ""

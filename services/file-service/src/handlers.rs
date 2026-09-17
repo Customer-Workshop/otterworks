@@ -300,7 +300,12 @@ pub async fn get_file_metadata(
         .map_err(|e| ServiceError::BadRequest(format!("invalid file id: {e}")))?;
     let caller = caller_id(&req)?;
     let file = authorize_file(&meta, &file_id, &caller, Access::Read).await?;
-    let shares = meta.list_shares(&file_id).await.unwrap_or_default();
+    // The share list is owner-only sharing-management data.
+    let shares = if file.owner_id == caller {
+        meta.list_shares(&file_id).await.unwrap_or_default()
+    } else {
+        Vec::new()
+    };
     Ok(HttpResponse::Ok().json(FileDetailResponse {
         file,
         shared_with: shares,
@@ -669,13 +674,20 @@ pub async fn remove_share(
     let caller = caller_id(&req)?;
     authorize_file(&meta, &file_id, &caller, Access::Own).await?;
 
-    // Find the existing share
-    let share = meta
-        .find_existing_share(&file_id, &user_id)
+    // Remove every share record for this recipient so revocation is complete
+    // even if duplicates exist.
+    let shares: Vec<FileShare> = meta
+        .list_shares(&file_id)
         .await?
-        .ok_or_else(|| ServiceError::ShareNotFound("Share not found".into()))?;
-
-    meta.delete_share(&share.id).await?;
+        .into_iter()
+        .filter(|s| s.shared_with == user_id)
+        .collect();
+    if shares.is_empty() {
+        return Err(ServiceError::ShareNotFound("Share not found".into()));
+    }
+    for share in &shares {
+        meta.delete_share(&share.id).await?;
+    }
 
     tracing::info!(file_id = %file_id, user_id = %user_id, "File share removed");
     Ok(HttpResponse::NoContent().finish())

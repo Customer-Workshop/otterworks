@@ -101,6 +101,76 @@ def test_file_folder_upload_lifecycle_share_and_download(api_client):
     api_client.created_folders.remove(folder["id"])
 
 
+def test_file_and_folder_by_id_routes_reject_other_users(api_client):
+    owner = api_client.register_user("file-owner")
+    attacker = api_client.register_user("file-attacker")
+
+    folder_response = api_client.client.post(
+        "/api/v1/folders",
+        headers=owner.auth_headers,
+        json={"name": f"Private Folder {api_client.run_id}", "owner_id": owner.id},
+    )
+    api_client.assert_gateway_route_available(folder_response, "/api/v1/folders")
+    assert folder_response.status_code == 201, folder_response.text
+    folder_id = folder_response.json()["id"]
+    api_client.created_folders.append(folder_id)
+
+    upload_response = api_client.client.post(
+        "/api/v1/files/upload",
+        headers=owner.auth_headers,
+        files={"file": ("private.txt", b"owner only", "text/plain")},
+        data={"folder_id": folder_id},
+    )
+    assert upload_response.status_code == 201, upload_response.text
+    file_id = upload_response.json()["file"]["id"]
+    api_client.created_files.append(file_id)
+
+    denied = {401, 403, 404}
+    attacker_calls = [
+        ("GET", f"/api/v1/files/{file_id}", None),
+        ("GET", f"/api/v1/files/{file_id}/download", None),
+        ("GET", f"/api/v1/files/{file_id}/versions", None),
+        ("PATCH", f"/api/v1/files/{file_id}/rename", {"name": "stolen.txt"}),
+        ("PUT", f"/api/v1/files/{file_id}/move", {"folder_id": None}),
+        ("POST", f"/api/v1/files/{file_id}/trash", None),
+        ("POST", f"/api/v1/files/{file_id}/restore", None),
+        (
+            "POST",
+            f"/api/v1/files/{file_id}/share",
+            {"shared_with": attacker.id, "permission": "editor", "shared_by": owner.id},
+        ),
+        ("DELETE", f"/api/v1/files/{file_id}/share/{attacker.id}", None),
+        ("DELETE", f"/api/v1/files/{file_id}", None),
+        ("GET", f"/api/v1/folders/{folder_id}", None),
+        ("PUT", f"/api/v1/folders/{folder_id}", {"name": "stolen folder"}),
+        ("DELETE", f"/api/v1/folders/{folder_id}", None),
+    ]
+    for method, url, body in attacker_calls:
+        response = api_client.client.request(method, url, headers=attacker.auth_headers, json=body)
+        assert response.status_code in denied, f"{method} {url} -> {response.status_code}: {response.text}"
+
+    # The owner still sees the file untouched.
+    get_response = api_client.client.get(f"/api/v1/files/{file_id}", headers=owner.auth_headers)
+    assert get_response.status_code == 200, get_response.text
+    file_metadata = get_response.json()
+    assert file_metadata["name"] == "private.txt"
+    assert file_metadata["folder_id"] == folder_id
+    assert file_metadata["is_trashed"] is False
+    assert file_metadata["shared_with"] == []
+
+    # A viewer share grants read access but not ownership actions.
+    share_response = api_client.client.post(
+        f"/api/v1/files/{file_id}/share",
+        headers=owner.auth_headers,
+        json={"shared_with": attacker.id, "permission": "viewer", "shared_by": owner.id},
+    )
+    assert share_response.status_code == 201, share_response.text
+    viewer_get = api_client.client.get(f"/api/v1/files/{file_id}", headers=attacker.auth_headers)
+    assert viewer_get.status_code == 200, viewer_get.text
+    viewer_delete = api_client.client.delete(f"/api/v1/files/{file_id}", headers=attacker.auth_headers)
+    assert viewer_delete.status_code == 403, viewer_delete.text
+
+
 @pytest.mark.gap_revealer
 def test_file_validation_and_route_gaps(api_client):
     owner = api_client.register_user("file-validation")

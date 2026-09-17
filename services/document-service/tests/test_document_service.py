@@ -133,9 +133,25 @@ async def test_search(db_session: AsyncSession, owner_id: uuid.UUID):
         DocumentCreate(title="Rust Guide", content="Learn Rust", owner_id=owner_id)
     )
 
-    items, total = await service.search("Python")
+    items, total = await service.search("Python", owner_id=owner_id)
     assert total == 1
     assert items[0].title == "Python Guide"
+
+
+@pytest.mark.asyncio
+async def test_search_scoped_to_owner(db_session: AsyncSession, owner_id: uuid.UUID):
+    service = DocumentService(db_session)
+    other_owner = uuid.uuid4()
+    await service.create(
+        DocumentCreate(title="Mine", content="shared term", owner_id=owner_id)
+    )
+    await service.create(
+        DocumentCreate(title="Theirs", content="shared term", owner_id=other_owner)
+    )
+
+    items, total = await service.search("shared term", owner_id=owner_id)
+    assert total == 1
+    assert items[0].owner_id == owner_id
 
 
 @pytest.mark.asyncio

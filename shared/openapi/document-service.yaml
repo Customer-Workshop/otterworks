@@ -102,7 +102,10 @@ paths:
   /api/v1/documents/search:
     get:
       operationId: searchDocuments
-      summary: Search documents by title or content
+      summary: Search the caller's documents by title or content
+      description: Results are scoped to documents owned by the authenticated caller.
+      security:
+        - bearerAuth: []
       parameters:
         - name: q
           in: query
@@ -132,6 +135,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DocumentListResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Authentication required"
         "422":
           description: Validation error (empty query)
           content:

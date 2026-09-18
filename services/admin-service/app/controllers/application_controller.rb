@@ -1,5 +1,8 @@
 class ApplicationController < ActionController::API
+  ADMIN_ROLES = %w[super_admin admin].freeze
+
   before_action :set_request_metadata
+  before_action :require_admin!
 
   rescue_from StandardError do |e|
     Rails.logger.error("Unhandled error: #{e.message}")
@@ -30,6 +33,26 @@ class ApplicationController < ActionController::API
 
   def current_user_role
     request.env['jwt.user_role']
+  end
+
+  def current_user_roles
+    payload = request.env['jwt.payload']
+    roles = Array(current_user_role)
+    roles += Array(payload['roles']) if payload.is_a?(Hash)
+    roles.compact.map { |r| r.to_s.downcase }
+  end
+
+  def admin?
+    current_user_roles.intersect?(ADMIN_ROLES)
+  end
+
+  def require_admin!
+    return if admin?
+
+    Rails.logger.warn(
+      "Forbidden: user=#{current_user_id.inspect} roles=#{current_user_roles.inspect} #{request.method} #{request.path}"
+    )
+    render json: { error: 'Forbidden' }, status: :forbidden
   end
 
   def set_request_metadata

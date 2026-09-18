@@ -18,6 +18,7 @@ module Api
       #     ]
       #   }
       class AlertsController < ApplicationController
+        skip_before_action :require_admin!
         before_action :verify_alert_secret
 
         SEVERITY_MAP = {

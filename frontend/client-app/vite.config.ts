@@ -12,14 +12,6 @@ const apiProxy = {
     changeOrigin: true,
   },
 };
-const billingProxy = {
-  "/billing-api": {
-    target: process.env.BILLING_SERVICE_URL || "http://localhost:12109",
-    changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/billing-api/, ""),
-  },
-};
-
 export default defineConfig({
   plugins: [react()],
   define: {
@@ -30,11 +22,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: { ...apiProxy, ...billingProxy },
+    proxy: apiProxy,
   },
   preview: {
     port: 3000,
-    proxy: { ...apiProxy, ...billingProxy },
+    proxy: apiProxy,
   },
   test: {
     include: ["src/**/*.{test,spec}.{ts,tsx}"],

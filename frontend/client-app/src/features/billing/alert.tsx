@@ -1,11 +1,20 @@
 export function BillingAlert({
   message,
   onDismiss,
-}: Readonly<{ message: string; onDismiss: () => void }>) {
+  tone = "error",
+}: Readonly<{
+  message: string;
+  onDismiss: () => void;
+  tone?: "error" | "success";
+}>) {
+  const colors =
+    tone === "success"
+      ? "border-green-200 bg-green-50 text-green-800"
+      : "border-red-200 bg-red-50 text-red-800";
   return (
     <div
       role="alert"
-      className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+      className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${colors}`}
     >
       <span>{message}</span>
       <button

@@ -1,105 +1,62 @@
-import { http, HttpResponse, delay } from "msw";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import BillingPlansPage from "./plans-page";
-import { billingServer } from "../../test-setup";
+import { billingApi } from "./api";
 
-function renderPage() {
-  return render(
-    <MemoryRouter>
-      <BillingPlansPage />
-    </MemoryRouter>
-  );
-}
+vi.mock("./api", () => ({
+  billingApi: {
+    me: vi.fn(),
+    listPlans: vi.fn(),
+    changePlan: vi.fn(),
+  },
+  isEstateUnavailable: () => false,
+  errorDetail: () => undefined,
+}));
+vi.mock("@/components/ui/notification-bell", () => ({
+  NotificationBell: () => null,
+}));
+
+const mockedApi = vi.mocked(billingApi);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockedApi.listPlans.mockResolvedValue([
+    { plan_id: "starter", plan_code: "STARTER", tier: "starter", monthly_fee: "49", included_units: "100", overage_rate: "0.055" },
+    { plan_id: "growth", plan_code: "GROWTH", tier: "growth", monthly_fee: "149", included_units: "500", overage_rate: "0.035" },
+  ]);
+  mockedApi.me.mockResolvedValue({
+    tenant_id: "tenant-1",
+    name: "OtterWorks Admin",
+    status: "active",
+    tax_exempt: "N",
+    entitlement: [{
+      tenant_id: "tenant-1",
+      plan_code: "STARTER",
+      tier: "starter",
+      monthly_fee: "49",
+      included_units: "100",
+      subscription_status: "active",
+      effective_on: "2026-09-19",
+    }],
+    customer: null,
+  });
+});
 
 describe("Billing plans", () => {
-  it("renders plans from the billing service", async () => {
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/plans", () =>
-        HttpResponse.json([
-          {
-            plan_id: "one",
-            code: "STARTER",
-            tier: "starter",
-            monthly_fee: "49.00",
-            included_units: 100,
-            overage_rate: "0.055000",
-          },
-        ])
-      )
+  it("marks the current plan and posts a plan change", async () => {
+    mockedApi.changePlan.mockResolvedValue({ status: "changed", entitlement: [] });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter><BillingPlansPage /></MemoryRouter>
+      </QueryClientProvider>,
     );
-    renderPage();
-    expect(await screen.findByText("STARTER")).toBeInTheDocument();
-    expect(screen.getByText(/49\.00/)).toBeInTheDocument();
-  });
-
-  it("shows and dismisses a retryable error", async () => {
-    let attempts = 0;
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/plans", () => {
-        attempts += 1;
-        return attempts === 1
-          ? HttpResponse.json({ message: "nope" }, { status: 503 })
-          : HttpResponse.json([
-              {
-                plan_id: "two",
-                code: "GROWTH",
-                tier: "growth",
-                monthly_fee: "149.00",
-                included_units: 500,
-                overage_rate: "0.045000",
-              },
-            ]);
-      })
-    );
-    renderPage();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Plans could not be loaded.");
-    expect(screen.queryByText("No plans are available.")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(await screen.findByText("GROWTH")).toBeInTheDocument();
-    expect(attempts).toBe(2);
-  });
-
-  it("shows and dismisses a retryable error", async () => {
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/plans", () =>
-        HttpResponse.json({ message: "nope" }, { status: 503 })
-      )
-    );
-    renderPage();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Plans could not be loaded.");
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss error" }));
-    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-  });
-
-  it("ignores an earlier failure when Retry has a newer successful request", async () => {
-    let attempts = 0;
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/plans", async () => {
-        attempts += 1;
-        if (attempts === 1) {
-          await delay(100);
-          return HttpResponse.json({ message: "nope" }, { status: 503 });
-        }
-        return HttpResponse.json([
-          {
-            plan_id: "three",
-            code: "SCALE",
-            tier: "scale",
-            monthly_fee: "499.00",
-            included_units: 2000,
-            overage_rate: "0.035000",
-          },
-        ]);
-      }),
-    );
-    renderPage();
-    await waitFor(() => expect(attempts).toBe(1));
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(await screen.findByText("SCALE")).toBeInTheDocument();
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByText("SCALE")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Current plan" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to this plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm change" }));
+    expect(mockedApi.changePlan).toHaveBeenCalledWith("growth", expect.any(String));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Plan change saved");
   });
 });

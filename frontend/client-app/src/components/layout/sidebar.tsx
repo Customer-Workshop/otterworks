@@ -11,6 +11,7 @@ import {
   Trash2,
   Star,
   TrendingUp,
+  CreditCard,
   Menu,
   X,
   Plus,
@@ -59,6 +60,15 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/trash", label: "Trash", icon: Trash2 },
       { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
+  {
+    label: "Billing",
+    items: [
+      { href: "/billing", label: "Overview", icon: CreditCard },
+      { href: "/billing/plans", label: "Plans", icon: CreditCard },
+      { href: "/billing/invoices", label: "Invoices", icon: FileText },
+      { href: "/billing/account", label: "Account", icon: Settings },
     ],
   },
 ];

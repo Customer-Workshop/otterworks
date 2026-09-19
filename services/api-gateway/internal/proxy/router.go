@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -67,6 +68,9 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 	defaultDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		defaultDirector(req)
+		req.Header.Del("X-User-ID")
+		req.Header.Del("X-User-Email")
+		req.Header.Del("X-User-Roles")
 		if claims := middleware.GetJWTClaims(req.Context()); claims != nil {
 			userID := claims.Subject
 			if userID == "" {
@@ -74,6 +78,12 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 			}
 			if userID != "" {
 				req.Header.Set("X-User-ID", userID)
+			}
+			if claims.Email != "" {
+				req.Header.Set("X-User-Email", claims.Email)
+			}
+			if len(claims.Roles) > 0 {
+				req.Header.Set("X-User-Roles", strings.Join(claims.Roles, ","))
 			}
 		}
 	}

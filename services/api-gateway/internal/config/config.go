@@ -24,6 +24,7 @@ type Config struct {
 	AdminServiceURL        string
 	AuditServiceURL        string
 	ReportServiceURL       string
+	LegacyBillingURL       string
 
 	// Rate limiting
 	RateLimitRPS int
@@ -71,6 +72,7 @@ func Load() *Config {
 		AdminServiceURL:        getEnv("ADMIN_SERVICE_URL", "http://admin-service:8089"),
 		AuditServiceURL:        getEnv("AUDIT_SERVICE_URL", "http://audit-service:8090"),
 		ReportServiceURL:       getEnv("REPORT_SERVICE_URL", "http://report-service:8091"),
+		LegacyBillingURL:       getEnv("LEGACY_BILLING_URL", ""),
 
 		RateLimitRPS: getEnvInt("RATE_LIMIT_RPS", 100),
 
@@ -92,7 +94,7 @@ func Load() *Config {
 
 // ServiceRoutes returns a map of route prefix to backend service URL.
 func (c *Config) ServiceRoutes() map[string]string {
-	return map[string]string{
+	routes := map[string]string{
 		"/api/v1/auth":          c.AuthServiceURL,
 		"/api/v1/files":         c.FileServiceURL,
 		"/api/v1/folders":       c.FileServiceURL,
@@ -109,6 +111,10 @@ func (c *Config) ServiceRoutes() map[string]string {
 		"/api/v1/reports":       c.ReportServiceURL,
 		"/api/v1/settings":      c.AuthServiceURL,
 	}
+	if c.LegacyBillingURL != "" {
+		routes["/api/v1/billing"] = c.LegacyBillingURL
+	}
+	return routes
 }
 
 func getEnv(key, fallback string) string {

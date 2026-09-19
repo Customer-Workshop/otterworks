@@ -61,6 +61,23 @@ make procs-down NS=dev
 The Compose profile is separate from the Helm/EKS path. It models the
 application running with its own PostgreSQL database.
 
+## Usage bridge
+
+The optional `usage-bridge` consumes the `otterworks-events` SNS topic through
+the `otterworks-billing-usage` SQS queue and posts billable activity to
+`legacy-billing` asynchronously. Document creation, document updates, and
+comments count as one `api` unit; file uploads count as `storage` units
+rounded up to megabytes with a minimum of one; file updates count as one
+`compute` unit. Other event types are discarded.
+
+Each usage event ID is a UUID5 of
+`ow-usage:<event_type>:<entity_id>:<timestamp>`, so redelivery is handled as a
+duplicate by the billing facade rather than billed twice. Recorded and
+duplicate responses are deleted from SQS. Validation responses (`422`) are
+logged and dropped as unbillable; connection failures and `5xx` responses are
+left visible for visibility-timeout retry without blocking the publishing
+service.
+
 ## Database layout
 
 - `db/schema.sql` — tables and constraints

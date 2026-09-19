@@ -27,6 +27,35 @@ services:
       timeout: 5s
       retries: 5
 
+  usage-bridge:
+    build:
+      context: ./services/legacy-billing/bridge
+      dockerfile: Dockerfile
+    container_name: otterworks-usage-bridge
+    ports:
+      - "8097:8097"
+    environment:
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
+      SNS_TOPIC_ARN: ${SNS_TOPIC_ARN:-arn:aws:sns:us-east-1:000000000000:otterworks-events}
+      LEGACY_BILLING_URL: http://legacy-billing:8096
+    depends_on:
+      legacy-billing:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8097/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api-gateway:
     environment:
       LEGACY_BILLING_URL: http://legacy-billing:8096

@@ -49,3 +49,22 @@ export interface ReconciliationReport {
   status: 'baseline' | 'pass' | 'fail' | string;
   checks: ReconciliationCheck[];
 }
+
+
+export interface OverdueAccount {
+  tenant_id?: string;
+  invoice_id?: string;
+  amount?: string | number;
+  overdue_days?: number;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface DunningAttempt {
+  id?: string;
+  tenant_id?: string;
+  invoice_id?: string;
+  attempt_no?: number;
+  scheduled_for?: string;
+  status?: string;
+  [key: string]: string | number | null | undefined;
+}

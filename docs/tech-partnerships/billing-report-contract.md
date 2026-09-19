@@ -90,3 +90,75 @@ numbers. The page shows a retryable error state.
 
 A migrated backend is done when the backend contract tests (pointed at it) and
 the cent-exact parity against the legacy golden both pass.
+
+## Storefront billing facade (`/api/v1/billing`, via api-gateway)
+
+The storefront calls these routes through the gateway with a bearer access
+token:
+
+- `GET /plans` → plans with `plan_id`, `plan_code`, `tier`, `monthly_fee`,
+  `included_units`, and `overage_rate`.
+- `GET /me[?on=YYYY-MM-DD]` → tenant identity, status, entitlement, and the
+  first customer balance record.
+- `GET /entitlement?on=YYYY-MM-DD` → entitlement rows for the requested date.
+- `POST /plan-change` with `{"plan_id":"...","effective_on":"YYYY-MM-DD"}` →
+  `{"status":"changed","entitlement":[...]}`.
+- `GET /usage?period_start=YYYY-MM-DD&period_end=YYYY-MM-DD` → summary,
+  rating, and the last 50 usage events.
+- `GET /invoices` → newest-first invoice headers.
+- `GET /invoices/<invoice_id>/lines` → invoice lines owned by the caller.
+- `GET /customer` → all legacy customer fields plus `attributes`.
+- `GET /admin/overdue?as_of=YYYY-MM-DD` → overdue accounts for admins.
+- `GET /admin/dunning?as_of=YYYY-MM-DD` → scheduled dunning attempts for
+  admins.
+
+The gateway validates the bearer JWT, deletes inbound `X-User-ID`,
+`X-User-Email`, and `X-User-Roles` headers, then sets those headers from the
+validated claims. The facade uses `X-User-ID` as the tenant identity,
+`X-User-Email` for onboarding, and comma-separated `X-User-Roles` for admin
+authorization. Clients cannot override these headers.
+
+Representative response shapes:
+
+```json
+{"plan_id":"10000000-...","plan_code":"STANDARD","tier":"STANDARD",
+ "monthly_fee":"99.00","included_units":"1000","overage_rate":"0.05"}
+```
+
+```json
+{"tenant_id":"a0000000-...","name":"OtterWorks Admin","status":"ACTIVE",
+ "tax_exempt":"N","entitlement":[{"plan_code":"STANDARD","effective_on":"2026-01-01"}],
+ "customer":{"cust_no":"OW-ADMIN-0001","cur_bal_amt":"0.00",
+ "past_due_amt":"0.00","credit_hold_yn":"N"}}
+```
+
+```json
+{"summary":[{"kind":"API","units":"12"}],"rating":[{"total":"12.00"}],
+ "events":[{"id":"30000000-...","occurred_at":"2026-02-01",
+ "units":"12","kind":"API"}]}
+```
+
+```json
+[{"invoice_id":"50000000-...","period_start":"2026-02-01",
+ "period_end":"2026-02-28","subtotal":"99.00","tax":"0.00",
+ "total":"99.00","status":"ISSUED"}]
+```
+
+```json
+{"cust_id":"40000000-...","cust_no":"OW-ADMIN-0001",
+ "cust_name":"OtterWorks Admin","cur_bal_amt":"0.00",
+ "past_due_amt":"0.00","credit_hold_yn":"N",
+ "attributes":[{"attr_name":"TAX_REGION_OVERRIDE","attr_value":"US",
+ "attr_type":"STRING"}]}
+```
+
+Admin collection responses are arrays of the Oracle report rows; fields retain
+their lowercase contract names, including account, invoice, amount, schedule,
+and status fields.
+
+When Oracle cannot be reached, every facade route returns HTTP 503:
+
+```json
+{"error":"legacy estate unavailable",
+ "detail":"the Oracle billing estate is not reachable"}
+```

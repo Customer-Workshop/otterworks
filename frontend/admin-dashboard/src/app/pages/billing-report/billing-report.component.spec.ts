@@ -56,6 +56,8 @@ describe('BillingReportComponent', () => {
     fixture.detectChanges();
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(report);
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(recon);
+    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([]);
+    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([]);
     fixture.detectChanges();
   }
 
@@ -64,6 +66,8 @@ describe('BillingReportComponent', () => {
     fixture.detectChanges();
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
+    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([]);
+    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([]);
   });
 
   it('should render the legacy source badge', () => {
@@ -103,7 +107,55 @@ describe('BillingReportComponent', () => {
       .flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
     // forkJoin cancels the sibling request on error; just acknowledge it.
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation');
+    httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/')).forEach(request => {
+      if (!request.cancelled) {
+        request.flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+      }
+    });
     fixture.detectChanges();
     expect(component.error).toContain('Failed to load');
+  });
+
+  it('should render overdue accounts and dunning attempts', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
+    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([
+      { tenant_id: 'tenant-1', invoice_id: 'invoice-1', amount: '25.00', overdue_days: 12 },
+    ]);
+    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([
+      { tenant_id: 'tenant-1', invoice_id: 'invoice-1', scheduled_for: '2026-02-28', status: 'SCHEDULED' },
+    ]);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('tenant-1');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('SCHEDULED');
+  });
+
+  it('should show the admin sign-in message for forbidden collections data', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
+    const requests = httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/'));
+    requests.forEach(request => {
+      if (!request.cancelled) {
+        request.flush({ error: 'forbidden' }, { status: 403, statusText: 'Forbidden' });
+      }
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Sign in as an admin to view collections data');
+  });
+
+  it('should show the unavailable message for unavailable collections data', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
+    const requests = httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/'));
+    requests.forEach(request => {
+      if (!request.cancelled) {
+        request.flush({ error: 'unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+      }
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain("Billing is temporarily unavailable");
   });
 });

@@ -56,8 +56,8 @@ def plans():
             [
                 {
                     "plan_id": row.get("plan_id"),
-                    "plan_code": row.get("code", row.get("plan_code")),
-                    "tier": row.get("tier", row.get("code", row.get("plan_code"))),
+                    "plan_code": row["code"],
+                    "tier": row["tier"],
                     "monthly_fee": row.get("monthly_fee"),
                     "included_units": row.get("included_units"),
                     "overage_rate": row.get("overage_rate"),

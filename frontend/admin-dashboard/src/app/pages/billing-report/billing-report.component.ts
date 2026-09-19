@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { catchError, forkJoin, of } from 'rxjs';
 import { BillingReportService } from '../../core/services/billing-report.service';
 import {
-  BillingLineRow, MonthEndReport, ReconciliationReport,
+  BillingLineRow, DunningAttempt, MonthEndReport, OverdueAccount, ReconciliationReport,
 } from '../../core/models/billing-report.model';
 
 @Component({
@@ -34,6 +34,10 @@ import {
           <mat-form-field appearance="outline" class="ns-field" subscriptSizing="dynamic">
             <mat-label>Namespace</mat-label>
             <input matInput [(ngModel)]="ns" (keyup.enter)="refresh()" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="ns-field" subscriptSizing="dynamic">
+            <mat-label>As of</mat-label>
+            <input matInput type="date" [(ngModel)]="asOf" (keyup.enter)="refresh()" />
           </mat-form-field>
           <button mat-raised-button color="primary" (click)="refresh()">
             <mat-icon>refresh</mat-icon> Refresh
@@ -119,6 +123,54 @@ import {
           </mat-card-content>
         </mat-card>
 
+        <mat-card class="report-card collections-card">
+          <mat-card-header><mat-card-title>Overdue accounts</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <p *ngIf="collectionsErrorStatus === 401 || collectionsErrorStatus === 403" class="panel-message">
+              Sign in as an admin to view collections data
+            </p>
+            <p *ngIf="collectionsUnavailable" class="panel-message">
+              Billing is temporarily unavailable — the legacy billing system isn't reachable
+            </p>
+            <table *ngIf="overdueAccounts && !collectionsUnavailable && !collectionsErrorStatus" class="report-table">
+              <thead><tr><th>Account</th><th>Invoice</th><th class="num">Amount</th><th class="num">Days overdue</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of overdueAccounts">
+                  <td>{{ row.tenant_id || '—' }}</td>
+                  <td>{{ row.invoice_id || '—' }}</td>
+                  <td class="num">{{ row.amount || '—' }}</td>
+                  <td class="num">{{ row.overdue_days || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p *ngIf="overdueAccounts && overdueAccounts.length === 0 && !collectionsErrorStatus" class="panel-message">No overdue accounts.</p>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="report-card collections-card">
+          <mat-card-header><mat-card-title>Dunning attempts</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <p *ngIf="collectionsErrorStatus === 401 || collectionsErrorStatus === 403" class="panel-message">
+              Sign in as an admin to view collections data
+            </p>
+            <p *ngIf="collectionsUnavailable" class="panel-message">
+              Billing is temporarily unavailable — the legacy billing system isn't reachable
+            </p>
+            <table *ngIf="dunningAttempts && !collectionsUnavailable && !collectionsErrorStatus" class="report-table">
+              <thead><tr><th>Account</th><th>Invoice</th><th>Scheduled</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of dunningAttempts">
+                  <td>{{ row.tenant_id || '—' }}</td>
+                  <td>{{ row.invoice_id || '—' }}</td>
+                  <td>{{ row.scheduled_for || '—' }}</td>
+                  <td>{{ row.status || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p *ngIf="dunningAttempts && dunningAttempts.length === 0 && !collectionsErrorStatus" class="panel-message">No dunning attempts.</p>
+          </mat-card-content>
+        </mat-card>
+
         <p class="report-footer" *ngIf="report">
           {{ report.source.system }} — {{ report.source.detail }} ·
           batch {{ report.batch_no }} · generated {{ report.generated_at }}
@@ -133,6 +185,8 @@ import {
     .page-title { font-size: 1.5rem; font-weight: 600; color: #333; margin: 0; }
     .header-actions { display: flex; align-items: center; gap: 12px; }
     .ns-field { width: 160px; }
+    .collections-card { margin-top: 24px; }
+    .panel-message { color: #666; padding: 12px 0; }
 
     .source-badge {
       display: inline-flex; align-items: center; gap: 6px;
@@ -177,10 +231,14 @@ import {
 })
 export class BillingReportComponent implements OnInit {
   ns = 'demo';
+  asOf = new Date().toISOString().slice(0, 10);
   loading = true;
   error = '';
   report: MonthEndReport | null = null;
   recon: ReconciliationReport | null = null;
+  overdueAccounts: OverdueAccount[] | null = null;
+  dunningAttempts: DunningAttempt[] | null = null;
+  collectionsErrorStatus: number | null = null;
 
   constructor(private billingReports: BillingReportService) {}
 
@@ -207,6 +265,31 @@ export class BillingReportComponent implements OnInit {
       this.report = result.report;
       this.recon = result.recon;
     });
+    this.refreshCollections();
+  }
+
+  refreshCollections(): void {
+    this.overdueAccounts = null;
+    this.dunningAttempts = null;
+    this.collectionsErrorStatus = null;
+    forkJoin({
+      overdue: this.billingReports.getOverdueAccounts(this.asOf),
+      dunning: this.billingReports.getDunningAttempts(this.asOf),
+    }).subscribe({
+      next: result => {
+        this.overdueAccounts = result.overdue;
+        this.dunningAttempts = result.dunning;
+      },
+      error: error => {
+        this.collectionsErrorStatus = error.status;
+      },
+    });
+  }
+
+  get collectionsUnavailable(): boolean {
+    return this.collectionsErrorStatus === 502 ||
+      this.collectionsErrorStatus === 503 ||
+      this.collectionsErrorStatus === 504;
   }
 
   get sourceLabel(): string {

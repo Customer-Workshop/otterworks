@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID, uuid5, NAMESPACE_URL
 
@@ -10,7 +10,11 @@ NAME = "oracle"
 
 
 def _json_value(value):
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime):
+        if value.time() == time.min:
+            return value.date().isoformat()
+        return value.isoformat()
+    if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
         return str(value)

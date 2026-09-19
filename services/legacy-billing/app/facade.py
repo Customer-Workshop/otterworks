@@ -71,6 +71,9 @@ def _parse_date(value, name):
 
 @facade.get("/plans")
 def plans():
+    _, error = _identity()
+    if error:
+        return error
     if not _oracle_only():
         return _not_available()
     try:

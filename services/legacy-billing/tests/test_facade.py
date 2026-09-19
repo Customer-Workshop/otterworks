@@ -102,9 +102,18 @@ def test_admin_overdue_maps_total_to_amount(monkeypatch):
     ]
 
 
+def test_plans_requires_identity(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    response = app.test_client().get("/api/v1/billing/plans")
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "missing user identity"}
+
+
 def test_facade_is_unavailable_in_postgres_mode(monkeypatch):
     monkeypatch.setenv("BILLING_BACKEND", "postgres")
-    response = app.test_client().get("/api/v1/billing/plans")
+    response = app.test_client().get(
+        "/api/v1/billing/plans", headers={"X-User-ID": "tenant"}
+    )
     assert response.status_code == 501
     assert response.get_json() == {"error": "not available on this backend"}
 
@@ -125,7 +134,9 @@ def test_facade_plans_shape(monkeypatch):
             }
         ],
     )
-    response = app.test_client().get("/api/v1/billing/plans")
+    response = app.test_client().get(
+        "/api/v1/billing/plans", headers={"X-User-ID": "tenant"}
+    )
     assert response.status_code == 200
     assert response.get_json() == [
         {
@@ -170,7 +181,9 @@ def test_facade_oracle_failure_returns_503(monkeypatch):
         raise oracledb.Error("ORA-12541: no listener")
 
     monkeypatch.setattr(facade_module.oracle, "list_plans", fail)
-    response = app.test_client().get("/api/v1/billing/plans")
+    response = app.test_client().get(
+        "/api/v1/billing/plans", headers={"X-User-ID": "tenant"}
+    )
     assert response.status_code == 503
     assert response.get_json() == {
         "error": "legacy estate unavailable",

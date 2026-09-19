@@ -1,0 +1,34 @@
+# OtterWorks Tech-Partnerships wired estate; never part of `make up`.
+include:
+  - docker-compose.infra.yml
+
+services:
+  legacy-billing:
+    build:
+      context: ./services/legacy-billing
+      dockerfile: Dockerfile
+    container_name: otterworks-legacy-billing
+    ports:
+      - "8096:8096"
+    environment:
+      BILLING_BACKEND: oracle
+      ORACLE_HOST: ${ORACLE_HOST:-host.docker.internal}
+      ORACLE_PORT: ${ORACLE_BILLING_DB_PORT:-52521}
+      ORACLE_USER: ${ORACLE_USER:-ow_billing}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-ow_billing}
+      ORACLE_SERVICE: ${ORACLE_SERVICE:-FREEPDB1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8096/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    environment:
+      LEGACY_BILLING_URL: http://legacy-billing:8096
+    depends_on:
+      - legacy-billing

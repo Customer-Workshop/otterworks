@@ -118,6 +118,35 @@ endif
 	$(call validate_ns)
 	DB_PORT=$(ORACLE_BILLING_DB_PORT) $(ORACLE_BILLING_UV) testdata/legacy/oracle_billing_seed.py --ns $(NS) --scale $(or $(SCALE),demo)
 
+TP_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.tp.yml
+TP_SERVICES = $(if $(filter core,$(PROFILE)),api-gateway auth-service document-service file-service web-app admin-dashboard legacy-billing,)
+
+tp-up: ## Start the opt-in tech-partnerships wired estate (NS=<namespace>, PROFILE=core optional)
+ifndef NS
+	$(error NS is required, e.g. make tp-up NS=dev)
+endif
+	$(call validate_ns)
+	$(MAKE) oracle-billing-up
+	@test -f testdata/legacy/manifests/$(NS).json || $(MAKE) oracle-billing-seed NS=$(NS)
+	$(MAKE) infra-up
+	$(TP_COMPOSE) up -d --build --wait $(TP_SERVICES)
+	@echo "Web: http://localhost:3000"
+	@echo "Admin: http://localhost:4200"
+	@echo "Legacy billing: http://localhost:8096"
+	@echo "Oracle: localhost:$(ORACLE_BILLING_DB_PORT)"
+
+tp-down: ## Stop the opt-in tech-partnerships wired estate (does not tear down Oracle)
+	$(TP_COMPOSE) down
+
+tp-seed: ## Seed the Oracle, companion, and legacy ETL estates (NS=<namespace>)
+ifndef NS
+	$(error NS is required, e.g. make tp-seed NS=dev)
+endif
+	$(call validate_ns)
+	$(MAKE) oracle-billing-seed NS=$(NS)
+	$(MAKE) seed-legacy NS=$(NS)
+	$(MAKE) legacy-etl-gen-data NS=$(NS)
+
 ORACLE_PARITY_UV = uv run --with oracledb==2.5.1 --with pyyaml==6.0.2
 ORACLE_PARITY_RUN = procs/reports/oracle-parity-run
 
@@ -267,8 +296,10 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	@$(MAKE) -n seed-legacy NS=ci > /dev/null
 	@$(MAKE) -n legacy-etl-list > /dev/null
 	@$(MAKE) -n procs-parity NS=ci > /dev/null
+	@$(MAKE) -n tp-up NS=ci > /dev/null
 	@echo "=== Oracle billing compose config lint ==="
 	docker compose -f docker-compose.oracle-billing.yml config > /dev/null
+	docker compose -f docker-compose.yml -f docker-compose.tp.yml config > /dev/null
 	@echo "=== Golden 'make -n test' still parses ==="
 	@$(MAKE) -n test > /dev/null
 	@echo "=== TP portal visual renderers (stdlib-only, sample inputs) ==="
@@ -283,6 +314,8 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	cd services/collab-service && { [ -d node_modules ] || npm ci; } && npm run lint && npm test && npm run build
 	@echo "=== Search Service (Python) ==="
 	cd services/search-service && uv run --no-project --with-requirements requirements-dev.txt python -m pytest
+	@echo "=== Legacy Billing (Python) ==="
+	cd services/legacy-billing && uv run --with pytest --with flask==3.1.1 --with oracledb==2.5.1 --with 'psycopg[binary]==3.2.9' python -m pytest -q
 	@echo "tp-smoke: all checks passed"
 
 tp-run-branch: ## Cut and push the per-run working branch for a rehearsal (TRACK=mongodb|databricks|aws|modernize)

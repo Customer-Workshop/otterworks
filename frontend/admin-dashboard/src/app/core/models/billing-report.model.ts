@@ -6,7 +6,7 @@ export interface BillingReportSource {
 
 export interface BillingStatusRow {
   status: string;
-  invoice_count: number;
+  invoice_count: string | number;
   header_total_amt: string;
 }
 

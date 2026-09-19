@@ -57,6 +57,7 @@ INSERT INTO rating_results (id, period_id, subscription_id, used_units, quota_un
 INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-01 00:00:00', 149.00, 12.29, 161.29, 40);
 INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-13 00:00:00', 149.00, 12.29, 161.29, 40);
 INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000006', '40000000-0000-0000-0000-000000000002', TIMESTAMP '2026-02-28 00:00:00', 49.00, 4.04, 53.04, 20);
+INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-01 00:00:00', 149.00, 12.29, 161.29, 30);
 
 INSERT INTO credit_notes (id, tenant_id, issued_on, amount, remaining_amount) VALUES ('70000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000004', DATE '2026-02-01', 30.00, 30.00);
 INSERT INTO credit_notes (id, tenant_id, issued_on, amount, remaining_amount) VALUES ('70000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000004', DATE '2026-02-01', 30.00, 30.00);
@@ -70,6 +71,8 @@ INSERT INTO notifications (id, tenant_id, kind_cd, sent_at) VALUES ('90000000-00
 
 INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 1, 'plan', 'GROWTH', 149.00);
 INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000001', 2, 'usage', 'usage overage', 12.29);
+INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-000000000009', '60000000-0000-0000-0000-000000000009', 1, 'plan', 'GROWTH', 149.00);
+INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-00000000000a', '60000000-0000-0000-0000-000000000009', 2, 'usage', 'usage overage', 12.29);
 
 INSERT INTO customer_master (
     cust_id, tenant_id, cust_no, cust_name, legal_name,

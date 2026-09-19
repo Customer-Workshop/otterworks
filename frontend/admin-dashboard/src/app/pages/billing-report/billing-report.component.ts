@@ -361,7 +361,7 @@ export class BillingReportComponent implements OnInit {
   }
 
   get totalInvoices(): number {
-    return (this.report?.by_status ?? []).reduce((sum, row) => sum + row.invoice_count, 0);
+    return (this.report?.by_status ?? []).reduce((sum, row) => sum + this.toNumber(row.invoice_count), 0);
   }
 
   get totalBilled(): number {
@@ -396,7 +396,7 @@ export class BillingReportComponent implements OnInit {
     return 'This estate is the reconciliation baseline — nothing to compare against.';
   }
 
-  toNumber(value: string): number {
+  toNumber(value: string | number): number {
     return Number(value);
   }
 

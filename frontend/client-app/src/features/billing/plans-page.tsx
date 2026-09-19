@@ -15,6 +15,7 @@ export default function BillingPlansPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [submitError, setSubmitError] = useState<unknown>(null);
   const [success, setSuccess] = useState("");
 
   const load = () => {
@@ -37,6 +38,7 @@ export default function BillingPlansPage() {
   const submit = (planId: string) => {
     setSaving(true);
     setSuccess("");
+    setSubmitError(null);
     billingApi.changePlan(planId, effectiveOn)
       .then(() => {
         setSuccess("Plan change saved.");
@@ -44,7 +46,7 @@ export default function BillingPlansPage() {
         return billingApi.me();
       })
       .then(setMe)
-      .catch(setError)
+      .catch(setSubmitError)
       .finally(() => setSaving(false));
   };
 
@@ -59,6 +61,13 @@ export default function BillingPlansPage() {
         {!loading && isEstateUnavailable(error) && <EstateUnavailable detail={errorDetail(error)} />}
         {!loading && Boolean(error) && !isEstateUnavailable(error) && (
           <BillingAlert message="Plans could not be loaded." onDismiss={() => setError(null)} />
+        )}
+        {!loading && isEstateUnavailable(submitError) && <EstateUnavailable detail={errorDetail(submitError)} />}
+        {!loading && Boolean(submitError) && !isEstateUnavailable(submitError) && (
+          <BillingAlert
+            message={errorDetail(submitError) ?? "Plan change was not accepted."}
+            onDismiss={() => setSubmitError(null)}
+          />
         )}
         {success && <BillingAlert message={success} tone="success" onDismiss={() => setSuccess("")} />}
         {!loading && !error && (

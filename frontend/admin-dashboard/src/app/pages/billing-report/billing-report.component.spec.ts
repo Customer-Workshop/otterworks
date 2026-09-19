@@ -125,6 +125,17 @@ describe('BillingReportComponent', () => {
     expect(component.totalBilled).toBe(13000);
   });
 
+  it('should total string invoice counts numerically', () => {
+    flush({
+      ...REPORT,
+      by_status: [
+        { status: 'ISSUED', invoice_count: '10000', header_total_amt: '12345.00' },
+        { status: 'PAID', invoice_count: '8750', header_total_amt: '655.00' },
+      ],
+    });
+    expect(component.totalInvoices).toBe(18750);
+  });
+
   it('should show the baseline reconciliation banner for the legacy estate', () => {
     flush();
     const banner = (fixture.nativeElement as HTMLElement).querySelector('.recon-banner');

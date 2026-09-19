@@ -11,8 +11,8 @@ vi.mock("./api", () => ({
     listPlans: vi.fn(),
     changePlan: vi.fn(),
   },
-  isEstateUnavailable: () => false,
-  errorDetail: () => undefined,
+  isEstateUnavailable: (error: unknown) => [502, 503, 504].includes((error as { status?: number })?.status ?? 0),
+  errorDetail: (error: unknown) => (error as { detail?: string })?.detail,
 }));
 vi.mock("@/components/ui/notification-bell", () => ({
   NotificationBell: () => null,
@@ -59,5 +59,21 @@ describe("Billing plans", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm change" }));
     expect(mockedApi.changePlan).toHaveBeenCalledWith("growth", expect.any(String));
     expect(await screen.findByRole("alert")).toHaveTextContent("Plan change saved");
+  });
+
+  it("shows a plan-change validation detail without hiding the catalog", async () => {
+    mockedApi.changePlan.mockRejectedValue({ status: 400, detail: "effective_on must be today or later" });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter><BillingPlansPage /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("button", { name: "Current plan" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to this plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm change" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("effective_on must be today or later");
+    expect(screen.getByRole("heading", { name: "STARTER" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "GROWTH" })).toBeInTheDocument();
   });
 });

@@ -17,6 +17,9 @@ services:
       ORACLE_USER: ${ORACLE_USER:-ow_billing}
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-ow_billing}
       ORACLE_SERVICE: ${ORACLE_SERVICE:-FREEPDB1}
+      FINANCE_REPORT_DIR: /app/etl/legacy-extra/reports
+    volumes:
+      - ./etl/legacy-extra/reports:/app/etl/legacy-extra/reports:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

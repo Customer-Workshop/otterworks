@@ -39,6 +39,19 @@ All jobs fall back to `OTTERWORKS_LEGACY_ROOT` (default `/tmp/otterworks-legacy`
 not on the prod/UAT hostnames. Outputs land in `$OTTERWORKS_LEGACY_ROOT/`:
 `incoming/`, `parsed/*.psv`, `reports/finance_billing_*.{csv,xls}`.
 
+## Month-end batch
+
+`make tp-month-end NS=<ns>` reads the namespace's Oracle invoice headers and writes
+a deterministic `CUSTBILL_<NS>_ORACLE.dat` file into the ETL `incoming/` directory.
+The existing fixed-width parser converts that file to pipe-delimited records, and
+the Perl finance job aggregates those records into
+`reports/finance_billing_YYYYMMDD.csv` plus its byte-identical `.xls` copy. The
+legacy billing Flask service can expose that batch artifact through its finance
+report endpoint, and the admin dashboard labels it as the month-end finance batch.
+
+The target overwrites the deterministic extract before parsing it, so rerunning the
+same namespace processes a fresh input rather than relying on a prior `.done` file.
+
 ## Deficiency inventory (migration acceptance checklist)
 
 Everything wrong with the Python estate (hardcoded creds, no retries, `print()`

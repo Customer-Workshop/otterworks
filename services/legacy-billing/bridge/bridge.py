@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from uuid import NAMESPACE_URL, uuid5
 
@@ -72,7 +73,7 @@ def map_event(event):
         size_bytes = payload.get("size_bytes", payload.get("sizeBytes", 0)) or 0
         units = max(1, math.ceil(int(size_bytes) / 1_048_576))
         kind = "storage"
-    event_id = str(uuid5(NAMESPACE_URL, f"ow-usage:{event_type}:{entity_id}:{timestamp}"))
+    event_id = deterministic_event_id(event_type, entity_id, timestamp)
     return {
         "event_id": event_id,
         "tenant_id": tenant_id,
@@ -235,6 +236,7 @@ class UsageBridge:
                 self.run_once()
             except Exception:
                 LOGGER.exception("usage bridge receive loop failed")
+                time.sleep(2)
 
 
 def start_health_server(metrics, port=8097):

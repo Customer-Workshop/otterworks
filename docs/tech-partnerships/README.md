@@ -11,6 +11,13 @@ files and Make targets and are never started by the default path.
 
 ## Component contracts
 
+### Connected estate runbook
+
+For the end-to-end Oracle, gateway, storefront, usage bridge, batch, and admin
+workflow, see [WIRED-ESTATE-RUNBOOK.md](WIRED-ESTATE-RUNBOOK.md).
+It covers startup, usage and month-end demos, screen-to-component mappings,
+failure behavior, recording order, and the filled pre-PR self-check.
+
 | Component | Compose file | Make targets | Location |
 |---|---|---|---|
 | Oracle billing estate (PL/SQL port of legacy-billing + data-model horror schema) | `docker-compose.oracle-billing.yml` | `oracle-billing-up`, `oracle-billing-down` | `services/legacy-billing/db/oracle/` |

@@ -188,7 +188,8 @@ dashboard labels this panel **Month-end finance batch**.
 ```
 
 The Perl job writes a CSV report and copies it byte-for-byte to a `.xls` name;
-the endpoint parses either representation. If no report has been generated for
+the endpoint selects only the CSV artifact so its `source.file` identifies the
+canonical report. If no report has been generated for
 the requested namespace, it returns HTTP 404:
 
 ```json

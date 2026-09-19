@@ -8,6 +8,18 @@ This service is the current system of record for billing. An extraction
 effort toward a modern service is in progress; the extraction target and the
 modern client are separate components and are not part of this service.
 
+## Oracle backend and billing facade
+
+The optional connected-estate overlay selects the Oracle backend with
+`BILLING_BACKEND=oracle`. In that mode the API gateway routes
+`/api/v1/billing` here and supplies trusted `X-User-ID`, `X-User-Email`, and
+`X-User-Roles` identity headers. The facade exposes plans, the signed-in
+tenant, entitlement, plan changes, usage, invoices, customer fields, and admin
+overdue/dunning views under `/api/v1/billing`. Oracle failures return the
+estate-unavailable response rather than falling back to Postgres. After
+`make tp-month-end NS=<ns>`, the batch-derived finance result is available at
+`GET /api/reports/finance?ns=<ns>`.
+
 ## Modules
 
 | Module | Procedures/functions | Routes |

@@ -323,6 +323,8 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	cd services/api-gateway && go vet ./... && go test ./... && go build -o /dev/null ./cmd/server
 	@echo "=== Collab Service (Node.js) ==="
 	cd services/collab-service && { [ -d node_modules ] || npm ci; } && npm run lint && npm test && npm run build
+	@echo "=== Client App (Node.js) ==="
+	cd frontend/client-app && { [ -d node_modules ] || npm ci; } && npm run lint && npm test -- --run && npm run build
 	@echo "=== Search Service (Python) ==="
 	cd services/search-service && uv run --no-project --with-requirements requirements-dev.txt python -m pytest
 	@echo "=== Legacy Billing (Python) ==="

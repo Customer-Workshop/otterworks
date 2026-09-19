@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiClient } from "@/lib/api-client";
+import { createRawApiClient } from "@/lib/api-client";
 
 export class BillingApiError extends Error {
   constructor(
@@ -77,35 +77,20 @@ export type Customer = {
   attributes: CustomerAttribute[];
 };
 
-function camelToSnake(key: string): string {
-  return key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-}
-
-function normalizeKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(normalizeKeys);
-  if (value !== null && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, child]) => [
-        camelToSnake(key),
-        normalizeKeys(child),
-      ]),
-    );
-  }
-  return value;
-}
+const billingClient = createRawApiClient();
 
 async function request<T>(
   path: string,
   config: { method?: "GET" | "POST"; params?: Record<string, string>; data?: unknown } = {},
 ): Promise<T> {
   try {
-    const response = await apiClient.request({
+    const response = await billingClient.request({
       url: path,
       method: config.method ?? "GET",
       params: config.params,
       data: config.data,
     });
-    return normalizeKeys(response.data) as T;
+    return response.data as T;
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status ?? 0;

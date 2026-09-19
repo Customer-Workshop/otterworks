@@ -10,10 +10,11 @@ conversion batch number.
 
 import hashlib
 import logging
-import os
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
+
+from oracle_conn import oracle_connect as connect_oracle
 
 reports = Blueprint("reports", __name__)
 logger = logging.getLogger(__name__)
@@ -119,20 +120,8 @@ def shape_balances(row):
     }
 
 
-def oracle_connect():
-    import oracledb
-
-    return oracledb.connect(
-        user=os.getenv("ORACLE_USER", "ow_billing"),
-        password=os.getenv("ORACLE_PASSWORD", "ow_billing"),
-        host=os.getenv("ORACLE_HOST", "localhost"),
-        port=int(os.getenv("ORACLE_PORT", "52521")),
-        service_name=os.getenv("ORACLE_SERVICE", "FREEPDB1"),
-    )
-
-
 def oracle_query(sql, params):
-    with oracle_connect() as connection, connection.cursor() as cursor:
+    with connect_oracle() as connection, connection.cursor() as cursor:
         cursor.execute(sql, params)
         return cursor.fetchall()
 

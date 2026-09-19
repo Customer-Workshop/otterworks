@@ -146,7 +146,8 @@ Verified locally:
 
 Not verified on this box:
 
-- A complete `make tp-up NS=demo PROFILE=core`: host port 5432 was occupied,
+- A complete `make tp-up NS=demo PROFILE=core`: host port 5432 was occupied
+  (set `POSTGRES_HOST_PORT=<free port>` when a local Postgres already holds it),
   and the auth-service image build encountered Maven HTTP 403 responses.
 - Browser screenshots of the storefront and admin pages.
 

@@ -1,0 +1,58 @@
+{
+  "unit": "custbill-finance-report",
+  "source_artifact_path": "etl/legacy-extra/tools/oracle_custbill_extract.py",
+  "target_objects": [
+    "CUSTBILL_<NS>_ORACLE.dat",
+    "reports/finance_billing_YYYYMMDD.csv",
+    "reports/finance_billing_YYYYMMDD.xls",
+    "GET /api/reports/finance"
+  ],
+  "golden_baseline_location": "/home/ubuntu/tp-evidence/handoff4/",
+  "acceptance_checks": [
+    {
+      "id": "fixed-width",
+      "description": "Each emitted CUSTBILL record is 65 characters with the documented column layout."
+    },
+    {
+      "id": "determinism",
+      "description": "Repeated extraction for the same namespace produces byte-identical output."
+    },
+    {
+      "id": "batch-surface",
+      "description": "The Flask endpoint serves the persisted Perl report and labels it as batch output."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "Oracle rows",
+    "byte_transparency": "ASCII fixed-width records with newline delimiters.",
+    "invalid_bytes": "Customer identifiers and names are truncated to their legacy field widths."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "fail",
+    "null_attribution": "tolerate-and-attribute",
+    "details": "Missing customer text is padded; amounts are rounded half up to cents."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "The chain writes a zero-row finance report for a namespace with no invoice headers."
+  },
+  "trigger_granularity": "per-batch",
+  "planted_anomalies": [
+    {
+      "id": "xls-copy",
+      "description": "The .xls artifact is a byte-identical CSV copy, not a native workbook.",
+      "status": "must-detect"
+    }
+  ],
+  "endpoint": {
+    "method": "GET",
+    "path": "/api/reports/finance",
+    "auth": "internal",
+    "response_top_level_keys": ["ns", "source", "rows", "totals"],
+    "missing_report": {
+      "status": 404,
+      "body_keys": ["error", "detail"]
+    }
+  },
+  "report_columns": ["Currency", "RecordType", "RecordCount", "TotalAmount"]
+}

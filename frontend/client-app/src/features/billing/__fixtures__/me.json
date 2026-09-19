@@ -1,0 +1,24 @@
+{
+  "tenant_id": "a0000000-0000-0000-0000-000000000001",
+  "name": "OtterWorks Admin",
+  "status": "active",
+  "tax_exempt": "N",
+  "entitlement": [
+    {
+      "tenant_id": "a0000000-0000-0000-0000-000000000001",
+      "plan_code": "GROWTH",
+      "tier": "growth",
+      "monthly_fee": "149",
+      "included_units": "500",
+      "subscription_status": "active",
+      "effective_on": "2026-09-19T00:00:00"
+    }
+  ],
+  "customer": {
+    "cust_no": "OW-ADMIN-0001",
+    "cust_name": "OtterWorks Admin",
+    "cur_bal_amt": "149",
+    "past_due_amt": "0",
+    "credit_hold_yn": "N"
+  }
+}

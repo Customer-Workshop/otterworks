@@ -1,11 +1,11 @@
-export const BILLING_BASE_URL =
-  import.meta.env.VITE_BILLING_SERVICE_URL ||
-  `${window.location.origin}/billing-api`;
+import axios from "axios";
+import { createRawApiClient } from "@/lib/api-client";
 
 export class BillingApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly detail?: string,
   ) {
     super(message);
   }
@@ -13,10 +13,10 @@ export class BillingApiError extends Error {
 
 export type Plan = {
   plan_id: string;
-  code: string;
+  plan_code: string;
   tier: string;
   monthly_fee: string;
-  included_units: number;
+  included_units: string;
   overage_rate: string;
 };
 
@@ -25,48 +25,114 @@ export type Entitlement = {
   plan_code: string;
   tier: string;
   monthly_fee: string;
-  included_units: number;
+  included_units: string;
   subscription_status: string;
   effective_on: string;
 };
 
-export type Subscription = {
-  plan_id: string;
-  starts_on: string;
-  ends_on: string | null;
+export type CustomerSummary = {
+  cust_no: string;
+  cust_name: string;
+  cur_bal_amt: string;
+  past_due_amt: string;
+  credit_hold_yn: string;
+};
+
+export type Me = {
+  tenant_id: string;
+  name: string;
+  status: string;
+  tax_exempt: string;
+  entitlement: Entitlement[];
+  customer: CustomerSummary | null;
+};
+
+export type UsageEvent = {
+  id: string;
+  occurred_at: string;
+  units: string;
+  kind: string;
+};
+
+export type Usage = {
+  summary: Array<Record<string, string | number | null>>;
+  rating: Array<Record<string, string | number | null>>;
+  events: UsageEvent[];
+};
+
+export type Invoice = {
+  invoice_id: string;
+  period_start: string;
+  period_end: string;
+  subtotal: string;
+  tax: string;
+  total: string;
   status: string;
 };
 
-export type PlanChangeResult = {
-  latest_plan: string;
-  latest_start: string;
-  subscriptions: Subscription[];
+export type CustomerAttribute = Record<string, string | number | null>;
+
+export type Customer = {
+  [key: string]: string | number | null | CustomerAttribute[];
+  attributes: CustomerAttribute[];
 };
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${BILLING_BASE_URL}${path}`, options);
-  if (!response.ok) {
-    throw new BillingApiError(
-      `Billing service returned ${response.status}`,
-      response.status,
-    );
+const billingClient = createRawApiClient();
+
+async function request<T>(
+  path: string,
+  config: { method?: "GET" | "POST"; params?: Record<string, string>; data?: unknown } = {},
+): Promise<T> {
+  try {
+    const response = await billingClient.request({
+      url: path,
+      method: config.method ?? "GET",
+      params: config.params,
+      data: config.data,
+    });
+    return response.data as T;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0;
+      const detail =
+        typeof error.response?.data?.detail === "string"
+          ? error.response.data.detail
+          : undefined;
+      throw new BillingApiError(
+        detail ?? `Billing service returned ${status || "an unknown error"}`,
+        status,
+        detail,
+      );
+    }
+    throw error;
   }
-  return response.json() as Promise<T>;
+}
+
+export function isEstateUnavailable(error: unknown): boolean {
+  return error instanceof BillingApiError && [502, 503, 504].includes(error.status);
+}
+
+export function errorDetail(error: unknown): string | undefined {
+  return error instanceof BillingApiError ? error.detail : undefined;
 }
 
 export const billingApi = {
-  listPlans: () => request<Plan[]>("/api/plans"),
-  entitlement: (tenantId: string, on: string) =>
-    request<Entitlement>(
-      `/api/tenants/${encodeURIComponent(tenantId)}/entitlement?on=${encodeURIComponent(on)}`
+  listPlans: () => request<Plan[]>("/billing/plans"),
+  me: (on?: string) => request<Me>("/billing/me", { params: on ? { on } : undefined }),
+  entitlement: (on: string) => request<Entitlement[]>("/billing/entitlement", { params: { on } }),
+  changePlan: (planId: string, effectiveOn: string) =>
+    request<{ status: string; entitlement: Entitlement[] }>("/billing/plan-change", {
+      method: "POST",
+      data: { plan_id: planId, effective_on: effectiveOn },
+    }),
+  usage: (periodStart: string, periodEnd: string) =>
+    request<Usage>("/billing/usage", {
+      params: { period_start: periodStart, period_end: periodEnd },
+    }),
+  invoices: () => request<Invoice[]>("/billing/invoices"),
+  invoiceLines: (invoiceId: string) =>
+    request<Array<Record<string, string | number | null>>>(
+      `/billing/invoices/${encodeURIComponent(invoiceId)}/lines`,
     ),
-  changePlan: (tenantId: string, planId: string, effectiveOn: string) =>
-    request<PlanChangeResult>(
-      `/api/tenants/${encodeURIComponent(tenantId)}/plan-change`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: planId, effective_on: effectiveOn }),
-      }
-    ),
+  customer: () => request<Customer>("/billing/customer"),
 };

@@ -1,0 +1,10 @@
+[
+  {
+    "plan_id": "10000000-0000-0000-0000-000000000001",
+    "plan_code": "STARTER",
+    "tier": "starter",
+    "monthly_fee": "49",
+    "included_units": "100",
+    "overage_rate": "0.055"
+  }
+]

@@ -1,162 +1,118 @@
-import { http, HttpResponse, delay } from "msw";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
-import { describe, expect, it } from "vitest";
-import BillingChangePlanPage from "./change-plan-page";
-import BillingEntitlementPage from "./entitlement-page";
-import { billingServer } from "../../test-setup";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import BillingAccountPage from "./account-page";
+import BillingInvoicesPage from "./invoices-page";
+import BillingOverviewPage from "./overview-page";
+import { billingApi, type Customer } from "./api";
 
-const TENANT_A = "00000000-0000-0000-0000-000000000001";
-const TENANT_B = "00000000-0000-0000-0000-000000000002";
-const PLAN = "10000000-0000-0000-0000-000000000001";
+vi.mock("./api", () => ({
+  billingApi: {
+    me: vi.fn(),
+    usage: vi.fn(),
+    listPlans: vi.fn(),
+    changePlan: vi.fn(),
+    invoices: vi.fn(),
+    invoiceLines: vi.fn(),
+    customer: vi.fn(),
+  },
+  isEstateUnavailable: (error: unknown) => Boolean((error as { status?: number })?.status && [502, 503, 504].includes((error as { status: number }).status)),
+  errorDetail: (error: unknown) => (error as { detail?: string })?.detail,
+}));
+vi.mock("@/components/ui/notification-bell", () => ({
+  NotificationBell: () => null,
+}));
 
-function renderEntitlement(tenantId: string) {
+const mockedApi = vi.mocked(billingApi);
+
+function renderPage(element: ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[`/billing/entitlement/${tenantId}`]}>
-      <TenantSwitcher />
-      <Routes>
-        <Route path="/billing/entitlement/:tenantId" element={<BillingEntitlementPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{element}</MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
-function TenantSwitcher() {
-  const navigate = useNavigate();
-  return (
-    <button type="button" onClick={() => navigate(`/billing/entitlement/${TENANT_B}`)}>
-      Switch tenant
-    </button>
-  );
-}
+const me = {
+  tenant_id: "tenant-1",
+  name: "OtterWorks Admin",
+  status: "active",
+  tax_exempt: "N",
+  entitlement: [{
+    tenant_id: "tenant-1",
+    plan_code: "GROWTH",
+    tier: "growth",
+    monthly_fee: "149",
+    included_units: "500",
+    subscription_status: "active",
+    effective_on: "2026-09-19",
+  }],
+  customer: {
+    cust_no: "OW-ADMIN-0001",
+    cust_name: "OtterWorks Admin",
+    cur_bal_amt: "149",
+    past_due_amt: "0",
+    credit_hold_yn: "N",
+  },
+};
 
-function renderChangePlan() {
-  return render(
-    <MemoryRouter initialEntries={[`/billing/change/${TENANT_A}`]}>
-      <ChangeTenantSwitcher />
-      <Routes>
-        <Route path="/billing/change/:tenantId" element={<BillingChangePlanPage />} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
+beforeEach(() => {
+  vi.stubEnv("VITE_ENABLE_BILLING", "true");
+  vi.clearAllMocks();
+});
 
-function ChangeTenantSwitcher() {
-  const navigate = useNavigate();
-  return (
-    <button type="button" onClick={() => navigate(`/billing/change/${TENANT_B}`)}>
-      Switch change tenant
-    </button>
-  );
-}
-
-describe("Billing page state transitions", () => {
-  it("clears the previous tenant entitlement while switching tenants", async () => {
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/tenants/:tenantId/entitlement", async ({ params }) => {
-        if (params.tenantId === TENANT_B) await delay(100);
-        return HttpResponse.json({
-          tenant_id: params.tenantId,
-          plan_code: params.tenantId === TENANT_A ? "STARTER" : "GROWTH",
-          tier: params.tenantId === TENANT_A ? "starter" : "growth",
-          monthly_fee: params.tenantId === TENANT_A ? "49.00" : "149.00",
-          included_units: params.tenantId === TENANT_A ? 100 : 500,
-          subscription_status: "active",
-          effective_on: "2026-02-28",
-        });
-      }),
-    );
-    renderEntitlement(TENANT_A);
-    expect(await screen.findByText("STARTER")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Switch tenant" }));
-    await waitFor(() => {
-      expect(screen.queryByText("STARTER")).not.toBeInTheDocument();
-      expect(screen.getByRole("status")).toHaveTextContent("Loading entitlement");
-    });
+describe("Billing overview", () => {
+  it("renders the current plan and customer balance", async () => {
+    mockedApi.me.mockResolvedValue(me);
+    mockedApi.usage.mockResolvedValue({ summary: [], rating: [], events: [] });
+    renderPage(<BillingOverviewPage />);
     expect(await screen.findByText("GROWTH")).toBeInTheDocument();
+    expect(screen.getByText("Current: $149")).toBeInTheDocument();
+    expect(screen.getByText("Source: OW_BILLING legacy estate (Oracle)")).toBeInTheDocument();
   });
 
-  it("clears a previous success when a later plan submission fails", async () => {
-    let attempts = 0;
-    let planLoads = 0;
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/plans", async () => {
-        planLoads += 1;
-        if (planLoads > 1) await delay(100);
-        return HttpResponse.json([
-          {
-            plan_id: PLAN,
-            code: "STARTER",
-            tier: "starter",
-            monthly_fee: "49.00",
-            included_units: 100,
-            overage_rate: "0.055000",
-          },
-        ]);
-      }),
-      http.post("http://localhost:3000/billing-api/api/tenants/:tenantId/plan-change", () => {
-        attempts += 1;
-        return attempts === 1
-          ? HttpResponse.json({
-              latest_plan: PLAN,
-              latest_start: "2026-03-01",
-              subscriptions: [],
-            })
-          : HttpResponse.json(
-              { detail: "this plan change has already been requested" },
-              { status: 409 },
-            );
-      }),
-    );
-    renderChangePlan();
-    await screen.findByRole("button", { name: "Save plan change" });
-    fireEvent.click(screen.getByRole("button", { name: "Save plan change" }));
-    expect(await screen.findByText("Plan change saved for 2026-03-01.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Switch change tenant" }));
-    await waitFor(() =>
-      expect(screen.queryByText("Plan change saved for 2026-03-01.")).not.toBeInTheDocument(),
-    );
-    await screen.findByRole("button", { name: "Save plan change" });
-    fireEvent.click(screen.getByRole("button", { name: "Save plan change" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This plan change was already submitted.",
-    );
-    await waitFor(() =>
-      expect(screen.queryByText("Plan change saved for 2026-03-01.")).not.toBeInTheDocument(),
-    );
+  it("shows the estate unavailable state", async () => {
+    mockedApi.me.mockRejectedValue({ status: 503, detail: "Oracle is offline" });
+    mockedApi.usage.mockResolvedValue({ summary: [], rating: [], events: [] });
+    renderPage(<BillingOverviewPage />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Billing is temporarily unavailable");
+    expect(screen.getByText("Oracle is offline")).toBeInTheDocument();
   });
+});
 
-  it("ignores a plan response after switching tenants", async () => {
-    billingServer.use(
-      http.get("http://localhost:3000/billing-api/api/plans", () =>
-        HttpResponse.json([
-          {
-            plan_id: PLAN,
-            code: "STARTER",
-            tier: "starter",
-            monthly_fee: "49.00",
-            included_units: 100,
-            overage_rate: "0.055000",
-          },
-        ]),
-      ),
-      http.post(
-        "http://localhost:3000/billing-api/api/tenants/:tenantId/plan-change",
-        async () => {
-          await delay(100);
-          return HttpResponse.json({
-            latest_plan: PLAN,
-            latest_start: "2026-03-01",
-            subscriptions: [],
-          });
-        },
-      ),
-    );
-    renderChangePlan();
-    await screen.findByRole("button", { name: "Save plan change" });
-    fireEvent.click(screen.getByRole("button", { name: "Save plan change" }));
-    fireEvent.click(screen.getByRole("button", { name: "Switch change tenant" }));
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    expect(screen.queryByText("Plan change saved for 2026-03-01.")).not.toBeInTheDocument();
+describe("Billing invoices", () => {
+  it("expands invoice lines when an invoice is clicked", async () => {
+    mockedApi.invoices.mockResolvedValue([{
+      invoice_id: "invoice-1",
+      period_start: "2026-02-01",
+      period_end: "2026-02-28",
+      subtotal: "100",
+      tax: "10",
+      total: "110",
+      status: "ISSUED",
+    }]);
+    mockedApi.invoiceLines.mockResolvedValue([{ line_type: "CHARGE", amount: "100" }]);
+    renderPage(<BillingInvoicesPage />);
+    fireEvent.click(await screen.findByText(/2026-02-01/));
+    expect(await screen.findByText("Invoice lines")).toBeInTheDocument();
+    expect(screen.getByText("CHARGE")).toBeInTheDocument();
+  });
+});
+
+describe("Billing account", () => {
+  it("renders all legacy fields and EAV rows", async () => {
+    const customer = {
+      ...Object.fromEntries(Array.from({ length: 155 }, (_, index) => [`field_${index}`, `value-${index}`])),
+      attributes: [{ attr_name: "TAX_REGION_OVERRIDE", attr_value: "US", attr_type: "STRING" }],
+    } as unknown as Customer;
+    mockedApi.customer.mockResolvedValue(customer);
+    renderPage(<BillingAccountPage />);
+    expect(await screen.findByText("All 155 legacy fields")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("All 155 legacy fields"));
+    await waitFor(() => expect(within(screen.getByText("All 155 legacy fields").closest("details") as HTMLElement).getAllByRole("row")).toHaveLength(155));
+    expect(screen.getByText("TAX_REGION_OVERRIDE")).toBeInTheDocument();
   });
 });

@@ -20,13 +20,12 @@ import StarredPage from "@/pages/starred";
 import TrashPage from "@/pages/trash";
 import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
+import BillingOverviewPage from "@/features/billing/overview-page";
 import BillingPlansPage from "@/features/billing/plans-page";
-import BillingEntitlementPage from "@/features/billing/entitlement-page";
-import BillingChangePlanPage from "@/features/billing/change-plan-page";
+import BillingInvoicesPage from "@/features/billing/invoices-page";
+import BillingAccountPage from "@/features/billing/account-page";
 
-const BILLING_FIXTURE_ENABLED =
-  import.meta.env.VITE_ENABLE_BILLING_FIXTURE === "true" ||
-  import.meta.env.DEV;
+const billingEnabled = import.meta.env.VITE_ENABLE_BILLING === "true";
 
 function NotFound() {
   return (
@@ -62,17 +61,12 @@ export default function App() {
           <Route path="/trash" element={<TrashPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          {BILLING_FIXTURE_ENABLED && (
+          {billingEnabled && (
             <>
+              <Route path="/billing" element={<BillingOverviewPage />} />
               <Route path="/billing/plans" element={<BillingPlansPage />} />
-              <Route
-                path="/billing/entitlement/:tenantId"
-                element={<BillingEntitlementPage />}
-              />
-              <Route
-                path="/billing/change/:tenantId"
-                element={<BillingChangePlanPage />}
-              />
+              <Route path="/billing/invoices" element={<BillingInvoicesPage />} />
+              <Route path="/billing/account" element={<BillingAccountPage />} />
             </>
           )}
           <Route path="*" element={<NotFound />} />

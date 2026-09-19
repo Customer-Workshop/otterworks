@@ -1,0 +1,143 @@
+{
+  "unit": "legacy-billing-facade",
+  "source_artifact_path": "services/legacy-billing/app/facade.py",
+  "target_objects": [
+    "GET /api/v1/billing/plans",
+    "GET /api/v1/billing/me",
+    "GET /api/v1/billing/entitlement",
+    "POST /api/v1/billing/plan-change",
+    "GET /api/v1/billing/usage",
+    "GET /api/v1/billing/invoices",
+    "GET /api/v1/billing/invoices/<invoice_id>/lines",
+    "GET /api/v1/billing/customer",
+    "GET /api/v1/billing/admin/overdue",
+    "GET /api/v1/billing/admin/dunning",
+    "GET /api/v1/billing/admin/reports/month-end",
+    "GET /api/v1/billing/admin/reports/reconciliation",
+    "GET /api/v1/billing/admin/reports/finance",
+    "POST /internal/usage/events"
+  ],
+  "golden_baseline_location": "/home/ubuntu/tp-evidence/handoff1/",
+  "acceptance_checks": [
+    {
+      "id": "routes",
+      "description": "Every documented facade route is present in the Flask URL map."
+    },
+    {
+      "id": "identity",
+      "description": "User routes require gateway-provided identity and admin routes require ADMIN."
+    },
+    {
+      "id": "fail-closed",
+      "description": "Oracle failures return the documented 503 estate-unavailable body."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "JSON UTF-8",
+    "byte_transparency": "Legacy customer keys retain their original spelling, including digits.",
+    "invalid_bytes": "Reject malformed JSON at the Flask boundary."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "fail",
+    "details": "Unknown request fields are ignored; required identity and operation fields are validated by the route."
+  },
+  "empty_input_semantics": {
+    "action": "write-empty-result",
+    "details": "List routes return an empty JSON array when the Oracle query has no rows."
+  },
+  "trigger_granularity": "per-file",
+  "planted_anomalies": [
+    {
+      "id": "legacy-field-spelling",
+      "description": "Customer records contain legacy keys such as addr_line_1 and udf_01.",
+      "status": "must-detect"
+    }
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/plans",
+      "auth": "user",
+      "response_top_level_keys": ["plan_id", "plan_code", "tier", "monthly_fee", "included_units", "overage_rate"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/me",
+      "auth": "user",
+      "response_top_level_keys": ["tenant_id", "name", "status", "tax_exempt", "entitlement", "customer"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/entitlement",
+      "auth": "user",
+      "response_top_level_keys": ["tenant_id", "plan_code", "tier", "monthly_fee", "included_units", "subscription_status", "effective_on"]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/billing/plan-change",
+      "auth": "user",
+      "response_top_level_keys": ["status", "entitlement"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/usage",
+      "auth": "user",
+      "response_top_level_keys": ["summary", "rating", "events"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/invoices",
+      "auth": "user",
+      "response_top_level_keys": ["invoice_id", "period_start", "period_end", "subtotal", "tax", "total", "status"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/invoices/<invoice_id>/lines",
+      "auth": "user",
+      "response_top_level_keys": ["line_no", "line_type", "description", "amount"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/customer",
+      "auth": "user",
+      "response_top_level_keys": ["cust_id", "cust_no", "cust_name", "attributes"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/overdue",
+      "auth": "admin",
+      "response_top_level_keys": ["tenant_id", "cust_no", "cust_name", "past_due_amt", "days_overdue", "total", "amount"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/dunning",
+      "auth": "admin",
+      "response_top_level_keys": ["id", "tenant_id", "invoice_id", "attempt_no", "scheduled_for", "status"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/reports/month-end",
+      "auth": "admin",
+      "response_top_level_keys": ["report", "namespace", "batch_no", "source", "generated_at", "by_status", "by_status_line_type"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/reports/reconciliation",
+      "auth": "admin",
+      "response_top_level_keys": ["namespace", "batch_no", "source", "generated_at", "balances", "status", "checks"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/reports/finance",
+      "auth": "admin",
+      "response_top_level_keys": ["ns", "source", "rows", "totals"]
+    },
+    {
+      "method": "POST",
+      "path": "/internal/usage/events",
+      "auth": "internal",
+      "response_top_level_keys": ["status"]
+    }
+  ]
+}

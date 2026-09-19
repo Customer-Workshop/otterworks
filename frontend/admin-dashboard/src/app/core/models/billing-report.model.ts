@@ -6,7 +6,7 @@ export interface BillingReportSource {
 
 export interface BillingStatusRow {
   status: string;
-  invoice_count: number;
+  invoice_count: string | number;
   header_total_amt: string;
 }
 
@@ -48,4 +48,46 @@ export interface ReconciliationReport {
   };
   status: 'baseline' | 'pass' | 'fail' | string;
   checks: ReconciliationCheck[];
+}
+
+
+export interface OverdueAccount {
+  tenant_id?: string;
+  invoice_id?: string;
+  amount?: string | number;
+  days_overdue?: number;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface DunningAttempt {
+  id?: string;
+  tenant_id?: string;
+  invoice_id?: string;
+  attempt_no?: number;
+  scheduled_for?: string;
+  status?: string;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface FinanceBatchRow {
+  currency: string;
+  record_type: string;
+  record_count: number;
+  total_amount: string;
+}
+
+export interface FinanceBatchReport {
+  ns: string;
+  source: {
+    system: string;
+    detail: string;
+    generated_at: string;
+    file: string;
+  };
+  rows: FinanceBatchRow[];
+  totals: {
+    record_count: number;
+    total_amount: string;
+    [key: string]: string | number;
+  };
 }

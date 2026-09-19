@@ -15,6 +15,7 @@ INSERT INTO tenants (id, name, tax_exempt_yn, status_cd) VALUES ('00000000-0000-
 INSERT INTO tenants (id, name, tax_exempt_yn, status_cd) VALUES ('00000000-0000-0000-0000-000000000007', 'Tenant Seven', 'N', 10);
 INSERT INTO tenants (id, name, tax_exempt_yn, status_cd) VALUES ('00000000-0000-0000-0000-000000000008', 'Tenant Eight', 'N', 10);
 INSERT INTO tenants (id, name, tax_exempt_yn, status_cd) VALUES ('00000000-0000-0000-0000-000000000009', 'Tenant Nine', 'N', 10);
+INSERT INTO tenants (id, name, tax_exempt_yn, status_cd) VALUES ('a0000000-0000-0000-0000-000000000001', 'OtterWorks Admin', 'N', 10);
 
 INSERT INTO plans (id, code, tier_cd, monthly_fee, included_units, overage_rate) VALUES ('10000000-0000-0000-0000-000000000001', 'STARTER', 1, 49.00, 100, 0.055000);
 INSERT INTO plans (id, code, tier_cd, monthly_fee, included_units, overage_rate) VALUES ('10000000-0000-0000-0000-000000000002', 'GROWTH', 2, 149.00, 500, 0.035000);
@@ -29,6 +30,7 @@ INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, ends_on, status_cd
 INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, ends_on, status_cd, suspended_on) VALUES ('20000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', DATE '2026-01-01', NULL, 10, NULL);
 INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, ends_on, status_cd, suspended_on) VALUES ('20000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', DATE '2026-01-01', NULL, 10, NULL);
 INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, ends_on, status_cd, suspended_on) VALUES ('20000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001', DATE '2026-01-01', NULL, 10, NULL);
+INSERT INTO subscriptions (id, tenant_id, plan_id, starts_on, ends_on, status_cd, suspended_on) VALUES ('20000000-0000-0000-0000-00000000a001', 'a0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', DATE '2026-01-01', NULL, 10, NULL);
 
 INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-10 10:00:00', 260, 1);
 INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', TIMESTAMP '2026-02-10 10:00:00', 700, 1);
@@ -40,6 +42,9 @@ INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('3
 INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000007', TIMESTAMP '2026-02-10 10:00:00', 260, 1);
 INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000008', TIMESTAMP '2026-02-28 10:00:00', 202, 1);
 INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000009', TIMESTAMP '2026-02-10 10:00:00', 1, 1);
+INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-00000000a001', 'a0000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-10 10:00:00', 260, 1);
+INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-00000000a002', 'a0000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-15 10:00:00', 700, 2);
+INSERT INTO usage_events (id, tenant_id, occurred_at, units, kind_cd) VALUES ('30000000-0000-0000-0000-00000000a003', 'a0000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-20 10:00:00', 2201, 3);
 
 INSERT INTO rating_periods (id, tenant_id, period_start, period_end) VALUES ('40000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', DATE '2025-11-01', DATE '2025-11-30');
 INSERT INTO rating_periods (id, tenant_id, period_start, period_end) VALUES ('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', DATE '2025-12-01', DATE '2025-12-31');
@@ -52,6 +57,7 @@ INSERT INTO rating_results (id, period_id, subscription_id, used_units, quota_un
 INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-01 00:00:00', 149.00, 12.29, 161.29, 40);
 INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-13 00:00:00', 149.00, 12.29, 161.29, 40);
 INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000006', '40000000-0000-0000-0000-000000000002', TIMESTAMP '2026-02-28 00:00:00', 49.00, 4.04, 53.04, 20);
+INSERT INTO invoices (id, tenant_id, period_id, issued_at, subtotal, tax, total, status_cd) VALUES ('60000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', TIMESTAMP '2026-02-01 00:00:00', 149.00, 12.29, 161.29, 30);
 
 INSERT INTO credit_notes (id, tenant_id, issued_on, amount, remaining_amount) VALUES ('70000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000004', DATE '2026-02-01', 30.00, 30.00);
 INSERT INTO credit_notes (id, tenant_id, issued_on, amount, remaining_amount) VALUES ('70000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000004', DATE '2026-02-01', 30.00, 30.00);
@@ -65,6 +71,52 @@ INSERT INTO notifications (id, tenant_id, kind_cd, sent_at) VALUES ('90000000-00
 
 INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 1, 'plan', 'GROWTH', 149.00);
 INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000001', 2, 'usage', 'usage overage', 12.29);
+INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-000000000009', '60000000-0000-0000-0000-000000000009', 1, 'plan', 'GROWTH', 149.00);
+INSERT INTO invoice_lines (id, invoice_id, line_no, line_type, description, amount) VALUES ('a0000000-0000-0000-0000-00000000000a', '60000000-0000-0000-0000-000000000009', 2, 'usage', 'usage overage', 12.29);
+
+INSERT INTO customer_master (
+    cust_id, tenant_id, cust_no, cust_name, legal_name,
+    addr_line_1, city, state_cd, zip, country_cd,
+    phone1, phone1_type_cd, email_1, signup_dt, last_activity_dt,
+    status_cd, sub_status_cd, cust_type_cd, segment_cd, region_cd,
+    tax_exempt_yn, credit_hold_yn, dunning_exempt_yn, vip_yn,
+    cur_bal_amt, past_due_amt, ytd_billed_amt, ltd_billed_amt,
+    ytd_paid_amt, credit_limit_amt, conversion_batch_no, created_by,
+    created_dt, updated_by, updated_dt
+) VALUES (
+    '40000000-0000-0000-0000-00000000a001',
+    'a0000000-0000-0000-0000-000000000001',
+    'OW-ADMIN-0001', 'OtterWorks Admin', 'OtterWorks Admin',
+    '1 OtterWorks Way', 'Springfield', 'IL', '62701', 'US',
+    '217-555-0100', 1, 'admin@otterworks.dev',
+    '01-JAN-26', '20-FEB-26',
+    1, 1, 1, 1, 1,
+    'N', 'N', 'N', 'Y',
+    149.00, 0.00, 149.00, 149.00,
+    149.00, 5000.00, NULL, 'SEED',
+    '2026-01-01', 'SEED', '2026-02-20'
+);
+
+INSERT INTO entity_attr_value
+    (eav_id, entity_type, entity_id, attr_name, attr_value, attr_type, created_dt)
+VALUES
+    (99000000000001, 'CUSTOMER', '40000000-0000-0000-0000-00000000a001',
+     'TAX_REGION_OVERRIDE', 'US-IL', 'STR', '20-FEB-26');
+INSERT INTO entity_attr_value
+    (eav_id, entity_type, entity_id, attr_name, attr_value, attr_type, created_dt)
+VALUES
+    (99000000000002, 'CUSTOMER', '40000000-0000-0000-0000-00000000a001',
+     'tax_region_override', 'us-il', 'STR', '20-FEB-26');
+INSERT INTO entity_attr_value
+    (eav_id, entity_type, entity_id, attr_name, attr_value, attr_type, created_dt)
+VALUES
+    (99000000000003, 'CUSTOMER', '40000000-0000-0000-0000-00000000a001',
+     'PORTAL_THEME', 'dark', 'STR', '20-FEB-26');
+INSERT INTO entity_attr_value
+    (eav_id, entity_type, entity_id, attr_name, attr_value, attr_type, created_dt)
+VALUES
+    (99000000000004, 'CUSTOMER', '40000000-0000-0000-0000-00000000a001',
+     'LEGACY_TIER', 'priority', 'STR', '20-FEB-26');
 
 COMMIT;
 EXIT;

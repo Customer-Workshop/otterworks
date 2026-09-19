@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed seed-legacy seed-legacy-validate dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test legacy-etl-list legacy-etl-run legacy-etl-gen-data legacy-etl-gen-history legacy-sftp-up legacy-sftp-down oracle-billing-up oracle-billing-down oracle-billing-seed oracle-record oracle-parity tp-pain-mongodb tp-break-oracle-mongodb tp-smoke tp-usage-demo tp-month-end tp-run-branch demo-incident tp-pain-aws tp-pain-aws-break tp-pain-aws-restore tp-pain-aws-stop tp-preflight tp-preflight-databricks tp-preflight-atlas tp-preflight-aws tp-validate-schemas tp-validate-contracts tp-validate-recon tp-fixture-land tp-fixture-verify tp-fixture-clean dbx-showcase dbx-showcase-help tp-legacy-pain deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
 
 SHELL := /bin/bash
 
@@ -117,6 +117,46 @@ ifndef NS
 endif
 	$(call validate_ns)
 	DB_PORT=$(ORACLE_BILLING_DB_PORT) $(ORACLE_BILLING_UV) testdata/legacy/oracle_billing_seed.py --ns $(NS) --scale $(or $(SCALE),demo)
+
+TP_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.tp.yml
+TP_SERVICES = $(if $(filter core,$(PROFILE)),api-gateway auth-service document-service file-service web-app admin-dashboard legacy-billing usage-bridge,)
+
+define tp_oracle_namespace_present
+DB_PORT=$(ORACLE_BILLING_DB_PORT) $(ORACLE_BILLING_UV) python3 -c 'import os,oracledb; c=oracledb.connect(user=os.getenv("DB_USER","ow_billing"), password=os.getenv("DB_PASSWORD","ow_billing"), host=os.getenv("DB_HOST","localhost"), port=int(os.getenv("DB_PORT","52521")), service_name=os.getenv("DB_SERVICE","FREEPDB1")); x=c.cursor(); x.execute("select count(*) from invoice_header where batch_no = :1", [int.from_bytes(__import__("hashlib").sha256("$(NS)".encode()).digest()[:4], "big") % 90000000 + 1000000]); print("present" if x.fetchone()[0] else "missing"); c.close()'
+endef
+
+tp-up: ## Start the opt-in tech-partnerships wired estate (NS=<namespace>, PROFILE=core optional)
+ifndef NS
+	$(error NS is required, e.g. make tp-up NS=dev)
+endif
+	$(call validate_ns)
+	$(MAKE) oracle-billing-up
+	@if test -f testdata/legacy/manifests/$(NS).json && { $(call tp_oracle_namespace_present); } | grep -qx present; then :; else $(MAKE) oracle-billing-seed NS=$(NS); fi
+	$(MAKE) infra-up
+	$(TP_COMPOSE) up -d --build --wait $(TP_SERVICES)
+	@echo "Web: http://localhost:3000"
+	@echo "Admin: http://localhost:4200"
+	@echo "Legacy billing: http://localhost:8096"
+	@echo "Oracle: localhost:$(ORACLE_BILLING_DB_PORT)"
+
+tp-down: ## Stop the opt-in tech-partnerships wired estate (does not tear down Oracle)
+	$(TP_COMPOSE) down
+
+tp-seed: ## Seed the Oracle, companion, and legacy ETL estates (NS=<namespace>)
+ifndef NS
+	$(error NS is required, e.g. make tp-seed NS=dev)
+endif
+	$(call validate_ns)
+	$(MAKE) oracle-billing-seed NS=$(NS)
+	$(MAKE) seed-legacy NS=$(NS)
+	$(MAKE) legacy-etl-gen-data NS=$(NS)
+
+tp-usage-demo: ## Create a document and verify asynchronous billing usage (NS=<namespace>)
+ifndef NS
+	$(error NS is required, e.g. make tp-usage-demo NS=demo)
+endif
+	$(call validate_ns)
+	scripts/tp/usage_demo.sh $(NS)
 
 ORACLE_PARITY_UV = uv run --with oracledb==2.5.1 --with pyyaml==6.0.2
 ORACLE_PARITY_RUN = procs/reports/oracle-parity-run
@@ -267,8 +307,10 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	@$(MAKE) -n seed-legacy NS=ci > /dev/null
 	@$(MAKE) -n legacy-etl-list > /dev/null
 	@$(MAKE) -n procs-parity NS=ci > /dev/null
+	@$(MAKE) -n tp-up NS=ci > /dev/null
 	@echo "=== Oracle billing compose config lint ==="
 	docker compose -f docker-compose.oracle-billing.yml config > /dev/null
+	docker compose -f docker-compose.yml -f docker-compose.tp.yml config > /dev/null
 	@echo "=== Golden 'make -n test' still parses ==="
 	@$(MAKE) -n test > /dev/null
 	@echo "=== TP portal visual renderers (stdlib-only, sample inputs) ==="
@@ -281,8 +323,13 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 	cd services/api-gateway && go vet ./... && go test ./... && go build -o /dev/null ./cmd/server
 	@echo "=== Collab Service (Node.js) ==="
 	cd services/collab-service && { [ -d node_modules ] || npm ci; } && npm run lint && npm test && npm run build
+	@echo "=== Client App (Node.js) ==="
+	cd frontend/client-app && { [ -d node_modules ] || npm ci; } && npm run lint && npm test -- --run && npm run build
 	@echo "=== Search Service (Python) ==="
 	cd services/search-service && uv run --no-project --with-requirements requirements-dev.txt python -m pytest
+	@echo "=== Legacy Billing (Python) ==="
+	cd services/legacy-billing && uv run --with pytest --with boto3==1.40.35 --with requests==2.32.5 --with flask==3.1.1 --with oracledb==2.5.1 --with 'psycopg[binary]==3.2.9' python -m pytest -q && uv run --with pytest --with boto3==1.40.35 --with requests==2.32.5 python -m pytest -q bridge/tests
+	cd etl/legacy-extra/tools && uv run --with pytest --with flask==3.1.1 --with oracledb==2.5.1 python -m pytest -q
 	@echo "tp-smoke: all checks passed"
 
 tp-run-branch: ## Cut and push the per-run working branch for a rehearsal (TRACK=mongodb|databricks|aws|modernize)
@@ -583,6 +630,26 @@ legacy-etl-run: ## Run one legacy batch job (JOB=<name>, see legacy-etl-list)
 	  run_all)                    command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }; RUN_ALL_SLEEP=$${RUN_ALL_SLEEP:-0} $(TP_DET) etl/legacy-extra/run_all.sh ;; \
 	  *) echo "unknown JOB '$(JOB)' (see: make legacy-etl-list)"; exit 1 ;; \
 	esac
+
+tp-month-end: ## Extract Oracle invoices and run the CUSTBILL month-end batch (NS=<ns>)
+ifndef NS
+	$(error NS is required, e.g. make tp-month-end NS=demo)
+endif
+	$(call validate_ns)
+	@set -e; \
+	base="$${OTTERWORKS_LEGACY_ROOT:-/tmp/otterworks-legacy}"; \
+	root="$$base/$(NS)"; \
+	mkdir -p "$$root/incoming" "$$root/reports"; \
+	ORACLE_PORT=$(ORACLE_BILLING_DB_PORT) $(ORACLE_BILLING_UV) etl/legacy-extra/tools/oracle_custbill_extract.py --ns "$(NS)" --out "$$root/incoming"; \
+	OTTERWORKS_LEGACY_ROOT="$$root" $(MAKE) legacy-etl-run JOB=parse_custbill_fixedwidth; \
+	OTTERWORKS_LEGACY_ROOT="$$root" $(MAKE) legacy-etl-run JOB=finance_excel_report; \
+	report=$$(ls -1t "$$root"/reports/finance_billing_*.csv | head -1); \
+	published="$(CURDIR)/etl/legacy-extra/reports/$(NS)"; \
+	mkdir -p "$$published"; \
+	cp "$$report" "$$published/"; \
+	cp "$${report%.csv}.xls" "$$published/"; \
+	echo "finance report: $$report"; \
+	echo "finance rows: $$(($$(wc -l < "$$report") - 1))"
 
 tp-legacy-pain: ## Legacy-pain opener: blast radius + baseline + silent corruption (ACT=blast|baseline|poison|all|clean)
 	@command -v ksh >/dev/null || { echo "ksh required (sudo apt-get install -y ksh)"; exit 1; }

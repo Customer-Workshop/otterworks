@@ -1,0 +1,83 @@
+# OtterWorks Tech-Partnerships wired estate; never part of `make up`.
+include:
+  - docker-compose.infra.yml
+
+services:
+  legacy-billing:
+    build:
+      context: ./services/legacy-billing
+      dockerfile: Dockerfile
+    container_name: otterworks-legacy-billing
+    ports:
+      - "127.0.0.1:8096:8096"
+    environment:
+      BILLING_BACKEND: oracle
+      ORACLE_HOST: ${ORACLE_HOST:-host.docker.internal}
+      ORACLE_PORT: ${ORACLE_BILLING_DB_PORT:-52521}
+      ORACLE_USER: ${ORACLE_USER:-ow_billing}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-ow_billing}
+      ORACLE_SERVICE: ${ORACLE_SERVICE:-FREEPDB1}
+      FINANCE_REPORT_DIR: /app/etl/legacy-extra/reports
+      USAGE_INTERNAL_TOKEN: ${USAGE_INTERNAL_TOKEN:-ow-usage-local-dev-token}
+    volumes:
+      - ./etl/legacy-extra/reports:/app/etl/legacy-extra/reports:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8096/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  usage-bridge:
+    build:
+      context: ./services/legacy-billing/bridge
+      dockerfile: Dockerfile
+    container_name: otterworks-usage-bridge
+    ports:
+      - "127.0.0.1:8097:8097"
+    environment:
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
+      SNS_TOPIC_ARN: ${SNS_TOPIC_ARN:-arn:aws:sns:us-east-1:000000000000:otterworks-events}
+      LEGACY_BILLING_URL: http://legacy-billing:8096
+      USAGE_INTERNAL_TOKEN: ${USAGE_INTERNAL_TOKEN:-ow-usage-local-dev-token}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      legacy-billing:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8097/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    environment:
+      LEGACY_BILLING_URL: http://legacy-billing:8096
+    depends_on:
+      - legacy-billing
+
+  web-app:
+    build:
+      args:
+        VITE_ENABLE_BILLING: "true"

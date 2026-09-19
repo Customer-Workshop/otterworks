@@ -10,10 +10,15 @@ conversion batch number.
 
 import hashlib
 import logging
+import csv
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
+
+from oracle_conn import oracle_connect as connect_oracle
 
 reports = Blueprint("reports", __name__)
 logger = logging.getLogger(__name__)
@@ -27,6 +32,11 @@ SOURCE = {
     "engine": "oracle",
     "system": "OW_BILLING legacy estate (Oracle FREEPDB1)",
     "detail": "INVOICE_HEADER / INVOICE_LINE via CODES lookup (RPT-114)",
+}
+
+FINANCE_SOURCE = {
+    "system": "CUSTBILL month-end batch",
+    "detail": "ksh/Perl chain over Oracle CUSTBILL extract",
 }
 
 STATUS_SQL = """
@@ -119,20 +129,12 @@ def shape_balances(row):
     }
 
 
-def oracle_connect():
-    import oracledb
-
-    return oracledb.connect(
-        user=os.getenv("ORACLE_USER", "ow_billing"),
-        password=os.getenv("ORACLE_PASSWORD", "ow_billing"),
-        host=os.getenv("ORACLE_HOST", "localhost"),
-        port=int(os.getenv("ORACLE_PORT", "52521")),
-        service_name=os.getenv("ORACLE_SERVICE", "FREEPDB1"),
-    )
+class FinanceReportTooLarge(Exception):
+    pass
 
 
 def oracle_query(sql, params):
-    with oracle_connect() as connection, connection.cursor() as cursor:
+    with connect_oracle() as connection, connection.cursor() as cursor:
         cursor.execute(sql, params)
         return cursor.fetchall()
 
@@ -143,6 +145,14 @@ def report_meta(ns):
         "batch_no": ns_batch_no(ns),
         "source": SOURCE,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+def _admin_report_allowed():
+    return "ADMIN" in {
+        role.strip().upper()
+        for role in request.headers.get("X-User-Roles", "").split(",")
+        if role.strip()
     }
 
 
@@ -163,6 +173,13 @@ def month_end():
     return jsonify(body)
 
 
+@reports.get("/api/v1/billing/admin/reports/month-end")
+def admin_month_end():
+    if not _admin_report_allowed():
+        return jsonify(error="forbidden"), 403
+    return month_end()
+
+
 @reports.get("/api/reports/reconciliation")
 def reconciliation():
     ns = request.args.get("ns", "demo")
@@ -180,3 +197,90 @@ def reconciliation():
     body["status"] = "baseline"
     body["checks"] = []
     return jsonify(body)
+
+
+@reports.get("/api/v1/billing/admin/reports/reconciliation")
+def admin_reconciliation():
+    if not _admin_report_allowed():
+        return jsonify(error="forbidden"), 403
+    return reconciliation()
+
+
+def finance_report_dir():
+    configured = os.getenv("FINANCE_REPORT_DIR")
+    if configured:
+        return Path(configured)
+    return Path(__file__).resolve().parents[3] / "etl/legacy-extra/reports"
+
+
+def finance_report_path(ns):
+    if not ns or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_" for char in ns):
+        return None
+    directory = finance_report_dir() / ns
+    reports = sorted(
+        directory.glob("finance_billing_*.csv"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return reports[0] if reports else None
+
+
+def parse_finance_report(path):
+    max_bytes = int(os.getenv("FINANCE_REPORT_MAX_BYTES", str(50 * 1024 * 1024)))
+    if path.stat().st_size > max_bytes:
+        raise FinanceReportTooLarge
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = []
+        total_count = 0
+        total_amount = Decimal("0.00")
+        for row in csv.DictReader(stream):
+            record_count = int(row["RecordCount"])
+            total_count += record_count
+            total_amount += Decimal(row["TotalAmount"])
+            rows.append(
+                {
+                    "currency": row["Currency"],
+                    "record_type": row["RecordType"],
+                    "record_count": record_count,
+                    "total_amount": row["TotalAmount"],
+                }
+            )
+    return rows, {
+        "record_count": total_count,
+        "total_amount": f"{total_amount:.2f}",
+    }
+
+
+@reports.get("/api/reports/finance")
+def finance():
+    ns = request.args.get("ns", "demo")
+    path = finance_report_path(ns)
+    if path is None:
+        return jsonify({
+            "error": "no finance report for namespace",
+            "detail": "run make tp-month-end NS=" + ns,
+        }), 404
+    try:
+        rows, totals = parse_finance_report(path)
+    except FinanceReportTooLarge:
+        return jsonify(error="finance report too large"), 413
+    generated_at = datetime.fromtimestamp(
+        path.stat().st_mtime, timezone.utc,
+    ).isoformat()
+    return jsonify({
+        "ns": ns,
+        "source": {
+            **FINANCE_SOURCE,
+            "generated_at": generated_at,
+            "file": path.name,
+        },
+        "rows": rows,
+        "totals": totals,
+    })
+
+
+@reports.get("/api/v1/billing/admin/reports/finance")
+def admin_finance():
+    if not _admin_report_allowed():
+        return jsonify(error="forbidden"), 403
+    return finance()

@@ -114,3 +114,6 @@ __pycache__/
 
 # Legacy seed manifests (runtime artifacts)
 testdata/legacy/manifests/*.json
+
+# Legacy ETL report output (created by the TP compose bind mount)
+etl/legacy-extra/reports/

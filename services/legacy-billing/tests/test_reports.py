@@ -10,6 +10,7 @@ differ. See docs/tech-partnerships/billing-report-contract.md.
 
 import sys
 from pathlib import Path
+from shutil import copyfile
 
 import pytest
 
@@ -82,6 +83,18 @@ def test_month_end_contract(client):
     assert "generated_at" in body
 
 
+def test_admin_report_aliases_require_admin_and_match_legacy(client):
+    assert client.get("/api/v1/billing/admin/reports/month-end").status_code == 403
+    assert client.get("/api/v1/billing/admin/reports/reconciliation").status_code == 403
+    assert client.get("/api/v1/billing/admin/reports/finance").status_code == 403
+    headers = {"X-User-Roles": "ADMIN"}
+    alias = client.get(
+        "/api/v1/billing/admin/reports/month-end?ns=demo", headers=headers,
+    ).get_json()
+    legacy = client.get("/api/reports/month-end?ns=demo").get_json()
+    assert alias == legacy
+
+
 def test_reconciliation_contract(client):
     body = client.get("/api/reports/reconciliation?ns=demo").get_json()
     assert body["source"]["engine"] == "oracle"
@@ -102,3 +115,52 @@ def test_estate_offline_returns_503(client, monkeypatch):
     response = client.get("/api/reports/month-end")
     assert response.status_code == 503
     assert response.get_json()["error"] == "legacy estate unavailable"
+
+
+def test_finance_report_reads_namespace_batch_fixture(client, monkeypatch, tmp_path):
+    report_dir = tmp_path / "reports" / "demo"
+    report_dir.mkdir(parents=True)
+    copyfile(
+        Path(__file__).parent / "fixtures" / "finance_billing_20260228.csv",
+        report_dir / "finance_billing_20260228.csv",
+    )
+    (report_dir / "finance_billing_20260228.xls").write_text("not a report")
+    monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path / "reports"))
+    response = client.get("/api/reports/finance?ns=demo")
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["ns"] == "demo"
+    assert body["source"]["system"] == "CUSTBILL month-end batch"
+    assert body["source"]["file"] == "finance_billing_20260228.csv"
+    assert body["rows"][0] == {
+        "currency": "USD",
+        "record_type": "INVOICE",
+        "record_count": 2,
+        "total_amount": "25.00",
+    }
+    assert body["totals"] == {"record_count": 3, "total_amount": "30.00"}
+
+
+def test_finance_report_missing_namespace_returns_404(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path))
+    response = client.get("/api/reports/finance?ns=missing")
+    assert response.status_code == 404
+    assert response.get_json() == {
+        "error": "no finance report for namespace",
+        "detail": "run make tp-month-end NS=missing",
+    }
+
+
+def test_finance_report_over_size_limit_returns_413(client, monkeypatch, tmp_path):
+    report_dir = tmp_path / "reports" / "demo"
+    report_dir.mkdir(parents=True)
+    report = report_dir / "finance_billing_20260228.csv"
+    copyfile(
+        Path(__file__).parent / "fixtures" / "finance_billing_20260228.csv",
+        report,
+    )
+    monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path / "reports"))
+    monkeypatch.setenv("FINANCE_REPORT_MAX_BYTES", "1")
+    response = client.get("/api/reports/finance?ns=demo")
+    assert response.status_code == 413
+    assert response.get_json() == {"error": "finance report too large"}

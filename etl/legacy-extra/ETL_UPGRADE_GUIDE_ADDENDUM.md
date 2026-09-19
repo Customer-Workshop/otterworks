@@ -51,6 +51,8 @@ report endpoint, and the admin dashboard labels it as the month-end finance batc
 
 The target overwrites the deterministic extract before parsing it, so rerunning the
 same namespace processes a fresh input rather than relying on a prior `.done` file.
+The extractor transliterates customer identifiers and names to deterministic ASCII,
+replacing characters that cannot be represented in the fixed-width feed.
 
 ## Deficiency inventory (migration acceptance checklist)
 

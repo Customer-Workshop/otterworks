@@ -107,7 +107,7 @@
       "method": "GET",
       "path": "/api/v1/billing/admin/overdue",
       "auth": "admin",
-      "response_top_level_keys": ["tenant_id", "cust_no", "cust_name", "past_due_amt", "days_overdue"]
+      "response_top_level_keys": ["tenant_id", "cust_no", "cust_name", "past_due_amt", "days_overdue", "total", "amount"]
     },
     {
       "method": "GET",

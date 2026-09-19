@@ -282,11 +282,14 @@ def admin_overdue():
     if not _oracle_only():
         return _not_available()
     try:
-        return jsonify(
-            oracle.overdue(
-                request.args.get("as_of", date.today().isoformat()),
-            )
-        )
+        rows = oracle.overdue(request.args.get("as_of", date.today().isoformat()))
+        normalized = []
+        for row in rows:
+            row = dict(row)
+            if "total" in row:
+                row.setdefault("amount", row["total"])
+            normalized.append(row)
+        return jsonify(normalized)
     except oracledb.Error:
         return jsonify(UNAVAILABLE), 503
 

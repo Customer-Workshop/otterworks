@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import os
+import unicodedata
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
@@ -17,7 +18,7 @@ SELECT h.invoice_id,
        c.cust_name,
        TO_DATE(h.invoice_dt, 'DD-MON-RR') AS period_end,
        h.total_amt,
-       '01' AS record_type
+       CASE WHEN h.total_amt < 0 THEN '02' ELSE '01' END AS record_type
   FROM invoice_header h
   JOIN customer_master c ON c.cust_id = h.cust_id
   LEFT JOIN tenants t ON t.id = h.tenant_id
@@ -46,12 +47,20 @@ def _amount_cents(value):
 
 
 def format_record(row):
-    cust_no = str(row["cust_no"] or "")[:10].ljust(10)
-    name = str(row["cust_name"] or "")[:30].ljust(30)
+    cust_no = _ascii_text(row["cust_no"])[:10].ljust(10)
+    name = _ascii_text(row["cust_name"])[:30].ljust(30)
     period_end = _period_text(row["period_end"])
     cents = _amount_cents(row["total_amt"])
-    record_type = str(row.get("record_type") or ("02" if cents < 0 else "01"))[:2].rjust(2, "0")
+    record_type = "02" if cents < 0 else str(row.get("record_type") or "01")[:2].rjust(2, "0")
     return f"{cust_no}{name}{period_end}{abs(cents):012d}USD{record_type}"
+
+
+def _ascii_text(value):
+    return (
+        unicodedata.normalize("NFKD", str(value or ""))
+        .encode("ascii", "replace")
+        .decode()
+    )
 
 
 def _row_mapping(row):
@@ -100,10 +109,12 @@ def extract(ns, out_dir, connection=None):
 
     rows = sort_rows(rows)
     destination = out_path / filename
-    with destination.open("w", encoding="ascii", newline="\n") as output:
+    temporary = destination.with_name(f"{destination.name}.tmp")
+    with temporary.open("w", encoding="ascii", newline="\n") as output:
         for row in rows:
             output.write(format_record(row))
             output.write("\n")
+    os.replace(temporary, destination)
     return destination, len(rows)
 
 

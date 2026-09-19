@@ -124,11 +124,15 @@ def ensure_tenant(connection, tenant_id, email):
         cursor.execute("SELECT 1 FROM tenants WHERE id = :1", (tenant_id,))
         if cursor.fetchone():
             return False
-        cursor.execute(
-            """INSERT INTO tenants (id, name, tax_exempt_yn, status_cd)
-               VALUES (:1, :2, 'N', 10)""",
-            (tenant_id, email or tenant_id),
-        )
+        try:
+            cursor.execute(
+                """INSERT INTO tenants (id, name, tax_exempt_yn, status_cd)
+                   VALUES (:1, :2, 'N', 10)""",
+                (tenant_id, email or tenant_id),
+            )
+        except oracledb.IntegrityError:
+            connection.rollback()
+            return False
         cursor.execute(
             """SELECT id FROM (
                    SELECT id FROM plans
@@ -140,12 +144,16 @@ def ensure_tenant(connection, tenant_id, email):
         if not plan:
             raise RuntimeError("no active Oracle billing plan")
         subscription_id = str(uuid5(NAMESPACE_URL, f"ow:{tenant_id}:sub"))
-        cursor.execute(
-            """INSERT INTO subscriptions
-               (id, tenant_id, plan_id, starts_on, status_cd)
-               VALUES (:1, :2, :3, TRUNC(SYSDATE), 10)""",
-            (subscription_id, tenant_id, plan[0]),
-        )
+        try:
+            cursor.execute(
+                """INSERT INTO subscriptions
+                   (id, tenant_id, plan_id, starts_on, status_cd)
+                   VALUES (:1, :2, :3, TRUNC(SYSDATE), 10)""",
+                (subscription_id, tenant_id, plan[0]),
+            )
+        except oracledb.IntegrityError:
+            connection.rollback()
+            return False
         connection.commit()
         return True
 

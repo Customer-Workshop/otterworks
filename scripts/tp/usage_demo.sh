@@ -28,7 +28,11 @@ recorded_before="$(printf '%s' "$health_before" | python3 -c 'import json,sys; p
 usage_before="$(curl -fsS "$BASE_URL/api/v1/billing/usage" \
   -H "Authorization: Bearer $token")"
 printf '%s\n' "$usage_before" > "$EVIDENCE_DIR/usage-demo-usage-before.json"
-events_before="$(printf '%s' "$usage_before" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("events", [])))')"
+units_before="$(printf '%s' "$usage_before" | python3 -c '
+import json, sys
+summary = json.load(sys.stdin).get("summary", [])
+print(sum(int(row.get("units", 0) or 0) for row in summary))
+')"
 
 document_response="$(curl -fsS -X POST "$BASE_URL/api/v1/documents" \
   -H "Authorization: Bearer $token" \
@@ -53,12 +57,16 @@ fi
 usage_response="$(curl -fsS "$BASE_URL/api/v1/billing/usage" \
   -H "Authorization: Bearer $token")"
 printf '%s\n' "$usage_response" > "$EVIDENCE_DIR/usage-demo-usage.json"
-events_after="$(printf '%s' "$usage_response" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("events", [])))')"
-if [ "$events_after" -le "$events_before" ]; then
-  echo "document usage event was not visible in billing usage" >&2
+units_after="$(printf '%s' "$usage_response" | python3 -c '
+import json, sys
+summary = json.load(sys.stdin).get("summary", [])
+print(sum(int(row.get("units", 0) or 0) for row in summary))
+')"
+if [ "$units_after" -le "$units_before" ]; then
+  echo "document usage units were not visible in billing usage summary" >&2
   exit 1
 fi
-echo "usage event match: count increase (event ID is not exposed)"
+echo "usage event match: summary units increase (usage events are capped at 50)"
 printf '%s\n' "$usage_response" | python3 -c '
 import json, sys
 events = json.load(sys.stdin).get("events", [])

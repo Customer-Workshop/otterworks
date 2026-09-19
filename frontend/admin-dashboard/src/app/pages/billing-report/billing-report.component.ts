@@ -275,6 +275,7 @@ export class BillingReportComponent implements OnInit {
   collectionsErrorStatus: number | null = null;
   financeReport: FinanceBatchReport | null = null;
   financeErrorStatus: number | null = null;
+  private requestGeneration = 0;
 
   constructor(private billingReports: BillingReportService) {}
 
@@ -283,6 +284,7 @@ export class BillingReportComponent implements OnInit {
   }
 
   refresh(): void {
+    const generation = ++this.requestGeneration;
     this.loading = true;
     this.error = '';
     forkJoin({
@@ -291,6 +293,7 @@ export class BillingReportComponent implements OnInit {
     }).pipe(
       catchError(() => of(null)),
     ).subscribe(result => {
+      if (generation !== this.requestGeneration) return;
       this.loading = false;
       if (!result) {
         this.report = null;
@@ -301,20 +304,24 @@ export class BillingReportComponent implements OnInit {
       this.report = result.report;
       this.recon = result.recon;
     });
-    this.refreshCollections();
-    this.refreshFinance();
+    this.refreshCollections(generation);
+    this.refreshFinance(generation);
   }
 
-  refreshFinance(): void {
+  refreshFinance(generation = this.requestGeneration): void {
     this.financeReport = null;
     this.financeErrorStatus = null;
     this.billingReports.getFinanceReport(this.ns).subscribe({
-      next: report => { this.financeReport = report; },
-      error: error => { this.financeErrorStatus = error.status; },
+      next: report => {
+        if (generation === this.requestGeneration) this.financeReport = report;
+      },
+      error: error => {
+        if (generation === this.requestGeneration) this.financeErrorStatus = error.status;
+      },
     });
   }
 
-  refreshCollections(): void {
+  refreshCollections(generation = this.requestGeneration): void {
     this.overdueAccounts = null;
     this.dunningAttempts = null;
     this.collectionsErrorStatus = null;
@@ -323,11 +330,12 @@ export class BillingReportComponent implements OnInit {
       dunning: this.billingReports.getDunningAttempts(this.asOf),
     }).subscribe({
       next: result => {
+        if (generation !== this.requestGeneration) return;
         this.overdueAccounts = result.overdue;
         this.dunningAttempts = result.dunning;
       },
       error: error => {
-        this.collectionsErrorStatus = error.status;
+        if (generation === this.requestGeneration) this.collectionsErrorStatus = error.status;
       },
     });
   }

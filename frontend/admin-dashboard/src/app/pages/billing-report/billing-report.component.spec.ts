@@ -84,6 +84,34 @@ describe('BillingReportComponent', () => {
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance')).flush(FINANCE);
   });
 
+  it('ignores slower responses from an earlier refresh', () => {
+    fixture.detectChanges();
+    component.refresh();
+
+    const monthEnd = httpMock.match(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end'));
+    const reconciliation = httpMock.match(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation'));
+    const overdue = httpMock.match(r => r.urlWithParams.startsWith('/api/v1/billing/admin/overdue'));
+    const dunning = httpMock.match(r => r.urlWithParams.startsWith('/api/v1/billing/admin/dunning'));
+    const finance = httpMock.match(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance'));
+    expect(monthEnd.length).toBe(2);
+    const newerReport = { ...REPORT, namespace: 'newer' };
+    monthEnd[1].flush(newerReport);
+    reconciliation[1].flush(RECON);
+    overdue[1].flush([]);
+    dunning[1].flush([]);
+    finance[1].flush(FINANCE);
+    fixture.detectChanges();
+    expect(component.report?.namespace).toBe('newer');
+
+    monthEnd[0].flush({ ...REPORT, namespace: 'older' });
+    reconciliation[0].flush(RECON);
+    overdue[0].flush([]);
+    dunning[0].flush([]);
+    finance[0].flush(FINANCE);
+    fixture.detectChanges();
+    expect(component.report?.namespace).toBe('newer');
+  });
+
   it('should render the legacy source badge', () => {
     flush();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -137,7 +165,7 @@ describe('BillingReportComponent', () => {
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/overdue')).flush([
-      { tenant_id: 'tenant-1', invoice_id: 'invoice-1', amount: '25.00', overdue_days: 12 },
+      { tenant_id: 'tenant-1', invoice_id: 'invoice-1', total: '25.00', amount: '25.00', overdue_days: 12 },
     ]);
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/dunning')).flush([
       { tenant_id: 'tenant-1', invoice_id: 'invoice-1', scheduled_for: '2026-02-28', status: 'SCHEDULED' },

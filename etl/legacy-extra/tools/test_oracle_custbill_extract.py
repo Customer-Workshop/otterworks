@@ -38,9 +38,22 @@ def test_format_record_uses_credit_code_for_negative_amount():
         "cust_name": "Credit",
         "period_end": "2026-03-01",
         "total_amt": "-2.50",
+        "record_type": "01",
     })
     assert record[48:60] == "000000000250"
     assert record[63:] == "02"
+
+
+def test_format_record_transliterates_non_ascii_fields():
+    record = format_record({
+        "invoice_id": "invoice-1",
+        "cust_no": "C-1",
+        "cust_name": "José Ltd",
+        "period_end": date(2026, 3, 1),
+        "total_amt": "2.50",
+    })
+    assert record[:10] == "C-1       "
+    assert record[10:40].startswith("Jose? Ltd")
 
 
 def test_rows_are_sorted_by_period_customer_and_invoice():

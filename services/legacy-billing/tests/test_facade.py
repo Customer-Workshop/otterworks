@@ -26,6 +26,36 @@ def test_admin_facade_requires_role(monkeypatch):
     assert response.status_code == 403
 
 
+def test_admin_overdue_maps_total_to_amount(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setattr(
+        facade_module.oracle,
+        "overdue",
+        lambda as_of: [
+            {
+                "tenant_id": "tenant-1",
+                "invoice_id": "invoice-1",
+                "total": "25.00",
+                "overdue_days": 12,
+            }
+        ],
+    )
+    response = app.test_client().get(
+        "/api/v1/billing/admin/overdue",
+        headers={"X-User-ID": "tenant", "X-User-Roles": "ADMIN"},
+    )
+    assert response.status_code == 200
+    assert response.get_json() == [
+        {
+            "tenant_id": "tenant-1",
+            "invoice_id": "invoice-1",
+            "total": "25.00",
+            "amount": "25.00",
+            "overdue_days": 12,
+        }
+    ]
+
+
 def test_facade_is_unavailable_in_postgres_mode(monkeypatch):
     monkeypatch.setenv("BILLING_BACKEND", "postgres")
     response = app.test_client().get("/api/v1/billing/plans")

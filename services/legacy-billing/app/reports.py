@@ -129,6 +129,10 @@ def shape_balances(row):
     }
 
 
+class FinanceReportTooLarge(Exception):
+    pass
+
+
 def oracle_query(sql, params):
     with connect_oracle() as connection, connection.cursor() as cursor:
         cursor.execute(sql, params)
@@ -222,19 +226,26 @@ def finance_report_path(ns):
 
 
 def parse_finance_report(path):
+    max_bytes = int(os.getenv("FINANCE_REPORT_MAX_BYTES", str(50 * 1024 * 1024)))
+    if path.stat().st_size > max_bytes:
+        raise FinanceReportTooLarge
     with path.open(newline="", encoding="utf-8") as stream:
-        rows = list(csv.DictReader(stream))
-    total_count = sum(int(row["RecordCount"]) for row in rows)
-    total_amount = sum((Decimal(row["TotalAmount"]) for row in rows), Decimal("0.00"))
-    return [
-        {
-            "currency": row["Currency"],
-            "record_type": row["RecordType"],
-            "record_count": int(row["RecordCount"]),
-            "total_amount": row["TotalAmount"],
-        }
-        for row in rows
-    ], {
+        rows = []
+        total_count = 0
+        total_amount = Decimal("0.00")
+        for row in csv.DictReader(stream):
+            record_count = int(row["RecordCount"])
+            total_count += record_count
+            total_amount += Decimal(row["TotalAmount"])
+            rows.append(
+                {
+                    "currency": row["Currency"],
+                    "record_type": row["RecordType"],
+                    "record_count": record_count,
+                    "total_amount": row["TotalAmount"],
+                }
+            )
+    return rows, {
         "record_count": total_count,
         "total_amount": f"{total_amount:.2f}",
     }
@@ -249,7 +260,10 @@ def finance():
             "error": "no finance report for namespace",
             "detail": "run make tp-month-end NS=" + ns,
         }), 404
-    rows, totals = parse_finance_report(path)
+    try:
+        rows, totals = parse_finance_report(path)
+    except FinanceReportTooLarge:
+        return jsonify(error="finance report too large"), 413
     generated_at = datetime.fromtimestamp(
         path.stat().st_mtime, timezone.utc,
     ).isoformat()

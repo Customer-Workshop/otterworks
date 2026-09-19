@@ -149,3 +149,18 @@ def test_finance_report_missing_namespace_returns_404(client, monkeypatch, tmp_p
         "error": "no finance report for namespace",
         "detail": "run make tp-month-end NS=missing",
     }
+
+
+def test_finance_report_over_size_limit_returns_413(client, monkeypatch, tmp_path):
+    report_dir = tmp_path / "reports" / "demo"
+    report_dir.mkdir(parents=True)
+    report = report_dir / "finance_billing_20260228.csv"
+    copyfile(
+        Path(__file__).parent / "fixtures" / "finance_billing_20260228.csv",
+        report,
+    )
+    monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path / "reports"))
+    monkeypatch.setenv("FINANCE_REPORT_MAX_BYTES", "1")
+    response = client.get("/api/reports/finance?ns=demo")
+    assert response.status_code == 413
+    assert response.get_json() == {"error": "finance report too large"}

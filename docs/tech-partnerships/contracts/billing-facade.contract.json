@@ -95,7 +95,7 @@
       "method": "GET",
       "path": "/api/v1/billing/invoices/<invoice_id>/lines",
       "auth": "user",
-      "response_top_level_keys": ["line_id", "line_type", "item_desc", "qty", "unit_price", "amount", "tax_amt"]
+      "response_top_level_keys": ["line_no", "line_type", "description", "amount"]
     },
     {
       "method": "GET",

@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile
     container_name: otterworks-legacy-billing
     ports:
-      - "8096:8096"
+      - "127.0.0.1:8096:8096"
     environment:
       BILLING_BACKEND: oracle
       ORACLE_HOST: ${ORACLE_HOST:-host.docker.internal}
@@ -42,7 +42,7 @@ services:
       dockerfile: Dockerfile
     container_name: otterworks-usage-bridge
     ports:
-      - "8097:8097"
+      - "127.0.0.1:8097:8097"
     environment:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}

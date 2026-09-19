@@ -51,8 +51,14 @@ def format_record(row):
     name = _ascii_text(row["cust_name"])[:30].ljust(30)
     period_end = _period_text(row["period_end"])
     cents = _amount_cents(row["total_amt"])
+    if abs(cents) > 999_999_999_999:
+        raise ValueError(
+            f"invoice {row['invoice_id']} total exceeds CUSTBILL amount field"
+        )
     record_type = "02" if cents < 0 else str(row.get("record_type") or "01")[:2].rjust(2, "0")
-    return f"{cust_no}{name}{period_end}{abs(cents):012d}USD{record_type}"
+    record = f"{cust_no}{name}{period_end}{abs(cents):012d}USD{record_type}"
+    assert len(record) == 65
+    return record
 
 
 def _ascii_text(value):

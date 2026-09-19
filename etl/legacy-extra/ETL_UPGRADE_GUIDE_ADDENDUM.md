@@ -53,6 +53,7 @@ The target overwrites the deterministic extract before parsing it, so rerunning 
 same namespace processes a fresh input rather than relying on a prior `.done` file.
 The extractor transliterates customer identifiers and names to deterministic ASCII,
 replacing characters that cannot be represented in the fixed-width feed.
+Amounts exceeding the 12-digit CUSTBILL cents field are rejected rather than emitted as variable-width records.
 
 ## Deficiency inventory (migration acceptance checklist)
 

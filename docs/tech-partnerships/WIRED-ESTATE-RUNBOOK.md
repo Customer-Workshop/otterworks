@@ -16,6 +16,8 @@ The first Oracle boot can take several minutes while Oracle Database Free
 starts and its completion-marker health check passes. The seed guard checks both
 the namespace manifest and Oracle's `invoice_header` rows, so a stale manifest
 does not suppress a needed seed.
+Each Oracle boot also applies the idempotent static upgrade for the admin
+tenant rows; applying it repeatedly leaves the row counts unchanged.
 
 Run the asynchronous usage demonstration:
 
@@ -38,6 +40,12 @@ make tp-down
 `etl/legacy-extra/reports/` is generated output. The TP Compose bind mount
 creates it when needed; it is ignored by Git and deliberately has no
 `.gitkeep`.
+
+The legacy billing and usage bridge ports are bound to loopback only
+(`127.0.0.1:8096` and `127.0.0.1:8097`). The `/internal/usage/events` endpoint
+and trusted identity headers are intended to be reached only from the Compose
+network or through the API gateway. Override `USAGE_INTERNAL_TOKEN` outside a
+local workstation instead of using the development default.
 
 ## What the screens show
 

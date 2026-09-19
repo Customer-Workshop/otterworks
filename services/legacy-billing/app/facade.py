@@ -48,6 +48,22 @@ def _oracle_only():
     return backend_name() == "oracle"
 
 
+def _parse_date(value, name):
+    if value is None:
+        value = date.today().isoformat()
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None, (
+            jsonify(
+                error="invalid date",
+                detail=f"{name} must be an ISO date (YYYY-MM-DD)",
+            ),
+            400,
+        )
+    return parsed.isoformat(), None
+
+
 @facade.get("/plans")
 def plans():
     if not _oracle_only():
@@ -77,9 +93,11 @@ def me():
         return error
     if not _oracle_only():
         return _not_available()
+    on, date_error = _parse_date(request.args.get("on"), "on")
+    if date_error:
+        return date_error
     try:
         _ensure(tenant_id)
-        on = request.args.get("on", date.today().isoformat())
         entitlement = oracle.entitlement(tenant_id, on)
         tenant_rows = oracle.query(
             """SELECT t.id AS tenant_id, t.name,
@@ -115,14 +133,12 @@ def entitlement():
         return error
     if not _oracle_only():
         return _not_available()
+    on, date_error = _parse_date(request.args.get("on"), "on")
+    if date_error:
+        return date_error
     try:
         _ensure(tenant_id)
-        return jsonify(
-            oracle.entitlement(
-                tenant_id,
-                request.args.get("on", date.today().isoformat()),
-            )
-        )
+        return jsonify(oracle.entitlement(tenant_id, on))
     except oracledb.Error:
         return jsonify(UNAVAILABLE), 503
 
@@ -176,7 +192,9 @@ def usage():
         return error
     if not _oracle_only():
         return _not_available()
-    start, end = _usage_range()
+    start, end, date_error = _usage_range()
+    if date_error:
+        return date_error
     try:
         _ensure(tenant_id)
         return jsonify(
@@ -281,8 +299,11 @@ def admin_overdue():
         return jsonify(error="forbidden"), 403
     if not _oracle_only():
         return _not_available()
+    as_of, date_error = _parse_date(request.args.get("as_of"), "as_of")
+    if date_error:
+        return date_error
     try:
-        rows = oracle.overdue(request.args.get("as_of", date.today().isoformat()))
+        rows = oracle.overdue(as_of)
         normalized = []
         for row in rows:
             row = dict(row)
@@ -300,6 +321,9 @@ def admin_dunning():
         return jsonify(error="forbidden"), 403
     if not _oracle_only():
         return _not_available()
+    as_of, date_error = _parse_date(request.args.get("as_of"), "as_of")
+    if date_error:
+        return date_error
     try:
         return jsonify(
             oracle.query(
@@ -313,7 +337,7 @@ def admin_dunning():
                         WHERE d.scheduled_for <= :1
                         ORDER BY d.scheduled_for DESC, d.id DESC
                    ) WHERE ROWNUM <= 200""",
-                (oracle._as_date(request.args.get("as_of", date.today().isoformat())),),
+                (oracle._as_date(as_of),),
             )
         )
     except oracledb.Error:
@@ -393,12 +417,26 @@ def _usage_range():
     today = date.today()
     start = request.args.get("period_start")
     end = request.args.get("period_end")
-    if not start:
+    if start is None:
         start = today.replace(day=1).isoformat()
-    if not end:
+    if end is None:
         if today.month == 12:
             next_month = today.replace(year=today.year + 1, month=1, day=1)
         else:
             next_month = today.replace(month=today.month + 1, day=1)
         end = next_month.fromordinal(next_month.toordinal() - 1).isoformat()
-    return start, end
+    start, error = _parse_date(start, "period_start")
+    if error:
+        return None, None, error
+    end, error = _parse_date(end, "period_end")
+    if error:
+        return None, None, error
+    if end < start:
+        return None, None, (
+            jsonify(
+                error="invalid date",
+                detail="period_end must not precede period_start",
+            ),
+            400,
+        )
+    return start, end, None

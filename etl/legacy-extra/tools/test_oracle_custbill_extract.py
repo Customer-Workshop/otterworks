@@ -56,6 +56,19 @@ def test_format_record_transliterates_non_ascii_fields():
     assert record[10:40].startswith("Jose? Ltd")
 
 
+def test_format_record_rejects_amount_overflow():
+    import pytest
+
+    with pytest.raises(ValueError, match="invoice overflow-1 total exceeds CUSTBILL amount field"):
+        format_record({
+            "invoice_id": "overflow-1",
+            "cust_no": "C1",
+            "cust_name": "Large",
+            "period_end": date(2026, 3, 1),
+            "total_amt": "10000000000.00",
+        })
+
+
 def test_rows_are_sorted_by_period_customer_and_invoice():
     rows = [
         {"invoice_id": "b", "cust_no": "C2", "period_end": "2026-02-01"},

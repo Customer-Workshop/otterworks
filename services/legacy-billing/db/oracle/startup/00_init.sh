@@ -6,10 +6,9 @@
 # else in the mounted directory would be auto-executed as SYSDBA in the CDB
 # root, which is the wrong container for our schema.
 #
-# Idempotent and self-repairing: the skip is gated on the FIXTURE_META
-# completion marker, written only after every script has run and all objects
-# compiled VALID. A boot that failed part-way leaves no marker, so the next
-# boot re-runs the initialization.
+# Idempotent and self-repairing: the skip is gated on the FIXTURE_META table.
+# Every boot applies the idempotent static-data upgrade, while a boot that
+# failed part-way still re-runs the full initialization.
 #
 # The image *sources* startup scripts, so all work happens in a subshell to
 # keep `set -e` and any failure from tearing down the container entrypoint.
@@ -17,6 +16,12 @@
   set -euo pipefail
 
   SQL_DIR=/opt/oracle/scripts/oracle-billing
+
+  run_sql() {
+    local conn="$1" file="$2"
+    echo "== ${file} (${conn%%/*})"
+    sqlplus -s "${conn}@localhost:1521/FREEPDB1" @"${file}"
+  }
 
   marker=$(sqlplus -s "system/${ORACLE_PWD}@localhost:1521/FREEPDB1" <<'SQL'
 WHENEVER SQLERROR EXIT SQL.SQLCODE
@@ -29,15 +34,13 @@ SQL
   marker=$(echo "${marker}" | tr -d '[:space:]')
   case "${marker}" in
     0) ;;
-    1) echo "== oracle-billing fixture already initialized, skipping"; exit 0 ;;
+    1)
+      echo "== oracle-billing fixture already initialized, applying static upgrade"
+      run_sql "ow_billing/ow_billing" "${SQL_DIR}/schema/04_upgrade_static.sql"
+      exit 0
+      ;;
     *) echo "== could not determine fixture state: ${marker}" >&2; exit 1 ;;
   esac
-
-  run_sql() {
-    local conn="$1" file="$2"
-    echo "== ${file} (${conn%%/*})"
-    sqlplus -s "${conn}@localhost:1521/FREEPDB1" @"${file}"
-  }
 
   user_exists=$(sqlplus -s "system/${ORACLE_PWD}@localhost:1521/FREEPDB1" <<'SQL'
 WHENEVER SQLERROR EXIT SQL.SQLCODE
@@ -65,6 +68,16 @@ SQL
   run_sql "ow_billing/ow_billing" "${SQL_DIR}/packages/03_pkg_rating.sql"
   run_sql "ow_billing/ow_billing" "${SQL_DIR}/packages/04_pkg_invoicing.sql"
   run_sql "ow_billing/ow_billing" "${SQL_DIR}/schema/03_seed_static.sql"
+  sqlplus -s "ow_billing/ow_billing@localhost:1521/FREEPDB1" <<'SQL'
+WHENEVER SQLERROR EXIT SQL.SQLCODE
+CREATE TABLE fixture_meta (
+    marker        VARCHAR2(100),
+    value         VARCHAR2(100),
+    initialized_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL
+);
+EXIT;
+SQL
+  run_sql "ow_billing/ow_billing" "${SQL_DIR}/schema/04_upgrade_static.sql"
   run_sql "ow_billing/ow_billing" "${SQL_DIR}/packages/05_pkg_dunning.sql"
   run_sql "ow_billing/ow_billing" "${SQL_DIR}/schema/04_jobs.sql"
 
@@ -92,11 +105,18 @@ SQL
   fi
 
   # Completion marker: written last; the health check and the skip guard
-  # both key off it.
+  # both key off the table.
   sqlplus -s "ow_billing/ow_billing@localhost:1521/FREEPDB1" <<'SQL'
 WHENEVER SQLERROR EXIT SQL.SQLCODE
-CREATE TABLE fixture_meta (initialized_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL);
-INSERT INTO fixture_meta (initialized_at) VALUES (SYSTIMESTAMP);
+MERGE INTO fixture_meta target
+USING (SELECT 'initialized' AS marker, '1' AS value FROM dual) source
+   ON (target.marker = source.marker)
+ WHEN MATCHED THEN
+      UPDATE SET target.value = source.value,
+                 target.initialized_at = SYSTIMESTAMP
+ WHEN NOT MATCHED THEN
+      INSERT (marker, value, initialized_at)
+      VALUES (source.marker, source.value, SYSTIMESTAMP);
 COMMIT;
 EXIT;
 SQL

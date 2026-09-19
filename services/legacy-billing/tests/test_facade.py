@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import oracledb
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
@@ -15,6 +16,51 @@ def test_facade_requires_identity(monkeypatch):
     monkeypatch.setenv("BILLING_BACKEND", "oracle")
     response = app.test_client().get("/api/v1/billing/me")
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("path", "headers"),
+    [
+        ("/api/v1/billing/me?on=2026-02-31", {"X-User-ID": "tenant"}),
+        ("/api/v1/billing/entitlement?on=not-a-date", {"X-User-ID": "tenant"}),
+        (
+            "/api/v1/billing/usage?period_start=2026-03-01&period_end=2026-02-01",
+            {"X-User-ID": "tenant"},
+        ),
+        (
+            "/api/v1/billing/usage?period_start=2026-02-01&period_end=not-a-date",
+            {"X-User-ID": "tenant"},
+        ),
+        (
+            "/api/v1/billing/admin/overdue?as_of=tomorrow",
+            {"X-User-ID": "tenant", "X-User-Roles": "ADMIN"},
+        ),
+        (
+            "/api/v1/billing/admin/dunning?as_of=tomorrow",
+            {"X-User-ID": "tenant", "X-User-Roles": "ADMIN"},
+        ),
+    ],
+)
+def test_invalid_date_query_params_fail_before_oracle(monkeypatch, path, headers):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setattr(
+        facade_module,
+        "_ensure",
+        lambda _: pytest.fail("Oracle was touched"),
+    )
+    monkeypatch.setattr(
+        facade_module.oracle,
+        "overdue",
+        lambda _: pytest.fail("Oracle was touched"),
+    )
+    monkeypatch.setattr(
+        facade_module.oracle,
+        "query",
+        lambda *_args, **_kwargs: pytest.fail("Oracle was touched"),
+    )
+    response = app.test_client().get(path, headers=headers)
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid date"
 
 
 def test_admin_facade_requires_role(monkeypatch):

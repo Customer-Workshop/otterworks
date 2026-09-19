@@ -193,7 +193,7 @@ build: ## Build all service images
 	docker compose -f docker-compose.infra.yml -f docker-compose.yml build
 
 seed: ## Seed development data (services must be running)
-	uv run scripts/seed.py
+	DB_PORT=$${DB_PORT:-$${POSTGRES_HOST_PORT:-5432}} uv run scripts/seed.py
 
 wait-for-db: ## Wait for Postgres to accept connections
 	@echo "Waiting for Postgres to be healthy..."
@@ -406,7 +406,7 @@ endif
 	$(call validate_ns)
 	@echo "Dropping schema otterworks_$(NS)..."
 	PGPASSWORD=$${DB_PASSWORD:-otterworks_dev} psql \
-		-h $${DB_HOST:-localhost} -p $${DB_PORT:-5432} \
+		-h $${DB_HOST:-localhost} -p $${DB_PORT:-$${POSTGRES_HOST_PORT:-5432}} \
 		-U $${DB_USER:-otterworks} -d $${DB_NAME:-otterworks} \
 		-c "DROP SCHEMA IF EXISTS otterworks_$(NS) CASCADE;"
 	@echo "Done."

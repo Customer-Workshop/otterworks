@@ -55,7 +55,7 @@ export interface OverdueAccount {
   tenant_id?: string;
   invoice_id?: string;
   amount?: string | number;
-  overdue_days?: number;
+  days_overdue?: number;
   [key: string]: string | number | null | undefined;
 }
 

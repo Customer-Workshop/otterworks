@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import date, datetime, timezone
 
 import oracledb
@@ -14,6 +15,10 @@ UNAVAILABLE = {
     "error": "legacy estate unavailable",
     "detail": "the Oracle billing estate is not reachable",
 }
+CANONICAL_UUID = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 def _not_available():
@@ -366,8 +371,8 @@ def usage_event():
     occurred_at = payload.get("occurred_at")
     if not isinstance(tenant_id, str) or not tenant_id or len(tenant_id) > 64:
         return jsonify(error="invalid usage event", detail="tenant_id must be a string of at most 64 characters"), 400
-    if not isinstance(event_id, str) or not event_id or len(event_id) > 64:
-        return jsonify(error="invalid usage event", detail="event_id must be a string of at most 64 characters"), 400
+    if not isinstance(event_id, str) or not CANONICAL_UUID.fullmatch(event_id):
+        return jsonify(error="invalid usage event", detail="event_id must be a canonical UUID"), 400
     if kind not in {"api", "storage", "compute"}:
         return jsonify(error="invalid usage event", detail="kind must be api, storage, or compute"), 400
     if isinstance(units, bool) or not isinstance(units, int) or not 1 <= units <= 1_000_000:
@@ -394,7 +399,7 @@ def usage_event():
                        (id, tenant_id, occurred_at, units, kind_cd)
                        VALUES (:1, :2, :3, :4, :5)""",
                     (
-                        payload["event_id"][:36],
+                        payload["event_id"],
                         tenant_id,
                         oracle._as_datetime(occurred_at),
                         units,

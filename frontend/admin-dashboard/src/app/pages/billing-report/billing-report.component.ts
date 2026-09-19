@@ -139,7 +139,7 @@ import {
                   <td>{{ row.tenant_id || '—' }}</td>
                   <td>{{ row.invoice_id || '—' }}</td>
                   <td class="num">{{ row.amount || '—' }}</td>
-                  <td class="num">{{ row.overdue_days || '—' }}</td>
+                  <td class="num">{{ row.days_overdue || '—' }}</td>
                 </tr>
               </tbody>
             </table>

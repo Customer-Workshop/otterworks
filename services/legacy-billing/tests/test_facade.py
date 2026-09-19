@@ -82,7 +82,7 @@ def test_admin_overdue_maps_total_to_amount(monkeypatch):
                 "tenant_id": "tenant-1",
                 "invoice_id": "invoice-1",
                 "total": "25.00",
-                "overdue_days": 12,
+                "days_overdue": 12,
             }
         ],
     )
@@ -97,7 +97,7 @@ def test_admin_overdue_maps_total_to_amount(monkeypatch):
             "invoice_id": "invoice-1",
             "total": "25.00",
             "amount": "25.00",
-            "overdue_days": 12,
+            "days_overdue": 12,
         }
     ]
 
@@ -215,7 +215,7 @@ def test_internal_ingest_duplicate(monkeypatch):
     response = app.test_client().post(
         "/internal/usage/events",
         json={
-            "event_id": "event-1",
+            "event_id": "00000000-0000-0000-0000-000000000001",
             "tenant_id": "tenant-1",
             "email": "tenant@example.com",
             "kind": "api",
@@ -247,7 +247,7 @@ def test_internal_ingest_rejects_invalid_payload_before_oracle(monkeypatch):
         "/internal/usage/events",
         headers={"X-Internal-Token": "test-token"},
         json={
-            "event_id": "event-1",
+            "event_id": "00000000-0000-0000-0000-000000000001",
             "tenant_id": "tenant-1",
             "kind": "invalid",
             "units": 1,
@@ -255,6 +255,29 @@ def test_internal_ingest_rejects_invalid_payload_before_oracle(monkeypatch):
         },
     )
     assert response.status_code == 400
+
+
+def test_internal_ingest_rejects_non_uuid_event_id_before_oracle(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setenv("USAGE_INTERNAL_TOKEN", "test-token")
+    monkeypatch.setattr(
+        facade_module.oracle,
+        "oracle_connect",
+        lambda: (_ for _ in ()).throw(AssertionError("Oracle touched")),
+    )
+    response = app.test_client().post(
+        "/internal/usage/events",
+        headers={"X-Internal-Token": "test-token"},
+        json={
+            "event_id": "x" * 64,
+            "tenant_id": "tenant-1",
+            "kind": "api",
+            "units": 1,
+            "occurred_at": "2026-02-10T10:00:00Z",
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["detail"] == "event_id must be a canonical UUID"
 
 
 def test_plan_change_rejects_missing_field_before_oracle(monkeypatch):

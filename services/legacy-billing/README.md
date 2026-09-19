@@ -82,7 +82,7 @@ comments count as one `api` unit; file uploads count as `storage` units
 rounded up to megabytes with a minimum of one; file updates count as one
 `compute` unit. Other event types are discarded.
 
-Each usage event ID is a UUID5 of
+Each usage event ID is a canonical 36-character UUID5 of
 `ow-usage:<event_type>:<entity_id>:<timestamp>`, so redelivery is handled as a
 duplicate by the billing facade rather than billed twice. Recorded and
 duplicate responses are deleted from SQS. The bridge authenticates to

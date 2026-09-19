@@ -176,7 +176,7 @@ describe('BillingReportComponent', () => {
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/overdue')).flush([
-      { tenant_id: 'tenant-1', invoice_id: 'invoice-1', total: '25.00', amount: '25.00', overdue_days: 12 },
+      { tenant_id: 'tenant-1', invoice_id: 'invoice-1', total: '25.00', amount: '25.00', days_overdue: 12 },
     ]);
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/dunning')).flush([
       { tenant_id: 'tenant-1', invoice_id: 'invoice-1', scheduled_for: '2026-02-28', status: 'SCHEDULED' },
@@ -184,6 +184,7 @@ describe('BillingReportComponent', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('tenant-1');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('SCHEDULED');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('12');
     httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance')).flush(FINANCE);
   });
 

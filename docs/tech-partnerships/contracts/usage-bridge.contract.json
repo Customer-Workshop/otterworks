@@ -1,0 +1,58 @@
+{
+  "unit": "usage-bridge",
+  "source_artifact_path": "services/legacy-billing/bridge/bridge.py",
+  "target_objects": [
+    "otterworks-events SNS topic",
+    "otterworks-billing-usage SQS queue",
+    "POST /internal/usage/events"
+  ],
+  "golden_baseline_location": "/home/ubuntu/tp-evidence/handoff3/",
+  "acceptance_checks": [
+    {
+      "id": "mapping",
+      "description": "Supported event types map to the documented billing kind and units."
+    },
+    {
+      "id": "idempotency",
+      "description": "Repeated delivery derives the same UUID5 event ID and is recorded as duplicate."
+    },
+    {
+      "id": "retry",
+      "description": "Connection and 5xx failures remain queued for visibility-timeout retry."
+    }
+  ],
+  "encoding_policy": {
+    "input_encoding": "SNS JSON with RawMessageDelivery",
+    "byte_transparency": "Payload identifiers and timestamps are copied into the billing event.",
+    "invalid_bytes": "Malformed or unsupported messages are skipped and deleted."
+  },
+  "malformed_record_policy": {
+    "extra_delimited_fields": "tolerate-and-attribute",
+    "null_attribution": "fail",
+    "details": "Messages missing event type, entity ID, owner ID, or timestamp are skipped."
+  },
+  "empty_input_semantics": {
+    "action": "no-op",
+    "details": "Long polling with no messages leaves all metrics unchanged."
+  },
+  "trigger_granularity": "per-file",
+  "planted_anomalies": [
+    {
+      "id": "legacy-event-shapes",
+      "description": "Document events use snake_case while file events use camelCase.",
+      "status": "must-detect"
+    }
+  ],
+  "idempotency": {
+    "rule": "UUID5(NAMESPACE_URL, 'ow-usage:<event_type>:<entity_id>:<timestamp>')",
+    "duplicate_response": "HTTP 200 with {\"status\":\"duplicate\"}"
+  },
+  "mapping": [
+    {"event_type": "document_created", "kind": "api", "units": 1},
+    {"event_type": "document_updated", "kind": "api", "units": 1},
+    {"event_type": "comment_added", "kind": "api", "units": 1},
+    {"event_type": "file_uploaded", "kind": "storage", "units": "max(1, ceil(sizeBytes / 1048576))"},
+    {"event_type": "file_updated", "kind": "compute", "units": 1}
+  ],
+  "unsupported_event_behavior": "Delete the message and increment skipped."
+}

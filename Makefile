@@ -121,13 +121,17 @@ endif
 TP_COMPOSE = docker compose -f docker-compose.yml -f docker-compose.tp.yml
 TP_SERVICES = $(if $(filter core,$(PROFILE)),api-gateway auth-service document-service file-service web-app admin-dashboard legacy-billing usage-bridge,)
 
+define tp_oracle_namespace_present
+DB_PORT=$(ORACLE_BILLING_DB_PORT) $(ORACLE_BILLING_UV) python3 -c 'import os,oracledb; c=oracledb.connect(user=os.getenv("DB_USER","ow_billing"), password=os.getenv("DB_PASSWORD","ow_billing"), host=os.getenv("DB_HOST","localhost"), port=int(os.getenv("DB_PORT","52521")), service_name=os.getenv("DB_SERVICE","FREEPDB1")); x=c.cursor(); x.execute("select count(*) from invoice_header where batch_no = :1", [int.from_bytes(__import__("hashlib").sha256("$(NS)".encode()).digest()[:4], "big") % 90000000 + 1000000]); print("present" if x.fetchone()[0] else "missing"); c.close()'
+endef
+
 tp-up: ## Start the opt-in tech-partnerships wired estate (NS=<namespace>, PROFILE=core optional)
 ifndef NS
 	$(error NS is required, e.g. make tp-up NS=dev)
 endif
 	$(call validate_ns)
 	$(MAKE) oracle-billing-up
-	@test -f testdata/legacy/manifests/$(NS).json || $(MAKE) oracle-billing-seed NS=$(NS)
+	@if test -f testdata/legacy/manifests/$(NS).json && { $(call tp_oracle_namespace_present); } | grep -qx present; then :; else $(MAKE) oracle-billing-seed NS=$(NS); fi
 	$(MAKE) infra-up
 	$(TP_COMPOSE) up -d --build --wait $(TP_SERVICES)
 	@echo "Web: http://localhost:3000"

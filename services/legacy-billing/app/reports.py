@@ -192,8 +192,7 @@ def finance_report_path(ns):
         return None
     directory = finance_report_dir() / ns
     reports = sorted(
-        list(directory.glob("finance_billing_*.csv"))
-        + list(directory.glob("finance_billing_*.xls")),
+        directory.glob("finance_billing_*.csv"),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )

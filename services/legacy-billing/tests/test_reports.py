@@ -112,6 +112,7 @@ def test_finance_report_reads_namespace_batch_fixture(client, monkeypatch, tmp_p
         Path(__file__).parent / "fixtures" / "finance_billing_20260228.csv",
         report_dir / "finance_billing_20260228.csv",
     )
+    (report_dir / "finance_billing_20260228.xls").write_text("not a report")
     monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path / "reports"))
     response = client.get("/api/reports/finance?ns=demo")
     assert response.status_code == 200

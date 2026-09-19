@@ -2,6 +2,8 @@ FROM node:20-alpine AS builder
 
 ARG VITE_COLLAB_WS_URL=ws://localhost:8084
 ENV VITE_COLLAB_WS_URL=$VITE_COLLAB_WS_URL
+ARG VITE_ENABLE_BILLING=false
+ENV VITE_ENABLE_BILLING=$VITE_ENABLE_BILLING
 
 WORKDIR /app
 COPY package.json package-lock.json ./

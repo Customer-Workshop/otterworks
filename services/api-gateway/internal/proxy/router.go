@@ -84,6 +84,8 @@ func newProxyHandler(route Route, cfg RouterConfig) http.HandlerFunc {
 			}
 			if len(claims.Roles) > 0 {
 				req.Header.Set("X-User-Roles", strings.Join(claims.Roles, ","))
+			} else if claims.Role != "" {
+				req.Header.Set("X-User-Roles", strings.ToUpper(claims.Role))
 			}
 		}
 	}

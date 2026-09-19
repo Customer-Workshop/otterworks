@@ -66,22 +66,22 @@ describe('BillingReportComponent', () => {
 
   function flush(report: MonthEndReport = REPORT, recon: ReconciliationReport = RECON): void {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(report);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(recon);
-    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([]);
-    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([]);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance').flush(FINANCE);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(report);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(recon);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/overdue')).flush([]);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/dunning')).flush([]);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance')).flush(FINANCE);
     fixture.detectChanges();
   }
 
   it('should create', () => {
     expect(component).toBeTruthy();
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
-    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([]);
-    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([]);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance').flush(FINANCE);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/overdue')).flush([]);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/dunning')).flush([]);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance')).flush(FINANCE);
   });
 
   it('should render the legacy source badge', () => {
@@ -117,16 +117,16 @@ describe('BillingReportComponent', () => {
 
   it('should show an error state when the estate is unavailable', () => {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end')
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end'))
       .flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
     // forkJoin cancels the sibling request on error; just acknowledge it.
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation');
-    httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/')).forEach(request => {
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation'));
+    httpMock.match(r => r.urlWithParams.includes('/api/v1/billing/admin/overdue') || r.urlWithParams.includes('/api/v1/billing/admin/dunning')).forEach(request => {
       if (!request.cancelled) {
         request.flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
       }
     });
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance'))
       .flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
     fixture.detectChanges();
     expect(component.error).toContain('Failed to load');
@@ -134,31 +134,31 @@ describe('BillingReportComponent', () => {
 
   it('should render overdue accounts and dunning attempts', () => {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
-    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/overdue')).flush([
       { tenant_id: 'tenant-1', invoice_id: 'invoice-1', amount: '25.00', overdue_days: 12 },
     ]);
-    httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/dunning')).flush([
       { tenant_id: 'tenant-1', invoice_id: 'invoice-1', scheduled_for: '2026-02-28', status: 'SCHEDULED' },
     ]);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('tenant-1');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('SCHEDULED');
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance').flush(FINANCE);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance')).flush(FINANCE);
   });
 
   it('should show the admin sign-in message for forbidden collections data', () => {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
-    const requests = httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/'));
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
+    const requests = httpMock.match(r => r.urlWithParams.includes('/api/v1/billing/admin/overdue') || r.urlWithParams.includes('/api/v1/billing/admin/dunning'));
     requests.forEach(request => {
       if (!request.cancelled) {
         request.flush({ error: 'forbidden' }, { status: 403, statusText: 'Forbidden' });
       }
     });
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance'))
       .flush(FINANCE);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Sign in as an admin to view collections data');
@@ -166,15 +166,15 @@ describe('BillingReportComponent', () => {
 
   it('should show the unavailable message for unavailable collections data', () => {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
-    const requests = httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/'));
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
+    const requests = httpMock.match(r => r.urlWithParams.includes('/api/v1/billing/admin/overdue') || r.urlWithParams.includes('/api/v1/billing/admin/dunning'));
     requests.forEach(request => {
       if (!request.cancelled) {
         request.flush({ error: 'unavailable' }, { status: 503, statusText: 'Service Unavailable' });
       }
     });
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance'))
       .flush(FINANCE);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain("Billing is temporarily unavailable");
@@ -190,11 +190,11 @@ describe('BillingReportComponent', () => {
 
   it('shows the rerun instruction when the finance batch is missing', () => {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance'))
       .flush({ error: 'no finance report for namespace' }, { status: 404, statusText: 'Not Found' });
-    httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/')).forEach(request => {
+    httpMock.match(r => r.urlWithParams.includes('/api/v1/billing/admin/overdue') || r.urlWithParams.includes('/api/v1/billing/admin/dunning')).forEach(request => {
       if (!request.cancelled) request.flush([]);
     });
     fixture.detectChanges();
@@ -203,9 +203,9 @@ describe('BillingReportComponent', () => {
 
   it('shows the unavailable treatment when the finance batch is unavailable', () => {
     fixture.detectChanges();
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
-    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/month-end')).flush(REPORT);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/reconciliation')).flush(RECON);
+    httpMock.expectOne(r => r.urlWithParams.startsWith('/api/v1/billing/admin/reports/finance'))
       .flush({ error: 'unavailable' }, { status: 503, statusText: 'Service Unavailable' });
     httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/')).forEach(request => {
       if (!request.cancelled) request.flush([]);

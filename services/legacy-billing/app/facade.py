@@ -1,4 +1,5 @@
-from datetime import date
+import os
+from datetime import date, datetime, timezone
 
 import oracledb
 from flask import Blueprint, jsonify, request
@@ -133,19 +134,35 @@ def plan_change():
         return error
     if not _oracle_only():
         return _not_available()
-    payload = request.get_json(force=True)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="invalid plan change", detail="request body must be a JSON object"), 400
+    plan_id = payload.get("plan_id")
+    effective_on = payload.get("effective_on")
+    if not isinstance(plan_id, str) or not plan_id.strip():
+        return jsonify(error="invalid plan change", detail="plan_id must be a non-empty string"), 400
+    if not isinstance(effective_on, str) or not effective_on.strip():
+        return jsonify(error="invalid plan change", detail="effective_on must be a non-empty string"), 400
     try:
+        effective_date = datetime.strptime(effective_on, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify(error="invalid plan change", detail="effective_on must be an ISO date (YYYY-MM-DD)"), 400
+    if effective_date < datetime.now(timezone.utc).date():
+        return jsonify(error="invalid plan change", detail="effective_on must be today or later"), 400
+    try:
+        if plan_id not in {row.get("plan_id") for row in oracle.list_plans()}:
+            return jsonify(error="invalid plan change", detail="plan_id is not a known billing plan"), 400
         _ensure(tenant_id)
         oracle.change_plan(
             tenant_id,
-            payload["plan_id"],
-            payload["effective_on"],
+            plan_id,
+            effective_on,
         )
         return jsonify(
             status="changed",
             entitlement=oracle.entitlement(
                 tenant_id,
-                payload["effective_on"],
+                effective_on,
             ),
         )
     except oracledb.Error:
@@ -302,12 +319,41 @@ def admin_dunning():
 
 @internal.post("/internal/usage/events")
 def usage_event():
+    expected_token = os.getenv("USAGE_INTERNAL_TOKEN")
+    if not expected_token:
+        return jsonify(error="internal usage ingest not configured"), 503
+    if request.headers.get("X-Internal-Token") != expected_token:
+        return jsonify(error="unauthorized"), 401
     if not _oracle_only():
         return _not_available()
-    payload = request.get_json(force=True)
+    raw_body = request.get_data(cache=True)
+    if len(raw_body) > 16 * 1024:
+        return jsonify(error="invalid usage event", detail="request body exceeds 16 KB"), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="invalid usage event", detail="request body must be a JSON object"), 400
+    tenant_id = payload.get("tenant_id")
+    event_id = payload.get("event_id")
+    kind = payload.get("kind")
+    units = payload.get("units")
+    occurred_at = payload.get("occurred_at")
+    if not isinstance(tenant_id, str) or not tenant_id or len(tenant_id) > 64:
+        return jsonify(error="invalid usage event", detail="tenant_id must be a string of at most 64 characters"), 400
+    if not isinstance(event_id, str) or not event_id or len(event_id) > 64:
+        return jsonify(error="invalid usage event", detail="event_id must be a string of at most 64 characters"), 400
+    if kind not in {"api", "storage", "compute"}:
+        return jsonify(error="invalid usage event", detail="kind must be api, storage, or compute"), 400
+    if isinstance(units, bool) or not isinstance(units, int) or not 1 <= units <= 1_000_000:
+        return jsonify(error="invalid usage event", detail="units must be an integer from 1 to 1000000"), 400
+    if not isinstance(occurred_at, str):
+        return jsonify(error="invalid usage event", detail="occurred_at must be an ISO-8601 timestamp"), 400
+    try:
+        datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+    except ValueError:
+        return jsonify(error="invalid usage event", detail="occurred_at must be an ISO-8601 timestamp"), 400
     try:
         with oracle.oracle_connect() as connection:
-            oracle.ensure_tenant(connection, payload["tenant_id"], payload.get("email"))
+            oracle.ensure_tenant(connection, tenant_id, payload.get("email"))
             with connection.cursor() as cursor:
                 cursor.execute(
                     """SELECT code_val FROM codes
@@ -322,9 +368,9 @@ def usage_event():
                        VALUES (:1, :2, :3, :4, :5)""",
                     (
                         payload["event_id"][:36],
-                        payload["tenant_id"],
-                        oracle._as_datetime(payload["occurred_at"]),
-                        payload["units"],
+                        tenant_id,
+                        oracle._as_datetime(occurred_at),
+                        units,
                         kind_row[0] if kind_row else None,
                     ),
                 )

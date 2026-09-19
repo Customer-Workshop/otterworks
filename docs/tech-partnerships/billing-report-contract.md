@@ -10,10 +10,12 @@ during the migration.
 
 ## Wiring
 
-- Dev proxy: `frontend/admin-dashboard/proxy.conf.mjs` maps `/billing-api/*` to
-  `BILLING_REPORT_API_URL` (default `http://localhost:8096`, the legacy app from
-  `make procs-up`). Cutover = point `BILLING_REPORT_API_URL` at the migrated
-  backend that serves this contract from MongoDB.
+- Production admin traffic uses the gateway aliases under
+  `/api/v1/billing/admin/reports`. Local development may still use the
+  `frontend/admin-dashboard/proxy.conf.mjs` `/billing-api/*` mapping to
+  `BILLING_REPORT_API_URL` (default `http://localhost:8096`). Cutover = point
+  the gateway's billing backend at the migrated backend that serves this
+  contract from MongoDB.
 - The legacy app reaches Oracle via `ORACLE_HOST`/`ORACLE_PORT`/`ORACLE_USER`/
   `ORACLE_PASSWORD`/`ORACLE_SERVICE` (defaults: localhost:52521, ow_billing,
   FREEPDB1 — `make oracle-billing-up` + `make oracle-billing-seed NS=<ns>`).
@@ -196,3 +198,16 @@ the requested namespace, it returns HTTP 404:
 {"error":"no finance report for namespace",
  "detail":"run make tp-month-end NS=demo"}
 ```
+
+## Gateway admin report aliases
+
+The production admin dashboard uses these gateway paths, which require the
+validated `ADMIN` role and accept the same `ns` query parameter and response
+shapes as their legacy counterparts:
+
+- `GET /api/v1/billing/admin/reports/month-end`
+- `GET /api/v1/billing/admin/reports/reconciliation`
+- `GET /api/v1/billing/admin/reports/finance`
+
+Requests without the admin role return HTTP 403. The original
+`/api/reports/*` paths remain available for local and parity checks.

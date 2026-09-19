@@ -83,6 +83,18 @@ def test_month_end_contract(client):
     assert "generated_at" in body
 
 
+def test_admin_report_aliases_require_admin_and_match_legacy(client):
+    assert client.get("/api/v1/billing/admin/reports/month-end").status_code == 403
+    assert client.get("/api/v1/billing/admin/reports/reconciliation").status_code == 403
+    assert client.get("/api/v1/billing/admin/reports/finance").status_code == 403
+    headers = {"X-User-Roles": "ADMIN"}
+    alias = client.get(
+        "/api/v1/billing/admin/reports/month-end?ns=demo", headers=headers,
+    ).get_json()
+    legacy = client.get("/api/reports/month-end?ns=demo").get_json()
+    assert alias == legacy
+
+
 def test_reconciliation_contract(client):
     body = client.get("/api/reports/reconciliation?ns=demo").get_json()
     assert body["source"]["engine"] == "oracle"

@@ -60,6 +60,7 @@ const me = {
 };
 
 beforeEach(() => {
+  vi.stubEnv("VITE_ENABLE_BILLING", "true");
   vi.clearAllMocks();
 });
 

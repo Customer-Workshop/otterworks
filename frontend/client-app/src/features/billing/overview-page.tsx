@@ -9,7 +9,11 @@ function monthRange(): { start: string; end: string } {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const iso = (value: Date) => value.toISOString().slice(0, 10);
+  const iso = (value: Date) => {
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${value.getFullYear()}-${month}-${day}`;
+  };
   return { start: iso(start), end: iso(end) };
 }
 

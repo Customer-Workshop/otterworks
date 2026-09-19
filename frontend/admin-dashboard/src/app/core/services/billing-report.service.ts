@@ -5,12 +5,10 @@ import {
   DunningAttempt, FinanceBatchReport, MonthEndReport, OverdueAccount, ReconciliationReport,
 } from '../models/billing-report.model';
 
-// The billing report backend is whichever estate currently serves the report
-// contract (see docs/tech-partnerships/billing-report-contract.md). The dev
-// proxy maps /billing-api to it; swapping the backend never touches this app.
+// The gateway exposes the admin report contract at /api/v1/billing/admin/reports.
 @Injectable({ providedIn: 'root' })
 export class BillingReportService {
-  private readonly baseUrl = '/billing-api/api/reports';
+  private readonly baseUrl = '/api/v1/billing/admin/reports';
 
   constructor(private http: HttpClient) {}
 

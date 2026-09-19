@@ -22,6 +22,14 @@ token="$(printf '%s' "$login_response" | python3 -c 'import json,sys; print(json
 owner_id="$(printf '%s' "$login_response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["user"]["id"])')"
 printf '%s\n' "$login_response" > "$EVIDENCE_DIR/usage-demo-login.json"
 
+health_before="$(curl -fsS "$BRIDGE_URL/health")"
+printf '%s\n' "$health_before" > "$EVIDENCE_DIR/usage-demo-bridge-health-before.json"
+recorded_before="$(printf '%s' "$health_before" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("recorded", 0))')"
+usage_before="$(curl -fsS "$BASE_URL/api/v1/billing/usage" \
+  -H "Authorization: Bearer $token")"
+printf '%s\n' "$usage_before" > "$EVIDENCE_DIR/usage-demo-usage-before.json"
+events_before="$(printf '%s' "$usage_before" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("events", [])))')"
+
 document_response="$(curl -fsS -X POST "$BASE_URL/api/v1/documents" \
   -H "Authorization: Bearer $token" \
   -H 'Content-Type: application/json' \
@@ -32,15 +40,25 @@ for _ in $(seq 1 30); do
   health="$(curl -fsS "$BRIDGE_URL/health")"
   printf '%s\n' "$health" > "$EVIDENCE_DIR/usage-demo-bridge-health.json"
   recorded="$(printf '%s' "$health" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("recorded", 0))')"
-  if [ "$recorded" -gt 0 ]; then
+  if [ "$recorded" -gt "$recorded_before" ]; then
     break
   fi
   sleep 1
 done
+if [ "${recorded:-0}" -le "$recorded_before" ]; then
+  echo "usage bridge did not record the document event within 30 seconds" >&2
+  exit 1
+fi
 
 usage_response="$(curl -fsS "$BASE_URL/api/v1/billing/usage" \
   -H "Authorization: Bearer $token")"
 printf '%s\n' "$usage_response" > "$EVIDENCE_DIR/usage-demo-usage.json"
+events_after="$(printf '%s' "$usage_response" | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("events", [])))')"
+if [ "$events_after" -le "$events_before" ]; then
+  echo "document usage event was not visible in billing usage" >&2
+  exit 1
+fi
+echo "usage event match: count increase (event ID is not exposed)"
 printf '%s\n' "$usage_response" | python3 -c '
 import json, sys
 events = json.load(sys.stdin).get("events", [])

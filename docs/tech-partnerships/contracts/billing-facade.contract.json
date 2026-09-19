@@ -12,6 +12,9 @@
     "GET /api/v1/billing/customer",
     "GET /api/v1/billing/admin/overdue",
     "GET /api/v1/billing/admin/dunning",
+    "GET /api/v1/billing/admin/reports/month-end",
+    "GET /api/v1/billing/admin/reports/reconciliation",
+    "GET /api/v1/billing/admin/reports/finance",
     "POST /internal/usage/events"
   ],
   "golden_baseline_location": "/home/ubuntu/tp-evidence/handoff1/",
@@ -111,6 +114,24 @@
       "path": "/api/v1/billing/admin/dunning",
       "auth": "admin",
       "response_top_level_keys": ["id", "tenant_id", "invoice_id", "attempt_no", "scheduled_for", "status"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/reports/month-end",
+      "auth": "admin",
+      "response_top_level_keys": ["report", "namespace", "batch_no", "source", "generated_at", "by_status", "by_status_line_type"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/reports/reconciliation",
+      "auth": "admin",
+      "response_top_level_keys": ["namespace", "batch_no", "source", "generated_at", "balances", "status", "checks"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/billing/admin/reports/finance",
+      "auth": "admin",
+      "response_top_level_keys": ["ns", "source", "rows", "totals"]
     },
     {
       "method": "POST",

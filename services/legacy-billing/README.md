@@ -85,10 +85,14 @@ rounded up to megabytes with a minimum of one; file updates count as one
 Each usage event ID is a UUID5 of
 `ow-usage:<event_type>:<entity_id>:<timestamp>`, so redelivery is handled as a
 duplicate by the billing facade rather than billed twice. Recorded and
-duplicate responses are deleted from SQS. Validation responses (`422`) are
-logged and dropped as unbillable; connection failures and `5xx` responses are
-left visible for visibility-timeout retry without blocking the publishing
-service.
+duplicate responses are deleted from SQS. The bridge authenticates to
+`POST /internal/usage/events` with the `USAGE_INTERNAL_TOKEN` environment
+variable. Invalid requests and missing or incorrect tokens (`400`, `401`) are
+logged and dropped; an unset token returns `503` and Oracle or other `5xx`
+failures remain visible for visibility-timeout retry without blocking the
+publishing service. The endpoint rejects bodies over 16 KB and validates the
+tenant/event identifiers, usage kind, unit range, and ISO-8601 timestamp before
+opening an Oracle connection.
 
 ## Database layout
 

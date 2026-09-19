@@ -1,4 +1,5 @@
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 import oracledb
@@ -132,6 +133,7 @@ class FakeConnection:
 
 def test_internal_ingest_duplicate(monkeypatch):
     monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setenv("USAGE_INTERNAL_TOKEN", "test-token")
     monkeypatch.setattr(facade_module.oracle, "ensure_tenant", lambda *args: None)
     monkeypatch.setattr(facade_module.oracle, "oracle_connect", lambda: FakeConnection())
     response = app.test_client().post(
@@ -144,6 +146,90 @@ def test_internal_ingest_duplicate(monkeypatch):
             "units": 1,
             "occurred_at": "2026-02-10T10:00:00Z",
         },
+        headers={"X-Internal-Token": "test-token"},
     )
     assert response.status_code == 200
     assert response.get_json() == {"status": "duplicate"}
+
+
+def test_internal_ingest_requires_token(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setenv("USAGE_INTERNAL_TOKEN", "test-token")
+    response = app.test_client().post("/internal/usage/events", json={})
+    assert response.status_code == 401
+
+
+def test_internal_ingest_rejects_invalid_payload_before_oracle(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setenv("USAGE_INTERNAL_TOKEN", "test-token")
+    monkeypatch.setattr(
+        facade_module.oracle,
+        "oracle_connect",
+        lambda: (_ for _ in ()).throw(AssertionError("Oracle touched")),
+    )
+    response = app.test_client().post(
+        "/internal/usage/events",
+        headers={"X-Internal-Token": "test-token"},
+        json={
+            "event_id": "event-1",
+            "tenant_id": "tenant-1",
+            "kind": "invalid",
+            "units": 1,
+            "occurred_at": "not-a-date",
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_plan_change_rejects_missing_field_before_oracle(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    called = False
+
+    def list_plans():
+        nonlocal called
+        called = True
+        return []
+
+    monkeypatch.setattr(facade_module.oracle, "list_plans", list_plans)
+    response = app.test_client().post(
+        "/api/v1/billing/plan-change",
+        headers={"X-User-ID": "tenant"},
+        json={"effective_on": (date.today() + timedelta(days=1)).isoformat()},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid plan change"
+    assert called is False
+
+
+def test_plan_change_rejects_bad_date(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    response = app.test_client().post(
+        "/api/v1/billing/plan-change",
+        headers={"X-User-ID": "tenant"},
+        json={"plan_id": "p1", "effective_on": "not-a-date"},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid plan change"
+
+
+def test_plan_change_rejects_past_date(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    response = app.test_client().post(
+        "/api/v1/billing/plan-change",
+        headers={"X-User-ID": "tenant"},
+        json={"plan_id": "p1", "effective_on": "2020-01-01"},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid plan change"
+
+
+def test_plan_change_rejects_unknown_plan(monkeypatch):
+    monkeypatch.setenv("BILLING_BACKEND", "oracle")
+    monkeypatch.setattr(facade_module.oracle, "list_plans", lambda: [{"plan_id": "p2"}])
+    response = app.test_client().post(
+        "/api/v1/billing/plan-change",
+        headers={"X-User-ID": "tenant"},
+        json={"plan_id": "p1", "effective_on": (date.today() + timedelta(days=1)).isoformat()},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid plan change"

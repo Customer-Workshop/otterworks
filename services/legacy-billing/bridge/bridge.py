@@ -58,7 +58,12 @@ def _event_fields(event):
         or payload.get("comment_id")
         or payload.get("commentId")
     )
-    tenant_id = payload.get("owner_id") or payload.get("ownerId")
+    tenant_id = (
+        payload.get("owner_id")
+        or payload.get("ownerId")
+        or payload.get("author_id")
+        or payload.get("authorId")
+    )
     timestamp = event.get("timestamp") or payload.get("timestamp")
     return event_type, payload, entity_id, tenant_id, timestamp
 
@@ -114,6 +119,7 @@ class UsageBridge:
         http_session=None,
         legacy_url=LEGACY_BILLING_URL,
         metrics=None,
+        internal_token=None,
     ):
         region = os.getenv("AWS_REGION", "us-east-1")
         endpoint = os.getenv("AWS_ENDPOINT_URL")
@@ -124,6 +130,10 @@ class UsageBridge:
         self.sns = sns_client or boto3.client("sns", **client_kwargs)
         self.http = http_session or requests.Session()
         self.legacy_url = legacy_url.rstrip("/")
+        self.internal_token = (
+            os.getenv("USAGE_INTERNAL_TOKEN", "")
+            if internal_token is None else internal_token
+        )
         self.metrics = metrics or Metrics()
         self.queue_url = None
 
@@ -192,6 +202,7 @@ class UsageBridge:
             response = self.http.post(
                 f"{self.legacy_url}{USAGE_PATH}",
                 json=usage,
+                headers={"X-Internal-Token": self.internal_token},
                 timeout=10,
             )
         except requests.RequestException:
@@ -201,7 +212,7 @@ class UsageBridge:
             status = (response.json() if response.content else {}).get("status")
             self.metrics.increment("duplicate" if status == "duplicate" else "recorded")
             return True
-        if response.status_code == 422:
+        if response.status_code in (400, 401, 422):
             LOGGER.warning("usage rejected by legacy billing")
             self.metrics.increment("rejected")
             return True

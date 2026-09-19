@@ -144,6 +144,14 @@ def report_meta(ns):
     }
 
 
+def _admin_report_allowed():
+    return "ADMIN" in {
+        role.strip().upper()
+        for role in request.headers.get("X-User-Roles", "").split(",")
+        if role.strip()
+    }
+
+
 @reports.get("/api/reports/month-end")
 def month_end():
     ns = request.args.get("ns", "demo")
@@ -159,6 +167,13 @@ def month_end():
     body["by_status"] = shape_status_rows(status_rows)
     body["by_status_line_type"] = shape_line_rows(line_rows)
     return jsonify(body)
+
+
+@reports.get("/api/v1/billing/admin/reports/month-end")
+def admin_month_end():
+    if not _admin_report_allowed():
+        return jsonify(error="forbidden"), 403
+    return month_end()
 
 
 @reports.get("/api/reports/reconciliation")
@@ -178,6 +193,13 @@ def reconciliation():
     body["status"] = "baseline"
     body["checks"] = []
     return jsonify(body)
+
+
+@reports.get("/api/v1/billing/admin/reports/reconciliation")
+def admin_reconciliation():
+    if not _admin_report_allowed():
+        return jsonify(error="forbidden"), 403
+    return reconciliation()
 
 
 def finance_report_dir():
@@ -241,3 +263,10 @@ def finance():
         "rows": rows,
         "totals": totals,
     })
+
+
+@reports.get("/api/v1/billing/admin/reports/finance")
+def admin_finance():
+    if not _admin_report_allowed():
+        return jsonify(error="forbidden"), 403
+    return finance()

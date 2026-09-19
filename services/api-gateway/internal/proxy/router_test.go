@@ -95,3 +95,41 @@ func TestRouterStripsSpoofedRolesWhenTokenHasNoRoles(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestRouterMapsSingularAdminRoleClaim(t *testing.T) {
+	const secret = "router-test-secret"
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "ADMIN", r.Header.Get("X-User-Roles"))
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer backend.Close()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, middleware.JWTClaims{
+		Role: "admin",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   "user-123",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+	})
+	tokenString, err := token.SignedString([]byte(secret))
+	require.NoError(t, err)
+
+	router := NewRouter(RouterConfig{
+		Routes: []Route{{Prefix: "/api/v1/billing", TargetURL: backend.URL}},
+		CBManager: NewCircuitBreakerManager(CircuitBreakerConfig{
+			MaxRequests: 2, Interval: time.Minute, Timeout: time.Second, FailureRatio: 0.5,
+		}),
+		Logger: zerolog.Nop(),
+	})
+	handler := middleware.JWTAuth(middleware.JWTConfig{
+		Secret: secret,
+		ProtectedPrefixPath: []string{"/api/v1/billing"},
+	})(router)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/billing/me", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+}

@@ -69,10 +69,25 @@ def test_unsupported_event_is_skipped():
     assert bridge.map_event({"event_type": "file_deleted"}) is None
 
 
+def test_comment_uses_author_as_tenant():
+    mapped = bridge.map_event({
+        "event_type": "comment_added",
+        "timestamp": "2026-09-19T00:00:00Z",
+        "payload": {"id": "comment-1", "author_id": "tenant-1"},
+    })
+    assert mapped["tenant_id"] == "tenant-1"
+    assert mapped["kind"] == "api"
+
+
 def test_duplicate_response_is_deleted_and_counted():
     sqs = FakeSqs()
     session = FakeSession(FakeResponse(200, {"status": "duplicate"}))
-    usage = bridge.UsageBridge(sqs_client=sqs, sns_client=object(), http_session=session)
+    usage = bridge.UsageBridge(
+        sqs_client=sqs,
+        sns_client=object(),
+        http_session=session,
+        internal_token="test-token",
+    )
     message = {"Body": json.dumps({
         "event_type": "document_created",
         "timestamp": "2026-09-19T00:00:00Z",
@@ -80,3 +95,23 @@ def test_duplicate_response_is_deleted_and_counted():
     }), "ReceiptHandle": "receipt-1"}
     assert usage.process_message(message)
     assert usage.metrics.snapshot()["duplicate"] == 1
+    assert session.requests[0][1]["headers"] == {"X-Internal-Token": "test-token"}
+
+
+def test_rejected_response_is_deleted_and_counts_rejected():
+    sqs = FakeSqs()
+    session = FakeSession(FakeResponse(401, {"error": "unauthorized"}))
+    usage = bridge.UsageBridge(
+        sqs_client=sqs,
+        sns_client=object(),
+        http_session=session,
+        internal_token="test-token",
+    )
+    message = {"Body": json.dumps({
+        "event_type": "document_created",
+        "timestamp": "2026-09-19T00:00:00Z",
+        "payload": {"id": "doc-1", "owner_id": "tenant-1"},
+    }), "ReceiptHandle": "receipt-1"}
+    assert usage.process_message(message)
+    assert usage.metrics.snapshot()["rejected"] == 1
+    assert session.requests[0][1]["headers"] == {"X-Internal-Token": "test-token"}

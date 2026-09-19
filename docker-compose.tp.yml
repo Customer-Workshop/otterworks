@@ -18,8 +18,14 @@ services:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD:-ow_billing}
       ORACLE_SERVICE: ${ORACLE_SERVICE:-FREEPDB1}
       FINANCE_REPORT_DIR: /app/etl/legacy-extra/reports
+      USAGE_INTERNAL_TOKEN: ${USAGE_INTERNAL_TOKEN:-ow-usage-local-dev-token}
     volumes:
       - ./etl/legacy-extra/reports:/app/etl/legacy-extra/reports:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -44,6 +50,12 @@ services:
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
       SNS_TOPIC_ARN: ${SNS_TOPIC_ARN:-arn:aws:sns:us-east-1:000000000000:otterworks-events}
       LEGACY_BILLING_URL: http://legacy-billing:8096
+      USAGE_INTERNAL_TOKEN: ${USAGE_INTERNAL_TOKEN:-ow-usage-local-dev-token}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       legacy-billing:
         condition: service_healthy
@@ -64,3 +76,8 @@ services:
       LEGACY_BILLING_URL: http://legacy-billing:8096
     depends_on:
       - legacy-billing
+
+  web-app:
+    build:
+      args:
+        VITE_ENABLE_BILLING: "true"

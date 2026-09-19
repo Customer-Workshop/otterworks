@@ -62,15 +62,17 @@ const navGroups: NavGroup[] = [
       { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
-  {
-    label: "Billing",
-    items: [
-      { href: "/billing", label: "Overview", icon: CreditCard },
-      { href: "/billing/plans", label: "Plans", icon: CreditCard },
-      { href: "/billing/invoices", label: "Invoices", icon: FileText },
-      { href: "/billing/account", label: "Account", icon: Settings },
-    ],
-  },
+  ...(import.meta.env.VITE_ENABLE_BILLING === "true"
+    ? [{
+        label: "Billing",
+        items: [
+          { href: "/billing", label: "Overview", icon: CreditCard },
+          { href: "/billing/plans", label: "Plans", icon: CreditCard },
+          { href: "/billing/invoices", label: "Invoices", icon: FileText },
+          { href: "/billing/account", label: "Account", icon: Settings },
+        ],
+      }]
+    : []),
 ];
 
 export function Sidebar() {

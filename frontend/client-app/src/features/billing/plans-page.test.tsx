@@ -21,6 +21,7 @@ vi.mock("@/components/ui/notification-bell", () => ({
 const mockedApi = vi.mocked(billingApi);
 
 beforeEach(() => {
+  vi.stubEnv("VITE_ENABLE_BILLING", "true");
   vi.clearAllMocks();
   mockedApi.listPlans.mockResolvedValue([
     { plan_id: "starter", plan_code: "STARTER", tier: "starter", monthly_fee: "49", included_units: "100", overage_rate: "0.055" },

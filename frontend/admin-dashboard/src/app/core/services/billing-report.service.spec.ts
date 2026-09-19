@@ -33,7 +33,7 @@ describe('BillingReportService collections endpoints', () => {
 
   it('requests the namespace finance batch through the report backend', () => {
     service.getFinanceReport('demo').subscribe(value => expect(value.ns).toBe('demo'));
-    const request = httpMock.expectOne('/billing-api/api/reports/finance?ns=demo');
+    const request = httpMock.expectOne('/api/v1/billing/admin/reports/finance?ns=demo');
     expect(request.request.method).toBe('GET');
     request.flush({
       ns: 'demo',

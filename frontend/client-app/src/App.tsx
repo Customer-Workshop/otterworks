@@ -25,6 +25,8 @@ import BillingPlansPage from "@/features/billing/plans-page";
 import BillingInvoicesPage from "@/features/billing/invoices-page";
 import BillingAccountPage from "@/features/billing/account-page";
 
+const billingEnabled = import.meta.env.VITE_ENABLE_BILLING === "true";
+
 function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
@@ -59,10 +61,14 @@ export default function App() {
           <Route path="/trash" element={<TrashPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/billing" element={<BillingOverviewPage />} />
-          <Route path="/billing/plans" element={<BillingPlansPage />} />
-          <Route path="/billing/invoices" element={<BillingInvoicesPage />} />
-          <Route path="/billing/account" element={<BillingAccountPage />} />
+          {billingEnabled && (
+            <>
+              <Route path="/billing" element={<BillingOverviewPage />} />
+              <Route path="/billing/plans" element={<BillingPlansPage />} />
+              <Route path="/billing/invoices" element={<BillingInvoicesPage />} />
+              <Route path="/billing/account" element={<BillingAccountPage />} />
+            </>
+          )}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>

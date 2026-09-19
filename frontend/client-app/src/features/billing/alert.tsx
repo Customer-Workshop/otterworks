@@ -5,11 +5,13 @@ export function BillingAlert({
 }: Readonly<{
   message: string;
   onDismiss: () => void;
-  tone?: "error" | "success";
+  tone?: "error" | "success" | "warning";
 }>) {
   const colors =
     tone === "success"
       ? "border-green-200 bg-green-50 text-green-800"
+      : tone === "warning"
+        ? "border-yellow-200 bg-yellow-50 text-yellow-800"
       : "border-red-200 bg-red-50 text-red-800";
   return (
     <div

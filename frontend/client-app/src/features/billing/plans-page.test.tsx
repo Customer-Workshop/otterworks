@@ -76,4 +76,54 @@ describe("Billing plans", () => {
     expect(screen.getByRole("heading", { name: "STARTER" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "GROWTH" })).toBeInTheDocument();
   });
+
+  it("keeps the saved entitlement when the refresh fails", async () => {
+    mockedApi.changePlan.mockResolvedValue({
+      status: "changed",
+      entitlement: [{
+        tenant_id: "tenant-1",
+        plan_code: "SCALE",
+        tier: "scale",
+        monthly_fee: "499",
+        included_units: "2500",
+        subscription_status: "active",
+        effective_on: "2026-09-19",
+      }],
+    });
+    mockedApi.me
+      .mockResolvedValueOnce({
+        tenant_id: "tenant-1",
+        name: "OtterWorks Admin",
+        status: "active",
+        tax_exempt: "N",
+        entitlement: [{
+          tenant_id: "tenant-1",
+          plan_code: "STARTER",
+          tier: "starter",
+          monthly_fee: "49",
+          included_units: "100",
+          subscription_status: "active",
+          effective_on: "2026-09-19",
+        }],
+        customer: null,
+      })
+      .mockRejectedValueOnce(new Error("refresh failed"));
+    mockedApi.listPlans.mockResolvedValue([
+      { plan_id: "starter", plan_code: "STARTER", tier: "starter", monthly_fee: "49", included_units: "100", overage_rate: "0.055" },
+      { plan_id: "scale", plan_code: "SCALE", tier: "scale", monthly_fee: "499", included_units: "2500", overage_rate: "0.025" },
+    ]);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter><BillingPlansPage /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("button", { name: "Current plan" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to this plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm change" }));
+    expect(await screen.findByText("Plan change saved.")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Current plan" })).toBeInTheDocument();
+    expect(await screen.findByText("Plan change saved, but the account could not be refreshed.")).toBeInTheDocument();
+    expect(screen.queryByText("Plan change was not accepted.")).not.toBeInTheDocument();
+  });
 });

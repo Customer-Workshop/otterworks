@@ -16,6 +16,7 @@ export default function BillingPlansPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [submitError, setSubmitError] = useState<unknown>(null);
+  const [refreshWarning, setRefreshWarning] = useState("");
   const [success, setSuccess] = useState("");
 
   const load = () => {
@@ -39,14 +40,30 @@ export default function BillingPlansPage() {
     setSaving(true);
     setSuccess("");
     setSubmitError(null);
+    setRefreshWarning("");
     billingApi.changePlan(planId, effectiveOn)
-      .then(() => {
-        setSuccess("Plan change saved.");
-        setSelectedPlan(null);
-        return billingApi.me();
-      })
-      .then(setMe)
-      .catch(setSubmitError)
+      .then(
+        (result) => {
+          setSuccess("Plan change saved.");
+          setSelectedPlan(null);
+          setMe((current) => current ? { ...current, entitlement: result.entitlement } : current);
+          return billingApi.me();
+        },
+        (error) => {
+          setSubmitError(error);
+          return null;
+        },
+      )
+      .then(
+        (account) => {
+          if (account) {
+            setMe(account);
+          }
+        },
+        () => {
+          setRefreshWarning("Plan change saved, but the account could not be refreshed.");
+        },
+      )
       .finally(() => setSaving(false));
   };
 
@@ -70,6 +87,13 @@ export default function BillingPlansPage() {
           />
         )}
         {success && <BillingAlert message={success} tone="success" onDismiss={() => setSuccess("")} />}
+        {refreshWarning && (
+          <BillingAlert
+            message={refreshWarning}
+            tone="warning"
+            onDismiss={() => setRefreshWarning("")}
+          />
+        )}
         {!loading && !error && (
           <div className="grid gap-4 md:grid-cols-3">
             {plans.map((plan) => {

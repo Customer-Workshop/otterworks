@@ -62,10 +62,22 @@ def entitlement(tenant_id, on):
 
 
 def change_plan(tenant_id, plan_id, effective_on):
-    _procedure(
-        "pkg_plans.sp_change_plan",
-        (tenant_id, plan_id, _as_date(effective_on)),
-    )
+    effective_date = _as_date(effective_on)
+    with oracle_connect() as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """UPDATE subscriptions
+               SET ends_on = :eff - 1,
+                   status_cd = DECODE(status_cd, 30, 30, 10)
+             WHERE tenant_id = :t
+               AND ends_on IS NULL
+               AND starts_on = :eff""",
+            {"eff": effective_date, "t": tenant_id},
+        )
+        cursor.callproc(
+            "pkg_plans.sp_change_plan",
+            [tenant_id, plan_id, effective_date],
+        )
+        connection.commit()
 
 
 def usage_rating(tenant, start, end):

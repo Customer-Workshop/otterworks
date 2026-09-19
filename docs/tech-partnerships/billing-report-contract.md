@@ -162,3 +162,36 @@ When Oracle cannot be reached, every facade route returns HTTP 503:
 {"error":"legacy estate unavailable",
  "detail":"the Oracle billing estate is not reachable"}
 ```
+
+## `GET /api/reports/finance?ns=<ns>`
+
+This endpoint serves the namespace's persisted month-end batch artifact rather
+than querying Oracle live. The artifact is produced by the Oracle CUSTBILL
+extract, the ksh/bash fixed-width parser, and the Perl finance rollup. The
+dashboard labels this panel **Month-end finance batch**.
+
+```json
+{
+  "ns": "demo",
+  "source": {
+    "system": "CUSTBILL month-end batch",
+    "detail": "ksh/Perl chain over Oracle CUSTBILL extract",
+    "generated_at": "2026-02-28T02:10:00+00:00",
+    "file": "finance_billing_20260228.csv"
+  },
+  "rows": [
+    {"currency": "USD", "record_type": "INVOICE",
+     "record_count": 2, "total_amount": "25.00"}
+  ],
+  "totals": {"record_count": 2, "total_amount": "25.00"}
+}
+```
+
+The Perl job writes a CSV report and copies it byte-for-byte to a `.xls` name;
+the endpoint parses either representation. If no report has been generated for
+the requested namespace, it returns HTTP 404:
+
+```json
+{"error":"no finance report for namespace",
+ "detail":"run make tp-month-end NS=demo"}
+```

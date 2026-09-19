@@ -31,6 +31,18 @@ describe('BillingReportService collections endpoints', () => {
     request.flush([]);
   });
 
+  it('requests the namespace finance batch through the report backend', () => {
+    service.getFinanceReport('demo').subscribe(value => expect(value.ns).toBe('demo'));
+    const request = httpMock.expectOne('/billing-api/api/reports/finance?ns=demo');
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      ns: 'demo',
+      source: { system: 'CUSTBILL month-end batch', detail: 'ksh/Perl chain', generated_at: '', file: 'report.csv' },
+      rows: [],
+      totals: { record_count: 0, total_amount: '0.00' },
+    });
+  });
+
   it('surfaces forbidden and unavailable responses', () => {
     let forbiddenStatus = 0;
     service.getOverdueAccounts('2026-02-28').subscribe({

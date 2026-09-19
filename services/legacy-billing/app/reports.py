@@ -10,7 +10,11 @@ conversion batch number.
 
 import hashlib
 import logging
+import csv
+import os
 from datetime import datetime, timezone
+from decimal import Decimal
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
@@ -28,6 +32,11 @@ SOURCE = {
     "engine": "oracle",
     "system": "OW_BILLING legacy estate (Oracle FREEPDB1)",
     "detail": "INVOICE_HEADER / INVOICE_LINE via CODES lookup (RPT-114)",
+}
+
+FINANCE_SOURCE = {
+    "system": "CUSTBILL month-end batch",
+    "detail": "ksh/Perl chain over Oracle CUSTBILL extract",
 }
 
 STATUS_SQL = """
@@ -169,3 +178,67 @@ def reconciliation():
     body["status"] = "baseline"
     body["checks"] = []
     return jsonify(body)
+
+
+def finance_report_dir():
+    configured = os.getenv("FINANCE_REPORT_DIR")
+    if configured:
+        return Path(configured)
+    return Path(__file__).resolve().parents[3] / "etl/legacy-extra/reports"
+
+
+def finance_report_path(ns):
+    if not ns or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_" for char in ns):
+        return None
+    directory = finance_report_dir() / ns
+    reports = sorted(
+        list(directory.glob("finance_billing_*.csv"))
+        + list(directory.glob("finance_billing_*.xls")),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return reports[0] if reports else None
+
+
+def parse_finance_report(path):
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    total_count = sum(int(row["RecordCount"]) for row in rows)
+    total_amount = sum((Decimal(row["TotalAmount"]) for row in rows), Decimal("0.00"))
+    return [
+        {
+            "currency": row["Currency"],
+            "record_type": row["RecordType"],
+            "record_count": int(row["RecordCount"]),
+            "total_amount": row["TotalAmount"],
+        }
+        for row in rows
+    ], {
+        "record_count": total_count,
+        "total_amount": f"{total_amount:.2f}",
+    }
+
+
+@reports.get("/api/reports/finance")
+def finance():
+    ns = request.args.get("ns", "demo")
+    path = finance_report_path(ns)
+    if path is None:
+        return jsonify({
+            "error": "no finance report for namespace",
+            "detail": "run make tp-month-end NS=" + ns,
+        }), 404
+    rows, totals = parse_finance_report(path)
+    generated_at = datetime.fromtimestamp(
+        path.stat().st_mtime, timezone.utc,
+    ).isoformat()
+    return jsonify({
+        "ns": ns,
+        "source": {
+            **FINANCE_SOURCE,
+            "generated_at": generated_at,
+            "file": path.name,
+        },
+        "rows": rows,
+        "totals": totals,
+    })

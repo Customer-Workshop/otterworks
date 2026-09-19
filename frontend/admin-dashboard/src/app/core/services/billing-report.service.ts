@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
-  DunningAttempt, MonthEndReport, OverdueAccount, ReconciliationReport,
+  DunningAttempt, FinanceBatchReport, MonthEndReport, OverdueAccount, ReconciliationReport,
 } from '../models/billing-report.model';
 
 // The billing report backend is whichever estate currently serves the report
@@ -20,6 +20,10 @@ export class BillingReportService {
 
   getReconciliation(ns: string): Observable<ReconciliationReport> {
     return this.http.get<ReconciliationReport>(`${this.baseUrl}/reconciliation`, { params: { ns } });
+  }
+
+  getFinanceReport(ns: string): Observable<FinanceBatchReport> {
+    return this.http.get<FinanceBatchReport>(`${this.baseUrl}/finance`, { params: { ns } });
   }
 
   getOverdueAccounts(asOf: string): Observable<OverdueAccount[]> {

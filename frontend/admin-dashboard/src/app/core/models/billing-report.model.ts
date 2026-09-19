@@ -68,3 +68,26 @@ export interface DunningAttempt {
   status?: string;
   [key: string]: string | number | null | undefined;
 }
+
+export interface FinanceBatchRow {
+  currency: string;
+  record_type: string;
+  record_count: number;
+  total_amount: string;
+}
+
+export interface FinanceBatchReport {
+  ns: string;
+  source: {
+    system: string;
+    detail: string;
+    generated_at: string;
+    file: string;
+  };
+  rows: FinanceBatchRow[];
+  totals: {
+    record_count: number;
+    total_amount: string;
+    [key: string]: string | number;
+  };
+}

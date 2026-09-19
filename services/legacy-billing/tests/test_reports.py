@@ -10,6 +10,7 @@ differ. See docs/tech-partnerships/billing-report-contract.md.
 
 import sys
 from pathlib import Path
+from shutil import copyfile
 
 import pytest
 
@@ -102,3 +103,36 @@ def test_estate_offline_returns_503(client, monkeypatch):
     response = client.get("/api/reports/month-end")
     assert response.status_code == 503
     assert response.get_json()["error"] == "legacy estate unavailable"
+
+
+def test_finance_report_reads_namespace_batch_fixture(client, monkeypatch, tmp_path):
+    report_dir = tmp_path / "reports" / "demo"
+    report_dir.mkdir(parents=True)
+    copyfile(
+        Path(__file__).parent / "fixtures" / "finance_billing_20260228.csv",
+        report_dir / "finance_billing_20260228.csv",
+    )
+    monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path / "reports"))
+    response = client.get("/api/reports/finance?ns=demo")
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["ns"] == "demo"
+    assert body["source"]["system"] == "CUSTBILL month-end batch"
+    assert body["source"]["file"] == "finance_billing_20260228.csv"
+    assert body["rows"][0] == {
+        "currency": "USD",
+        "record_type": "INVOICE",
+        "record_count": 2,
+        "total_amount": "25.00",
+    }
+    assert body["totals"] == {"record_count": 3, "total_amount": "30.00"}
+
+
+def test_finance_report_missing_namespace_returns_404(client, monkeypatch, tmp_path):
+    monkeypatch.setenv("FINANCE_REPORT_DIR", str(tmp_path))
+    response = client.get("/api/reports/finance?ns=missing")
+    assert response.status_code == 404
+    assert response.get_json() == {
+        "error": "no finance report for namespace",
+        "detail": "run make tp-month-end NS=missing",
+    }

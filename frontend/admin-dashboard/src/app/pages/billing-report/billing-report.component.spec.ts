@@ -35,6 +35,18 @@ const RECON: ReconciliationReport = {
   checks: [],
 };
 
+const FINANCE = {
+  ns: 'demo',
+  source: {
+    system: 'CUSTBILL month-end batch',
+    detail: 'ksh/Perl chain over Oracle CUSTBILL extract',
+    generated_at: '2026-08-01T00:00:00Z',
+    file: 'finance_billing_20260801.csv',
+  },
+  rows: [{ currency: 'USD', record_type: 'INVOICE', record_count: 2, total_amount: '25.00' }],
+  totals: { record_count: 2, total_amount: '25.00' },
+};
+
 describe('BillingReportComponent', () => {
   let component: BillingReportComponent;
   let fixture: ComponentFixture<BillingReportComponent>;
@@ -58,6 +70,7 @@ describe('BillingReportComponent', () => {
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(recon);
     httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([]);
     httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([]);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance').flush(FINANCE);
     fixture.detectChanges();
   }
 
@@ -68,6 +81,7 @@ describe('BillingReportComponent', () => {
     httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
     httpMock.expectOne(r => r.url === '/api/v1/billing/admin/overdue').flush([]);
     httpMock.expectOne(r => r.url === '/api/v1/billing/admin/dunning').flush([]);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance').flush(FINANCE);
   });
 
   it('should render the legacy source badge', () => {
@@ -112,6 +126,8 @@ describe('BillingReportComponent', () => {
         request.flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
       }
     });
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+      .flush({ error: 'legacy estate unavailable' }, { status: 503, statusText: 'Service Unavailable' });
     fixture.detectChanges();
     expect(component.error).toContain('Failed to load');
   });
@@ -129,6 +145,7 @@ describe('BillingReportComponent', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('tenant-1');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('SCHEDULED');
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance').flush(FINANCE);
   });
 
   it('should show the admin sign-in message for forbidden collections data', () => {
@@ -141,6 +158,8 @@ describe('BillingReportComponent', () => {
         request.flush({ error: 'forbidden' }, { status: 403, statusText: 'Forbidden' });
       }
     });
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+      .flush(FINANCE);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Sign in as an admin to view collections data');
   });
@@ -155,7 +174,43 @@ describe('BillingReportComponent', () => {
         request.flush({ error: 'unavailable' }, { status: 503, statusText: 'Service Unavailable' });
       }
     });
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+      .flush(FINANCE);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain("Billing is temporarily unavailable");
+  });
+
+  it('renders the month-end finance batch source and rows', () => {
+    flush();
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).toContain('Month-end finance batch');
+    expect(text).toContain('CUSTBILL month-end batch');
+    expect(text).toContain('INVOICE');
+  });
+
+  it('shows the rerun instruction when the finance batch is missing', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+      .flush({ error: 'no finance report for namespace' }, { status: 404, statusText: 'Not Found' });
+    httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/')).forEach(request => {
+      if (!request.cancelled) request.flush([]);
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('run make tp-month-end NS=demo');
+  });
+
+  it('shows the unavailable treatment when the finance batch is unavailable', () => {
+    fixture.detectChanges();
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/month-end').flush(REPORT);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/reconciliation').flush(RECON);
+    httpMock.expectOne(r => r.url === '/billing-api/api/reports/finance')
+      .flush({ error: 'unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+    httpMock.match(r => r.url.startsWith('/api/v1/billing/admin/')).forEach(request => {
+      if (!request.cancelled) request.flush([]);
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Billing is temporarily unavailable');
   });
 });

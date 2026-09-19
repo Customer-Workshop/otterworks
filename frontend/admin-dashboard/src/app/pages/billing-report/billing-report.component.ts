@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { catchError, forkJoin, of } from 'rxjs';
 import { BillingReportService } from '../../core/services/billing-report.service';
 import {
-  BillingLineRow, DunningAttempt, MonthEndReport, OverdueAccount, ReconciliationReport,
+  BillingLineRow, DunningAttempt, FinanceBatchReport, MonthEndReport, OverdueAccount, ReconciliationReport,
 } from '../../core/models/billing-report.model';
 
 @Component({
@@ -147,6 +147,38 @@ import {
           </mat-card-content>
         </mat-card>
 
+        <mat-card class="report-card finance-batch-card">
+          <mat-card-header>
+            <mat-card-title>Month-end finance batch</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <p class="batch-source" *ngIf="financeReport">
+              Source: {{ financeReport.source.system }}
+            </p>
+            <p *ngIf="financeErrorStatus === 404" class="panel-message">
+              run make tp-month-end NS={{ ns }}
+            </p>
+            <p *ngIf="financeUnavailable" class="panel-message">
+              Billing is temporarily unavailable — the legacy billing system isn't reachable
+            </p>
+            <table *ngIf="financeReport && !financeUnavailable" class="report-table">
+              <thead><tr><th>Currency</th><th>Record type</th><th class="num">Records</th><th class="num">Total</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of financeReport.rows">
+                  <td>{{ row.currency }}</td>
+                  <td>{{ row.record_type }}</td>
+                  <td class="num">{{ row.record_count | number }}</td>
+                  <td class="num">{{ toNumber(row.total_amount) | currency }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p *ngIf="financeReport" class="batch-total">
+              Total records: {{ financeReport.totals.record_count | number }} ·
+              Total amount: {{ toNumber(financeReport.totals.total_amount) | currency }}
+            </p>
+          </mat-card-content>
+        </mat-card>
+
         <mat-card class="report-card collections-card">
           <mat-card-header><mat-card-title>Dunning attempts</mat-card-title></mat-card-header>
           <mat-card-content>
@@ -186,6 +218,8 @@ import {
     .header-actions { display: flex; align-items: center; gap: 12px; }
     .ns-field { width: 160px; }
     .collections-card { margin-top: 24px; }
+    .finance-batch-card { margin-top: 24px; }
+    .batch-source, .batch-total { color: #666; font-size: 0.85rem; }
     .panel-message { color: #666; padding: 12px 0; }
 
     .source-badge {
@@ -239,6 +273,8 @@ export class BillingReportComponent implements OnInit {
   overdueAccounts: OverdueAccount[] | null = null;
   dunningAttempts: DunningAttempt[] | null = null;
   collectionsErrorStatus: number | null = null;
+  financeReport: FinanceBatchReport | null = null;
+  financeErrorStatus: number | null = null;
 
   constructor(private billingReports: BillingReportService) {}
 
@@ -266,6 +302,16 @@ export class BillingReportComponent implements OnInit {
       this.recon = result.recon;
     });
     this.refreshCollections();
+    this.refreshFinance();
+  }
+
+  refreshFinance(): void {
+    this.financeReport = null;
+    this.financeErrorStatus = null;
+    this.billingReports.getFinanceReport(this.ns).subscribe({
+      next: report => { this.financeReport = report; },
+      error: error => { this.financeErrorStatus = error.status; },
+    });
   }
 
   refreshCollections(): void {
@@ -290,6 +336,12 @@ export class BillingReportComponent implements OnInit {
     return this.collectionsErrorStatus === 502 ||
       this.collectionsErrorStatus === 503 ||
       this.collectionsErrorStatus === 504;
+  }
+
+  get financeUnavailable(): boolean {
+    return this.financeErrorStatus === 502 ||
+      this.financeErrorStatus === 503 ||
+      this.financeErrorStatus === 504;
   }
 
   get sourceLabel(): string {

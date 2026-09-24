@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "demo": "legacy-data-migration",
+  "spec": "migration/source/seed/SEED-SPEC.md",
+  "classes": [
+    {
+      "id": "MIG-01",
+      "title": "Unmappable CCSID 037 byte in a CHAR column",
+      "table": "DOCARCH",
+      "planted_keys": [
+        "MIG01-0000000001",
+        "MIG01-0000000002",
+        "MIG01-0000000003",
+        "MIG01-0000000004",
+        "MIG01-0000000005"
+      ],
+      "expected_stage": "LOAD",
+      "expected_rule": "CCSID_UNMAPPABLE",
+      "expected_field": "OWNER_NAME",
+      "expected_sqlstate": null,
+      "expected_count": 5,
+      "headline": false
+    },
+    {
+      "id": "MIG-02",
+      "title": "DECIMAL(31,8) value overflows target precision",
+      "table": "DOCARCH",
+      "planted_keys": [
+        "MIG02-0000000001",
+        "MIG02-0000000002",
+        "MIG02-0000000003",
+        "MIG02-0000000004",
+        "MIG02-0000000005"
+      ],
+      "expected_stage": "LOAD",
+      "expected_rule": "DECIMAL_OVERFLOW",
+      "expected_field": "UNIT_RATE",
+      "expected_sqlstate": "22003",
+      "expected_count": 5,
+      "headline": false
+    },
+    {
+      "id": "MIG-03",
+      "title": "Low-values (X'00') date rejected by target",
+      "table": "DOCARCH",
+      "planted_keys": [
+        "MIG03-0000000001",
+        "MIG03-0000000002",
+        "MIG03-0000000003",
+        "MIG03-0000000004",
+        "MIG03-0000000005"
+      ],
+      "expected_stage": "LOAD",
+      "expected_rule": "DATE_INVALID",
+      "expected_field": "DISPOSITION_DT",
+      "expected_sqlstate": "22007",
+      "expected_count": 5,
+      "headline": false
+    },
+    {
+      "id": "MIG-04",
+      "title": "Trailing-space padding in key column changes business hash",
+      "table": "DOCARCH",
+      "planted_keys": [
+        "MIG04-01",
+        "MIG04-02",
+        "MIG04-03",
+        "MIG04-04",
+        "MIG04-05"
+      ],
+      "expected_stage": "VALIDATE",
+      "expected_rule": "HASH_MISMATCH",
+      "expected_field": "ARCH_KEY",
+      "expected_sqlstate": null,
+      "expected_count": 5,
+      "headline": false
+    },
+    {
+      "id": "MIG-05",
+      "title": "Orphan FILEAUD row whose parent is outside the selection",
+      "table": "FILEAUD",
+      "planted_keys": [
+        "MIG05-00000000000001",
+        "MIG05-00000000000002",
+        "MIG05-00000000000003",
+        "MIG05-00000000000004",
+        "MIG05-00000000000005"
+      ],
+      "expected_stage": "VALIDATE",
+      "expected_rule": "ORPHAN_PARENT_NOT_SELECTED",
+      "expected_field": "ARCH_KEY",
+      "expected_sqlstate": null,
+      "expected_count": 5,
+      "headline": false
+    },
+    {
+      "id": "MIG-06",
+      "title": "Duplicate source key from a partially completed prior run",
+      "table": "DOCARCH",
+      "planted_keys": [
+        "MIG06-0000000001",
+        "MIG06-0000000002",
+        "MIG06-0000000003",
+        "MIG06-0000000004",
+        "MIG06-0000000005"
+      ],
+      "expected_stage": "LOAD",
+      "expected_rule": "DUPLICATE_SOURCE_KEY",
+      "expected_field": "ARCH_KEY",
+      "expected_sqlstate": "23000",
+      "expected_count": 5,
+      "headline": false
+    },
+    {
+      "id": "MIG-07",
+      "title": "Storage-charge total agrees at table level but not per retention class",
+      "table": "DOCARCH",
+      "planted_keys": [
+        "MIG07-0000000001",
+        "MIG07-0000000002",
+        "MIG07-0000000003",
+        "MIG07-0000000004",
+        "MIG07-0000000005",
+        "MIG07-0000000006",
+        "MIG07-0000000007",
+        "MIG07-0000000008",
+        "MIG07-0000000009",
+        "MIG07-0000000010",
+        "MIG07-0000000011",
+        "MIG07-0000000012"
+      ],
+      "expected_stage": "VALIDATE",
+      "expected_rule": "CLASS_TOTAL_MISMATCH",
+      "expected_field": "RETENTION_CLASS",
+      "expected_sqlstate": null,
+      "expected_count": 12,
+      "headline": true
+    }
+  ]
+}

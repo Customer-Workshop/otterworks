@@ -488,7 +488,7 @@ incident-chart-sync: ## Copy incident alert rules + dashboard into the document-
 incident-chart-check: ## Fail if the chart's incident rules/dashboard differ from observability/
 	scripts/sync-incident-chart-files.sh --check
 
-incident-fingerprint: ## Show fixture/source fingerprints vs incident/expected.yaml
+incident-fingerprint: ## Compare fixture/source fingerprints with incident/expected.yaml (exit 2 on drift)
 	$(INCIDENT) fingerprint
 
 incident-record: ## Re-pin incident/expected.yaml (REASON="..." required, audited)

@@ -2,13 +2,13 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T20:39:58.607279+00:00'
-  git_sha: 233856c023ec18bf47dbf5105b90ed44322e1bda
-  reason: 'gate hardening: nan/no-sample thresholds fail explicitly, after gate requires
-    offered load to reach the service; source fingerprint now covers Dockerfile, pyproject.toml
-    and poetry.lock'
+  at: '2026-09-24T21:25:31.794577+00:00'
+  git_sha: 3ce8edf0eb9a2016d3559e828fe804bca862b78e
+  reason: 'gate hardening: incident-fingerprint exits 2 on fixture/source drift so
+    preflight scripts fail closed (incident-verify already did); SKILL reset path
+    no longer suggests --image-tag'
 fingerprints:
-  fixture: 245aa1bc4b9bc265c18edb19de839483e2979f50d68e123f20da74cec892a7e6
+  fixture: ac48eeb2185700996096e9b8c4464c7ed1db9be9751e5acf7de26059bda3efac
   source: d55ef66d277619b561204c5ff6e7f8ddedbd6e29ebed0ce4477ad08d2eb1ea40
 scenarios:
   n-plus-one:

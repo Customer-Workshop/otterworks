@@ -62,7 +62,7 @@ make incident-verify SCENARIO=n-plus-one EXPECT=after    # gate: source changed,
 make incident-simulate RECEIVER=devin         # the exact JSON the Devin Automation webhook received
 make incident-load SCENARIO=n-plus-one DURATION=120      # the load profile in the foreground (prints p50/p95/queries per request)
 make disarm                                   # stop load, clear flags, restore replicas/logs
-make incident-fingerprint                     # fixture/source fingerprints vs incident/expected.yaml
+make incident-fingerprint                     # fixture/source fingerprints vs incident/expected.yaml (exit 2 on drift)
 make incident-record REASON="..."             # re-pin incident/expected.yaml (audited; the reason is committed)
 make incident-down                            # stop the stack (volumes kept)
 ```
@@ -321,15 +321,22 @@ the alerts resolve.
   flags, purges the request log, removes the second replica and restarts
   document-service. It does not touch the database fixture (idempotent seed)
   or the PR.
-- Reset the tenant after a fix was merged: force `demo-incident` back to the
-  before-state commit, which rebuilds and redeploys the before-state image,
-  then `make incident-disarm` locally:
+- Reset the tenant after a fix was merged by moving the branch itself: force
+  `demo-incident` back to the before-state commit (or `git revert <merge-sha>`
+  on it), which rebuilds and redeploys the before-state image, then
+  `make incident-disarm` locally:
 
   ```bash
   git push --force origin <before-sha>:demo-incident
   make incident-disarm
   ```
 
+  CD redeploys the tenant from the branch, so the alert's `branch` label keeps
+  matching the running image. Do **not** reset the tenant with
+  `scripts/deploy-tenant.sh incident --image-tag <tag>` or a `BUG_IMAGE_TAG_*`
+  override: the label would still say `demo-incident` while the pods run an
+  image that branch did not build, and the responder's local reproduction
+  would disagree with the tenant. Then `make arm SCENARIO=...` again.
   Locally, `git checkout <before-sha> -- services/document-service` and
   `make incident-up` rebuilds the before-state image.
 - If the fix carried a migration (the reference fix adds `004_document_list_indexes`),

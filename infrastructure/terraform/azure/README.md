@@ -125,6 +125,12 @@ cannot reach the private endpoint) — run `ldm init` from inside the environmen
 or use `run_job_in_azure=true`. In this mode the EKS Job cannot reach SQL at all; the
 Container Apps job must run LOAD/VALIDATE/RECONCILE from the staging container.
 
+The vault allow-list is whatever IP applied last, so a later `apply`/`destroy` from a
+different machine (e.g. the scheduled reaper) is denied on the secret data plane. Either
+pass stable egress CIDRs with `-var 'deployer_cidrs=["<cidr>"]'` on every run, or refresh
+the ACL first: `terraform apply -target=azurerm_key_vault.this <same -var flags>` and then
+`terraform destroy`. Public mode is unaffected.
+
 Both modes pass `terraform validate` and `terraform plan` (28 vs 36 resources).
 
 ## RBAC (`manage_rbac`, default `false`)

@@ -54,9 +54,13 @@ else
   for k in "$KEY_FROM" "$KEY_TO"; do
     [[ "$k" =~ ^[A-Za-z0-9_.:-]{1,64}\ {0,64}$ ]] || die_io "key bound '$k' is not a plain key literal"
   done
-  command -v db2 >/dev/null || die_io "db2 CLP not on PATH"
   q() { printf "'%s'" "$1"; }
   SQL="SELECT $COLS FROM ARCHIVE.$TABLE WHERE ($WHERE) AND $KEY >= $(q "$KEY_FROM") AND $KEY <= $(q "$KEY_TO") ORDER BY $KEY"
+  if ! command -v db2 >/dev/null; then
+    # No CLP (the job image ships only the IBM clidriver): same DEL export through ibm_db.
+    command -v python3 >/dev/null || die_io "neither db2 CLP nor python3 on PATH"
+    python3 "$HERE/export_del.py" "$SQL" "$DEL" || { rc=$?; (( rc == 8 )) && exit 8; die_io "export_del.py rc=$rc"; }
+  else
   if [[ -n "${DB2_USER:-}" && -n "${DB2_PASSWORD:-}" ]]; then
     CONNECT="CONNECT TO $DB USER $DB2_USER USING $DB2_PASSWORD"
   else
@@ -86,6 +90,7 @@ EOF
     exit 8
   fi
   [[ -f "$DEL" ]] || : >"$DEL"   # zero selected rows: EXPORT still creates the file, guard anyway
+  fi
 fi
 
 set +e

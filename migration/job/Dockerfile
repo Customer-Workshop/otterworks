@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # msodbcsql18 (Azure SQL via pyodbc), GnuCOBOL runtime + compiler (unload_command wrapper; cobc needs gcc), clidriver deps.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev gcc g++ \
+    && apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc unixodbc-dev gcc g++ make \
         libxml2 libpam0g gnucobol3 \
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
@@ -39,6 +39,10 @@ ENV IBM_DB_HOME=/usr/local/lib/python3.12/site-packages/clidriver \
 
 # The full migration tree (manifest, overlays, copybooks, unload wrapper, target DDL) at /app/migration.
 COPY migration /app/migration
+# Compile UNLOAD01 once at build time and prove it against the checked-in fixtures (make check).
+RUN make -s -C /app/migration/source/unload build \
+    && make -s -C /app/migration/source/unload check \
+    && rm -rf /app/migration/source/unload/build
 
 RUN groupadd --system --gid 10001 ldm \
     && useradd --system --uid 10001 --gid ldm --home /work ldm \

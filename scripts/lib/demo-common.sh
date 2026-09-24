@@ -514,7 +514,14 @@ job_name() { printf 'ldm-%s-%s' "$1" "$2" | cut -c1-63; }
 render_job() {
   local token="$1" stage="$2" run_id="$3" ns; ns="$(demo_namespace "${token}")"
   local -a extra=()
-  [ -n "${LDM_JOB_IMAGE:-}" ] && extra+=(--set "image.repository=${LDM_JOB_IMAGE%%:*}" --set "image.tag=${LDM_JOB_IMAGE##*:}")
+  # Same image deploy-demo.sh used for `ldm init`: LDM_JOB_IMAGE if set, else the token's
+  # own ECR repository at the tag the report-service resolved to (tenant-<token> or main).
+  local job_image="${LDM_JOB_IMAGE:-}"
+  if [ -z "${job_image}" ] && [ "${DRY_RUN}" != "1" ]; then
+    aws_account_id
+    job_image="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$(demo_ecr_repo "${token}"):${IMAGE_TAG:-$(app_image_tag "${token}" report-service)}"
+  fi
+  [ -n "${job_image}" ] && extra+=(--set "image.repository=${job_image%%:*}" --set "image.tag=${job_image##*:}")
   while IFS= read -r kv; do [ -n "${kv}" ] && extra+=(--set-string "${kv}"); done <<<"$(ldm_azure_values "${ns}")"
   # `ldm init` also loads the MIG-06 prior-run fixture (§12.1) via --apply-sql;
   # the image ships the repo's migration/ tree at /app/migration (§13.2).

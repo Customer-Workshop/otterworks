@@ -47,7 +47,7 @@ jwt_secret() {
 # own the local port: a listener already there (the Compose stack, another
 # forward) would silently take the fixture instead.
 with_port_forward() {
-  if curl -s -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null; then
+  if curl --connect-timeout 2 --max-time 5 -s -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null; then
     die "localhost:${PORT} is already serving something; set INCIDENT_PORT to a free port"
   fi
   kubectl -n "${ns}" port-forward "svc/document-service" "${PORT}:8083" >/dev/null 2>&1 &
@@ -56,10 +56,10 @@ with_port_forward() {
   trap "kill ${pf} 2>/dev/null || true" RETURN EXIT
   for _ in $(seq 1 50); do
     kill -0 "${pf}" 2>/dev/null || die "port-forward to ${ns}/svc/document-service exited"
-    curl -fsS -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null && break
+    curl --max-time 2 -fsS -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null && break
     sleep 0.2
   done
-  curl -fsS -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null ||
+  curl --max-time 5 -fsS -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null ||
     die "port-forward to ${ns}/svc/document-service never became healthy"
   "$@"
 }
@@ -68,10 +68,20 @@ seed() {
   INCIDENT_BASE_URL="http://localhost:${PORT}" make -C "${REPO}" incident-seed
 }
 
+# True only while the recorded pid is still our load generator: a finished
+# timed load leaves the pidfile behind and the kernel may hand the id to an
+# unrelated process.
+load_running() {
+  [ -f "${pidfile}" ] || return 1
+  local pid; pid="$(cat "${pidfile}")"
+  [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null &&
+    tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null | grep -q 'incident-load'
+}
+
 case "${op}" in
   arm)
     duration="${3:-900}"
-    [ -f "${pidfile}" ] && kill -0 "$(cat "${pidfile}")" 2>/dev/null && die "load already running for ${tenant} (pid $(cat "${pidfile}")); disarm first"
+    load_running && die "load already running for ${tenant} (pid $(cat "${pidfile}")); disarm first"
     JWT_SECRET="$(jwt_secret)"; export JWT_SECRET
     log "arming n-plus-one on ${ns} (${api_host}), load ${duration}s at scale ${INCIDENT_LOAD_SCALE}"
     with_port_forward seed
@@ -83,14 +93,14 @@ case "${op}" in
     log "watch: https://alertmanager.otterworks.app/#/alerts?filter=%7Bnamespace%3D%22${ns}%22%7D"
     ;;
   disarm)
-    if [ -f "${pidfile}" ]; then
+    if load_running; then
       pid="$(cat "${pidfile}")"
       kill -- -"${pid}" 2>/dev/null || kill "${pid}" 2>/dev/null || true
-      rm -f "${pidfile}"
       log "load stopped for ${tenant}; alerts resolve within ~5m of the last slow request"
     else
       log "no load running for ${tenant}"
     fi
+    rm -f "${pidfile}"
     ;;
   status)
     JWT_SECRET="$(jwt_secret)"; export JWT_SECRET

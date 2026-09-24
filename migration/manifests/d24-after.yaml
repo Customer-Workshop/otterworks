@@ -1,0 +1,8 @@
+# AFTER deployment: same seed, migrated to Azure SQL, validated rows purged from this namespace's Db2.
+namespace: d24-after
+extends: ../manifest.yaml
+migrate: true
+azure: true
+purge: true
+execution:
+  run_job_in_azure: false                       # true: LOAD/VALIDATE/RECONCILE run as the Container Apps job

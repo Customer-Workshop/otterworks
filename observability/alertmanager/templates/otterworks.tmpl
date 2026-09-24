@@ -1,0 +1,13 @@
+{{ define "otterworks.slack.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} — {{ .CommonLabels.service }}
+{{- end }}
+
+{{ define "otterworks.slack.text" -}}
+{{ range .Alerts -}}
+*{{ .Annotations.summary }}*
+{{ .Annotations.description }}
+• severity: `{{ .Labels.severity }}`{{ if .Labels.scenario }}  • scenario: `{{ .Labels.scenario }}`{{ end }}
+• started: {{ .StartsAt.Format "15:04:05 MST" }}
+• <{{ .Annotations.dashboard_url }}|dashboard>{{ if .Annotations.traces_url }} • <{{ .Annotations.traces_url }}|traces>{{ end }} • <{{ .Annotations.runbook_url }}|runbook>
+{{ end -}}
+{{- end }}

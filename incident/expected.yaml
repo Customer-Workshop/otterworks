@@ -1,0 +1,23 @@
+# Recorded before-state for the incident-responder gate. Do not edit by hand;
+# re-pin with `make incident-record REASON="..."` -- the reason is kept here
+# so every re-record is auditable in git history.
+recorded:
+  at: '2026-09-24T05:32:29.150268+00:00'
+  git_sha: 9ff8dd5733b1f8518686dd4ad9ea0d9ed5ba5f5d
+  reason: initial before-state pin for the incident-responder gate
+fingerprints:
+  fixture: 1ec7d6f4d470385b03d1acf430705250e74539cc7b364e4e705de80d625285f8
+  source: 9ad55fba6d73f00f7d1307230da3ec3cdbcf3ae5760084cea80ba85f40cf5367
+scenarios:
+  n-plus-one:
+    alert: DocumentListLatencyHigh
+    fires_within_seconds: 180
+  log-flood:
+    alert: RequestLogVolumeNearFull
+    fires_within_seconds: 240
+  cache-leak:
+    alert: DocumentServiceMemoryHigh
+    fires_within_seconds: 420
+  double-run:
+    alert: DocumentStatsRollupDuplicated
+    fires_within_seconds: 180

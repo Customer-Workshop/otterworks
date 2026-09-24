@@ -10,6 +10,7 @@ global:
 rule_files:
   - alerts.yml
   - recording_rules.yml
+  - incident_alerts.yml
 
 alerting:
   alertmanagers:

@@ -41,6 +41,43 @@ monitoring:
   enabled: true
   path: /metrics
   port: 8083
+  # Namespace the incident rules/dashboard select on; defaults to the release namespace.
+  namespaceLabel: ""
+  # Rendered only when the monitoring.coreos.com/v1 API exists in the cluster.
+  serviceMonitor:
+    interval: 30s
+    labels:
+      release: prometheus
+  # PrometheusRule rendered from files/incident_alerts.yml (synced from
+  # observability/prometheus/incident_alerts.yml). Every selector is scoped to
+  # namespaceLabel and each alert gets a static namespace label.
+  rules:
+    enabled: false
+    labels:
+      release: prometheus
+    extraLabels: {}
+  # Grafana dashboard ConfigMap rendered from files/incident-responder.json
+  # (synced from observability/grafana/dashboards/incident-responder.json).
+  dashboard:
+    enabled: false
+    uid: ""  # default: ir-<release namespace>
+    datasourceUid: prometheus
+    labels:
+      grafana_dashboard: "1"
+    annotations: {}
+  # Base URLs written into alert annotations and dashboard text; empty keeps
+  # the local Compose URLs from the source files.
+  links:
+    grafana: ""
+    jaeger: ""
+
+# OTLP/HTTP trace export (app/telemetry.py). Sets DOC_SVC_OTEL_ENABLED=true and
+# OTEL_EXPORTER_OTLP_ENDPOINT, which overrides DOC_SVC_OTEL_EXPORTER_OTLP_ENDPOINT.
+tracing:
+  enabled: false
+  endpoint: http://otel-collector.monitoring.svc.cluster.local:4318
+  serviceName: document-service
+  extraEnv: []
 
 networkPolicy:
   enabled: true

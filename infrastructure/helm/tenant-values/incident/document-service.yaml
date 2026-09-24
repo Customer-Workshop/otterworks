@@ -1,0 +1,14 @@
+# Helm values overlay for tenant `incident` (branch demo-incident, namespace
+# otterworks-incident). scripts/deploy-tenant.sh passes
+# infrastructure/helm/tenant-values/<tenant-id>/<service>.yaml with -f when it
+# exists, so this applies to CD deploys and manual deploy-tenant.sh runs alike.
+# The PrometheusRule/ServiceMonitor render only once the shared stack's
+# monitoring.coreos.com/v1 CRDs exist in the cluster.
+monitoring:
+  enabled: true
+  rules:
+    enabled: true
+  dashboard:
+    enabled: true
+tracing:
+  enabled: true

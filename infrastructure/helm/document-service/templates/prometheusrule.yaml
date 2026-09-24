@@ -1,0 +1,41 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.rules.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") -}}
+{{- $ns := include "document-service.monitoringNamespace" . -}}
+{{- $links := .Values.monitoring.links -}}
+{{- $dashboardUid := include "document-service.dashboardUid" . -}}
+{{- $src := .Files.Get "files/incident_alerts.yml" | fromYaml -}}
+{{- $groups := list -}}
+{{- range $group := $src.groups -}}
+{{- $rules := list -}}
+{{- range $rule := $group.rules -}}
+{{- $r := deepCopy $rule -}}
+{{- $_ := set $r "expr" (include "document-service.scopeExpr" (dict "expr" $rule.expr "namespace" $ns)) -}}
+{{- $labels := mergeOverwrite (deepCopy ($rule.labels | default dict)) (dict "namespace" $ns) ($.Values.monitoring.rules.extraLabels | default dict) -}}
+{{- $_ := set $r "labels" $labels -}}
+{{- $ann := deepCopy ($rule.annotations | default dict) -}}
+{{- if and $links.grafana (hasKey $ann "dashboard_url") -}}
+{{- $_ := set $ann "dashboard_url" (printf "%s/d/%s" (trimSuffix "/" $links.grafana) $dashboardUid) -}}
+{{- end -}}
+{{- if and $links.jaeger (hasKey $ann "traces_url") -}}
+{{- $_ := set $ann "traces_url" (replace "http://localhost:16686" (trimSuffix "/" $links.jaeger) $ann.traces_url) -}}
+{{- end -}}
+{{- $_ := set $r "annotations" $ann -}}
+{{- $rules = append $rules $r -}}
+{{- end -}}
+{{- $g := deepCopy $group -}}
+{{- $_ := set $g "rules" $rules -}}
+{{- $groups = append $groups $g -}}
+{{- end -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-incident
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- with .Values.monitoring.rules.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    {{- toYaml $groups | nindent 4 }}
+{{- end }}

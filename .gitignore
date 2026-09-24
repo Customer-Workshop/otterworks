@@ -110,3 +110,4 @@ __pycache__/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+.demo/

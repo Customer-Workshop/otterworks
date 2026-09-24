@@ -42,6 +42,6 @@ metadata:
 data:
   # The Grafana sidecar names the provisioned file after this key, so it must
   # be unique per release or the tenants overwrite each other's dashboard.
-  incident-responder-{{ .Release.Namespace }}.json: |-
+  incident-responder-{{ .Release.Namespace }}-{{ .Release.Name }}.json: |-
     {{- toPrettyJson $d | nindent 4 }}
 {{- end }}

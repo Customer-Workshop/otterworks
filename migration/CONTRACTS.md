@@ -117,7 +117,7 @@ are never used. Every entry point (ldm, Terraform, scripts, Make) validates the 
 | Container Apps env | `cae-otterworks-d24-after` | azure |
 | Container Apps | `ca-report-d24-after`, `ca-audit-d24-after` | azure |
 | Container Apps job | `caj-ldm-d24-after` | azure |
-| Terraform state (Azure) | backend `azurerm`, account `stmeridiantfstate7c2e`, RG `rg-meridian-tfstate`, container `tfstate`, key `otterworks/d24-after/terraform.tfstate` | azure + ops |
+| Terraform state (Azure) | backend `azurerm`; account / RG / container come from env `TFSTATE_AZ_ACCOUNT`, `TFSTATE_AZ_RESOURCE_GROUP`, `TFSTATE_AZ_CONTAINER` (the existing shared state account, supplied by the environment, not committed); key `otterworks/d24-after/terraform.tfstate` | azure + ops |
 | Terraform state (AWS demo) | bucket `otterworks-terraform-state`, key `otterworks/demo/d24-after/terraform.tfstate` | ops |
 | Kubernetes Job | `ldm-<stage>-<run_id>` (truncated to 63) | job chart |
 
@@ -696,8 +696,8 @@ runbook) opened on `t-d24-before...` and `t-d24-after...` shows identical values
 ## 11. Azure Terraform interface (azure unit)
 
 Root module `infrastructure/terraform/azure/` (one root, one state per namespace; backend partial
-config passed by ops: `-backend-config="key=otterworks/<NS>/terraform.tfstate"` plus the fixed
-account/RG/container of §3.2). Providers: `azurerm ~> 4.x`, `random ~> 3.x` (pinned in
+config passed by ops: `-backend-config="key=otterworks/<NS>/terraform.tfstate"` plus
+`storage_account_name`, `resource_group_name`, `container_name` from the `TFSTATE_AZ_*` env of §3.2). Providers: `azurerm ~> 4.x`, `random ~> 3.x` (pinned in
 `versions.tf` + committed `.terraform.lock.hcl`). Authentication via `ARM_*` env vars only.
 
 ### 11.1 Variables

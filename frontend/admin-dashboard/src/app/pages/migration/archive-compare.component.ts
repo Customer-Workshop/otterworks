@@ -27,6 +27,8 @@ export interface ArchiveSide {
 
 export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
 
+const rtrim = (s: string): string => s.replace(/ +$/, '');
+
 /**
  * "Before / After" panel: the same archived document fetched from this deployment and from the
  * peer deployment (PEER_APP_URL), rendered side by side with per-field mismatch highlighting.
@@ -290,12 +292,12 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
   /**
    * Versions are matched across sides by ARCH_KEY (the DOCARCH primary key), not by position or
    * version_no, so gaps and duplicate version numbers on one side are attributed to the right row.
-   * Keys compare trimmed because the display value is right-trimmed (MIG-04 padding).
+   * Keys compare right-trimmed only, matching how the DTO trims CHAR padding (MIG-04).
    */
   private pairVersions(archKey: string): [ArchiveVersion | undefined, ArchiveVersion | undefined] {
-    const key = archKey.trim();
-    const a = this.sides[0]?.document?.versions?.find(v => v.arch_key.trim() === key);
-    const b = this.sides[1]?.document?.versions?.find(v => v.arch_key.trim() === key);
+    const key = rtrim(archKey);
+    const a = this.sides[0]?.document?.versions?.find(v => rtrim(v.arch_key) === key);
+    const b = this.sides[1]?.document?.versions?.find(v => rtrim(v.arch_key) === key);
     return [a, b];
   }
 
@@ -306,8 +308,8 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     const [a, b] = this.sides;
     let diffs = 0;
     const archKeys = new Set<string>();
-    a.document!.versions.forEach(v => archKeys.add(v.arch_key.trim()));
-    b.document!.versions.forEach(v => archKeys.add(v.arch_key.trim()));
+    a.document!.versions.forEach(v => archKeys.add(rtrim(v.arch_key)));
+    b.document!.versions.forEach(v => archKeys.add(rtrim(v.arch_key)));
     for (const archKey of archKeys) {
       const [va, vb] = this.pairVersions(archKey);
       if (!va || !vb) {

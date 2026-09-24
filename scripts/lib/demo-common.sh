@@ -433,6 +433,21 @@ wire_archive_store() {
     if [ "${DRY_RUN}" != "1" ] && ! kubectl -n "${ns}" get deployment "${svc}" >/dev/null 2>&1; then
       dwarn "deployment ${svc} not found in ${ns}; not wiring ${ARCHIVE_STORE_SECRET}"; continue
     fi
+    # Drop env vars a previous wiring took from this Secret that the Secret no
+    # longer carries (set env --from only adds/updates; stale keys would linger).
+    if [ "${DRY_RUN}" != "1" ]; then
+      local stale=()
+      mapfile -t stale < <(comm -23 \
+        <(kubectl -n "${ns}" get deployment "${svc}" -o json 2>/dev/null |
+          jq -r --arg s "${ARCHIVE_STORE_SECRET}" \
+            '.spec.template.spec.containers[].env[]? | select(.valueFrom.secretKeyRef.name == $s) | .name' |
+          LC_ALL=C sort -u) \
+        <(kubectl -n "${ns}" get secret "${ARCHIVE_STORE_SECRET}" -o json 2>/dev/null |
+          jq -r '.data | keys[]' | LC_ALL=C sort -u))
+      if [ "${#stale[@]}" -gt 0 ]; then
+        run kubectl -n "${ns}" set env "deployment/${svc}" "${stale[@]/%/-}"
+      fi
+    fi
     run kubectl -n "${ns}" set env "deployment/${svc}" --from="secret/${ARCHIVE_STORE_SECRET}"
   done
   for svc in "${ARCHIVE_SERVICES[@]}"; do

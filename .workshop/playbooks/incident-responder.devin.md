@@ -74,7 +74,7 @@ alert name and the time it fired); do not ask what to do next.
 6. **Prove it with the same load.** Rebuild the service, run the gate in its
    *after* mode — the same load profile that fired the alert — and record the
    alert clearing and the after-thresholds. Capture the before and after
-   numbers side by side (for example p95 2.4 s → 0.09 s, 104 → 3 SQL
+   numbers side by side (for example p95 2.4 s → 0.13 s, 104 → 5 SQL
    statements per request). A gate that refuses to run because the source is
    unchanged is telling you that you have not deployed your fix yet.
 7. **Post the RCA in the alert's thread.** One message, in this order: what
@@ -128,20 +128,38 @@ alert name and the time it fired); do not ask what to do next.
 - Keep the thread short. The RCA is one message; the PR is where the detail
   lives.
 
-### Worked example: the gate caught a fix that did not fix it
+### Worked example: the gate went red on a correct fix, and the trace settled it
 
-A responder on the OtterWorks `n-plus-one` page changed the list query to
-eager-load versions with `selectinload`, saw the unit tests pass, and ran the
-after gate. It went red: `queries_per_request=4.000 <= 4` passed, but
-`p95_seconds=1.310 <= 0.5` failed and `DocumentListLatencyHigh` never cleared.
-The trace for the new build showed two SQL spans — but the second one, the
-`IN (...)` over 100 document IDs against `document_versions`, took 1.2 s on its
-own because nothing indexed `(document_id, version_number)`. The query change
-had removed the fan-out; the latency was the missing index. Adding the migration
-brought p95 to 0.09 s and the gate went green. The unit test could not have
-caught this (SQLite, forty rows); the load against the seeded Postgres could.
-That is why the after gate drives the same load, and why "fewer queries" alone
-is not the acceptance criterion.
+A responder on the OtterWorks `n-plus-one` page replaced the per-document
+versions loop with one window-function query, added the index migration and the
+regression test, saw the unit tests pass, and ran the after gate. It went red:
+
+```
+PASS alert DocumentListLatencyHigh is inactive under the same load
+PASS p95_seconds=0.125 <= 0.5
+FAIL queries_per_request=5.000 <= 4
+```
+
+The alert had cleared and p95 had fallen from 2.4 s to 125 ms, so the fix
+worked; the question was whether the fifth statement was a leftover fan-out or a
+wrong ceiling. The responder did not shave a query to hit the number and did not
+edit the threshold. It read the Jaeger trace for the new build: count, page,
+the two relationship loads the page query had always made (versions and
+comments), and the one batched recent-versions query. The catalog's `4` had been
+authored as "count + page + versions" from memory; the before-state already
+issued 4 statements before the loop even started, and 104 on a 100-row page.
+The gate was right to stop, the fix was right, and the catalog was wrong. The
+responder wrote that up with the trace as evidence, and the fixture owner
+corrected the ceiling to 5 at the root with an audited reason in
+`incident/expected.yaml` — not by editing the run's evidence. Re-run: green.
+
+The same run also settled a second question. With the index migration rolled
+back to `003`, the batched query alone brought p95 to 0.21 s; with `004` applied
+it was 0.125 s. Both clear the gate on the seeded fixture, so the RCA says
+plainly that the query change carried the recovery and the indexes are what
+keep the owner listing and the per-document version lookup off sequential scans
+as the tables grow. Say which part did what; the gate report on each build tells
+you.
 
 ## Forbidden actions
 

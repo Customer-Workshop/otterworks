@@ -1,0 +1,83 @@
+# db2-archive: Db2 Community Edition StatefulSet for one tenant namespace (CONTRACTS.md §13.1).
+# Release name MUST be `db2-archive` (Service DNS db2-archive.<namespace>.svc.cluster.local:50000).
+
+# Namespace token <run>-<state>, e.g. d24-after. Used for the demo/namespace label and, unless
+# dbName is set, to derive the Db2 database name: upper(run[0:7]) + ("B" for *-before, else "A").
+namespaceToken: ""
+# Explicit Db2 database name (max 8 chars). Empty = derived from namespaceToken.
+dbName: ""
+
+# Labels required on every object (CONTRACTS.md §3.4). expires is an absolute UTC timestamp.
+owner: otterworks-demo
+expires: "1970-01-01T00:00:00Z"
+
+image:
+  repository: icr.io/db2_community/db2
+  tag: 11.5.9.0
+  pullPolicy: IfNotPresent
+
+# Secret with keys DB2_USER / DB2_PASSWORD, created by ops (never by this chart). DB2_PASSWORD
+# becomes the db2inst1 instance password; DB2_USER must be db2inst1 for the seed load.
+credentialsSecret: db2-archive-credentials
+
+# Static PV created by ops Terraform (EBS gp3). No storageClass => no dynamic provisioning.
+pv:
+  volumeName: ""
+  size: 20Gi
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+service:
+  port: 50000
+
+# GET /health -> 200 iff `db2 CONNECT TO <dbName>` succeeds (files/health.py, python3 stdlib). It runs
+# inside the Db2 container next to the entrypoint so it uses the live instance's CLP directly.
+health:
+  port: 8080
+  cacheSeconds: 10
+
+probes:
+  startup:
+    periodSeconds: 15
+    failureThreshold: 80        # Db2 first boot (instance + database create) takes 5-15 minutes
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 30
+    failureThreshold: 5
+
+networkPolicy:
+  enabled: true
+  monitoringNamespace: monitoring
+  # kubelet probes originate from the node, not a pod; CIDRs of the node subnets if the CNI enforces
+  # policy on host traffic (AWS VPC CNI does not, so this is normally left empty).
+  nodeCIDRs: []
+
+# Post-install/upgrade hook Job: generates the SEED-SPEC files with the Python 3.12 generator, ships
+# them into the Db2 pod and runs seed/load.sh there (LOAD needs the files on the server side).
+initJob:
+  enabled: true
+  scale: "1"                      # 0.01 for smoke tests
+  seedImage: python:3.12-slim
+  kubectlImage: alpine/k8s:1.31.13
+  activeDeadlineSeconds: 5400
+  ttlSecondsAfterFinished: 86400
+  waitForDb2Seconds: 1800
+  workVolumeSize: 4Gi
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+nodeSelector: {}
+tolerations: []

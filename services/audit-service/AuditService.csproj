@@ -20,6 +20,9 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.7.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.7.1" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+    <!-- Archive read path (legacy data migration): Db2 source, Azure SQL target -->
+    <PackageReference Include="Net.IBM.Data.Db2-lnx" Version="8.0.0.400" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
   </ItemGroup>
 
 </Project>

@@ -482,7 +482,7 @@ incident-reset-fixture: ## Delete the fixture owner's documents so the next seed
 incident-simulate: ## Print the exact alert payload the Devin Automation webhook received (RECEIVER=devin|slack)
 	$(INCIDENT) simulate-alert --receiver $(or $(RECEIVER),devin)
 
-incident-fingerprint: ## Show fixture/source fingerprints vs incident/expected.yaml
+incident-fingerprint: ## Compare fixture/source fingerprints with incident/expected.yaml (exit 2 on drift)
 	$(INCIDENT) fingerprint
 
 incident-record: ## Re-pin incident/expected.yaml (REASON="..." required, audited)

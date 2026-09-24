@@ -1282,10 +1282,18 @@ def _finish(report: dict[str, Any], findings: list[str], started: float) -> None
 def cmd_fingerprint(_: argparse.Namespace) -> None:
     fp = fingerprints()
     print(yaml.safe_dump({"fingerprints": fp}, sort_keys=False).rstrip())
-    if EXPECTED_FILE.exists():
-        exp = load_expected()["fingerprints"]
-        for k in ("fixture", "source"):
-            print(f"{k}: {'matches' if exp.get(k) == fp[k] else 'DIFFERS from'} expected.yaml")
+    if not EXPECTED_FILE.exists():
+        return
+    exp = load_expected()["fingerprints"]
+    drifted = [k for k in ("fixture", "source") if exp.get(k) != fp[k]]
+    for k in ("fixture", "source"):
+        print(f"{k}: {'DIFFERS from' if k in drifted else 'matches'} expected.yaml")
+    if drifted:
+        die(
+            f"{', '.join(drifted)} fingerprint drifted from expected.yaml "
+            "(expected in the after-state; in the before-state it means something "
+            "other than the fix changed -- do not `record` past it)"
+        )
 
 
 def cmd_record(args: argparse.Namespace) -> None:

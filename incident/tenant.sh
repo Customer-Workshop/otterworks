@@ -16,13 +16,14 @@
 # on t-main.
 #
 # Env: INCIDENT_LOAD_SCALE (default 0.25; a tenant runs one 500m worker),
-#      INCIDENT_PORT (default 8083), AWS/kubectl context for otterworks-dev.
+#      INCIDENT_PORT (default 18083; must be free — the local Compose stack owns
+#      8083), AWS/kubectl context for otterworks-dev.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "${HERE}/.." && pwd)"
 STATE="${HERE}/.state"
-PORT="${INCIDENT_PORT:-8083}"
+PORT="${INCIDENT_PORT:-18083}"
 export INCIDENT_LOAD_SCALE="${INCIDENT_LOAD_SCALE:-0.25}"
 
 log() { printf '[tenant] %s\n' "$*" >&2; }
@@ -42,14 +43,24 @@ jwt_secret() {
   kubectl -n "${ns}" get secret document-service-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d
 }
 
+# Seeding must reach the tenant's own document-service, so the forward has to
+# own the local port: a listener already there (the Compose stack, another
+# forward) would silently take the fixture instead.
 with_port_forward() {
+  if curl -s -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null; then
+    die "localhost:${PORT} is already serving something; set INCIDENT_PORT to a free port"
+  fi
   kubectl -n "${ns}" port-forward "svc/document-service" "${PORT}:8083" >/dev/null 2>&1 &
   local pf=$!
-  trap 'kill "${pf}" 2>/dev/null || true' RETURN
+  # shellcheck disable=SC2064  # expand the pid now; the local is gone by EXIT
+  trap "kill ${pf} 2>/dev/null || true" RETURN EXIT
   for _ in $(seq 1 50); do
+    kill -0 "${pf}" 2>/dev/null || die "port-forward to ${ns}/svc/document-service exited"
     curl -fsS -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null && break
     sleep 0.2
   done
+  curl -fsS -o /dev/null "http://localhost:${PORT}/health" 2>/dev/null ||
+    die "port-forward to ${ns}/svc/document-service never became healthy"
   "$@"
 }
 

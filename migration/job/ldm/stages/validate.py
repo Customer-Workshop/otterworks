@@ -13,6 +13,7 @@ from ..errors import ReconcileError
 from ..hashing import render_source_column, render_target_column, source_hash, tsql_hash_expression
 
 RULE_HASH = "HASH_MISMATCH"
+RULE_ARCHIVE_CONFLICT = "ARCHIVE_CONFLICT"
 RULE_ORPHAN = "ORPHAN_PARENT_NOT_SELECTED"
 RULE_CLASS_COUNT = "CLASS_COUNT_MISMATCH"
 RULE_CLASS_TOTAL = "CLASS_TOTAL_MISMATCH"
@@ -108,6 +109,21 @@ def validate_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
             c.error = (
                 f"business hash source={c.source_hash.hex()[:16]} target="
                 f"{(c.target_hash or b'').hex()[:16] or 'missing'} differs at {c.field_name}"
+            )
+
+    # 1b. an already-archived row with the same key must carry the same business hash (idempotent re-run),
+    #     otherwise purging the source would leave a conflicting archive copy
+    archived = ctx.target.archived_hashes(ctx.run_id, ctx.namespace, ts.name, cfg.key_columns)
+    for c in candidates:
+        if c.rule:
+            continue
+        prior = archived.get(c.row.source_key)
+        if prior is not None and prior != c.source_hash:
+            c.rule = RULE_ARCHIVE_CONFLICT
+            c.field_name = cfg.key_columns[0]
+            c.error = (
+                f"arch.{ts.name} already holds this key with business hash {prior.hex()[:16]} != "
+                f"source {c.source_hash.hex()[:16]}; not promoted, not purge-safe"
             )
 
     # 2. parent present (validated in this run, or already archived)

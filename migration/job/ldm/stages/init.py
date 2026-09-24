@@ -44,9 +44,15 @@ def run(ctx: RunContext, apply_sql: list[Path] | None = None) -> dict[str, dict[
         ctx.log.info(f"reader user {user} in role ldm_report_reader")
     elif user or password:
         raise ConfigError(f"{READER_USER_ENV} and {READER_PASSWORD_ENV} must be set together")
+    repo_root = ctx.loaded.repo_root.resolve()
     for path in apply_sql or []:
-        if not path.is_file():
-            raise ConfigError(f"--apply-sql {path}: not a file")
-        ctx.target.apply_sql_in_namespace(path.read_text(encoding="utf-8"), ctx.namespace)
-        ctx.log.info(f"applied {path} with session context ldm.namespace={ctx.namespace}")
+        resolved = path.resolve()
+        if not resolved.is_file() or resolved.suffix.lower() != ".sql":
+            raise ConfigError(f"--apply-sql {path}: not a .sql file")
+        if not resolved.is_relative_to(repo_root):
+            raise ConfigError(f"--apply-sql {path}: must live under the migration tree {repo_root}")
+        text = resolved.read_text(encoding="utf-8")
+        sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        ctx.target.apply_sql_in_namespace(text, ctx.namespace)
+        ctx.log.info(f"applied {resolved.relative_to(repo_root)} sha256={sha[:12]} ldm.namespace={ctx.namespace}")
     return {"_ddl": {"applied": len(applied), "scripts": len(apply_sql or [])}}

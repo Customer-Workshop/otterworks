@@ -162,9 +162,9 @@ def run(ctx: RunContext) -> dict[str, dict[str, int]]:
         for p in paths.values():
             ctx.log.info(f"wrote {p}")
         exit_code = EXIT_OK if closes else EXIT_RECONCILE
-        ctx.target.set_run_status(ctx.run_id, ctx.namespace, "CLOSED" if closes else "FAILED", exit_code)
         if closes:
             ctx.target.delete_staging_run(ctx.run_id, ctx.namespace)
+        ctx.target.set_run_status(ctx.run_id, ctx.namespace, "CLOSED" if closes else "FAILED", exit_code)
     except Exception as e:
         ctx.target.stage_log_finish(log_id, "FAILED", None, str(e)[:4000])
         raise

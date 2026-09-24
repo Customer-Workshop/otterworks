@@ -38,6 +38,16 @@ def purge_table(ctx: RunContext, ts: TableSpec, keys: list[str], validated: int)
     todo = [k for k in keys if k not in already]
     if already:
         ctx.log.info(f"resuming: {len(already)} key(s) already PURGED in mig.purge_audit", ts.name)
+    if todo:
+        committed = ctx.source.audited_keys(ctx.run_id, cfg.name, todo)
+        if committed:
+            recovered = [k for k in todo if k in committed]
+            ctx.target.insert_purge_audit(ctx.run_id, ctx.namespace, ts.name, recovered, 0)
+            ctx.target.set_purge_audit_status(ctx.run_id, ctx.namespace, ts.name, recovered, "PURGED")
+            ctx.log.info(
+                f"resuming: {len(recovered)} key(s) already committed to MIGAUDIT.PURGE_AUDIT; marked PURGED", ts.name
+            )
+            todo = [k for k in todo if k not in committed]
     key_col = ts.key_column
     batch_rows = m.batch.purge_batch_rows
     batch_no = 0

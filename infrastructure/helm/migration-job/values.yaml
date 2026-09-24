@@ -37,6 +37,8 @@ env:
   DB2_DATABASE: ""
   # comma-separated label=url pairs added to the reconciliation sessions array
   DEVIN_SESSION_LINKS: ""
+  # command (manifest source.unload_command) | builtin (ldm's fixed-width writer)
+  LDM_UNLOAD_MODE: command
 
 secrets:
   # keys DB2_USER, DB2_PASSWORD (created by the db2-archive chart / ops)

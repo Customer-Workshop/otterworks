@@ -14,6 +14,14 @@ helm upgrade --install ldm-extract-r1 infrastructure/helm/migration-job -n otter
 kubectl -n otterworks-d24-after wait --for=condition=complete job/ldm-extract-r20260924150000
 ```
 
+`/work/staging` is an `emptyDir`: it does not survive from one Job to the next. Run the stages as
+separate Jobs only when `env.AZ_STORAGE_ACCOUNT` / `env.AZ_STAGING_CONTAINER` are set (extract uploads
+every range to the staging container and load downloads it back); otherwise use `stage=all` so extract
+and load share one pod.
+
+Unloading defaults to the manifest `source.unload_command` (the UNLOAD01 wrapper baked into the image).
+Set `env.LDM_UNLOAD_MODE=builtin` to use `ldm`'s own fixed-width writer instead.
+
 Credentials come from Secrets `db2-archive-credentials` (`DB2_USER`, `DB2_PASSWORD`) and `ldm-azure`
 (`AZSQL_USER`, `AZSQL_PASSWORD`, `AZ_STORAGE_KEY`); the chart never carries secret values. Every object
 is labelled `demo/namespace`, `demo/name`, `demo/owner`, `demo/expires` and annotated

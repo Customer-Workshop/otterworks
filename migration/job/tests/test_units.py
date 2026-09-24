@@ -229,3 +229,17 @@ def test_cli_missing_env_exits_4(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("LDM_HOST", "eks")
     assert main(["extract", "--manifest", str(MANIFEST), "--namespace", "d24-after", "--run-id", "r1"]) == 4
+
+
+def test_decimal_fits_handles_full_precision_without_context_overflow() -> None:
+    from decimal import Decimal
+
+    from ldm.convert import _decimal_fits
+
+    assert _decimal_fits(Decimal("123456789012345678901.12345678"), 31, 8)  # 29 significant digits, fits
+    assert _decimal_fits(Decimal("99999999999999999999999.99999999"), 31, 8)  # max DECIMAL(31,8)
+    assert not _decimal_fits(Decimal("100000000000000000000000.00000000"), 31, 8)  # 24 integer digits
+    assert _decimal_fits(Decimal("0E-8"), 31, 8)
+    assert _decimal_fits(Decimal("-1E+22"), 31, 8)
+    assert not _decimal_fits(Decimal("1E+23"), 31, 8)
+    assert not _decimal_fits(Decimal("NaN"), 31, 8)

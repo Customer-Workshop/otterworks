@@ -90,7 +90,13 @@ def _command_unload(
     env["LDM_KEY_COLUMN"] = ts.key_column
     env["LDM_LRECL"] = str(ts.config.record_length)
     out.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(argv, env=env, capture_output=True, text=True, cwd=str(ctx.loaded.repo_root))
+    try:
+        proc = subprocess.run(argv, env=env, capture_output=True, text=True, cwd=str(ctx.loaded.repo_root))
+    except (FileNotFoundError, PermissionError) as e:
+        raise ConfigError(
+            f"unload_command {argv[0]!r} is not executable ({e.strerror}); install the UNLOAD01 wrapper "
+            "or set LDM_UNLOAD_MODE=builtin to use the built-in fixed-width writer"
+        ) from e
     for line in proc.stderr.splitlines():
         ctx.log.info(f"unload: {line}", ts.name)
     if proc.returncode != 0:

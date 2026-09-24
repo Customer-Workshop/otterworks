@@ -116,6 +116,10 @@ class FakeSource:
         self.purge_audit.extend((r, t, k, b, "PURGED") for r, t, k, b, _ in audit)
         return deleted
 
+    def audited_keys(self, run_id, table, keys) -> set[str]:
+        wanted = set(keys)
+        return {k for r, t, k, _, _ in self.purge_audit if r == run_id and t == table and k in wanted}
+
 
 @dataclass
 class _Run:
@@ -147,6 +151,7 @@ class FakeTarget:
         self.validation: dict[tuple[str, str], list[ValidationRow]] = defaultdict(list)
         self.class_totals: dict[tuple[str, str], list[ClassTotalRow]] = defaultdict(list)
         self.arch: dict[str, dict[tuple[str, ...], dict[str, TargetValue]]] = defaultdict(dict)
+        self.arch_hash: dict[str, dict[tuple[str, ...], bytes]] = defaultdict(dict)
         self.purge_audit: dict[tuple[str, str], list[PurgeAuditRow]] = defaultdict(list)
         self.shapes: dict[str, TableShape] = {}
         self.insert_failures: dict[str, InsertFailure] = {}  # planted target-side insert errors by source_key
@@ -357,8 +362,21 @@ class FakeTarget:
     def get_class_totals(self, run_id, namespace):
         return list(self.class_totals[(run_id, namespace)])
 
+    def archived_hashes(self, run_id, namespace, table, key_columns) -> dict[str, bytes]:
+        out: dict[str, bytes] = {}
+        for r in self._stg(run_id, namespace, table):
+            k = tuple(str(r.values[c]) for c in key_columns)
+            if k in self.arch_hash[table]:
+                out[r.source_key] = self.arch_hash[table][k]
+        return out
+
     def promote(self, run_id, namespace, table, key_columns) -> int:
         validated = self._validated_keys(run_id, namespace, table)
+        hashes = {
+            v.source_key: v.source_hash
+            for v in self.validation[(run_id, namespace)]
+            if v.table_name == table and v.source_hash is not None
+        }
         n = 0
         for r in self._stg(run_id, namespace, table):
             if r.source_key not in validated:
@@ -366,6 +384,7 @@ class FakeTarget:
             k = tuple(str(r.values[c]) for c in key_columns)
             if k not in self.arch[table]:
                 self.arch[table][k] = dict(r.values)
+                self.arch_hash[table][k] = hashes.get(r.source_key, b"")
                 n += 1
         return n
 

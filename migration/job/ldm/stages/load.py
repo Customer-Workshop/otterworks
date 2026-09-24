@@ -33,7 +33,7 @@ def _field_for(rule: str, ts: TableSpec) -> str | None:
 
 
 def _range_file(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> Path:
-    local = Path(rng.local_path) if rng.local_path else ctx.range_dir(ts.name) / f"{ts.name}.{rng.range_seq:05d}.dat"
+    local = Path(rng.local_path) if rng.local_path else ctx.range_dir(ts.name) / f"{rng.range_seq:06d}.dat"
     if not local.exists() or (rng.sha256_hex and sha256_file(local) != rng.sha256_hex):
         if not rng.blob_path or not ctx.blobs.download(rng.blob_path, local):
             raise ConfigError(
@@ -158,7 +158,12 @@ def load_range(ctx: RunContext, ts: TableSpec, rng: KeyRange) -> tuple[int, int]
 def load_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
     ranges = ctx.target.get_key_ranges(ctx.run_id, ctx.namespace, ts.name)
     if not ranges:
-        raise ConfigError(f"{ts.name}: no key ranges recorded; run extract first")
+        extracted_so_far = ctx.target.get_ledger(ctx.run_id, ctx.namespace)[ts.name].extracted
+        if extracted_so_far is None:
+            raise ConfigError(f"{ts.name}: no key ranges recorded; run extract first")
+        if extracted_so_far != 0:
+            raise ConfigError(f"{ts.name}: ledger extracted={extracted_so_far} but no key ranges recorded")
+        ctx.log.info("extract selected 0 rows; nothing to load", ts.name)
     pending = [r for r in ranges if r.status != "DONE"]
     if pending:
         raise ConfigError(f"{ts.name}: {len(pending)} key range(s) not extracted (status != DONE)")

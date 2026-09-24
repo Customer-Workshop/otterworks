@@ -39,16 +39,22 @@ failure, `3` purge guard, `4` configuration (manifest, token, env, type map, cop
 - **validate** — business hash source vs target (`HASH_MISMATCH`), FILEAUD parent presence
   (`ORPHAN_PARENT_NOT_SELECTED`), per-retention-class counts and exact `Decimal` charge sums
   (`CLASS_COUNT_MISMATCH` / `CLASS_TOTAL_MISMATCH`, so a table-level match cannot hide a class-level
-  disagreement). Only fully validated rows get `purge_safe = 1` and are promoted to `arch.*`.
+  disagreement). A key already in `arch.*` for this namespace with a different business hash is
+  `ARCHIVE_CONFLICT` (kept in source, never purged); an identical archived copy is an idempotent re-run.
+  Only fully validated rows get `purge_safe = 1` and are promoted to `arch.*`.
 - **purge** — dry run unless the overlay sets `purge: true`; all data tables are guarded
   (`purge_safe` count == ledger `validated`) before any delete, else exit 3 with nothing deleted. Every key
   is written to `mig.purge_audit` (Azure) and `MIGAUDIT.PURGE_AUDIT` (Db2, same unit of work as the
-  `DELETE`); a batch whose delete count differs is rolled back. Reference tables are never purged.
+  `DELETE`); a batch whose delete count differs is rolled back. Reference tables are never purged. On
+  resume, keys already committed to `MIGAUDIT.PURGE_AUDIT` are marked `PURGED` instead of re-deleted.
+- **init** — applies `target.ddl_dir`, the optional reader user, then `--apply-sql` files. Those files
+  must be `.sql` files under the migration tree (the manifest's repo root); each is logged with its SHA-256.
 - **reconcile** — per-table extracted / loaded / validated / purged / failed from ledger, rejects, purge
   audit; failure details with rule, stage, field, SQLSTATE and error; class-total evidence; session links
   from `report.sessions_glob` plus `DEVIN_SESSION_LINKS` (`label=url,...`). Writes JSON (report API
   shape), CSV and HTML under `LOCAL_STAGING_DIR/<blob_prefix>` and the staging container. Exit 2 when
-  `extracted != loaded + rejected` or `purged != validated`.
+  `extracted != loaded + rejected` or `purged != validated`. Staging rows are deleted before the run is
+  marked `CLOSED`, so a failed cleanup leaves the run re-runnable.
 
 Every stage applies `target.ddl_dir` first (checksum-tracked in `mig.schema_version`) and writes
 `mig.stage_log` rows with `LDM_HOST` (`eks` | `aca` | `local`).

@@ -249,3 +249,16 @@ class Db2Source:
             raise SourceError(None, None, f"{table} batch {batch_no}: {e}") from e
         finally:
             db.autocommit(conn, db.SQL_AUTOCOMMIT_ON)
+
+    def audited_keys(self, run_id: str, table: str, keys: Sequence[str]) -> set[str]:
+        found: set[str] = set()
+        chunk = 500
+        for i in range(0, len(keys), chunk):
+            part = list(keys[i : i + chunk])
+            placeholders = ", ".join("?" for _ in part)
+            sql = (
+                "SELECT SOURCE_KEY FROM MIGAUDIT.PURGE_AUDIT WHERE RUN_ID = ? AND TABLE_NAME = ? "
+                f"AND SOURCE_KEY IN ({placeholders})"
+            )
+            found.update(str(r[0]) for r in self._rows(sql, [run_id, table, *part]))
+        return found

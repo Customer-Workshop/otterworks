@@ -564,7 +564,7 @@ class AzureSqlTarget:
             f"EXISTS (SELECT 1 FROM stg.{_ident(parent_table)} p JOIN mig.validation v "
             "ON v.run_id = p.run_id AND v.namespace = p.namespace AND v.table_name = ? AND v.source_key = p.source_key "
             f"AND v.status = N'VALIDATED' WHERE p.run_id = c.run_id AND p.namespace = c.namespace AND {join}) "
-            f"OR EXISTS (SELECT 1 FROM arch.{_ident(parent_table)} p WHERE {join}))"
+            f"OR EXISTS (SELECT 1 FROM arch.{_ident(parent_table)} p WHERE p.namespace = c.namespace AND {join}))"
         )
         return {str(r[0]) for r in self._rows(sql, (run_id, namespace, parent_table))}
 
@@ -636,6 +636,15 @@ class AzureSqlTarget:
             out.append(ClassTotalRow(str(tn), str(cls), int(sc), int(tc), s_sum, t_sum, status))  # type: ignore[call-overload]
         return out
 
+    def archived_hashes(self, run_id: str, namespace: str, table: str, key_columns: Sequence[str]) -> dict[str, bytes]:
+        key_match = " AND ".join(f"a.{_ident(k)} = s.{_ident(k)}" for k in key_columns)
+        rows = self._rows(
+            f"SELECT s.source_key, a.row_hash FROM stg.{_ident(table)} s JOIN arch.{_ident(table)} a "
+            f"ON a.namespace = s.namespace AND {key_match} WHERE s.run_id = ? AND s.namespace = ?",
+            (run_id, namespace),
+        )
+        return {str(k): bytes(h) for k, h in rows}  # type: ignore[call-overload]
+
     def promote(self, run_id: str, namespace: str, table: str, key_columns: Sequence[str]) -> int:
         columns = self._shape(table).target_columns
         cols = ", ".join(_ident(c) for c in columns)
@@ -646,7 +655,7 @@ class AzureSqlTarget:
             f"FROM stg.{_ident(table)} s JOIN mig.validation v ON v.run_id = s.run_id AND v.namespace = s.namespace "
             "AND v.table_name = ? AND v.source_key = s.source_key AND v.status = N'VALIDATED' "
             f"WHERE s.run_id = ? AND s.namespace = ? "
-            f"AND NOT EXISTS (SELECT 1 FROM arch.{_ident(table)} a WHERE {key_match})",
+            f"AND NOT EXISTS (SELECT 1 FROM arch.{_ident(table)} a WHERE a.namespace = s.namespace AND {key_match})",
             (table, run_id, namespace),
         )
         n = int(cur.rowcount)  # type: ignore[attr-defined]

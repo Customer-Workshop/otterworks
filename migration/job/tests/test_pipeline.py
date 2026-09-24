@@ -352,3 +352,101 @@ def test_source_error_maps_to_exit_1(tmp_path: Path, seed: Seed, manifest_after:
     ctx = make_ctx(tmp_path, src, manifest=manifest_after)
     code, _ = execute(ctx, "extract")
     assert code == 1
+
+
+def test_archived_row_with_different_hash_blocks_purge(tmp_path: Path, manifest_after: Path) -> None:
+    """Idempotent re-runs promote nothing twice; a conflicting archive copy must fail the row, not purge its source."""
+    seed = seed_source(generated=6, children_per_parent=1, plant=False)
+    target = FakeTarget()
+    ctx, code, _ = _run_all(tmp_path, seed, manifest_after, target)
+    assert code == 0
+    # a second namespace-run selects the same keys again, but one row's charge changed in the source
+    src2 = seed_source(generated=6, children_per_parent=1, plant=False).source
+    changed = src2.rows("ARCHIVE", "DOCARCH")[0]
+    changed["STORAGE_CHARGE"] = Decimal(str(changed["STORAGE_CHARGE"])) + Decimal("1.00000000")
+    changed_key = str(changed["ARCH_KEY"])
+    ctx2 = make_ctx(tmp_path, src2, target, manifest=manifest_after, run_id="run-2")
+    prepare_run(ctx2)
+    for stage in (extract, load, validate):
+        stage.run(ctx2)
+    rules = _rules(target, ctx2.run_id, ctx2.namespace)
+    assert rules.get("ARCHIVE_CONFLICT") == {changed_key}
+    assert changed_key not in target.purge_safe_keys(ctx2.run_id, ctx2.namespace, "DOCARCH")
+    code2, _ = execute(ctx2, "purge")
+    assert code2 == 0
+    remaining = {str(r["ARCH_KEY"]) for r in src2.rows("ARCHIVE", "DOCARCH")}
+    assert changed_key in remaining
+
+
+def test_purge_resume_recovers_keys_committed_in_source_audit(tmp_path: Path, manifest_after: Path) -> None:
+    """Db2 committed the audit+delete but the target status update was lost: resume must not re-delete."""
+    seed = seed_source(generated=6, children_per_parent=1, plant=False)
+    ctx = make_ctx(tmp_path, seed.source, manifest=manifest_after)
+    prepare_run(ctx)
+    for stage in (extract, load, validate):
+        stage.run(ctx)
+    target = ctx.target
+    assert isinstance(target, FakeTarget)
+    ts = ctx.table("FILEAUD")
+    keys = target.purge_safe_keys(ctx.run_id, ctx.namespace, "FILEAUD")
+    first = keys[:2]
+    target.insert_purge_audit(ctx.run_id, ctx.namespace, "FILEAUD", first, 1)
+    seed.source.purge_batch("ARCHIVE", "FILEAUD", ts.key_column, first, ctx.run_id, ctx.namespace, 1)
+    # simulate: set_purge_audit_status(PURGED) never happened -> rows stay INTENDED on the target
+    assert not target.purged_keys(ctx.run_id, ctx.namespace, "FILEAUD")
+    out = purge.run(ctx)
+    assert out["FILEAUD"]["purged"] == len(keys)
+    assert target.purged_keys(ctx.run_id, ctx.namespace, "FILEAUD") == set(keys)
+    assert sum(1 for a in seed.source.purge_audit if a[1] == "FILEAUD") == len(keys)
+
+
+def test_reconcile_cleanup_failure_leaves_run_running(tmp_path: Path, seed: Seed, manifest_after: Path) -> None:
+    class FlakyTarget(FakeTarget):
+        def delete_staging_run(self, run_id, namespace) -> None:
+            raise RuntimeError("staging cleanup timed out")
+
+    target = FlakyTarget()
+    ctx = make_ctx(tmp_path, seed.source, target, manifest=manifest_after)
+    prepare_run(ctx)
+    for stage in (extract, load, validate, purge):
+        stage.run(ctx)
+    with pytest.raises(RuntimeError):
+        reconcile.run(ctx)
+    assert target.runs[(ctx.run_id, ctx.namespace)].status == "RUNNING"
+    # a retry (once cleanup works) closes the run
+    target.__class__ = FakeTarget
+    ctx2 = make_ctx(tmp_path, seed.source, target, manifest=manifest_after)
+    code, _ = execute(ctx2, "reconcile")
+    assert code == 0
+    assert target.runs[(ctx.run_id, ctx.namespace)].status == "CLOSED"
+
+
+def test_empty_selection_loads_zero_rows(tmp_path: Path, manifest_after: Path) -> None:
+    src = FakeSource()
+    from .conftest import POLICIES, policy_row
+
+    src.add_rows("ARCHIVE", "RETNPLCY", [policy_row(*p) for p in POLICIES])
+    ctx = make_ctx(tmp_path, src, manifest=manifest_after)
+    prepare_run(ctx)
+    extract.run(ctx)
+    out = load.run(ctx)
+    assert out["DOCARCH"] == {"loaded": 0, "rejected": 0}
+    assert out["FILEAUD"] == {"loaded": 0, "rejected": 0}
+
+
+def test_init_apply_sql_is_confined_to_the_migration_tree(tmp_path: Path, seed: Seed, manifest_after: Path) -> None:
+    from ldm.errors import ConfigError
+    from ldm.stages import init
+
+    ctx = make_ctx(tmp_path, seed.source, manifest=manifest_after)
+    inside = ctx.loaded.repo_root / "extra.sql"
+    inside.write_text("SELECT 1;\n", encoding="utf-8")
+    outside_dir = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside_dir.mkdir(exist_ok=True)
+    outside = outside_dir / "evil.sql"
+    outside.write_text("SELECT 1;\n", encoding="utf-8")
+    assert init.run(ctx, [inside])["_ddl"]["scripts"] == 1
+    with pytest.raises(ConfigError, match="must live under"):
+        init.run(ctx, [outside])
+    with pytest.raises(ConfigError, match="not a .sql file"):
+        init.run(ctx, [ctx.loaded.repo_root / "manifest.yaml"])

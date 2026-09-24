@@ -135,9 +135,12 @@ def pack_comp3(value: Decimal, length: int, scale: int) -> bytes:
 
 
 def _decimal_fits(value: Decimal, precision: int, scale: int) -> bool:
-    q = value.quantize(Decimal(1).scaleb(-scale)) if scale else value
-    int_part = abs(q).to_integral_value()
-    return len(str(int_part)) <= precision - scale or (int_part == 0)
+    if not value.is_finite():
+        return False
+    _, digits, exponent = value.as_tuple()
+    assert isinstance(exponent, int)
+    integer_digits = len(digits) + exponent
+    return integer_digits <= precision - scale
 
 
 def source_key_of(record: bytes, specs: list[ColumnSpec]) -> str:

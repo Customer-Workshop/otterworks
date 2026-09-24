@@ -129,9 +129,13 @@ fi
 if [ "${DRY_RUN}" = "1" ]; then
   dlog "[dry-run] kubectl delete pv -l demo/namespace=${TOKEN}"
 else
-  for pv in $(demo_pvs "${TOKEN}"); do
-    run kubectl delete "${pv}" --ignore-not-found --wait=false || helm_rc=$?
-  done
+  if pvs="$(demo_pvs "${TOKEN}")"; then
+    for pv in ${pvs}; do
+      run kubectl delete "${pv}" --ignore-not-found --wait=false || helm_rc=$?
+    done
+  else
+    helm_rc=1
+  fi
 fi
 stage_end "${helm_rc}"
 

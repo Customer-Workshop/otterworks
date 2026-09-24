@@ -297,7 +297,13 @@ azure_resources_with_namespace() {
   az resource list --tag "namespace=$1" --query '[].id' -o tsv 2>/dev/null | sed '/^$/d'
 }
 # Cluster-scoped PVs of the token (the Db2 static PV outlives its namespace).
-demo_pvs() { kubectl get pv -l "demo/namespace=$1" -o name 2>/dev/null | sed '/^$/d'; }
+# Prints the PV names; returns non-zero when the lookup itself failed (RBAC, API
+# error), which callers treat as "cannot certify", never as "none left".
+demo_pvs() {
+  local out
+  out="$(kubectl get pv -l "demo/namespace=$1" -o name 2>&1)" || { derr "kubectl get pv failed: ${out}"; return 1; }
+  printf '%s\n' "${out}" | sed '/^$/d'
+}
 verify_clean() {
   local token="$1" ns rc=0 survivors
   ns="$(demo_namespace "${token}")"
@@ -334,8 +340,8 @@ verify_clean() {
   ensure_kubeconfig
   if kubectl get ns "${ns}" >/dev/null 2>&1; then derr "Kubernetes namespace ${ns} still exists"; rc=1
   else dlog "Kubernetes: namespace ${ns} NotFound"; fi
-  survivors="$(demo_pvs "${token}")"
-  if [ -n "${survivors}" ]; then derr "Kubernetes: PersistentVolumes labelled demo/namespace=${token} still exist:"; echo "${survivors}" | sed 's/^/    /'; rc=1
+  if ! survivors="$(demo_pvs "${token}")"; then derr "Kubernetes: could not list PVs labelled demo/namespace=${token}; not certifying clean"; rc=1
+  elif [ -n "${survivors}" ]; then derr "Kubernetes: PersistentVolumes labelled demo/namespace=${token} still exist:"; echo "${survivors}" | sed 's/^/    /'; rc=1
   else dlog "Kubernetes: no PV labelled demo/namespace=${token}"; fi
   local dbname; dbname="$(tenant_db_name "${token}")"
   case "$(tenant_db_exists "${dbname}")" in
@@ -599,11 +605,13 @@ copy_report_out() {
       dlog "copied ${f} -> ${out}/"
     done
   fi
-  # Also via the app, through the shared ingress (HTML + CSV as the presenter sees them).
+  # Also via the app, through the shared ingress, as the presenter sees them
+  # (§10.1: JSON at the bare run-id path, .csv and .html suffixed).
   local api; api="https://$(demo_api_host "${token}")/api/v1/reports/reconciliation/${run_id}"
-  local ext
-  for ext in html csv json; do
-    if curl -fsS -o "${out}/report.${ext}" "${api}.${ext}" 2>/dev/null; then dlog "copied report.${ext} from ${api}.${ext}"; fi
+  local ext url
+  for ext in json html csv; do
+    url="${api}"; [ "${ext}" = "json" ] || url="${api}.${ext}"
+    if curl -fsS -o "${out}/report.${ext}" "${url}" 2>/dev/null; then dlog "copied report.${ext} from ${url}"; fi
   done
   return 0
 }

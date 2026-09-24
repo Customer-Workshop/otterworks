@@ -121,10 +121,11 @@ spec:
               echo "waiting for db2-archive-0 to be ready (up to {{ .Values.initJob.waitForDb2Seconds }}s)"
               kubectl -n "$ns" wait --for=condition=Ready pod/db2-archive-0 --timeout={{ .Values.initJob.waitForDb2Seconds }}s
               echo "shipping seed files, DDL and load.sh into db2-archive-0:/seed"
+              # ConfigMap mounts are symlink farms (load.sh -> ..data/load.sh): dereference, ship regular files.
               kubectl -n "$ns" exec db2-archive-0 -c db2 -- bash -c 'rm -rf /seed/data /seed/ddl /seed/bin && mkdir -p /seed && chown db2inst1 /seed'
               tar -C /work/seed -cf - . | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/data && tar -xf - -C /seed/data'
-              tar -C /ddl -cf - . | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/ddl && tar -xf - -C /seed/ddl'
-              tar -C /bin-src -cf - load.sh | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/bin && tar -xf - -C /seed/bin && chmod 0755 /seed/bin/load.sh && chown -R db2inst1 /seed'
+              tar -C /ddl -chf - --exclude='..*' . | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/ddl && tar -xf - -C /seed/ddl'
+              tar -C /bin-src -chf - load.sh | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/bin && tar -xf - -C /seed/bin && chmod 0755 /seed/bin/load.sh && chown -R db2inst1 /seed'
               echo "running load.sh as db2inst1 (DB2_DATABASE={{ $db }})"
               kubectl -n "$ns" exec db2-archive-0 -c db2 -- su - db2inst1 -c "DB2_DATABASE={{ $db }} LDM_DDL_DIR=/seed/ddl /seed/bin/load.sh /seed/data"
               kubectl -n "$ns" exec db2-archive-0 -c db2 -- bash -c 'rm -rf /seed/data/*.asc'

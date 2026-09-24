@@ -277,3 +277,82 @@ def test_target_only_verbs_do_not_require_source_credentials(tmp_path) -> None:
             target=FakeTarget(),
             blobs=DirectoryBlobStore(tmp_path / "blobs"),
         )
+
+
+# --- UNLOAD01 fixtures: source's fixed-width output must decode through the job's copybooks -------------------------
+
+UNLOAD_FIXTURES = REPO_ROOT / "migration" / "source" / "unload" / "fixtures"
+# .del column index -> target column for the fields whose text is comparable 1:1 after conversion.
+_DEL_COLUMNS = {
+    "RETNPLCY": {0: "POLICY_CODE", 1: "POLICY_DESC", 2: "RETENTION_YEARS", 4: "ACTIVE_FLAG", 6: "EFFECTIVE_TS"},
+    "DOCARCH": {
+        0: "ARCH_KEY",
+        1: "DOC_ID",
+        2: "VERSION_NO",
+        3: "RETENTION_CLASS",
+        4: "LAST_ACCESS_TS",
+        5: "STORAGE_CHARGE",
+        6: "UNIT_RATE",
+        10: "CHECKSUM_ALG",
+        11: "CONTENT_SHA256",
+        12: "BYTE_SIZE",
+        13: "SOURCE_SYS",
+    },
+    "FILEAUD": {
+        0: "AUDIT_KEY",
+        1: "ARCH_KEY",
+        2: "EVENT_TYPE",
+        3: "EVENT_TS",
+        4: "ACTOR_ID",
+        6: "DISPOSITION_CODE",
+        7: "CLIENT_IP",
+        8: "DETAIL_TEXT",
+    },
+}
+
+
+def _as_text(value: object) -> str:
+    if isinstance(value, Timestamp12):
+        return value.text
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    return str(value).rstrip()
+
+
+@pytest.mark.parametrize("name", ["RETNPLCY", "DOCARCH", "FILEAUD"])
+def test_unload01_fixture_records_decode_through_job_copybooks(name: str) -> None:
+    ts = build_table_specs(load_manifest(MANIFEST, "d24-after"))[name]
+    lrecl = ts.copybook.record_length
+    raw = (UNLOAD_FIXTURES / f"{name}.expected.asc").read_bytes()
+    count = int((UNLOAD_FIXTURES / f"{name}.expected.cnt").read_text().strip())
+    assert len(raw) == lrecl * count, f"{name}: {len(raw)} bytes is not {count} x LRECL {lrecl}"
+    del_rows = [line.split("|") for line in (UNLOAD_FIXTURES / f"{name}.del").read_text().splitlines() if line]
+    assert len(del_rows) == count
+    complexity = json.loads((REPO_ROOT / "demos" / "app" / "complexity-manifest.json").read_text())
+    classes = {c["id"]: c for c in complexity["classes"]}
+    # Field-level conversion rejects (MIG-01..03); MIG-06 is a LOAD reject too but only against the target.
+    load_rejects = {
+        key: (c["expected_rule"], c["expected_field"])
+        for c in classes.values()
+        if c["table"] == name and c["expected_stage"] == "LOAD" and c["expected_rule"] != "DUPLICATE_SOURCE_KEY"
+        for key in c["planted_keys"]
+    }
+    seen_rejects: set[str] = set()
+    for i, expected in enumerate(del_rows):
+        rec = convert_record(raw[i * lrecl : (i + 1) * lrecl], ts.columns)
+        key = rec.source_key.rstrip()
+        if key in load_rejects:
+            rule, column = load_rejects[key]
+            assert rec.error is not None, f"{name} planted {key} converted cleanly"
+            assert (rec.error.rule, rec.error.column) == (rule, column), f"{name} {key}: {rec.error}"
+            seen_rejects.add(key)
+            continue
+        assert rec.ok, f"{name} record {i}: {rec.error}"
+        for idx, column in _DEL_COLUMNS[name].items():
+            # RETENTION_CLASS goes through the manifest value_map; compare the pre-mapping source text.
+            got = _as_text(rec.source_text[column] if column == "RETENTION_CLASS" else rec.values[column])
+            want = expected[idx].strip()
+            if isinstance(rec.values[column], Decimal):
+                want = format(Decimal(want), "f")
+            assert got == want, f"{name} record {i} {column}: {got!r} != {want!r}"
+    assert seen_rejects == set(load_rejects), f"{name}: planted conversion rejects missing from UNLOAD01 fixture"

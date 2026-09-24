@@ -1,0 +1,125 @@
+{{- $db := include "db2-archive.dbName" . -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db2-archive
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+spec:
+  serviceName: db2-archive
+  replicas: 1
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "db2-archive.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "db2-archive.labels" . | nindent 8 }}
+        ldm/role: db2-server
+      annotations:
+        checksum/health: {{ .Files.Get "files/health.py" | sha256sum }}
+    spec:
+      terminationGracePeriodSeconds: 120
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: db2
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Db2 Community Edition needs privileged (ipc/kernel parameter tuning on first boot).
+          securityContext:
+            privileged: true
+          # The /health server runs beside the Db2 entrypoint in this container so its CLP
+          # `CONNECT TO <db>` shares the instance (registry, sqllib, IPC) without any cross-container
+          # assumptions. It is the only listener on the health port.
+          command: ["/bin/bash", "-c"]
+          args:
+            - python3 /opt/health/health.py & exec /var/db2_setup/lib/setup_db2_instance.sh
+          env:
+            - name: LICENSE
+              value: accept
+            - name: DBNAME
+              value: {{ $db | quote }}
+            - name: DB2INSTANCE
+              value: db2inst1
+            - name: DB2INST1_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: DB2_PASSWORD
+            - name: TO_CREATE_SAMPLEDB
+              value: "false"
+            - name: PERSISTENT_HOME
+              value: "true"
+            - name: ARCHIVE_LOGS
+              value: "false"
+            - name: AUTOCONFIG
+              value: "false"
+            - name: DB2_DATABASE
+              value: {{ $db | quote }}
+            - name: HEALTH_PORT
+              value: {{ .Values.health.port | quote }}
+            - name: HEALTH_CACHE_SECONDS
+              value: {{ .Values.health.cacheSeconds | quote }}
+          ports:
+            - name: db2
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.health.port }}
+              protocol: TCP
+          # 200 iff `db2 connect to <db>` succeeds; anything else (instance down, db not yet created,
+          # activation failure) is 503, so liveness restarts Db2 itself.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.health.port }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.health.port }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.health.port }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /database
+            - name: seed-work
+              mountPath: /seed
+            - name: health-script
+              mountPath: /opt/health
+              readOnly: true
+      volumes:
+        - name: health-script
+          configMap:
+            name: db2-archive-health
+            defaultMode: 0555
+        - name: seed-work
+          emptyDir:
+            sizeLimit: {{ .Values.initJob.workVolumeSize }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: db2-archive-data

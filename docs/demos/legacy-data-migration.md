@@ -170,7 +170,7 @@ make demo-destroy NS=d24-before
 5. **Verify** and exit non-zero on any survivor:
    `aws resourcegroupstaggingapi get-resources --tag-filters Key=namespace,Values=<token>`
    empty, `az resource list --tag namespace=<token>` empty, `az group exists` false,
-   `kubectl get ns otterworks-<token>` NotFound, and the tenant database
+   `kubectl get ns otterworks-<token>` NotFound, no PV labelled `demo/namespace=<token>`, and the tenant database
    `otterworks_<token>` absent on RDS (probed by a short in-cluster `psql` Job; needs
    `DB_PASSWORD`).
 

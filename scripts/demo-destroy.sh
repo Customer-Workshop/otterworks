@@ -118,16 +118,20 @@ if [ "${DRY_RUN}" = "1" ] || kubectl get ns "${NS}" >/dev/null 2>&1; then
     for rel in $(helm -n "${NS}" list -q -l "app.kubernetes.io/part-of=otterworks-ldm" 2>/dev/null); do
       run helm -n "${NS}" uninstall "${rel}" --wait --timeout 5m || helm_rc=$?
     done
-    # Static PV bound to the EBS volume is cluster-scoped; the chart owns it but
-    # a Released PV survives namespace deletion.
-    for pv in $(kubectl get pv -l "demo/namespace=${TOKEN}" -o name 2>/dev/null); do
-      run kubectl delete "${pv}" --ignore-not-found --wait=false || helm_rc=$?
-    done
   else
-    dlog "[dry-run] would uninstall releases labelled app.kubernetes.io/part-of=otterworks-ldm and delete PVs labelled demo/namespace=${TOKEN}"
+    dlog "[dry-run] would uninstall releases labelled app.kubernetes.io/part-of=otterworks-ldm"
   fi
 else
   dlog "namespace ${NS} absent; no Helm releases to remove"
+fi
+# The static PV bound to the EBS volume is cluster-scoped: a Released PV survives
+# namespace deletion, so it is removed regardless of whether the namespace exists.
+if [ "${DRY_RUN}" = "1" ]; then
+  dlog "[dry-run] kubectl delete pv -l demo/namespace=${TOKEN}"
+else
+  for pv in $(demo_pvs "${TOKEN}"); do
+    run kubectl delete "${pv}" --ignore-not-found --wait=false || helm_rc=$?
+  done
 fi
 stage_end "${helm_rc}"
 

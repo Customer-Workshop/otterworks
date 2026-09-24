@@ -296,13 +296,15 @@ aws_live_resources_with_namespace() {
 azure_resources_with_namespace() {
   az resource list --tag "namespace=$1" --query '[].id' -o tsv 2>/dev/null | sed '/^$/d'
 }
+# Cluster-scoped PVs of the token (the Db2 static PV outlives its namespace).
+demo_pvs() { kubectl get pv -l "demo/namespace=$1" -o name 2>/dev/null | sed '/^$/d'; }
 verify_clean() {
   local token="$1" ns rc=0 survivors
   ns="$(demo_namespace "${token}")"
   if [ "${DRY_RUN}" = "1" ]; then
     dlog "[dry-run] would verify: aws resourcegroupstaggingapi get-resources --tag-filters Key=namespace,Values=${token}"
     dlog "[dry-run] would verify: az resource list --tag namespace=${token}; az group exists -n $(azure_rg "${token}")"
-    dlog "[dry-run] would verify: kubectl get ns ${ns} -> NotFound; RDS database $(tenant_db_name "${token}") absent (in-cluster psql probe)"
+    dlog "[dry-run] would verify: kubectl get ns ${ns} -> NotFound; no PV labelled demo/namespace=${token}; RDS database $(tenant_db_name "${token}") absent (in-cluster psql probe)"
     return 0
   fi
   # Eventually consistent index: poll briefly before declaring a live survivor.
@@ -332,6 +334,9 @@ verify_clean() {
   ensure_kubeconfig
   if kubectl get ns "${ns}" >/dev/null 2>&1; then derr "Kubernetes namespace ${ns} still exists"; rc=1
   else dlog "Kubernetes: namespace ${ns} NotFound"; fi
+  survivors="$(demo_pvs "${token}")"
+  if [ -n "${survivors}" ]; then derr "Kubernetes: PersistentVolumes labelled demo/namespace=${token} still exist:"; echo "${survivors}" | sed 's/^/    /'; rc=1
+  else dlog "Kubernetes: no PV labelled demo/namespace=${token}"; fi
   local dbname; dbname="$(tenant_db_name "${token}")"
   case "$(tenant_db_exists "${dbname}")" in
     absent)  dlog "RDS: database ${dbname} absent" ;;
@@ -597,7 +602,7 @@ copy_report_out() {
   # Also via the app, through the shared ingress (HTML + CSV as the presenter sees them).
   local api; api="https://$(demo_api_host "${token}")/api/v1/reports/reconciliation/${run_id}"
   local ext
-  for ext in html csv; do
+  for ext in html csv json; do
     if curl -fsS -o "${out}/report.${ext}" "${api}.${ext}" 2>/dev/null; then dlog "copied report.${ext} from ${api}.${ext}"; fi
   done
   return 0

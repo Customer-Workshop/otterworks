@@ -51,7 +51,7 @@ describe('ArchiveCompareComponent', () => {
     expect(component.sides.length).toBe(2);
     expect(component.verdict).toBe('match');
     expect(component.mismatchCount).toBe(0);
-    expect(component.differs(0, 'owner_name')).toBeFalse();
+    expect(component.differs(component.sides[0].document!.versions[0], 'owner_name')).toBeFalse();
   });
 
   it('highlights fields and events that differ between deployments', () => {
@@ -69,8 +69,9 @@ describe('ArchiveCompareComponent', () => {
 
     expect(component.verdict).toBe('mismatch');
     expect(component.mismatchCount).toBe(2);
-    expect(component.differs(0, 'owner_name')).toBeTrue();
-    expect(component.eventDiffers(0, 0)).toBeTrue();
+    const v0 = component.sides[0].document!.versions[0];
+    expect(component.differs(v0, 'owner_name')).toBeTrue();
+    expect(component.eventDiffers(v0, v0.events[0])).toBeTrue();
     // one field row + one event row highlighted on each of the two sides
     expect(fixture.nativeElement.querySelectorAll('tr.diff').length).toBe(4);
   });
@@ -83,8 +84,14 @@ describe('ArchiveCompareComponent', () => {
 
     component.load();
     const two = doc('db2', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001');
-    two.versions = [...two.versions, { ...two.versions[0], version_no: 2, arch_key: 'DA00000000000043' }];
+    const v1 = two.versions[0];
+    two.versions = [
+      v1,
+      { ...v1, version_no: 2, arch_key: 'DA00000000000043' },
+      { ...v1, version_no: 3, arch_key: 'DA00000000000044' },
+    ];
     const one = doc('azuresql', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001');
+    one.versions = [v1, { ...v1, version_no: 3, arch_key: 'DA00000000000044' }];
     http.expectOne('/api/v1/reports/archive/documents/DOC-42').flush(two);
     http.expectOne('/api/v1/reports/archive/documents/DOC-42/hash').flush({ document_hash: 'h1' });
     http.expectOne('https://peer.example/api/v1/reports/archive/documents/DOC-42').flush(one);
@@ -92,8 +99,12 @@ describe('ArchiveCompareComponent', () => {
     fixture.detectChanges();
 
     expect(component.verdict).toBe('mismatch');
-    expect(component.versionMissing(1)).toBeTrue();
-    expect(component.versionMissing(0)).toBeFalse();
+    expect(component.mismatchCount).toBe(1);
+    const [local1, local2, local3] = component.sides[0].document!.versions;
+    expect(component.versionMissing(local2)).toBeTrue();
+    expect(component.versionMissing(local1)).toBeFalse();
+    expect(component.versionMissing(local3)).toBeFalse();
+    expect(component.differs(local3, 'arch_key')).toBeFalse();
     expect(fixture.nativeElement.querySelectorAll('.version.missing').length).toBe(1);
   });
 

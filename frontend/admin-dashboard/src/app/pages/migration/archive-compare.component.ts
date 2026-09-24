@@ -86,17 +86,17 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
                 <mat-icon inline>fingerprint</mat-icon>
                 <code>{{ side.hash.document_hash }}</code>
               </p>
-              <div class="version" *ngFor="let v of doc.versions; let vi = index" [class.missing]="versionMissing(vi)">
+              <div class="version" *ngFor="let v of doc.versions" [class.missing]="versionMissing(v)">
                 <h4>
                   Version {{ v.version_no }} <code>{{ v.arch_key }}</code>
-                  <span class="missing-tag" *ngIf="versionMissing(vi)">missing on other side</span>
+                  <span class="missing-tag" *ngIf="versionMissing(v)">missing on other side</span>
                 </h4>
                 <table class="kv">
-                  <tr *ngFor="let f of versionFields" [class.diff]="differs(vi, f)">
+                  <tr *ngFor="let f of versionFields" [class.diff]="differs(v, f)">
                     <th>{{ f }}</th>
                     <td><code>{{ v[f] }}</code></td>
                   </tr>
-                  <tr *ngIf="v.policy" [class.diff]="policyDiffers(vi)">
+                  <tr *ngIf="v.policy" [class.diff]="policyDiffers(v)">
                     <th>policy</th>
                     <td>{{ v.policy.policy_code }} · {{ v.policy.policy_desc }} · {{ v.policy.retention_years }}y · {{ v.policy.disposition_action }}</td>
                   </tr>
@@ -106,7 +106,7 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
                     <tr><th>event_ts</th><th>type</th><th>actor</th><th>disp</th><th>client_ip</th><th>detail</th></tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let e of v.events; let ei = index" [class.diff]="eventDiffers(vi, ei)">
+                    <tr *ngFor="let e of v.events" [class.diff]="eventDiffers(v, e)">
                       <td><code>{{ e.event_ts }}</code></td>
                       <td>{{ e.event_type }}</td>
                       <td><code>{{ e.actor_id }}</code></td>
@@ -217,22 +217,21 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     });
   }
 
-  /** True when the other deployment (when loaded) has no version at this position. */
-  versionMissing(versionIndex: number): boolean {
+  /** True when both sides are loaded and the other deployment has no version with this version_no. */
+  versionMissing(v: ArchiveVersion): boolean {
     if (this.sides.length < 2 || this.sides.some(s => !s.document)) {
       return false;
     }
-    const [a, b] = this.pairVersions(versionIndex);
-    return !a !== !b;
+    return !this.pairVersions(v.version_no).every(Boolean);
   }
 
-  differs(versionIndex: number, field: keyof ArchiveVersion): boolean {
-    const [a, b] = this.pairVersions(versionIndex);
+  differs(v: ArchiveVersion, field: keyof ArchiveVersion): boolean {
+    const [a, b] = this.pairVersions(v.version_no);
     return !!a && !!b && String(a[field] ?? '') !== String(b[field] ?? '');
   }
 
-  policyDiffers(versionIndex: number): boolean {
-    const [a, b] = this.pairVersions(versionIndex);
+  policyDiffers(v: ArchiveVersion): boolean {
+    const [a, b] = this.pairVersions(v.version_no);
     if (!a || !b) {
       return false;
     }
@@ -244,13 +243,13 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     return this.policyFields.some(f => String(pa[f] ?? '') !== String(pb[f] ?? ''));
   }
 
-  eventDiffers(versionIndex: number, eventIndex: number): boolean {
-    const [a, b] = this.pairVersions(versionIndex);
+  eventDiffers(v: ArchiveVersion, e: ArchiveEvent): boolean {
+    const [a, b] = this.pairVersions(v.version_no);
     if (!a || !b) {
       return false;
     }
-    const ea = a.events?.[eventIndex];
-    const eb = b.events?.[eventIndex];
+    const ea = a.events?.find(x => x.audit_key === e.audit_key);
+    const eb = b.events?.find(x => x.audit_key === e.audit_key);
     if (!ea || !eb) {
       return true;
     }
@@ -288,9 +287,10 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     return `${err.status}: ${err.message}`;
   }
 
-  private pairVersions(versionIndex: number): [ArchiveVersion | undefined, ArchiveVersion | undefined] {
-    const a = this.sides[0]?.document?.versions?.[versionIndex];
-    const b = this.sides[1]?.document?.versions?.[versionIndex];
+  /** Versions are matched across sides by version_no, not position, so a gap on one side is attributed correctly. */
+  private pairVersions(versionNo: number): [ArchiveVersion | undefined, ArchiveVersion | undefined] {
+    const a = this.sides[0]?.document?.versions?.find(v => v.version_no === versionNo);
+    const b = this.sides[1]?.document?.versions?.find(v => v.version_no === versionNo);
     return [a, b];
   }
 
@@ -300,20 +300,24 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     }
     const [a, b] = this.sides;
     let diffs = 0;
-    const count = Math.max(a.document!.versions.length, b.document!.versions.length);
-    for (let vi = 0; vi < count; vi++) {
-      const [va, vb] = this.pairVersions(vi);
+    const versionNos = new Set<number>();
+    a.document!.versions.forEach(v => versionNos.add(v.version_no));
+    b.document!.versions.forEach(v => versionNos.add(v.version_no));
+    for (const versionNo of versionNos) {
+      const [va, vb] = this.pairVersions(versionNo);
       if (!va || !vb) {
         diffs++;
         continue;
       }
-      diffs += this.versionFields.filter(f => this.differs(vi, f)).length;
-      if (this.policyDiffers(vi)) {
+      diffs += this.versionFields.filter(f => this.differs(va, f)).length;
+      if (this.policyDiffers(va)) {
         diffs++;
       }
-      const events = Math.max(va.events?.length ?? 0, vb.events?.length ?? 0);
-      for (let ei = 0; ei < events; ei++) {
-        if (this.eventDiffers(vi, ei)) {
+      const auditKeys = new Set<string>();
+      (va.events ?? []).forEach(e => auditKeys.add(e.audit_key));
+      (vb.events ?? []).forEach(e => auditKeys.add(e.audit_key));
+      for (const auditKey of auditKeys) {
+        if (this.eventDiffers(va, { audit_key: auditKey } as ArchiveEvent)) {
           diffs++;
         }
       }

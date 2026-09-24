@@ -30,11 +30,14 @@ DB2_DATABASE=D24A LDM_DDL_DIR=migration/source/db2/ddl migration/source/seed/loa
 ```
 
 Runs as the instance owner inside the `db2-archive` pod (the Helm post-install hook does this).
-Applies the DDL in filename order if `ARCHIVE.FILEAUD` does not exist, then `LOAD FROM ... OF ASC
-MODIFIED BY binarynumerics packeddecimal METHOD L (...)` per table in dependency order, `SET
-INTEGRITY`, `RUNSTATS`, and verifies the row counts against `seed-summary.json`. Idempotent: skips
-when `ARCHIVE.DOCARCH` already holds the expected count, refuses (exit 12) on any other non-empty
-state. Db2 errors exit 8 with the `SQLCODE`/`SQLSTATE` line on stderr. Measured full-scale load on
+Applies each DDL file (filename order) whose `CREATE TABLE`/`CREATE SCHEMA` objects are not all
+present yet, then `LOAD FROM ... OF ASC MODIFIED BY binarynumerics packeddecimal METHOD L (...)
+REPLACE INTO` per table in dependency order, `SET INTEGRITY`, `RUNSTATS`, and verifies the row
+counts against `seed-summary.json`. Completion is recorded durably as
+`COMMENT ON TABLE ARCHIVE.DOCARCH IS 'ldm-seed:<sha256 of DOCARCH.asc>'`; while that marker is
+present the loader exits 0 without touching the data whatever the counts are (so a post-migration
+`helm upgrade` never re-seeds purged rows), a marker from a different generator output exits 12, and
+no marker means an interrupted attempt whose tables are simply replaced. Db2 errors exit 8 with the `SQLCODE`/`SQLSTATE` line on stderr. Measured full-scale load on
 the `icr.io/db2_community/db2:11.5.9.0` image: 24 s (DDL + 3 LOADs + integrity + RUNSTATS).
 
 ## MIG-06 - duplicate key from a partially completed prior run

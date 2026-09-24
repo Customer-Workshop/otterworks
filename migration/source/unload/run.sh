@@ -48,9 +48,13 @@ DEL="$WORK/$TABLE.del"
 if [[ -n "${UNLOAD01_DEL:-}" ]]; then
   cp "$UNLOAD01_DEL" "$DEL" || die_io "cannot read $UNLOAD01_DEL"
 else
+  # Key bounds are CHAR keys (copybooks: [A-Z0-9-]); anything else is refused rather than quoted,
+  # so a bound can never carry a CLP terminator or SQL into the EXPORT statement.
+  for k in "$KEY_FROM" "$KEY_TO"; do
+    [[ "$k" =~ ^[A-Za-z0-9_.:-]{1,64}$ ]] || die_io "key bound '$k' is not a plain key literal"
+  done
   command -v db2 >/dev/null || die_io "db2 CLP not on PATH"
-  # single quotes inside key values are doubled for SQL
-  q() { printf "'%s'" "${1//\'/\'\'}"; }
+  q() { printf "'%s'" "$1"; }
   SQL="SELECT $COLS FROM ARCHIVE.$TABLE WHERE ($WHERE) AND $KEY >= $(q "$KEY_FROM") AND $KEY <= $(q "$KEY_TO") ORDER BY $KEY"
   if [[ -n "${DB2_USER:-}" && -n "${DB2_PASSWORD:-}" ]]; then
     CONNECT="CONNECT TO $DB USER $DB2_USER USING $DB2_PASSWORD"
@@ -60,14 +64,14 @@ else
   # Commands go through a 0600 script file so credentials never show up in `ps`. CLP output is
   # scanned for the SQLCODE/SQLSTATE of any failure and re-emitted in the contract format.
   (umask 077; cat >"$WORK/cmds.clp" <<EOF
-$CONNECT;
-EXPORT TO $DEL OF DEL MODIFIED BY NOCHARDEL COLDEL| MESSAGES $WORK/export.msg $SQL;
-CONNECT RESET;
-TERMINATE;
+$CONNECT@
+EXPORT TO $DEL OF DEL MODIFIED BY NOCHARDEL COLDEL| MESSAGES $WORK/export.msg $SQL@
+CONNECT RESET@
+TERMINATE@
 EOF
   )
   set +e
-  db2 -s -t -f "$WORK/cmds.clp" >"$WORK/clp.out" 2>&1
+  db2 -s -td@ -f "$WORK/cmds.clp" >"$WORK/clp.out" 2>&1
   rc=$?
   set -e
   if (( rc >= 4 )); then

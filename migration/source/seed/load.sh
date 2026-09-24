@@ -6,7 +6,12 @@
 #
 # Env: DB2_DATABASE (default D24A), DB2_USER / DB2_PASSWORD (optional; instance owner needs none),
 #      LDM_DDL_DIR (default: ../db2/ddl next to this script), LDM_SKIP_DDL=1 to skip DDL,
-# Idempotent: if ARCHIVE.DOCARCH already holds the row count in seed-summary.json the load is skipped.
+# Idempotent / restartable:
+#   * each DDL file is applied iff one of the TABLE/SCHEMA objects it creates is missing;
+#   * a completed seed leaves a durable marker (COMMENT ON TABLE ARCHIVE.DOCARCH 'ldm-seed:<sha>');
+#     when present the load is skipped whatever the counts are (a migrated/purged archive stays as is);
+#   * without the marker the tables are (re)loaded with LOAD ... REPLACE, so an interrupted attempt is
+#     reset rather than appended to. The marker is written only after every count is verified.
 set -euo pipefail
 
 DIR="${1:?usage: load.sh <dir with RETNPLCY.asc DOCARCH.asc FILEAUD.asc seed-summary.json>}"
@@ -52,29 +57,43 @@ run() {
 db2_connect
 log "connected to $DB"
 
+# 1 iff every CREATE TABLE / CREATE SCHEMA object named in the DDL file already exists.
+ddl_applied() {
+  local obj
+  while read -r obj; do
+    case "$obj" in
+      *.*) scalar "SELECT COUNT(*) FROM SYSCAT.TABLES WHERE TABSCHEMA='${obj%%.*}' AND TABNAME='${obj##*.}'" ;;
+      *)   scalar "SELECT COUNT(*) FROM SYSCAT.SCHEMATA WHERE SCHEMANAME='$obj'" ;;
+    esac
+    [[ "$SCALAR" == "1" ]] || return 1
+  done < <(grep -oiE 'CREATE (TABLE|SCHEMA) +[A-Z0-9_.]+' "$1" | awk '{print toupper($3)}')
+  return 0
+}
+
 if [[ "${LDM_SKIP_DDL:-0}" != "1" ]]; then
-  scalar "SELECT COUNT(*) FROM SYSCAT.TABLES WHERE TABSCHEMA='ARCHIVE' AND TABNAME='FILEAUD'"
-  if [[ "$SCALAR" == "1" ]]; then
-    log "DDL already applied, skipping"
-  else
-    for sql in "$DDL_DIR"/*.sql; do
-      log "applying $(basename "$sql")"
-      db2 -tvf "$sql" > "$LOG_DIR/ddl-$(basename "$sql").log" 2>&1 || { grep -E 'SQL[0-9]+N' "$LOG_DIR/ddl-$(basename "$sql").log" >&2; exit 8; }
-    done
-  fi
+  for sql in "$DDL_DIR"/*.sql; do
+    if ddl_applied "$sql"; then
+      log "$(basename "$sql") already applied"
+      continue
+    fi
+    log "applying $(basename "$sql")"
+    db2 -tvf "$sql" > "$LOG_DIR/ddl-$(basename "$sql").log" 2>&1 || { grep -E 'SQL[0-9]+N' "$LOG_DIR/ddl-$(basename "$sql").log" >&2; exit 8; }
+  done
 fi
 
-want=$(expected_rows DOCARCH.asc)
-scalar "SELECT COUNT(*) FROM ARCHIVE.DOCARCH"; have="$SCALAR"
-if [[ "$have" == "$want" ]]; then
-  log "ARCHIVE.DOCARCH already holds $have rows; seed load skipped"
+MARKER="ldm-seed:$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["files"]["DOCARCH.asc"]["sha256"])' "$DIR/seed-summary.json")"
+scalar "SELECT COALESCE(REMARKS,'-') FROM SYSCAT.TABLES WHERE TABSCHEMA='ARCHIVE' AND TABNAME='DOCARCH'"
+if [[ "$SCALAR" == "$MARKER" ]]; then
+  log "seed marker present on ARCHIVE.DOCARCH; load skipped (archive left as is)"
   db2 connect reset >/dev/null
   exit 0
 fi
-if [[ "$have" != "0" ]]; then
-  log "ARCHIVE.DOCARCH holds $have rows (expected 0 or $want); refusing to load on top"
+if [[ "$SCALAR" == ldm-seed:* ]]; then
+  log "ARCHIVE.DOCARCH was seeded from a different generator output ($SCALAR); refusing to reseed"
   exit 12
 fi
+scalar "SELECT COUNT(*) FROM ARCHIVE.DOCARCH"
+[[ "$SCALAR" == "0" ]] || log "no seed marker but ARCHIVE.DOCARCH holds $SCALAR rows: incomplete earlier attempt, reloading with REPLACE"
 
 # METHOD L positions come from FIELD-DERIVATION.md §2-4 (1-based, inclusive).
 load_table() {
@@ -82,7 +101,7 @@ load_table() {
   local msg="$LOG_DIR/load-$table.msg"
   log "LOAD $file -> ARCHIVE.$table"
   # One line: CLP treats a newline inside the filetmod string as part of the keyword.
-  run "LOAD FROM $file OF ASC MODIFIED BY reclen=$reclen binarynumerics packeddecimal timestampformat=\"YYYY-MM-DD-HH.MM.SS.UUUUUUUUUUUU\" METHOD L ($positions) MESSAGES $msg INSERT INTO ARCHIVE.$table NONRECOVERABLE" > "$LOG_DIR/load-$table.log"
+  run "LOAD FROM $file OF ASC MODIFIED BY reclen=$reclen binarynumerics packeddecimal timestampformat=\"YYYY-MM-DD-HH.MM.SS.UUUUUUUUUUUU\" METHOD L ($positions) MESSAGES $msg REPLACE INTO ARCHIVE.$table NONRECOVERABLE" > "$LOG_DIR/load-$table.log"
   local loaded
   loaded=$(grep -E 'Number of rows committed' "$LOG_DIR/load-$table.log" | awk '{print $NF}')
   local want; want=$(expected_rows "$table.asc")
@@ -108,5 +127,6 @@ for t in RETNPLCY DOCARCH FILEAUD; do
   [[ "$have" == "$want" ]] || { log "ARCHIVE.$t has $have rows after load, expected $want"; exit 8; }
   log "verified ARCHIVE.$t rows=$have"
 done
+run "COMMENT ON TABLE ARCHIVE.DOCARCH IS '$MARKER'" > "$LOG_DIR/marker.log"
 db2 connect reset >/dev/null
 log "seed load complete"

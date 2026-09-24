@@ -13,7 +13,7 @@ namespace - the legacy `ARCHIVE` store that the migration extracts from and purg
 | PVC | `db2-archive-data` | `storageClassName: ""` + `volumeName` -> binds the static gp3 PV created by ops Terraform; never dynamic |
 | NetworkPolicy | `db2-archive` | 50000 only from same-namespace pods labelled `ldm/db2-client: "true"`; 8080 only from the monitoring namespace (+ optional node CIDRs) |
 | ConfigMaps | `db2-archive-health`, `-ddl`, `-seed` | health server script, DDL from `migration/source/db2/ddl`, seed generator + `load.sh` |
-| Hook Job | `db2-archive-init` | post-install/upgrade: generates SEED-SPEC data, ships it into `db2-archive-0`, runs `load.sh` (idempotent) |
+| Hook Job | `db2-archive-init` | post-install/upgrade: generates SEED-SPEC data, ships it into `db2-archive-0`, runs `load.sh` (no-op once the `ldm-seed:<sha>` marker is on `ARCHIVE.DOCARCH`, so upgrades after a purge leave the archive alone) |
 
 `/health` on 8080 is `files/health.py` (python3 stdlib, shipped in the Db2 image), started in the Db2
 container beside the stock entrypoint (`python3 health.py & exec setup_db2_instance.sh`) so its CLP

@@ -4,7 +4,7 @@
 Post-install/upgrade hook. Db2 LOAD reads the fixed-width files server-side, and the Db2 image has no
 Python 3.12, so the job (a) generates the SEED-SPEC files with the Python 3.12 generator into a
 work volume, then (b) streams them plus DDL + load.sh into the db2-archive-0 pod and runs load.sh
-there as db2inst1 via `kubectl exec`. load.sh is idempotent, so re-running the hook on upgrade is safe.
+there as db2inst1 via `kubectl exec`. load.sh is a no-op once its seed marker is present, so re-running the hook on upgrade is safe.
 */ -}}
 apiVersion: v1
 kind: ServiceAccount
@@ -34,7 +34,10 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch"]
+    # `kubectl wait pod/db2-archive-0` = GET + WATCH with fieldSelector metadata.name, both of which
+    # RBAC evaluates against resourceNames; no other pod in the namespace is readable.
+    verbs: ["get", "watch"]
+    resourceNames: ["db2-archive-0"]
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create"]

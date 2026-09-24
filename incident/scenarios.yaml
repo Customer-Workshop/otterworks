@@ -41,19 +41,23 @@ scenarios:
       just complain.
     chart_shows: >-
       Request rate flat; p95 of GET /api/v1/documents/ climbing from ~60 ms to
-      ~2.4 s; SQL statements per request stepping from 2 to ~100; one Jaeger
-      trace fanning into a hundred identical SELECTs on document_versions.
+      ~2.4 s; SQL statements per request stepping from 4 to 104 on a 100-row
+      page; one Jaeger trace fanning into a hundred identical SELECTs on
+      document_versions.
     code_cause: >-
       DocumentService.list_documents runs one versions query per document in a
       Python loop (services/document-service/app/services/document_service.py),
-      and the schema lacks an index on documents.folder_id and a composite
-      index on document_versions(document_id, version_number).
+      and the schema lacks an index covering the owner listing order on
+      documents and a composite index on
+      document_versions(document_id, version_number).
     correct_fix: >-
       One batched query for the recent versions of the whole page (window
       function or IN + ORDER BY), a new Alembic migration adding the two
       indexes without touching 001_initial_schema.py, and a regression test
       asserting the list endpoint issues a constant number of statements
-      regardless of page size.
+      regardless of page size. Statements per request land at 5: count, page,
+      the two relationship loads the page already made, and one batched
+      recent-versions query.
     arm:
       - seed
       - load: list
@@ -74,7 +78,7 @@ scenarios:
       queries_per_request_min: 50
       p95_seconds_min: 1.0
     after:
-      queries_per_request_max: 4
+      queries_per_request_max: 5
       p95_seconds_max: 0.5
 
   log-flood:

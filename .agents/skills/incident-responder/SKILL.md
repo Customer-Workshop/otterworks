@@ -107,7 +107,8 @@ curl -s 'localhost:16686/api/traces?service=document-service&operation=GET%20/ap
 Grafana dashboard: `http://localhost:3001/d/otterworks-incident-responder`
 (`observability/grafana/dashboards/incident-responder.json`). The three panels a
 reviewer wants to see are request rate (flat), p95 latency (climbing) and SQL
-statements per request (stepping from ~3 to ~104 for a 100-row page). Alert rules
+statements per request (stepping from 4 to 104 for a 100-row page; a batched fix
+lands at 5, which is the after gate's ceiling). Alert rules
 are in `observability/prometheus/incident_alerts.yml`; routing (`page: devin` →
 Devin webhook and Slack, everything else → local sink) is in
 `observability/alertmanager/alertmanager.yml.tmpl`.

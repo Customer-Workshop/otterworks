@@ -2,16 +2,15 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T06:27:22.739132+00:00'
-  git_sha: 0fdd2a32e046994ea119b227e9f8bbad95485637
-  reason: 'n-plus-one load moved off the capacity knee: 12 rps at 16 concurrent sat
-    at the single-worker ceiling (~10-14 rps) so p95 flapped between 0.2 s and 1.3
-    s and DocumentListLatencyHigh took ~303 s; 24 rps at 24 concurrent saturates deterministically
-    (~2.4 s p95). Default memory ceiling 512m for the deeper queue (cache-leak still
-    arms at 256m); X-Request-Duration-Ms response header added; no seed or alert-rule
-    change'
+  at: '2026-09-24T06:43:34.430152+00:00'
+  git_sha: af1fe50964cbc457bb828b8a9a07b67387891e50
+  reason: 'after gate rejected the correct fix: queries_per_request_max was authored
+    as 4 (count + page + versions) but the page query also selectin-loads versions
+    and comments, so the before-state base is 4 and a batched fix lands at 5; ceiling
+    raised to 5 and the catalog text corrected to the measured 4 -> 104 step. No seed,
+    load or alert-rule change'
 fingerprints:
-  fixture: 48a7023e4942644dfaae9c8652eb6f7a0fbc2304573075d72d25100123b1300e
+  fixture: 36c623cde96b25485728b9c416b4434c1d407a53aac43f149da46165f394ed0b
   source: 218cef097fb3032a2d0def87eaa40e2e64e521aff93dad575c464f02af44ddd1
 scenarios:
   n-plus-one:

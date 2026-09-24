@@ -2,7 +2,10 @@
 #   --set namespaceToken=d24-after --set stage=extract --set runId=r20260924150000 \
 #   --set image.tag=<tag> --set expires=2026-10-01T00:00:00Z
 image:
-  repository: 599083837640.dkr.ecr.us-east-1.amazonaws.com/otterworks-demo/d24-after/ldm-job
+  registry: 599083837640.dkr.ecr.us-east-1.amazonaws.com
+  repositoryPrefix: otterworks-demo
+  # Defaults to <registry>/<repositoryPrefix>/<namespaceToken>/ldm-job; set to override entirely.
+  repository: ""
   tag: ""          # required: ECR uses immutable tags
   pullPolicy: IfNotPresent
 

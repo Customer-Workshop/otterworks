@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -72,134 +73,7 @@ def _differing_column(c: _Candidate, ts: TableSpec) -> str:
     return ts.config.hash_columns[0]
 
 
-def validate_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
-    m = ctx.manifest
-    cfg = ts.config
-    hash_cols = cfg.hash_columns
-    tsql = tsql_hash_expression(hash_cols, ts.columns)
-    target_hashes = ctx.target.target_hashes(ctx.run_id, ctx.namespace, ts.name, tsql)
-
-    candidates: list[_Candidate] = []
-    for batch in ctx.target.iter_staging(ctx.run_id, ctx.namespace, ts.name, m.batch.validate_batch_rows):
-        for row in batch:
-            conv = convert_record(row.raw_bytes, ts.columns)
-            if not conv.ok:  # cannot happen for a staged row; treat as a hash failure rather than crash
-                err = conv.error
-                assert err is not None
-                candidates.append(
-                    _Candidate(row, {}, b"", None, rule=RULE_HASH, field_name=err.column, error=err.error)
-                )
-                continue
-            candidates.append(
-                _Candidate(
-                    row,
-                    dict(conv.source_text),
-                    source_hash(conv.source_text, hash_cols, ts.columns),
-                    target_hashes.get(row.source_key),
-                )
-            )
-
-    # 1. business hash
-    for c in candidates:
-        if c.rule:
-            continue
-        if c.target_hash != c.source_hash:
-            c.rule = RULE_HASH
-            c.field_name = _differing_column(c, ts)
-            c.error = (
-                f"business hash source={c.source_hash.hex()[:16]} target="
-                f"{(c.target_hash or b'').hex()[:16] or 'missing'} differs at {c.field_name}"
-            )
-
-    # 1b. an already-archived row with the same key must carry the same business hash (idempotent re-run),
-    #     otherwise purging the source would leave a conflicting archive copy
-    archived = ctx.target.archived_hashes(ctx.run_id, ctx.namespace, ts.name, cfg.key_columns)
-    for c in candidates:
-        if c.rule:
-            continue
-        prior = archived.get(c.row.source_key)
-        if prior is not None and prior != c.source_hash:
-            c.rule = RULE_ARCHIVE_CONFLICT
-            c.field_name = cfg.key_columns[0]
-            c.error = (
-                f"arch.{ts.name} already holds this key with business hash {prior.hex()[:16]} != "
-                f"source {c.source_hash.hex()[:16]}; not promoted, not purge-safe"
-            )
-
-    # 2. parent present (validated in this run, or already archived)
-    if cfg.selection.parent:
-        parent = cfg.selection.parent
-        present = ctx.target.parents_present(
-            ctx.run_id, ctx.namespace, ts.name, parent.columns, parent.table, parent.references
-        )
-        for c in candidates:
-            if c.rule or c.row.source_key in present:
-                continue
-            c.rule = RULE_ORPHAN
-            c.field_name = parent.columns[0]
-            pk = "|".join(str(c.row.values[col]).rstrip(" ") for col in parent.columns)
-            c.error = f"parent {parent.table}({pk}) is neither validated in this run nor present in arch.{parent.table}"
-
-    # 3. counts and sums by retention class (system-of-record class vs converted class)
-    class_rows: list[ClassTotalRow] = []
-    if cfg.class_totals:
-        ct = cfg.class_totals
-        successors = _successor_map(ctx, ts)
-        class_spec = ts.by_name[ct.class_column]
-        src: dict[str, _ClassSide] = defaultdict(_ClassSide)
-        for c in candidates:
-            raw = c.source_values.get(ct.class_column)
-            c.source_class = _source_class(str(raw or ""), class_spec.value_map, successors)
-            c.target_class = str(c.row.values[ct.class_column] or "").rstrip(" ")
-            side = src[c.source_class]
-            side.count += 1
-            for col in ct.sum_columns:
-                v = c.source_values[col]
-                assert isinstance(v, Decimal)
-                side.sums[col] = side.sums.get(col, Decimal(0)) + v
-        tgt: dict[str, ClassAggregate] = ctx.target.class_aggregates(
-            ctx.run_id, ctx.namespace, ts.name, ct.class_column, ct.sum_columns
-        )
-        sum_col = ct.sum_columns[0] if ct.sum_columns else None
-        for cls in sorted(set(src) | set(tgt)):
-            s, t = src.get(cls, _ClassSide()), tgt.get(cls, ClassAggregate())
-            s_sum = s.sums.get(sum_col, Decimal(0)) if sum_col else None
-            t_sum = t.sums.get(sum_col, Decimal(0)) if sum_col else None
-            count_ok = s.count == t.count
-            sums_ok = all(s.sums.get(col, Decimal(0)) == t.sums.get(col, Decimal(0)) for col in ct.sum_columns)
-            status = "MATCH" if count_ok and sums_ok else "MISMATCH"
-            class_rows.append(ClassTotalRow(ts.name, cls, s.count, t.count, s_sum, t_sum, status))
-            if status == "MATCH":
-                continue
-            rule = RULE_CLASS_COUNT if not count_ok else RULE_CLASS_TOTAL
-            detail = (
-                f"class {cls}: source count={s.count} target count={t.count}"
-                if not count_ok
-                else f"class {cls}: source SUM({sum_col})={s_sum} target SUM({sum_col})={t_sum}"
-            )
-            moved = [
-                c for c in candidates if cls in (c.source_class, c.target_class) and c.source_class != c.target_class
-            ]
-            affected = moved or [c for c in candidates if c.target_class == cls]
-            for c in affected:
-                if c.rule:
-                    continue
-                c.rule = rule
-                c.field_name = ct.class_column
-                c.error = (
-                    f"{detail}; row class {c.source_class} (system of record) vs {c.target_class} (target)"
-                    if c.source_class != c.target_class
-                    else detail
-                )
-        ctx.target.write_class_totals(ctx.run_id, ctx.namespace, class_rows)
-        for r in class_rows:
-            ctx.log.info(
-                f"class {r.retention_class}: count {r.source_count}/{r.target_count} sum {r.source_sum}/{r.target_sum} "
-                f"{r.status}",
-                ts.name,
-            )
-
-    # persist
+def _persist(ctx: RunContext, ts: TableSpec, candidates: list[_Candidate]) -> None:
     rows: list[ValidationRow] = []
     rejects: list[Reject] = []
     for c in candidates:
@@ -212,7 +86,7 @@ def validate_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
                 c.rule,
                 c.source_hash,
                 c.target_hash,
-                purge_safe=ok and cfg.role == "data",
+                purge_safe=ok and ts.config.role == "data",
                 error_text=c.error,
             )
         )
@@ -234,8 +108,206 @@ def validate_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
     ctx.target.write_validation(ctx.run_id, ctx.namespace, rows)
     if rejects:
         ctx.target.insert_rejects(ctx.run_id, ctx.namespace, rejects)
-    promoted = ctx.target.promote(ctx.run_id, ctx.namespace, ts.name, cfg.key_columns)
 
+
+def _iter_candidates(ctx: RunContext, ts: TableSpec) -> Iterator[list[_Candidate]]:
+    """One key-contiguous staging batch at a time: converted source values + both business hashes."""
+    hash_cols = ts.config.hash_columns
+    tsql = tsql_hash_expression(hash_cols, ts.columns)
+    for batch in ctx.target.iter_staging(ctx.run_id, ctx.namespace, ts.name, ctx.manifest.batch.validate_batch_rows):
+        if not batch:
+            continue
+        target_hashes = ctx.target.target_hashes(
+            ctx.run_id, ctx.namespace, ts.name, tsql, batch[0].source_key, batch[-1].source_key
+        )
+        out: list[_Candidate] = []
+        for row in batch:
+            conv = convert_record(row.raw_bytes, ts.columns)
+            if not conv.ok:  # cannot happen for a staged row; treat as a hash failure rather than crash
+                err = conv.error
+                assert err is not None
+                out.append(_Candidate(row, {}, b"", None, rule=RULE_HASH, field_name=err.column, error=err.error))
+                continue
+            out.append(
+                _Candidate(
+                    row,
+                    dict(conv.source_text),
+                    source_hash(conv.source_text, hash_cols, ts.columns),
+                    target_hashes.get(row.source_key),
+                )
+            )
+        yield out
+
+
+@dataclass
+class _RowChecks:
+    """Per-row rules (hash, archive conflict, parent) - everything that does not need the whole table."""
+
+    ts: TableSpec
+    archived: dict[str, bytes]
+    parents_present: set[str] | None
+
+    def apply(self, c: _Candidate) -> None:
+        cfg = self.ts.config
+        if c.rule:
+            return
+        if c.target_hash != c.source_hash:
+            c.rule = RULE_HASH
+            c.field_name = _differing_column(c, self.ts)
+            c.error = (
+                f"business hash source={c.source_hash.hex()[:16]} target="
+                f"{(c.target_hash or b'').hex()[:16] or 'missing'} differs at {c.field_name}"
+            )
+            return
+        # an already-archived row with the same key must carry the same business hash (idempotent re-run),
+        # otherwise purging the source would leave a conflicting archive copy
+        prior = self.archived.get(c.row.source_key)
+        if prior is not None and prior != c.source_hash:
+            c.rule = RULE_ARCHIVE_CONFLICT
+            c.field_name = cfg.key_columns[0]
+            c.error = (
+                f"arch.{self.ts.name} already holds this key with business hash {prior.hex()[:16]} != "
+                f"source {c.source_hash.hex()[:16]}; not promoted, not purge-safe"
+            )
+            return
+        parent = cfg.selection.parent
+        if parent and self.parents_present is not None and c.row.source_key not in self.parents_present:
+            c.rule = RULE_ORPHAN
+            c.field_name = parent.columns[0]
+            pk = "|".join(str(c.row.values[col]).rstrip(" ") for col in parent.columns)
+            c.error = f"parent {parent.table}({pk}) is neither validated in this run nor present in arch.{parent.table}"
+
+
+def _row_checks(ctx: RunContext, ts: TableSpec) -> _RowChecks:
+    cfg = ts.config
+    archived = ctx.target.archived_hashes(ctx.run_id, ctx.namespace, ts.name, cfg.key_columns)
+    present: set[str] | None = None
+    if cfg.selection.parent:
+        parent = cfg.selection.parent
+        present = ctx.target.parents_present(
+            ctx.run_id, ctx.namespace, ts.name, parent.columns, parent.table, parent.references
+        )
+    return _RowChecks(ts, archived, present)
+
+
+@dataclass
+class _ClassMismatch:
+    rule: str
+    detail: str
+
+
+def _classify(c: _Candidate, ts: TableSpec, successors: dict[str, str]) -> None:
+    ct = ts.config.class_totals
+    assert ct is not None
+    class_spec = ts.by_name[ct.class_column]
+    raw = c.source_values.get(ct.class_column)
+    c.source_class = _source_class(str(raw or ""), class_spec.value_map, successors)
+    c.target_class = str(c.row.values[ct.class_column] or "").rstrip(" ")
+
+
+def _class_mismatches(ctx: RunContext, ts: TableSpec, src: dict[str, _ClassSide]) -> dict[str, _ClassMismatch]:
+    """Compare per-class source aggregates with the target's, persist mig.class_totals; returns class -> mismatch."""
+    ct = ts.config.class_totals
+    assert ct is not None
+    tgt: dict[str, ClassAggregate] = ctx.target.class_aggregates(
+        ctx.run_id, ctx.namespace, ts.name, ct.class_column, ct.sum_columns
+    )
+    sum_col = ct.sum_columns[0] if ct.sum_columns else None
+    class_rows: list[ClassTotalRow] = []
+    mismatches: dict[str, _ClassMismatch] = {}
+    for cls in sorted(set(src) | set(tgt)):
+        s, t = src.get(cls, _ClassSide()), tgt.get(cls, ClassAggregate())
+        s_sum = s.sums.get(sum_col, Decimal(0)) if sum_col else None
+        t_sum = t.sums.get(sum_col, Decimal(0)) if sum_col else None
+        count_ok = s.count == t.count
+        sums_ok = all(s.sums.get(col, Decimal(0)) == t.sums.get(col, Decimal(0)) for col in ct.sum_columns)
+        status = "MATCH" if count_ok and sums_ok else "MISMATCH"
+        class_rows.append(ClassTotalRow(ts.name, cls, s.count, t.count, s_sum, t_sum, status))
+        if status == "MISMATCH":
+            mismatches[cls] = _ClassMismatch(
+                RULE_CLASS_COUNT if not count_ok else RULE_CLASS_TOTAL,
+                f"class {cls}: source count={s.count} target count={t.count}"
+                if not count_ok
+                else f"class {cls}: source SUM({sum_col})={s_sum} target SUM({sum_col})={t_sum}",
+            )
+    ctx.target.write_class_totals(ctx.run_id, ctx.namespace, class_rows)
+    for r in class_rows:
+        ctx.log.info(
+            f"class {r.retention_class}: count {r.source_count}/{r.target_count} sum {r.source_sum}/{r.target_sum} "
+            f"{r.status}",
+            ts.name,
+        )
+    return mismatches
+
+
+def _fail_class(c: _Candidate, ts: TableSpec, mm: _ClassMismatch) -> None:
+    ct = ts.config.class_totals
+    assert ct is not None
+    c.rule = mm.rule
+    c.field_name = ct.class_column
+    c.error = (
+        f"{mm.detail}; row class {c.source_class} (system of record) vs {c.target_class} (target)"
+        if c.source_class != c.target_class
+        else mm.detail
+    )
+
+
+def validate_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
+    """Two streaming passes over staging so memory is bounded by validate_batch_rows, not by the table.
+
+    Pass 1: per-row rules (hash, archive conflict, parent) are decided and persisted batch by batch while
+    per-class source aggregates accumulate. Pass 2 (only when a class disagrees): re-stream the rows of the
+    mismatching classes and flip the ones that passed pass 1 to FAILED.
+    """
+    cfg = ts.config
+    ct = cfg.class_totals
+    checks = _row_checks(ctx, ts)
+    successors = _successor_map(ctx, ts) if ct else {}
+    src: dict[str, _ClassSide] = defaultdict(_ClassSide)
+    moved_classes: set[str] = set()
+
+    for batch in _iter_candidates(ctx, ts):
+        for c in batch:
+            checks.apply(c)
+            if ct:
+                _classify(c, ts, successors)
+                assert c.source_class is not None and c.target_class is not None
+                if c.source_class != c.target_class:
+                    moved_classes.update((c.source_class, c.target_class))
+                side = src[c.source_class]
+                side.count += 1
+                for col in ct.sum_columns:
+                    v = c.source_values[col]
+                    assert isinstance(v, Decimal)
+                    side.sums[col] = side.sums.get(col, Decimal(0)) + v
+        _persist(ctx, ts, batch)
+
+    if ct:
+        mismatches = _class_mismatches(ctx, ts, src)
+        if mismatches:
+            # Rows whose class differs between the two sides explain a mismatch; if no row of the class moved,
+            # every target row of that class is affected. Rows that already failed a per-row rule keep that rule.
+            for batch in _iter_candidates(ctx, ts):
+                flipped: list[_Candidate] = []
+                for c in batch:
+                    checks.apply(c)
+                    if c.rule:
+                        continue
+                    _classify(c, ts, successors)
+                    assert c.source_class is not None and c.target_class is not None
+                    if c.source_class != c.target_class:
+                        hit = mismatches.get(c.source_class) or mismatches.get(c.target_class)
+                    elif c.target_class not in moved_classes:
+                        hit = mismatches.get(c.target_class)
+                    else:
+                        hit = None
+                    if hit is not None:
+                        _fail_class(c, ts, hit)
+                        flipped.append(c)
+                if flipped:
+                    _persist(ctx, ts, flipped)
+
+    promoted = ctx.target.promote(ctx.run_id, ctx.namespace, ts.name, cfg.key_columns)
     validated = ctx.target.count_validation(ctx.run_id, ctx.namespace, ts.name, "VALIDATED")
     failed = ctx.target.count_validation(ctx.run_id, ctx.namespace, ts.name, "FAILED")
     ctx.target.update_ledger(ctx.run_id, ctx.namespace, ts.name, validated=validated, validate_failed=failed)

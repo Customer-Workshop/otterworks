@@ -33,7 +33,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: ldm
-          image: "{{ .Values.image.repository }}:{{ required "image.tag must be set (ECR uses IMMUTABLE tags)" .Values.image.tag }}"
+          image: {{ include "migration-job.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - {{ .Values.stage | quote }}
@@ -52,7 +52,7 @@ spec:
             - name: LDM_HOST
               value: eks
             - name: LDM_JOB_IMAGE
-              value: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              value: {{ include "migration-job.image" . | quote }}
             - name: LOCAL_STAGING_DIR
               value: /work/staging
             {{- range $k, $v := .Values.env }}

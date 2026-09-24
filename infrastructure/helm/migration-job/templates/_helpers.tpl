@@ -2,6 +2,12 @@
 {{- required "namespaceToken is required (e.g. d24-after)" .Values.namespaceToken -}}
 {{- end -}}
 
+{{/* image.repository, defaulting to the per-token ECR repository <registry>/<prefix>/<token>/ldm-job */}}
+{{- define "migration-job.image" -}}
+{{- $repo := .Values.image.repository | default (printf "%s/%s/%s/ldm-job" .Values.image.registry .Values.image.repositoryPrefix (include "migration-job.token" .)) -}}
+{{- printf "%s:%s" $repo (required "image.tag must be set (ECR uses IMMUTABLE tags)" .Values.image.tag) -}}
+{{- end -}}
+
 {{- define "migration-job.runId" -}}
 {{- if eq .Values.stage "init" -}}init{{- else -}}
 {{- required "runId is required for every stage except init" .Values.runId -}}

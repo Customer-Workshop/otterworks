@@ -248,9 +248,14 @@ class TargetDriver(Protocol):
         ...
 
     def count_staging(self, run_id: str, namespace: str, table: str) -> int: ...
-    def iter_staging(self, run_id: str, namespace: str, table: str, batch: int) -> Iterator[list[StagedRow]]: ...
-    def target_hashes(self, run_id: str, namespace: str, table: str, tsql_expr: str) -> dict[str, bytes]:
-        """source_key -> HASHBYTES(...) computed on the target for every staged row of the run."""
+    def iter_staging(self, run_id: str, namespace: str, table: str, batch: int) -> Iterator[list[StagedRow]]:
+        """Staged rows of the run in batches of `batch`, ordered by source_key (batches are key-contiguous)."""
+        ...
+
+    def target_hashes(
+        self, run_id: str, namespace: str, table: str, tsql_expr: str, key_from: str, key_to: str
+    ) -> dict[str, bytes]:
+        """source_key -> HASHBYTES(...) computed on the target for staged rows with key_from <= source_key <= key_to."""
         ...
 
     def class_aggregates(

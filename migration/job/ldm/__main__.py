@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.apply_sql:
                 raise ConfigError("--apply-sql is only valid with init")
             validate_run_id(run_id)
-        ctx = build_context(args.manifest, namespace, run_id)
+        ctx = build_context(args.manifest, namespace, run_id, verb=args.verb)
     except LdmError as e:
         print(f"ERROR {type(e).__name__}: {e}", file=sys.stderr)
         emit_result(run_id, namespace, args.verb, e.exit_code, {})

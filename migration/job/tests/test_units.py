@@ -243,3 +243,37 @@ def test_decimal_fits_handles_full_precision_without_context_overflow() -> None:
     assert _decimal_fits(Decimal("-1E+22"), 31, 8)
     assert not _decimal_fits(Decimal("1E+23"), 31, 8)
     assert not _decimal_fits(Decimal("NaN"), 31, 8)
+
+
+def test_target_only_verbs_do_not_require_source_credentials(tmp_path) -> None:
+    from ldm.drivers.fakes import FakeTarget
+    from ldm.errors import ConfigError
+    from ldm.runner import UnconfiguredSource, build_context
+    from ldm.staging import DirectoryBlobStore
+
+    from .conftest import make_manifest_tree
+
+    manifest = make_manifest_tree(tmp_path, "t09", purge=False)
+    env = {"LOCAL_STAGING_DIR": str(tmp_path / "staging"), "LDM_HOST": "aca"}
+    ctx = build_context(
+        manifest,
+        "t09-after",
+        "run-1",
+        env=env,
+        verb="reconcile",
+        target=FakeTarget(),
+        blobs=DirectoryBlobStore(tmp_path / "blobs"),
+    )
+    assert isinstance(ctx.source, UnconfiguredSource)
+    with pytest.raises(ConfigError, match="must not touch the source"):
+        ctx.source.connect()
+    with pytest.raises(ConfigError, match="source db2"):
+        build_context(
+            manifest,
+            "t09-after",
+            "run-1",
+            env=env,
+            verb="extract",
+            target=FakeTarget(),
+            blobs=DirectoryBlobStore(tmp_path / "blobs"),
+        )

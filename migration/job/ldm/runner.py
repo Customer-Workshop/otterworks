@@ -6,12 +6,12 @@ import json
 import os
 import sys
 import traceback
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 
 from .config import RUN_ID_RE, LoadedManifest, load_manifest
 from .context import Log, RunContext, build_table_specs, local_staging_dir, require_env
-from .drivers.base import SourceDriver, TargetDriver
+from .drivers.base import SelectionSpec, SourceDriver, TargetDriver, Value
 from .errors import EXIT_OK, EXIT_UNEXPECTED, ConfigError, LdmError
 from .stages import extract, init, load, purge, reconcile, validate
 from .staging import AzureBlobStore, BlobStore, NoBlobStore
@@ -24,7 +24,53 @@ STAGES: dict[str, Callable[[RunContext], dict[str, dict[str, int]]]] = {
     "reconcile": reconcile.run,
 }
 ALL_ORDER = ("extract", "load", "validate", "purge", "reconcile")
+SOURCE_VERBS = ("extract", "purge", "all")
 HOSTS = ("eks", "aca", "local")
+
+
+class UnconfiguredSource:
+    """Stands in for the source on target-only verbs (load/validate/reconcile/init), e.g. when run in ACA."""
+
+    def __init__(self, verb: str) -> None:
+        self._verb = verb
+
+    def _refuse(self) -> ConfigError:
+        return ConfigError(f"verb {self._verb!r} must not touch the source; source credentials were not loaded")
+
+    def connect(self) -> None:
+        raise self._refuse()
+
+    def close(self) -> None:
+        return None
+
+    def select_keys(self, schema: str, table: str, selection: SelectionSpec) -> list[str]:
+        raise self._refuse()
+
+    def fetch_range(
+        self,
+        schema: str,
+        table: str,
+        columns: Sequence[str],
+        selection: SelectionSpec,
+        key_from: str,
+        key_to: str,
+    ) -> Iterator[dict[str, Value]]:
+        raise self._refuse()
+
+    def purge_batch(
+        self,
+        schema: str,
+        table: str,
+        key_column: str,
+        keys: Sequence[str],
+        run_id: str,
+        namespace: str,
+        batch_no: int,
+    ) -> int:
+        raise self._refuse()
+
+    def audited_keys(self, run_id: str, table: str, keys: Sequence[str]) -> set[str]:
+        raise self._refuse()
 
 
 def validate_run_id(run_id: str) -> str:
@@ -92,6 +138,7 @@ def build_context(
     namespace: str,
     run_id: str,
     env: Mapping[str, str] | None = None,
+    verb: str = "all",
     source: SourceDriver | None = None,
     target: TargetDriver | None = None,
     blobs: BlobStore | None = None,
@@ -103,10 +150,12 @@ def build_context(
     if host not in HOSTS:
         raise ConfigError(f"LDM_HOST={host!r}: expected one of {HOSTS}")
     tables = build_table_specs(loaded)
+    if source is None:
+        source = make_source(loaded, env) if verb in SOURCE_VERBS else UnconfiguredSource(verb)
     ctx = RunContext(
         loaded=loaded,
         run_id=run_id,
-        source=source if source is not None else make_source(loaded, env),
+        source=source,
         target=target if target is not None else make_target(loaded, env),
         blobs=blobs if blobs is not None else make_blobs(loaded, env),
         local_dir=local_staging_dir(loaded.manifest, env),
@@ -146,7 +195,8 @@ def execute(ctx: RunContext, verb: str, apply_sql: list[Path] | None = None) -> 
     """Run a verb; returns (exit_code, tables). Never raises for LdmError - the code carries it."""
     tables: dict[str, dict[str, int]] = {}
     try:
-        ctx.source.connect() if verb in ("extract", "purge", "all") else None
+        if verb in SOURCE_VERBS:
+            ctx.source.connect()
         ctx.target.connect()
         if verb == "init":
             ctx.log.stage = "INIT"

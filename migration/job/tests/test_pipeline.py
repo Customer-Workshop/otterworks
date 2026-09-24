@@ -450,3 +450,24 @@ def test_init_apply_sql_is_confined_to_the_migration_tree(tmp_path: Path, seed: 
         init.run(ctx, [outside])
     with pytest.raises(ConfigError, match="not a .sql file"):
         init.run(ctx, [ctx.loaded.repo_root / "manifest.yaml"])
+
+
+def test_validate_streams_in_small_batches_with_identical_outcome(tmp_path: Path, seed: Seed) -> None:
+    """Validation is a bounded-memory stream: a 7-row batch size must classify exactly like one big batch."""
+    from .conftest import make_manifest_tree
+
+    def outcome(token: str, batch_rows: int) -> tuple[dict[str, set[str]], dict[str, int], dict[str, int]]:
+        manifest = make_manifest_tree(tmp_path, token, purge=True)
+        text = manifest.read_text(encoding="utf-8").replace(
+            "validate_batch_rows: 20000", f"validate_batch_rows: {batch_rows}"
+        )
+        manifest.write_text(text, encoding="utf-8")
+        target = FakeTarget()
+        ctx, code, tables = _run_all(tmp_path, seed_source(), manifest, target, namespace=f"{token}-after")
+        assert code == 0, tables
+        return _rules(target, ctx.run_id, ctx.namespace), tables["DOCARCH"], tables["FILEAUD"]
+
+    big = outcome("b01", 20000)
+    small = outcome("b02", 7)
+    assert small == big
+    assert {"HASH_MISMATCH", "CLASS_TOTAL_MISMATCH", "ORPHAN_PARENT_NOT_SELECTED"} <= set(small[0])

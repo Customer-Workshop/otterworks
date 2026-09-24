@@ -523,10 +523,13 @@ class AzureSqlTarget:
             return int(v)
         return str(v)
 
-    def target_hashes(self, run_id: str, namespace: str, table: str, tsql_expr: str) -> dict[str, bytes]:
+    def target_hashes(
+        self, run_id: str, namespace: str, table: str, tsql_expr: str, key_from: str, key_to: str
+    ) -> dict[str, bytes]:
         rows = self._rows(
-            f"SELECT source_key, {tsql_expr} FROM stg.{_ident(table)} WHERE run_id = ? AND namespace = ?",
-            (run_id, namespace),
+            f"SELECT source_key, {tsql_expr} FROM stg.{_ident(table)} WHERE run_id = ? AND namespace = ? "
+            "AND source_key >= ? AND source_key <= ?",
+            (run_id, namespace, key_from, key_to),
         )
         return {str(k): bytes(h) for k, h in rows}  # type: ignore[call-overload]
 

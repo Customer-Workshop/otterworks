@@ -14,6 +14,12 @@ helm upgrade --install ldm-extract-r1 infrastructure/helm/migration-job -n otter
 kubectl -n otterworks-d24-after wait --for=condition=complete job/ldm-extract-r20260924150000
 ```
 
+The image defaults to the token's own ECR repository,
+`<image.registry>/<image.repositoryPrefix>/<namespaceToken>/ldm-job`; set `image.repository` to
+override it entirely. Source (Db2) credentials are only read for `extract`, `purge` and `all`; `load`,
+`validate` and `reconcile` can run where Db2 is unreachable (e.g. Container Apps) with only the Azure
+settings present.
+
 `/work/staging` is an `emptyDir`: it does not survive from one Job to the next. Run the stages as
 separate Jobs only when `env.AZ_STORAGE_ACCOUNT` / `env.AZ_STAGING_CONTAINER` are set (extract uploads
 every range to the staging container and load downloads it back); otherwise use `stage=all` so extract

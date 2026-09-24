@@ -302,15 +302,16 @@ class FakeTarget:
         return len(self._stg(run_id, namespace, table))
 
     def iter_staging(self, run_id, namespace, table, batch) -> Iterator[list[StagedRow]]:
-        rows = sorted(self._stg(run_id, namespace, table), key=lambda r: r.stg_id or 0)
+        rows = sorted(self._stg(run_id, namespace, table), key=lambda r: r.source_key)
         for i in range(0, len(rows), batch):
             yield [replace(r, values=dict(r.values)) for r in rows[i : i + batch]]
 
-    def target_hashes(self, run_id, namespace, table, tsql_expr) -> dict[str, bytes]:
+    def target_hashes(self, run_id, namespace, table, tsql_expr, key_from, key_to) -> dict[str, bytes]:
         shape = self.shapes[table]
         return {
             r.source_key: target_hash(r.values, shape.hash_columns, shape.specs)
             for r in self._stg(run_id, namespace, table)
+            if key_from <= r.source_key <= key_to
         }
 
     def class_aggregates(self, run_id, namespace, table, class_column, sum_columns) -> dict[str, ClassAggregate]:

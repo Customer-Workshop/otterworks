@@ -9,7 +9,7 @@
 {{- range $rule := $group.rules -}}
 {{- $r := deepCopy $rule -}}
 {{- $_ := set $r "expr" (include "document-service.scopeExpr" (dict "expr" $rule.expr "namespace" $ns)) -}}
-{{- $labels := mergeOverwrite (deepCopy ($rule.labels | default dict)) (dict "namespace" $ns) ($.Values.monitoring.rules.extraLabels | default dict) -}}
+{{- $labels := mergeOverwrite (deepCopy ($rule.labels | default dict)) ($.Values.monitoring.rules.extraLabels | default dict) (dict "namespace" $ns) -}}
 {{- $_ := set $r "labels" $labels -}}
 {{- $ann := deepCopy ($rule.annotations | default dict) -}}
 {{- if and $links.grafana (hasKey $ann "dashboard_url") -}}

@@ -38,6 +38,7 @@ import statistics
 import subprocess
 import sys
 import time
+import traceback
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -1003,22 +1004,36 @@ def _check(findings: list[str], ok: bool, msg: str) -> None:
 
 
 def cmd_verify(args: argparse.Namespace) -> None:
-    cat = load_catalog()
-    if args.scenario not in cat["scenarios"]:
-        die(f"unknown scenario {args.scenario}")
-    sc = cat["scenarios"][args.scenario]
-    expected = load_expected()
-    fp = fingerprints()
     findings: list[str] = []
     started = time.monotonic()
     report: dict[str, Any] = {
         "scenario": args.scenario,
         "expect": args.expect,
         "started_at": datetime.now(UTC).isoformat(),
-        "git_sha": git_sha(),
-        "fingerprints": fp,
-        "expected_fingerprints": expected.get("fingerprints", {}),
     }
+    # A gate that crashes must still leave its evidence: anything that escapes
+    # the checks (Prometheus down, a preparation step failing) becomes a RED
+    # finding with the traceback in the report rather than a bare exception.
+    try:
+        _verify(args, report, findings, started)
+    except Exception as exc:
+        findings.append(f"verify aborted: {type(exc).__name__}: {exc}")
+        report["traceback"] = traceback.format_exc()
+        _finish(report, findings, started)
+
+
+def _verify(
+    args: argparse.Namespace, report: dict[str, Any], findings: list[str], started: float
+) -> None:
+    cat = load_catalog()
+    if args.scenario not in cat["scenarios"]:
+        die(f"unknown scenario {args.scenario}")
+    sc = cat["scenarios"][args.scenario]
+    expected = load_expected()
+    fp = fingerprints()
+    report["git_sha"] = git_sha()
+    report["fingerprints"] = fp
+    report["expected_fingerprints"] = expected.get("fingerprints", {})
 
     # 1. Fixture must be byte-identical to what was recorded -- always.
     _check(
@@ -1157,6 +1172,11 @@ def cmd_verify(args: argparse.Namespace) -> None:
                 state == "inactive",
                 f"alert {alert['name']} is inactive under the same conditions",
             )
+            # The trigger must have held for the whole soak, not just at the
+            # start: a chaos flag that expired mid-run would make an unfixed
+            # flaw look quiet.
+            for label, holds in arm_conditions(cat, sc):
+                _check(findings, holds, f"{label} (still, after the soak)")
             metrics = snapshot_metrics(cat)
             if any(key.startswith("rollup_") for key in sc.get("after", {})):
                 metrics.update(rollup_soak_metrics(soak_started))

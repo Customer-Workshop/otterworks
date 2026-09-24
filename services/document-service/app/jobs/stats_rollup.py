@@ -106,15 +106,13 @@ async def run_once(session_factory: async_sessionmaker[AsyncSession]) -> None:
             logger.exception("stats_rollup_failed", window_start=window.isoformat())
             return
         ROLLUP_RUNS_TOTAL.labels(SERVICE, "success").inc()
-        dupes = await duplicate_windows(db, window - timedelta(hours=1))
-        ROLLUP_DUPLICATE_WINDOWS.labels(SERVICE).set(dupes)
         logger.info(
             "stats_rollup_completed",
             window_start=window.isoformat(),
             documents_total=row.documents_total,
             versions_total=row.versions_total,
-            duplicate_windows=dupes,
         )
+    await refresh_duplicate_gauge(session_factory, window)
 
 
 async def loop(session_factory: async_sessionmaker[AsyncSession]) -> None:
@@ -125,12 +123,17 @@ async def loop(session_factory: async_sessionmaker[AsyncSession]) -> None:
         delay = interval - (time.time() % interval) + 2
         await asyncio.sleep(delay)
         window = current_window()
-        await run_once(session_factory)
-        await asyncio.sleep(DUPLICATE_RECHECK_DELAY_SECONDS)
+        # The rollup itself commits inside run_once; nothing after that point
+        # (the duplicate-window gauge is reporting only) may take the
+        # scheduler down and stop future windows.
         try:
+            await run_once(session_factory)
+            await asyncio.sleep(DUPLICATE_RECHECK_DELAY_SECONDS)
             await refresh_duplicate_gauge(session_factory, window)
+        except asyncio.CancelledError:
+            raise
         except Exception:
-            logger.exception("stats_rollup_duplicate_check_failed", window_start=window.isoformat())
+            logger.exception("stats_rollup_iteration_failed", window_start=window.isoformat())
 
 
 def start(session_factory: async_sessionmaker[AsyncSession]) -> asyncio.Task[None] | None:

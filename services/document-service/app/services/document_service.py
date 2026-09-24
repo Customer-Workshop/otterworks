@@ -7,7 +7,7 @@ from uuid import UUID
 import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, defer, selectinload
 
 from app.models.document import Comment, Document, DocumentVersion, Template
 from app.schemas.document import (
@@ -103,48 +103,45 @@ class DocumentService:
         count_q = select(func.count()).select_from(base.subquery())
         total = (await self.db.execute(count_q)).scalar_one()
 
-        query = base.order_by(Document.updated_at.desc())
+        query = base.options(
+            selectinload(Document.versions).defer(DocumentVersion.content)
+        )
+        query = query.order_by(Document.updated_at.desc())
         query = query.offset((page - 1) * size).limit(size)
         result = await self.db.execute(query)
         documents = list(result.scalars().all())
 
-        recent = await self._recent_versions_by_document(
-            [doc.id for doc in documents], limit=RECENT_VERSIONS_PER_DOCUMENT
-        )
+        recent_by_doc: dict[UUID, list[DocumentVersion]] = {
+            doc.id: [] for doc in documents
+        }
+        if documents:
+            rank = (
+                func.row_number()
+                .over(
+                    partition_by=DocumentVersion.document_id,
+                    order_by=DocumentVersion.version_number.desc(),
+                )
+                .label("rank")
+            )
+            ranked = (
+                select(DocumentVersion, rank)
+                .where(DocumentVersion.document_id.in_(list(recent_by_doc)))
+                .subquery()
+            )
+            ranked_version = aliased(DocumentVersion, ranked)
+            ver_result = await self.db.execute(
+                select(ranked_version)
+                .options(defer(ranked_version.content))
+                .where(ranked.c.rank <= RECENT_VERSIONS_PER_DOCUMENT)
+                .order_by(ranked.c.document_id, ranked.c.version_number.desc())
+            )
+            for version in ver_result.scalars().all():
+                recent_by_doc[version.document_id].append(version)
+
         for doc in documents:
-            doc.recent_versions = recent.get(doc.id, [])
+            doc.recent_versions = recent_by_doc[doc.id]
 
         return documents, total
-
-    async def _recent_versions_by_document(
-        self, document_ids: list[UUID], limit: int
-    ) -> dict[UUID, list[DocumentVersion]]:
-        """Fetch the newest `limit` versions for every document in one statement."""
-        if not document_ids:
-            return {}
-        rank = (
-            func.row_number()
-            .over(
-                partition_by=DocumentVersion.document_id,
-                order_by=DocumentVersion.version_number.desc(),
-            )
-            .label("rank")
-        )
-        ranked = (
-            select(DocumentVersion, rank)
-            .where(DocumentVersion.document_id.in_(document_ids))
-            .subquery()
-        )
-        version_alias = aliased(DocumentVersion, ranked)
-        result = await self.db.execute(
-            select(version_alias)
-            .where(ranked.c.rank <= limit)
-            .order_by(ranked.c.document_id, ranked.c.version_number.desc())
-        )
-        grouped: dict[UUID, list[DocumentVersion]] = {}
-        for version in result.scalars().all():
-            grouped.setdefault(version.document_id, []).append(version)
-        return grouped
 
     async def update(
         self, document_id: UUID, data: DocumentUpdate, updated_by: UUID | None = None

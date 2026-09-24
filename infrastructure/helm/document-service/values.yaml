@@ -1,4 +1,8 @@
 replicaCount: 1
+# Deployment rollout strategy (Kubernetes default RollingUpdate when empty).
+# Tenants that alert on the double-run flaw set {type: Recreate} so a rollout
+# does not overlap old and new replicas on the rollup window.
+strategy: {}
 
 image:
   repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/workshop/otterworks-document-service

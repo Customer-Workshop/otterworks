@@ -3,6 +3,7 @@
 import uuid
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.document import (
@@ -13,6 +14,7 @@ from app.schemas.document import (
     TemplateCreate,
 )
 from app.services.document_service import DocumentService
+from tests.conftest import engine
 
 
 @pytest.mark.asyncio
@@ -237,3 +239,34 @@ async def test_paginate_helper():
     assert DocumentService.paginate(11, 1, 5) == 3
     assert DocumentService.paginate(0, 1, 5) == 1
     assert DocumentService.paginate(10, 1, 0) == 1
+
+
+@pytest.mark.asyncio
+async def test_list_documents_query_count_is_constant(
+    db_session: AsyncSession, owner_id: uuid.UUID
+):
+    """Listing a page issues a fixed number of statements regardless of page size."""
+    service = DocumentService(db_session)
+    for i in range(12):
+        doc = await service.create(
+            DocumentCreate(title=f"Doc {i}", content="v1", owner_id=owner_id)
+        )
+        for v in range(2, 9):
+            await service.update(doc.id, DocumentUpdate(title=f"Doc {i}", content=f"v{v}"))
+
+    statements: list[str] = []
+
+    def _record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", _record)
+    try:
+        items, total = await service.list_documents(owner_id=owner_id, page=1, size=12)
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", _record)
+
+    assert total == 12
+    assert len(items) == 12
+    assert len(statements) <= 5, statements
+    for doc in items:
+        assert [v.version_number for v in doc.recent_versions] == [8, 7, 6, 5, 4]

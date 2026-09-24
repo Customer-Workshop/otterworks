@@ -1,4 +1,4 @@
-"""Indexes covering the document list page and its recent-versions lookup.
+"""Indexes for the document list page and its recent-versions lookup.
 
 Revision ID: 004
 Revises: 003
@@ -7,8 +7,6 @@ Create Date: 2026-09-24 00:00:00.000000
 """
 
 from collections.abc import Sequence
-
-import sqlalchemy as sa
 
 from alembic import op
 
@@ -20,20 +18,17 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.create_index(
-        "ix_documents_owner_listing",
+        "ix_documents_owner_list",
         "documents",
-        ["owner_id", "is_deleted", "is_template", sa.text("updated_at DESC")],
+        ["owner_id", "is_deleted", "is_template", "updated_at"],
     )
     op.create_index(
-        "ix_document_versions_document_id_version_number",
+        "ix_document_versions_document_version",
         "document_versions",
-        ["document_id", sa.text("version_number DESC")],
+        ["document_id", "version_number"],
     )
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_document_versions_document_id_version_number",
-        table_name="document_versions",
-    )
-    op.drop_index("ix_documents_owner_listing", table_name="documents")
+    op.drop_index("ix_document_versions_document_version", table_name="document_versions")
+    op.drop_index("ix_documents_owner_list", table_name="documents")

@@ -37,14 +37,16 @@ auto-loaded, so the prompt carries the *order of work*, not the commands.
 
 You have been paged. The Alertmanager webhook payload for the firing alert is appended below; it is the whole brief, and nobody will type a follow-up prompt. The paging service lives in @Cognition-Partner-Workshops/otterworks (the document-service; its `incident-responder` Skill is auto-loaded and has every command you need).
 
+If the payload's top-level `status` is `resolved` (Alertmanager also notifies on resolve), do nothing: reply with one line naming the alert and its `endsAt`, and stop.
+
 Work in this order and do not skip a step:
 1. Read the payload: alert name, `service`, `scenario`, `severity`, the summary's metric and threshold, `startsAt`, and the `dashboard_url` / `traces_url` / `runbook_url` annotations. If the payload contains a Slack channel and message timestamp, that thread is where your RCA goes; otherwise the RCA goes in the PR description and your final message.
 2. Telemetry before code. Open the dashboard and trace links from the annotations and write down three facts with numbers: the user-facing symptom (p95, error ratio, memory, duplicate windows), what is NOT changing (request rate flat, no deploy), and what the traces say the time or resource is spent on. If those hosts are unreachable from your machine, say so and get the same numbers from your local reproduction in step 3 instead.
-3. Reproduce on your own machine: check out the repository, run `make incident-up`, then `make incident-arm SCENARIO=<scenario from the payload>` and `make incident-verify SCENARIO=<scenario> EXPECT=before`. The gate must go green (the alert fires locally and the before-thresholds are met) before you touch code. Open the local Grafana (http://localhost:3001, admin/otterworks) and Jaeger (http://localhost:16686) and capture the flat-traffic/rising-latency panel and the one trace that fans out — those two screenshots go in the PR.
+3. Reproduce on your own machine on the code the paging tenant actually runs: the alert's `branch` label names the branch that tenant deploys (`git fetch origin <branch> && git checkout <branch>`); `main` is right only if the label says `main`, the `namespace` is `otterworks-main`, or the payload names no tenant namespace at all. Never derive the branch from the namespace — if the payload has a tenant namespace but no `branch` label, stop and report that instead of guessing. Then run `make incident-up`, then `make incident-arm SCENARIO=<scenario from the payload>` and `make incident-verify SCENARIO=<scenario> EXPECT=before`. The gate must go green (the alert fires locally and the before-thresholds are met) before you touch code. Open the local Grafana (http://localhost:3001, admin/otterworks) and Jaeger (http://localhost:16686) and capture the flat-traffic/rising-latency panel and the one trace that fans out — those two screenshots go in the PR.
 4. Find the cause in code by following the span names and SQL text back to the function that emits them; check `git log -S` for when it arrived. Name the file, function and line.
 5. Make the smallest fix that removes the cause: a query change, a migration if an index is missing (a new Alembic revision; never edit an existing one), and one regression test that pins the property the alert measured. No refactors, no changes to alert rules, thresholds, `incident/scenarios.yaml`, `incident/expected.yaml`, seeds or dashboards. Run the service's lint (`ruff`) and its focused tests.
 6. Prove it with the same load: rebuild (`make incident-up`), run `make incident-verify SCENARIO=<scenario> EXPECT=after`, and record the before/after numbers side by side from the gate output (for n-plus-one that is p95 and SQL statements per request; for the others, the metric named in the alert). The alert must be inactive under the same load. If the gate is red, the fix is not done — read the trace for the new build and iterate; never edit the gate.
-7. Open one PR from a new branch `devin/<unix-timestamp>-<alert-slug>` against the branch the paging tenant tracks (`demo-incident` for the sandbox tenant; `main` if the payload does not name one) with: what users saw, what telemetry showed, the root cause (file:function:line), the fix in one sentence, the before/after table, the two screenshots, and the exact gate commands you ran with their output. Keep the diff to the query change, the migration, the test and (if needed) the model/service code the query touches.
+7. Open one PR from a new branch `devin/<unix-timestamp>-<alert-slug>` against the branch you checked out in step 3 (the alert's `branch` label; `main` only in the cases above) with: what users saw, what telemetry showed, the root cause (file:function:line), the fix in one sentence, the before/after table, the two screenshots, and the exact gate commands you ran with their output. Keep the diff to the query change, the migration, the test and (if needed) the model/service code the query touches.
 8. Post the RCA: one message in the alert's Slack thread if you have one (users saw / telemetry showed / root cause / fix / before-after / PR link), otherwise as your final message. Run `make incident-disarm` before you finish.
 
 Never push to any branch other than your own, never merge, and never silence the alert (rule edits, threshold changes, inhibitions) as a fix. If you cannot reproduce the alert locally, stop and report exactly what you saw instead of guessing at a fix.
@@ -53,6 +55,7 @@ Never push to any branch other than your own, never merge, and never silence the
 Why each instruction is there, in one line each:
 
 - **Trace first** — the differentiator is that Devin investigates like an SRE, not that it greps; the numbers it writes down become the RCA.
+- **Branch from the alert's `branch` label, never from the namespace** — `workshop-<id>` and `demo-<id>` share a tenant id and a tenant can track `main`, so a namespace-derived guess can land the PR on the wrong base. Where the label comes from: `scripts/deploy-tenant.sh --branch <branch>` (the branch the ops dashboard recorded at check-out, passed by `demo-platform/runner/entrypoint.sh`) sets `monitoring.rules.extraLabels.branch` on the document-service chart, and the chart's `PrometheusRule` merges `extraLabels` into every tenant alert. The local Compose alerts (`observability/prometheus/incident_alerts.yml`) carry no `namespace` label and the golden tenant is `otterworks-main`; both mean `main`. A tenant namespace with no label means the tenant was deployed outside that path, and the responder stops rather than guessing.
 - **Reproduce with the before gate** — a green `EXPECT=before` is the proof that the machine sees the same incident the alert saw; no fix before that.
 - **Smallest fix, named shape** — "query change, migration, test" is what a reviewer will merge in a minute; refactors are how a first responder makes an incident worse.
 - **Prove with the same load** — `EXPECT=after` drives the identical load profile and refuses an unchanged source fingerprint, so the before/after numbers are comparable and cannot come from idling.
@@ -96,12 +99,18 @@ platform's own integrations, not the session's network.
 
 ## Wiring Alertmanager to it
 
-The Automation's incoming-webhook URL is the value of `DEVIN_WEBHOOK_URL` for
-the local Compose stack (`observability/alertmanager/alertmanager.yml.tmpl`;
-defaults to the local sink `http://alert-sink:9095/devin` so the flow runs with
-no credentials) and for the shared cluster's Alertmanager (the
-`platform-engineering-shared-services` repo, same receiver name). Set
-`SLACK_WEBHOOK_URL` alongside it to post the same alert into the channel.
+For the local Compose stack, set `DEVIN_WEBHOOK_URL` to the Automation's
+incoming-webhook URL and `DEVIN_WEBHOOK_SECRET` to its one-time secret (sent
+as `X-Webhook-Secret`); `observability/alertmanager/entrypoint.sh` renders both
+into `alertmanager.yml.tmpl`. With neither set the flow runs with no
+credentials: the page is delivered only to the local sink
+(`http://alert-sink:9095/devin`). When they are set the page is delivered to
+the Automation *and* mirrored to the sink, so `make incident-verify
+SCENARIO=<s> EXPECT=before` and `make incident-simulate` keep working in real
+mode. The shared cluster's Alertmanager (the
+`platform-engineering-shared-services` repo, same receiver name) posts to the
+Automation directly. Set `SLACK_WEBHOOK_URL` alongside it to post the same
+alert into the channel.
 
 `make incident-simulate RECEIVER=devin` prints the exact JSON the automation
 received on the last page; it is the payload to paste into a session by hand if

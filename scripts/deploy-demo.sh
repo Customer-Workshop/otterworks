@@ -88,6 +88,7 @@ fi
 start_transcript "${TOKEN}" deploy
 dlog "token=${TOKEN} run=${RUN} state=${STATE} namespace=${NS} db2=${DB2_DB} expires=${EXPIRES} azure=${WANT_AZURE} dry_run=${DRY_RUN}"
 aws_account_id; ensure_kubeconfig
+DEMO_BRANCH="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "demo/${DEMO_NAME}")"
 dlog "tags: $(demo_tags_kv "${TOKEN}" "${EXPIRES}")"
 LABELS_KV="$(demo_k8s_labels "${TOKEN}")"
 
@@ -105,7 +106,13 @@ stage_end 0
 
 # --- 2. tenant via deploy-tenant.sh --------------------------------------------------
 stage_begin "deploy-tenant"
-DT_ARGS=("${TOKEN}" --ttl "${TTL}" --host-suffix "${DEMO_HOST_SUFFIX}" --profile "${PROFILE}")
+# Registered before the namespace exists: the platform reaper's orphan sweep runs every 15 min
+# with a 5-min grace, less than deploy-tenant + Db2 seed take.
+if [ "${DRY_RUN}" = "1" ]; then dlog "[dry-run] would register TENANT#${TOKEN} (persistent) in ${DEMO_CONTROL_TABLE}"
+else register_control_tenant "${TOKEN}" "${EXPIRES}"; dlog "registered TENANT#${TOKEN} in ${DEMO_CONTROL_TABLE} (persistent until demo-destroy)"; fi
+# --branch makes deploy-tenant prefer this token's own build (tenant-<token>) for the services the
+# branch touched (report/audit/admin-dashboard) and the golden image for everything else.
+DT_ARGS=("${TOKEN}" --ttl "${TTL}" --host-suffix "${DEMO_HOST_SUFFIX}" --profile "${PROFILE}" --branch "${DEMO_BRANCH}")
 [ -n "${IMAGE_TAG}" ] && DT_ARGS+=(--image-tag "${IMAGE_TAG}")
 run env HOST_SUFFIX="${DEMO_HOST_SUFFIX}" "${SCRIPT_DIR}/deploy-tenant.sh" "${DT_ARGS[@]}"
 # Demo labels on top of the tenant labels/expiry annotation deploy-tenant sets (§3.3).
@@ -181,7 +188,7 @@ if [ "${WANT_AZURE}" = "true" ]; then
   if [ "${DRY_RUN}" = "1" ]; then EGRESS_CIDRS='["0.0.0.0/32"]'; else EGRESS_CIDRS="$(discover_eks_egress_cidrs)"; fi
   [ "$(jq 'length' <<<"${EGRESS_CIDRS}")" -gt 0 ] || die "could not discover EKS egress IPs for the Azure SQL firewall rule"
   REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-  REPORT_TAG="${IMAGE_TAG:-$(tenant_image_tag "$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "demo/${DEMO_NAME}")")}"
+  REPORT_TAG="${IMAGE_TAG:-$(app_image_tag "${TOKEN}" report-service)}"
   JOB_IMAGE="${LDM_JOB_IMAGE:-${JOB_ECR_URL:-${REGISTRY}/$(demo_ecr_repo "${TOKEN}")}:${REPORT_TAG}}"
   SESSION_LINKS="$(cat "${MANIFEST_DIR}"/sessions/*.yaml 2>/dev/null | sed -nE 's/^[[:space:]-]*url:[[:space:]]*//p' | jq -R . | jq -sc . || echo '[]')"
   TFVARS="${TRANSCRIPT_DIR}/azure.auto.tfvars.json"   # token-derived, git-ignored, no secrets

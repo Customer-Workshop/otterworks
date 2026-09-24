@@ -89,6 +89,43 @@ azure_tfstate_key()  { printf 'otterworks/%s/terraform.tfstate' "$1"; }
 aws_tfstate_key()    { printf 'otterworks/demo/%s/terraform.tfstate' "$1"; }
 demo_s3_bucket()     { printf 'otterworks-ldm-%s-%s' "$1" "${AWS_ACCOUNT_ID:?AWS_ACCOUNT_ID unset}"; }
 demo_ecr_repo()      { printf 'otterworks-demo/%s/ldm-job' "$1"; }
+# Tag deploy-tenant resolves for an app service: the token's own build (tenant-<token>) when
+# it has been pushed to ECR, otherwise the golden `main` image.
+app_image_tag() {
+  local token="$1" svc="$2" t; t="$(tenant_image_tag "${token}")"
+  if aws ecr describe-images --repository-name "otterworks/${svc}" --image-ids "imageTag=${t}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+    printf '%s' "${t}"
+  else
+    printf 'main'
+  fi
+}
+# Platform control table (demo-platform/docs/control-table-schema.md). The platform
+# reaper GCs any otterworks-* namespace without a TENANT#<id>/META item as an orphan
+# (grace 300s) and idle-suspends registered non-persistent tenants after an hour
+# without ingress traffic - which would scale the app to zero mid-migration. A demo
+# namespace is therefore registered persistent=true with its absolute expiry; the
+# demo reaper (scripts/demo-reaper.sh), not the platform one, owns its lifetime.
+DEMO_CONTROL_TABLE="${CONTROL_TABLE:-otterworks-demo-control}"
+control_tenant_key() { jq -n --arg pk "TENANT#$1" '{PK:{S:$pk},SK:{S:"META"}}'; }
+register_control_tenant() {
+  local token="$1" expires="$2" now; now="$(date -u +%s)"
+  local item
+  item="$(jq -n --arg id "${token}" --arg ns "$(demo_namespace "${token}")" --arg db "$(tenant_db_name "${token}")" \
+        --arg url "https://$(demo_web_host "${token}")" --arg api "https://$(demo_api_host "${token}")" \
+        --arg branch "demo-${token}" --arg owner "${DEMO_OWNER}" --arg now "${now}" \
+        --arg exp "$(iso_to_epoch "${expires}")" '{
+          PK:{S:("TENANT#"+$id)}, SK:{S:"META"}, id:{S:$id}, status:{S:"active"}, tier:{S:"A"},
+          namespace:{S:$ns}, db_name:{S:$db}, url:{S:$url}, api_url:{S:$api}, branch:{S:$branch},
+          owner:{S:$owner}, persistent:{BOOL:true}, created_at:{N:$now}, checked_out_at:{N:$now},
+          last_seen_at:{N:$now}, expires_at:{N:$exp} }')"
+  aws dynamodb put-item --table-name "${DEMO_CONTROL_TABLE}" --region "${AWS_REGION}" --item "${item}" >/dev/null
+}
+deregister_control_tenant() {
+  local token="$1"
+  aws dynamodb delete-item --table-name "${DEMO_CONTROL_TABLE}" --region "${AWS_REGION}" --key "$(control_tenant_key "${token}")" >/dev/null
+  aws dynamodb delete-item --table-name "${DEMO_CONTROL_TABLE}" --region "${AWS_REGION}" \
+    --key "$(jq -n --arg pk "LOCK#${token}" '{PK:{S:$pk},SK:{S:"LOCK"}}')" >/dev/null 2>&1 || true
+}
 # The token's overlay (migration/manifests/<NS>.yaml).
 overlay_path()       { printf '%s/manifests/%s.yaml' "${MANIFEST_DIR}" "$1"; }
 

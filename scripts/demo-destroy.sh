@@ -147,6 +147,8 @@ if [ "${DRY_RUN}" = "1" ] || kubectl get ns "${NS}" >/dev/null 2>&1 || [ -n "${D
 else
   dlog "namespace ${NS} absent and DB_PASSWORD unset; skipping teardown-tenant.sh"
 fi
+if [ "${DRY_RUN}" = "1" ]; then dlog "[dry-run] would delete TENANT#${TOKEN} from ${DEMO_CONTROL_TABLE}"
+else deregister_control_tenant "${TOKEN}" || tenant_rc=$?; fi
 stage_end "${tenant_rc}"
 
 # --- 4. S3 prefix + demo-aws Terraform ----------------------------------------------------

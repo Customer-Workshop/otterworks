@@ -34,9 +34,9 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods"]
-    # `kubectl wait pod/db2-archive-0` = GET + WATCH with fieldSelector metadata.name, both of which
-    # RBAC evaluates against resourceNames; no other pod in the namespace is readable.
-    verbs: ["get", "watch"]
+    # `kubectl wait pod/db2-archive-0` = GET, then LIST + WATCH with fieldSelector metadata.name; RBAC
+    # evaluates all three against resourceNames, so no other pod in the namespace is readable.
+    verbs: ["get", "list", "watch"]
     resourceNames: ["db2-archive-0"]
   - apiGroups: [""]
     resources: ["pods/exec"]

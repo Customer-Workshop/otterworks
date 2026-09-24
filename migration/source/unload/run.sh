@@ -48,10 +48,11 @@ DEL="$WORK/$TABLE.del"
 if [[ -n "${UNLOAD01_DEL:-}" ]]; then
   cp "$UNLOAD01_DEL" "$DEL" || die_io "cannot read $UNLOAD01_DEL"
 else
-  # Key bounds are CHAR keys (copybooks: [A-Z0-9-]); anything else is refused rather than quoted,
-  # so a bound can never carry a CLP terminator or SQL into the EXPORT statement.
+  # Key bounds are fixed-width CHAR keys (copybooks: [A-Z0-9-], blank-padded to the column width, e.g. the
+  # MIG-04 keys); anything else is refused rather than quoted, so a bound can never carry a CLP
+  # terminator or SQL into the EXPORT statement.
   for k in "$KEY_FROM" "$KEY_TO"; do
-    [[ "$k" =~ ^[A-Za-z0-9_.:-]{1,64}$ ]] || die_io "key bound '$k' is not a plain key literal"
+    [[ "$k" =~ ^[A-Za-z0-9_.:-]{1,64}\ {0,64}$ ]] || die_io "key bound '$k' is not a plain key literal"
   done
   command -v db2 >/dev/null || die_io "db2 CLP not on PATH"
   q() { printf "'%s'" "$1"; }

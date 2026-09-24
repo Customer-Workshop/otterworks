@@ -7,9 +7,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.api import documents as documents_api
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.middleware import request_log
 from app.models.document import Comment, Document, DocumentVersion, Template  # noqa: F401
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -18,6 +20,13 @@ engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestingSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
+
+
+@pytest.fixture(autouse=True)
+def chaos_flags_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests must never observe a developer's local Redis: every chaos flag reads as off."""
+    monkeypatch.setattr(documents_api, "flag_active", lambda key: False)
+    monkeypatch.setattr(request_log, "flag_active", lambda key: False)
 
 
 @pytest.fixture(autouse=True)

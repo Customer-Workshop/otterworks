@@ -105,7 +105,7 @@ def tsql_hash_expression(hash_columns: Sequence[str], specs: list[ColumnSpec]) -
         elif spec.kind == "timestamp12":
             expr = (
                 f"CONCAT(CONVERT(NCHAR(10), {col}, 23), N'-', "
-                f"REPLACE(CONVERT(NVARCHAR(16), {col}, 114), N':', N'.'), N'.', "
+                f"REPLACE(CONVERT(NCHAR(8), {col}, 108), N':', N'.'), N'.', "
                 f"RIGHT(CONVERT(NVARCHAR(27), {col}, 121), 7), "
                 f"RIGHT(CONCAT(N'00000', [{name}_NANOS_TAIL]), 5))"
             )
@@ -115,4 +115,8 @@ def tsql_hash_expression(hash_columns: Sequence[str], specs: list[ColumnSpec]) -
             expr = f"UPPER(CONVERT(NVARCHAR(MAX), {col}, 2))"
         parts.append(expr)
     joined = ", N'|', ".join(parts) if len(parts) > 1 else parts[0]
-    return f"HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), CONCAT({joined})) )".replace(") )", "))")
+    # UTF-8 bytes of the joined text (a BIN2 UTF-8 collation), exactly what the Python side hashes.
+    return (
+        "HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), "
+        f"CAST(CONCAT({joined}) AS VARCHAR(MAX)) COLLATE Latin1_General_100_BIN2_UTF8))"
+    )

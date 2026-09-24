@@ -200,7 +200,9 @@ def test_tsql_hash_expression_shape(tmp_path: Path) -> None:
     base = make_manifest_tree(tmp_path, "zz1")
     ts = build_table_specs(load_manifest(base, "zz1-after"))["DOCARCH"]
     sql = tsql_hash_expression(ts.config.hash_columns, ts.columns)
-    assert sql.startswith("HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), CONCAT(")
+    assert sql.startswith("HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), CAST(CONCAT(")
+    assert sql.endswith("AS VARCHAR(MAX)) COLLATE Latin1_General_100_BIN2_UTF8))")
+    assert "CONVERT(NCHAR(8), [LAST_ACCESS_TS], 108)" in sql
     assert "ISNULL([ARCH_KEY], N'')" in sql and "ISNULL(RTRIM([OWNER_NAME]), N'')" in sql
     assert "CAST([STORAGE_CHARGE] AS DECIMAL(38,8))" in sql
     assert "[LAST_ACCESS_TS_NANOS_TAIL]" in sql and sql.count("N'|'") == len(ts.config.hash_columns) - 1

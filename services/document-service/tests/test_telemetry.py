@@ -4,6 +4,10 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.document import DocumentCreate, DocumentUpdate
+from app.services.document_service import DocumentService
 
 
 @pytest.mark.asyncio
@@ -16,6 +20,33 @@ async def test_list_reports_query_count(client: AsyncClient, owner_id: uuid.UUID
     resp = await client.get("/api/v1/documents/", params={"owner_id": str(owner_id)})
     assert resp.status_code == 200
     assert int(resp.headers["X-DB-Queries"]) >= 2
+
+
+@pytest.mark.asyncio
+async def test_list_query_count_is_constant_in_page_size(
+    client: AsyncClient, db_session: AsyncSession, owner_id: uuid.UUID
+):
+    service = DocumentService(db_session)
+    for i in range(30):
+        doc = await service.create(
+            DocumentCreate(title=f"Doc {i}", content="v1", owner_id=owner_id)
+        )
+        for v in range(2, 8):
+            await service.update(
+                doc.id, DocumentUpdate(title=f"Doc {i}", content=f"v{v}")
+            )
+
+    async def queries_for(size: int) -> int:
+        resp = await client.get(
+            "/api/v1/documents/", params={"owner_id": str(owner_id), "size": size}
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["items"]) == size
+        return int(resp.headers["X-DB-Queries"])
+
+    small, large = await queries_for(3), await queries_for(30)
+    assert small == large
+    assert large <= 5
 
 
 @pytest.mark.asyncio

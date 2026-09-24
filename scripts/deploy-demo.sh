@@ -82,7 +82,8 @@ if [ "${WANT_AZURE}" = "true" ]; then
   fi
 fi
 if [ "${DRY_RUN}" != "1" ]; then
-  : "${DB_PASSWORD:?DB_PASSWORD must be set (RDS master password; see docs/demos/${DEMO_NAME}.md)}"
+  ensure_db_password
+  : "${DB_PASSWORD:?DB_PASSWORD must be set (RDS master password, or readable from Secrets Manager ${RDS_MASTER_SECRET_ID}; see docs/demos/${DEMO_NAME}.md)}"
 fi
 
 start_transcript "${TOKEN}" deploy

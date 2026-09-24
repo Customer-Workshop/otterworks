@@ -152,7 +152,9 @@ def write_state(state: dict[str, Any]) -> None:
 
 
 def git_sha() -> str:
-    out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True)
+    out = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True, check=False
+    )
     return out.stdout.strip() if out.returncode == 0 else "unknown"
 
 
@@ -480,7 +482,7 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
 
 def start_background_load(scenario: str) -> int:
     logf = state_path(f"load-{scenario}.log").open("ab")
-    proc = subprocess.Popen(  # noqa: S603 - our own script
+    proc = subprocess.Popen(
         [sys.executable, str(HERE / "incident.py"), "load", scenario],
         cwd=REPO,
         stdout=logf,
@@ -519,7 +521,7 @@ def set_flag(cat: dict[str, Any], key: str, on: bool) -> None:
     log(f"flag {key} -> {'on' if on else 'off'}")
 
 
-def run_step(cat: dict[str, Any], scenario: str, step: Any) -> None:  # noqa: C901 - dispatch table
+def run_step(cat: dict[str, Any], scenario: str, step: Any) -> None:
     if isinstance(step, dict):
         ((kind, arg),) = step.items()
     else:
@@ -617,12 +619,16 @@ def cmd_status(_: argparse.Namespace) -> None:
         alerts = prom_alerts(cat)
     except httpx.HTTPError as exc:
         die(f"prometheus unreachable at {prom_url(cat)}: {exc}")
-    if alerts:
-        print("alerts:")
-        for a in alerts:
+    paging = [a for a in alerts if a["labels"].get("page") == "devin"]
+    other = len(alerts) - len(paging)
+    if paging:
+        print("alerts (page=devin):")
+        for a in paging:
             print(f"  {a['state']:8} {a['labels']['alertname']:32} since {a.get('activeAt', '')}")
     else:
-        print("alerts: none")
+        print("alerts (page=devin): none")
+    if other:
+        print(f"  ({other} other alert(s) active; only page=devin alerts route to the responder)")
     print("metrics (2m window):")
     for k, v in snapshot_metrics(cat).items():
         print(f"  {k:22} {'-' if v is None else f'{v:.3f}'}")
@@ -650,7 +656,7 @@ def _check(findings: list[str], ok: bool, msg: str) -> None:
         findings.append(msg)
 
 
-def cmd_verify(args: argparse.Namespace) -> None:  # noqa: C901 - one linear gate
+def cmd_verify(args: argparse.Namespace) -> None:
     cat = load_catalog()
     if args.scenario not in cat["scenarios"]:
         die(f"unknown scenario {args.scenario}")

@@ -2,11 +2,12 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T05:32:29.150268+00:00'
-  git_sha: 9ff8dd5733b1f8518686dd4ad9ea0d9ed5ba5f5d
-  reason: initial before-state pin for the incident-responder gate
+  at: '2026-09-24T05:40:12.269319+00:00'
+  git_sha: e23eb24ac02829dae33405541bd9fa47cdb3dc6e
+  reason: harness lint/format cleanup and page=devin filter in status; no scenario,
+    seed, or alert change
 fingerprints:
-  fixture: 1ec7d6f4d470385b03d1acf430705250e74539cc7b364e4e705de80d625285f8
+  fixture: 94e19bf379d993751acd8afc3ef84b10c81a670c61c0810b742d3e00f1087e3d
   source: 9ad55fba6d73f00f7d1307230da3ec3cdbcf3ae5760084cea80ba85f40cf5367
 scenarios:
   n-plus-one:

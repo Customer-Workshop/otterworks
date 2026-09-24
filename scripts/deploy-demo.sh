@@ -214,19 +214,23 @@ if [ "${WANT_AZURE}" = "true" ]; then
   if [ "${DRY_RUN}" = "1" ]; then EGRESS_CIDRS='["0.0.0.0/32"]'; else EGRESS_CIDRS="$(discover_eks_egress_cidrs)"; fi
   [ "$(jq 'length' <<<"${EGRESS_CIDRS}")" -gt 0 ] || die "could not discover EKS egress IPs for the Azure SQL firewall rule"
   REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-  REPORT_TAG="${IMAGE_TAG:-$(app_image_tag "${TOKEN}" report-service)}"
-  JOB_IMAGE="${LDM_JOB_IMAGE:-${JOB_ECR_URL:-${REGISTRY}/$(demo_ecr_repo "${TOKEN}")}:${REPORT_TAG}}"
+  # Container Apps run the exact images the tenant Deployments run; the job image is built
+  # from this checkout and pushed to the token's ECR repo (created by demo-aws) if missing.
+  REPORT_IMAGE="$(app_image_ref "${TOKEN}" report-service)"
+  AUDIT_IMAGE="$(app_image_ref "${TOKEN}" audit-service)"
+  ensure_ldm_job_image "${TOKEN}"
+  JOB_IMAGE="$(ldm_job_image "${TOKEN}")"
+  dlog "images: report=${REPORT_IMAGE} audit=${AUDIT_IMAGE} job=${JOB_IMAGE}"
   SESSION_LINKS="$(cat "${MANIFEST_DIR}"/sessions/*.yaml 2>/dev/null | sed -nE 's/^[[:space:]-]*url:[[:space:]]*//p' | jq -R . | jq -sc . || echo '[]')"
   TFVARS="${TRANSCRIPT_DIR}/azure.auto.tfvars.json"   # token-derived, git-ignored, no secrets
   jq -n --arg ns "${TOKEN}" --arg run "${RUN}" --arg st "${STATE}" --arg exp "${EXPIRES}" \
-        --argjson cidrs "${EGRESS_CIDRS}" --arg reg "${REGISTRY}" --arg tag "${REPORT_TAG}" --arg job "${JOB_IMAGE}" \
+        --argjson cidrs "${EGRESS_CIDRS}" --arg reg "${REGISTRY}" --arg report "${REPORT_IMAGE}" --arg audit "${AUDIT_IMAGE}" --arg job "${JOB_IMAGE}" \
         --arg links "${SESSION_LINKS}" --argjson inaz "$(overlay_flag "${TOKEN}" run_job_in_azure)" \
         --arg loc "${AZURE_LOCATION:-centralus}" \
         --argjson priv "${AZURE_PRIVATE_NETWORKING:-false}" '{
           namespace:$ns, run_token:$run, state:$st, expires:$exp, owner:"otterworks-demo", location:$loc,
           private_networking:$priv, eks_egress_cidrs:$cidrs, run_job_in_azure:$inaz,
-          registry_server:$reg, report_image:($reg+"/otterworks/report-service:"+$tag),
-          audit_image:($reg+"/otterworks/audit-service:"+$tag), job_image:$job,
+          registry_server:$reg, report_image:$report, audit_image:$audit, job_image:$job,
           session_links_json:$links }' > "${TFVARS}"
   dlog "var file ${TFVARS} (no secrets inside)"
   # ECR pull credentials for Container Apps travel via TF_VAR_*, never a file.

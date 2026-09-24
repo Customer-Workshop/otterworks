@@ -99,6 +99,53 @@ app_image_tag() {
     printf 'main'
   fi
 }
+# Full image reference the tenant is actually running for an app service (tag@digest as
+# deploy-tenant.sh pinned it), so the Container Apps copies run the same build. Falls back
+# to the ECR tag rule above when the Deployment is not there yet (dry-run, fresh namespace).
+app_image_ref() {
+  local token="$1" svc="$2" ns ref; ns="$(demo_namespace "${token}")"
+  ref="$(kubectl -n "${ns}" get deployment "${svc}" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+  if [ -n "${ref}" ]; then printf '%s' "${ref}"; return 0; fi
+  aws_account_id
+  printf '%s.dkr.ecr.%s.amazonaws.com/otterworks/%s:%s' "${AWS_ACCOUNT_ID}" "${AWS_REGION}" "${svc}" "${IMAGE_TAG:-$(app_image_tag "${token}" "${svc}")}"
+}
+# Job image tag: the migration/ tree at HEAD (`git-<sha12>`), so a rebuilt tree is a new tag.
+ldm_job_tag() { printf 'git-%s' "$(git -C "${REPO_ROOT}" rev-parse --short=12 HEAD 2>/dev/null || echo dev)"; }
+# Job image reference: LDM_JOB_IMAGE if set; else the token's own ECR repo at ldm_job_tag,
+# falling back to the newest image pushed there (a previous deploy of the same token).
+ldm_job_image() {
+  local token="$1" repo tag
+  [ -n "${LDM_JOB_IMAGE:-}" ] && { printf '%s' "${LDM_JOB_IMAGE}"; return 0; }
+  aws_account_id
+  repo="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$(demo_ecr_repo "${token}")"
+  tag="$(ldm_job_tag)"
+  if [ "${DRY_RUN}" != "1" ] && ! aws ecr describe-images --repository-name "$(demo_ecr_repo "${token}")" --image-ids "imageTag=${tag}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+    local newest
+    newest="$(aws ecr describe-images --repository-name "$(demo_ecr_repo "${token}")" --region "${AWS_REGION}" \
+      --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' --output text 2>/dev/null || true)"
+    [ -n "${newest}" ] && [ "${newest}" != "None" ] && tag="${newest}"
+  fi
+  printf '%s:%s' "${repo}" "${tag}"
+}
+# Build migration/job/Dockerfile and push it to the token's ECR repo at ldm_job_tag unless
+# that tag is already there. Needs docker; the repo is created by demo-aws Terraform.
+ensure_ldm_job_image() {
+  local token="$1" repo tag image
+  [ -n "${LDM_JOB_IMAGE:-}" ] && { dlog "LDM_JOB_IMAGE=${LDM_JOB_IMAGE} supplied; not building"; return 0; }
+  aws_account_id
+  repo="$(demo_ecr_repo "${token}")"; tag="$(ldm_job_tag)"
+  image="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repo}:${tag}"
+  if [ "${DRY_RUN}" != "1" ] && aws ecr describe-images --repository-name "${repo}" --image-ids "imageTag=${tag}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+    dlog "job image ${image} already in ECR"; return 0
+  fi
+  require_bins docker
+  if [ "${DRY_RUN}" != "1" ]; then
+    aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >/dev/null
+  fi
+  run docker build --platform linux/amd64 -f "${REPO_ROOT}/migration/job/Dockerfile" -t "${image}" "${REPO_ROOT}"
+  run docker push "${image}"
+  dlog "job image ${image} pushed"
+}
 # Platform control table (demo-platform/docs/control-table-schema.md). The platform
 # reaper GCs any otterworks-* namespace without a TENANT#<id>/META item as an orphan
 # (grace 300s) and idle-suspends registered non-persistent tenants after an hour
@@ -550,13 +597,9 @@ job_name() { printf 'ldm-%s-%s' "$1" "$2" | cut -c1-63; }
 render_job() {
   local token="$1" stage="$2" run_id="$3" ns; ns="$(demo_namespace "${token}")"
   local -a extra=()
-  # Same image deploy-demo.sh used for `ldm init`: LDM_JOB_IMAGE if set, else the token's
-  # own ECR repository at the tag the report-service resolved to (tenant-<token> or main).
+  # Same image deploy-demo.sh used for `ldm init` (ldm_job_image).
   local job_image="${LDM_JOB_IMAGE:-}"
-  if [ -z "${job_image}" ] && [ "${DRY_RUN}" != "1" ]; then
-    aws_account_id
-    job_image="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$(demo_ecr_repo "${token}"):${IMAGE_TAG:-$(app_image_tag "${token}" report-service)}"
-  fi
+  if [ -z "${job_image}" ] && [ "${DRY_RUN}" != "1" ]; then job_image="$(ldm_job_image "${token}")"; fi
   [ -n "${job_image}" ] && extra+=(--set "image.repository=${job_image%%:*}" --set "image.tag=${job_image##*:}")
   while IFS= read -r kv; do [ -n "${kv}" ] && extra+=(--set-string "${kv}"); done <<<"$(ldm_azure_values "${ns}")"
   # `ldm init` also loads the MIG-06 prior-run fixture (§12.1) via --apply-sql;

@@ -150,6 +150,20 @@ container is the most common way to get a meaningless green. Migrations run on
 container start (`app/db/migrate.py`), so a new `alembic/versions/004_*.py` is
 applied by the rebuild.
 
+The gates never read `nan` as a number. A threshold whose metric has no samples
+in the 2 m window fails with `no samples in the 2m window (Prometheus returned
+nan/none)`, and the `after` gate additionally requires the offered load to have
+reached the service: `request_rate >= 12 rps` (half the pinned 24 rps profile).
+Both are diagnostics about the environment, not verdicts on the fix: the load
+generator prints `shed=N` when its 24 concurrent slots are all busy, and a host
+that sheds most requests after the fix is too small for the unscaled profile
+(the local Compose stack with Prometheus, Grafana, Jaeger, Postgres and the
+service was verified green on 8 vCPU / 32 GB; on a 2-4 vCPU laptop expect the
+before gate to pass and the after gate to trip the load-reached check). Do not
+lower the profile or `INCIDENT_LOAD_SCALE` to make the gate pass — the verify
+command ignores the scale on purpose — move to a bigger host or the isolated
+tenant below and quote that in the PR.
+
 Nine pre-existing failures in `tests/test_documents_api.py` (mutating endpoints
 called without an auth header, asserting `200` against a `401`) and
 `test_restore_version` are on `main` and are **not** yours to fix; run the
@@ -183,13 +197,16 @@ Slack payload) before opening the PR.
 
 The local Compose stack is the default and is all a laptop needs. To show the
 same alert on a real tenant, deploy an isolated one from `main` and inject
-there — never on `otterworks-main` / `t-main.otterworks.app` (see `AGENTS.md`):
+there — never on `otterworks-main` / `t-main.otterworks.app` (see `AGENTS.md`).
+Branch tenants live under `demo.otterworks.app`; only the perpetual `main`
+tenant sits at `otterworks.app`. The tenant id is `incident` (branch
+`demo-incident`, namespace `otterworks-incident`):
 
 ```bash
-scripts/deploy-tenant.sh demo-incident --profile core --host-suffix otterworks.app --ttl 8h
-INCIDENT_BASE_URL=https://api-t-demo-incident.otterworks.app make incident-seed
-INCIDENT_BASE_URL=https://api-t-demo-incident.otterworks.app make incident-load SCENARIO=n-plus-one DURATION=300
-scripts/teardown-tenant.sh demo-incident
+scripts/deploy-tenant.sh incident --profile core --host-suffix demo.otterworks.app --ttl 8h --branch demo-incident
+INCIDENT_BASE_URL=https://api-t-incident.demo.otterworks.app make incident-seed
+INCIDENT_BASE_URL=https://api-t-incident.demo.otterworks.app make incident-load SCENARIO=n-plus-one DURATION=300
+scripts/teardown-tenant.sh incident
 ```
 
 Cluster-wide Prometheus/Grafana/Jaeger are platform infrastructure (the
@@ -205,7 +222,7 @@ to a `demo-<id>` branch ships it to that tenant via `.github/workflows/cd-tenant
   the database fixture (idempotent seed) or the PR.
 - To reset after a fix was merged into a demo tenant branch:
   `git revert <merge-sha>` on that branch (or redeploy the golden image with
-  `scripts/deploy-tenant.sh demo-incident --image-tag <golden>`), then
+  `scripts/deploy-tenant.sh incident --image-tag <golden>`), then
   `make arm SCENARIO=...` again. Locally, `git checkout main -- services/document-service`
   and `make incident-up` rebuilds the before-state image.
 - If the fix carried a migration (the reference fix adds `004_document_list_indexes`),

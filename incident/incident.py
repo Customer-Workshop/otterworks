@@ -86,7 +86,13 @@ FIXTURE_INPUTS = [
     f"{MIGRATIONS}/002_document_stats_rollups.py",
     f"{MIGRATIONS}/003_backfill_word_count.py",
 ]
-SOURCE_INPUTS = ["services/document-service/app", MIGRATIONS]
+SOURCE_INPUTS = [
+    "services/document-service/app",
+    MIGRATIONS,
+    "services/document-service/Dockerfile",
+    "services/document-service/pyproject.toml",
+    "services/document-service/poetry.lock",
+]
 
 DEFAULT_SOAK_SECONDS = 150.0
 
@@ -1025,6 +1031,52 @@ def _check(findings: list[str], ok: bool, msg: str) -> None:
         findings.append(msg)
 
 
+NO_SAMPLES = (
+    "no samples in the 2m window (Prometheus returned nan/none): the load never "
+    "reached the service or its scrape target is down"
+)
+
+
+def _threshold_checks(
+    findings: list[str], metrics: dict[str, float | None], thresholds: dict[str, float]
+) -> None:
+    for key, threshold in thresholds.items():
+        metric, bound = key.rsplit("_", 1)
+        val = metrics.get(metric)
+        op = ">=" if bound == "min" else "<="
+        if val is None or math.isnan(val):
+            _check(findings, False, f"{metric} {op} {threshold}: {NO_SAMPLES}")
+            continue
+        ok = val >= threshold if bound == "min" else val <= threshold
+        _check(findings, ok, f"{metric}={_fmt(val)} {op} {threshold}")
+
+
+# Below this fraction of the profile's rps the alert's own rate precondition
+# (> 1 rps) can be unmet, so an inactive alert proves nothing about the fix.
+MIN_OFFERED_LOAD_FRACTION = 0.5
+
+
+def _check_load_reached(
+    findings: list[str], metrics: dict[str, float | None], sc: dict[str, Any]
+) -> None:
+    prof = next(iter(sc["load"].values()))
+    if prof.get("flow") == "edit-then-export":
+        return  # request_rate only covers the list handler
+    rps = float(prof["rps"])
+    floor = rps * MIN_OFFERED_LOAD_FRACTION
+    rate = metrics.get("request_rate")
+    if rate is None or math.isnan(rate):
+        _check(findings, False, f"offered load reached the service: {NO_SAMPLES}")
+        return
+    _check(
+        findings,
+        rate >= floor,
+        f"offered load reached the service: request_rate={rate:.2f} >= {floor:g} rps "
+        f"(half the pinned {rps:g} rps profile; below this the host cannot sustain the "
+        f"workload and the result is inconclusive, not a verdict on the fix)",
+    )
+
+
 def cmd_verify(args: argparse.Namespace) -> None:
     findings: list[str] = []
     started = time.monotonic()
@@ -1120,21 +1172,7 @@ def _verify(
         )
         metrics = snapshot_metrics(cat)
         report["metrics"] = metrics
-        for key, threshold in sc.get("before", {}).items():
-            metric, bound = key.rsplit("_", 1)
-            val = metrics.get(metric)
-            if bound == "min":
-                _check(
-                    findings,
-                    val is not None and val >= threshold,
-                    f"{metric}={_fmt(val)} >= {threshold}",
-                )
-            else:
-                _check(
-                    findings,
-                    val is not None and val <= threshold,
-                    f"{metric}={_fmt(val)} <= {threshold}",
-                )
+        _threshold_checks(findings, metrics, sc.get("before", {}))
         # Alertmanager batches for group_wait before it posts, so allow it the
         # rest of the alert budget (at least 60s); only a *firing* delivery that
         # names this scenario's alert counts, never a stale capture.
@@ -1204,21 +1242,9 @@ def _verify(
             if any(key.startswith("rollup_") for key in sc.get("after", {})):
                 metrics.update(rollup_soak_metrics(soak_started))
             report["metrics"] = metrics
-            for key, threshold in sc.get("after", {}).items():
-                metric, bound = key.rsplit("_", 1)
-                val = metrics.get(metric)
-                if bound == "min":
-                    _check(
-                        findings,
-                        val is not None and val >= threshold,
-                        f"{metric}={_fmt(val)} >= {threshold}",
-                    )
-                else:
-                    _check(
-                        findings,
-                        val is not None and val <= threshold,
-                        f"{metric}={_fmt(val)} <= {threshold}",
-                    )
+            if sc.get("load"):
+                _check_load_reached(findings, metrics, sc)
+            _threshold_checks(findings, metrics, sc.get("after", {}))
         finally:
             if had_background:
                 start_background_load(args.scenario)

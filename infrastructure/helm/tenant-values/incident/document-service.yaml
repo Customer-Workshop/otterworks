@@ -1,5 +1,7 @@
 # Helm values overlay for tenant `incident` (branch demo-incident, namespace
-# otterworks-incident), applied by scripts/deploy-tenant.sh.
+# otterworks-incident), applied by scripts/deploy-tenant.sh. The base chart
+# ships metrics only; this turns on the incident PrometheusRule, the Grafana
+# dashboard and OTLP tracing so the responder has alerts and SQL spans to read.
 monitoring:
   enabled: true
   rules:
@@ -11,6 +13,10 @@ monitoring:
     jaeger: https://jaeger.otterworks.app
 tracing:
   enabled: true
+# A rolling update briefly runs two replicas, which is exactly the double-run
+# flaw's trigger; recreate instead so a fix deploy never pages the wrong alert.
+strategy:
+  type: Recreate
 resources:
   limits:
     memory: 512Mi

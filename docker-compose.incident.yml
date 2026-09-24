@@ -9,7 +9,9 @@
 #
 # INCIDENT_LOG_VOLUME_SIZE  tmpfs size of the per-request log dir (default 64m)
 # INCIDENT_MEMORY_LIMIT     document-service memory ceiling     (default 512m; cache-leak arms at 256m)
-# DEVIN_WEBHOOK_URL         Devin Automation webhook trigger; falls back to the sink
+# DEVIN_WEBHOOK_URL         Devin Automation webhook trigger (optional). The page is
+#                           always mirrored to the local sink; this adds a real delivery.
+# DEVIN_WEBHOOK_SECRET      sent as X-Webhook-Secret on that delivery
 # SLACK_WEBHOOK_URL         Slack incoming webhook;            falls back to the sink
 
 services:
@@ -49,11 +51,12 @@ services:
         condition: service_healthy
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: quay.io/prometheus/alertmanager:v0.28.1
     container_name: otterworks-alertmanager
     entrypoint: ["/bin/sh", "/etc/alertmanager/entrypoint.sh"]
     environment:
-      DEVIN_WEBHOOK_URL: ${DEVIN_WEBHOOK_URL:-http://alert-sink:9095/devin}
+      DEVIN_WEBHOOK_URL: ${DEVIN_WEBHOOK_URL:-}
+      DEVIN_WEBHOOK_SECRET: ${DEVIN_WEBHOOK_SECRET:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-http://alert-sink:9095/slack}
     ports:
     - 9093:9093

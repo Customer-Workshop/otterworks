@@ -99,12 +99,18 @@ platform's own integrations, not the session's network.
 
 ## Wiring Alertmanager to it
 
-The Automation's incoming-webhook URL is the value of `DEVIN_WEBHOOK_URL` for
-the local Compose stack (`observability/alertmanager/alertmanager.yml.tmpl`;
-defaults to the local sink `http://alert-sink:9095/devin` so the flow runs with
-no credentials) and for the shared cluster's Alertmanager (the
-`platform-engineering-shared-services` repo, same receiver name). Set
-`SLACK_WEBHOOK_URL` alongside it to post the same alert into the channel.
+For the local Compose stack, set `DEVIN_WEBHOOK_URL` to the Automation's
+incoming-webhook URL and `DEVIN_WEBHOOK_SECRET` to its one-time secret (sent
+as `X-Webhook-Secret`); `observability/alertmanager/entrypoint.sh` renders both
+into `alertmanager.yml.tmpl`. With neither set the flow runs with no
+credentials: the page is delivered only to the local sink
+(`http://alert-sink:9095/devin`). When they are set the page is delivered to
+the Automation *and* mirrored to the sink, so `make incident-verify
+SCENARIO=<s> EXPECT=before` and `make incident-simulate` keep working in real
+mode. The shared cluster's Alertmanager (the
+`platform-engineering-shared-services` repo, same receiver name) posts to the
+Automation directly. Set `SLACK_WEBHOOK_URL` alongside it to post the same
+alert into the channel.
 
 `make incident-simulate RECEIVER=devin` prints the exact JSON the automation
 received on the last page; it is the payload to paste into a session by hand if

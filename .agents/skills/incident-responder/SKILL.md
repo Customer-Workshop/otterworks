@@ -37,6 +37,15 @@ replica, so they are off until armed and fail closed when Redis is unreachable.
 `DocumentListQueryFanout` (SQL statements per request > 20) is diagnostic: it
 fires alongside `DocumentListLatencyHigh` but does not page.
 
+The armed `log-flood` request log is the flaw, not a feature: it records
+response bodies (with credential headers, bearer-like query parameters and
+token fields redacted) into a tmpfs on the Compose stack, or the container's
+ephemeral filesystem on the isolated tenant's pod, over seeded demo data only.
+`make disarm` purges it and the tenant is disposable, so nothing outlives the
+run. A real remediation removes body capture or restricts it to a bounded,
+access-controlled store — do not turn the flag on against `otterworks-main` or
+any tenant holding real data.
+
 Two things that are *not* in scope: `services/admin-service/config/environments/production.rb`
 (a different planted bug, see `AGENTS.md`) and anything under `security/`
 (other exercises). Do not "fix" the flaw on `main`; work on your own branch.
@@ -151,11 +160,14 @@ Before/after numbers for the PR body come from the two report files
 
 ## The page and the automation
 
-Alertmanager posts the firing alert to `DEVIN_WEBHOOK_URL` (the Devin Automation
-webhook trigger) and, when `SLACK_WEBHOOK_URL` is set, to `#otterworks-alerts`.
-Both default to the local sink (`http://alert-sink:9095/{devin,slack}`) so the
-flow runs with no external credentials; `make incident-simulate` prints exactly
-what the Automation would have received. The sink is an intentionally
+Alertmanager always posts the firing alert to the local sink
+(`http://alert-sink:9095/devin`) and, when `DEVIN_WEBHOOK_URL` +
+`DEVIN_WEBHOOK_SECRET` are set, also to the Devin Automation webhook trigger
+(with `X-Webhook-Secret`); when `SLACK_WEBHOOK_URL` is set it posts to
+`#otterworks-alerts` too, otherwise to the sink's `/slack`. So the flow runs
+with no external credentials, and in real mode the before gate and
+`make incident-simulate` (which prints exactly what the Automation received)
+still read the mirrored copy. The sink is an intentionally
 unauthenticated, disposable capture buffer: it is reachable only on the Compose
 network and on the host's loopback (`127.0.0.1:9095`), and must never be
 published beyond the laptop — a real deployment posts to the Devin Automation

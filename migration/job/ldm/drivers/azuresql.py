@@ -495,26 +495,24 @@ class AzureSqlTarget:
         columns = self._shape(table).target_columns
         sql = self._insert_sql(table, columns)
         params = [self._staging_params(run_id, namespace, r, columns) for r in rows]
-        conn = self.conn
+        failures: list[InsertFailure] = []
+        self._insert_bisect(sql, list(rows), params, failures)
+        return failures
+
+    def _insert_bisect(
+        self, sql: str, rows: list[StagedRow], params: list[list[object]], failures: list[InsertFailure]
+    ) -> None:
+        """Insert rows as one transaction; on failure split in half so only the bad rows fall to single inserts."""
         try:
-            conn.autocommit = False  # type: ignore[attr-defined]
-            try:
-                self._executemany(sql, params)
-                conn.commit()  # type: ignore[attr-defined]
-                return []
-            except TargetError:
-                conn.rollback()  # type: ignore[attr-defined]
-            failures: list[InsertFailure] = []
-            for row, p in zip(rows, params, strict=True):
-                try:
-                    self._exec(sql, p).close()  # type: ignore[attr-defined]
-                    conn.commit()  # type: ignore[attr-defined]
-                except TargetError as e:
-                    conn.rollback()  # type: ignore[attr-defined]
-                    failures.append(InsertFailure(row.source_key, e.sqlstate, e.native_error, e.text))
-            return failures
-        finally:
-            conn.autocommit = True  # type: ignore[attr-defined]
+            self._executemany(sql, params)
+            return
+        except TargetError as e:
+            if len(rows) == 1:
+                failures.append(InsertFailure(rows[0].source_key, e.sqlstate, e.native_error, e.text))
+                return
+        mid = len(rows) // 2
+        self._insert_bisect(sql, rows[:mid], params[:mid], failures)
+        self._insert_bisect(sql, rows[mid:], params[mid:], failures)
 
     def count_staging(self, run_id: str, namespace: str, table: str) -> int:
         v = self._scalar(

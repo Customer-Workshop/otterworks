@@ -119,11 +119,26 @@ load_infra_outputs
 # whose spec changed, so a redeploy that minted a fresh secret would leave the
 # untouched services verifying against the old one and every request 401s.
 # Reuse what the tenant already runs with unless the caller pins a value.
+# Prints the decoded key, or nothing when the Secret or key does not exist yet.
+# Any other failure (API error, bad encoding) returns non-zero: rotating the key
+# on a transient read error would split the tenant across two keys.
 existing_tenant_secret() {
-  kubectl -n "${NS}" get secret "$1" -o jsonpath="{.data.$2}" 2>/dev/null | base64 -d 2>/dev/null || true
+  local raw errfile rc=0
+  errfile="$(mktemp)"
+  raw="$(kubectl -n "${NS}" get secret "$1" -o jsonpath="{.data.$2}" 2>"${errfile}")" || rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    if grep -q NotFound "${errfile}"; then rm -f "${errfile}"; return 0; fi
+    err "Could not read $1/$2 in ${NS}: $(cat "${errfile}")"
+    rm -f "${errfile}"
+    return 1
+  fi
+  rm -f "${errfile}"
+  [ -n "${raw}" ] || return 0
+  printf '%s' "${raw}" | base64 -d || { err "$1/$2 in ${NS} is not valid base64"; return 1; }
 }
 if [ -z "${JWT_SECRET:-}" ]; then
-  JWT_SECRET="$(existing_tenant_secret api-gateway-secrets JWT_SECRET)"
+  JWT_SECRET="$(existing_tenant_secret api-gateway-secrets JWT_SECRET)" ||
+    { err "Refusing to rotate JWT_SECRET; set it explicitly or retry"; exit 1; }
   if [ -n "${JWT_SECRET}" ]; then
     log "Reusing the tenant's existing JWT_SECRET so issued tokens stay valid across the redeploy"
   else
@@ -131,7 +146,8 @@ if [ -z "${JWT_SECRET:-}" ]; then
   fi
 fi
 if [ -z "${SECRET_KEY_BASE:-}" ]; then
-  SECRET_KEY_BASE="$(existing_tenant_secret admin-service-secrets SECRET_KEY_BASE)"
+  SECRET_KEY_BASE="$(existing_tenant_secret admin-service-secrets SECRET_KEY_BASE)" ||
+    { err "Refusing to rotate SECRET_KEY_BASE; set it explicitly or retry"; exit 1; }
   [ -n "${SECRET_KEY_BASE}" ] || SECRET_KEY_BASE="$(openssl rand -hex 64)"
 fi
 

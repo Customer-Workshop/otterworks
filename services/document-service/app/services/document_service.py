@@ -19,6 +19,8 @@ from app.schemas.document import (
 )
 from app.services.event_publisher import event_publisher
 
+RECENT_VERSIONS = 5
+
 logger = structlog.get_logger()
 
 
@@ -105,15 +107,31 @@ class DocumentService:
         result = await self.db.execute(query)
         documents = list(result.scalars().all())
 
-        # TODO: This is slow for large result sets (ETL-445, deferred Q2 2024)
-        for doc in documents:
-            ver_result = await self.db.execute(
-                select(DocumentVersion)
-                .where(DocumentVersion.document_id == doc.id)
-                .order_by(DocumentVersion.version_number.desc())
-                .limit(5)
+        recent: dict[UUID, list[DocumentVersion]] = {doc.id: [] for doc in documents}
+        if documents:
+            rank = (
+                func.row_number()
+                .over(
+                    partition_by=DocumentVersion.document_id,
+                    order_by=DocumentVersion.version_number.desc(),
+                )
+                .label("rank")
             )
-            doc.recent_versions = list(ver_result.scalars().all())
+            ranked = (
+                select(DocumentVersion, rank)
+                .where(DocumentVersion.document_id.in_(list(recent)))
+                .subquery()
+            )
+            versions_q = (
+                select(DocumentVersion)
+                .join(ranked, DocumentVersion.id == ranked.c.id)
+                .where(ranked.c.rank <= RECENT_VERSIONS)
+                .order_by(ranked.c.document_id, ranked.c.rank)
+            )
+            for version in (await self.db.execute(versions_q)).scalars():
+                recent[version.document_id].append(version)
+        for doc in documents:
+            doc.recent_versions = recent[doc.id]
 
         return documents, total
 

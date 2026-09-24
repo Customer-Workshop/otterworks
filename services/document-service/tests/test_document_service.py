@@ -74,6 +74,23 @@ async def test_update_creates_version(db_session: AsyncSession, owner_id: uuid.U
 
 
 @pytest.mark.asyncio
+async def test_list_attaches_five_most_recent_versions(
+    db_session: AsyncSession, owner_id: uuid.UUID
+):
+    service = DocumentService(db_session)
+    doc = await service.create(DocumentCreate(title="Doc", content="v1", owner_id=owner_id))
+    other = await service.create(DocumentCreate(title="Other", content="v1", owner_id=owner_id))
+    for v in range(2, 9):
+        await service.update(doc.id, DocumentUpdate(title="Doc", content=f"v{v}"))
+
+    documents, total = await service.list_documents(owner_id=owner_id)
+    assert total == 2
+    by_id = {d.id: d for d in documents}
+    assert [v.version_number for v in by_id[doc.id].recent_versions] == [8, 7, 6, 5, 4]
+    assert [v.version_number for v in by_id[other.id].recent_versions] == [1]
+
+
+@pytest.mark.asyncio
 async def test_patch_partial_update(db_session: AsyncSession, owner_id: uuid.UUID):
     service = DocumentService(db_session)
     doc = await service.create(

@@ -12,3 +12,8 @@ monitoring:
     enabled: true
 tracing:
   enabled: true
+# Same memory ceiling as docker-compose.incident.yml (INCIDENT_MEMORY_LIMIT);
+# the chart default (256Mi) OOM-kills under the n-plus-one load profile.
+resources:
+  limits:
+    memory: 512Mi

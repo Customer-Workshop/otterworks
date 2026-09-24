@@ -210,7 +210,7 @@ the MIG-05 parents. `CUT` = `2019-01-01-00.00.00.000000000000`.
 - **MIG-05** FILEAUD row selected, parent `MIG05-...` exists in Db2 but is outside the DOCARCH
   selection, so it has no target parent: `ORPHAN_PARENT_NOT_SELECTED` at VALIDATE.
 - **MIG-06** A partially completed prior run (§8) left `stg.DOCARCH` rows for the same keys; the
-  unique index on `stg.DOCARCH(source_key)` raises SQL Server 2627, SQLSTATE `23000`:
+  unique index on `stg.DOCARCH(source_key)` raises SQL Server error 2601, SQLSTATE `23000`:
   `DUPLICATE_SOURCE_KEY` at LOAD.
 - **MIG-07** (headline) The manifest `value_map` for `RETENTION_CLASS` transposes the retired
   codes (`F07R -> LGL7`, `L07R -> FIN7`); the system of record says `F07R -> FIN7`,

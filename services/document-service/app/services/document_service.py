@@ -7,7 +7,6 @@ from uuid import UUID
 import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased, defer, selectinload
 
 from app.models.document import Comment, Document, DocumentVersion, Template
 from app.schemas.document import (
@@ -21,8 +20,6 @@ from app.schemas.document import (
 from app.services.event_publisher import event_publisher
 
 logger = structlog.get_logger()
-
-RECENT_VERSIONS_PER_DOCUMENT = 5
 
 
 def _word_count(text: str) -> int:
@@ -103,43 +100,20 @@ class DocumentService:
         count_q = select(func.count()).select_from(base.subquery())
         total = (await self.db.execute(count_q)).scalar_one()
 
-        query = base.options(
-            selectinload(Document.versions).defer(DocumentVersion.content)
-        )
-        query = query.order_by(Document.updated_at.desc())
+        query = base.order_by(Document.updated_at.desc())
         query = query.offset((page - 1) * size).limit(size)
         result = await self.db.execute(query)
         documents = list(result.scalars().all())
 
-        recent_by_doc: dict[UUID, list[DocumentVersion]] = {
-            doc.id: [] for doc in documents
-        }
-        if documents:
-            rank = (
-                func.row_number()
-                .over(
-                    partition_by=DocumentVersion.document_id,
-                    order_by=DocumentVersion.version_number.desc(),
-                )
-                .label("rank")
-            )
-            ranked = (
-                select(DocumentVersion, rank)
-                .where(DocumentVersion.document_id.in_(list(recent_by_doc)))
-                .subquery()
-            )
-            ranked_version = aliased(DocumentVersion, ranked)
-            ver_result = await self.db.execute(
-                select(ranked_version)
-                .options(defer(ranked_version.content))
-                .where(ranked.c.rank <= RECENT_VERSIONS_PER_DOCUMENT)
-                .order_by(ranked.c.document_id, ranked.c.version_number.desc())
-            )
-            for version in ver_result.scalars().all():
-                recent_by_doc[version.document_id].append(version)
-
+        # TODO: This is slow for large result sets (ETL-445, deferred Q2 2024)
         for doc in documents:
-            doc.recent_versions = recent_by_doc[doc.id]
+            ver_result = await self.db.execute(
+                select(DocumentVersion)
+                .where(DocumentVersion.document_id == doc.id)
+                .order_by(DocumentVersion.version_number.desc())
+                .limit(5)
+            )
+            doc.recent_versions = list(ver_result.scalars().all())
 
         return documents, total
 

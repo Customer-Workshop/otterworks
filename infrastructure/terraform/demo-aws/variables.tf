@@ -47,3 +47,15 @@ variable "db2_volume_size_gib" {
   type    = number
   default = 20
 }
+
+variable "host_suffix" {
+  description = "DNS suffix for tenant hosts t-<namespace>.<suffix> and api-t-<namespace>.<suffix> (a Route53 public zone)."
+  type        = string
+  default     = "otterworks.app"
+}
+
+variable "ingress_hostname" {
+  description = "Shared ingress-nginx load balancer hostname the tenant CNAME records point at; empty skips DNS."
+  type        = string
+  default     = ""
+}

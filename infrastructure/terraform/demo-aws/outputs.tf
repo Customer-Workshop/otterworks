@@ -27,3 +27,8 @@ output "job_repository_url" {
 output "tags" {
   value = local.tags
 }
+
+output "tenant_hosts" {
+  description = "Tenant hostnames published in Route53 (empty when ingress_hostname is unset)."
+  value       = [for r in aws_route53_record.tenant : r.fqdn]
+}

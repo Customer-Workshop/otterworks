@@ -219,6 +219,20 @@ ensure_kubeconfig() {
   aws eks update-kubeconfig --name "${EKS_CLUSTER}" --region "${AWS_REGION}" --alias "${EKS_CLUSTER}" >/dev/null
 }
 
+# Hostname of the shared ingress-nginx load balancer (the only LoadBalancer Service, AGENTS.md);
+# empty when unavailable so demo-aws Terraform skips the tenant DNS records.
+ingress_lb_hostname() {
+  [ "${DRY_RUN}" = "1" ] && return 0
+  kubectl -n ingress-nginx get svc -l app.kubernetes.io/component=controller \
+    -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true
+}
+
+# demo_aws_tf_vars <token> <expires>: fills DEMO_AWS_TF_VARS (shared by apply and destroy).
+demo_aws_tf_vars() {
+  DEMO_AWS_TF_VARS=(-var "namespace=$1" -var "expires=$2" -var "aws_region=${AWS_REGION}" -var "eks_cluster=${EKS_CLUSTER}"
+    -var "host_suffix=${DEMO_HOST_SUFFIX}" -var "ingress_hostname=$(ingress_lb_hostname)")
+}
+
 # az login with the service principal from the environment (no values printed).
 # Also exports the ARM_* variables Terraform's azurerm provider expects.
 az_login() {
@@ -361,6 +375,16 @@ verify_clean() {
   done
   if [ -n "${survivors}" ]; then derr "AWS resources still tagged namespace=${token}:"; echo "${survivors}" | sed 's/^/    /'; rc=1
   else dlog "AWS: no resources tagged namespace=${token}"; fi
+  # Route53 records carry no tags: check the tenant hosts by name.
+  local zone_id
+  zone_id="$(aws route53 list-hosted-zones-by-name --dns-name "${DEMO_HOST_SUFFIX}" --max-items 1 \
+    --query "HostedZones[?Name=='${DEMO_HOST_SUFFIX}.'].Id" --output text 2>/dev/null || true)"
+  if [ -n "${zone_id}" ] && [ "${zone_id}" != "None" ]; then
+    survivors="$(aws route53 list-resource-record-sets --hosted-zone-id "${zone_id}" \
+      --query "ResourceRecordSets[?Name=='t-${token}.${DEMO_HOST_SUFFIX}.' || Name=='api-t-${token}.${DEMO_HOST_SUFFIX}.'].Name" --output text 2>/dev/null | tr -s '[:space:]' '\n' | sed '/^$/d')"
+    if [ -n "${survivors}" ]; then derr "Route53: tenant records still exist:"; echo "${survivors}" | sed 's/^/    /'; rc=1
+    else dlog "Route53: no t-${token}/api-t-${token} records"; fi
+  fi
   if az_available; then
     az_login
     survivors="$(azure_resources_with_namespace "${token}")"

@@ -166,8 +166,8 @@ for b in $(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'otterwork
 done
 if [ -d "${DEMO_AWS_TF_DIR}" ]; then
   tf_init "${TOKEN}" "${DEMO_AWS_TF_DIR}" aws_backend_args
-  tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" destroy -input=false -auto-approve \
-    -var "namespace=${TOKEN}" -var "expires=$(now_utc)" -var "aws_region=${AWS_REGION}" -var "eks_cluster=${EKS_CLUSTER}" || aws_rc=$?
+  demo_aws_tf_vars "${TOKEN}" "$(now_utc)"
+  tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" destroy -input=false -auto-approve "${DEMO_AWS_TF_VARS[@]}" || aws_rc=$?
 fi
 # Anything tagged but untracked (e.g. a volume Terraform lost): delete by tag.
 if [ "${DRY_RUN}" != "1" ]; then

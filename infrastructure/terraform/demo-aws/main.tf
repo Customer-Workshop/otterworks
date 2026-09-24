@@ -33,6 +33,7 @@ locals {
   db2_volume_name = "otterworks-ldm-${var.namespace}-db2"
   bucket_name     = "otterworks-ldm-${var.namespace}-${local.account_id}"
   ecr_repo_name   = "otterworks-demo/${var.namespace}/ldm-job"
+  tenant_hosts    = var.ingress_hostname != "" ? ["t-${var.namespace}", "api-t-${var.namespace}"] : []
 }
 
 # Db2 data volume, bound by the db2-archive chart as a static PersistentVolume
@@ -98,6 +99,22 @@ resource "aws_s3_bucket_lifecycle_configuration" "demo" {
       days_after_initiation = 1
     }
   }
+}
+
+# Tenant hostnames (§3.1): the shared external-dns only publishes fixed platform hosts, so the
+# demo's t-<token>/api-t-<token> records point at the shared ingress-nginx load balancer here.
+data "aws_route53_zone" "tenant" {
+  count = length(local.tenant_hosts) > 0 ? 1 : 0
+  name  = "${var.host_suffix}."
+}
+
+resource "aws_route53_record" "tenant" {
+  for_each = toset(local.tenant_hosts)
+  zone_id  = data.aws_route53_zone.tenant[0].zone_id
+  name     = "${each.value}.${var.host_suffix}"
+  type     = "CNAME"
+  ttl      = 60
+  records  = [var.ingress_hostname]
 }
 
 # Job image repository (CI or the presenter pushes the ldm image here).

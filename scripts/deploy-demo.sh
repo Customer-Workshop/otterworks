@@ -95,8 +95,8 @@ LABELS_KV="$(demo_k8s_labels "${TOKEN}")"
 # --- 1. demo-aws Terraform ---------------------------------------------------------
 stage_begin "aws terraform (demo-aws)"
 tf_init "${TOKEN}" "${DEMO_AWS_TF_DIR}" aws_backend_args
-tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" apply -input=false -auto-approve \
-  -var "namespace=${TOKEN}" -var "expires=${EXPIRES}" -var "aws_region=${AWS_REGION}" -var "eks_cluster=${EKS_CLUSTER}"
+demo_aws_tf_vars "${TOKEN}" "${EXPIRES}"
+tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" apply -input=false -auto-approve "${DEMO_AWS_TF_VARS[@]}"
 DB2_VOLUME_ID="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_id)"
 DB2_VOLUME_AZ="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_az)"
 DEMO_BUCKET="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" bucket_name)"

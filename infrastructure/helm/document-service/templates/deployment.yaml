@@ -53,8 +53,6 @@ spec:
               value: "true"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.tracing.endpoint | quote }}
-            - name: OTEL_SERVICE_NAME
-              value: {{ .Values.tracing.serviceName | quote }}
             {{- with .Values.tracing.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

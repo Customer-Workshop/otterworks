@@ -18,8 +18,13 @@ Usage: include "document-service.scopeExpr" (dict "expr" $expr "namespace" $ns)
 {{- end -}}
 
 {{/*
-UID of the per-namespace incident dashboard (Grafana UIDs are limited to 40 chars).
+UID of the per-namespace incident dashboard. Grafana UIDs are limited to 40
+chars, so longer ones keep a readable prefix plus a hash of the full UID.
 */}}
 {{- define "document-service.dashboardUid" -}}
-{{- .Values.monitoring.dashboard.uid | default (printf "ir-%s" .Release.Namespace) | trunc 40 | trimSuffix "-" -}}
+{{- $uid := .Values.monitoring.dashboard.uid | default (printf "ir-%s" .Release.Namespace) -}}
+{{- if gt (len $uid) 40 -}}
+{{- $uid = printf "%s-%s" ($uid | trunc 31 | trimSuffix "-") ($uid | sha256sum | trunc 8) -}}
+{{- end -}}
+{{- $uid -}}
 {{- end -}}

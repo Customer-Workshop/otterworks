@@ -157,7 +157,7 @@ turns on the document-service chart's opt-in observability:
 | `monitoring.enabled` | `ServiceMonitor` (named port `http`, `/metrics`, label `release: prometheus`) | `monitoring.coreos.com/v1` API |
 | `monitoring.rules.enabled` | `PrometheusRule` from `files/incident_alerts.yml`, every expression scoped to `namespace="<release ns>"` | `monitoring.coreos.com/v1` API |
 | `monitoring.dashboard.enabled` | `ConfigMap` labelled `grafana_dashboard: "1"` from `files/incident-responder.json`, UID `ir-<ns>`, datasource UID `monitoring.dashboard.datasourceUid` (default `prometheus`) | Grafana dashboard sidecar |
-| `tracing.enabled` | `DOC_SVC_OTEL_ENABLED=true`, `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://otel-collector.monitoring.svc.cluster.local:4318`), `OTEL_SERVICE_NAME` | OTel collector |
+| `tracing.enabled` | `DOC_SVC_OTEL_ENABLED=true`, `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://otel-collector.monitoring.svc.cluster.local:4318`) | OTel collector |
 
 All four default off except `monitoring.enabled`, whose ServiceMonitor still
 renders only when the CRD exists, so `otterworks-main` and every other tenant

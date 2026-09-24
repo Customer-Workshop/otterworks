@@ -92,6 +92,8 @@ describe('ArchiveCompareComponent', () => {
     ];
     const one = doc('azuresql', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001');
     one.versions = [v1, { ...v1, version_no: 3, arch_key: 'DA00000000000044' }];
+    // duplicate version_no on the local side: only arch_key tells the rows apart
+    two.versions.push({ ...v1, version_no: 3, arch_key: 'DA00000000000045' });
     http.expectOne('/api/v1/reports/archive/documents/DOC-42').flush(two);
     http.expectOne('/api/v1/reports/archive/documents/DOC-42/hash').flush({ document_hash: 'h1' });
     http.expectOne('https://peer.example/api/v1/reports/archive/documents/DOC-42').flush(one);
@@ -99,14 +101,15 @@ describe('ArchiveCompareComponent', () => {
     fixture.detectChanges();
 
     expect(component.verdict).toBe('mismatch');
-    expect(component.mismatchCount).toBe(1);
-    const [local1, local2, local3] = component.sides[0].document!.versions;
+    expect(component.mismatchCount).toBe(2);
+    const [local1, local2, local3, local3dup] = component.sides[0].document!.versions;
     expect(component.versionMissing(local2)).toBeTrue();
+    expect(component.versionMissing(local3dup)).toBeTrue();
     expect(component.versionMissing(local1)).toBeFalse();
     expect(component.versionMissing(local3)).toBeFalse();
     expect(component.differs(local3, 'arch_key')).toBeFalse();
-    expect(fixture.nativeElement.querySelectorAll('.version.missing').length).toBe(1);
-  });
+    expect(fixture.nativeElement.querySelectorAll('.version.missing').length).toBe(2);
+      });
 
   it('does not claim a match when a hash is missing on one side', () => {
     component.docId = 'DOC-42';

@@ -217,21 +217,21 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     });
   }
 
-  /** True when both sides are loaded and the other deployment has no version with this version_no. */
+  /** True when both sides are loaded and the other deployment has no version with this arch_key. */
   versionMissing(v: ArchiveVersion): boolean {
     if (this.sides.length < 2 || this.sides.some(s => !s.document)) {
       return false;
     }
-    return !this.pairVersions(v.version_no).every(Boolean);
+    return !this.pairVersions(v.arch_key).every(Boolean);
   }
 
   differs(v: ArchiveVersion, field: keyof ArchiveVersion): boolean {
-    const [a, b] = this.pairVersions(v.version_no);
+    const [a, b] = this.pairVersions(v.arch_key);
     return !!a && !!b && String(a[field] ?? '') !== String(b[field] ?? '');
   }
 
   policyDiffers(v: ArchiveVersion): boolean {
-    const [a, b] = this.pairVersions(v.version_no);
+    const [a, b] = this.pairVersions(v.arch_key);
     if (!a || !b) {
       return false;
     }
@@ -244,7 +244,7 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
   }
 
   eventDiffers(v: ArchiveVersion, e: ArchiveEvent): boolean {
-    const [a, b] = this.pairVersions(v.version_no);
+    const [a, b] = this.pairVersions(v.arch_key);
     if (!a || !b) {
       return false;
     }
@@ -287,10 +287,15 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     return `${err.status}: ${err.message}`;
   }
 
-  /** Versions are matched across sides by version_no, not position, so a gap on one side is attributed correctly. */
-  private pairVersions(versionNo: number): [ArchiveVersion | undefined, ArchiveVersion | undefined] {
-    const a = this.sides[0]?.document?.versions?.find(v => v.version_no === versionNo);
-    const b = this.sides[1]?.document?.versions?.find(v => v.version_no === versionNo);
+  /**
+   * Versions are matched across sides by ARCH_KEY (the DOCARCH primary key), not by position or
+   * version_no, so gaps and duplicate version numbers on one side are attributed to the right row.
+   * Keys compare trimmed because the display value is right-trimmed (MIG-04 padding).
+   */
+  private pairVersions(archKey: string): [ArchiveVersion | undefined, ArchiveVersion | undefined] {
+    const key = archKey.trim();
+    const a = this.sides[0]?.document?.versions?.find(v => v.arch_key.trim() === key);
+    const b = this.sides[1]?.document?.versions?.find(v => v.arch_key.trim() === key);
     return [a, b];
   }
 
@@ -300,11 +305,11 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
     }
     const [a, b] = this.sides;
     let diffs = 0;
-    const versionNos = new Set<number>();
-    a.document!.versions.forEach(v => versionNos.add(v.version_no));
-    b.document!.versions.forEach(v => versionNos.add(v.version_no));
-    for (const versionNo of versionNos) {
-      const [va, vb] = this.pairVersions(versionNo);
+    const archKeys = new Set<string>();
+    a.document!.versions.forEach(v => archKeys.add(v.arch_key.trim()));
+    b.document!.versions.forEach(v => archKeys.add(v.arch_key.trim()));
+    for (const archKey of archKeys) {
+      const [va, vb] = this.pairVersions(archKey);
       if (!va || !vb) {
         diffs++;
         continue;

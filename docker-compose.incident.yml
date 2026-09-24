@@ -8,7 +8,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.infra.yml -f docker-compose.incident.yml up -d
 #
 # INCIDENT_LOG_VOLUME_SIZE  tmpfs size of the per-request log dir (default 64m)
-# INCIDENT_MEMORY_LIMIT     document-service memory ceiling     (default 256m)
+# INCIDENT_MEMORY_LIMIT     document-service memory ceiling     (default 384m; cache-leak arms at 256m)
 # DEVIN_WEBHOOK_URL         Devin Automation webhook trigger; falls back to the sink
 # SLACK_WEBHOOK_URL         Slack incoming webhook;            falls back to the sink
 
@@ -21,7 +21,7 @@ services:
       DOC_SVC_ROLLUP_INTERVAL_SECONDS: '60'
     tmpfs:
     - /var/log/otterworks/document-service:size=${INCIDENT_LOG_VOLUME_SIZE:-64m},uid=1001,gid=1001
-    mem_limit: ${INCIDENT_MEMORY_LIMIT:-256m}
+    mem_limit: ${INCIDENT_MEMORY_LIMIT:-384m}
     depends_on:
       postgres:
         condition: service_healthy

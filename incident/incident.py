@@ -132,15 +132,38 @@ def die(msg: str, code: int = 2) -> None:
     sys.exit(code)
 
 
-def sh(*args: str, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess[str]:
+def sh(
+    *args: str,
+    check: bool = True,
+    capture: bool = False,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     log("$ " + " ".join(args))
-    return subprocess.run(args, cwd=REPO, check=check, text=True, capture_output=capture)
+    return subprocess.run(
+        args,
+        cwd=REPO,
+        check=check,
+        text=True,
+        capture_output=capture,
+        env={**os.environ, **env} if env else None,
+    )
 
 
 def compose(
-    *args: str, check: bool = True, capture: bool = False
+    *args: str, check: bool = True, capture: bool = False, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
-    return sh(*COMPOSE, *args, check=check, capture=capture)
+    return sh(*COMPOSE, *args, check=check, capture=capture, env=env)
+
+
+def recreate_document_service(cat: dict[str, Any], memory_limit: str | None) -> None:
+    """Recreate the document-service container with a scenario-specific memory ceiling.
+
+    `None` restores the Compose default (`INCIDENT_MEMORY_LIMIT` or 384m).
+    """
+    env = {"INCIDENT_MEMORY_LIMIT": memory_limit} if memory_limit else None
+    compose("up", "-d", "--no-build", "--force-recreate", "document-service", env=env)
+    wait_healthy(cat)
+    log(f"document-service memory limit -> {memory_limit or 'default'}")
 
 
 def reset_fixture(cat: dict[str, Any]) -> None:
@@ -609,6 +632,10 @@ def run_step(cat: dict[str, Any], scenario: str, step: Any) -> None:
         case "restart-document-service" | "purge-request-log":
             compose("restart", "document-service")
             wait_healthy(cat)
+        case "memory-limit":
+            recreate_document_service(cat, str(arg))
+        case "restore-memory-limit":
+            recreate_document_service(cat, None)
         case "start-replica":
             compose("--profile", "double-run", "up", "-d", "--no-build", "document-service-replica")
         case "stop-replica":

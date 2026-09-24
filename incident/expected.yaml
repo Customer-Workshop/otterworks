@@ -2,12 +2,13 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T06:00:15.571444+00:00'
-  git_sha: d31235d82207bd5f716775ac1e8627d2fd752615
-  reason: 'double-run fires_within 180s -> 240s: worst case is two 60s rollup ticks
-    plus 30s for-clause plus scrape lag (observed 150s); no seed or alert-rule change'
+  at: '2026-09-24T06:07:49.064673+00:00'
+  git_sha: 011f683c4a376bd52dfb248adb9fbb71ed463be3
+  reason: 'cache-leak arms document-service at 256m and disarm restores the 384m default:
+    the 100-row n-plus-one page at 16 concurrent OOM-killed the service under a global
+    256m ceiling; no seed or alert-rule change'
 fingerprints:
-  fixture: f35839c76073ed79040ed67e369b17fa2ecb5917435cdfedcc52cc779c82b0e2
+  fixture: b90f4928901e00b7c606865645676059b6dcc47c67430717cd3556cb9ba77cb7
   source: 8f4f493c533d958cb42a18f003d1339670b776ee7588f05a3f5684399e74c476
 scenarios:
   n-plus-one:

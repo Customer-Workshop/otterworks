@@ -134,12 +134,13 @@ scenarios:
       test that inserts past the bound and asserts the size stays capped.
     arm:
       - seed
+      - memory-limit: 256m
       - flag: "chaos:document-service:render_cache"
       - load: edit-export
     disarm:
       - stop-load
       - unflag: "chaos:document-service:render_cache"
-      - restart-document-service
+      - restore-memory-limit
     load:
       edit-export:
         flow: edit-then-export

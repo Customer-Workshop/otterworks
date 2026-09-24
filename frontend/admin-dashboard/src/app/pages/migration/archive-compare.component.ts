@@ -86,8 +86,11 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
                 <mat-icon inline>fingerprint</mat-icon>
                 <code>{{ side.hash.document_hash }}</code>
               </p>
-              <div class="version" *ngFor="let v of doc.versions; let vi = index">
-                <h4>Version {{ v.version_no }} <code>{{ v.arch_key }}</code></h4>
+              <div class="version" *ngFor="let v of doc.versions; let vi = index" [class.missing]="versionMissing(vi)">
+                <h4>
+                  Version {{ v.version_no }} <code>{{ v.arch_key }}</code>
+                  <span class="missing-tag" *ngIf="versionMissing(vi)">missing on other side</span>
+                </h4>
                 <table class="kv">
                   <tr *ngFor="let f of versionFields" [class.diff]="differs(vi, f)">
                     <th>{{ f }}</th>
@@ -138,6 +141,8 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
     .base { font-size: 0.75rem; color: #52606d; }
     .hash code { word-break: break-all; font-size: 0.8rem; }
     .version { margin-top: 12px; }
+    .version.missing { border-left: 4px solid #c0392b; padding-left: 8px; }
+    .missing-tag { font-size: 0.75rem; background: #fde2e1; color: #7a1d1d; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
     .version h4 { margin: 0 0 6px; }
     table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
     th, td { border: 1px solid #e4e7eb; padding: 4px 8px; text-align: left; vertical-align: top; }
@@ -210,6 +215,15 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
       this.loading = false;
       this.computeVerdict();
     });
+  }
+
+  /** True when the other deployment (when loaded) has no version at this position. */
+  versionMissing(versionIndex: number): boolean {
+    if (this.sides.length < 2 || this.sides.some(s => !s.document)) {
+      return false;
+    }
+    const [a, b] = this.pairVersions(versionIndex);
+    return !a !== !b;
   }
 
   differs(versionIndex: number, field: keyof ArchiveVersion): boolean {

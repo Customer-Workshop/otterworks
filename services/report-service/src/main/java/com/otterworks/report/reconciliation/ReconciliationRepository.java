@@ -128,11 +128,12 @@ public class ReconciliationRepository {
         return jdbc;
     }
 
+    /** Ledger DATETIME2 values are stored as UTC wall-clock time; they carry no zone of their own. */
     static String isoUtc(Timestamp ts) {
         if (ts == null) {
             return null;
         }
-        return ts.toInstant().atOffset(ZoneOffset.UTC).format(ISO_UTC);
+        return ts.toLocalDateTime().atOffset(ZoneOffset.UTC).format(ISO_UTC);
     }
 
     /** {@code MIG01-...} keys carry their register id in the key itself. */

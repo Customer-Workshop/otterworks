@@ -75,6 +75,28 @@ describe('ArchiveCompareComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('tr.diff').length).toBe(4);
   });
 
+  it('flags a version that exists on only one side', () => {
+    component.docId = 'DOC-42';
+    component.peerUrl = 'https://peer.example';
+    fixture.detectChanges();
+    http.expectOne('/config/peer.json').flush({ peer_app_url: '' });
+
+    component.load();
+    const two = doc('db2', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001');
+    two.versions = [...two.versions, { ...two.versions[0], version_no: 2, arch_key: 'DA00000000000043' }];
+    const one = doc('azuresql', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001');
+    http.expectOne('/api/v1/reports/archive/documents/DOC-42').flush(two);
+    http.expectOne('/api/v1/reports/archive/documents/DOC-42/hash').flush({ document_hash: 'h1' });
+    http.expectOne('https://peer.example/api/v1/reports/archive/documents/DOC-42').flush(one);
+    http.expectOne('https://peer.example/api/v1/reports/archive/documents/DOC-42/hash').flush({ document_hash: 'h2' });
+    fixture.detectChanges();
+
+    expect(component.verdict).toBe('mismatch');
+    expect(component.versionMissing(1)).toBeTrue();
+    expect(component.versionMissing(0)).toBeFalse();
+    expect(fixture.nativeElement.querySelectorAll('.version.missing').length).toBe(1);
+  });
+
   it('does not claim a match when a hash is missing on one side', () => {
     component.docId = 'DOC-42';
     component.peerUrl = 'https://peer.example';

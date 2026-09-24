@@ -11,7 +11,8 @@
 #               SQL_READER_USER SQL_READER_PASSWORD IDENTITY_NAME IDENTITY_CLIENT_ID DDL_DIR
 #               AAD_CLIENT_ID AAD_TENANT_ID ARM_CLIENT_SECRET
 # Tooling: go-sqlcmd (https://github.com/microsoft/go-sqlcmd) on PATH, or docker
-#          (mcr.microsoft.com/mssql-tools18 - SQL auth only, step 3 is then skipped).
+#          (mcr.microsoft.com/mssql-tools, the only sqlcmd image MCR publishes - SQL auth only,
+#          step 3 is then skipped).
 # Never prints a secret.
 # ------------------------------------------------------------------------------
 set -euo pipefail
@@ -22,7 +23,8 @@ set -euo pipefail
 log() { echo "[apply-sql] $*" >&2; }
 
 RETRIES="${SQL_CONNECT_RETRIES:-12}"
-TOOLS_IMAGE="${MSSQL_TOOLS_IMAGE:-mcr.microsoft.com/mssql-tools18:latest}"
+TOOLS_IMAGE="${MSSQL_TOOLS_IMAGE:-mcr.microsoft.com/mssql-tools:latest}"
+TOOLS_SQLCMD="${MSSQL_TOOLS_SQLCMD:-/opt/mssql-tools/bin/sqlcmd}"
 
 mode=""
 if command -v sqlcmd >/dev/null 2>&1 && sqlcmd --version 2>/dev/null | grep -q 'Version: v'; then
@@ -49,7 +51,7 @@ run_sql() {
         -U "${AAD_CLIENT_ID:?}@${AAD_TENANT_ID:?}" -N -C -b -l 60 -i "$file" ;;
     docker:sql)
       docker run --rm -e SQLCMDPASSWORD="$SQL_ADMIN_PASSWORD" -v "$(dirname "$file"):/sql:ro" "$TOOLS_IMAGE" \
-        /opt/mssql-tools18/bin/sqlcmd -S "tcp:${SQL_SERVER_FQDN},1433" -d "$SQL_DATABASE" \
+        "$TOOLS_SQLCMD" -S "tcp:${SQL_SERVER_FQDN},1433" -d "$SQL_DATABASE" \
         -U "$SQL_ADMIN_USER" -N -C -b -l 60 -i "/sql/$(basename "$file")" ;;
     *)
       return 99 ;;

@@ -38,7 +38,10 @@ Azure `otterworks/<token>/terraform.tfstate` in the `TFSTATE_AZ_*` storage accou
 
 ## 2. Prerequisites (presenter workstation or CI runner)
 
-Tools: `aws`, `kubectl`, `helm`, `terraform >= 1.7`, `jq`, `az` (AFTER only), `openssl`.
+Tools: `aws`, `kubectl`, `helm`, `terraform >= 1.7`, `jq`, `az` (AFTER only), `openssl`, and
+for the AFTER token [go-sqlcmd](https://github.com/microsoft/go-sqlcmd) on `PATH` (falls back
+to `docker run mcr.microsoft.com/mssql-tools`, which cannot grant the managed identity - Entra
+auth - so prefer go-sqlcmd).
 
 ```bash
 aws sts get-caller-identity                      # account 599083837640

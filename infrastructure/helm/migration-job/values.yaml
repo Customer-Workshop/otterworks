@@ -1,0 +1,75 @@
+# One Job per invocation: helm install ldm-extract-r1 ./migration-job -n otterworks-d24-after \
+#   --set namespaceToken=d24-after --set stage=extract --set runId=r20260924150000 \
+#   --set image.tag=<tag> --set expires=2026-10-01T00:00:00Z
+image:
+  registry: 599083837640.dkr.ecr.us-east-1.amazonaws.com
+  repositoryPrefix: otterworks-demo
+  # Defaults to <registry>/<repositoryPrefix>/<namespaceToken>/ldm-job; set to override entirely.
+  repository: ""
+  tag: ""          # required: ECR uses immutable tags
+  pullPolicy: IfNotPresent
+
+# Demo token (<run>-<state>); used for the manifest overlay, labels and the ldm --namespace argument.
+namespaceToken: ""
+# extract | load | validate | purge | reconcile | all | init
+stage: "all"
+# ^[a-z0-9][a-z0-9-]{2,62}$ ; omitted for stage=init
+runId: ""
+# Absolute UTC expiry (YYYY-MM-DDTHH:MM:SSZ); recorded on every object as demo/expires
+expires: ""
+
+manifestPath: /app/migration/manifest.yaml
+# Extra args appended after the contract args (e.g. --apply-sql paths for init)
+extraArgs: []
+
+job:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  activeDeadlineSeconds: 14400
+  restartPolicy: Never
+
+# Non-secret environment (CONTRACTS.md §9.2). LDM_HOST is fixed to eks by this chart.
+env:
+  AZSQL_SERVER: ""
+  AZSQL_DATABASE: ""
+  AZSQL_AUTH: sql
+  AZ_STORAGE_ACCOUNT: ""
+  AZ_STAGING_CONTAINER: ""
+  DB2_HOST: db2-archive
+  DB2_PORT: "50000"
+  DB2_DATABASE: ""
+  # comma-separated label=url pairs added to the reconciliation sessions array
+  DEVIN_SESSION_LINKS: ""
+  # command (manifest source.unload_command) | builtin (ldm's fixed-width writer)
+  LDM_UNLOAD_MODE: command
+
+secrets:
+  # keys DB2_USER, DB2_PASSWORD (created by the db2-archive chart / ops)
+  db2: db2-archive-credentials
+  # keys AZSQL_USER, AZSQL_PASSWORD, AZ_STORAGE_KEY (created by ops from Key Vault)
+  azure: ldm-azure
+
+# Manifest + overlay are mounted over the copies baked into the image so the presenter can edit them
+# without a rebuild. Leave empty to use the image's files.
+manifest:
+  mount: true
+  base: ""      # contents of migration/manifest.yaml (helm --set-file manifest.base=migration/manifest.yaml)
+  overlay: ""   # contents of migration/manifests/<token>.yaml
+
+staging:
+  sizeLimit: 10Gi
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+networkPolicy:
+  enabled: true
+
+serviceAccount:
+  create: true
+  annotations: {}

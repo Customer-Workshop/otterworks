@@ -81,30 +81,24 @@ for f in "$DDL_DIR"/*.sql; do
   run_sql_retry sql "$work/ddl.sql"
 done
 
-# 2. contained reader user (password passed via sqlcmd variable, never echoed)
-cat >"$work/reader.sql" <<'EOF'
-IF DATABASE_PRINCIPAL_ID(N'$(READER_USER)') IS NULL
-    EXEC (N'CREATE USER [$(READER_USER)] WITH PASSWORD = N''$(READER_PASSWORD)''');
+# 2. contained reader user. The password is rendered into a 0600 file under the private temp dir
+#    (never on a command line, never echoed).
+escaped_pw="${SQL_READER_PASSWORD//\'/\'\'}"
+umask 077
+cat >"$work/reader.sql" <<EOF
+IF DATABASE_PRINCIPAL_ID(N'${SQL_READER_USER}') IS NULL
+    EXEC (N'CREATE USER [${SQL_READER_USER}] WITH PASSWORD = N''${escaped_pw}''');
 ELSE
-    EXEC (N'ALTER USER [$(READER_USER)] WITH PASSWORD = N''$(READER_PASSWORD)''');
+    EXEC (N'ALTER USER [${SQL_READER_USER}] WITH PASSWORD = N''${escaped_pw}''');
 GO
-IF IS_ROLEMEMBER(N'ldm_report_reader', N'$(READER_USER)') = 0
-    ALTER ROLE ldm_report_reader ADD MEMBER [$(READER_USER)];
+IF IS_ROLEMEMBER(N'ldm_report_reader', N'${SQL_READER_USER}') = 0
+    ALTER ROLE ldm_report_reader ADD MEMBER [${SQL_READER_USER}];
 GO
 EOF
+umask 022
 log "creating reader user ${SQL_READER_USER}"
-escaped_pw="${SQL_READER_PASSWORD//\'/\'\'}"
-case "$mode" in
-  go-sqlcmd)
-    SQLCMDPASSWORD="$SQL_ADMIN_PASSWORD" sqlcmd -S "tcp:${SQL_SERVER_FQDN},1433" -d "$SQL_DATABASE" \
-      -U "$SQL_ADMIN_USER" -N -C -b -l 60 -v READER_USER="$SQL_READER_USER" READER_PASSWORD="$escaped_pw" \
-      -i "$work/reader.sql" ;;
-  docker)
-    docker run --rm -e SQLCMDPASSWORD="$SQL_ADMIN_PASSWORD" -v "$work:/sql:ro" "$TOOLS_IMAGE" \
-      /opt/mssql-tools18/bin/sqlcmd -S "tcp:${SQL_SERVER_FQDN},1433" -d "$SQL_DATABASE" \
-      -U "$SQL_ADMIN_USER" -N -C -b -l 60 -v READER_USER="$SQL_READER_USER" READER_PASSWORD="$escaped_pw" \
-      -i /sql/reader.sql ;;
-esac
+run_sql_retry sql "$work/reader.sql"
+rm -f "$work/reader.sql"
 
 # 3. managed identity as an external user (needs Entra auth; SQL logins cannot create external users)
 if [ "$mode" != "go-sqlcmd" ]; then

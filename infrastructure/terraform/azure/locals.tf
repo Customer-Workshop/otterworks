@@ -1,9 +1,9 @@
 data "azurerm_client_config" "current" {}
 
-# Public IP of the machine running Terraform, used only for the optional SQL firewall rule that
-# lets apply_target_sql reach the database. Skipped when deployer_cidrs is set or in private mode.
+# Public IP of the machine running Terraform: SQL firewall rule for apply_target_sql (public mode)
+# and the Key Vault data-plane allow-list (private mode). Skipped when deployer_cidrs is set.
 data "http" "deployer_ip" {
-  count = var.apply_target_sql && !var.private_networking && length(var.deployer_cidrs) == 0 ? 1 : 0
+  count = (var.apply_target_sql || var.private_networking) && length(var.deployer_cidrs) == 0 ? 1 : 0
   url   = "https://api.ipify.org?format=text"
 }
 
@@ -42,13 +42,14 @@ locals {
 
   sql_server_fqdn = azurerm_mssql_server.this.fully_qualified_domain_name
 
-  deployer_cidrs = var.private_networking || !var.apply_target_sql ? [] : (
-    length(var.deployer_cidrs) > 0 ? var.deployer_cidrs : ["${trimspace(data.http.deployer_ip[0].response_body)}/32"]
+  deployer_cidrs = length(var.deployer_cidrs) > 0 ? var.deployer_cidrs : (
+    length(data.http.deployer_ip) > 0 ? ["${trimspace(data.http.deployer_ip[0].response_body)}/32"] : []
   )
+  sql_deployer_cidrs = var.private_networking || !var.apply_target_sql ? [] : local.deployer_cidrs
 
   firewall_rules = merge(
     { for i, c in var.eks_egress_cidrs : "eks-egress-${i}" => c },
-    { for i, c in local.deployer_cidrs : "deployer-${i}" => c },
+    { for i, c in local.sql_deployer_cidrs : "deployer-${i}" => c },
   )
 
   # Environment shared by the Container Apps and the job (CONTRACTS.md §9.2 / §10.4).

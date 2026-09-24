@@ -115,7 +115,10 @@ TLS 1.2 and no anonymous access.
 **Private (`-var private_networking=true`)** — `vnet-otterworks-<ns>` (10.60.0.0/16 by
 default) with a `/23` subnet delegated to `Microsoft.App/environments` and a `/24` for
 private endpoints; private endpoints + `privatelink.*` DNS zones for SQL, blob and Key
-Vault; `public_network_access_enabled=false` on all three; the Container Apps environment
+Vault; `public_network_access_enabled=false` on SQL and storage. Key Vault keeps its
+public endpoint but with `default_action=Deny` and an IP allow-list of the deployer
+(`deployer_cidrs`, or the auto-discovered apply-machine IP) — Terraform writes the secrets
+over the data plane, so a fully private vault would fail the apply. The Container Apps environment
 is placed in the delegated subnet (its ingress stays external so the presenter can still
 open the report). No SQL firewall rules are created and `sql_init` is skipped (the deployer
 cannot reach the private endpoint) — run `ldm init` from inside the environment instead,

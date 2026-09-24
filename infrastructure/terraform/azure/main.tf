@@ -69,15 +69,17 @@ resource "azurerm_role_assignment" "identity_blob_reader" {
 # ---- key vault --------------------------------------------------------------
 
 resource "azurerm_key_vault" "this" {
-  name                          = local.key_vault_name
-  location                      = azurerm_resource_group.this.location
-  resource_group_name           = azurerm_resource_group.this.name
-  tenant_id                     = data.azurerm_client_config.current.tenant_id
-  sku_name                      = "standard"
-  rbac_authorization_enabled    = var.manage_rbac
-  purge_protection_enabled      = false
-  soft_delete_retention_days    = 7
-  public_network_access_enabled = !var.private_networking
+  name                       = local.key_vault_name
+  location                   = azurerm_resource_group.this.location
+  resource_group_name        = azurerm_resource_group.this.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  rbac_authorization_enabled = var.manage_rbac
+  purge_protection_enabled   = false
+  soft_delete_retention_days = 7
+  # Secrets are written over the data plane by the machine running apply, so in private mode the
+  # vault keeps a public endpoint locked to the deployer CIDRs (plus the private endpoint).
+  public_network_access_enabled = true
   tags                          = local.tags
 
   dynamic "network_acls" {
@@ -85,6 +87,7 @@ resource "azurerm_key_vault" "this" {
     content {
       default_action = "Deny"
       bypass         = "AzureServices"
+      ip_rules       = local.deployer_cidrs
     }
   }
 

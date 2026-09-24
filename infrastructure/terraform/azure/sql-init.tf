@@ -19,6 +19,9 @@ resource "null_resource" "sql_init" {
     ddl_hash      = local.target_sql_hash
     identity_name = azurerm_user_assigned_identity.this.name
     reader_login  = local.sql_reader_login
+    # Rotating either password must re-run the script; only a digest lands in state/plan.
+    reader_pw_digest = nonsensitive(sha256(random_password.sql_reader.result))
+    admin_pw_digest  = nonsensitive(sha256(random_password.sql_admin.result))
   }
 
   provisioner "local-exec" {

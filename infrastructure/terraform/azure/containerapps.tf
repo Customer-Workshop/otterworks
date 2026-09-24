@@ -18,10 +18,17 @@ resource "azurerm_container_app_environment" "this" {
 
 locals {
   # Env shared by the two apps: contract §10.4 (reader credential from Key Vault).
+  # The Azure copies have no Postgres/DynamoDB beside them: they serve only the archive read
+  # path, so Spring must not touch its JDBC datasource at boot and the probes hit
+  # /health/archive (pings Azure SQL) instead of the AWS-backed /health.
   app_env = merge(local.azsql_env, {
-    ARCHIVE_STORE     = "azuresql"
-    LDM_SESSION_LINKS = var.session_links_json
+    ARCHIVE_STORE                                                   = "azuresql"
+    LDM_SESSION_LINKS                                               = var.session_links_json
+    SPRING_JPA_HIBERNATE_DDL_AUTO                                   = "none"
+    SPRING_JPA_PROPERTIES_HIBERNATE_TEMP_USE_JDBC_METADATA_DEFAULTS = "false"
+    SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT            = "-1"
   })
+  app_probe_path = "/health/archive"
 
   app_secret_env = {
     AZSQL_USER     = "azsql-reader-user"
@@ -111,14 +118,19 @@ resource "azurerm_container_app" "apps" {
       }
 
       liveness_probe {
-        transport = "HTTP"
-        port      = each.value.port
-        path      = "/health"
+        transport               = "HTTP"
+        port                    = each.value.port
+        path                    = local.app_probe_path
+        initial_delay           = 30
+        timeout                 = 10
+        failure_count_threshold = 6
       }
       readiness_probe {
-        transport = "HTTP"
-        port      = each.value.port
-        path      = "/health"
+        transport               = "HTTP"
+        port                    = each.value.port
+        path                    = local.app_probe_path
+        timeout                 = 10
+        failure_count_threshold = 6
       }
     }
   }

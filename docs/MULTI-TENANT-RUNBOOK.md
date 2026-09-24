@@ -147,8 +147,10 @@ branch applies to every deploy of that tenant and to no other.
 ## Incident-response tenant (`demo-incident` → `incident`)
 
 The branch `demo-incident` owns tenant id `incident` (`branch_tenant_id` strips
-`demo-`): namespace `otterworks-incident`, hosts `t-incident.otterworks.app` /
-`api-t-incident.otterworks.app`, image tag `tenant-incident`, 72 h TTL. Its
+`demo-`): namespace `otterworks-incident`, hosts `t-incident.demo.otterworks.app` /
+`api-t-incident.demo.otterworks.app` (the branch-tenant suffix external-dns
+manages; only the perpetual `main` tenant answers at `otterworks.app`), image
+tag `tenant-incident`, 72 h TTL. Its
 overlay `infrastructure/helm/tenant-values/incident/document-service.yaml`
 turns on the document-service chart's opt-in observability:
 
@@ -169,14 +171,19 @@ namespace, so no extra labelling) plus `ingress-nginx`; Services stay
 `ClusterIP`.
 
 Create or redeploy through CD, falling back to the script when the runner Job
-fails:
+fails. The runner needs two things from the platform release
+(`demo-platform/helm/demo-platform`): the `monitoring.coreos.com` rules on its
+ClusterRole, and `repoHttpsUrl` + `secret.githubToken` so it can fetch the
+branch (the runner image ships the tree without `.git`; the entrypoint
+initializes a repository and fetches the branch shallowly). Keep the fallback on
+the same host suffix as CD, otherwise external-dns drops the tenant's records:
 
 ```bash
 git push origin <before-sha>:demo-incident
 # fallback, from a checkout of demo-incident:
 export AWS_DEFAULT_REGION=us-east-1 DB_PASSWORD='<shared RDS master password>'
 export JWT_SECRET="$(openssl rand -hex 32)" SECRET_KEY_BASE="$(openssl rand -hex 64)"
-scripts/deploy-tenant.sh incident --profile core --host-suffix otterworks.app --ttl 72h --branch demo-incident
+scripts/deploy-tenant.sh incident --profile core --host-suffix demo.otterworks.app --ttl 72h --branch demo-incident
 ```
 
 Seed and load it through a port-forward, signing with the tenant's JWT secret:

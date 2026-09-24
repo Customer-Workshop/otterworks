@@ -177,7 +177,7 @@ seeded, loaded or modified (see `AGENTS.md`).
 | Branch | `demo-incident` (`branch_tenant_id` strips `demo-`) |
 | Tenant id | `incident` — pass `incident`, not `demo-incident`, to the tenant scripts |
 | Namespace | `otterworks-incident` (72 h TTL, `demo/expires-at` annotation) |
-| Hosts | `t-incident.otterworks.app` (web), `api-t-incident.otterworks.app` (gateway) |
+| Hosts | `t-incident.demo.otterworks.app` (web), `api-t-incident.demo.otterworks.app` (gateway) — branch tenants live under `demo.otterworks.app`; only the perpetual `main` tenant sits at `otterworks.app` |
 | Values overlay | `infrastructure/helm/tenant-values/incident/document-service.yaml`: ServiceMonitor, PrometheusRule, Grafana dashboard, OTLP tracing, 512Mi limit |
 | Before-state | whatever `demo-incident` points at before a fix merges: `git rev-parse origin/demo-incident` |
 
@@ -196,9 +196,11 @@ git push origin <before-sha>:demo-incident     # .github/workflows/cd-tenant.yml
 kubectl -n otterworks-incident get pods,ingress
 ```
 
-If the CD runner Job fails (it needs `monitoring.coreos.com` RBAC on its
-ClusterRole and `GITHUB_TOKEN` + `REPO_HTTPS_URL` to check out the branch —
-see `docs/MULTI-TENANT-RUNBOOK.md`), deploy the same branch from a checkout.
+If the CD runner Job fails (`kubectl -n otterworks-platform logs job/deploy-incident-<epoch>`;
+it needs `monitoring.coreos.com` RBAC on its ClusterRole and `GITHUB_TOKEN` +
+`REPO_HTTPS_URL` to check out the branch — see `docs/MULTI-TENANT-RUNBOOK.md`),
+deploy the same branch from a checkout with the same host suffix CD uses, so
+external-dns (whose domain filter is `demo.otterworks.app`) keeps the records.
 The Actions `build` job has already pushed `otterworks/document-service:tenant-incident`,
 which the script picks up:
 
@@ -207,7 +209,7 @@ git checkout demo-incident
 export AWS_DEFAULT_REGION=us-east-1 DB_PASSWORD='<shared RDS master password>'
 # auth-service rejects HS256 keys shorter than 32 bytes
 export JWT_SECRET="$(openssl rand -hex 32)" SECRET_KEY_BASE="$(openssl rand -hex 64)"
-scripts/deploy-tenant.sh incident --profile core --host-suffix otterworks.app --ttl 72h --branch demo-incident
+scripts/deploy-tenant.sh incident --profile core --host-suffix demo.otterworks.app --ttl 72h --branch demo-incident
 ```
 
 ### Seed, load and read the headers

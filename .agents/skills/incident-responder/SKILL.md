@@ -11,7 +11,7 @@ description: >
 
 # Incident Responder — OtterWorks
 
-Repo-specific mechanics behind the `!incident-responder` Playbook. Auto-loaded
+Repo-specific mechanics behind the `!incident_responder` Playbook. Auto-loaded
 when Devin works in this repository. Everything below is document-service
 (`services/document-service/`, Python 3.12, FastAPI, SQLAlchemy async, Alembic).
 

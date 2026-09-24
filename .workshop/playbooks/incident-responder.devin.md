@@ -2,7 +2,7 @@
 
 > **Facilitator / author:** this file is the source for a **Devin Playbook**.
 > Copy its contents into your Devin organization (Settings → Playbooks → *Create
-> a new Playbook*) so sessions can invoke it as `!incident-responder`, and point
+> a new Playbook*) so sessions can invoke it as `!incident_responder`, and point
 > the alert Automation's prompt at that macro. See
 > [Creating Playbooks](https://docs.devin.ai/product-guides/creating-playbooks)
 > and [Automations](https://docs.devin.ai/product-guides/automations).

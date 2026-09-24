@@ -1,0 +1,45 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.dashboard.enabled -}}
+{{- $ns := include "document-service.monitoringNamespace" . -}}
+{{- $links := .Values.monitoring.links -}}
+{{- $ds := dict "type" "prometheus" "uid" .Values.monitoring.dashboard.datasourceUid -}}
+{{- $d := .Files.Get "files/incident-responder.json" | fromJson -}}
+{{- $_ := set $d "uid" (include "document-service.dashboardUid" .) -}}
+{{- $_ := set $d "title" (printf "%s (%s)" $d.title $ns) -}}
+{{- range $a := $d.annotations.list -}}
+{{- if hasKey $a "expr" -}}
+{{- $_ := set $a "datasource" $ds -}}
+{{- $_ := set $a "expr" (include "document-service.scopeExpr" (dict "expr" $a.expr "namespace" $ns)) -}}
+{{- end -}}
+{{- end -}}
+{{- range $p := $d.panels -}}
+{{- if hasKey $p "datasource" -}}
+{{- $_ := set $p "datasource" $ds -}}
+{{- end -}}
+{{- range $t := ($p.targets | default list) -}}
+{{- $_ := set $t "datasource" $ds -}}
+{{- if hasKey $t "expr" -}}
+{{- $_ := set $t "expr" (include "document-service.scopeExpr" (dict "expr" $t.expr "namespace" $ns)) -}}
+{{- end -}}
+{{- end -}}
+{{- if and $links.jaeger $p.options (hasKey $p.options "content") -}}
+{{- $_ := set $p.options "content" (replace "http://localhost:16686" (trimSuffix "/" $links.jaeger) $p.options.content) -}}
+{{- end -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-incident-dashboard
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- with .Values.monitoring.dashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.monitoring.dashboard.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  incident-responder.json: |-
+    {{- toPrettyJson $d | nindent 4 }}
+{{- end }}

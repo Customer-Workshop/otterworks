@@ -150,6 +150,20 @@ container is the most common way to get a meaningless green. Migrations run on
 container start (`app/db/migrate.py`), so a new `alembic/versions/004_*.py` is
 applied by the rebuild.
 
+The gates never read `nan` as a number. A threshold whose metric has no samples
+in the 2 m window fails with `no samples in the 2m window (Prometheus returned
+nan/none)`, and the `after` gate additionally requires the offered load to have
+reached the service: `request_rate >= 12 rps` (half the pinned 24 rps profile).
+Both are diagnostics about the environment, not verdicts on the fix: the load
+generator prints `shed=N` when its 24 concurrent slots are all busy, and a host
+that sheds most requests after the fix is too small for the unscaled profile
+(the local Compose stack with Prometheus, Grafana, Jaeger, Postgres and the
+service was verified green on 8 vCPU / 32 GB; on a 2-4 vCPU laptop expect the
+before gate to pass and the after gate to trip the load-reached check). Do not
+lower the profile or `INCIDENT_LOAD_SCALE` to make the gate pass — the verify
+command ignores the scale on purpose — move to a bigger host or the isolated
+tenant below and quote that in the PR.
+
 Nine pre-existing failures in `tests/test_documents_api.py` (mutating endpoints
 called without an auth header, asserting `200` against a `401`) and
 `test_restore_version` are on `main` and are **not** yours to fix; run the

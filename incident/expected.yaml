@@ -2,15 +2,14 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T19:29:47.724832+00:00'
-  git_sha: f997af578825c55427a66de77c0bf967c2b52cc6
-  reason: 'INCIDENT_LOAD_SCALE: scale a scenario''s rps/concurrency for targets with
-    less headroom than the local stack (the single 500m-CPU tenant replica on the
-    shared cluster saturates under the laptop profile even after the fix). Default
-    1 -- the local gates, load profiles, alert thresholds and seed are unchanged.'
+  at: '2026-09-24T20:39:58.607279+00:00'
+  git_sha: 233856c023ec18bf47dbf5105b90ed44322e1bda
+  reason: 'gate hardening: nan/no-sample thresholds fail explicitly, after gate requires
+    offered load to reach the service; source fingerprint now covers Dockerfile, pyproject.toml
+    and poetry.lock'
 fingerprints:
-  fixture: 16aa8b6d057f613f026584447fd792b8eb5741ff79718580490193dd354cece9
-  source: 480b6fe74ff60a0d4d339ae8c3d8af03d23f45cd6e565c438481596bbcaa553a
+  fixture: 245aa1bc4b9bc265c18edb19de839483e2979f50d68e123f20da74cec892a7e6
+  source: d55ef66d277619b561204c5ff6e7f8ddedbd6e29ebed0ce4477ad08d2eb1ea40
 scenarios:
   n-plus-one:
     alert: DocumentListLatencyHigh

@@ -20,8 +20,10 @@
 Every command reads incident/scenarios.yaml; targets are overridable with
 INCIDENT_BASE_URL, INCIDENT_PROM_URL, INCIDENT_ALERTMANAGER_URL,
 INCIDENT_SINK_URL, INCIDENT_REDIS_URL. INCIDENT_LOAD_SCALE (default 1) scales a
-scenario's rps and concurrency for targets with less headroom than the local
-stack (a single-replica tenant on the shared cluster runs one 500m-CPU worker).
+scenario's rps and concurrency for `arm` and `load` against targets with less
+headroom than the local stack (a single-replica tenant on the shared cluster
+runs one 500m-CPU worker); `verify` ignores it and always soaks at the catalog's
+pinned profile, so a gate never passes under a lighter load than it recorded.
 `verify` always writes a report to incident/reports/ (pass or fail) so a red
 gate leaves evidence behind.
 """
@@ -33,6 +35,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import math
 import os
 import random
 import re
@@ -83,7 +86,13 @@ FIXTURE_INPUTS = [
     f"{MIGRATIONS}/002_document_stats_rollups.py",
     f"{MIGRATIONS}/003_backfill_word_count.py",
 ]
-SOURCE_INPUTS = ["services/document-service/app", MIGRATIONS]
+SOURCE_INPUTS = [
+    "services/document-service/app",
+    MIGRATIONS,
+    "services/document-service/Dockerfile",
+    "services/document-service/pyproject.toml",
+    "services/document-service/poetry.lock",
+]
 
 DEFAULT_SOAK_SECONDS = 150.0
 
@@ -124,8 +133,8 @@ def load_scale() -> float:
         scale = float(raw)
     except ValueError:
         scale = 0.0
-    if scale <= 0:
-        die(f"INCIDENT_LOAD_SCALE must be a positive number, got {raw!r}")
+    if not math.isfinite(scale) or scale <= 0:
+        die(f"INCIDENT_LOAD_SCALE must be a positive finite number, got {raw!r}")
     return scale
 
 
@@ -697,7 +706,9 @@ class Stats:
         self.__init__()
 
 
-async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> None:
+async def _drive(
+    cat: dict[str, Any], scenario: str, duration: float | None, scale: float = 1.0
+) -> None:
     sc = cat["scenarios"][scenario]
     profiles = sc.get("load") or {}
     if not profiles:
@@ -706,7 +717,6 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
     name, prof = next(iter(profiles.items()))
     owner = cat["seed"]["owner_id"]
     headers = bearer(owner)
-    scale = load_scale()
     rps = float(prof["rps"]) * scale
     concurrency = max(1, round(int(prof["concurrency"]) * scale))
     stats = Stats()
@@ -932,6 +942,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
     if state.get("scenario") and state["scenario"] != args.scenario:
         die(f"{state['scenario']} is already armed; run `incident.py disarm` first")
     sc = cat["scenarios"][args.scenario]
+    scale = load_scale()
     log(f"arming {args.scenario}: {sc['title']}")
     wait_healthy(cat)
     wait_alert_inactive(cat, sc["alert"]["name"], float(sc["alert"]["resolves_within_seconds"]))
@@ -942,7 +953,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
             "scenario": args.scenario,
             "armed_at": datetime.now(UTC).isoformat(),
             "git_sha": git_sha(),
-            "load_scale": load_scale(),
+            "load_scale": scale,
             "fingerprints": fingerprints(),
         }
     )
@@ -1018,6 +1029,52 @@ def _check(findings: list[str], ok: bool, msg: str) -> None:
     log(("PASS " if ok else "FAIL ") + msg)
     if not ok:
         findings.append(msg)
+
+
+NO_SAMPLES = (
+    "no samples in the 2m window (Prometheus returned nan/none): the load never "
+    "reached the service or its scrape target is down"
+)
+
+
+def _threshold_checks(
+    findings: list[str], metrics: dict[str, float | None], thresholds: dict[str, float]
+) -> None:
+    for key, threshold in thresholds.items():
+        metric, bound = key.rsplit("_", 1)
+        val = metrics.get(metric)
+        op = ">=" if bound == "min" else "<="
+        if val is None or math.isnan(val):
+            _check(findings, False, f"{metric} {op} {threshold}: {NO_SAMPLES}")
+            continue
+        ok = val >= threshold if bound == "min" else val <= threshold
+        _check(findings, ok, f"{metric}={_fmt(val)} {op} {threshold}")
+
+
+# Below this fraction of the profile's rps the alert's own rate precondition
+# (> 1 rps) can be unmet, so an inactive alert proves nothing about the fix.
+MIN_OFFERED_LOAD_FRACTION = 0.5
+
+
+def _check_load_reached(
+    findings: list[str], metrics: dict[str, float | None], sc: dict[str, Any]
+) -> None:
+    prof = next(iter(sc["load"].values()))
+    if prof.get("flow") == "edit-then-export":
+        return  # request_rate only covers the list handler
+    rps = float(prof["rps"])
+    floor = rps * MIN_OFFERED_LOAD_FRACTION
+    rate = metrics.get("request_rate")
+    if rate is None or math.isnan(rate):
+        _check(findings, False, f"offered load reached the service: {NO_SAMPLES}")
+        return
+    _check(
+        findings,
+        rate >= floor,
+        f"offered load reached the service: request_rate={rate:.2f} >= {floor:g} rps "
+        f"(half the pinned {rps:g} rps profile; below this the host cannot sustain the "
+        f"workload and the result is inconclusive, not a verdict on the fix)",
+    )
 
 
 def cmd_verify(args: argparse.Namespace) -> None:
@@ -1115,21 +1172,7 @@ def _verify(
         )
         metrics = snapshot_metrics(cat)
         report["metrics"] = metrics
-        for key, threshold in sc.get("before", {}).items():
-            metric, bound = key.rsplit("_", 1)
-            val = metrics.get(metric)
-            if bound == "min":
-                _check(
-                    findings,
-                    val is not None and val >= threshold,
-                    f"{metric}={_fmt(val)} >= {threshold}",
-                )
-            else:
-                _check(
-                    findings,
-                    val is not None and val <= threshold,
-                    f"{metric}={_fmt(val)} <= {threshold}",
-                )
+        _threshold_checks(findings, metrics, sc.get("before", {}))
         # Alertmanager batches for group_wait before it posts, so allow it the
         # rest of the alert budget (at least 60s); only a *firing* delivery that
         # names this scenario's alert counts, never a stale capture.
@@ -1172,6 +1215,7 @@ def _verify(
                 else sc.get("after_soak_seconds", DEFAULT_SOAK_SECONDS)
             )
             report["soak_seconds"] = soak
+            report["load_scale"] = 1.0
             soak_started = datetime.now(UTC)
             if sc.get("load"):
                 asyncio.run(_drive(cat, args.scenario, duration=soak))
@@ -1198,21 +1242,9 @@ def _verify(
             if any(key.startswith("rollup_") for key in sc.get("after", {})):
                 metrics.update(rollup_soak_metrics(soak_started))
             report["metrics"] = metrics
-            for key, threshold in sc.get("after", {}).items():
-                metric, bound = key.rsplit("_", 1)
-                val = metrics.get(metric)
-                if bound == "min":
-                    _check(
-                        findings,
-                        val is not None and val >= threshold,
-                        f"{metric}={_fmt(val)} >= {threshold}",
-                    )
-                else:
-                    _check(
-                        findings,
-                        val is not None and val <= threshold,
-                        f"{metric}={_fmt(val)} <= {threshold}",
-                    )
+            if sc.get("load"):
+                _check_load_reached(findings, metrics, sc)
+            _threshold_checks(findings, metrics, sc.get("after", {}))
         finally:
             if had_background:
                 start_background_load(args.scenario)
@@ -1313,7 +1345,9 @@ def main() -> None:
     p.add_argument(
         "--duration", type=float, default=None, help="seconds; default runs until SIGTERM"
     )
-    p.set_defaults(fn=lambda a: asyncio.run(_drive(load_catalog(), a.scenario, a.duration)))
+    p.set_defaults(
+        fn=lambda a: asyncio.run(_drive(load_catalog(), a.scenario, a.duration, load_scale()))
+    )
 
     p = sub.add_parser("verify")
     p.add_argument("scenario")

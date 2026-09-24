@@ -52,7 +52,10 @@ export TFSTATE_AZ_ACCOUNT=<storage account> TFSTATE_AZ_RESOURCE_GROUP=<rg> TFSTA
 
 The scripts run `az login --service-principal` themselves and export the `ARM_*`
 equivalents for Terraform. No secret value is ever printed; Kubernetes Secrets are applied
-from stdin, never from argv.
+from stdin, never from argv. The one exception the Azure CLI forces is `az login
+--service-principal -p <secret>` (it accepts a client secret only on argv); it runs once per
+process and is skipped when the CLI is already logged in to the right subscription. Follow-up:
+switch `.github/workflows/demo-reaper.yml` to `azure/login` with OIDC to remove it entirely.
 
 The Db2 chart (`infrastructure/helm/db2-archive`), migration-job chart
 (`infrastructure/helm/migration-job`) and Azure root (`infrastructure/terraform/azure`) are

@@ -54,7 +54,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-telemetry.instrument_engine(engine)
+telemetry.instrument_sql()
 telemetry.instrument_app(app)
 telemetry.setup_tracing(app, engine)
 request_log.install(app)

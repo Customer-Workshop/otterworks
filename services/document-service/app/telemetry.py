@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, Response
 from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.config import settings
@@ -72,8 +73,16 @@ ROLLUP_DUPLICATE_WINDOWS = Gauge(
     ["service"],
 )
 
-_request_queries: contextvars.ContextVar[int] = contextvars.ContextVar(
-    "request_queries", default=-1
+PROCESS_MEMORY_LIMIT_BYTES = Gauge(
+    "otterworks_process_memory_limit_bytes",
+    "Memory limit of the cgroup the service runs in (0 when unlimited).",
+    ["service"],
+)
+
+# The counter lives in a list so the endpoint task, which runs in a copy of the
+# middleware's context, increments the same object the middleware reads.
+_request_queries: contextvars.ContextVar[list[int] | None] = contextvars.ContextVar(
+    "request_queries", default=None
 )
 
 
@@ -86,23 +95,35 @@ def _read_rss_bytes() -> int:
         return 0
 
 
-def instrument_engine(engine: AsyncEngine) -> None:
-    """Count and time every SQL statement, attributing it to the active request."""
-    sync_engine = engine.sync_engine
+def _read_memory_limit_bytes() -> int:
+    for path in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            with open(path) as fh:
+                raw = fh.read().strip()
+        except OSError:
+            continue
+        if raw.isdigit() and int(raw) < 1 << 60:
+            return int(raw)
+        return 0
+    return 0
 
-    @event.listens_for(sync_engine, "before_cursor_execute")
+
+def instrument_sql() -> None:
+    """Count and time every SQL statement, attributing it to the active request."""
+
+    @event.listens_for(Engine, "before_cursor_execute")
     def _before(conn, cursor, statement, parameters, context, executemany):  # noqa: ANN001
         conn.info.setdefault("query_start", []).append(time.perf_counter())
 
-    @event.listens_for(sync_engine, "after_cursor_execute")
+    @event.listens_for(Engine, "after_cursor_execute")
     def _after(conn, cursor, statement, parameters, context, executemany):  # noqa: ANN001
         starts = conn.info.get("query_start") or []
         if starts:
             DB_QUERY_SECONDS.labels(SERVICE).observe(time.perf_counter() - starts.pop())
         DB_QUERIES_TOTAL.labels(SERVICE).inc()
-        current = _request_queries.get()
-        if current >= 0:
-            _request_queries.set(current + 1)
+        counter = _request_queries.get()
+        if counter is not None:
+            counter[0] += 1
 
 
 def _handler_label(request: Request) -> str:
@@ -129,16 +150,18 @@ def instrument_app(app: FastAPI) -> None:
     async def _count_queries(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        token = _request_queries.set(0)
+        counter = [0]
+        token = _request_queries.set(counter)
         try:
             response = await call_next(request)
         finally:
-            queries = _request_queries.get()
             _request_queries.reset(token)
+        queries = counter[0]
         if request.url.path not in ("/health", "/metrics", "/ready"):
             DB_QUERIES_PER_REQUEST.labels(SERVICE, _handler_label(request)).observe(queries)
             response.headers["X-DB-Queries"] = str(queries)
         PROCESS_RSS_BYTES.labels(SERVICE).set(_read_rss_bytes())
+        PROCESS_MEMORY_LIMIT_BYTES.labels(SERVICE).set(_read_memory_limit_bytes())
         return response
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from meilisearch.errors import MeilisearchCommunicationError
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -142,6 +144,18 @@ class TestSuggestEndpoint:
         response = client.get("/api/v1/search/suggest?q=te")
         assert response.status_code == 200
         assert response.get_json()["suggestions"] == []
+
+    def test_suggest_one_index_failing_keeps_other_results(self, client, mock_meilisearch_client):
+        """If the files index errors, document suggestions are still returned."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {"estimatedTotalHits": 2, "hits": [{"title": "Doc A", "_rankingScore": 0.9}, {"title": "Doc B", "_rankingScore": 0.4}]},
+            MeilisearchCommunicationError("index `files` unreachable"),
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Doc A", "Doc B"]
 
     def test_suggest_backend_error_degrades_gracefully(self, client, mock_meilisearch_client):
         """A MeiliSearch failure returns an empty list with 200 instead of a 5xx."""

@@ -261,16 +261,25 @@ class MeiliSearchService:
         Hits from both indexes are merged and ordered by MeiliSearch's
         ``_rankingScore`` (requested via ``showRankingScore``). Hits without a
         score fall back to 0.0 so a missing field never breaks suggestions.
+        A failing index is skipped so the other index's results still return;
+        the error is only raised if every index fails.
         """
         scored: dict[str, float] = {}
+        index_names = [self.documents_index_name, self.files_index_name]
+        errors: list[meilisearch.errors.MeilisearchError] = []
 
-        for index_name in [self.documents_index_name, self.files_index_name]:
+        for index_name in index_names:
             index = self.client.index(index_name)
-            result = index.search(prefix, {
-                "limit": size,
-                "attributesToRetrieve": ["title", "name"],
-                "showRankingScore": True,
-            })
+            try:
+                result = index.search(prefix, {
+                    "limit": size,
+                    "attributesToRetrieve": ["title", "name"],
+                    "showRankingScore": True,
+                })
+            except meilisearch.errors.MeilisearchError as exc:
+                logger.warning("suggest_index_failed", index=index_name, error=str(exc))
+                errors.append(exc)
+                continue
             for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
                 if not text:
@@ -278,6 +287,9 @@ class MeiliSearchService:
                 score = _ranking_score(hit)
                 if text not in scored or score > scored[text]:
                     scored[text] = score
+
+        if errors and len(errors) == len(index_names):
+            raise errors[0]
 
         ranked = sorted(scored.items(), key=lambda item: item[1], reverse=True)
         return [text for text, _ in ranked[:size]]

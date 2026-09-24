@@ -16,7 +16,9 @@ Architecture and stage semantics: `migration/README.md`. This page is the operat
 | `d24-after` | `otterworks-d24-after` | `D24A` (validated rows purged) | `rg-otterworks-d24-after` | Azure SQL (`ARCHIVE_STORE=azuresql`) |
 
 Both tenants are ordinary OtterWorks tenants (`scripts/deploy-tenant.sh`) behind the shared
-ingress: `https://t-<token>.otterworks.app` (web) and `https://api-t-<token>.otterworks.app`.
+ingress: `https://t-<token>.otterworks.app` (web), `https://api-t-<token>.otterworks.app` and
+`https://admin-t-<token>.otterworks.app` (admin dashboard; log in with a tenant account -
+the dashboard authenticates against the tenant gateway).
 The AFTER tenant has `PEER_APP_URL=https://t-d24-before.otterworks.app` so the admin
 dashboard can deep-link the same document in the BEFORE copy.
 
@@ -147,7 +149,7 @@ classes MIG-01…MIG-07 must appear in the failed-row section. Typical wall time
 2. Open the **same archived document** (pick a `DOC_ID` from the report's validated set)
    in both. Identical retention history and audit-trail values; the AFTER footer shows the
    store as *Azure SQL*, the BEFORE footer *Db2*.
-3. Admin dashboard → **Migration report** in AFTER: one row per source table with
+3. `https://admin-t-d24-after.otterworks.app` → **Migration report** in AFTER: one row per source table with
    extracted/loaded/validated/purged/failed; expand **Failed rows** — source key, rejection
    rule, SQLSTATE or conversion error. Point out MIG-07: table-level storage-charge totals
    agree, the per-retention-class totals do not, so those rows were *not* purged.
@@ -178,7 +180,8 @@ make demo-destroy NS=d24-before
    empty, `az resource list --tag namespace=<token>` empty, `az group exists` false,
    `kubectl get ns otterworks-<token>` NotFound, no PV labelled `demo/namespace=<token>`, and the tenant database
    `otterworks_<token>` absent on RDS (probed by a short in-cluster `psql` Job; needs
-   `DB_PASSWORD`).
+   `DB_PASSWORD`, which destroy/verify resolve from Secrets Manager
+   `otterworks/dev/rds/master` when it is not exported).
 
 Verification refuses to certify - exits non-zero - when it *cannot* check something it
 should: an Azure-backed token (`azure: true` or any `-after` token without an overlay)

@@ -188,8 +188,10 @@ class FakeTarget:
     # --- run / ledger ---
     def ensure_run(self, run_id, namespace, purge_enabled, job_image, manifest_sha) -> str:
         run = self.runs.setdefault((run_id, namespace), _Run(purge_enabled=purge_enabled, manifest_sha=manifest_sha))
-        run.purge_enabled = purge_enabled
         return run.manifest_sha
+
+    def refresh_run(self, run_id, namespace, purge_enabled, job_image) -> None:
+        self.runs[(run_id, namespace)].purge_enabled = purge_enabled
 
     def get_run_status(self, run_id, namespace):
         r = self.runs.get((run_id, namespace))
@@ -268,9 +270,12 @@ class FakeTarget:
             if not (self.staging_ns[r.stg_id] == (run_id, namespace) and r.key_range_seq == range_seq)
         ]
 
-    def delete_rejects_stage(self, run_id, namespace, table, stage) -> None:
+    def delete_rejects_keys(self, run_id, namespace, table, stage, keys) -> None:
+        wanted = set(keys)
         self.rejects[(run_id, namespace)] = [
-            r for r in self.rejects[(run_id, namespace)] if not (r.table_name == table and r.stage == stage)
+            r
+            for r in self.rejects[(run_id, namespace)]
+            if not (r.table_name == table and r.stage == stage and r.source_key in wanted)
         ]
 
     def delete_rejects_range(self, run_id, namespace, table, stage, range_seq) -> None:

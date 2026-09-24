@@ -12,7 +12,7 @@ from pathlib import Path
 from .config import RUN_ID_RE, LoadedManifest, load_manifest
 from .context import Log, RunContext, build_table_specs, local_staging_dir, require_env
 from .drivers.base import SelectionSpec, SourceDriver, TargetDriver, Value
-from .errors import EXIT_OK, EXIT_UNEXPECTED, ConfigError, LdmError
+from .errors import EXIT_OK, EXIT_UNEXPECTED, ConfigError, ForeignRunError, LdmError
 from .stages import extract, init, load, purge, reconcile, validate
 from .staging import AzureBlobStore, BlobStore, NoBlobStore
 
@@ -173,14 +173,14 @@ def prepare_run(ctx: RunContext) -> None:
     ctx.log.stage = "INIT"
     init.apply_ddl(ctx)
     m = ctx.manifest
-    recorded = ctx.target.ensure_run(
-        ctx.run_id, ctx.namespace, m.purge, ctx.env.get("LDM_JOB_IMAGE"), ctx.loaded.sha256
-    )
+    job_image = ctx.env.get("LDM_JOB_IMAGE")
+    recorded = ctx.target.ensure_run(ctx.run_id, ctx.namespace, m.purge, job_image, ctx.loaded.sha256)
     if recorded != ctx.loaded.sha256:
-        raise ConfigError(
+        raise ForeignRunError(
             f"run {ctx.run_id} in {ctx.namespace} was started with manifest sha256 {recorded[:12]}..., "
             f"current manifest is {ctx.loaded.sha256[:12]}...; a changed manifest needs a new --run-id"
         )
+    ctx.target.refresh_run(ctx.run_id, ctx.namespace, m.purge, job_image)
     ctx.target.ensure_ledger(ctx.run_id, ctx.namespace, [(t.name, t.order, t.role) for t in m.tables_in_order()])
     status = ctx.target.get_run_status(ctx.run_id, ctx.namespace)
     if status in ("CLOSED",):
@@ -219,7 +219,7 @@ def execute(ctx: RunContext, verb: str, apply_sql: list[Path] | None = None) -> 
         ctx.log.error(f"{type(e).__name__}: {e}")
         for name, counts in e.tables.items():
             tables.setdefault(name, {}).update(counts)
-        if e.exit_code != EXIT_OK and verb != "init":
+        if e.exit_code != EXIT_OK and verb != "init" and not isinstance(e, ForeignRunError):
             _mark_failed(ctx, e.exit_code)
         return e.exit_code, tables
     except Exception as e:  # noqa: BLE001 - contract: any other error is exit 1 with the traceback on stderr

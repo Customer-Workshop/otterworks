@@ -106,6 +106,8 @@ def _persist(ctx: RunContext, ts: TableSpec, candidates: list[_Candidate]) -> No
                 )
             )
     ctx.target.write_validation(ctx.run_id, ctx.namespace, rows)
+    keys = [c.row.source_key for c in candidates]
+    ctx.target.delete_rejects_keys(ctx.run_id, ctx.namespace, ts.name, "VALIDATE", keys)
     if rejects:
         ctx.target.insert_rejects(ctx.run_id, ctx.namespace, rejects)
 
@@ -261,7 +263,6 @@ def validate_table(ctx: RunContext, ts: TableSpec) -> dict[str, int]:
     """
     cfg = ts.config
     ct = cfg.class_totals
-    ctx.target.delete_rejects_stage(ctx.run_id, ctx.namespace, ts.name, "VALIDATE")
     checks = _row_checks(ctx, ts)
     successors = _successor_map(ctx, ts) if ct else {}
     src: dict[str, _ClassSide] = defaultdict(_ClassSide)

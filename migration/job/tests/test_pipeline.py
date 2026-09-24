@@ -489,6 +489,13 @@ def test_changed_manifest_cannot_resume_a_run(tmp_path: Path, manifest_after: Pa
     # the recorded digest is immutable: the original manifest still resumes
     manifest_after.write_text(text, encoding="utf-8")
     prepare_run(make_ctx(tmp_path, seed.source, target, manifest=manifest_after))
+    # a rejected retry (here: overlay flipped to a dry run) must not touch the original run row at all
+    overlay = manifest_after.parent / "manifests" / "t01-after.yaml"
+    overlay.write_text(overlay.read_text(encoding="utf-8").replace("purge: true", "purge: false"), encoding="utf-8")
+    run = target.runs[(ctx.run_id, ctx.namespace)]
+    code, _ = execute(make_ctx(tmp_path, seed.source, target, manifest=manifest_after), "load")
+    assert code == 4
+    assert run.status == "RUNNING" and run.purge_enabled is True
 
 
 def test_revalidation_drops_stale_validate_rejects(tmp_path: Path, manifest_after: Path) -> None:
@@ -511,3 +518,28 @@ def test_revalidation_drops_stale_validate_rejects(tmp_path: Path, manifest_afte
     validate.run(ctx)
     assert "HASH_MISMATCH" not in _rules(target, run, ns)
     assert all(v.status == "VALIDATED" for v in target.validation[(run, ns)] if v.source_key == key)
+
+
+def test_interrupted_revalidation_keeps_reject_evidence(tmp_path: Path, manifest_after: Path) -> None:
+    seed = seed_source(generated=6, children_per_parent=1, plant=False)
+    target = FakeTarget()
+    ctx = make_ctx(tmp_path, seed.source, target, manifest=manifest_after)
+    prepare_run(ctx)
+    extract.run(ctx)
+    load.run(ctx)
+    run, ns = ctx.run_id, ctx.namespace
+    key = seed.source.select_keys("ARCHIVE", "DOCARCH", ctx.selection_for(ctx.table("DOCARCH").config))[0]
+    victim = next(r for r in target._stg(run, ns, "DOCARCH") if r.source_key == key)
+    victim.values["OWNER_NAME"] = "tampered"
+    validate.run(ctx)
+    before = [r for r in target.rejects[(run, ns)] if r.stage == "VALIDATE"]
+    assert key in {r.source_key for r in before} and all(r.error_text for r in before)
+
+    # the retry dies before it reaches any DOCARCH row: the earlier reject must survive intact
+    def boom(*_args: object, **_kw: object) -> dict[str, bytes]:
+        raise RuntimeError("target unreachable")
+
+    target.target_hashes = boom  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError):
+        validate.run(ctx)
+    assert [r for r in target.rejects[(run, ns)] if r.stage == "VALIDATE"] == before

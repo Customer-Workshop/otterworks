@@ -267,12 +267,14 @@ class AzureSqlTarget:
                 (run_id, namespace, purge_enabled, manifest_sha, job_image),
             ).close()  # type: ignore[attr-defined]
             return manifest_sha
+        return str(existing).strip()
+
+    def refresh_run(self, run_id: str, namespace: str, purge_enabled: bool, job_image: str | None) -> None:
         self._exec(
             "UPDATE mig.runs SET purge_enabled = ?, job_image = COALESCE(?, job_image) "
             "WHERE run_id = ? AND namespace = ?",
             (purge_enabled, job_image, run_id, namespace),
         ).close()  # type: ignore[attr-defined]
-        return str(existing).strip()
 
     def get_run_status(self, run_id: str, namespace: str) -> str | None:
         v = self._scalar("SELECT status FROM mig.runs WHERE run_id = ? AND namespace = ?", (run_id, namespace))
@@ -450,11 +452,12 @@ class AzureSqlTarget:
             (run_id, namespace, range_seq),
         ).close()  # type: ignore[attr-defined]
 
-    def delete_rejects_stage(self, run_id: str, namespace: str, table: str, stage: str) -> None:
-        self._exec(
-            "DELETE FROM mig.rejects WHERE run_id = ? AND namespace = ? AND table_name = ? AND stage = ?",
-            (run_id, namespace, table, stage),
-        ).close()  # type: ignore[attr-defined]
+    def delete_rejects_keys(self, run_id: str, namespace: str, table: str, stage: str, keys: Sequence[str]) -> None:
+        self._executemany(
+            "DELETE FROM mig.rejects "
+            "WHERE run_id = ? AND namespace = ? AND table_name = ? AND stage = ? AND source_key = ?",
+            [(run_id, namespace, table, stage, k) for k in keys],
+        )
 
     def delete_rejects_range(self, run_id: str, namespace: str, table: str, stage: str, range_seq: int) -> None:
         self._exec(

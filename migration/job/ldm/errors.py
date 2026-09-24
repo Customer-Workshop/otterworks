@@ -21,6 +21,10 @@ class ConfigError(LdmError):
     exit_code = EXIT_CONFIG
 
 
+class ForeignRunError(ConfigError):
+    """The run_id belongs to a run this invocation must not touch (different manifest); its row is left as is."""
+
+
 class ReconcileError(LdmError):
     exit_code = EXIT_RECONCILE
 

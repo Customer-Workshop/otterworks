@@ -110,3 +110,7 @@ __pycache__/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+
+# incident-responder harness runtime state and gate reports
+incident/.state/
+incident/reports/

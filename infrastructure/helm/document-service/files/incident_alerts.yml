@@ -1,0 +1,125 @@
+# Incident-responder alert rules for document-service.
+#
+# Every rule here is what pages: it carries `page: devin` so Alertmanager routes
+# it to the Devin Automation webhook (and Slack when configured). The `for`
+# window is the time-to-fire promise made in incident/scenarios.yaml -- Prometheus
+# evaluates every 15s, so an alert fires between `for` and `for + 15s` after the
+# condition first holds, plus Alertmanager's group_wait (10s).
+#
+# Rules are keyed on the metrics document-service exports itself
+# (services/document-service/app/telemetry.py); nothing depends on cAdvisor or
+# node-exporter so the same rules work under Compose and under kube-prometheus.
+
+groups:
+  - name: document-service.incident
+    interval: 15s
+    rules:
+      # ---- n-plus-one -------------------------------------------------------
+      - alert: DocumentListLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{
+              job="document-service", handler="/api/v1/documents/", method="GET"}[2m]))
+          ) > 1
+          and
+          sum(rate(http_requests_total{job="document-service", handler="/api/v1/documents/", method="GET"}[2m])) > 1
+        for: 1m
+        labels:
+          severity: critical
+          page: devin
+          service: document-service
+          scenario: n-plus-one
+        annotations:
+          summary: "Document list p95 latency is {{ $value | humanizeDuration }} (threshold 1s)"
+          description: >-
+            GET /api/v1/documents/ p95 has been above 1s for over a minute while request
+            volume stayed flat. Users see the document list spinner for seconds.
+          runbook_url: "https://github.com/Cognition-Partner-Workshops/otterworks/blob/main/incident/README.md#n-plus-one"
+          dashboard_url: "http://localhost:3001/d/otterworks-incident-responder"
+          traces_url: "http://localhost:16686/search?service=document-service&minDuration=1s"
+
+      # Diagnostic (not paged): the query fan-out behind the latency.
+      - alert: DocumentListQueryFanout
+        expr: |
+          sum(rate(otterworks_db_queries_per_request_sum{handler="/api/v1/documents/"}[2m]))
+          /
+          sum(rate(otterworks_db_queries_per_request_count{handler="/api/v1/documents/"}[2m]))
+          > 20
+        for: 1m
+        labels:
+          severity: warning
+          service: document-service
+          scenario: n-plus-one
+        annotations:
+          summary: "Document list issues {{ $value | printf \"%.0f\" }} SQL statements per request"
+
+      # ---- log-flood --------------------------------------------------------
+      - alert: RequestLogVolumeNearFull
+        expr: |
+          otterworks_request_log_bytes / otterworks_request_log_capacity_bytes > 0.80
+        for: 30s
+        labels:
+          severity: critical
+          page: devin
+          service: document-service
+          scenario: log-flood
+        annotations:
+          summary: "Request-log volume is {{ $value | humanizePercentage }} full"
+          description: >-
+            The per-request debug log directory on document-service is filling its volume.
+            When it is full every request that tries to log fails with HTTP 500.
+          runbook_url: "https://github.com/Cognition-Partner-Workshops/otterworks/blob/main/incident/README.md#log-flood"
+          dashboard_url: "http://localhost:3001/d/otterworks-incident-responder"
+
+      - alert: DocumentServiceErrorRateHigh
+        expr: |
+          sum(rate(http_requests_total{job="document-service", status=~"5.."}[2m]))
+          /
+          sum(rate(http_requests_total{job="document-service"}[2m]))
+          > 0.05
+        for: 1m
+        labels:
+          severity: critical
+          page: devin
+          service: document-service
+        annotations:
+          summary: "document-service 5xx rate is {{ $value | humanizePercentage }}"
+          description: "More than 5% of document-service requests are failing."
+          runbook_url: "https://github.com/Cognition-Partner-Workshops/otterworks/blob/main/incident/README.md"
+          dashboard_url: "http://localhost:3001/d/otterworks-incident-responder"
+
+      # ---- cache-leak -------------------------------------------------------
+      - alert: DocumentServiceMemoryHigh
+        expr: |
+          otterworks_process_resident_memory_bytes / otterworks_process_memory_limit_bytes > 0.75
+          and otterworks_process_memory_limit_bytes > 0
+        for: 1m
+        labels:
+          severity: critical
+          page: devin
+          service: document-service
+          scenario: cache-leak
+        annotations:
+          summary: "document-service RSS is {{ $value | humanizePercentage }} of its memory limit"
+          description: >-
+            Resident memory has grown steadily under normal traffic and is approaching the
+            container limit; the process will be OOM-killed and restart.
+          runbook_url: "https://github.com/Cognition-Partner-Workshops/otterworks/blob/main/incident/README.md#cache-leak"
+          dashboard_url: "http://localhost:3001/d/otterworks-incident-responder"
+
+      # ---- double-run -------------------------------------------------------
+      - alert: DocumentStatsRollupDuplicated
+        expr: otterworks_rollup_duplicate_windows > 0
+        for: 30s
+        labels:
+          severity: warning
+          page: devin
+          service: document-service
+          scenario: double-run
+        annotations:
+          summary: "{{ $value }} rollup window(s) were computed more than once in the last hour"
+          description: >-
+            The scheduled document-stats rollup produced duplicate rows for the same window,
+            so hourly totals in reports are doubled.
+          runbook_url: "https://github.com/Cognition-Partner-Workshops/otterworks/blob/main/incident/README.md#double-run"
+          dashboard_url: "http://localhost:3001/d/otterworks-incident-responder"

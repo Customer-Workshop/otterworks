@@ -1,0 +1,221 @@
+# Incident-responder scenario catalog.
+#
+# One entry per armable production flaw in document-service. `make incident-arm
+# SCENARIO=<name>` applies `arm`, seeds the dataset and starts the load profile;
+# `make incident-disarm` reverses everything listed under `disarm`. The
+# `alert` block is the promise the verification gate holds the stack to: the
+# named alert must be firing in Prometheus within `fires_within_seconds` of
+# arming, and the `before` metrics must be met while it fires.
+#
+# The `after` gate keeps the scenario armed (same flags, memory ceiling and
+# replica), runs `after_prepare` to give the fix a clean slate, drives the same
+# load profile for `after_soak_seconds` (default: the gate's --soak), then
+# requires the alert to be inactive and every `after` threshold to hold.
+#
+# Everything here is an input to the fixture fingerprint (incident/expected.yaml);
+# change a value and the gate reports fixture drift instead of a green run.
+
+version: 1
+
+targets:
+  # Local Compose stack. Override with INCIDENT_BASE_URL / INCIDENT_PROM_URL.
+  document_service: http://localhost:8083
+  prometheus: http://localhost:9090
+  alertmanager: http://localhost:9093
+  alert_sink: http://localhost:9095
+  grafana: http://localhost:3001
+  jaeger: http://localhost:16686
+  redis: redis://localhost:6379/0
+
+seed:
+  # Deterministic dataset the load hits. Same owner, same titles, same word
+  # counts on every run; the seeder is idempotent on (owner_id, title).
+  owner_id: 6d0c5f5e-7f0f-4a4e-9d0c-1a1c1d3a7000
+  folder_id: 0f01d3a0-0000-4000-8000-00000000f01d
+  documents: 400
+  versions_per_document: 8
+  words_per_document: 1200
+  random_seed: 20260924
+
+scenarios:
+  n-plus-one:
+    title: Document list slows to a crawl
+    user_sees: >-
+      Opening "My documents" takes seconds; the spinner sits at 2-3 s while the
+      rest of the app is snappy. Nothing errors, so nobody files a bug -- they
+      just complain.
+    chart_shows: >-
+      Request rate flat; p95 of GET /api/v1/documents/ climbing from ~60 ms to
+      ~2.4 s; SQL statements per request stepping from 4 to 104 on a 100-row
+      page; one Jaeger trace fanning into a hundred identical SELECTs on
+      document_versions.
+    code_cause: >-
+      DocumentService.list_documents runs one versions query per document in a
+      Python loop (services/document-service/app/services/document_service.py),
+      and the schema lacks an index covering the owner listing order on
+      documents and a composite index on
+      document_versions(document_id, version_number).
+    correct_fix: >-
+      One batched query for the recent versions of the whole page (window
+      function or IN + ORDER BY), a new Alembic migration adding the two
+      indexes without touching 001_initial_schema.py, and a regression test
+      asserting the list endpoint issues a constant number of statements
+      regardless of page size. Statements per request land at 5: count, page,
+      the two relationship loads the page already made, and one batched
+      recent-versions query.
+    arm:
+      - seed
+      - load: list
+    disarm:
+      - stop-load
+    load:
+      list:
+        method: GET
+        path: /api/v1/documents/
+        params: {size: 100}
+        concurrency: 24
+        rps: 24
+    alert:
+      name: DocumentListLatencyHigh
+      fires_within_seconds: 180
+      resolves_within_seconds: 240
+    before:
+      queries_per_request_min: 50
+      p95_seconds_min: 1.0
+    after:
+      queries_per_request_max: 5
+      p95_seconds_max: 0.5
+
+  log-flood:
+    title: Debug request log fills the disk
+    user_sees: >-
+      A support engineer enabled per-request logging to debug a customer
+      ticket. Minutes later every document request returns HTTP 500.
+    chart_shows: >-
+      otterworks_request_log_bytes rising in a straight line to the volume
+      capacity, then the 5xx rate jumping from 0% to 100% at the moment it hits
+      the ceiling.
+    code_cause: >-
+      app/middleware/request_log.py appends the full response body of every
+      request to one JSONL file with no size cap, no rotation, and no fallback
+      when the write fails.
+    correct_fix: >-
+      Rotate at a bounded size with a fixed number of backups (or truncate
+      bodies), never fail the request because logging failed, plus a test that
+      writes past the cap and asserts the file set stays bounded.
+    arm:
+      - seed
+      - flag: "chaos:document-service:request_log"
+      - load: list
+    disarm:
+      - stop-load
+      - unflag: "chaos:document-service:request_log"
+      - purge-request-log
+    load:
+      list:
+        method: GET
+        path: /api/v1/documents/
+        params: {size: 100}
+        concurrency: 8
+        rps: 8
+    alert:
+      name: RequestLogVolumeNearFull
+      fires_within_seconds: 240
+      resolves_within_seconds: 240
+    before:
+      request_log_ratio_min: 0.80
+    # Start from an empty volume, then the same load for as long as it took the
+    # unbounded log to page: a bounded log stays well under a quarter of the
+    # volume and no request fails because of logging.
+    after_prepare:
+      - purge-request-log
+    after_soak_seconds: 240
+    after:
+      request_log_ratio_max: 0.25
+      error_ratio_max: 0.01
+
+  cache-leak:
+    title: Render cache grows until the pod restarts
+    user_sees: >-
+      Exports get slower through the day; eventually the service restarts and
+      every in-flight request fails.
+    chart_shows: >-
+      otterworks_render_cache_entries climbing monotonically;
+      otterworks_process_resident_memory_bytes tracking it toward the
+      container memory limit; container restarts once it crosses.
+    code_cause: >-
+      app/services/render_cache.py is a plain dict keyed by (document, version,
+      format) with no eviction; every edit creates a new version and a new
+      entry, and nothing ever removes the old ones.
+    correct_fix: >-
+      Bounded cache (LRU with a max entry count or byte budget, or a TTL) and a
+      test that inserts past the bound and asserts the size stays capped.
+    arm:
+      - seed
+      - memory-limit: 256m
+      - flag: "chaos:document-service:render_cache"
+      - load: edit-export
+    disarm:
+      - stop-load
+      - unflag: "chaos:document-service:render_cache"
+      - restore-memory-limit
+    load:
+      edit-export:
+        flow: edit-then-export
+        concurrency: 12
+        rps: 20
+    alert:
+      name: DocumentServiceMemoryHigh
+      fires_within_seconds: 420
+      resolves_within_seconds: 180
+    before:
+      cache_entries_min: 2000
+    # Recreate the process under the same 256m ceiling, then the same edit/export
+    # load for as long as it took the unbounded cache to page: a bounded cache
+    # holds far fewer entries than the load created and memory stays clear of
+    # the alert threshold (DocumentServiceMemoryHigh pages at 0.75 of the limit).
+    after_prepare:
+      - memory-limit: 256m
+    after_soak_seconds: 420
+    after:
+      cache_entries_max: 1000
+      memory_ratio_max: 0.70
+
+  double-run:
+    title: Hourly rollup runs twice
+    user_sees: >-
+      The usage report shows exactly double the documents and words for every
+      hour since the last deploy.
+    chart_shows: >-
+      otterworks_rollup_runs_total incrementing on two instances for the same
+      window; otterworks_rollup_duplicate_windows going from 0 to 1, 2, 3...
+    code_cause: >-
+      app/jobs/stats_rollup.py schedules the rollup in every process with no
+      coordination; two replicas both compute and insert the same window.
+    correct_fix: >-
+      Take a PostgreSQL advisory lock (or a unique constraint on window_start
+      with ON CONFLICT DO NOTHING) around the rollup, plus a test that runs
+      two rollups for one window concurrently and asserts a single row.
+    arm:
+      - start-replica
+    disarm:
+      - stop-replica
+      - purge-duplicate-rollups
+    alert:
+      name: DocumentStatsRollupDuplicated
+      fires_within_seconds: 240
+      resolves_within_seconds: 120
+    before:
+      duplicate_windows_min: 1
+    # Drop the duplicates the flaw already produced and put the replica on the
+    # rebuilt image, then let both replicas run for several 60 s windows: the
+    # rollup must keep landing (new windows in the table) with no window
+    # computed twice, from the table and from the scraped gauge.
+    after_prepare:
+      - purge-duplicate-rollups
+      - start-replica
+    after_soak_seconds: 200
+    after:
+      rollup_windows_new_min: 2
+      rollup_duplicates_new_max: 0
+      duplicate_windows_max: 0

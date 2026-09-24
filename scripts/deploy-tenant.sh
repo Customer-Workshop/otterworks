@@ -20,8 +20,9 @@
 #       [--ttl 8h] [--host-suffix demo.example.com] [--skip-db] \
 #       [--profile core|full]
 #
-# Required env: AWS creds (exported), DB_PASSWORD. Stable JWT_SECRET /
-#   SECRET_KEY_BASE recommended across redeploys (auto-generated if unset).
+# Required env: AWS creds (exported), DB_PASSWORD. JWT_SECRET / SECRET_KEY_BASE
+#   are taken from the environment, else carried over from the tenant's existing
+#   Kubernetes Secrets on a redeploy, else generated for a brand-new tenant.
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
@@ -66,8 +67,6 @@ AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account 
 [ -n "${AWS_ACCOUNT_ID}" ] || { err "Unable to resolve AWS account (are creds exported?)"; exit 1; }
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
-JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
-SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
 
 NS="$(tenant_namespace "${ATTENDEE_ID}")"
 T_DB_NAME="$(tenant_db_name "${ATTENDEE_ID}")"
@@ -113,6 +112,44 @@ if [ -z "${KUBERNETES_SERVICE_HOST:-}" ]; then
 fi
 log "Loading shared application-infra Terraform outputs..."
 load_infra_outputs
+
+# ---------- Tenant-wide signing secrets ----------
+# Every service that mints or verifies a token (auth-service, api-gateway,
+# document-service, ...) must share one JWT_SECRET. Helm only restarts the pods
+# whose spec changed, so a redeploy that minted a fresh secret would leave the
+# untouched services verifying against the old one and every request 401s.
+# Reuse what the tenant already runs with unless the caller pins a value.
+# Prints the decoded key, or nothing when the Secret or key does not exist yet.
+# Any other failure (API error, bad encoding) returns non-zero: rotating the key
+# on a transient read error would split the tenant across two keys.
+existing_tenant_secret() {
+  local raw errfile rc=0
+  errfile="$(mktemp)"
+  raw="$(kubectl -n "${NS}" get secret "$1" -o jsonpath="{.data.$2}" 2>"${errfile}")" || rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    if grep -q NotFound "${errfile}"; then rm -f "${errfile}"; return 0; fi
+    err "Could not read $1/$2 in ${NS}: $(cat "${errfile}")"
+    rm -f "${errfile}"
+    return 1
+  fi
+  rm -f "${errfile}"
+  [ -n "${raw}" ] || return 0
+  printf '%s' "${raw}" | base64 -d || { err "$1/$2 in ${NS} is not valid base64"; return 1; }
+}
+if [ -z "${JWT_SECRET:-}" ]; then
+  JWT_SECRET="$(existing_tenant_secret api-gateway-secrets JWT_SECRET)" ||
+    { err "Refusing to rotate JWT_SECRET; set it explicitly or retry"; exit 1; }
+  if [ -n "${JWT_SECRET}" ]; then
+    log "Reusing the tenant's existing JWT_SECRET so issued tokens stay valid across the redeploy"
+  else
+    JWT_SECRET="$(openssl rand -hex 32)"
+  fi
+fi
+if [ -z "${SECRET_KEY_BASE:-}" ]; then
+  SECRET_KEY_BASE="$(existing_tenant_secret admin-service-secrets SECRET_KEY_BASE)" ||
+    { err "Refusing to rotate SECRET_KEY_BASE; set it explicitly or retry"; exit 1; }
+  [ -n "${SECRET_KEY_BASE}" ] || SECRET_KEY_BASE="$(openssl rand -hex 64)"
+fi
 
 # ---------- Namespace + isolation guardrails ----------
 log "Creating namespace ${NS} with quota / limits / network policy..."
@@ -458,8 +495,9 @@ deploy_service() {
   fi
   # Alerts name the branch this tenant deploys; a namespace alone does not
   # identify it (workshop-<id> and demo-<id> share a tenant id).
+  # Helm splits --set values on commas, which git allows in branch names.
   [ -n "${TENANT_BRANCH_ARG}" ] &&
-    EXTRA_ARGS+=(--set-string "monitoring.rules.extraLabels.branch=${TENANT_BRANCH_ARG}")
+    EXTRA_ARGS+=(--set-string "monitoring.rules.extraLabels.branch=${TENANT_BRANCH_ARG//,/\\,}")
   local secret_file="" secret_args=()
   if [ "${#SECRET_KV[@]}" -gt 0 ]; then
     secret_file="$(mktemp)"; chmod 600 "${secret_file}"

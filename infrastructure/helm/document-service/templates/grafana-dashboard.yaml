@@ -40,6 +40,8 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 data:
-  incident-responder.json: |-
+  # The Grafana sidecar names the provisioned file after this key, so it must
+  # be unique per tenant or the tenants overwrite each other's dashboard.
+  incident-responder-{{ $ns }}.json: |-
     {{- toPrettyJson $d | nindent 4 }}
 {{- end }}

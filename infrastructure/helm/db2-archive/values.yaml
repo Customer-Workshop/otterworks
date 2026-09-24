@@ -22,8 +22,14 @@ credentialsSecret: db2-archive-credentials
 
 # Static PV created by ops Terraform (EBS gp3). No storageClass => no dynamic provisioning.
 pv:
+  # Name of the static PersistentVolume (otterworks-ldm-<token>-db2 from demo-aws Terraform).
   volumeName: ""
   size: 20Gi
+  # When true the chart also creates the PersistentVolume object over the EBS volume (ebs.csi.aws.com);
+  # the EBS volume itself always comes from Terraform.
+  create: false
+  volumeId: ""     # vol-0123... (demo-aws output db2_volume_id)
+  zone: ""         # availability zone of the volume (demo-aws output db2_volume_az)
 
 resources:
   requests:

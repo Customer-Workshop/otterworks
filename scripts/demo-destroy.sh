@@ -76,7 +76,7 @@ if az_available; then
     if [ -d "${AZURE_TF_DIR}" ] && [ -n "${TFSTATE_AZ_ACCOUNT:-}" ] && [ -n "${TFSTATE_AZ_RESOURCE_GROUP:-}" ]; then
       tf_init "${TOKEN}" "${AZURE_TF_DIR}" azure_backend_args
       TFVARS="${TRANSCRIPT_DIR}/azure.auto.tfvars.json"
-      DESTROY_ARGS=(-var "namespace=${TOKEN}" -var "run_token=$(token_run "${TOKEN}")" -var "state=$(token_state "${TOKEN}")" -var "expires=$(now_utc)")
+      DESTROY_ARGS=(-var "namespace=${TOKEN}" -var "run_token=$(token_run "${TOKEN}")" -var "state=$(token_state "${TOKEN}")" -var "expires=$(now_utc)" -var "location=${AZURE_LOCATION:-centralus}")
       [ -f "${TFVARS}" ] && DESTROY_ARGS=(-var-file="${TFVARS}")
       export TF_VAR_registry_username="AWS" TF_VAR_registry_password="unused-on-destroy"
       tf "${TOKEN}" "${AZURE_TF_DIR}" destroy -input=false -auto-approve "${DESTROY_ARGS[@]}" || azure_rc=$?

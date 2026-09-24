@@ -484,8 +484,18 @@ render_job() {
   [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"${MIG06_FIXTURE_PATH}\"]")
   # shellcheck disable=SC2086
   helm template "$(job_name "${stage}" "${run_id}")" "${JOB_CHART_DIR}" --namespace "${ns}" \
-    --set "stage=${stage}" --set "namespace=${token}" --set "runId=${run_id}" \
-    --set "labels.demo/namespace=${token}" "${extra[@]}" ${MIGRATION_JOB_HELM_ARGS:-}
+    --set "stage=${stage}" --set "namespaceToken=${token}" --set "runId=${run_id}" \
+    --set "expires=$(demo_expires "${ns}")" --set-string "env.DB2_DATABASE=$(db2_db_name "${token}")" \
+    "${extra[@]}" ${MIGRATION_JOB_HELM_ARGS:-}
+}
+
+# The absolute expiry stamped on the namespace by deploy-demo.sh (demo/expires
+# annotation), else EXPIRES from the environment, else now + default TTL.
+demo_expires() {
+  local ns="$1" v=""
+  [ "${DRY_RUN}" = "1" ] || v="$(kubectl get namespace "${ns}" -o 'jsonpath={.metadata.annotations.demo/expires}' 2>/dev/null || true)"
+  [ -n "${v}" ] || v="${EXPIRES:-$(ttl_to_expires "${DEMO_DEFAULT_TTL}")}"
+  printf '%s' "${v}"
 }
 
 # Values the chart needs that are not secrets (server, database, storage
@@ -498,10 +508,10 @@ ldm_azure_values() {
   db="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AZSQL_DATABASE)"
   acct="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AZ_STORAGE_ACCOUNT)"
   cont="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AZ_STAGING_CONTAINER)"
-  [ -n "${server}" ] && printf 'azure.sqlServer=%s\n' "${server}"
-  [ -n "${db}" ]     && printf 'azure.sqlDatabase=%s\n' "${db}"
-  [ -n "${acct}" ]   && printf 'azure.storageAccount=%s\n' "${acct}"
-  [ -n "${cont}" ]   && printf 'azure.stagingContainer=%s\n' "${cont}"
+  [ -n "${server}" ] && printf 'env.AZSQL_SERVER=%s\n' "${server}"
+  [ -n "${db}" ]     && printf 'env.AZSQL_DATABASE=%s\n' "${db}"
+  [ -n "${acct}" ]   && printf 'env.AZ_STORAGE_ACCOUNT=%s\n' "${acct}"
+  [ -n "${cont}" ]   && printf 'env.AZ_STAGING_CONTAINER=%s\n' "${cont}"
   return 0
 }
 
@@ -512,7 +522,7 @@ run_stage_job() {
   ns="$(demo_namespace "${token}")"; name="$(job_name "${stage}" "${run_id}")"
   dlog "stage ${stage}: Job ${ns}/${name}"
   if [ "${DRY_RUN}" = "1" ]; then
-    dlog "[dry-run] helm template ${name} ${JOB_CHART_DIR#"${REPO_ROOT}"/} --set stage=${stage} --set namespace=${token} --set runId=${run_id} | kubectl -n ${ns} apply -f -"
+    dlog "[dry-run] helm template ${name} ${JOB_CHART_DIR#"${REPO_ROOT}"/} --set stage=${stage} --set namespaceToken=${token} --set runId=${run_id} | kubectl -n ${ns} apply -f -"
     dlog "[dry-run] kubectl -n ${ns} logs -f job/${name} >> ${logfile}"
     return 0
   fi

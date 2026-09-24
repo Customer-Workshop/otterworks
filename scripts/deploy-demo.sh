@@ -128,20 +128,20 @@ else
   dlog "reusing existing ${DB2_CREDENTIALS_SECRET}"
 fi
 DB2_ARGS=(--namespace "${NS}" --create-namespace=false
-  --set "dbName=${DB2_DB}" --set "credentialsSecret=${DB2_CREDENTIALS_SECRET}" --set "pv.size=20Gi"
-  --set "labels.demo/namespace=${TOKEN}" --set "labels.demo/name=${DEMO_NAME}"
-  --set "labels.app\.kubernetes\.io/part-of=otterworks-ldm" --set "expires=${EXPIRES}")
-[ -n "${DB2_VOLUME_ID}" ] && DB2_ARGS+=(--set "pv.volumeName=${DB2_VOLUME_ID}" --set "pv.zone=${DB2_VOLUME_AZ}")
-# Seed hook: enabled when the chart exposes `seed:` values (§12.1 idempotent load).
+  --set "namespaceToken=${TOKEN}" --set "dbName=${DB2_DB}" --set "credentialsSecret=${DB2_CREDENTIALS_SECRET}"
+  --set "pv.size=20Gi" --set "pv.volumeName=otterworks-ldm-${TOKEN}-db2" --set "expires=${EXPIRES}")
+# The EBS volume comes from demo-aws Terraform; the chart binds it as a static PV (§12.4).
+[ -n "${DB2_VOLUME_ID}" ] && DB2_ARGS+=(--set "pv.create=true" --set "pv.volumeId=${DB2_VOLUME_ID}" --set "pv.zone=${DB2_VOLUME_AZ}")
+# Seed hook: the chart's post-install/upgrade init Job (§12.1 idempotent load).
 CHART_HAS_SEED=0
-if grep -qE '^seed:' "${DB2_CHART_DIR}/values.yaml" 2>/dev/null; then CHART_HAS_SEED=1; DB2_ARGS+=(--set "seed.enabled=true"); fi
+if grep -qE '^initJob:' "${DB2_CHART_DIR}/values.yaml" 2>/dev/null; then CHART_HAS_SEED=1; DB2_ARGS+=(--set "initJob.enabled=true"); fi
 # shellcheck disable=SC2086
 run helm upgrade --install "${DB2_RELEASE}" "${DB2_CHART_DIR}" "${DB2_ARGS[@]}" --wait --timeout 30m ${DB2_HELM_ARGS:-}
 SEED_SCRIPT="${REPO_ROOT}/migration/source/seed/load.sh"
 if [ "${CHART_HAS_SEED}" = "1" ]; then
   if [ "${DRY_RUN}" != "1" ]; then
     SEED_JOB="$(kubectl -n "${NS}" get jobs -l "app.kubernetes.io/instance=${DB2_RELEASE}" -o name 2>/dev/null | head -1 || true)"
-    [ -n "${SEED_JOB}" ] || die "chart has seed.enabled=true but no Job labelled app.kubernetes.io/instance=${DB2_RELEASE} exists; Db2 is not seeded"
+    [ -n "${SEED_JOB}" ] || die "chart has initJob.enabled=true but no Job labelled app.kubernetes.io/instance=${DB2_RELEASE} exists; Db2 is not seeded"
     if ! kubectl -n "${NS}" wait --for=condition=complete "${SEED_JOB}" --timeout=90m; then
       kubectl -n "${NS}" logs "${SEED_JOB}" --tail=40 2>/dev/null || true
       die "seed job ${SEED_JOB} did not complete; Db2 ${DB2_DB} is empty or partial - not continuing"
@@ -188,8 +188,9 @@ if [ "${WANT_AZURE}" = "true" ]; then
   jq -n --arg ns "${TOKEN}" --arg run "${RUN}" --arg st "${STATE}" --arg exp "${EXPIRES}" \
         --argjson cidrs "${EGRESS_CIDRS}" --arg reg "${REGISTRY}" --arg tag "${REPORT_TAG}" --arg job "${JOB_IMAGE}" \
         --arg links "${SESSION_LINKS}" --argjson inaz "$(overlay_flag "${TOKEN}" run_job_in_azure)" \
+        --arg loc "${AZURE_LOCATION:-centralus}" \
         --argjson priv "${AZURE_PRIVATE_NETWORKING:-false}" '{
-          namespace:$ns, run_token:$run, state:$st, expires:$exp, owner:"otterworks-demo",
+          namespace:$ns, run_token:$run, state:$st, expires:$exp, owner:"otterworks-demo", location:$loc,
           private_networking:$priv, eks_egress_cidrs:$cidrs, run_job_in_azure:$inaz,
           registry_server:$reg, report_image:($reg+"/otterworks/report-service:"+$tag),
           audit_image:($reg+"/otterworks/audit-service:"+$tag), job_image:$job,

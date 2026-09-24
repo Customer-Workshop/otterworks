@@ -32,7 +32,7 @@ variable "state" {
 variable "location" {
   description = "Azure region for every resource."
   type        = string
-  default     = "eastus2"
+  default     = "centralus"
 }
 
 variable "owner" {

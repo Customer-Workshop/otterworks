@@ -707,7 +707,7 @@ config passed by ops: `-backend-config="key=otterworks/<NS>/terraform.tfstate"` 
 | `namespace` | string | - | §3.1 regex; MUST equal `"${run_token}-${state}"` |
 | `run_token` | string | - | `^[a-z][a-z0-9]{1,11}$` |
 | `state` | string | - | `before` or `after` (ops never applies with `before`) |
-| `location` | string | `"eastus2"` | |
+| `location` | string | `"centralus"` | Azure SQL is not provisionable in `eastus2`/`eastus` for the demo subscription; ops may override via `AZURE_LOCATION` |
 | `owner` | string | `"otterworks-demo"` | MUST equal `otterworks-demo` |
 | `expires` | string | - | `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$` |
 | `private_networking` | bool | `false` | `true`: VNet, private endpoints for SQL + storage + Key Vault, CAE in the VNet, public network access disabled |

@@ -139,10 +139,10 @@ CONTRACTS variant: Key Vault RBAC mode, `Key Vault Secrets Officer/User` and
 
 ## Region
 
-`location` defaults to `eastus2` (contract). At verification time this subscription was
+`location` defaults to `centralus` (contract). At verification time this subscription was
 **refused Azure SQL server provisioning in East US 2 and East US** (`ProvisioningDisabled`
-/ `RegionDoesNotAllowProvisioning`); `centralus` and `westus2` accepted it. Pass
-`-var location=centralus` (all resources move together) or open a quota request.
+/ `RegionDoesNotAllowProvisioning`); `centralus` and `westus2` accepted it. The deploy
+script passes `AZURE_LOCATION` (default `centralus`); all resources move together.
 
 ARM in `centralus` intermittently returned `404 ResourceNotFound` for the SQL database
 (and once for a Container App) a few seconds after creation, while `az sql db show`

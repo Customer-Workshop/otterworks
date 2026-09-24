@@ -9,7 +9,7 @@
 # Last stdout line:  UNLOAD01 ROWS=<n> BYTES=<n*LRECL> SHA256=<hex>
 # Exit: 0 ok | 8 Db2 error ("SQLCODE=<n> SQLSTATE=<s>: ..." on stderr) | 12 I/O error
 #
-# Env: LDM_SELECT_WHERE (complete SQL boolean, default 1=1), DB2_DATABASE (default D24A),
+# Env: LDM_SELECT_WHERE (complete SQL boolean over table alias T, default 1=1), DB2_DATABASE (default D24A),
 #      DB2_USER / DB2_PASSWORD (optional), UNLOAD01_DEL=<file> to skip Db2 and format an existing
 #      export (local tests). Read-only: this script never updates or deletes Db2 rows.
 set -euo pipefail
@@ -55,7 +55,7 @@ else
     [[ "$k" =~ ^[A-Za-z0-9_.:-]{1,64}\ {0,64}$ ]] || die_io "key bound '$k' is not a plain key literal"
   done
   q() { printf "'%s'" "$1"; }
-  SQL="SELECT $COLS FROM ARCHIVE.$TABLE WHERE ($WHERE) AND $KEY >= $(q "$KEY_FROM") AND $KEY <= $(q "$KEY_TO") ORDER BY $KEY"
+  SQL="SELECT $COLS FROM ARCHIVE.$TABLE T WHERE ($WHERE) AND $KEY >= $(q "$KEY_FROM") AND $KEY <= $(q "$KEY_TO") ORDER BY $KEY"
   if ! command -v db2 >/dev/null; then
     # No CLP (the job image ships only the IBM clidriver): same DEL export through ibm_db.
     command -v python3 >/dev/null || die_io "neither db2 CLP nor python3 on PATH"

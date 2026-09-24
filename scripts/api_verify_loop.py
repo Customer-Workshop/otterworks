@@ -129,9 +129,13 @@ def http_request(
     url: str, method: str, headers: dict[str, str], body: bytes | None, timeout_s: float
 ) -> tuple[int | None, bytes, int, str | None]:
     """Return (status, body, latency_ms, error). Non-2xx is a status, not an error."""
+    if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+        raise ValueError(f"refusing non-http(s) URL: {url}")
     request = urllib.request.Request(url, data=body, method=method, headers=headers)
     started = time.monotonic()
     try:
+        # URLs come from the committed endpoints file / env, scheme-checked above.
+        # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
         with urllib.request.urlopen(request, timeout=timeout_s) as response:
             data = response.read()
             return response.status, data, int((time.monotonic() - started) * 1000), None

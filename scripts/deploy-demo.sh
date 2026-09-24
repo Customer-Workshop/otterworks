@@ -119,6 +119,10 @@ run env HOST_SUFFIX="${DEMO_HOST_SUFFIX}" "${SCRIPT_DIR}/deploy-tenant.sh" "${DT
 # shellcheck disable=SC2086
 run kubectl label namespace "${NS}" --overwrite ${LABELS_KV}
 run kubectl annotate namespace "${NS}" --overwrite "demo/expires=${EXPIRES}"
+# deploy-tenant sizes tenant-quota for the app alone (12 CPU / 20Gi of limits); the demo adds
+# Db2 (2/4Gi), its seed Job (2/2Gi) and the migration Job (1/1Gi) in the same namespace.
+run kubectl -n "${NS}" patch resourcequota tenant-quota --type merge -p \
+  '{"spec":{"hard":{"limits.cpu":"18","limits.memory":"28Gi","requests.cpu":"6","requests.memory":"12Gi","pods":"50"}}}'
 # The token's S3 prefix: an explicit prefix marker so the bucket layout is
 # visible (and deletable by prefix) before the first unload lands.
 run aws s3api put-object --bucket "${DEMO_BUCKET}" --key "${TOKEN}/" --content-length 0

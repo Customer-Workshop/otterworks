@@ -182,13 +182,26 @@ class AzureSqlTarget:
     def _executemany(self, sql: str, rows: Sequence[Sequence[object]]) -> None:
         if not rows:
             return
+        # Under autocommit every element of the parameter array is its own commit (one WRITELOG wait per
+        # row), so a batch runs as one transaction unless the caller already opened one.
+        conn = self.conn
+        own_txn = bool(conn.autocommit)  # type: ignore[attr-defined]
         try:
+            if own_txn:
+                conn.autocommit = False  # type: ignore[attr-defined]
             cur = self._cursor()
             cur.fast_executemany = True  # type: ignore[attr-defined]
             cur.executemany(sql, [list(r) for r in rows])  # type: ignore[attr-defined]
             cur.close()  # type: ignore[attr-defined]
+            if own_txn:
+                conn.commit()  # type: ignore[attr-defined]
         except self.pyodbc.Error as e:
+            if own_txn:
+                conn.rollback()  # type: ignore[attr-defined]
             raise TargetError(*parse_odbc_error(e)) from e
+        finally:
+            if own_txn:
+                conn.autocommit = True  # type: ignore[attr-defined]
 
     def _script(self, sql_text: str, cur: object | None = None) -> None:
         own = cur is None

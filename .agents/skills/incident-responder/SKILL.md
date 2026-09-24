@@ -154,33 +154,114 @@ Slack payload) before opening the PR.
 
 ## On the shared EKS cluster
 
-The local Compose stack is the default and is all a laptop needs. To show the
-same alert on a real tenant, deploy an isolated one from `main` and inject
-there — never on `otterworks-main` / `t-main.otterworks.app` (see `AGENTS.md`):
+The local Compose stack is the default and is all a laptop needs. The same
+incident also runs on an isolated tenant of the shared `otterworks-dev`
+cluster — never on `otterworks-main` / `t-main.otterworks.app`, which is not
+seeded, loaded or modified (see `AGENTS.md`).
+
+| | |
+|---|---|
+| Branch | `demo-incident` (`branch_tenant_id` strips `demo-`) |
+| Tenant id | `incident` — pass `incident`, not `demo-incident`, to the tenant scripts |
+| Namespace | `otterworks-incident` (72 h TTL, `demo/expires-at` annotation) |
+| Hosts | `t-incident.otterworks.app` (web), `api-t-incident.otterworks.app` (gateway) |
+| Values overlay | `infrastructure/helm/tenant-values/incident/document-service.yaml`: ServiceMonitor, PrometheusRule, Grafana dashboard, OTLP tracing, 512Mi limit |
+| Before-state | whatever `demo-incident` points at before a fix merges: `git rev-parse origin/demo-incident` |
+
+`scripts/deploy-tenant.sh` applies `infrastructure/helm/tenant-values/<tenant-id>/<service>.yaml`
+with `-f` when it exists, so CD and manual deploys get the same values. The
+PrometheusRule renders `observability/prometheus/incident_alerts.yml` and the
+dashboard ConfigMap renders `observability/grafana/dashboards/incident-responder.json`
+from chart-local copies, both scoped to `namespace="otterworks-incident"`. After
+editing either source run `make incident-chart-sync`; CI's `incident-chart-sync`
+job (`make incident-chart-check`) fails on drift.
+
+### Create or redeploy the tenant
 
 ```bash
-scripts/deploy-tenant.sh demo-incident --profile core --host-suffix otterworks.app --ttl 8h
-INCIDENT_BASE_URL=https://api-t-demo-incident.otterworks.app make incident-seed
-INCIDENT_BASE_URL=https://api-t-demo-incident.otterworks.app make incident-load SCENARIO=n-plus-one DURATION=300
-scripts/teardown-tenant.sh demo-incident
+git push origin <before-sha>:demo-incident     # .github/workflows/cd-tenant.yml builds + deploys
+kubectl -n otterworks-incident get pods,ingress
 ```
 
-Cluster-wide Prometheus/Grafana/Jaeger are platform infrastructure (the
-`platform-engineering-shared-services` repo), not this one; the document-service
-Helm chart only needs its `ServiceMonitor` enabled to be scraped there. Pushing
-to a `demo-<id>` branch ships it to that tenant via `.github/workflows/cd-tenant.yml`
-(72 h TTL), which is how a merged fix reaches the sandbox during the demo.
+If the CD runner Job fails (it needs `monitoring.coreos.com` RBAC on its
+ClusterRole and `GITHUB_TOKEN` + `REPO_HTTPS_URL` to check out the branch —
+see `docs/MULTI-TENANT-RUNBOOK.md`), deploy the same branch from a checkout.
+The Actions `build` job has already pushed `otterworks/document-service:tenant-incident`,
+which the script picks up:
+
+```bash
+git checkout demo-incident
+export AWS_DEFAULT_REGION=us-east-1 DB_PASSWORD='<shared RDS master password>'
+# auth-service rejects HS256 keys shorter than 32 bytes
+export JWT_SECRET="$(openssl rand -hex 32)" SECRET_KEY_BASE="$(openssl rand -hex 64)"
+scripts/deploy-tenant.sh incident --profile core --host-suffix otterworks.app --ttl 72h --branch demo-incident
+```
+
+### Seed, load and read the headers
+
+document-service's Service listens on 8083. The harness signs its JWT with
+`JWT_SECRET` from the environment, so export the tenant's:
+
+```bash
+kubectl -n otterworks-incident port-forward svc/document-service 8083:8083 &
+export JWT_SECRET="$(kubectl -n otterworks-incident get secret document-service-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d)"
+INCIDENT_BASE_URL=http://localhost:8083 make incident-seed
+INCIDENT_BASE_URL=http://localhost:8083 make incident-load SCENARIO=n-plus-one DURATION=180
+
+OWNER=6d0c5f5e-7f0f-4a4e-9d0c-1a1c1d3a7000   # incident/scenarios.yaml seed.owner_id
+TOKEN="$(uv run --quiet --with pyjwt==2.9.0 python -c "import jwt,os,time;o='$OWNER';print(jwt.encode({'user_id':o,'sub':o,'exp':int(time.time())+3600},os.environ['JWT_SECRET'],algorithm='HS256'))")"
+curl -s -D - -o /dev/null -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8083/api/v1/documents/?owner_id=$OWNER&page=1&size=100"
+# x-db-queries: 104    x-request-duration-ms: > 1000 while the load runs
+```
+
+### Shared Grafana, Jaeger, Alertmanager
+
+The stack lives in namespace `monitoring` (not this repository). Ingress hosts
+require the platform's login; port-forwards work with cluster access alone:
+
+| Tool | Ingress | Port-forward |
+|---|---|---|
+| Grafana dashboard `ir-otterworks-incident` | `https://grafana.otterworks.app/d/ir-otterworks-incident` | `kubectl -n monitoring port-forward svc/prometheus-grafana 13000:80` → `http://localhost:13000/d/ir-otterworks-incident` |
+| Jaeger, service `document-service`, operation `GET /api/v1/documents/` | `https://jaeger.otterworks.app/search?service=document-service` | `kubectl -n monitoring port-forward svc/jaeger 16686:16686` → `http://localhost:16686/search?service=document-service` |
+| Alertmanager | `https://alertmanager.otterworks.app/#/alerts?filter=%7Bnamespace%3D%22otterworks-incident%22%7D` | `kubectl -n monitoring port-forward svc/prometheus-alertmanager 19093:9093` |
+| Prometheus | `https://prometheus.otterworks.app` | `kubectl -n monitoring port-forward svc/prometheus-prometheus 19090:9090` |
+
+p95 behind `DocumentListLatencyHigh`:
+
+```promql
+histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="document-service",namespace="otterworks-incident",handler="/api/v1/documents/",method="GET"}[2m])))
+```
+
+`DocumentListLatencyHigh` (`page: devin`, routed to the Devin webhook and
+Slack) and `DocumentListQueryFanout` go active about 1 m after p95 crosses 1 s.
+
+### A fix reaches the tenant
+
+Branch the fix from `demo-incident` and open the PR with base `demo-incident`.
+Merging it pushes `demo-incident`; `cd-tenant.yml` rebuilds document-service
+(the change is under `services/document-service/**`), re-points
+`tenant-incident` and redeploys `otterworks-incident`. Re-run the load and the
+curl above: the header drops to 5 statements and the alerts resolve.
 
 ## Reset and revert
 
-- `make disarm` stops the load, clears chaos flags, purges the request log,
-  removes the second replica and restarts document-service. It does not touch
-  the database fixture (idempotent seed) or the PR.
-- To reset after a fix was merged into a demo tenant branch:
-  `git revert <merge-sha>` on that branch (or redeploy the golden image with
-  `scripts/deploy-tenant.sh demo-incident --image-tag <golden>`), then
-  `make arm SCENARIO=...` again. Locally, `git checkout main -- services/document-service`
-  and `make incident-up` rebuilds the before-state image.
+- `make disarm` (alias of `make incident-disarm`) stops the load, clears chaos
+  flags, purges the request log, removes the second replica and restarts
+  document-service. It does not touch the database fixture (idempotent seed)
+  or the PR.
+- Reset the tenant after a fix was merged: force `demo-incident` back to the
+  before-state commit, which rebuilds and redeploys the before-state image,
+  then `make incident-disarm` locally:
+
+  ```bash
+  git push --force origin <before-sha>:demo-incident
+  make incident-disarm
+  ```
+
+  Locally, `git checkout <before-sha> -- services/document-service` and
+  `make incident-up` rebuilds the before-state image.
+- Tear the tenant down with `scripts/teardown-tenant.sh incident`.
 - `make incident-verify SCENARIO=<name> EXPECT=before` must go green again
   after any reset; if it reports fixture drift, something other than the fix
   changed and the recorded evidence (`incident/expected.yaml`) explains what is

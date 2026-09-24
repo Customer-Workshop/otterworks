@@ -14,7 +14,7 @@ cluster, one per attendee/demo run (`ATTENDEE_ID` → namespace
 | Script | Purpose |
 |---|---|
 | `scripts/tenant-platform-baseline.sh` | **Run once.** Installs the SHARED ingress-nginx (one NLB) and the namespace TTL reaper CronJob. |
-| `scripts/deploy-tenant.sh <ID> [--tier A\|B] [--image-tag TAG] [--ttl 8h] [--host-suffix DOMAIN]` | Deploy/redeploy one tenant. |
+| `scripts/deploy-tenant.sh <ID> [--tier A\|B] [--image-tag TAG] [--ttl 8h] [--host-suffix DOMAIN]` | Deploy/redeploy one tenant (applies `infrastructure/helm/tenant-values/<ID>/` overlays). |
 | `scripts/teardown-tenant.sh <ID> [--keep-db] [--keep-trust]` | Delete one tenant (namespace + per-tenant DB + IRSA trust). |
 | `scripts/inject-bug.sh <ID> <list\|reset\|scenario>` | Inject/clear a per-tenant bug (chaos flag / config / image). |
 | `scripts/tenant-scale.sh <ID> <up\|down>` | Scale a tenant's compute to zero (or back) between sessions. |
@@ -137,6 +137,72 @@ tenants required scaling the shared node group to 4 (`t3.large` SPOT). Size the
 shared group for the expected number of concurrent tenants (or enable an
 autoscaler) rather than per-tenant node groups.
 
+## Per-tenant Helm values
+
+`scripts/deploy-tenant.sh <ID>` passes `infrastructure/helm/tenant-values/<ID>/<service>.yaml`
+to that service's `helm upgrade --install` with `-f` when the file exists. The
+same script runs under CD and by hand, so an overlay committed on a tenant's
+branch applies to every deploy of that tenant and to no other.
+
+## Incident-response tenant (`demo-incident` → `incident`)
+
+The branch `demo-incident` owns tenant id `incident` (`branch_tenant_id` strips
+`demo-`): namespace `otterworks-incident`, hosts `t-incident.otterworks.app` /
+`api-t-incident.otterworks.app`, image tag `tenant-incident`, 72 h TTL. Its
+overlay `infrastructure/helm/tenant-values/incident/document-service.yaml`
+turns on the document-service chart's opt-in observability:
+
+| Values key | Renders | Requires |
+|---|---|---|
+| `monitoring.enabled` | `ServiceMonitor` (named port `http`, `/metrics`, label `release: prometheus`) | `monitoring.coreos.com/v1` API |
+| `monitoring.rules.enabled` | `PrometheusRule` from `files/incident_alerts.yml`, every expression scoped to `namespace="<release ns>"` | `monitoring.coreos.com/v1` API |
+| `monitoring.dashboard.enabled` | `ConfigMap` labelled `grafana_dashboard: "1"` from `files/incident-responder.json`, UID `ir-<ns>`, datasource UID `monitoring.dashboard.datasourceUid` (default `prometheus`) | Grafana dashboard sidecar |
+| `tracing.enabled` | `DOC_SVC_OTEL_ENABLED=true`, `OTEL_EXPORTER_OTLP_ENDPOINT` (default `http://otel-collector.monitoring.svc.cluster.local:4318`), `OTEL_SERVICE_NAME` | OTel collector |
+
+All four default off except `monitoring.enabled`, whose ServiceMonitor still
+renders only when the CRD exists, so `otterworks-main` and every other tenant
+render exactly as before. The chart's `files/` copies are synced from
+`observability/` by `make incident-chart-sync`; CI's `incident-chart-sync` job
+fails when they drift. The NetworkPolicy admits ingress from namespaces
+labelled `kubernetes.io/metadata.name: monitoring` (set by Kubernetes on every
+namespace, so no extra labelling) plus `ingress-nginx`; Services stay
+`ClusterIP`.
+
+Create or redeploy through CD, falling back to the script when the runner Job
+fails:
+
+```bash
+git push origin <before-sha>:demo-incident
+# fallback, from a checkout of demo-incident:
+export AWS_DEFAULT_REGION=us-east-1 DB_PASSWORD='<shared RDS master password>'
+export JWT_SECRET="$(openssl rand -hex 32)" SECRET_KEY_BASE="$(openssl rand -hex 64)"
+scripts/deploy-tenant.sh incident --profile core --host-suffix otterworks.app --ttl 72h --branch demo-incident
+```
+
+Seed and load it through a port-forward, signing with the tenant's JWT secret:
+
+```bash
+kubectl -n otterworks-incident port-forward svc/document-service 8083:8083 &
+export JWT_SECRET="$(kubectl -n otterworks-incident get secret document-service-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d)"
+INCIDENT_BASE_URL=http://localhost:8083 make incident-seed
+INCIDENT_BASE_URL=http://localhost:8083 make incident-load SCENARIO=n-plus-one DURATION=180
+```
+
+Shared observability (namespace `monitoring`, installed from the platform
+repository): Grafana `https://grafana.otterworks.app/d/ir-otterworks-incident`,
+Jaeger `https://jaeger.otterworks.app/search?service=document-service`,
+Alertmanager `https://alertmanager.otterworks.app/#/alerts?filter=%7Bnamespace%3D%22otterworks-incident%22%7D`,
+Prometheus `https://prometheus.otterworks.app`, or the port-forwards
+`svc/prometheus-grafana 13000:80`, `svc/jaeger 16686:16686`,
+`svc/prometheus-alertmanager 19093:9093`, `svc/prometheus-prometheus 19090:9090`.
+
+A fix PR uses base `demo-incident`; merging it runs `cd-tenant.yml`, which
+rebuilds document-service and redeploys the tenant. Reset to the before-state
+with `git push --force origin <before-sha>:demo-incident` (rebuilds and
+redeploys the before-state image) and `make incident-disarm` locally. Full
+walkthrough: `.agents/skills/incident-responder/SKILL.md`, "On the shared EKS
+cluster".
+
 ## Known limitations / honest gaps
 
 - **Tier B DynamoDB** is documented but not enabled by default (IAM policy is
@@ -151,3 +217,14 @@ autoscaler) rather than per-tenant node groups.
   golden app) — it is intentionally left broken in every tenant.
 - Path-based ingress (no `--host-suffix`) serves an SPA under a sub-path with a
   rewrite; host-based routing is cleaner when wildcard DNS is available.
+- **CD runner prerequisites for monitoring-enabled charts.** Once the
+  `monitoring.coreos.com` CRDs exist, every chart's `ServiceMonitor` needs the
+  runner service account (`otterworks-platform/demo-ops-dashboard`, ClusterRole
+  `demo-platform-ops`) to manage `servicemonitors` and `prometheusrules`;
+  `demo-platform/helm/demo-platform/templates/rbac.yaml` grants it, and the
+  platform release must be upgraded for the grant to take effect. The runner
+  also needs `GITHUB_TOKEN` + `REPO_HTTPS_URL` to check out a tenant branch;
+  without them it deploys its bundled tree (no per-branch chart or overlay
+  changes). Until both are in place, use the `deploy-tenant.sh` fallback above.
+- **Tenant JWT secrets must be at least 32 bytes**: auth-service rejects shorter
+  HS256 keys at boot (`openssl rand -hex 32`).

@@ -105,6 +105,49 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == []
 
+    def test_suggest_ranked_by_score(self, client, mock_meilisearch_client):
+        """Suggestions are ordered by _rankingScore and requested with showRankingScore."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 3,
+            "hits": [
+                {"title": "Low", "_rankingScore": 0.2},
+                {"title": "High", "_rankingScore": 0.9},
+                {"title": "Mid", "_rankingScore": 0.5},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["High", "Mid", "Low"]
+        _, params = mock_index.search.call_args.args
+        assert params["showRankingScore"] is True
+
+    def test_suggest_without_ranking_score_does_not_500(self, client, mock_meilisearch_client):
+        """Hits missing _rankingScore (or with an empty hit) still return 200."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.return_value = {
+            "estimatedTotalHits": 3,
+            "hits": [
+                {"title": "Unscored"},
+                {"name": "Scored File", "_rankingScore": 0.7},
+                {},
+            ],
+        }
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Scored File", "Unscored"]
+
+    def test_suggest_backend_error_returns_empty(self, client, mock_meilisearch_client):
+        """A MeiliSearch failure degrades to an empty suggestion list, not a 500."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = RuntimeError("meilisearch down")
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
+
 
 class TestAdvancedSearchEndpoint:
     """Tests for POST /api/v1/search/advanced."""

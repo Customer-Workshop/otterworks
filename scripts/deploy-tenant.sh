@@ -458,8 +458,9 @@ deploy_service() {
   fi
   # Alerts name the branch this tenant deploys; a namespace alone does not
   # identify it (workshop-<id> and demo-<id> share a tenant id).
+  # Helm splits --set values on commas, which git allows in branch names.
   [ -n "${TENANT_BRANCH_ARG}" ] &&
-    EXTRA_ARGS+=(--set-string "monitoring.rules.extraLabels.branch=${TENANT_BRANCH_ARG}")
+    EXTRA_ARGS+=(--set-string "monitoring.rules.extraLabels.branch=${TENANT_BRANCH_ARG//,/\\,}")
   local secret_file="" secret_args=()
   if [ "${#SECRET_KV[@]}" -gt 0 ]; then
     secret_file="$(mktemp)"; chmod 600 "${secret_file}"

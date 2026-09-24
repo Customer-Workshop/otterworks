@@ -2,16 +2,13 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T06:43:34.430152+00:00'
-  git_sha: af1fe50964cbc457bb828b8a9a07b67387891e50
-  reason: 'after gate rejected the correct fix: queries_per_request_max was authored
-    as 4 (count + page + versions) but the page query also selectin-loads versions
-    and comments, so the before-state base is 4 and a batched fix lands at 5; ceiling
-    raised to 5 and the catalog text corrected to the measured 4 -> 104 step. No seed,
-    load or alert-rule change'
+  at: '2026-09-24T15:03:41.684715+00:00'
+  git_sha: a313f8284c4b50f0f404d9ca4a92f41a174b3a7b
+  reason: source fingerprint re-pinned after ruff-formatting app/chaos.py and app/jobs/stats_rollup.py
+    (whitespace only); no behavior, seed, load or alert-rule change
 fingerprints:
   fixture: 36c623cde96b25485728b9c416b4434c1d407a53aac43f149da46165f394ed0b
-  source: 218cef097fb3032a2d0def87eaa40e2e64e521aff93dad575c464f02af44ddd1
+  source: 4dc5a463b90bc363732c88d0501a5a1f7ca9f427b0ce8b764032c1a4e77e247c
 scenarios:
   n-plus-one:
     alert: DocumentListLatencyHigh

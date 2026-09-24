@@ -449,6 +449,13 @@ deploy_service() {
   tag="${tag}@${digest}"
 
   build_helm_args "${service}"
+  # Optional per-tenant values overlay (e.g. monitoring/tracing opt-in).
+  local overlay
+  overlay="${REPO_ROOT}/infrastructure/helm/tenant-values/$(sanitize_id "${ATTENDEE_ID}")/${service}.yaml"
+  if [ -f "${overlay}" ]; then
+    log "Applying tenant values ${overlay#"${REPO_ROOT}"/}"
+    EXTRA_ARGS+=(-f "${overlay}")
+  fi
   # Alerts name the branch this tenant deploys; a namespace alone does not
   # identify it (workshop-<id> and demo-<id> share a tenant id).
   [ -n "${TENANT_BRANCH_ARG}" ] &&

@@ -1,11 +1,16 @@
-# Alertmanager configuration (template). entrypoint.sh substitutes the two
-# receiver URLs from the environment and writes /tmp/alertmanager.yml.
+# Alertmanager configuration (template). entrypoint.sh substitutes the receiver
+# URLs from the environment and writes /tmp/alertmanager.yml.
 #
 # Routing model: anything labelled `page: devin` goes to the Devin Automation
 # webhook AND to Slack. Everything else lands only in the local sink so it is
 # visible in the demo but never pages. Alerts are grouped per alertname so one
 # incident produces one page, and repeat_interval is long so a slow fix does not
 # re-page mid-demo.
+#
+# The Devin page is always mirrored into the local sink (`/devin`): that copy is
+# what `make incident-simulate` prints and what the before gate checks, whether
+# or not a real Automation URL is configured. The `devin-external` block is
+# kept only when DEVIN_WEBHOOK_URL is set (entrypoint.sh drops it otherwise).
 
 global:
   resolve_timeout: 2m
@@ -39,9 +44,18 @@ receivers:
   # its prompt template; see docs/incident-responder/automation.md.
   - name: devin-oncall
     webhook_configs:
+      - url: http://alert-sink:9095/devin
+        send_resolved: false
+        max_alerts: 1
+      # BEGIN devin-external
       - url: '__DEVIN_WEBHOOK_URL__'
         send_resolved: false
         max_alerts: 1
+        http_config:
+          http_headers:
+            X-Webhook-Secret:
+              values: ['__DEVIN_WEBHOOK_SECRET__']
+      # END devin-external
 
   # Slack incoming webhook. The `slack:message` Automation trigger reads this
   # message; Devin replies with the RCA in its thread.

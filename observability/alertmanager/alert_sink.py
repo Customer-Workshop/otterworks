@@ -1,7 +1,7 @@
 """Local stand-in for the Devin Automation webhook and the Slack incoming webhook.
 
-Alertmanager posts here when neither DEVIN_WEBHOOK_URL nor SLACK_WEBHOOK_URL is
-set. Every delivery is appended to /data/<receiver>.jsonl and the latest one is
+Alertmanager always mirrors the Devin page here (and the Slack message when
+SLACK_WEBHOOK_URL is unset). Every delivery is appended to /data/<receiver>.jsonl and the latest one is
 served back on GET /<receiver>/latest, so `make incident-simulate` can show the
 exact message the on-call Devin would have received.
 
@@ -24,6 +24,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 DATA_DIR = os.environ.get("SINK_DATA_DIR", "/data")
 RECEIVERS = ("devin", "slack", "sink")
+# Alertmanager pages are a few KiB; the Devin receiver is capped at one alert.
+MAX_BODY_BYTES = int(os.environ.get("SINK_MAX_BODY_BYTES", str(1 << 20)))
+SECRET_HEADERS = frozenset({"authorization", "x-webhook-secret", "cookie"})
 
 
 def _path(receiver: str) -> str:
@@ -33,7 +36,9 @@ def _path(receiver: str) -> str:
 class Handler(BaseHTTPRequestHandler):
     server_version = "otterworks-alert-sink/1.0"
 
-    def _send(self, status: int, body: bytes, content_type: str = "application/json") -> None:
+    def _send(
+        self, status: int, body: bytes, content_type: str = "application/json"
+    ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -45,7 +50,15 @@ class Handler(BaseHTTPRequestHandler):
         if receiver not in RECEIVERS:
             self._send(404, b'{"error":"unknown receiver"}')
             return
-        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            self._send(400, b'{"error":"bad content-length"}')
+            return
+        if length < 0 or length > MAX_BODY_BYTES:
+            self.close_connection = True
+            self._send(413, b'{"error":"payload too large"}')
+            return
         raw = self.rfile.read(length)
         try:
             payload = json.loads(raw or b"null")
@@ -54,7 +67,10 @@ class Handler(BaseHTTPRequestHandler):
         record = {
             "received_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "receiver": receiver,
-            "headers": {k: v for k, v in self.headers.items() if k.lower() != "authorization"},
+            "headers": {
+                k: ("<redacted>" if k.lower() in SECRET_HEADERS else v)
+                for k, v in self.headers.items()
+            },
             "payload": payload,
         }
         os.makedirs(DATA_DIR, exist_ok=True)

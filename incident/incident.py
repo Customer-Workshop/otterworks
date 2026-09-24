@@ -19,8 +19,11 @@
 
 Every command reads incident/scenarios.yaml; targets are overridable with
 INCIDENT_BASE_URL, INCIDENT_PROM_URL, INCIDENT_ALERTMANAGER_URL,
-INCIDENT_SINK_URL, INCIDENT_REDIS_URL. `verify` always writes a report to
-incident/reports/ (pass or fail) so a red gate leaves evidence behind.
+INCIDENT_SINK_URL, INCIDENT_REDIS_URL. INCIDENT_LOAD_SCALE (default 1) scales a
+scenario's rps and concurrency for targets with less headroom than the local
+stack (a single-replica tenant on the shared cluster runs one 500m-CPU worker).
+`verify` always writes a report to incident/reports/ (pass or fail) so a red
+gate leaves evidence behind.
 """
 
 from __future__ import annotations
@@ -113,6 +116,17 @@ def sink_url(cat: dict[str, Any]) -> str:
 
 def redis_url(cat: dict[str, Any]) -> str:
     return target(cat, "redis", "INCIDENT_REDIS_URL")
+
+
+def load_scale() -> float:
+    raw = os.environ.get("INCIDENT_LOAD_SCALE", "1")
+    try:
+        scale = float(raw)
+    except ValueError:
+        scale = 0.0
+    if scale <= 0:
+        die(f"INCIDENT_LOAD_SCALE must be a positive number, got {raw!r}")
+    return scale
 
 
 def jwt_secret() -> str:
@@ -692,8 +706,9 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
     name, prof = next(iter(profiles.items()))
     owner = cat["seed"]["owner_id"]
     headers = bearer(owner)
-    rps = float(prof["rps"])
-    concurrency = int(prof["concurrency"])
+    scale = load_scale()
+    rps = float(prof["rps"]) * scale
+    concurrency = max(1, round(int(prof["concurrency"]) * scale))
     stats = Stats()
     stop = asyncio.Event()
 
@@ -748,8 +763,9 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
                     stats.add(time.perf_counter() - t0, 599, None)
 
         log(
-            f"load[{scenario}/{name}]: {rps:g} rps, concurrency {concurrency}, "
-            f"target {base_url(cat)}"
+            f"load[{scenario}/{name}]: {rps:g} rps, concurrency {concurrency}"
+            + (f" (INCIDENT_LOAD_SCALE={scale:g})" if scale != 1 else "")
+            + f", target {base_url(cat)}"
         )
         started = time.monotonic()
         last_report = started
@@ -926,6 +942,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
             "scenario": args.scenario,
             "armed_at": datetime.now(UTC).isoformat(),
             "git_sha": git_sha(),
+            "load_scale": load_scale(),
             "fingerprints": fingerprints(),
         }
     )

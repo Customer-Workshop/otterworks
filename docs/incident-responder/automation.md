@@ -97,6 +97,17 @@ Allowlisted hosts, in the order the session needs them:
 Everything else is denied. Slack and the Devin API are reached through the
 platform's own integrations, not the session's network.
 
+**Known limitation (2026-09):** on the partner-workshops enterprise host, a
+session started with this `net_policy` gets `403 Forbidden` from
+`git-manager.devin.ai` on every fetch and push even though the host is
+allowlisted, so the responder can diagnose and fix but cannot open the PR. The
+same prompt with `net_policy` omitted fetches and pushes normally (verified
+with a pair of otherwise identical throwaway automations). Until the platform
+fix lands, the registered Automation runs with `session_settings.net_policy`
+omitted and relies on the ACU cap, invocation cap and `bypass_approval: false`
+for containment; re-add the allowlist above once a policy-scoped session can
+reach the git proxy.
+
 ## Wiring Alertmanager to it
 
 For the local Compose stack, set `DEVIN_WEBHOOK_URL` to the Automation's
@@ -112,6 +123,16 @@ mode. The shared cluster's Alertmanager (the
 Automation directly. Set `SLACK_WEBHOOK_URL` alongside it to post the same
 alert into the channel.
 
+On the shared cluster the header must be declared as
+`http_headers.X-Webhook-Secret.values`, not `.secrets`: prometheus-operator
+re-marshals the Alertmanager config and writes every Secret-typed field back as
+the literal string `<secret>`, so a `secrets:` entry reaches the Automation as
+`X-Webhook-Secret: <secret>` and every page is rejected with
+`403 {"detail":"Invalid webhook secret"}` even though the Kubernetes Secret
+holds the right value. (The whole config file already lives in a Kubernetes
+Secret, so nothing is lost.) The local Compose stack runs Alertmanager without
+the operator and is unaffected.
+
 `make incident-simulate RECEIVER=devin` prints the exact JSON the automation
 received on the last page; it is the payload to paste into a session by hand if
 the automation is ever unavailable during a demo.
@@ -119,7 +140,10 @@ the automation is ever unavailable during a demo.
 ## Validated configuration
 
 The payload below validated against the Automations API (`validate_create`) and
-is the record to replicate in the Demo org:
+is the record replicated in the Demo org. `session_settings.net_policy` is
+omitted while the git-proxy limitation above stands; the allowlist it would
+carry is the table under *Network policy* (the registration helper re-adds it
+with `INCIDENT_NET_POLICY=1`):
 
 ```json
 {
@@ -136,23 +160,7 @@ is the record to replicate in the Demo org:
     "invocations": {"max_per_window": 3, "window_seconds": 3600}
   },
   "concurrency": {"max_concurrent_runs": 1, "max_queue_depth": 0},
-  "session_settings": {
-    "devin_mode": "normal",
-    "net_policy": {"allow": [
-      {"hostname": "git-manager.devin.ai"}, {"hostname": "github.com"},
-      {"hostname": "api.github.com"}, {"hostname": "*.githubusercontent.com"},
-      {"hostname": "registry-1.docker.io"}, {"hostname": "auth.docker.io"},
-      {"hostname": "index.docker.io"}, {"hostname": "hub.docker.com"},
-      {"hostname": "*.docker.com"}, {"hostname": "*.docker.io"},
-      {"hostname": "ghcr.io"}, {"hostname": "*.pkg.github.com"},
-      {"hostname": "quay.io"}, {"hostname": "*.quay.io"},
-      {"hostname": "pypi.org"}, {"hostname": "files.pythonhosted.org"},
-      {"hostname": "astral.sh"}, {"hostname": "*.astral.sh"},
-      {"hostname": "deb.debian.org"}, {"hostname": "*.debian.org"},
-      {"hostname": "archive.ubuntu.com"}, {"hostname": "security.ubuntu.com"},
-      {"hostname": "*.otterworks.app"}
-    ]}
-  },
+  "session_settings": {"devin_mode": "normal"},
   "tools": {"mcp_servers": [], "slack_channels": [{"team_id": "*", "channel_id": "*"}]},
   "metadata": {"demo": "incident-responder", "service": "otterworks-document-service"},
   "enabled": true

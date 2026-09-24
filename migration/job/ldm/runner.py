@@ -42,7 +42,7 @@ def make_source(loaded: LoadedManifest, env: Mapping[str, str]) -> SourceDriver:
         require_env(dict(env), [ce.host, ce.port, ce.database, ce.user, ce.password], "source db2")
         return Db2Source(
             host=env[ce.host],
-            port=int(env[ce.port]),
+            port=env[ce.port],
             database=env[ce.database],
             user=env[ce.user],
             password=env[ce.password],
@@ -71,6 +71,7 @@ def make_target(loaded: LoadedManifest, env: Mapping[str, str]) -> TargetDriver:
             user=env.get(ce.user),
             password=env.get(ce.password),
             client_id=env.get(ce.managed_identity_client_id),
+            host=env.get("LDM_HOST", "local"),
         )
     raise ConfigError(f"target.provider {tgt.provider!r} has no driver in this build (known: azuresql)")
 

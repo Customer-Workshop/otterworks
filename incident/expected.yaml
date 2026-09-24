@@ -2,17 +2,14 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T15:32:55.876882+00:00'
-  git_sha: 905ea0cbc53c2e568b78b4618347ca165d248497
-  reason: 're-pinned after PR #1669 review remediations: cached/bounded chaos flag
-    reads (app/chaos.py), credential-header redaction in the request log (headers
-    only; response-body retention and unbounded growth stay planted), delayed duplicate-window
-    gauge refresh (stats_rollup.py), generalized armed after-gate with per-scenario
-    after thresholds (incident.py, scenarios.yaml), replica scrape target (prometheus.yml),
-    loopback-only alert sink. No seed, load-profile or alert-rule threshold change.'
+  at: '2026-09-24T16:19:04.277033+00:00'
+  git_sha: 0584f57e87856a15420e88124fa1745b7e67e17d
+  reason: 'Review round 3: refuse to stamp a partial unversioned legacy schema (migrate.py)
+    and mask minted share tokens in captured response bodies (request_log.py). No
+    load profile, alert threshold or seed change.'
 fingerprints:
-  fixture: 9f3aa87f18d5152274f7e98743739c69da3b31ec2312933c63bf0636bdfb40c6
-  source: b7fe1a41c334322f23abbbabff0649fbe8408092370221c0afc27baa9683d829
+  fixture: 23e453def82bedb897b30126bb2dfdb6541d04d23f8094b1710ce3c76bae9bce
+  source: ef747a71b95543a678f4f89f83fbaa8ede628d2264933b6df568b7e03cc56bd9
 scenarios:
   n-plus-one:
     alert: DocumentListLatencyHigh

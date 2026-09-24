@@ -32,12 +32,13 @@ import hashlib
 import json
 import os
 import random
+import re
 import signal
 import statistics
 import subprocess
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,8 @@ FIXTURE_INPUTS = [
     f"{MIGRATIONS}/003_backfill_word_count.py",
 ]
 SOURCE_INPUTS = ["services/document-service/app", MIGRATIONS]
+
+DEFAULT_SOAK_SECONDS = 150.0
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +459,52 @@ def alert_state(cat: dict[str, Any], name: str) -> str:
     return "inactive"
 
 
+def wait_alert_inactive(cat: dict[str, Any], name: str, budget: float) -> None:
+    """Block until `name` is inactive, so the next arm's page is provably fresh.
+
+    A scenario's alert can keep firing for minutes after disarm (rate windows,
+    `for`); the before gate rejects any alert that crossed into firing before the
+    arm time, so arming under a still-firing alert can only produce a red gate.
+    """
+    deadline = time.monotonic() + budget
+    while (state := alert_state(cat, name)) != "inactive":
+        if time.monotonic() >= deadline:
+            die(f"{name} still {state} from an earlier run after {budget:.0f}s; let it resolve")
+        log(f"{name} is still {state} from an earlier run; waiting for it to resolve before arming")
+        time.sleep(10)
+
+
+def _parse_ts(raw: str) -> datetime:
+    # Prometheus emits RFC 3339 with nanoseconds; datetime accepts at most 6 digits.
+    raw = re.sub(r"\.(\d{6})\d+", r".\1", raw).replace("Z", "+00:00")
+    ts = datetime.fromisoformat(raw)
+    return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
+def alert_fired_at(cat: dict[str, Any], name: str) -> datetime | None:
+    """When the firing alert `name` crossed into firing: activeAt plus the rule's `for`.
+
+    Prometheus only records when the alert became pending (`activeAt`); the rule's
+    `duration` is what it had to hold before firing. Returns None when not firing.
+    """
+    active = [
+        a
+        for a in prom_alerts(cat)
+        if a["labels"].get("alertname") == name and a["state"] == "firing"
+    ]
+    if not active:
+        return None
+    active_at = min(_parse_ts(a["activeAt"]) for a in active)
+    r = httpx.get(f"{prom_url(cat)}/api/v1/rules", params={"type": "alert"}, timeout=10)
+    r.raise_for_status()
+    hold = 0.0
+    for group in r.json()["data"]["groups"]:
+        for rule in group["rules"]:
+            if rule.get("name") == name:
+                hold = float(rule.get("duration", 0))
+    return active_at + timedelta(seconds=hold)
+
+
 LIST_HANDLER = "/api/v1/documents/"
 
 _LIST = f'job="document-service",handler="{LIST_HANDLER}",method="GET"'
@@ -520,7 +569,10 @@ async def seed(cat: dict[str, Any]) -> dict[str, int]:
     url = base_url(cat)
     created = versions = 0
     async with httpx.AsyncClient(base_url=url, headers=headers, timeout=60) as client:
-        existing: dict[str, str] = {}
+        # title -> (id, current version). A document whose version count is short
+        # (an earlier seed was interrupted mid-history) is resumed, not skipped, so
+        # the fixture is always the full configured history regardless of retries.
+        existing: dict[str, tuple[str, int]] = {}
         page = 1
         while True:
             r = await client.get(
@@ -529,13 +581,15 @@ async def seed(cat: dict[str, Any]) -> dict[str, int]:
             r.raise_for_status()
             body = r.json()
             for item in body["items"]:
-                existing[item["title"]] = item["id"]
+                existing[item["title"]] = (item["id"], int(item["version"]))
             if page * 100 >= body["total"]:
                 break
             page += 1
+        want_versions = int(cfg["versions_per_document"])
+        partial = sum(1 for _, v in existing.values() if v < want_versions)
         log(
             f"seed: {len(existing)} of {cfg['documents']} documents already present "
-            f"for owner {owner}"
+            f"for owner {owner} ({partial} with an incomplete version history)"
         )
 
         sem = asyncio.Semaphore(16)
@@ -544,24 +598,32 @@ async def seed(cat: dict[str, Any]) -> dict[str, int]:
             nonlocal created, versions
             title = f"Incident fixture doc {i:04d}"
             doc_rng = random.Random(cfg["random_seed"] * 1000 + i)
-            if title in existing:
+            doc_id, have = existing.get(title, (None, 0))
+            if doc_id is not None and have >= want_versions:
                 return
             async with sem:
-                r = await client.post(
-                    LIST_HANDLER,
-                    json={
-                        "title": title,
-                        "content": _lorem(doc_rng, cfg["words_per_document"]),
-                        "content_type": "text/markdown",
-                        "owner_id": owner,
-                        "folder_id": cfg["folder_id"],
-                    },
-                )
-                if r.status_code != 201:
-                    raise RuntimeError(f"seed create {title}: {r.status_code} {r.text[:200]}")
-                doc_id = r.json()["id"]
-                created += 1
-                for v in range(2, cfg["versions_per_document"] + 1):
+                if doc_id is None:
+                    r = await client.post(
+                        LIST_HANDLER,
+                        json={
+                            "title": title,
+                            "content": _lorem(doc_rng, cfg["words_per_document"]),
+                            "content_type": "text/markdown",
+                            "owner_id": owner,
+                            "folder_id": cfg["folder_id"],
+                        },
+                    )
+                    if r.status_code != 201:
+                        raise RuntimeError(f"seed create {title}: {r.status_code} {r.text[:200]}")
+                    doc_id = r.json()["id"]
+                    created += 1
+                    have = 1
+                else:
+                    # Replay the deterministic content stream up to the version the
+                    # document already has so the resumed history is byte-identical.
+                    for _ in range(have):
+                        _lorem(doc_rng, cfg["words_per_document"])
+                for v in range(have + 1, want_versions + 1):
                     r = await client.put(
                         f"{LIST_HANDLER}{doc_id}",
                         json={
@@ -855,6 +917,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
     sc = cat["scenarios"][args.scenario]
     log(f"arming {args.scenario}: {sc['title']}")
     wait_healthy(cat)
+    wait_alert_inactive(cat, sc["alert"]["name"], float(sc["alert"]["resolves_within_seconds"]))
     for step in sc["arm"]:
         run_step(cat, args.scenario, step)
     write_state(
@@ -982,19 +1045,41 @@ def cmd_verify(args: argparse.Namespace) -> None:
     if findings and not args.keep_going:
         _finish(report, findings, started)
 
-    # 3. Runtime.
+    # 3. Runtime. Both gates are judged relative to the armed scenario: the
+    # before-state's time-to-fire is measured from `armed_at`, not from whenever
+    # verify happened to start, so a late page cannot pass by waiting.
     alert = sc["alert"]
+    armed = read_state()
+    _check(
+        findings,
+        armed.get("scenario") == args.scenario,
+        f"scenario {args.scenario} is armed "
+        f"(the {args.expect}-state is judged under its conditions)",
+    )
+    if findings and not args.keep_going:
+        _finish(report, findings, started)
+    armed_at = _parse_ts(armed["armed_at"]) if armed.get("armed_at") else datetime.now(UTC)
+    report["armed_at"] = armed_at.isoformat()
     if args.expect == "before":
-        deadline = time.monotonic() + alert["fires_within_seconds"]
-        state = alert_state(cat, alert["name"])
-        while state != "firing" and time.monotonic() < deadline:
+        budget = float(alert["fires_within_seconds"])
+        fire_deadline = armed_at + timedelta(seconds=budget)
+        deadline = time.monotonic() + max(0.0, (fire_deadline - datetime.now(UTC)).total_seconds())
+        fired_at = alert_fired_at(cat, alert["name"])
+        while fired_at is None and time.monotonic() < deadline:
             time.sleep(10)
-            state = alert_state(cat, alert["name"])
-            log(f"waiting for {alert['name']}: {state} ({int(deadline - time.monotonic())}s left)")
+            fired_at = alert_fired_at(cat, alert["name"])
+            log(
+                f"waiting for {alert['name']}: {alert_state(cat, alert['name'])} "
+                f"({int(deadline - time.monotonic())}s left)"
+            )
+        time_to_fire = (fired_at - armed_at).total_seconds() if fired_at else None
+        report["alert_fired_at"] = fired_at.isoformat() if fired_at else None
+        report["time_to_fire_seconds"] = time_to_fire
         _check(
             findings,
-            state == "firing",
-            f"alert {alert['name']} fired within {alert['fires_within_seconds']}s",
+            fired_at is not None and armed_at <= fired_at <= fire_deadline,
+            f"alert {alert['name']} fired {_fmt(time_to_fire)}s after arming "
+            f"(budget {budget:.0f}s; a stale or late alert does not count)",
         )
         metrics = snapshot_metrics(cat)
         report["metrics"] = metrics
@@ -1018,9 +1103,9 @@ def cmd_verify(args: argparse.Namespace) -> None:
         # names this scenario's alert counts, never a stale capture.
         captured = None
         deadline = max(deadline, time.monotonic() + 60)
-        armed_at = (read_state().get("armed_at") or "")[:19] + "Z"
+        armed_iso = armed_at.strftime("%Y-%m-%dT%H:%M:%SZ")
         while captured is None and time.monotonic() < deadline:
-            captured = devin_page_for(cat, alert["name"], since=armed_at)
+            captured = devin_page_for(cat, alert["name"], since=armed_iso)
             if captured is None:
                 time.sleep(5)
         report["devin_webhook_captured"] = captured is not None
@@ -1035,64 +1120,65 @@ def cmd_verify(args: argparse.Namespace) -> None:
         # under the same incident-producing conditions (flags, memory limit,
         # replica) and the same load. Then the alert must be inactive and every
         # scenario-specific after-threshold met.
-        armed = read_state()
-        _check(
-            findings,
-            armed.get("scenario") == args.scenario,
-            f"scenario {args.scenario} is armed (the after-state is judged under its conditions)",
-        )
-        if findings and not args.keep_going:
-            _finish(report, findings, started)
-        for step in sc.get("after_prepare", []):
-            run_step(cat, args.scenario, step)
-        for label, holds in arm_conditions(cat, sc):
-            _check(findings, holds, label)
-        if findings and not args.keep_going:
-            _finish(report, findings, started)
-        soak = float(sc.get("after_soak_seconds", args.soak))
-        soak_started = datetime.now(UTC)
-        if sc.get("load"):
-            # The gate drives the profile itself so the offered load is exactly the
-            # scenario's, not the profile twice; the armed background generator
-            # is paused for the soak and resumed afterwards.
-            had_background = background_load_pid() is not None
-            stop_background_load()
-            asyncio.run(_drive(cat, args.scenario, duration=soak))
+        # The armed background generator is paused for the whole after-gate: the
+        # prepare steps (log purge, restart) must not race live requests, and the
+        # gate drives the scenario's profile itself so the offered load is exactly
+        # the scenario's, not the profile twice. It is resumed afterwards, pass or
+        # fail, so the scenario stays armed for the next attempt.
+        had_background = background_load_pid() is not None
+        stop_background_load()
+        try:
+            for step in sc.get("after_prepare", []):
+                run_step(cat, args.scenario, step)
+            for label, holds in arm_conditions(cat, sc):
+                _check(findings, holds, label)
+            if findings and not args.keep_going:
+                _finish(report, findings, started)
+            soak = float(
+                args.soak
+                if args.soak is not None
+                else sc.get("after_soak_seconds", DEFAULT_SOAK_SECONDS)
+            )
+            report["soak_seconds"] = soak
+            soak_started = datetime.now(UTC)
+            if sc.get("load"):
+                asyncio.run(_drive(cat, args.scenario, duration=soak))
+            else:
+                log(f"soaking {soak:.0f}s under the armed conditions (no load profile)")
+                time.sleep(soak)
+            deadline = time.monotonic() + alert["resolves_within_seconds"]
+            state = alert_state(cat, alert["name"])
+            while state != "inactive" and time.monotonic() < deadline:
+                time.sleep(10)
+                state = alert_state(cat, alert["name"])
+                log(f"waiting for {alert['name']} to clear: {state}")
+            _check(
+                findings,
+                state == "inactive",
+                f"alert {alert['name']} is inactive under the same conditions",
+            )
+            metrics = snapshot_metrics(cat)
+            if any(key.startswith("rollup_") for key in sc.get("after", {})):
+                metrics.update(rollup_soak_metrics(soak_started))
+            report["metrics"] = metrics
+            for key, threshold in sc.get("after", {}).items():
+                metric, bound = key.rsplit("_", 1)
+                val = metrics.get(metric)
+                if bound == "min":
+                    _check(
+                        findings,
+                        val is not None and val >= threshold,
+                        f"{metric}={_fmt(val)} >= {threshold}",
+                    )
+                else:
+                    _check(
+                        findings,
+                        val is not None and val <= threshold,
+                        f"{metric}={_fmt(val)} <= {threshold}",
+                    )
+        finally:
             if had_background:
                 start_background_load(args.scenario)
-        else:
-            log(f"soaking {soak:.0f}s under the armed conditions (no load profile)")
-            time.sleep(soak)
-        deadline = time.monotonic() + alert["resolves_within_seconds"]
-        state = alert_state(cat, alert["name"])
-        while state != "inactive" and time.monotonic() < deadline:
-            time.sleep(10)
-            state = alert_state(cat, alert["name"])
-            log(f"waiting for {alert['name']} to clear: {state}")
-        _check(
-            findings,
-            state == "inactive",
-            f"alert {alert['name']} is inactive under the same conditions",
-        )
-        metrics = snapshot_metrics(cat)
-        if any(key.startswith("rollup_") for key in sc.get("after", {})):
-            metrics.update(rollup_soak_metrics(soak_started))
-        report["metrics"] = metrics
-        for key, threshold in sc.get("after", {}).items():
-            metric, bound = key.rsplit("_", 1)
-            val = metrics.get(metric)
-            if bound == "min":
-                _check(
-                    findings,
-                    val is not None and val >= threshold,
-                    f"{metric}={_fmt(val)} >= {threshold}",
-                )
-            else:
-                _check(
-                    findings,
-                    val is not None and val <= threshold,
-                    f"{metric}={_fmt(val)} <= {threshold}",
-                )
 
     _finish(report, findings, started)
 
@@ -1196,7 +1282,13 @@ def main() -> None:
     p.add_argument("scenario")
     p.add_argument("--expect", choices=["before", "after"], required=True)
     p.add_argument(
-        "--soak", type=float, default=150, help="seconds of load before judging the after-state"
+        "--soak",
+        type=float,
+        default=None,
+        help=(
+            "seconds of load before judging the after-state (default: the scenario's "
+            f"after_soak_seconds, else {DEFAULT_SOAK_SECONDS})"
+        ),
     )
     p.add_argument(
         "--keep-going",

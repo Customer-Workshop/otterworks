@@ -1172,6 +1172,11 @@ def _verify(
                 state == "inactive",
                 f"alert {alert['name']} is inactive under the same conditions",
             )
+            # The trigger must have held for the whole soak, not just at the
+            # start: a chaos flag that expired mid-run would make an unfixed
+            # flaw look quiet.
+            for label, holds in arm_conditions(cat, sc):
+                _check(findings, holds, f"{label} (still, after the soak)")
             metrics = snapshot_metrics(cat)
             if any(key.startswith("rollup_") for key in sc.get("after", {})):
                 metrics.update(rollup_soak_metrics(soak_started))

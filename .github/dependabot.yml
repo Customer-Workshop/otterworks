@@ -1,0 +1,81 @@
+# Dependency-update detector for the Track 1 demo (docs/demo-runsheet.md).
+#
+# Shape mirrors Cognition-Partner-Workshops/uc-api-ehrbase/.github/dependabot.yml:
+# weekly, majors ignored, minor/patch grouped so one PR carries related bumps.
+# Scope is the four JVM modules the `make deps-*` harness measures
+# (security/deps/modules.yaml) plus GitHub Actions. There is no renovate.json in
+# this repo; Dependabot is the detector. Every PR this file opens is picked up by
+# .github/workflows/renovate-verify.yml.
+#
+# Options: https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/services/report-service"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      apache-commons:
+        patterns: ["org.apache.commons:*", "commons-*:*"]
+        update-types: ["minor", "patch"]
+      all-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: ["org.apache.commons:*", "commons-*:*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "maven"
+    directory: "/services/legacy-portal"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      spring:
+        patterns: ["org.springframework.*", "org.springdoc:*"]
+        update-types: ["minor", "patch"]
+      all-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: ["org.springframework.*", "org.springdoc:*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "gradle"
+    directory: "/services/auth-service"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      spring:
+        patterns: ["org.springframework.*", "org.springdoc:*"]
+        update-types: ["minor", "patch"]
+      all-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: ["org.springframework.*", "org.springdoc:*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "gradle"
+    directory: "/services/notification-service"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      ktor:
+        patterns: ["io.ktor:*"]
+        update-types: ["minor", "patch"]
+      all-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: ["io.ktor:*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

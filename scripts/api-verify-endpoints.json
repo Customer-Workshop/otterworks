@@ -1,0 +1,55 @@
+{
+  "_comment": "Endpoints polled by scripts/api_verify_loop.py against the Docker Compose stack. One entry per chaos scenario (see ChaosController::VALID_SCENARIOS) plus the health of every service in docker-compose.yml. Probes mirror ChaosProbeService::SERVICE_PROBES, pointed at the host-mapped ports.",
+  "defaults": {
+    "timeout_s": 3,
+    "headers": { "X-User-ID": "00000000-0000-0000-0000-000000000001" }
+  },
+  "endpoints": [
+    {
+      "name": "search-suggest",
+      "service": "search-service",
+      "scenario": "suggest_500",
+      "method": "GET",
+      "url": "http://localhost:8087/api/v1/search/suggest?q=test",
+      "expect": { "status": 200, "json_type": { "suggestions": "list" }, "json_equals": { "query": "test" } }
+    },
+    {
+      "name": "file-upload",
+      "service": "file-service",
+      "scenario": "upload_s3_error",
+      "method": "MULTIPART_UPLOAD",
+      "url": "http://localhost:8082/api/v1/files/upload",
+      "expect": { "status": 201, "json_keys": ["file"], "json_type": { "file.id": "str" } }
+    },
+    {
+      "name": "documents-list-latency",
+      "service": "document-service",
+      "scenario": "slow_queries",
+      "method": "GET",
+      "url": "http://localhost:8083/api/v1/documents/",
+      "timeout_s": 8,
+      "expect": { "status": 200, "max_latency_ms": 2000 }
+    },
+    {
+      "name": "notification-consumer",
+      "service": "notification-service",
+      "scenario": "consumer_strict_schema",
+      "method": "GET",
+      "url": "http://localhost:8086/metrics",
+      "pre": {
+        "type": "sqs_send_epoch_timestamp",
+        "url": "http://localhost:4566/000000000000/otterworks-notifications",
+        "settle_ms": 6000
+      },
+      "expect": { "status": 200, "metric_delta_max": { "notifications_processing_errors_total": 0 } }
+    },
+    { "name": "api-gateway-health", "service": "api-gateway", "method": "GET", "url": "http://localhost:8080/health", "expect": { "status": 200 } },
+    { "name": "auth-health", "service": "auth-service", "method": "GET", "url": "http://localhost:8081/health", "expect": { "status": 200 } },
+    { "name": "file-health", "service": "file-service", "method": "GET", "url": "http://localhost:8082/health", "expect": { "status": 200 } },
+    { "name": "document-health", "service": "document-service", "method": "GET", "url": "http://localhost:8083/health", "expect": { "status": 200 } },
+    { "name": "collab-health", "service": "collab-service", "method": "GET", "url": "http://localhost:8084/health", "expect": { "status": 200 } },
+    { "name": "notification-health", "service": "notification-service", "method": "GET", "url": "http://localhost:8086/health", "expect": { "status": 200, "json_equals": { "status": "healthy" } } },
+    { "name": "search-health", "service": "search-service", "method": "GET", "url": "http://localhost:8087/health", "expect": { "status": 200 } },
+    { "name": "admin-health", "service": "admin-service", "method": "GET", "url": "http://localhost:8089/health", "expect": { "status": 200 } }
+  ]
+}

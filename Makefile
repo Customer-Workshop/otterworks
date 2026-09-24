@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record api-verify api-verify-loop api-verify-dry-run chaos chaos-reset
 
 SHELL := /bin/bash
 
@@ -429,3 +429,29 @@ eq-tests: ## Run the affected module's own suite against the recorded pass list
 eq-record: ## Record the before-state as the reference evidence (REASON="..." required)
 	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make eq-record REASON="baseline before OW-SEC-401 refactor"' >&2; exit 2)
 	$(EQ) record --reason "$(REASON)" $(if $(FINDING),--finding $(FINDING),) $(if $(ALLOW_RERECORD),--allow-rerecord,)
+
+# ---------------------------------------------------------------------------
+# API verification loop (docs/demo-runsheet.md, Track 2)
+# Polls the Compose stack's endpoints, asserts on status + JSON body, and on a
+# failed assertion captures `docker compose logs` and starts a Devin session.
+# TRIGGER=devin|admin|webhook|none  ONLY=<endpoint-or-service> (optional)
+# ---------------------------------------------------------------------------
+API_VERIFY = python3 scripts/api_verify_loop.py $(if $(ONLY),--only $(ONLY),)
+
+api-verify: ## One pass over every configured endpoint; exit 1 if any assertion fails
+	$(API_VERIFY) --once
+
+api-verify-loop: ## Poll forever; on failure capture logs and start Devin (TRIGGER=devin|admin|webhook|none)
+	$(API_VERIFY) --trigger $(or $(TRIGGER),devin) --until-green --report .api-verify-events.jsonl --prompt-dir .api-verify-prompts
+
+api-verify-dry-run: ## Poll without contacting Devin; writes the prompt it would send to .api-verify-prompts/
+	$(API_VERIFY) --trigger none --max-polls $(or $(POLLS),3) --report .api-verify-events.jsonl --prompt-dir .api-verify-prompts
+
+chaos: ## Inject a fault via the admin-service chaos API (SERVICE=search-service SCENARIO=suggest_500)
+	@test -n "$(SERVICE)" -a -n "$(SCENARIO)" || (echo 'usage: make chaos SERVICE=search-service SCENARIO=suggest_500' >&2; exit 2)
+	curl -sS -X POST http://localhost:8089/api/v1/admin/chaos -H 'Content-Type: application/json' \
+		$(if $(CHAOS_SECRET),-H 'X-Chaos-Secret: $(CHAOS_SECRET)',) \
+		-d '{"service":"$(SERVICE)","scenario":"$(SCENARIO)"}'; echo
+
+chaos-reset: ## Clear every chaos flag and resolve the incidents they opened
+	curl -sS -X DELETE http://localhost:8089/api/v1/admin/chaos $(if $(CHAOS_SECRET),-H 'X-Chaos-Secret: $(CHAOS_SECRET)',); echo

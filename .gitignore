@@ -110,3 +110,5 @@ __pycache__/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+.api-verify-events.jsonl
+.api-verify-prompts/

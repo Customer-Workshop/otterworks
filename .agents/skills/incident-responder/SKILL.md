@@ -78,7 +78,9 @@ Ports (Compose, all loopback): document-service `8083`, Postgres `5432`, Redis
 `6379`, Prometheus `9090`, Grafana `3001` (`admin` / `otterworks`), Jaeger
 `16686`, Alertmanager `9093`, alert sink `9095`, OTLP collector `4318`.
 With `UI=1`: api-gateway `8080`, web-app `3000`. Override targets with
-`INCIDENT_BASE_URL`, `INCIDENT_PROM_URL`, `INCIDENT_COMPOSE`.
+`INCIDENT_BASE_URL`, `INCIDENT_PROM_URL`, `INCIDENT_COMPOSE`; `INCIDENT_LOAD_SCALE`
+(default `1`) multiplies a scenario's rps and concurrency for a target with less
+headroom than the local stack (the local gates always run unscaled).
 
 The fixture dataset is deterministic (`incident/scenarios.yaml` → `seed`): one
 owner `6d0c5f5e-7f0f-4a4e-9d0c-1a1c1d3a7000`, 400 documents, 8 versions each,

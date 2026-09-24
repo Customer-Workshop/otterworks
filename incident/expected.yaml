@@ -2,14 +2,14 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T19:29:47.724832+00:00'
-  git_sha: f997af578825c55427a66de77c0bf967c2b52cc6
-  reason: 'INCIDENT_LOAD_SCALE: scale a scenario''s rps/concurrency for targets with
-    less headroom than the local stack (the single 500m-CPU tenant replica on the
-    shared cluster saturates under the laptop profile even after the fix). Default
-    1 -- the local gates, load profiles, alert thresholds and seed are unchanged.'
+  at: '2026-09-24T19:33:57.976730+00:00'
+  git_sha: bd917f0e620b945b86cf2d0c0ee6d21553516fdd
+  reason: 'Review round 5: INCIDENT_LOAD_SCALE applies only to arm/load (verify always
+    soaks at the pinned catalog profile and records load_scale 1), is validated as
+    a positive finite number before any arm step runs. No load profile, alert threshold
+    or seed change.'
 fingerprints:
-  fixture: 16aa8b6d057f613f026584447fd792b8eb5741ff79718580490193dd354cece9
+  fixture: 1b84b521ee43da83a85dc6484ae4f15c5ca186637b6da6593c3a0ba437a23813
   source: 480b6fe74ff60a0d4d339ae8c3d8af03d23f45cd6e565c438481596bbcaa553a
 scenarios:
   n-plus-one:

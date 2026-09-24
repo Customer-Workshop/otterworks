@@ -20,8 +20,10 @@
 Every command reads incident/scenarios.yaml; targets are overridable with
 INCIDENT_BASE_URL, INCIDENT_PROM_URL, INCIDENT_ALERTMANAGER_URL,
 INCIDENT_SINK_URL, INCIDENT_REDIS_URL. INCIDENT_LOAD_SCALE (default 1) scales a
-scenario's rps and concurrency for targets with less headroom than the local
-stack (a single-replica tenant on the shared cluster runs one 500m-CPU worker).
+scenario's rps and concurrency for `arm` and `load` against targets with less
+headroom than the local stack (a single-replica tenant on the shared cluster
+runs one 500m-CPU worker); `verify` ignores it and always soaks at the catalog's
+pinned profile, so a gate never passes under a lighter load than it recorded.
 `verify` always writes a report to incident/reports/ (pass or fail) so a red
 gate leaves evidence behind.
 """
@@ -33,6 +35,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import math
 import os
 import random
 import re
@@ -124,8 +127,8 @@ def load_scale() -> float:
         scale = float(raw)
     except ValueError:
         scale = 0.0
-    if scale <= 0:
-        die(f"INCIDENT_LOAD_SCALE must be a positive number, got {raw!r}")
+    if not math.isfinite(scale) or scale <= 0:
+        die(f"INCIDENT_LOAD_SCALE must be a positive finite number, got {raw!r}")
     return scale
 
 
@@ -697,7 +700,9 @@ class Stats:
         self.__init__()
 
 
-async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> None:
+async def _drive(
+    cat: dict[str, Any], scenario: str, duration: float | None, scale: float = 1.0
+) -> None:
     sc = cat["scenarios"][scenario]
     profiles = sc.get("load") or {}
     if not profiles:
@@ -706,7 +711,6 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
     name, prof = next(iter(profiles.items()))
     owner = cat["seed"]["owner_id"]
     headers = bearer(owner)
-    scale = load_scale()
     rps = float(prof["rps"]) * scale
     concurrency = max(1, round(int(prof["concurrency"]) * scale))
     stats = Stats()
@@ -932,6 +936,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
     if state.get("scenario") and state["scenario"] != args.scenario:
         die(f"{state['scenario']} is already armed; run `incident.py disarm` first")
     sc = cat["scenarios"][args.scenario]
+    scale = load_scale()
     log(f"arming {args.scenario}: {sc['title']}")
     wait_healthy(cat)
     wait_alert_inactive(cat, sc["alert"]["name"], float(sc["alert"]["resolves_within_seconds"]))
@@ -942,7 +947,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
             "scenario": args.scenario,
             "armed_at": datetime.now(UTC).isoformat(),
             "git_sha": git_sha(),
-            "load_scale": load_scale(),
+            "load_scale": scale,
             "fingerprints": fingerprints(),
         }
     )
@@ -1172,6 +1177,7 @@ def _verify(
                 else sc.get("after_soak_seconds", DEFAULT_SOAK_SECONDS)
             )
             report["soak_seconds"] = soak
+            report["load_scale"] = 1.0
             soak_started = datetime.now(UTC)
             if sc.get("load"):
                 asyncio.run(_drive(cat, args.scenario, duration=soak))
@@ -1313,7 +1319,9 @@ def main() -> None:
     p.add_argument(
         "--duration", type=float, default=None, help="seconds; default runs until SIGTERM"
     )
-    p.set_defaults(fn=lambda a: asyncio.run(_drive(load_catalog(), a.scenario, a.duration)))
+    p.set_defaults(
+        fn=lambda a: asyncio.run(_drive(load_catalog(), a.scenario, a.duration, load_scale()))
+    )
 
     p = sub.add_parser("verify")
     p.add_argument("scenario")

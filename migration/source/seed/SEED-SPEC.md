@@ -243,4 +243,4 @@ semantics: `planted_keys` are RTRIMmed key values (match reported `source_key` a
 `expected_stage` in `{LOAD, VALIDATE}`; `expected_rule` is the exact `rule` string the job writes;
 `expected_sqlstate` is null when the failure is a conversion error raised by the job. The file is
 demo metadata: the job may read it only through manifest `report.issue_register` to annotate
-report rows (`CONTRACTS.md` §10.3); application code never reads it.
+report rows (`CONTRACTS.md` §10.2); application code never reads it.

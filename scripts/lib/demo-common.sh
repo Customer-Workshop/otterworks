@@ -381,9 +381,9 @@ verify_clean() {
     --query "HostedZones[?Name=='${DEMO_HOST_SUFFIX}.'].Id" --output text 2>/dev/null || true)"
   if [ -n "${zone_id}" ] && [ "${zone_id}" != "None" ]; then
     survivors="$(aws route53 list-resource-record-sets --hosted-zone-id "${zone_id}" \
-      --query "ResourceRecordSets[?Name=='t-${token}.${DEMO_HOST_SUFFIX}.' || Name=='api-t-${token}.${DEMO_HOST_SUFFIX}.'].Name" --output text 2>/dev/null | tr -s '[:space:]' '\n' | sed '/^$/d')"
+      --query "ResourceRecordSets[?Name=='t-${token}.${DEMO_HOST_SUFFIX}.' || Name=='api-t-${token}.${DEMO_HOST_SUFFIX}.' || Name=='admin-t-${token}.${DEMO_HOST_SUFFIX}.'].Name" --output text 2>/dev/null | tr -s '[:space:]' '\n' | sed '/^$/d')"
     if [ -n "${survivors}" ]; then derr "Route53: tenant records still exist:"; echo "${survivors}" | sed 's/^/    /'; rc=1
-    else dlog "Route53: no t-${token}/api-t-${token} records"; fi
+    else dlog "Route53: no t-${token}/api-t-${token}/admin-t-${token} records"; fi
   fi
   if az_available; then
     az_login
@@ -676,10 +676,15 @@ copy_report_out() {
   cont="$(secret_value "${ns}" "${ARCHIVE_STORE_SECRET}" AZ_STAGING_CONTAINER)"
   if [ -n "${acct}" ] && az_available; then
     az_login
-    local f
+    # The operator principal holds Contributor (control plane) but no data-plane
+    # blob role, so fall back to the account key when AAD auth is refused.
+    local f mode
     for f in reconciliation.json reconciliation.csv reconciliation.html; do
-      az storage blob download --auth-mode login --account-name "${acct}" -c "${cont}" \
-        -n "${token}/${run_id}/${f}" -f "${out}/${f}" -o none 2>/dev/null || { dwarn "${f} not in staging"; continue; }
+      for mode in login key; do
+        az storage blob download --auth-mode "${mode}" --account-name "${acct}" -c "${cont}" \
+          -n "${token}/${run_id}/${f}" -f "${out}/${f}" -o none 2>/dev/null && break
+        [ "${mode}" = key ] && { dwarn "${f} not in staging"; continue 2; }
+      done
       dlog "copied ${f} -> ${out}/"
     done
   fi

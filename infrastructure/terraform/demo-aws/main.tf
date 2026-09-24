@@ -33,7 +33,7 @@ locals {
   db2_volume_name = "otterworks-ldm-${var.namespace}-db2"
   bucket_name     = "otterworks-ldm-${var.namespace}-${local.account_id}"
   ecr_repo_name   = "otterworks-demo/${var.namespace}/ldm-job"
-  tenant_hosts    = var.ingress_hostname != "" ? ["t-${var.namespace}", "api-t-${var.namespace}"] : []
+  tenant_hosts    = var.ingress_hostname != "" ? ["t-${var.namespace}", "api-t-${var.namespace}", "admin-t-${var.namespace}"] : []
 }
 
 # Db2 data volume, bound by the db2-archive chart as a static PersistentVolume

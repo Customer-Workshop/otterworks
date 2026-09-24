@@ -119,6 +119,27 @@ run env HOST_SUFFIX="${DEMO_HOST_SUFFIX}" "${SCRIPT_DIR}/deploy-tenant.sh" "${DT
 # shellcheck disable=SC2086
 run kubectl label namespace "${NS}" --overwrite ${LABELS_KV}
 run kubectl annotate namespace "${NS}" --overwrite "demo/expires=${EXPIRES}"
+# The tenant ingress only routes the SPA and the gateway; the presenter's Migration report
+# lives in the Angular admin dashboard, so the demo adds admin-t-<token> on the same shared
+# ingress (ClusterIP behind ingress-nginx, Route53 record from demo-aws).
+if [ "${DRY_RUN}" = "1" ]; then dlog "[dry-run] would apply tenant-ingress-admin for admin-t-${TOKEN}.${DEMO_HOST_SUFFIX}"
+else kubectl apply -n "${NS}" -f - <<YAML
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tenant-ingress-admin
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: admin-t-${TOKEN}.${DEMO_HOST_SUFFIX}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: admin-dashboard, port: { number: 80 } }
+YAML
+fi
 # deploy-tenant sizes tenant-quota for the app alone (12 CPU / 20Gi of limits); the demo adds
 # Db2 (2/4Gi), its seed Job (2/2Gi) and the migration Job (1/1Gi) in the same namespace.
 run kubectl -n "${NS}" patch resourcequota tenant-quota --type merge -p \

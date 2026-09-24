@@ -125,10 +125,19 @@ make incident-verify SCENARIO=n-plus-one EXPECT=after       # drives the same lo
 ```
 
 The `after` gate refuses to run against an unchanged source fingerprint, so it
-cannot be passed by waiting for the load to stop. Rebuild the image before the
-`after` run — verifying against the old container is the most common way to get
-a meaningless green. Migrations run on container start (`app/db/migrate.py`),
-so a new `alembic/versions/004_*.py` is applied by the rebuild.
+cannot be passed by waiting for the load to stop — and it requires the scenario
+to **still be armed**: do not `make disarm` before `EXPECT=after`. It re-applies
+the scenario's own conditions (`after_prepare` in `incident/scenarios.yaml`:
+purge the request log, recreate the service under the 256m ceiling, restart the
+replica on the rebuilt image), checks they hold, drives the same load profile
+(or lets the replicas run) for `after_soak_seconds`, then requires the alert
+inactive **and** the scenario's `after:` thresholds met (`queries_per_request`
+and `p95_seconds` for n-plus-one, `request_log_ratio`, `cache_entries` /
+`memory_ratio`, new rollup windows with zero duplicates from the table and the
+gauge). Rebuild the image before the `after` run — verifying against the old
+container is the most common way to get a meaningless green. Migrations run on
+container start (`app/db/migrate.py`), so a new `alembic/versions/004_*.py` is
+applied by the rebuild.
 
 Nine pre-existing failures in `tests/test_documents_api.py` (mutating endpoints
 called without an auth header, asserting `200` against a `401`) and
@@ -146,7 +155,11 @@ Alertmanager posts the firing alert to `DEVIN_WEBHOOK_URL` (the Devin Automation
 webhook trigger) and, when `SLACK_WEBHOOK_URL` is set, to `#otterworks-alerts`.
 Both default to the local sink (`http://alert-sink:9095/{devin,slack}`) so the
 flow runs with no external credentials; `make incident-simulate` prints exactly
-what the Automation would have received. The Automation's trigger, prompt,
+what the Automation would have received. The sink is an intentionally
+unauthenticated, disposable capture buffer: it is reachable only on the Compose
+network and on the host's loopback (`127.0.0.1:9095`), and must never be
+published beyond the laptop — a real deployment posts to the Devin Automation
+webhook and Slack directly. The Automation's trigger, prompt,
 connectors, ACU budget and network policy are documented in
 `docs/incident-responder/automation.md`; the prompt tells the session to post
 the RCA as a reply in the alert's Slack thread (`channel` and `ts` are in the
@@ -261,6 +274,13 @@ curl above: the header drops to 5 statements and the alerts resolve.
 
   Locally, `git checkout <before-sha> -- services/document-service` and
   `make incident-up` rebuilds the before-state image.
+- If the fix carried a migration (the reference fix adds `004_document_list_indexes`),
+  downgrade the database **before** rebuilding the before-state image, while the
+  fix's code is still present: `docker compose -f docker-compose.yml
+  -f docker-compose.infra.yml -f docker-compose.incident.yml exec -T -w /app
+  document-service sh -c 'PYTHONPATH=/app alembic downgrade 003'`. Otherwise the
+  before-state container exits with `Can't locate revision identified by '004'`
+  at boot because the database is stamped past the revisions it ships.
 - Tear the tenant down with `scripts/teardown-tenant.sh incident`.
 - `make incident-verify SCENARIO=<name> EXPECT=before` must go green again
   after any reset; if it reports fixture drift, something other than the fix

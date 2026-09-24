@@ -69,13 +69,16 @@ services:
     - no-new-privileges:true
 
   # Captures whatever Alertmanager posts so the demo can show the exact
-  # message a Devin Automation (or Slack) would receive, offline.
+  # message a Devin Automation (or Slack) would receive, offline. The sink is
+  # unauthenticated by design (it stands in for two webhook endpoints), so it
+  # is published on the loopback interface only: Alertmanager reaches it over
+  # the Compose network, the harness over 127.0.0.1, nothing else can.
   alert-sink:
     image: python:3.12-alpine
     container_name: otterworks-alert-sink
     command: ["python", "/sink/alert_sink.py"]
     ports:
-    - 9095:9095
+    - 127.0.0.1:9095:9095
     volumes:
     - ./observability/alertmanager/alert_sink.py:/sink/alert_sink.py:ro
     - alert_sink_data:/data

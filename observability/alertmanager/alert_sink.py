@@ -6,6 +6,14 @@ served back on GET /<receiver>/latest, so `make incident-simulate` can show the
 exact message the on-call Devin would have received.
 
 Standard library only: it runs from the stock python:3.12-alpine image.
+
+Trust boundary: the sink has no authentication because it impersonates two
+webhook endpoints that Alertmanager posts to without credentials. It must only
+ever be reachable from the Compose network and the host's loopback interface
+(docker-compose.incident.yml publishes it on 127.0.0.1). Anything that can
+reach the port can read and erase the captured pages; never expose it beyond
+the laptop -- a real deployment uses the Devin Automation webhook and Slack
+directly and has no sink at all.
 """
 
 import contextlib

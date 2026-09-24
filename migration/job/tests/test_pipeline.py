@@ -471,3 +471,43 @@ def test_validate_streams_in_small_batches_with_identical_outcome(tmp_path: Path
     small = outcome("b02", 7)
     assert small == big
     assert {"HASH_MISMATCH", "CLASS_TOTAL_MISMATCH", "ORPHAN_PARENT_NOT_SELECTED"} <= set(small[0])
+
+
+def test_changed_manifest_cannot_resume_a_run(tmp_path: Path, manifest_after: Path) -> None:
+    from ldm.errors import ConfigError
+
+    seed = seed_source(generated=6, children_per_parent=1, plant=False)
+    target = FakeTarget()
+    ctx = make_ctx(tmp_path, seed.source, target, manifest=manifest_after)
+    prepare_run(ctx)
+    extract.run(ctx)
+    text = manifest_after.read_text(encoding="utf-8")
+    manifest_after.write_text(text.replace("extract_range_rows:", "extract_range_rows: 999 #"), encoding="utf-8")
+    ctx2 = make_ctx(tmp_path, seed.source, target, manifest=manifest_after)
+    with pytest.raises(ConfigError, match="new --run-id"):
+        prepare_run(ctx2)
+    # the recorded digest is immutable: the original manifest still resumes
+    manifest_after.write_text(text, encoding="utf-8")
+    prepare_run(make_ctx(tmp_path, seed.source, target, manifest=manifest_after))
+
+
+def test_revalidation_drops_stale_validate_rejects(tmp_path: Path, manifest_after: Path) -> None:
+    seed = seed_source(generated=6, children_per_parent=1, plant=False)
+    target = FakeTarget()
+    ctx = make_ctx(tmp_path, seed.source, target, manifest=manifest_after)
+    prepare_run(ctx)
+    extract.run(ctx)
+    load.run(ctx)
+    run, ns = ctx.run_id, ctx.namespace
+    # corrupt one staged DOCARCH value so the first validate flags a HASH_MISMATCH
+    key = seed.source.select_keys("ARCHIVE", "DOCARCH", ctx.selection_for(ctx.table("DOCARCH").config))[0]
+    victim = next(r for r in target._stg(run, ns, "DOCARCH") if r.source_key == key)
+    original = victim.values["OWNER_NAME"]
+    victim.values["OWNER_NAME"] = "tampered"
+    validate.run(ctx)
+    assert _rules(target, run, ns).get("HASH_MISMATCH") == {key}
+    # operator fixes the staged value and re-runs validate with the same run id
+    victim.values["OWNER_NAME"] = original
+    validate.run(ctx)
+    assert "HASH_MISMATCH" not in _rules(target, run, ns)
+    assert all(v.status == "VALIDATED" for v in target.validation[(run, ns)] if v.source_key == key)

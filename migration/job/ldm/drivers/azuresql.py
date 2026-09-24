@@ -256,15 +256,23 @@ class AzureSqlTarget:
 
     def ensure_run(
         self, run_id: str, namespace: str, purge_enabled: bool, job_image: str | None, manifest_sha: str
-    ) -> None:
+    ) -> str:
+        existing = self._scalar(
+            "SELECT manifest_sha256 FROM mig.runs WHERE run_id = ? AND namespace = ?", (run_id, namespace)
+        )
+        if existing is None:
+            self._exec(
+                "INSERT mig.runs (run_id, namespace, status, purge_enabled, manifest_sha256, job_image) "
+                "VALUES (?, ?, N'RUNNING', ?, ?, ?)",
+                (run_id, namespace, purge_enabled, manifest_sha, job_image),
+            ).close()  # type: ignore[attr-defined]
+            return manifest_sha
         self._exec(
-            "MERGE mig.runs AS t USING (SELECT ? AS run_id, ? AS namespace) AS s "
-            "ON t.run_id = s.run_id AND t.namespace = s.namespace "
-            "WHEN MATCHED THEN UPDATE SET purge_enabled = ?, job_image = COALESCE(?, t.job_image), manifest_sha256 = ? "
-            "WHEN NOT MATCHED THEN INSERT (run_id, namespace, status, purge_enabled, manifest_sha256, job_image) "
-            "VALUES (s.run_id, s.namespace, N'RUNNING', ?, ?, ?);",
-            (run_id, namespace, purge_enabled, job_image, manifest_sha, purge_enabled, manifest_sha, job_image),
+            "UPDATE mig.runs SET purge_enabled = ?, job_image = COALESCE(?, job_image) "
+            "WHERE run_id = ? AND namespace = ?",
+            (purge_enabled, job_image, run_id, namespace),
         ).close()  # type: ignore[attr-defined]
+        return str(existing).strip()
 
     def get_run_status(self, run_id: str, namespace: str) -> str | None:
         v = self._scalar("SELECT status FROM mig.runs WHERE run_id = ? AND namespace = ?", (run_id, namespace))
@@ -440,6 +448,12 @@ class AzureSqlTarget:
         self._exec(
             f"DELETE FROM stg.{_ident(table)} WHERE run_id = ? AND namespace = ? AND range_seq = ?",
             (run_id, namespace, range_seq),
+        ).close()  # type: ignore[attr-defined]
+
+    def delete_rejects_stage(self, run_id: str, namespace: str, table: str, stage: str) -> None:
+        self._exec(
+            "DELETE FROM mig.rejects WHERE run_id = ? AND namespace = ? AND table_name = ? AND stage = ?",
+            (run_id, namespace, table, stage),
         ).close()  # type: ignore[attr-defined]
 
     def delete_rejects_range(self, run_id: str, namespace: str, table: str, stage: str, range_seq: int) -> None:

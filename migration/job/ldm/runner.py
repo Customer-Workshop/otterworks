@@ -173,7 +173,14 @@ def prepare_run(ctx: RunContext) -> None:
     ctx.log.stage = "INIT"
     init.apply_ddl(ctx)
     m = ctx.manifest
-    ctx.target.ensure_run(ctx.run_id, ctx.namespace, m.purge, ctx.env.get("LDM_JOB_IMAGE"), ctx.loaded.sha256)
+    recorded = ctx.target.ensure_run(
+        ctx.run_id, ctx.namespace, m.purge, ctx.env.get("LDM_JOB_IMAGE"), ctx.loaded.sha256
+    )
+    if recorded != ctx.loaded.sha256:
+        raise ConfigError(
+            f"run {ctx.run_id} in {ctx.namespace} was started with manifest sha256 {recorded[:12]}..., "
+            f"current manifest is {ctx.loaded.sha256[:12]}...; a changed manifest needs a new --run-id"
+        )
     ctx.target.ensure_ledger(ctx.run_id, ctx.namespace, [(t.name, t.order, t.role) for t in m.tables_in_order()])
     status = ctx.target.get_run_status(ctx.run_id, ctx.namespace)
     if status in ("CLOSED",):

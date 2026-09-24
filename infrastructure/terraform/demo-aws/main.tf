@@ -37,7 +37,8 @@ locals {
 
 # Db2 data volume, bound by the db2-archive chart as a static PersistentVolume
 # (no dynamic provisioning: the cluster must never create AWS resources).
-resource "aws_ebs_volume" "db2" {
+# Encrypted with the account default aws/ebs key; a per-namespace CMK would outlive the throwaway demo.
+resource "aws_ebs_volume" "db2" { # nosemgrep: terraform.aws.security.aws-ebs-volume-encrypted-with-cmk.aws-ebs-volume-encrypted-with-cmk
   availability_zone = local.db2_volume_az
   size              = var.db2_volume_size_gib
   type              = "gp3"
@@ -100,7 +101,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "demo" {
 }
 
 # Job image repository (CI or the presenter pushes the ldm image here).
-resource "aws_ecr_repository" "job" {
+# Mutable tags: CI re-pushes the per-branch tag on every build (see branch_tag_slug in tenant-common.sh).
+resource "aws_ecr_repository" "job" { # nosemgrep: terraform.aws.security.aws-ecr-mutable-image-tags.aws-ecr-mutable-image-tags
   name                 = local.ecr_repo_name
   image_tag_mutability = "MUTABLE"
   force_delete         = true

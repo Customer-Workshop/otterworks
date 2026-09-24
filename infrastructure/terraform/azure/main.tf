@@ -32,7 +32,8 @@ resource "azurerm_user_assigned_identity" "this" {
 
 # ---- storage ----------------------------------------------------------------
 
-resource "azurerm_storage_account" "staging" {
+# Blob-only staging container; queue/table services are never used, so their diagnostics are not configured.
+resource "azurerm_storage_account" "staging" { # nosemgrep: terraform.azure.security.storage.storage-queue-services-logging.storage-queue-services-logging
   name                            = local.storage_account_name
   location                        = azurerm_resource_group.this.location
   resource_group_name             = azurerm_resource_group.this.name
@@ -68,7 +69,10 @@ resource "azurerm_role_assignment" "identity_blob_reader" {
 
 # ---- key vault --------------------------------------------------------------
 
-resource "azurerm_key_vault" "this" {
+# Purge protection stays off on purpose: namespaces are throwaway and `make demo-destroy` must be able to
+# purge the vault so a re-run can reuse the name. Network ACLs exist only when private_networking is on:
+# secrets are written by the deployer over the public data plane (see CONTRACTS networking decision).
+resource "azurerm_key_vault" "this" { # nosemgrep: terraform.azure.security.keyvault.keyvault-purge-enabled.keyvault-purge-enabled, terraform.azure.security.keyvault.keyvault-specify-network-acl.keyvault-specify-network-acl
   name                       = local.key_vault_name
   location                   = azurerm_resource_group.this.location
   resource_group_name        = azurerm_resource_group.this.name
@@ -157,11 +161,12 @@ resource "azurerm_key_vault_secret" "secrets" {
     staging-storage-key   = azurerm_storage_account.staging.primary_access_key
   }
 
-  name         = each.key
-  value        = each.value
-  key_vault_id = azurerm_key_vault.this.id
-  content_type = "text/plain"
-  tags         = local.tags
+  name            = each.key
+  value           = each.value
+  key_vault_id    = azurerm_key_vault.this.id
+  content_type    = "text/plain"
+  expiration_date = var.expires
+  tags            = local.tags
 
   depends_on = [time_sleep.kv_rbac_propagation]
 }

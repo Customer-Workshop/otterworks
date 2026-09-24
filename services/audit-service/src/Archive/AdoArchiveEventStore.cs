@@ -30,7 +30,7 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
             await using var connection = CreateConnection();
             await connection.OpenAsync(cancellationToken);
             await using var command = connection.CreateCommand();
-            command.CommandText = EventsSql;
+            command.CommandText = EventsSql; // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli -- constant SQL, docId bound as @docId
             var parameter = command.CreateParameter();
             parameter.ParameterName = "@docId";
             parameter.DbType = DbType.String;
@@ -110,7 +110,7 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
     private static DbCommand CreateDocCommand(DbConnection connection, string sql, string docId)
     {
         var command = connection.CreateCommand();
-        command.CommandText = sql;
+        command.CommandText = sql; // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli -- callers pass const SQL, docId bound as @docId
         var parameter = command.CreateParameter();
         parameter.ParameterName = "@docId";
         parameter.DbType = DbType.String;
@@ -126,7 +126,7 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
             await using var connection = CreateConnection();
             await connection.OpenAsync(cancellationToken);
             await using var command = connection.CreateCommand();
-            command.CommandText = PingSql;
+            command.CommandText = PingSql; // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli -- constant SQL
             await command.ExecuteScalarAsync(cancellationToken);
         }
         catch (DbException ex)

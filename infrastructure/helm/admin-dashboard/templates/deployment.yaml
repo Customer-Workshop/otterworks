@@ -46,6 +46,11 @@ spec:
             failureThreshold: 6
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.peerAppUrl }}
+          env:
+            - name: PEER_APP_URL
+              value: {{ .Values.peerAppUrl | quote }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-config

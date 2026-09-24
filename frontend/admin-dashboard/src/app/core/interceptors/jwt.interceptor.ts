@@ -9,6 +9,7 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
+import { PEER_REQUEST } from '../services/migration-api.service';
 
 @Injectable()
 export class JwtInterceptor implements HttpInterceptor {
@@ -27,7 +28,7 @@ export class JwtInterceptor implements HttpInterceptor {
 
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        if (error.status === 401) {
+        if (error.status === 401 && !request.context.get(PEER_REQUEST)) {
           this.authService.logout();
         }
         return throwError(() => error);

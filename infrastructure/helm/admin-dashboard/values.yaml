@@ -54,3 +54,8 @@ config: {}
 # Sensitive configuration rendered into {{ .Release.Name }}-secrets (Opaque,
 # stringData) and injected via envFrom. Populate at deploy time; never commit values.
 secrets: {}
+
+# Base URL of the peer deployment's API host for the Migration page's Before/After panel
+# (e.g. https://api-t-d24-before.otterworks.app on the AFTER deployment). Empty = no peer;
+# the page then only shows this deployment's archive document.
+peerAppUrl: ""

@@ -50,6 +50,18 @@ export const routes: Routes = [
         path: 'incidents',
         loadComponent: () => import('./pages/incidents/incidents.component').then(m => m.IncidentsComponent),
       },
+      {
+        path: 'migration',
+        loadComponent: () => import('./pages/migration/migration.component').then(m => m.MigrationComponent),
+      },
+      {
+        path: 'migration/reconciliation/:runId',
+        loadComponent: () => import('./pages/migration/migration.component').then(m => m.MigrationComponent),
+      },
+      {
+        path: 'migration/archive/:docId',
+        loadComponent: () => import('./pages/migration/migration.component').then(m => m.MigrationComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

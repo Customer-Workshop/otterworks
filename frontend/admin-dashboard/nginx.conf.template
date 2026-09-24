@@ -1,3 +1,5 @@
+# Rendered by the nginx image's envsubst at container start (see Dockerfile); only
+# ${PEER_APP_URL} is substituted, nginx's own $variables are left alone.
 server {
     listen 4200;
     server_name localhost;
@@ -12,6 +14,14 @@ server {
         proxy_pass http://api-gateway:8080;
         proxy_set_header Host $http_host; # nosemgrep: generic.nginx.security.request-host-used.request-host-used
         proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Peer deployment base URL for the Migration page's Before/After panel (empty = no peer).
+    location = /config/peer.json {
+        access_log off;
+        default_type application/json;
+        add_header Cache-Control "no-store";
+        return 200 '{"peer_app_url":"${PEER_APP_URL}"}';
     }
 
     location /health {

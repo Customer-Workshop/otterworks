@@ -71,3 +71,23 @@ config: {}
 # Sensitive configuration rendered into {{ .Release.Name }}-secrets (Opaque,
 # stringData) and injected via envFrom. Populate at deploy time; never commit values.
 secrets: {}
+
+# Legacy-data-migration archive read path (migration/CONTRACTS.md §10.4).
+# Leave `store` empty for ordinary tenants: the archive feature stays off and the
+# archive/reconciliation endpoints answer 404 with a hint. BEFORE deployments set
+# `store: db2`, AFTER deployments set `store: azuresql`. User/password/client-id are
+# read from the Kubernetes Secret `archive-store-credentials` (keys DB2_USER,
+# DB2_PASSWORD, AZSQL_USER, AZSQL_PASSWORD, AZURE_CLIENT_ID), created by the deploy
+# script - never put them in values files.
+archive:
+  store: ""            # "" | db2 | azuresql
+  namespace: ""        # LDM_NAMESPACE, e.g. d24-after
+  credentialsSecret: archive-store-credentials
+  db2:
+    host: db2-archive
+    port: "50000"
+    database: ""
+  azuresql:
+    server: ""         # <server>.database.windows.net
+    database: ""
+    auth: sql          # sql (AZSQL_USER/AZSQL_PASSWORD) | msi (AZURE_CLIENT_ID)

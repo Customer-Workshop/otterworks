@@ -84,9 +84,9 @@ Offsets are 1-based and inclusive; `Len` is bytes in the fixed-width record.
 | 1 | `DA-AKEY` | `X(16)` | 1 | 16 | `ARCH_KEY` (0) | `CHAR(16)` | Archive record key (PK). `DA` + 14 digits; reserved `MIGnn-...` keys for planted cases | `SYSCAT.TABCONST` P constraint, `KEYSEQ=1`; 100% distinct |
 | 2 | `DA-DOCI` | `X(36)` | 17 | 36 | `DOC_ID` (1) | `CHAR(36)` | OtterWorks document UUID (links to the app's document) | 8-4-4-4-12 hex pattern in 100% of rows |
 | 3 | `DA-VSEQ` | `S9(4) COMP` | 53 | 2 | `VERSION_NO` (2) | `SMALLINT` | Document version number, 1..n per `DOC_ID` | min 1; dense per `DOC_ID` |
-| 4 | `DA-RCLS` | `X(4)` | 55 | 4 | `RETENTION_CLASS` (3) | `CHAR(4)` | Retention class code | FK to `RETNPLCY.POLICY_CODE`; 35 distinct values in use |
+| 4 | `DA-RCLS` | `X(4)` | 55 | 4 | `RETENTION_CLASS` (3) | `CHAR(4)` | Retention class code | FK to `RETNPLCY.POLICY_CODE`; 39 of 40 codes in use |
 | 5 | `DA-LACC` | `X(32)` | 59 | 32 | `LAST_ACCESS_TS` (4) | `TIMESTAMP(12)` | Last access time, picosecond precision | text `YYYY-MM-DD-HH.MM.SS.NNNNNNNNNNNN`; >= 2012-01-01 |
-| 6 | `DA-SCHG` | `S9(23)V9(8) COMP-3` | 91 | 16 | `STORAGE_CHARGE` (5) | `DECIMAL(31,8)` | Accrued storage charge (currency, 8 dp) | non-negative; sums reconcile to billing |
+| 6 | `DA-SCHG` | `S9(23)V9(8) COMP-3` | 91 | 16 | `STORAGE_CHARGE` (5) | `DECIMAL(31,8)` | Accrued storage charge (currency, 8 dp) | non-negative; equals `BYTE_SIZE * UNIT_RATE` on generated rows |
 | 7 | `DA-AMT2` | `S9(23)V9(8) COMP-3` | 107 | 16 | `UNIT_RATE` (6) | `DECIMAL(31,8)` | Per-byte-month storage rate | < 1 in >99.99% of rows; outliers are MIG-02 |
 | 8 | `DA-TXT1` | `X(40)` | 123 | 40 | `OWNER_NAME` (7) | `CHAR(40) FOR BIT DATA` | Owner display name, **EBCDIC CCSID 037** | `CODEPAGE=0`; pad `X'40'`; letter bytes `X'C1'-X'E9'` |
 | 9 | `DA-DAT1` | `X(8)` | 163 | 8 | `DISPOSITION_DT` (8) | `CHAR(8) FOR BIT DATA` | Scheduled disposition date `YYYYMMDD`, **EBCDIC 037 digits** | bytes only `X'F0'-X'F9'` or all `X'00'` (low-values) |

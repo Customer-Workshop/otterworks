@@ -23,11 +23,26 @@
    redis-cli EXISTS chaos:file-service:upload_s3_error
    ```
 
-<!-- TODO: Complete investigation steps -->
+3. Confirm the bucket the service is configured for and that it exists:
+   ```
+   kubectl get configmap file-service-config -n otterworks -o jsonpath='{.data.S3_BUCKET}'
+   aws s3api head-bucket --bucket <value>
+   ```
+   file-service also runs this check on startup and logs
+   `Configured S3 bucket is not reachable; check S3_BUCKET` if it fails.
+4. Check for recent Helm releases or config overrides on file-service:
+   ```
+   helm history file-service -n otterworks
+   ```
 
 ## Resolution Steps
 
-<!-- TODO -->
+- Wrong `S3_BUCKET` value: redeploy with the correct value (`scripts/deploy-tenant.sh <ID>`
+  re-applies the bucket from Terraform outputs) and `kubectl rollout restart deploy/file-service`.
+- Chaos flag set: `redis-cli DEL chaos:file-service:upload_s3_error` (or
+  `scripts/inject-bug.sh <ID> reset`).
+- Verify: upload a file through the web app and confirm the `FileUploadHighErrorRate`
+  alert clears within a few minutes.
 
 ## Post-Incident
 

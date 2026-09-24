@@ -27,9 +27,24 @@ impl S3Client {
             .build();
         let client = aws_sdk_s3::Client::from_conf(s3_config);
 
-        Self {
+        let s3 = Self {
             client,
             bucket: config.s3_bucket.clone(),
+        };
+        s3.verify_bucket().await;
+        s3
+    }
+
+    /// Check at startup that the configured bucket is reachable so a bad
+    /// `S3_BUCKET` value is visible in the logs before the first upload fails.
+    async fn verify_bucket(&self) {
+        match self.client.head_bucket().bucket(&self.bucket).send().await {
+            Ok(_) => tracing::info!(bucket = %self.bucket, "S3 bucket reachable"),
+            Err(e) => tracing::error!(
+                bucket = %self.bucket,
+                error = %e,
+                "Configured S3 bucket is not reachable; check S3_BUCKET"
+            ),
         }
     }
 
@@ -48,7 +63,10 @@ impl S3Client {
             .content_type(content_type)
             .send()
             .await
-            .map_err(|e| ServiceError::S3Error(format!("upload failed: {e}")))?;
+            .map_err(|e| {
+                tracing::error!(key = %key, bucket = %self.bucket, error = %e, "S3 upload failed");
+                ServiceError::S3Error(format!("upload to bucket '{}' failed: {e}", self.bucket))
+            })?;
 
         tracing::info!(key = %key, bucket = %self.bucket, "Uploaded object to S3");
         Ok(())

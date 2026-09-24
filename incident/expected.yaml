@@ -2,22 +2,14 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T16:09:11.319247+00:00'
-  git_sha: 4e959544c80cc14dc507efd1787b8e4536928b40
-  reason: 're-pinned after PR #1669 second review round: arm waits for the scenario''s
-    alert from an earlier run to resolve (the before gate rejects a page that crossed
-    into firing before armed_at); before gate judges alert timing from the stored
-    armed_at (activeAt + rule hold); seed resumes interrupted version histories; after
-    gate stops background load before after_prepare and restores it in a finally;
-    --soak None-default so an explicit value overrides after_soak_seconds; share-link
-    token/api_key/signature query params redacted in the request log; bounded per-request
-    response capture (>1 MiB or unknown-length responses stream with a 1 MiB logged
-    prefix; sub-1 MiB responses still fully retained so unbounded log growth stays
-    planted); stats_rollup skips a window this host already computed (cross-replica
-    duplication stays planted). No load-profile, alert-rule or seed-content change.'
+  at: '2026-09-24T16:19:04.277033+00:00'
+  git_sha: 0584f57e87856a15420e88124fa1745b7e67e17d
+  reason: 'Review round 3: refuse to stamp a partial unversioned legacy schema (migrate.py)
+    and mask minted share tokens in captured response bodies (request_log.py). No
+    load profile, alert threshold or seed change.'
 fingerprints:
   fixture: 23e453def82bedb897b30126bb2dfdb6541d04d23f8094b1710ce3c76bae9bce
-  source: 443ebec44c46581d720e708be901da8c1df3371564439a320be7f48bf95d7129
+  source: ef747a71b95543a678f4f89f83fbaa8ede628d2264933b6df568b7e03cc56bd9
 scenarios:
   n-plus-one:
     alert: DocumentListLatencyHigh

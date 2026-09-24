@@ -14,6 +14,7 @@ from app.middleware.request_log import (
     REDACTED,
     RESPONSE_CAPTURE_BYTES,
     RequestLog,
+    redact_body,
     redact_headers,
     redact_query,
 )
@@ -40,6 +41,13 @@ def test_redact_query_masks_share_tokens_only() -> None:
     assert redact_query("token=s3cret&format=html") == f"token={REDACTED}&format=html"
     assert redact_query("owner_id=u1&size=100") == "owner_id=u1&size=100"
     assert redact_query("") == ""
+
+
+def test_redact_body_masks_minted_tokens_only() -> None:
+    body = json.dumps({"document_id": "d1", "token": 's3"cret', "title": "token"})
+    redacted = json.loads(redact_body(body))
+    assert redacted == {"document_id": "d1", "token": REDACTED, "title": "token"}
+    assert redact_body('{"items": [], "total": 0}') == '{"items": [], "total": 0}'
 
 
 @pytest.mark.asyncio

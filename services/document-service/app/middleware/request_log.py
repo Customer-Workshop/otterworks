@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 import shutil
 import socket
 import time
@@ -31,6 +32,10 @@ SKIP_PATHS = ("/health", "/metrics", "/ready")
 REDACTED_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization", "x-api-key"})
 REDACTED_QUERY_PARAMS = frozenset({"token", "access_token", "api_key", "signature"})
 REDACTED = "[redacted]"
+_SECRET_FIELD = re.compile(
+    r'"(' + "|".join(sorted(REDACTED_QUERY_PARAMS)) + r')"(\s*:\s*)"(?:[^"\\]|\\.)*"',
+    re.IGNORECASE,
+)
 # Responses that declare at most this many bytes are recorded whole before they
 # are delivered. Larger or unknown-length responses (exports) stream straight
 # through and only this much of the body is kept, so one request never holds
@@ -50,6 +55,12 @@ def redact_query(query: str) -> str:
         [(k, REDACTED if k.lower() in REDACTED_QUERY_PARAMS else v) for k, v in pairs],
         safe="[]",
     )
+
+
+def redact_body(text: str) -> str:
+    """The recorded response with credential-valued JSON fields (minted share
+    tokens) masked; everything else is kept verbatim."""
+    return _SECRET_FIELD.sub(rf'"\1"\2"{REDACTED}"', text)
 
 
 class RequestLog:
@@ -130,7 +141,7 @@ def install(app: FastAPI) -> None:
         if length is not None and length <= RESPONSE_CAPTURE_BYTES:
             body = b"".join([chunk async for chunk in _chunks(response)])
             record["duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
-            record["response"] = body.decode("utf-8", errors="replace")
+            record["response"] = redact_body(body.decode("utf-8", errors="replace"))
             request_log.append(record)
             return Response(
                 content=body,
@@ -148,7 +159,7 @@ def install(app: FastAPI) -> None:
                 truncated = truncated or len(chunk) > room
                 yield chunk
             record["duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
-            record["response"] = kept.decode("utf-8", errors="replace")
+            record["response"] = redact_body(kept.decode("utf-8", errors="replace"))
             record["response_truncated"] = truncated
             # The body is already with the client; a failed write cannot fail it.
             try:

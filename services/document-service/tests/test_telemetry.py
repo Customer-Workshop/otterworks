@@ -19,6 +19,36 @@ async def test_list_reports_query_count(client: AsyncClient, owner_id: uuid.UUID
 
 
 @pytest.mark.asyncio
+async def test_list_query_count_is_constant_in_page_size(
+    client: AsyncClient, owner_id: uuid.UUID
+):
+    async def _list(size: int) -> int:
+        resp = await client.get(
+            "/api/v1/documents/", params={"owner_id": str(owner_id), "size": size}
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["items"]) == size
+        return int(resp.headers["X-DB-Queries"])
+
+    for i in range(2):
+        await client.post(
+            "/api/v1/documents/",
+            json={"title": f"Doc {i}", "content": "", "owner_id": str(owner_id)},
+        )
+    queries_small = await _list(2)
+
+    for i in range(2, 40):
+        await client.post(
+            "/api/v1/documents/",
+            json={"title": f"Doc {i}", "content": "", "owner_id": str(owner_id)},
+        )
+    queries_large = await _list(40)
+
+    assert queries_large == queries_small
+    assert queries_large <= 5
+
+
+@pytest.mark.asyncio
 async def test_metrics_expose_query_fanout(client: AsyncClient, owner_id: uuid.UUID):
     await client.get("/api/v1/documents/", params={"owner_id": str(owner_id)})
     resp = await client.get("/metrics")

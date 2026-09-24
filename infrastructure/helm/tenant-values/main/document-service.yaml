@@ -1,0 +1,27 @@
+# Helm values overlay for the perpetual tenant `main` (branch main, namespace
+# otterworks-main, t-main.otterworks.app), applied by scripts/deploy-tenant.sh.
+# t-main is the paging tenant of the incident first-responder flow: it runs the
+# golden app with its planted flaws, so this turns on the incident
+# PrometheusRule, the Grafana dashboard and OTLP tracing there. The flaws are
+# never fixed on main; `fix_branch` rides on every alert and names the
+# long-lived tenant branch (and its tenant) the responder's PR targets instead.
+monitoring:
+  enabled: true
+  rules:
+    enabled: true
+    extraLabels:
+      fix_branch: demo-incident
+  dashboard:
+    enabled: true
+  links:
+    grafana: https://grafana.otterworks.app
+    jaeger: https://jaeger.otterworks.app
+tracing:
+  enabled: true
+# A rolling update briefly runs two replicas, which is exactly the double-run
+# flaw's trigger; recreate instead so a deploy never pages the wrong alert.
+strategy:
+  type: Recreate
+resources:
+  limits:
+    memory: 512Mi

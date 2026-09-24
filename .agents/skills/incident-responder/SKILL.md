@@ -195,27 +195,48 @@ Slack payload) before opening the PR.
 
 ## On the shared EKS cluster
 
-The local Compose stack is the default and is all a laptop needs. The same
-incident also runs on an isolated tenant of the shared `otterworks-dev`
-cluster — never on `otterworks-main` / `t-main.otterworks.app`, which is not
-seeded, loaded or modified (see `AGENTS.md`).
+The local Compose stack is the default and is all a laptop needs. On the
+shared `otterworks-dev` cluster the incident runs across two tenants: the page
+fires on the perpetual **`main` tenant** (`t-main.otterworks.app`, the golden
+app with its planted flaws), and the fix lands on the long-lived **`incident`
+tenant** (branch `demo-incident`, which tracks `main`). `main` is never fixed,
+so the flow re-arms indefinitely; the alert's `fix_branch` label carries the
+handoff from one to the other.
 
-| | |
-|---|---|
-| Branch | `demo-incident` (`branch_tenant_id` strips `demo-`) |
-| Tenant id | `incident` — pass `incident`, not `demo-incident`, to the tenant scripts |
-| Namespace | `otterworks-incident` (72 h TTL, `demo/expires-at` annotation) |
-| Hosts | `t-incident.demo.otterworks.app` (web), `api-t-incident.demo.otterworks.app` (gateway) — branch tenants live under `demo.otterworks.app`; only the perpetual `main` tenant sits at `otterworks.app` |
-| Values overlay | `infrastructure/helm/tenant-values/incident/document-service.yaml`: ServiceMonitor, PrometheusRule, Grafana dashboard, OTLP tracing, 512Mi limit |
-| Before-state | whatever `demo-incident` points at before a fix merges: `git rev-parse origin/demo-incident` |
+| | Paging tenant | Fix tenant |
+|---|---|---|
+| Branch | `main` | `demo-incident` (`branch_tenant_id` strips `demo-`; kept equal to `main` between runs) |
+| Tenant id | `main` | `incident` — pass `incident`, not `demo-incident`, to the tenant scripts |
+| Namespace | `otterworks-main` (perpetual, no TTL) | `otterworks-incident` (72 h TTL, `demo/expires-at` annotation) |
+| Hosts | `t-main.otterworks.app`, `api-t-main.otterworks.app` | `t-incident.demo.otterworks.app`, `api-t-incident.demo.otterworks.app` — branch tenants live under `demo.otterworks.app` |
+| Values overlay | `infrastructure/helm/tenant-values/main/document-service.yaml`: PrometheusRule (+ `fix_branch: demo-incident` on every alert), dashboard, tracing, Recreate, 512Mi | `infrastructure/helm/tenant-values/incident/document-service.yaml`: same minus the label |
+| What is allowed | fixture seed + list load only (`incident/tenant.sh arm main`); no chaos flags, no config, no code — see `AGENTS.md` | anything a `demo-*` branch may do |
+| Before-state | `origin/main` | `git rev-parse origin/demo-incident` (equal to `main` before a fix merges) |
 
 `scripts/deploy-tenant.sh` applies `infrastructure/helm/tenant-values/<tenant-id>/<service>.yaml`
 with `-f` when it exists, so CD and manual deploys get the same values. The
 PrometheusRule renders `observability/prometheus/incident_alerts.yml` and the
 dashboard ConfigMap renders `observability/grafana/dashboards/incident-responder.json`
-from chart-local copies, both scoped to `namespace="otterworks-incident"`. After
-editing either source run `make incident-chart-sync`; CI's `incident-chart-sync`
-job (`make incident-chart-check`) fails on drift.
+from chart-local copies, both scoped to the release namespace (`otterworks-main`
+or `otterworks-incident`). After editing either source run
+`make incident-chart-sync`; CI's `incident-chart-sync` job
+(`make incident-chart-check`) fails on drift.
+
+### Page t-main (the one-line arm)
+
+```bash
+incident/tenant.sh arm main          # seed the 400-doc fixture (idempotent), run the list load 15 min through the ingress
+incident/tenant.sh status main       # one list call: x-db-queries: 104, x-request-duration-ms > 1000 while loaded
+incident/tenant.sh disarm main       # stop the load; the alerts resolve on their own
+```
+
+`DocumentListLatencyHigh{namespace="otterworks-main", branch="main",
+fix_branch="demo-incident", page="devin"}` fires about 90 s after `arm` and
+Alertmanager posts it to the Devin Automation webhook. The same script arms
+`incident` (`incident/tenant.sh arm incident`) when you want to show the fix
+tenant slow and then fast. The fixture lives under its own owner id
+(`incident/scenarios.yaml` `seed.owner_id`), so nothing a t-main user owns is
+touched; `make incident-reset-fixture` against the port-forward removes it.
 
 ### Create or redeploy the tenant
 
@@ -261,6 +282,7 @@ document-service's Service listens on 8083. The harness signs its JWT with
 `JWT_SECRET` from the environment, so export the tenant's:
 
 ```bash
+# what incident/tenant.sh does, by hand (swap otterworks-main / api-t-main.otterworks.app for the paging tenant):
 kubectl -n otterworks-incident port-forward svc/document-service 8083:8083 &
 export JWT_SECRET="$(kubectl -n otterworks-incident get secret document-service-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d)"
 INCIDENT_BASE_URL=http://localhost:8083 make incident-seed
@@ -306,14 +328,17 @@ histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{
 `DocumentListLatencyHigh` (`page: devin`, routed to the Devin webhook and
 Slack) and `DocumentListQueryFanout` go active about 1 m after p95 crosses 1 s.
 
-### A fix reaches the tenant
+### A fix reaches the fix tenant
 
-Branch the fix from `demo-incident` and open the PR with base `demo-incident`.
-Merging it pushes `demo-incident`; `cd-tenant.yml` rebuilds document-service
-(the change is under `services/document-service/**`), re-points
-`tenant-incident` and redeploys `otterworks-incident`. Re-run the load (same
-`INCIDENT_LOAD_SCALE`) and the curl above: the header drops to 5 statements and
-the alerts resolve.
+The alert's `fix_branch` label (`demo-incident` on t-main's alerts) names the
+PR base: branch the fix from `demo-incident` and open the PR against it, never
+against `main`. Merging it pushes `demo-incident`; `cd-tenant.yml` rebuilds
+document-service (the change is under `services/document-service/**`),
+re-points `tenant-incident` and redeploys `otterworks-incident`. Then
+`incident/tenant.sh arm incident` and `incident/tenant.sh status incident`: the
+header drops to 5 statements and no alert fires for that namespace, while
+`incident/tenant.sh status main` still shows 104 — same load, fixed branch
+versus golden. t-main's own alert resolves when its load is disarmed.
 
 ## Reset and revert
 
@@ -321,13 +346,16 @@ the alerts resolve.
   flags, purges the request log, removes the second replica and restarts
   document-service. It does not touch the database fixture (idempotent seed)
   or the PR.
-- Reset the tenant after a fix was merged by moving the branch itself: force
-  `demo-incident` back to the before-state commit (or `git revert <merge-sha>`
-  on it), which rebuilds and redeploys the before-state image, then
-  `make incident-disarm` locally:
+- On the cluster: `incident/tenant.sh disarm main` (and `... disarm incident`)
+  stops the load; nothing was planted, so there is nothing else to undo on
+  t-main.
+- Reset the fix tenant after a fix was merged by moving the branch itself: force
+  `demo-incident` back to `main` (or `git revert <merge-sha>` on it), which
+  rebuilds and redeploys the before-state image, then `make incident-disarm`
+  locally:
 
   ```bash
-  git push --force origin <before-sha>:demo-incident
+  git push --force origin origin/main:demo-incident
   make incident-disarm
   ```
 

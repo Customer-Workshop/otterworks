@@ -37,9 +37,7 @@ async def compute_rollup(db: AsyncSession, window_start: datetime) -> DocumentSt
         await db.execute(select(func.count()).select_from(Document).where(live))
     ).scalar_one()
     words_total = (
-        await db.execute(
-            select(func.coalesce(func.sum(Document.word_count), 0)).where(live)
-        )
+        await db.execute(select(func.coalesce(func.sum(Document.word_count), 0)).where(live))
     ).scalar_one()
     versions_total = (
         await db.execute(select(func.count()).select_from(DocumentVersion))

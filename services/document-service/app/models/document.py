@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -95,6 +95,26 @@ class Comment(Base):
     )
 
     document: Mapped["Document"] = relationship(back_populates="comments")
+
+
+class DocumentStatsRollup(Base):
+    """Hourly usage totals computed by the scheduled rollup job."""
+
+    __tablename__ = "document_stats_rollups"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    window_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    documents_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    versions_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    words_total: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    computed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
 
 
 class Template(Base):

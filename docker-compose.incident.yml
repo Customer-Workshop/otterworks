@@ -1,0 +1,93 @@
+# Incident-responder overlay: `make incident-up` layers this on top of the app
+# and infra stacks. It gives document-service the limits that make the planted
+# flaws observable (a small log volume, a memory ceiling), turns tracing on,
+# adds Alertmanager with a Devin/Slack route, and a local alert sink that
+# captures the exact payloads the receivers would send. Nothing here changes
+# application code.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.infra.yml -f docker-compose.incident.yml up -d
+#
+# INCIDENT_LOG_VOLUME_SIZE  tmpfs size of the per-request log dir (default 64m)
+# INCIDENT_MEMORY_LIMIT     document-service memory ceiling     (default 512m; cache-leak arms at 256m)
+# DEVIN_WEBHOOK_URL         Devin Automation webhook trigger (optional). The page is
+#                           always mirrored to the local sink; this adds a real delivery.
+# DEVIN_WEBHOOK_SECRET      sent as X-Webhook-Secret on that delivery
+# SLACK_WEBHOOK_URL         Slack incoming webhook;            falls back to the sink
+
+services:
+  document-service:
+    environment:
+      DOC_SVC_OTEL_ENABLED: 'true'
+      DOC_SVC_REQUEST_LOG_DIR: /var/log/otterworks/document-service
+      DOC_SVC_ROLLUP_ENABLED: 'true'
+      DOC_SVC_ROLLUP_INTERVAL_SECONDS: '60'
+    tmpfs:
+    - /var/log/otterworks/document-service:size=${INCIDENT_LOG_VOLUME_SIZE:-64m},uid=1001,gid=1001
+    mem_limit: ${INCIDENT_MEMORY_LIMIT:-512m}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Second replica of document-service, started only by `make incident-arm
+  # SCENARIO=double-run`. Same image, same database, same scheduler -> both
+  # replicas compute the same hourly rollup window.
+  document-service-replica:
+    extends:
+      file: docker-compose.yml
+      service: document-service
+    container_name: otterworks-document-service-replica
+    # Same image as the primary (built once by `make incident-up`); an extended
+    # service otherwise gets its own image name and `--no-build` cannot find it.
+    image: otterworks-document-service:latest
+    ports: !reset []
+    profiles: [double-run]
+    environment:
+      DOC_SVC_ROLLUP_ENABLED: 'true'
+      DOC_SVC_ROLLUP_INTERVAL_SECONDS: '60'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  alertmanager:
+    image: quay.io/prometheus/alertmanager:v0.28.1
+    container_name: otterworks-alertmanager
+    entrypoint: ["/bin/sh", "/etc/alertmanager/entrypoint.sh"]
+    environment:
+      DEVIN_WEBHOOK_URL: ${DEVIN_WEBHOOK_URL:-}
+      DEVIN_WEBHOOK_SECRET: ${DEVIN_WEBHOOK_SECRET:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-http://alert-sink:9095/slack}
+    ports:
+    - 9093:9093
+    volumes:
+    - ./observability/alertmanager:/etc/alertmanager:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
+
+  # Captures whatever Alertmanager posts so the demo can show the exact
+  # message a Devin Automation (or Slack) would receive, offline. The sink is
+  # unauthenticated by design (it stands in for two webhook endpoints), so it
+  # is published on the loopback interface only: Alertmanager reaches it over
+  # the Compose network, the harness over 127.0.0.1, nothing else can.
+  alert-sink:
+    image: python:3.12-alpine
+    container_name: otterworks-alert-sink
+    command: ["python", "/sink/alert_sink.py"]
+    ports:
+    - 127.0.0.1:9095:9095
+    volumes:
+    - ./observability/alertmanager/alert_sink.py:/sink/alert_sink.py:ro
+    - alert_sink_data:/data
+    restart: unless-stopped
+    security_opt:
+    - no-new-privileges:true
+
+volumes:
+  alert_sink_data:

@@ -19,8 +19,13 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     sns_enabled: bool = False
 
-    otel_exporter_otlp_endpoint: str = "http://localhost:4317"
+    otel_exporter_otlp_endpoint: str = "http://localhost:4318"
     otel_enabled: bool = False
+
+    request_log_dir: str = "/var/log/otterworks/document-service"
+
+    rollup_enabled: bool = True
+    rollup_interval_seconds: int = 60
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:4200"]
 

@@ -1,0 +1,73 @@
+# Alertmanager configuration (template). entrypoint.sh substitutes the receiver
+# URLs from the environment and writes /tmp/alertmanager.yml.
+#
+# Routing model: anything labelled `page: devin` goes to the Devin Automation
+# webhook AND to Slack. Everything else lands only in the local sink so it is
+# visible in the demo but never pages. Alerts are grouped per alertname so one
+# incident produces one page, and repeat_interval is long so a slow fix does not
+# re-page mid-demo.
+#
+# The Devin page is always mirrored into the local sink (`/devin`): that copy is
+# what `make incident-simulate` prints and what the before gate checks, whether
+# or not a real Automation URL is configured. The `devin-external` block is
+# kept only when DEVIN_WEBHOOK_URL is set (entrypoint.sh drops it otherwise).
+
+global:
+  resolve_timeout: 2m
+
+route:
+  receiver: sink
+  group_by: [alertname, scenario]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    - matchers: [page = devin]
+      receiver: devin-oncall
+      continue: true
+    - matchers: [page = devin]
+      receiver: slack-oncall
+
+inhibit_rules:
+  # Once requests are failing, the "disk nearly full" warning is noise.
+  - source_matchers: [alertname = DocumentServiceErrorRateHigh]
+    target_matchers: [alertname = RequestLogVolumeNearFull]
+    equal: [service]
+
+receivers:
+  - name: sink
+    webhook_configs:
+      - url: http://alert-sink:9095/sink
+        send_resolved: true
+
+  # Devin Automation "webhook" trigger. The Automation exposes the payload to
+  # its prompt template; see docs/incident-responder/automation.md.
+  - name: devin-oncall
+    webhook_configs:
+      - url: http://alert-sink:9095/devin
+        send_resolved: false
+        max_alerts: 1
+      # BEGIN devin-external
+      - url: '__DEVIN_WEBHOOK_URL__'
+        send_resolved: false
+        max_alerts: 1
+        http_config:
+          http_headers:
+            X-Webhook-Secret:
+              values: ['__DEVIN_WEBHOOK_SECRET__']
+      # END devin-external
+
+  # Slack incoming webhook. The `slack:message` Automation trigger reads this
+  # message; Devin replies with the RCA in its thread.
+  - name: slack-oncall
+    slack_configs:
+      - api_url: '__SLACK_WEBHOOK_URL__'
+        channel: '#otterworks-alerts'
+        send_resolved: true
+        username: Alertmanager
+        icon_emoji: ':rotating_light:'
+        title: '{{ template "otterworks.slack.title" . }}'
+        text: '{{ template "otterworks.slack.text" . }}'
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl

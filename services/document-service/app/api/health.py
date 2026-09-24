@@ -3,6 +3,7 @@
 import structlog
 from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
+from prometheus_client import CONTENT_TYPE_LATEST, Gauge, generate_latest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,9 @@ from app.db.session import get_db
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+SERVICE_UP = Gauge("document_service_up", "Document Service is running")
+SERVICE_UP.set(1)
 
 
 @router.get("/health")
@@ -33,8 +37,4 @@ async def health(db: AsyncSession = Depends(get_db)):
 @router.get("/metrics", response_class=PlainTextResponse)
 async def metrics():
     """Prometheus metrics endpoint."""
-    return (
-        "# HELP document_service_up Document Service is running\n"
-        "# TYPE document_service_up gauge\n"
-        "document_service_up 1\n"
-    )
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)

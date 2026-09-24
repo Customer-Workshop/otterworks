@@ -119,7 +119,13 @@ the above changes `main`. Verify per the "Live verification" section of the runb
   (`.github/workflows/cd-tenant.yml`), creating the tenant with a 72h TTL if it does not
   exist. The one exception is `t-main.otterworks.app`, the perpetual tenant tracking `main`:
   it is exempt from the reaper and idle-suspend and cannot be checked in or bug-injected.
-  Never inject a scenario there — that is what a `workshop-<id>` tenant is for.
+  Never inject a scenario there — that is what a `workshop-<id>` tenant is for. The single
+  sanctioned way to make t-main page is the incident first-responder flow's
+  `incident/tenant.sh arm main`: it seeds a fixture under its own owner id and runs read
+  load through the ingress, which surfaces a flaw that is *already planted on `main`*
+  without touching t-main's code, config, images or chaos flags. The fix never lands on
+  `main`; it goes to the long-lived `demo-incident` branch and its tenant (see
+  `.agents/skills/incident-responder/SKILL.md`).
 
 ### Never create AWS resources from Kubernetes
 

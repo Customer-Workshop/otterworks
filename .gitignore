@@ -111,3 +111,7 @@ __pycache__/
 *.tfstate
 *.tfstate.backup
 .demo/
+
+# incident-responder harness runtime state and gate reports
+incident/.state/
+incident/reports/

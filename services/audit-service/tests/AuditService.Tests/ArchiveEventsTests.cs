@@ -162,6 +162,48 @@ public class ArchiveControllerTests
     }
 
     [Fact]
+    public async Task GetDocument_ReturnsContractShape_VersionsWithNestedEvents()
+    {
+        var store = new Mock<IArchiveEventStore>();
+        store.SetupGet(s => s.StoreName).Returns("db2");
+        store.Setup(s => s.GetDocumentAsync("DOC42", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ArchiveVersionRow>
+            {
+                new()
+                {
+                    ArchKey = "DA00000000000042", VersionNo = 3, RetentionClass = "FIN7",
+                    LastAccessTs = "2016-03-01-10.15.30.123456789012", StorageCharge = "1234.50000000",
+                    OwnerName = "LOPEZ, M.", DispositionDt = "2023-03-01",
+                    Events = { new() { AuditKey = "FA000000000000000123", EventType = "VIEW" } },
+                },
+            });
+        var result = await ArchiveController.GetDocument("DOC42", Registry(Db2Options(), store.Object), default);
+        var ok = Assert.IsType<Ok<ArchiveDocumentResponse>>(result);
+        Assert.Equal("db2", ok.Value!.Store);
+        var version = Assert.Single(ok.Value.Versions);
+        Assert.Equal(3, version.VersionNo);
+        Assert.Equal("1234.50000000", version.StorageCharge);
+        Assert.Equal("FA000000000000000123", Assert.Single(version.Events).AuditKey);
+    }
+
+    [Fact]
+    public async Task GetDocument_UnknownDocument_Is404()
+    {
+        var store = new Mock<IArchiveEventStore>();
+        store.Setup(s => s.GetDocumentAsync("NOPE", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<ArchiveVersionRow>?)null);
+        var result = await ArchiveController.GetDocument("NOPE", Registry(Db2Options(), store.Object), default);
+        Assert.Equal(404, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("20230301", "2023-03-01")]
+    [InlineData("20230301  ", "2023-03-01")]
+    [InlineData("\0\0\0\0\0\0\0\0", "\0\0\0\0\0\0\0\0")]
+    public void IsoDateFromYyyymmdd_ConvertsDigitsOnly(string input, string expected) =>
+        Assert.Equal(expected, Db2Text.IsoDateFromYyyymmdd(input));
+
+    [Fact]
     public async Task StoreFailure_Returns503()
     {
         var store = new Mock<IArchiveEventStore>();

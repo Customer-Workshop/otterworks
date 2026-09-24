@@ -11,7 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Subscription } from 'rxjs';
+import { EMPTY, Subject, Subscription, catchError, switchMap, tap } from 'rxjs';
 import { MigrationApiService } from '../../core/services/migration-api.service';
 import {
   MIG_ISSUES, ReconciliationFailureRow, ReconciliationReport, RunSummary,
@@ -36,12 +36,12 @@ export const LATEST_RUN = 'latest';
           <p class="page-subtitle">Db2 → Azure SQL selective migration: row-level reconciliation and before/after archive comparison</p>
         </div>
         <div class="header-actions" *ngIf="report">
-          <a mat-stroked-button [href]="api.htmlUrl(report.run_id)" target="_blank" rel="noopener">
+          <button mat-stroked-button type="button" (click)="openFile('html')" [disabled]="downloading">
             <mat-icon>open_in_new</mat-icon> HTML report
-          </a>
-          <a mat-raised-button color="primary" [href]="api.csvUrl(report.run_id)" download>
+          </button>
+          <button mat-raised-button color="primary" type="button" (click)="openFile('csv')" [disabled]="downloading">
             <mat-icon>download</mat-icon> Download CSV
-          </a>
+          </button>
         </div>
       </div>
 
@@ -276,8 +276,10 @@ export class MigrationComponent implements OnInit, OnDestroy {
   filteredFailures: ReconciliationFailureRow[] = [];
 
   docId = '';
+  downloading = false;
 
   private sub = new Subscription();
+  private runRequests = new Subject<string>();
 
   constructor(
     public api: MigrationApiService,
@@ -286,6 +288,15 @@ export class MigrationComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // switchMap drops the in-flight report when the run id changes, so a slow earlier response
+    // can never overwrite the run the user navigated to.
+    this.sub.add(this.runRequests.pipe(
+      tap(() => this.beginFetch()),
+      switchMap(runId => this.api.getReport(runId).pipe(
+        tap({ next: report => this.onReport(report), error: (err: HttpErrorResponse) => this.onReportError(err) }),
+        catchError(() => EMPTY),
+      )),
+    ).subscribe());
     this.sub.add(this.route.paramMap.subscribe(params => {
       const runId = params.get('runId');
       const docId = params.get('docId');
@@ -293,7 +304,7 @@ export class MigrationComponent implements OnInit, OnDestroy {
         this.docId = docId;
       }
       this.runIdInput = runId && runId !== LATEST_RUN ? runId : '';
-      this.fetch(runId || LATEST_RUN);
+      this.runRequests.next(runId || LATEST_RUN);
     }));
     this.sub.add(this.api.listRuns().subscribe({
       next: runs => (this.runs = runs),
@@ -321,33 +332,62 @@ export class MigrationComponent implements OnInit, OnDestroy {
       && (!this.tableFilter || f.table === this.tableFilter));
   }
 
-  private fetch(runId: string): void {
+  /** Fetches the CSV/HTML through the authenticated HttpClient and hands the bytes to the browser. */
+  openFile(format: 'csv' | 'html'): void {
+    if (!this.report) {
+      return;
+    }
+    const runId = this.report.run_id;
+    this.downloading = true;
+    this.api.getReportFile(runId, format).subscribe({
+      next: blob => {
+        this.downloading = false;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        if (format === 'csv') {
+          a.download = `reconciliation-${runId}.csv`;
+        } else {
+          a.target = '_blank';
+          a.rel = 'noopener';
+        }
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.downloading = false;
+        this.error = `${format.toUpperCase()} download failed (${err.status})`;
+      },
+    });
+  }
+
+  private beginFetch(): void {
     this.loading = true;
     this.error = null;
     this.errorHint = null;
     this.report = null;
-    this.api.getReport(runId).subscribe({
-      next: report => {
-        this.report = report;
-        this.loading = false;
-        this.runIdInput = report.run_id;
-        this.indexFailures(report);
-        this.applyFilter();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.loading = false;
-        this.errorStatus = err.status;
-        const body = err.error;
-        if (body && typeof body === 'object' && 'error' in body) {
-          this.error = String(body.error);
-          this.errorHint = 'hint' in body && body.hint ? String(body.hint) : null;
-        } else if (err.status === 0) {
-          this.error = 'Report service unreachable';
-        } else {
-          this.error = `Report request failed (${err.status})`;
-        }
-      },
-    });
+  }
+
+  private onReport(report: ReconciliationReport): void {
+    this.report = report;
+    this.loading = false;
+    this.runIdInput = report.run_id;
+    this.indexFailures(report);
+    this.applyFilter();
+  }
+
+  private onReportError(err: HttpErrorResponse): void {
+    this.loading = false;
+    this.errorStatus = err.status;
+    const body = err.error;
+    if (body && typeof body === 'object' && 'error' in body) {
+      this.error = String(body.error);
+      this.errorHint = 'hint' in body && body.hint ? String(body.hint) : null;
+    } else if (err.status === 0) {
+      this.error = 'Report service unreachable';
+    } else {
+      this.error = `Report request failed (${err.status})`;
+    }
   }
 
   private indexFailures(report: ReconciliationReport): void {

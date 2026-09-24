@@ -11,6 +11,12 @@ public interface IArchiveEventStore
     /// </summary>
     Task<IReadOnlyList<ArchiveEventRow>?> GetEventsAsync(string docId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// DOCARCH versions of <paramref name="docId"/> ordered by VERSION_NO, each with its FILEAUD
+    /// events (CONTRACTS §10.4). Null when the document has no versions in this store.
+    /// </summary>
+    Task<IReadOnlyList<ArchiveVersionRow>?> GetDocumentAsync(string docId, CancellationToken cancellationToken);
+
     Task PingAsync(CancellationToken cancellationToken);
 }
 

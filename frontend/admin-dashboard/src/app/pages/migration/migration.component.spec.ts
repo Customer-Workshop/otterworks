@@ -3,7 +3,8 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { of } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
+import { ParamMap } from '@angular/router';
 import { MigrationComponent } from './migration.component';
 import { ReconciliationReport } from '../../core/models/migration.model';
 
@@ -34,12 +35,14 @@ describe('MigrationComponent', () => {
   let fixture: ComponentFixture<MigrationComponent>;
   let component: MigrationComponent;
   let http: HttpTestingController;
+  let params$: BehaviorSubject<ParamMap>;
 
   async function setup(params: Record<string, string>): Promise<void> {
+    params$ = new BehaviorSubject<ParamMap>(convertToParamMap(params));
     await TestBed.configureTestingModule({
       imports: [MigrationComponent, HttpClientTestingModule, NoopAnimationsModule, RouterTestingModule],
       providers: [
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(params)) } },
+        { provide: ActivatedRoute, useValue: { paramMap: params$.asObservable() } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(MigrationComponent);
@@ -68,8 +71,24 @@ describe('MigrationComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelectorAll('table.grid').length).toBe(3);
     expect(el.querySelector('tr.mig07')).toBeTruthy();
-    expect(el.querySelector('a[download]')?.getAttribute('href')).toBe(`/api/v1/reports/reconciliation/${REPORT.run_id}.csv`);
     expect(el.querySelector('.sessions a')?.getAttribute('href')).toBe('https://example.invalid/sessions/abc');
+
+    // CSV goes through HttpClient (bearer header) rather than a plain anchor
+    const click = spyOn(HTMLAnchorElement.prototype, 'click');
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:csv');
+    component.openFile('csv');
+    http.expectOne(`/api/v1/reports/reconciliation/${REPORT.run_id}.csv`).flush(new Blob(['a,b']));
+    expect(click).toHaveBeenCalled();
+  });
+
+  it('ignores a late response for a run the user has navigated away from', async () => {
+    await setup({ runId: 'run-a' });
+    flushCommon();
+    const slow = http.expectOne('/api/v1/reports/reconciliation/run-a');
+    params$.next(convertToParamMap({ runId: 'run-b' }));
+    expect(slow.cancelled).toBeTrue();
+    http.expectOne('/api/v1/reports/reconciliation/run-b').flush({ ...REPORT, run_id: 'run-b' });
+    expect(component.report?.run_id).toBe('run-b');
   });
 
   it('filters failures by rule', async () => {

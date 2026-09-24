@@ -17,7 +17,11 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
 
     protected abstract string PingSql { get; }
 
+    protected abstract string VersionsSql { get; }
+
     protected abstract ArchiveEventRow MapRow(DbDataReader reader);
+
+    protected abstract ArchiveVersionRow MapVersion(DbDataReader reader);
 
     public async Task<IReadOnlyList<ArchiveEventRow>?> GetEventsAsync(string docId, CancellationToken cancellationToken)
     {
@@ -55,6 +59,66 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
         }
     }
 
+    public async Task<IReadOnlyList<ArchiveVersionRow>?> GetDocumentAsync(string docId, CancellationToken cancellationToken)
+    {
+        var versions = new List<ArchiveVersionRow>();
+        try
+        {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            await using (var command = CreateDocCommand(connection, VersionsSql, docId))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+            {
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    versions.Add(MapVersion(reader));
+                }
+            }
+
+            if (versions.Count == 0)
+            {
+                return null;
+            }
+
+            var byKey = versions.ToDictionary(v => v.ArchKey, v => v);
+            await using (var command = CreateDocCommand(connection, EventsSql, docId))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+            {
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    if (await reader.IsDBNullAsync("AUDIT_KEY", cancellationToken))
+                    {
+                        continue;
+                    }
+
+                    var row = MapRow(reader);
+                    if (byKey.TryGetValue(row.ArchKey, out var version))
+                    {
+                        version.Events.Add(row);
+                    }
+                }
+            }
+
+            return versions;
+        }
+        catch (DbException ex)
+        {
+            throw new ArchiveStoreUnavailableException($"{StoreName} archive query failed: {ex.Message}", ex);
+        }
+    }
+
+    private static DbCommand CreateDocCommand(DbConnection connection, string sql, string docId)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = sql;
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "@docId";
+        parameter.DbType = DbType.String;
+        parameter.Value = docId;
+        command.Parameters.Add(parameter);
+        return command;
+    }
+
     public async Task PingAsync(CancellationToken cancellationToken)
     {
         try
@@ -69,6 +133,20 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
         {
             throw new ArchiveStoreUnavailableException($"{StoreName} archive store unreachable: {ex.Message}", ex);
         }
+    }
+
+    protected static byte[] Bytes(DbDataReader reader, string column)
+    {
+        var ordinal = reader.GetOrdinal(column);
+        if (reader.IsDBNull(ordinal))
+        {
+            return Array.Empty<byte>();
+        }
+
+        var length = (int)reader.GetBytes(ordinal, 0, null, 0, 0);
+        var buffer = new byte[length];
+        reader.GetBytes(ordinal, 0, buffer, 0, length);
+        return buffer;
     }
 
     protected static string Str(DbDataReader reader, string column) =>

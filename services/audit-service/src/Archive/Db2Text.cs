@@ -42,6 +42,15 @@ public static class Db2Text
         return seven + nanosTail.ToString("00000", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>Db2 <c>YYYYMMDD</c> text to ISO <c>YYYY-MM-DD</c>; anything else (e.g. low-values) is returned trimmed.</summary>
+    public static string IsoDateFromYyyymmdd(string yyyymmdd)
+    {
+        var t = RTrim(yyyymmdd);
+        return t.Length == 8 && t.All(char.IsDigit)
+            ? $"{t.Substring(0, 4)}-{t.Substring(4, 2)}-{t.Substring(6, 2)}"
+            : t;
+    }
+
     private static int NthIndex(string s, char c, int n)
     {
         var idx = -1;

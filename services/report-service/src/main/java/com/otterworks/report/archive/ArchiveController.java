@@ -22,7 +22,7 @@ import java.util.Optional;
  * (CONTRACTS §10.4) plus its business hashes (§7).
  */
 @RestController
-@RequestMapping({"/api/archive/documents", "/api/v1/archive/documents"})
+@RequestMapping({"/api/archive/documents", "/api/v1/archive/documents", "/api/v1/reports/archive/documents"})
 public class ArchiveController {
 
     private final ArchiveStoreRegistry registry;

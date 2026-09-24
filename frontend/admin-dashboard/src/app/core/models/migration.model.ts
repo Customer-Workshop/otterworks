@@ -79,7 +79,10 @@ export interface ArchivePolicy {
   policy_code: string;
   policy_desc: string;
   retention_years: number;
+  successor_code: string;
+  active_flag: string;
   disposition_action: string;
+  effective_ts: string;
 }
 
 export interface ArchiveVersion {
@@ -92,8 +95,10 @@ export interface ArchiveVersion {
   owner_name: string;
   disposition_dt: string;
   legal_hold: boolean;
+  checksum_alg: string;
   content_sha256: string;
   byte_size: number;
+  source_sys: string;
   policy?: ArchivePolicy | null;
   events: ArchiveEvent[];
 }

@@ -101,7 +101,7 @@ public class ArchiveControllerTest {
         ArchiveDocument doc = sample();
         String expectedVersion = BusinessHash.docarch(doc.getVersions().get(0));
         String expectedEvent = BusinessHash.fileaud(doc.getVersions().get(0).events.get(0));
-        mvc.perform(get("/api/archive/documents/doc-1/hash"))
+        mvc.perform(get("/api/v1/reports/archive/documents/doc-1/hash"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.doc_id").value("doc-1"))
                 .andExpect(jsonPath("$.versions[0].row_hash").value(expectedVersion))

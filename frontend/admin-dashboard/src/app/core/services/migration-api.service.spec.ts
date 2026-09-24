@@ -22,8 +22,9 @@ describe('MigrationApiService', () => {
   });
 
   it('builds local and peer document URLs', () => {
-    expect(service.documentUrl('DOC1')).toBe('/api/v1/archive/documents/DOC1');
-    expect(service.documentUrl('DOC1', 'https://peer.example')).toBe('https://peer.example/api/archive/documents/DOC1');
+    expect(service.documentUrl('DOC1')).toBe('/api/v1/reports/archive/documents/DOC1');
+    expect(service.documentUrl('DOC1', 'https://peer.example'))
+      .toBe('https://peer.example/api/v1/reports/archive/documents/DOC1');
   });
 
   it('reads PEER_APP_URL from /config/peer.json and strips trailing slashes', () => {

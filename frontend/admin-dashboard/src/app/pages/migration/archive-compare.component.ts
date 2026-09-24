@@ -12,7 +12,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { MigrationApiService } from '../../core/services/migration-api.service';
-import { ArchiveDocument, ArchiveEvent, ArchiveHash, ArchiveVersion } from '../../core/models/migration.model';
+import {
+  ArchiveDocument, ArchiveEvent, ArchiveHash, ArchivePolicy as RetentionPolicy, ArchiveVersion,
+} from '../../core/models/migration.model';
 
 export interface ArchiveSide {
   label: string;
@@ -51,19 +53,22 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
             <input matInput name="docId" [(ngModel)]="docId" placeholder="DOC-000000000042" />
           </mat-form-field>
           <mat-form-field appearance="outline" class="peer-field">
-            <mat-label>Peer deployment base URL (PEER_APP_URL)</mat-label>
-            <input matInput name="peerUrl" [(ngModel)]="peerUrl" placeholder="https://api-t-d24-before.example" />
+            <mat-label>Peer deployment (PEER_APP_URL)</mat-label>
+            <input matInput name="peerUrl" [value]="peerUrl" readonly placeholder="not configured" />
             <mat-hint *ngIf="!peerUrl">No peer configured: only this deployment is shown</mat-hint>
+            <mat-hint *ngIf="peerUrl">Set by the operator at deploy time; the session token is only sent to this host</mat-hint>
           </mat-form-field>
           <button mat-raised-button color="primary" type="submit" [disabled]="!docId || loading">
             <mat-icon>search</mat-icon> Compare
           </button>
         </form>
 
-        <div class="verdict" *ngIf="verdict" [class.match]="verdict === 'match'" [class.mismatch]="verdict === 'mismatch'">
-          <mat-icon>{{ verdict === 'match' ? 'verified' : 'error' }}</mat-icon>
+        <div class="verdict" *ngIf="verdict" [class.match]="verdict === 'match'" [class.mismatch]="verdict === 'mismatch'"
+             [class.unknown]="verdict === 'unknown'">
+          <mat-icon>{{ verdict === 'match' ? 'verified' : verdict === 'mismatch' ? 'error' : 'help' }}</mat-icon>
           <span *ngIf="verdict === 'match'">Identical: {{ hashSummary }}</span>
           <span *ngIf="verdict === 'mismatch'">Differences found: {{ mismatchCount }} field(s) differ; {{ hashSummary }}</span>
+          <span *ngIf="verdict === 'unknown'">Not proven identical: {{ hashSummary }}</span>
         </div>
 
         <div class="sides">
@@ -88,7 +93,7 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
                     <th>{{ f }}</th>
                     <td><code>{{ v[f] }}</code></td>
                   </tr>
-                  <tr *ngIf="v.policy">
+                  <tr *ngIf="v.policy" [class.diff]="policyDiffers(vi)">
                     <th>policy</th>
                     <td>{{ v.policy.policy_code }} · {{ v.policy.policy_desc }} · {{ v.policy.retention_years }}y · {{ v.policy.disposition_action }}</td>
                   </tr>
@@ -125,6 +130,7 @@ export type CellKey = keyof ArchiveVersion | keyof ArchiveEvent;
     .verdict { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 4px; margin: 8px 0 16px; font-weight: 600; }
     .verdict.match { background: #e3f9e5; color: #0f5132; }
     .verdict.mismatch { background: #fde2e1; color: #7a1d1d; }
+    .verdict.unknown { background: #fff4d6; color: #6b4b00; }
     .sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
     .side { border: 1px solid #d9e2ec; border-radius: 4px; padding: 12px; }
     .side h3 { margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
@@ -149,13 +155,16 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
   peerUrl = '';
   loading = false;
   sides: ArchiveSide[] = [];
-  verdict: 'match' | 'mismatch' | null = null;
+  verdict: 'match' | 'mismatch' | 'unknown' | null = null;
   mismatchCount = 0;
   hashSummary = '';
 
   readonly versionFields: (keyof ArchiveVersion)[] = [
-    'retention_class', 'last_access_ts', 'storage_charge', 'unit_rate', 'owner_name',
-    'disposition_dt', 'legal_hold', 'content_sha256', 'byte_size',
+    'arch_key', 'version_no', 'retention_class', 'last_access_ts', 'storage_charge', 'unit_rate', 'owner_name',
+    'disposition_dt', 'legal_hold', 'checksum_alg', 'content_sha256', 'byte_size', 'source_sys',
+  ];
+  private readonly policyFields: (keyof RetentionPolicy)[] = [
+    'policy_code', 'policy_desc', 'retention_years', 'successor_code', 'active_flag', 'disposition_action', 'effective_ts',
   ];
   private readonly eventFields: (keyof ArchiveEvent)[] = [
     'audit_key', 'event_type', 'event_ts', 'actor_id', 'retention_class', 'disposition_code', 'client_ip', 'detail_text',
@@ -206,6 +215,19 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
   differs(versionIndex: number, field: keyof ArchiveVersion): boolean {
     const [a, b] = this.pairVersions(versionIndex);
     return !!a && !!b && String(a[field] ?? '') !== String(b[field] ?? '');
+  }
+
+  policyDiffers(versionIndex: number): boolean {
+    const [a, b] = this.pairVersions(versionIndex);
+    if (!a || !b) {
+      return false;
+    }
+    if (!a.policy || !b.policy) {
+      return !!a.policy !== !!b.policy;
+    }
+    const pa = a.policy;
+    const pb = b.policy;
+    return this.policyFields.some(f => String(pa[f] ?? '') !== String(pb[f] ?? ''));
   }
 
   eventDiffers(versionIndex: number, eventIndex: number): boolean {
@@ -272,6 +294,9 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
         continue;
       }
       diffs += this.versionFields.filter(f => this.differs(vi, f)).length;
+      if (this.policyDiffers(vi)) {
+        diffs++;
+      }
       const events = Math.max(va.events?.length ?? 0, vb.events?.length ?? 0);
       for (let ei = 0; ei < events; ei++) {
         if (this.eventDiffers(vi, ei)) {
@@ -280,13 +305,15 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
       }
     }
     this.mismatchCount = diffs;
-    if (a.hash && b.hash) {
-      this.hashSummary = a.hash.document_hash === b.hash.document_hash
-        ? 'business hash matches'
-        : 'business hash differs';
-    } else {
+    // A match is only claimed when both business hashes were retrieved and agree; a missing
+    // hash leaves the comparison unproven rather than "identical".
+    if (!a.hash || !b.hash) {
       this.hashSummary = 'hash endpoint unavailable on one side';
+      this.verdict = diffs === 0 ? 'unknown' : 'mismatch';
+      return;
     }
-    this.verdict = diffs === 0 && this.hashSummary !== 'business hash differs' ? 'match' : 'mismatch';
+    const hashMatches = a.hash.document_hash === b.hash.document_hash;
+    this.hashSummary = hashMatches ? 'business hash matches' : 'business hash differs';
+    this.verdict = diffs === 0 && hashMatches ? 'match' : 'mismatch';
   }
 }

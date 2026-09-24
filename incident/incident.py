@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
@@ -164,6 +165,143 @@ def recreate_document_service(cat: dict[str, Any], memory_limit: str | None) -> 
     compose("up", "-d", "--no-build", "--force-recreate", "document-service", env=env)
     wait_healthy(cat)
     log(f"document-service memory limit -> {memory_limit or 'default'}")
+
+
+def container_id(service: str) -> str | None:
+    out = compose("ps", "-q", "-a", service, capture=True, check=False).stdout.strip()
+    return out.splitlines()[0] if out else None
+
+
+def container_inspect(service: str, fmt: str) -> str | None:
+    cid = container_id(service)
+    if not cid:
+        return None
+    out = sh("docker", "inspect", "--format", fmt, cid, capture=True, check=False)
+    return out.stdout.strip() if out.returncode == 0 else None
+
+
+def container_running(service: str) -> bool:
+    return container_inspect(service, "{{.State.Running}}") == "true"
+
+
+def container_memory_limit(service: str) -> int | None:
+    raw = container_inspect(service, "{{.HostConfig.Memory}}")
+    return int(raw) if raw and raw.isdigit() else None
+
+
+_SIZE_UNITS = {"b": 1, "k": 1024, "m": 1024**2, "g": 1024**3}
+
+
+def parse_size(spec: str) -> int:
+    spec = str(spec).strip().lower()
+    unit = spec[-1] if spec[-1] in _SIZE_UNITS else "b"
+    digits = spec[:-1] if spec[-1] in _SIZE_UNITS else spec
+    return int(digits) * _SIZE_UNITS[unit]
+
+
+def _step_parts(step: Any) -> tuple[str, Any]:
+    if isinstance(step, dict):
+        ((kind, arg),) = step.items()
+        return kind, arg
+    return step, None
+
+
+def arm_conditions(cat: dict[str, Any], sc: dict[str, Any]) -> list[tuple[str, bool]]:
+    """(label, holds) for every incident-producing condition the scenario's arm steps create.
+
+    The after gate re-checks these so a fix is only ever judged with the flaw's
+    trigger still in place: flags set, memory ceiling applied, replica running.
+    """
+    conds: list[tuple[str, bool]] = []
+    for step in sc["arm"]:
+        kind, arg = _step_parts(step)
+        match kind:
+            case "flag":
+                conds.append((f"chaos flag {arg} is set", flag_is_set(cat, str(arg))))
+            case "memory-limit":
+                want = parse_size(str(arg))
+                have = container_memory_limit("document-service")
+                conds.append(
+                    (f"document-service memory limit is {arg} (have {have})", have == want)
+                )
+            case "start-replica":
+                conds.append(
+                    (
+                        "document-service-replica is running",
+                        container_running("document-service-replica"),
+                    )
+                )
+    return conds
+
+
+def rollup_soak_metrics(since: datetime) -> dict[str, float | None]:
+    """Rollup rows written since `since`: how many distinct windows, and how many duplicates.
+
+    Read straight from Postgres so the double-run after gate proves both that
+    the job kept running under two replicas and that no window was computed twice.
+    """
+    sql = (
+        "SELECT count(DISTINCT window_start), count(*) - count(DISTINCT window_start) "
+        f"FROM document_stats_rollups WHERE created_at >= '{since.isoformat()}'"
+    )
+    out = compose(
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "otterworks",
+        "-d",
+        "otterworks",
+        "-qtAc",
+        sql,
+        capture=True,
+        check=False,
+    )
+    try:
+        windows, dupes = (int(x) for x in out.stdout.strip().split("|"))
+    except ValueError:
+        return {"rollup_windows_new": None, "rollup_duplicates_new": None}
+    return {"rollup_windows_new": float(windows), "rollup_duplicates_new": float(dupes)}
+
+
+REQUEST_LOG_DIR = "/var/log/otterworks/document-service"
+
+
+def purge_request_log(cat: dict[str, Any]) -> None:
+    """Delete the request-log files inside the container's tmpfs and prove the gauge fell to zero.
+
+    A restart alone does not free the volume: the tmpfs is a container mount and
+    outlives the process, so the next run would start with a full disk.
+    """
+    compose(
+        "exec",
+        "-T",
+        "document-service",
+        "sh",
+        "-c",
+        f"find {REQUEST_LOG_DIR} -mindepth 1 -type f -delete",
+        check=False,
+    )
+    compose("restart", "document-service")
+    wait_healthy(cat)
+    remaining = compose(
+        "exec",
+        "-T",
+        "document-service",
+        "sh",
+        "-c",
+        f"find {REQUEST_LOG_DIR} -mindepth 1 -type f -printf '%s\\n' 2>/dev/null"
+        " | awk '{s+=$1} END {print s+0}'",
+        capture=True,
+        check=False,
+    ).stdout.strip()
+    if remaining not in ("", "0"):
+        die(f"purge-request-log: {remaining} bytes still in {REQUEST_LOG_DIR} after purge")
+    ratio = None
+    with contextlib.suppress(Exception):
+        ratio = prom_scalar(cat, METRIC_EXPRS["request_log_ratio"])
+    log(f"purge-request-log: {REQUEST_LOG_DIR} emptied (bytes=0, gauge ratio={_fmt(ratio)})")
 
 
 def reset_fixture(cat: dict[str, Any]) -> None:
@@ -341,7 +479,8 @@ METRIC_EXPRS = {
         "max(otterworks_request_log_bytes / otterworks_request_log_capacity_bytes)"
     ),
     "memory_ratio": (
-        "max(otterworks_process_resident_memory_bytes / otterworks_process_memory_limit_bytes)"
+        "max(otterworks_process_resident_memory_bytes "
+        "/ (otterworks_process_memory_limit_bytes > 0))"
     ),
     "cache_entries": "max(otterworks_render_cache_entries)",
     "duplicate_windows": "max(otterworks_rollup_duplicate_windows)",
@@ -572,7 +711,30 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
         log(f"load[{scenario}]: final {stats.line()}")
 
 
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def background_load_pid() -> int | None:
+    """PID of the running background load generator, or None when none is alive."""
+    p = state_path("load.pid")
+    if not p.exists():
+        return None
+    pid = int(p.read_text().strip() or 0)
+    return pid if _pid_alive(pid) else None
+
+
 def start_background_load(scenario: str) -> int:
+    # Re-arming must never strand the previous generator: one load process at a time.
+    stop_background_load()
     logf = state_path(f"load-{scenario}.log").open("ab")
     proc = subprocess.Popen(
         [sys.executable, str(HERE / "incident.py"), "load", scenario],
@@ -594,6 +756,12 @@ def stop_background_load() -> None:
     try:
         os.killpg(pid, signal.SIGTERM)
         log(f"load: stopped pid {pid}")
+        deadline = time.monotonic() + 10
+        while _pid_alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.2)
+        if _pid_alive(pid):
+            os.killpg(pid, signal.SIGKILL)
+            log(f"load: pid {pid} did not exit on SIGTERM; killed")
     except ProcessLookupError:
         log(f"load: pid {pid} already gone")
     p.unlink(missing_ok=True)
@@ -602,6 +770,13 @@ def stop_background_load() -> None:
 # ---------------------------------------------------------------------------
 # arm / disarm steps
 # ---------------------------------------------------------------------------
+
+
+def flag_is_set(cat: dict[str, Any], key: str) -> bool:
+    try:
+        return bool(redis.Redis.from_url(redis_url(cat), socket_timeout=2).exists(key))
+    except redis.RedisError:
+        return False
 
 
 def set_flag(cat: dict[str, Any], key: str, on: bool) -> None:
@@ -629,15 +804,25 @@ def run_step(cat: dict[str, Any], scenario: str, step: Any) -> None:
             set_flag(cat, arg, True)
         case "unflag":
             set_flag(cat, arg, False)
-        case "restart-document-service" | "purge-request-log":
+        case "restart-document-service":
             compose("restart", "document-service")
             wait_healthy(cat)
+        case "purge-request-log":
+            purge_request_log(cat)
         case "memory-limit":
             recreate_document_service(cat, str(arg))
         case "restore-memory-limit":
             recreate_document_service(cat, None)
         case "start-replica":
-            compose("--profile", "double-run", "up", "-d", "--no-build", "document-service-replica")
+            compose(
+                "--profile",
+                "double-run",
+                "up",
+                "-d",
+                "--no-build",
+                "--force-recreate",
+                "document-service-replica",
+            )
         case "stop-replica":
             compose("--profile", "double-run", "rm", "-sf", "document-service-replica", check=False)
         case "purge-duplicate-rollups":
@@ -846,10 +1031,38 @@ def cmd_verify(args: argparse.Namespace) -> None:
             f"Devin webhook receiver captured a firing {alert['name']} page",
         )
     else:
-        # After a fix: drive the same load, then the alert must be inactive and
-        # the after-thresholds met.
+        # After a fix: the scenario must still be armed, so the fix is judged
+        # under the same incident-producing conditions (flags, memory limit,
+        # replica) and the same load. Then the alert must be inactive and every
+        # scenario-specific after-threshold met.
+        armed = read_state()
+        _check(
+            findings,
+            armed.get("scenario") == args.scenario,
+            f"scenario {args.scenario} is armed (the after-state is judged under its conditions)",
+        )
+        if findings and not args.keep_going:
+            _finish(report, findings, started)
+        for step in sc.get("after_prepare", []):
+            run_step(cat, args.scenario, step)
+        for label, holds in arm_conditions(cat, sc):
+            _check(findings, holds, label)
+        if findings and not args.keep_going:
+            _finish(report, findings, started)
+        soak = float(sc.get("after_soak_seconds", args.soak))
+        soak_started = datetime.now(UTC)
         if sc.get("load"):
-            asyncio.run(_drive(cat, args.scenario, duration=args.soak))
+            # The gate drives the profile itself so the offered load is exactly the
+            # scenario's, not the profile twice; the armed background generator
+            # is paused for the soak and resumed afterwards.
+            had_background = background_load_pid() is not None
+            stop_background_load()
+            asyncio.run(_drive(cat, args.scenario, duration=soak))
+            if had_background:
+                start_background_load(args.scenario)
+        else:
+            log(f"soaking {soak:.0f}s under the armed conditions (no load profile)")
+            time.sleep(soak)
         deadline = time.monotonic() + alert["resolves_within_seconds"]
         state = alert_state(cat, alert["name"])
         while state != "inactive" and time.monotonic() < deadline:
@@ -857,9 +1070,13 @@ def cmd_verify(args: argparse.Namespace) -> None:
             state = alert_state(cat, alert["name"])
             log(f"waiting for {alert['name']} to clear: {state}")
         _check(
-            findings, state == "inactive", f"alert {alert['name']} is inactive under the same load"
+            findings,
+            state == "inactive",
+            f"alert {alert['name']} is inactive under the same conditions",
         )
         metrics = snapshot_metrics(cat)
+        if any(key.startswith("rollup_") for key in sc.get("after", {})):
+            metrics.update(rollup_soak_metrics(soak_started))
         report["metrics"] = metrics
         for key, threshold in sc.get("after", {}).items():
             metric, bound = key.rsplit("_", 1)

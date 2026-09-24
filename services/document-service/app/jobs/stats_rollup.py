@@ -23,6 +23,11 @@ from app.telemetry import ROLLUP_DUPLICATE_WINDOWS, ROLLUP_RUNS_TOTAL, SERVICE
 
 logger = structlog.get_logger()
 
+# Re-read the duplicate-window gauge this long after the rollup, so a duplicate
+# committed by another replica after this process's own rollup is still reported
+# from this process's /metrics.
+DUPLICATE_RECHECK_DELAY_SECONDS = 10
+
 
 def current_window(now: datetime | None = None) -> datetime:
     now = now or datetime.now(UTC)
@@ -65,6 +70,15 @@ async def duplicate_windows(db: AsyncSession, since: datetime) -> int:
     return (await db.execute(select(func.count()).select_from(dupes))).scalar_one()
 
 
+async def refresh_duplicate_gauge(
+    session_factory: async_sessionmaker[AsyncSession], window: datetime
+) -> int:
+    async with session_factory() as db:
+        dupes = await duplicate_windows(db, window - timedelta(hours=1))
+    ROLLUP_DUPLICATE_WINDOWS.labels(SERVICE).set(dupes)
+    return dupes
+
+
 async def run_once(session_factory: async_sessionmaker[AsyncSession]) -> None:
     window = current_window()
     async with session_factory() as db:
@@ -93,7 +107,13 @@ async def loop(session_factory: async_sessionmaker[AsyncSession]) -> None:
         # the same window regardless of how the loop was started.
         delay = interval - (time.time() % interval) + 2
         await asyncio.sleep(delay)
+        window = current_window()
         await run_once(session_factory)
+        await asyncio.sleep(DUPLICATE_RECHECK_DELAY_SECONDS)
+        try:
+            await refresh_duplicate_gauge(session_factory, window)
+        except Exception:
+            logger.exception("stats_rollup_duplicate_check_failed", window_start=window.isoformat())
 
 
 def start(session_factory: async_sessionmaker[AsyncSession]) -> asyncio.Task[None] | None:

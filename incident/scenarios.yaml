@@ -7,6 +7,11 @@
 # named alert must be firing in Prometheus within `fires_within_seconds` of
 # arming, and the `before` metrics must be met while it fires.
 #
+# The `after` gate keeps the scenario armed (same flags, memory ceiling and
+# replica), runs `after_prepare` to give the fix a clean slate, drives the same
+# load profile for `after_soak_seconds` (default: the gate's --soak), then
+# requires the alert to be inactive and every `after` threshold to hold.
+#
 # Everything here is an input to the fixture fingerprint (incident/expected.yaml);
 # change a value and the gate reports fixture drift instead of a green run.
 
@@ -119,6 +124,15 @@ scenarios:
       resolves_within_seconds: 240
     before:
       request_log_ratio_min: 0.80
+    # Start from an empty volume, then the same load for as long as it took the
+    # unbounded log to page: a bounded log stays well under a quarter of the
+    # volume and no request fails because of logging.
+    after_prepare:
+      - purge-request-log
+    after_soak_seconds: 240
+    after:
+      request_log_ratio_max: 0.25
+      error_ratio_max: 0.01
 
   cache-leak:
     title: Render cache grows until the pod restarts
@@ -156,6 +170,16 @@ scenarios:
       resolves_within_seconds: 180
     before:
       cache_entries_min: 2000
+    # Recreate the process under the same 256m ceiling, then the same edit/export
+    # load for as long as it took the unbounded cache to page: a bounded cache
+    # holds far fewer entries than the load created and memory stays clear of
+    # the alert threshold (DocumentServiceMemoryHigh pages at 0.75 of the limit).
+    after_prepare:
+      - memory-limit: 256m
+    after_soak_seconds: 420
+    after:
+      cache_entries_max: 1000
+      memory_ratio_max: 0.70
 
   double-run:
     title: Hourly rollup runs twice
@@ -183,3 +207,15 @@ scenarios:
       resolves_within_seconds: 120
     before:
       duplicate_windows_min: 1
+    # Drop the duplicates the flaw already produced and put the replica on the
+    # rebuilt image, then let both replicas run for several 60 s windows: the
+    # rollup must keep landing (new windows in the table) with no window
+    # computed twice, from the table and from the scraped gauge.
+    after_prepare:
+      - purge-duplicate-rollups
+      - start-replica
+    after_soak_seconds: 200
+    after:
+      rollup_windows_new_min: 2
+      rollup_duplicates_new_max: 0
+      duplicate_windows_max: 0

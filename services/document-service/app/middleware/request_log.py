@@ -26,6 +26,13 @@ from app.telemetry import REQUEST_LOG_BYTES, REQUEST_LOG_CAPACITY_BYTES, SERVICE
 logger = structlog.get_logger()
 
 SKIP_PATHS = ("/health", "/metrics", "/ready")
+REDACTED_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization", "x-api-key"})
+REDACTED = "[redacted]"
+
+
+def redact_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Copy of the request headers with credential-bearing values masked."""
+    return {k: (REDACTED if k.lower() in REDACTED_HEADERS else v) for k, v in headers.items()}
 
 
 class RequestLog:
@@ -95,7 +102,7 @@ def install(app: FastAPI) -> None:
                 "query": str(request.url.query),
                 "status": response.status_code,
                 "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-                "headers": dict(request.headers),
+                "headers": redact_headers(dict(request.headers)),
                 "response": body.decode("utf-8", errors="replace"),
             }
         )

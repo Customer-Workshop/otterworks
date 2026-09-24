@@ -48,15 +48,20 @@ health:
   port: 8080
   cacheSeconds: 10
 
+# A cache miss runs `su - db2inst1 -c 'db2 connect'` (2-5 s on a busy node), so every probe timeout
+# must exceed that; every startup probe misses the cache (period > cacheSeconds).
 probes:
   startup:
     periodSeconds: 15
+    timeoutSeconds: 10
     failureThreshold: 80        # Db2 first boot (instance + database create) takes 5-15 minutes
   readiness:
     periodSeconds: 10
+    timeoutSeconds: 10
     failureThreshold: 3
   liveness:
     periodSeconds: 30
+    timeoutSeconds: 10
     failureThreshold: 5
 
 networkPolicy:

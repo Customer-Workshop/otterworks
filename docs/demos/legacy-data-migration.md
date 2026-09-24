@@ -170,7 +170,13 @@ make demo-destroy NS=d24-before
 5. **Verify** and exit non-zero on any survivor:
    `aws resourcegroupstaggingapi get-resources --tag-filters Key=namespace,Values=<token>`
    empty, `az resource list --tag namespace=<token>` empty, `az group exists` false,
-   `kubectl get ns otterworks-<token>` NotFound.
+   `kubectl get ns otterworks-<token>` NotFound, and the tenant database
+   `otterworks_<token>` absent on RDS (probed by a short in-cluster `psql` Job; needs
+   `DB_PASSWORD`).
+
+Verification refuses to certify - exits non-zero - when it *cannot* check something it
+should: an Azure-backed token (`azure: true` or any `-after` token without an overlay)
+with no `AZURE_*` credentials, or `DB_PASSWORD` unset. "Skipped" never counts as clean.
 
 `make demo-verify-clean NS=<token>` runs step 5 alone. Typical destroy: 5–8 min
 (before), 10–15 min (after; SQL server deletion is the long pole).
@@ -207,7 +213,7 @@ anyone remembering to.
 Copy from `.demo/<token>/` into `docs/demos/evidence/<token>/` (or attach to the PR):
 
 - `deploy-<ts>.log` for both tokens (includes the timing table and Terraform apply output)
-- `azure.tfplan` summary / apply log (`d24-after`)
+- the Azure Terraform apply output inside `deploy-<ts>.log` (`d24-after`; no plan file is written because it would embed the ECR pull credential)
 - `migrate-<run_id>-<ts>.log`, `<run_id>/report.html`, `<run_id>/report.csv`
 - `destroy-<ts>.log` from a **throwaway** token (`<initials>1-after`) showing the clean
   verification — never from `d24-*` before the talk, never `main`

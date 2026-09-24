@@ -93,13 +93,13 @@ LABELS_KV="$(demo_k8s_labels "${TOKEN}")"
 
 # --- 1. demo-aws Terraform ---------------------------------------------------------
 stage_begin "aws terraform (demo-aws)"
-tf_init "${DEMO_AWS_TF_DIR}" aws_backend_args "${TOKEN}"
-run terraform -chdir="${DEMO_AWS_TF_DIR}" apply -input=false -auto-approve \
+tf_init "${TOKEN}" "${DEMO_AWS_TF_DIR}" aws_backend_args
+tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" apply -input=false -auto-approve \
   -var "namespace=${TOKEN}" -var "expires=${EXPIRES}" -var "aws_region=${AWS_REGION}" -var "eks_cluster=${EKS_CLUSTER}"
-DB2_VOLUME_ID="$(tf_output "${DEMO_AWS_TF_DIR}" db2_volume_id)"
-DB2_VOLUME_AZ="$(tf_output "${DEMO_AWS_TF_DIR}" db2_volume_az)"
-DEMO_BUCKET="$(tf_output "${DEMO_AWS_TF_DIR}" bucket_name)"
-JOB_ECR_URL="$(tf_output "${DEMO_AWS_TF_DIR}" job_repository_url)"
+DB2_VOLUME_ID="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_id)"
+DB2_VOLUME_AZ="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" db2_volume_az)"
+DEMO_BUCKET="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" bucket_name)"
+JOB_ECR_URL="$(tf_output "${TOKEN}" "${DEMO_AWS_TF_DIR}" job_repository_url)"
 [ -n "${DEMO_BUCKET}" ] || DEMO_BUCKET="$(demo_s3_bucket "${TOKEN}")"
 stage_end 0
 
@@ -141,8 +141,11 @@ SEED_SCRIPT="${REPO_ROOT}/migration/source/seed/load.sh"
 if [ "${CHART_HAS_SEED}" = "1" ]; then
   if [ "${DRY_RUN}" != "1" ]; then
     SEED_JOB="$(kubectl -n "${NS}" get jobs -l "app.kubernetes.io/instance=${DB2_RELEASE}" -o name 2>/dev/null | head -1 || true)"
-    if [ -n "${SEED_JOB}" ]; then kubectl -n "${NS}" wait --for=condition=complete "${SEED_JOB}" --timeout=90m || dwarn "seed job ${SEED_JOB} not complete"
-    else dwarn "no seed Job labelled app.kubernetes.io/instance=${DB2_RELEASE} found; verify seed row counts manually"; fi
+    [ -n "${SEED_JOB}" ] || die "chart has seed.enabled=true but no Job labelled app.kubernetes.io/instance=${DB2_RELEASE} exists; Db2 is not seeded"
+    if ! kubectl -n "${NS}" wait --for=condition=complete "${SEED_JOB}" --timeout=90m; then
+      kubectl -n "${NS}" logs "${SEED_JOB}" --tail=40 2>/dev/null || true
+      die "seed job ${SEED_JOB} did not complete; Db2 ${DB2_DB} is empty or partial - not continuing"
+    fi
   fi
 elif [ -x "${SEED_SCRIPT}" ]; then
   # Source-unit loader (migration/source/seed/load.sh); connection via env, never argv.
@@ -151,8 +154,10 @@ elif [ -x "${SEED_SCRIPT}" ]; then
     DB2_HOST="${DB2_RELEASE}.${NS}.svc.cluster.local" DB2_PORT=50000 DB2_DATABASE="${DB2_DB}" DB2_USER=db2inst1 \
       DB2_PASSWORD="${DB2_PASSWORD}" KUBE_NAMESPACE="${NS}" LDM_NAMESPACE="${TOKEN}" "${SEED_SCRIPT}" "${TOKEN}"
   fi
+elif [ "${DRY_RUN}" = "1" ]; then
+  dwarn "neither a chart seed hook nor migration/source/seed/load.sh found (source unit); would fail"
 else
-  dwarn "neither a chart seed hook nor migration/source/seed/load.sh found (source unit); Db2 is empty"
+  die "neither a chart seed hook nor migration/source/seed/load.sh found (source unit); Db2 ${DB2_DB} would stay empty"
 fi
 stage_end 0
 
@@ -172,7 +177,7 @@ stage_end "${wiring_rc}"
 if [ "${WANT_AZURE}" = "true" ]; then
   stage_begin "azure terraform apply"
   az_login
-  tf_init "${AZURE_TF_DIR}" azure_backend_args "${TOKEN}"
+  tf_init "${TOKEN}" "${AZURE_TF_DIR}" azure_backend_args
   if [ "${DRY_RUN}" = "1" ]; then EGRESS_CIDRS='["0.0.0.0/32"]'; else EGRESS_CIDRS="$(discover_eks_egress_cidrs)"; fi
   [ "$(jq 'length' <<<"${EGRESS_CIDRS}")" -gt 0 ] || die "could not discover EKS egress IPs for the Azure SQL firewall rule"
   REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -195,20 +200,21 @@ if [ "${WANT_AZURE}" = "true" ]; then
     TF_VAR_registry_username="AWS"; TF_VAR_registry_password="$(aws ecr get-login-password --region "${AWS_REGION}")"
     export TF_VAR_registry_username TF_VAR_registry_password
   fi
-  run terraform -chdir="${AZURE_TF_DIR}" plan -input=false -var-file="${TFVARS}" -out="${TRANSCRIPT_DIR}/azure.tfplan"
-  run terraform -chdir="${AZURE_TF_DIR}" apply -input=false "${TRANSCRIPT_DIR}/azure.tfplan"
+  # No saved plan file: a plan embeds TF_VAR_registry_password in clear text.
+  # The plan output itself is in the transcript.
+  tf "${TOKEN}" "${AZURE_TF_DIR}" apply -input=false -auto-approve -var-file="${TFVARS}"
   unset TF_VAR_registry_password
   stage_end 0
 
   stage_begin "wiring (azuresql)"
-  AZSQL_SERVER="$(tf_output "${AZURE_TF_DIR}" sql_server_fqdn)"
-  AZSQL_DATABASE="$(tf_output "${AZURE_TF_DIR}" sql_database_name)"
-  AZ_STORAGE_ACCOUNT="$(tf_output "${AZURE_TF_DIR}" storage_account_name)"
-  AZ_STAGING_CONTAINER="$(tf_output "${AZURE_TF_DIR}" staging_container)"
-  KEY_VAULT="$(tf_output "${AZURE_TF_DIR}" key_vault_name)"
-  MI_CLIENT_ID="$(tf_output "${AZURE_TF_DIR}" managed_identity_client_id)"
-  ACA_REPORT_URL="$(tf_output "${AZURE_TF_DIR}" report_fqdn)"
-  ACA_AUDIT_URL="$(tf_output "${AZURE_TF_DIR}" audit_fqdn)"
+  AZSQL_SERVER="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" sql_server_fqdn)"
+  AZSQL_DATABASE="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" sql_database_name)"
+  AZ_STORAGE_ACCOUNT="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" storage_account_name)"
+  AZ_STAGING_CONTAINER="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" staging_container)"
+  KEY_VAULT="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" key_vault_name)"
+  MI_CLIENT_ID="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" managed_identity_client_id)"
+  ACA_REPORT_URL="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" report_fqdn)"
+  ACA_AUDIT_URL="$(tf_output "${TOKEN}" "${AZURE_TF_DIR}" audit_fqdn)"
   if [ "${DRY_RUN}" = "1" ]; then
     AZSQL_SERVER="${AZSQL_SERVER:-$(azure_sql_server "${TOKEN}").database.windows.net}"
     AZSQL_DATABASE="${AZSQL_DATABASE:-$(azure_sql_database "${TOKEN}")}"

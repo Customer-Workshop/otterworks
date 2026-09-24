@@ -74,12 +74,12 @@ if az_available; then
   dlog "azure: resource group exists=${RG_EXISTS}, state blob exists=${STATE_EXISTS}"
   if [ "${RG_EXISTS}" != "false" ] || [ "${STATE_EXISTS}" = "true" ]; then
     if [ -d "${AZURE_TF_DIR}" ] && [ -n "${TFSTATE_AZ_ACCOUNT:-}" ] && [ -n "${TFSTATE_AZ_RESOURCE_GROUP:-}" ]; then
-      tf_init "${AZURE_TF_DIR}" azure_backend_args "${TOKEN}"
+      tf_init "${TOKEN}" "${AZURE_TF_DIR}" azure_backend_args
       TFVARS="${TRANSCRIPT_DIR}/azure.auto.tfvars.json"
       DESTROY_ARGS=(-var "namespace=${TOKEN}" -var "run_token=$(token_run "${TOKEN}")" -var "state=$(token_state "${TOKEN}")" -var "expires=$(now_utc)")
       [ -f "${TFVARS}" ] && DESTROY_ARGS=(-var-file="${TFVARS}")
       export TF_VAR_registry_username="AWS" TF_VAR_registry_password="unused-on-destroy"
-      run terraform -chdir="${AZURE_TF_DIR}" destroy -input=false -auto-approve "${DESTROY_ARGS[@]}" || azure_rc=$?
+      tf "${TOKEN}" "${AZURE_TF_DIR}" destroy -input=false -auto-approve "${DESTROY_ARGS[@]}" || azure_rc=$?
       unset TF_VAR_registry_password
     else
       dwarn "Azure Terraform root or TFSTATE_AZ_* not available; falling back to resource-group delete"
@@ -97,8 +97,11 @@ if az_available; then
   else
     dlog "azure: nothing to destroy for ${TOKEN}"
   fi
+elif [ "$(token_wants_azure "${TOKEN}")" = "true" ]; then
+  derr "${TOKEN} is Azure-backed (overlay azure: true or an after-token) but AZURE_* credentials are not set; refusing to certify"
+  azure_rc=1
 else
-  dwarn "AZURE_* credentials not set; skipping Azure destroy (fine for before-tokens)"
+  dwarn "AZURE_* credentials not set; skipping Azure destroy (before-token, no Azure objects)"
 fi
 stage_end "${azure_rc}"
 
@@ -152,8 +155,8 @@ for b in $(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'otterwork
   fi
 done
 if [ -d "${DEMO_AWS_TF_DIR}" ]; then
-  tf_init "${DEMO_AWS_TF_DIR}" aws_backend_args "${TOKEN}"
-  run terraform -chdir="${DEMO_AWS_TF_DIR}" destroy -input=false -auto-approve \
+  tf_init "${TOKEN}" "${DEMO_AWS_TF_DIR}" aws_backend_args
+  tf "${TOKEN}" "${DEMO_AWS_TF_DIR}" destroy -input=false -auto-approve \
     -var "namespace=${TOKEN}" -var "expires=$(now_utc)" -var "aws_region=${AWS_REGION}" -var "eks_cluster=${EKS_CLUSTER}" || aws_rc=$?
 fi
 # Anything tagged but untracked (e.g. a volume Terraform lost): delete by tag.

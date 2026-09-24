@@ -34,6 +34,7 @@ DB2_CREDENTIALS_SECRET="db2-archive-credentials"
 ARCHIVE_STORE_SECRET="archive-store-credentials"
 LDM_AZURE_SECRET="ldm-azure"
 DB2_RELEASE="db2-archive"
+MIG06_FIXTURE_PATH="${MIG06_FIXTURE_PATH:-/app/migration/source/seed/fixtures/mig06_prior_run.sql}"
 MANIFEST_DIR="${REPO_ROOT}/migration"
 # Evidence root: per-token transcripts, tfvars, report copies (git-ignored by
 # convention; copy what you want to keep into docs/demos/evidence/).
@@ -56,17 +57,6 @@ run() {
     return 0
   fi
   printf '%b[run]%b' "${GREEN}" "${NC}"; printf ' %q' "$@"; printf '\n'
-  "$@"
-}
-
-# Same, for commands that take stdin (kubectl apply -f -). Callers pipe into it.
-run_stdin() {
-  if [ "${DRY_RUN}" = "1" ]; then
-    printf '%b[dry-run]%b' "${YELLOW}" "${NC}"; printf ' %q' "$@"; printf ' <<stdin\n'
-    sed 's/^/    | /'
-    return 0
-  fi
-  printf '%b[run]%b' "${GREEN}" "${NC}"; printf ' %q' "$@"; printf ' <<stdin\n'
   "$@"
 }
 
@@ -221,14 +211,25 @@ aws_backend_args() {
     "${DEMO_STATE_BUCKET}" "$(aws_tfstate_key "$1")" "${AWS_REGION}"
 }
 
-# terraform init with a per-namespace backend. `-reconfigure` because one root
-# module serves every token and the previous init may point at another state.
-tf_init() {
-  local dir="$1"; shift
-  local args=(); mapfile -t args < <("$@")
-  run terraform -chdir="${dir}" init -input=false -reconfigure "${args[@]}"
+# One root module serves every token, so each token gets its own TF_DATA_DIR
+# (.demo/<token>/tfdata-<root>/): backend config, provider cache and lock never
+# leak between two deployments running side by side.
+tf_data_dir() { printf '%s/%s/tfdata-%s' "${DEMO_DIR}" "$1" "$(basename "$2")"; }
+# tf <token> <root-dir> <terraform args...>  (mutating: goes through `run`)
+tf() {
+  local token="$1" dir="$2"; shift 2
+  mkdir -p "$(tf_data_dir "${token}" "${dir}")"
+  TF_DATA_DIR="$(tf_data_dir "${token}" "${dir}")" run terraform -chdir="${dir}" "$@"
 }
-tf_output() { terraform -chdir="$1" output -raw "$2" 2>/dev/null || true; }
+# terraform init with a per-namespace backend key (§3.2).
+tf_init() {
+  local token="$1" dir="$2"; shift 2
+  local args=(); mapfile -t args < <("$@" "${token}")
+  tf "${token}" "${dir}" init -input=false -reconfigure "${args[@]}"
+}
+tf_output() {
+  TF_DATA_DIR="$(tf_data_dir "$1" "$2")" terraform -chdir="$2" output -raw "$3" 2>/dev/null || true
+}
 
 # Charts / roots written by other units may not be on the branch yet (§2).
 # In dry-run the absence is reported but the rehearsal continues.
@@ -301,7 +302,7 @@ verify_clean() {
   if [ "${DRY_RUN}" = "1" ]; then
     dlog "[dry-run] would verify: aws resourcegroupstaggingapi get-resources --tag-filters Key=namespace,Values=${token}"
     dlog "[dry-run] would verify: az resource list --tag namespace=${token}; az group exists -n $(azure_rg "${token}")"
-    dlog "[dry-run] would verify: kubectl get ns ${ns} -> NotFound"
+    dlog "[dry-run] would verify: kubectl get ns ${ns} -> NotFound; RDS database $(tenant_db_name "${token}") absent (in-cluster psql probe)"
     return 0
   fi
   # Eventually consistent index: poll briefly before declaring a live survivor.
@@ -323,13 +324,71 @@ verify_clean() {
     if [ "$(az group exists -n "$(azure_rg "${token}")" -o tsv 2>/dev/null)" = "true" ]; then
       derr "Azure resource group $(azure_rg "${token}") still exists"; rc=1
     else dlog "Azure: resource group $(azure_rg "${token}") absent"; fi
+  elif [ "$(token_wants_azure "${token}")" = "true" ]; then
+    derr "Azure: ${token} is an Azure-backed token but AZURE_* credentials are not set; cannot certify Azure clean"; rc=1
   else
-    dwarn "Azure credentials not set; skipping the Azure survivor check"
+    dwarn "Azure credentials not set; skipping the Azure survivor check (before-token, no Azure objects)"
   fi
   ensure_kubeconfig
   if kubectl get ns "${ns}" >/dev/null 2>&1; then derr "Kubernetes namespace ${ns} still exists"; rc=1
   else dlog "Kubernetes: namespace ${ns} NotFound"; fi
+  local dbname; dbname="$(tenant_db_name "${token}")"
+  case "$(tenant_db_exists "${dbname}")" in
+    absent)  dlog "RDS: database ${dbname} absent" ;;
+    present) derr "RDS: tenant database ${dbname} still exists (teardown-tenant drop failed?)"; rc=1 ;;
+    *)       derr "RDS: could not check database ${dbname} (DB_PASSWORD unset or probe failed); not certifying clean"; rc=1 ;;
+  esac
   return "${rc}"
+}
+
+# Probe the shared RDS instance for a tenant database through a short in-cluster
+# psql Job in ${SYSTEM_NAMESPACE} (RDS is not reachable from the operator's
+# machine). Prints absent | present | unknown. Needs DB_PASSWORD, like the drop.
+tenant_db_exists() {
+  local db="$1" frag job secret out
+  [ -n "${DB_PASSWORD:-}" ] || { printf 'unknown'; return 0; }
+  load_infra_outputs >&2
+  [ -n "${RDS_HOST:-}" ] || { printf 'unknown'; return 0; }
+  frag="$(k8s_name_fragment "${db}")"; job="tenant-db-probe-${frag}"; secret="tenant-db-admin-probe-${frag}"
+  kubectl get ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || kubectl create ns "${SYSTEM_NAMESPACE}" >/dev/null 2>&1 || true
+  apply_db_admin_secret "${SYSTEM_NAMESPACE}" "${secret}" >&2
+  kubectl -n "${SYSTEM_NAMESPACE}" delete job "${job}" --ignore-not-found >/dev/null 2>&1 || true
+  kubectl apply -n "${SYSTEM_NAMESPACE}" -f - >/dev/null <<YAML
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${job}
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: psql
+          image: postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: ${secret}, key: PGPASSWORD } }
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              CONN="host=${RDS_HOST} port=${RDS_PORT} dbname=otterworks user=${DB_USER} sslmode=prefer connect_timeout=10"
+              n=\$(psql "\$CONN" -v ON_ERROR_STOP=1 -tA -c "SELECT count(*) FROM pg_database WHERE datname='${db}'") || exit 1
+              [ "\$n" = "0" ] && echo ABSENT || echo PRESENT
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+YAML
+  out="unknown"
+  if kubectl -n "${SYSTEM_NAMESPACE}" wait --for=condition=complete "job/${job}" --timeout=90s >/dev/null 2>&1; then
+    case "$(kubectl -n "${SYSTEM_NAMESPACE}" logs "job/${job}" 2>/dev/null | tail -1)" in
+      ABSENT) out=absent ;; PRESENT) out=present ;;
+    esac
+  fi
+  kubectl -n "${SYSTEM_NAMESPACE}" delete secret "${secret}" --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "${SYSTEM_NAMESPACE}" delete job "${job}" --ignore-not-found >/dev/null 2>&1 || true
+  printf '%s' "${out}"
 }
 
 # Secrets ---------------------------------------------------------------------------
@@ -394,6 +453,9 @@ render_job() {
   local -a extra=()
   [ -n "${LDM_JOB_IMAGE:-}" ] && extra+=(--set "image.repository=${LDM_JOB_IMAGE%%:*}" --set "image.tag=${LDM_JOB_IMAGE##*:}")
   while IFS= read -r kv; do [ -n "${kv}" ] && extra+=(--set-string "${kv}"); done <<<"$(ldm_azure_values "${ns}")"
+  # `ldm init` also loads the MIG-06 prior-run fixture (§12.1) via --apply-sql;
+  # the image ships the repo's migration/ tree at /app/migration (§13.2).
+  [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"${MIG06_FIXTURE_PATH}\"]")
   # shellcheck disable=SC2086
   helm template "$(job_name "${stage}" "${run_id}")" "${JOB_CHART_DIR}" --namespace "${ns}" \
     --set "stage=${stage}" --set "namespace=${token}" --set "runId=${run_id}" \

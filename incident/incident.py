@@ -61,7 +61,11 @@ COMPOSE = os.environ.get(
 
 # Inputs that change what a recorded run looks like. Source and fixture are
 # fingerprinted separately: the fixture must never drift; the source is
-# expected to differ between the before-state and a fix.
+# expected to differ between the before-state and a fix. The migration history
+# that exists on the before-state is fixture (rewriting 001-003 would change the
+# schema the recording was made against); a fix is allowed to *add* a migration,
+# so the versions directory as a whole is source.
+MIGRATIONS = "services/document-service/alembic/versions"
 FIXTURE_INPUTS = [
     "incident/scenarios.yaml",
     "incident/incident.py",
@@ -69,9 +73,11 @@ FIXTURE_INPUTS = [
     "observability/prometheus/prometheus.yml",
     "observability/alertmanager/alertmanager.yml.tmpl",
     "docker-compose.incident.yml",
-    "services/document-service/alembic/versions",
+    f"{MIGRATIONS}/001_initial_schema.py",
+    f"{MIGRATIONS}/002_document_stats_rollups.py",
+    f"{MIGRATIONS}/003_backfill_word_count.py",
 ]
-SOURCE_INPUTS = ["services/document-service/app"]
+SOURCE_INPUTS = ["services/document-service/app", MIGRATIONS]
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +141,42 @@ def compose(
     *args: str, check: bool = True, capture: bool = False
 ) -> subprocess.CompletedProcess[str]:
     return sh(*COMPOSE, *args, check=check, capture=capture)
+
+
+def reset_fixture(cat: dict[str, Any]) -> None:
+    """Delete the fixture owner's documents (versions/comments cascade) so `seed` starts clean."""
+    owner = cat["seed"]["owner_id"]
+    sql = (
+        f"WITH gone AS (DELETE FROM documents WHERE owner_id = '{owner}' RETURNING 1) "
+        "SELECT count(*) FROM gone"
+    )
+    out = compose(
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "otterworks",
+        "-d",
+        "otterworks",
+        "-qtAc",
+        sql,
+        capture=True,
+    )
+    log(f"reset-fixture: deleted {out.stdout.strip() or '0'} documents for owner {owner}")
+
+
+def wait_healthy(cat: dict[str, Any], timeout: float = 90) -> None:
+    url = base_url(cat) + "/health"
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            if httpx.get(url, timeout=2).status_code == 200:
+                return
+        except httpx.HTTPError:
+            pass
+        time.sleep(1)
+    die(f"document-service not healthy at {url} after {timeout:.0f}s")
 
 
 def state_path(name: str) -> Path:
@@ -217,6 +259,31 @@ def prom_alerts(cat: dict[str, Any]) -> list[dict[str, Any]]:
     r = httpx.get(f"{prom_url(cat)}/api/v1/alerts", timeout=10)
     r.raise_for_status()
     return r.json()["data"]["alerts"]
+
+
+def devin_page_for(
+    cat: dict[str, Any], alertname: str, since: str | None = None
+) -> dict[str, Any] | None:
+    """Newest delivery to the Devin receiver that is a firing page for `alertname`.
+
+    `since` (ISO-8601, UTC) drops captures from earlier runs of the same scenario.
+    """
+    try:
+        r = httpx.get(f"{sink_url(cat)}/devin", timeout=5)
+        deliveries = r.json() if r.status_code == 200 else []
+    except (httpx.HTTPError, ValueError):
+        return None
+    for rec in reversed(deliveries or []):
+        if since and rec.get("received_at", "") < since:
+            continue
+        payload = rec.get("payload") or {}
+        if payload.get("status") != "firing":
+            continue
+        if any(
+            a.get("labels", {}).get("alertname") == alertname for a in payload.get("alerts", [])
+        ):
+            return rec
+    return None
 
 
 def alert_state(cat: dict[str, Any], name: str) -> str:
@@ -413,12 +480,14 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
         loop.add_signal_handler(sig, _stop)
 
     async with httpx.AsyncClient(base_url=base_url(cat), headers=headers, timeout=30) as client:
-        doc_ids: list[str] = []
+        # (id, title) so an edit keeps the document's own title; the seed is
+        # idempotent on title and a renamed fixture would be re-created.
+        docs: list[tuple[str, str]] = []
         if prof.get("flow") == "edit-then-export":
             r = await client.get(LIST_HANDLER, params={"owner_id": owner, "size": 100})
             r.raise_for_status()
-            doc_ids = [d["id"] for d in r.json()["items"]]
-            if not doc_ids:
+            docs = [(d["id"], d["title"]) for d in r.json()["items"]]
+            if not docs:
                 die("edit-then-export load needs seeded documents; run `incident.py seed`")
 
         sem = asyncio.Semaphore(concurrency)
@@ -429,11 +498,11 @@ async def _drive(cat: dict[str, Any], scenario: str, duration: float | None) -> 
                 t0 = time.perf_counter()
                 try:
                     if prof.get("flow") == "edit-then-export":
-                        doc_id = doc_ids[i % len(doc_ids)]
+                        doc_id, title = docs[i % len(docs)]
                         r = await client.put(
                             f"{LIST_HANDLER}{doc_id}",
                             json={
-                                "title": f"Incident fixture doc {i % len(doc_ids):04d}",
+                                "title": title,
                                 "content": _lorem(rng, cat["seed"]["words_per_document"]),
                                 "content_type": "text/markdown",
                                 "folder_id": cat["seed"]["folder_id"],
@@ -539,6 +608,7 @@ def run_step(cat: dict[str, Any], scenario: str, step: Any) -> None:
             set_flag(cat, arg, False)
         case "restart-document-service" | "purge-request-log":
             compose("restart", "document-service")
+            wait_healthy(cat)
         case "start-replica":
             compose("--profile", "double-run", "up", "-d", "--no-build", "document-service-replica")
         case "stop-replica":
@@ -572,6 +642,7 @@ def cmd_arm(args: argparse.Namespace) -> None:
         die(f"{state['scenario']} is already armed; run `incident.py disarm` first")
     sc = cat["scenarios"][args.scenario]
     log(f"arming {args.scenario}: {sc['title']}")
+    wait_healthy(cat)
     for step in sc["arm"]:
         run_step(cat, args.scenario, step)
     write_state(
@@ -730,13 +801,23 @@ def cmd_verify(args: argparse.Namespace) -> None:
                     val is not None and val <= threshold,
                     f"{metric}={_fmt(val)} <= {threshold}",
                 )
-        try:
-            r = httpx.get(f"{sink_url(cat)}/devin/latest", timeout=5)
-            captured = r.json() if r.status_code == 200 else None
-        except httpx.HTTPError:
-            captured = None
+        # Alertmanager batches for group_wait before it posts, so allow it the
+        # rest of the alert budget (at least 60s); only a *firing* delivery that
+        # names this scenario's alert counts, never a stale capture.
+        captured = None
+        deadline = max(deadline, time.monotonic() + 60)
+        armed_at = (read_state().get("armed_at") or "")[:19] + "Z"
+        while captured is None and time.monotonic() < deadline:
+            captured = devin_page_for(cat, alert["name"], since=armed_at)
+            if captured is None:
+                time.sleep(5)
         report["devin_webhook_captured"] = captured is not None
-        _check(findings, captured is not None, "Devin webhook receiver captured the page")
+        report["devin_webhook_received_at"] = captured and captured.get("received_at")
+        _check(
+            findings,
+            captured is not None,
+            f"Devin webhook receiver captured a firing {alert['name']} page",
+        )
     else:
         # After a fix: drive the same load, then the alert must be inactive and
         # the after-thresholds met.
@@ -857,6 +938,7 @@ def main() -> None:
     sub.add_parser("status").set_defaults(fn=cmd_status)
     sub.add_parser("fingerprint").set_defaults(fn=cmd_fingerprint)
     sub.add_parser("seed").set_defaults(fn=lambda _: asyncio.run(seed(load_catalog())))
+    sub.add_parser("reset-fixture").set_defaults(fn=lambda _: reset_fixture(load_catalog()))
     sub.add_parser("stop-load").set_defaults(fn=lambda _: stop_background_load())
 
     p = sub.add_parser("load")

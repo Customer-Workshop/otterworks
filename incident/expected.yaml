@@ -2,13 +2,13 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T05:40:12.269319+00:00'
-  git_sha: e23eb24ac02829dae33405541bd9fa47cdb3dc6e
-  reason: harness lint/format cleanup and page=devin filter in status; no scenario,
-    seed, or alert change
+  at: '2026-09-24T06:00:15.571444+00:00'
+  git_sha: d31235d82207bd5f716775ac1e8627d2fd752615
+  reason: 'double-run fires_within 180s -> 240s: worst case is two 60s rollup ticks
+    plus 30s for-clause plus scrape lag (observed 150s); no seed or alert-rule change'
 fingerprints:
-  fixture: 94e19bf379d993751acd8afc3ef84b10c81a670c61c0810b742d3e00f1087e3d
-  source: 9ad55fba6d73f00f7d1307230da3ec3cdbcf3ae5760084cea80ba85f40cf5367
+  fixture: f35839c76073ed79040ed67e369b17fa2ecb5917435cdfedcc52cc779c82b0e2
+  source: 8f4f493c533d958cb42a18f003d1339670b776ee7588f05a3f5684399e74c476
 scenarios:
   n-plus-one:
     alert: DocumentListLatencyHigh
@@ -21,4 +21,4 @@ scenarios:
     fires_within_seconds: 420
   double-run:
     alert: DocumentStatsRollupDuplicated
-    fires_within_seconds: 180
+    fires_within_seconds: 240

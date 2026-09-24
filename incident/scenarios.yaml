@@ -174,7 +174,7 @@ scenarios:
       - purge-duplicate-rollups
     alert:
       name: DocumentStatsRollupDuplicated
-      fires_within_seconds: 180
+      fires_within_seconds: 240
       resolves_within_seconds: 120
     before:
       duplicate_windows_min: 1

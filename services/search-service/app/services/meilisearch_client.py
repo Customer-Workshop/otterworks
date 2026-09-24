@@ -252,16 +252,24 @@ class MeiliSearchService:
 
         Suggestions from both indexes are ordered by MeiliSearch's
         ``_rankingScore`` (highest first). Hits without a score sort last.
+        A failing index is skipped so the other index's hits still return;
+        the caller only sees an error if every index fails.
         """
         scored: dict[str, float] = {}
+        errors: list[Exception] = []
 
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
-            result = index.search(prefix, {
-                "limit": size,
-                "attributesToRetrieve": ["title", "name"],
-                "showRankingScore": True,
-            })
+            try:
+                result = index.search(prefix, {
+                    "limit": size,
+                    "attributesToRetrieve": ["title", "name"],
+                    "showRankingScore": True,
+                })
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("suggest_index_failed", index=index_name, error=str(exc))
+                errors.append(exc)
+                continue
             for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
                 if not text:
@@ -270,6 +278,9 @@ class MeiliSearchService:
                 score = float(score) if isinstance(score, (int, float)) else 0.0
                 if text not in scored or score > scored[text]:
                     scored[text] = score
+
+        if errors and not scored:
+            raise errors[0]
 
         ranked = sorted(scored.items(), key=lambda item: item[1], reverse=True)
         return [text for text, _ in ranked[:size]]

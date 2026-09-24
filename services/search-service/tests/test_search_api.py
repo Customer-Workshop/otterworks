@@ -140,6 +140,18 @@ class TestSuggestEndpoint:
         assert response.status_code == 200
         assert response.get_json()["suggestions"] == []
 
+    def test_suggest_one_index_failing_keeps_other_results(self, client, mock_meilisearch_client):
+        """A failure on one index does not discard the other index's suggestions."""
+        docs_index = mock_meilisearch_client.index.return_value
+        docs_index.search.side_effect = [
+            {"estimatedTotalHits": 1, "hits": [{"title": "From Docs", "_rankingScore": 0.7}]},
+            RuntimeError("files index unavailable"),
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["From Docs"]
+
     def test_suggest_backend_error_degrades_gracefully(self, client, mock_meilisearch_client):
         """A MeiliSearch failure returns 200 with empty suggestions."""
         mock_index = mock_meilisearch_client.index.return_value

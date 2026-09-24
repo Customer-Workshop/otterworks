@@ -85,7 +85,10 @@ alert name and the time it fired); do not ask what to do next.
    two gate summary lines (before red → after green) and the report file names,
    and states plainly that the load profile and thresholds came from the
    repository's scenario catalog. Work on your own branch; never push to the
-   branch that carries the reproducible before-state.
+   branch that carries the reproducible before-state. The PR's base is the
+   alert's `fix_branch` label when it carries one (the long-lived tenant branch
+   whose tenant takes the fix), otherwise the `branch` label you reproduced
+   from; never `main` when a `fix_branch` is present.
 9. **Leave the estate as you found it.** Disarm the local reproduction. If you
    changed nothing but code and a test, say so. If a runtime flag or replica
    count was part of the cause, say what has to change in the deployment and do

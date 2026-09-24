@@ -2,15 +2,14 @@
 # re-pin with `make incident-record REASON="..."` -- the reason is kept here
 # so every re-record is auditable in git history.
 recorded:
-  at: '2026-09-24T18:00:08.590541+00:00'
-  git_sha: d5f4c03702e46103b19cdeda3d494f0ffd6286a5
-  reason: 'Review round 4: mirror the Devin page to the local sink alongside the external
-    Automation (alertmanager.yml.tmpl, compose Alertmanager 0.28.1), verify writes
-    a report on exception paths and re-checks arm conditions after the soak (incident.py),
-    stats_rollup loop survives a failed duplicate check. No load profile, alert threshold
-    or seed change.'
+  at: '2026-09-24T19:29:47.724832+00:00'
+  git_sha: f997af578825c55427a66de77c0bf967c2b52cc6
+  reason: 'INCIDENT_LOAD_SCALE: scale a scenario''s rps/concurrency for targets with
+    less headroom than the local stack (the single 500m-CPU tenant replica on the
+    shared cluster saturates under the laptop profile even after the fix). Default
+    1 -- the local gates, load profiles, alert thresholds and seed are unchanged.'
 fingerprints:
-  fixture: 7a0a27540e03124e7b029d24a6f4ed1581e72ad042bb86fddd9e0ea75fb511c8
+  fixture: 16aa8b6d057f613f026584447fd792b8eb5741ff79718580490193dd354cece9
   source: 480b6fe74ff60a0d4d339ae8c3d8af03d23f45cd6e565c438481596bbcaa553a
 scenarios:
   n-plus-one:

@@ -211,16 +211,10 @@ services:
     depends_on:
       jaeger:
         condition: service_healthy
+    # The contrib image is distroless (no wget/curl/sh); the health_check
+    # extension is reachable from the host on 13133 instead.
     healthcheck:
-      test:
-      - CMD
-      - wget
-      - --spider
-      - -q
-      - http://localhost:13133/
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      disable: true
     restart: unless-stopped
     security_opt:
     - no-new-privileges:true

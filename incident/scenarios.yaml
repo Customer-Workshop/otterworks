@@ -64,8 +64,8 @@ scenarios:
         method: GET
         path: /api/v1/documents/
         params: {size: 100}
-        concurrency: 16
-        rps: 12
+        concurrency: 24
+        rps: 24
     alert:
       name: DocumentListLatencyHigh
       fires_within_seconds: 180

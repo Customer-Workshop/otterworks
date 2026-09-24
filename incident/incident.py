@@ -158,7 +158,7 @@ def compose(
 def recreate_document_service(cat: dict[str, Any], memory_limit: str | None) -> None:
     """Recreate the document-service container with a scenario-specific memory ceiling.
 
-    `None` restores the Compose default (`INCIDENT_MEMORY_LIMIT` or 384m).
+    `None` restores the Compose default (`INCIDENT_MEMORY_LIMIT` or 512m).
     """
     env = {"INCIDENT_MEMORY_LIMIT": memory_limit} if memory_limit else None
     compose("up", "-d", "--no-build", "--force-recreate", "document-service", env=env)

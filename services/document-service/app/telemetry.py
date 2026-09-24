@@ -22,7 +22,23 @@ logger = structlog.get_logger()
 SERVICE = "document-service"
 
 LATENCY_BUCKETS = (
-    0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.5, 10.0,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0,
+    4.0,
+    5.0,
+    7.5,
+    10.0,
 )
 
 DB_QUERIES_TOTAL = Counter(
@@ -152,6 +168,7 @@ def instrument_app(app: FastAPI) -> None:
     ) -> Response:
         counter = [0]
         token = _request_queries.set(counter)
+        started = time.perf_counter()
         try:
             response = await call_next(request)
         finally:
@@ -160,6 +177,9 @@ def instrument_app(app: FastAPI) -> None:
         if request.url.path not in ("/health", "/metrics", "/ready"):
             DB_QUERIES_PER_REQUEST.labels(SERVICE, _handler_label(request)).observe(queries)
             response.headers["X-DB-Queries"] = str(queries)
+            response.headers["X-Request-Duration-Ms"] = (
+                f"{(time.perf_counter() - started) * 1000:.1f}"
+            )
         PROCESS_RSS_BYTES.labels(SERVICE).set(_read_rss_bytes())
         PROCESS_MEMORY_LIMIT_BYTES.labels(SERVICE).set(_read_memory_limit_bytes())
         return response

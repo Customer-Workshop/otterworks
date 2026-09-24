@@ -219,9 +219,24 @@ which the script picks up:
 ```bash
 git checkout demo-incident
 export AWS_DEFAULT_REGION=us-east-1 DB_PASSWORD='<shared RDS master password>'
-# auth-service rejects HS256 keys shorter than 32 bytes
-export JWT_SECRET="$(openssl rand -hex 32)" SECRET_KEY_BASE="$(openssl rand -hex 64)"
 scripts/deploy-tenant.sh incident --profile core --host-suffix demo.otterworks.app --ttl 72h --branch demo-incident
+```
+
+Leave `JWT_SECRET` / `SECRET_KEY_BASE` unset on a redeploy: the script reuses the
+values already in the tenant's `api-gateway-secrets` / `admin-service-secrets`
+and only generates them for a brand-new tenant. Every service that mints or
+verifies a token must share one `JWT_SECRET`, and Helm only restarts the pods
+whose spec changed — a redeploy that minted a fresh secret left api-gateway and
+auth-service verifying against the old one, and every request through the
+ingress answered `401 token signature is invalid` while document-service
+(port-forwarded) still worked. If that happens anyway, confirm the three
+secrets agree and restart the stale Deployments:
+
+```bash
+for s in api-gateway auth-service document-service; do
+  kubectl -n otterworks-incident get secret $s-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d | sha256sum
+done
+kubectl -n otterworks-incident rollout restart deploy/api-gateway deploy/auth-service
 ```
 
 ### Seed, load and read the headers
@@ -233,7 +248,8 @@ document-service's Service listens on 8083. The harness signs its JWT with
 kubectl -n otterworks-incident port-forward svc/document-service 8083:8083 &
 export JWT_SECRET="$(kubectl -n otterworks-incident get secret document-service-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d)"
 INCIDENT_BASE_URL=http://localhost:8083 make incident-seed
-INCIDENT_BASE_URL=http://localhost:8083 make incident-load SCENARIO=n-plus-one DURATION=180
+export INCIDENT_LOAD_SCALE=0.25
+INCIDENT_BASE_URL=https://api-t-incident.demo.otterworks.app make incident-load SCENARIO=n-plus-one DURATION=180
 
 OWNER=6d0c5f5e-7f0f-4a4e-9d0c-1a1c1d3a7000   # incident/scenarios.yaml seed.owner_id
 TOKEN="$(uv run --quiet --with pyjwt==2.9.0 python -c "import jwt,os,time;o='$OWNER';print(jwt.encode({'user_id':o,'sub':o,'exp':int(time.time())+3600},os.environ['JWT_SECRET'],algorithm='HS256'))")"
@@ -241,6 +257,17 @@ curl -s -D - -o /dev/null -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8083/api/v1/documents/?owner_id=$OWNER&page=1&size=100"
 # x-db-queries: 104    x-request-duration-ms: > 1000 while the load runs
 ```
+
+`INCIDENT_LOAD_SCALE=0.25` turns the catalog's 24 rps / 24 concurrency into
+6 / 6. The tenant runs one document-service replica with a 500m CPU limit (one
+uvicorn worker) behind the shared ingress, and the full laptop profile saturates
+it even after the fix — p95 stays in seconds and most requests are shed, which
+says nothing about the query fan-out. At 6 / 6 the before-state still pages
+(104 statements, ~2 s per request, p95 well above the 1 s rule) and the fixed
+build settles at 5 statements and ~150 ms client / ~60 ms server p50, so the
+recovery is visible on the same Grafana panel. The scale is recorded in
+`incident/.state/armed.json` and the load log line; the local Compose gates keep
+the unscaled profile.
 
 ### Shared Grafana, Jaeger, Alertmanager
 
@@ -268,8 +295,9 @@ Slack) and `DocumentListQueryFanout` go active about 1 m after p95 crosses 1 s.
 Branch the fix from `demo-incident` and open the PR with base `demo-incident`.
 Merging it pushes `demo-incident`; `cd-tenant.yml` rebuilds document-service
 (the change is under `services/document-service/**`), re-points
-`tenant-incident` and redeploys `otterworks-incident`. Re-run the load and the
-curl above: the header drops to 5 statements and the alerts resolve.
+`tenant-incident` and redeploys `otterworks-incident`. Re-run the load (same
+`INCIDENT_LOAD_SCALE`) and the curl above: the header drops to 5 statements and
+the alerts resolve.
 
 ## Reset and revert
 

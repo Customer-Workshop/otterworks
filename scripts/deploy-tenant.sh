@@ -20,8 +20,9 @@
 #       [--ttl 8h] [--host-suffix demo.example.com] [--skip-db] \
 #       [--profile core|full]
 #
-# Required env: AWS creds (exported), DB_PASSWORD. Stable JWT_SECRET /
-#   SECRET_KEY_BASE recommended across redeploys (auto-generated if unset).
+# Required env: AWS creds (exported), DB_PASSWORD. JWT_SECRET / SECRET_KEY_BASE
+#   are taken from the environment, else carried over from the tenant's existing
+#   Kubernetes Secrets on a redeploy, else generated for a brand-new tenant.
 # ------------------------------------------------------------------------------
 set -euo pipefail
 
@@ -66,8 +67,6 @@ AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account 
 [ -n "${AWS_ACCOUNT_ID}" ] || { err "Unable to resolve AWS account (are creds exported?)"; exit 1; }
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 DB_PASSWORD="${DB_PASSWORD:?ERROR: DB_PASSWORD must be set}"
-JWT_SECRET="${JWT_SECRET:-$(openssl rand -hex 32)}"
-SECRET_KEY_BASE="${SECRET_KEY_BASE:-$(openssl rand -hex 64)}"
 
 NS="$(tenant_namespace "${ATTENDEE_ID}")"
 T_DB_NAME="$(tenant_db_name "${ATTENDEE_ID}")"
@@ -113,6 +112,28 @@ if [ -z "${KUBERNETES_SERVICE_HOST:-}" ]; then
 fi
 log "Loading shared application-infra Terraform outputs..."
 load_infra_outputs
+
+# ---------- Tenant-wide signing secrets ----------
+# Every service that mints or verifies a token (auth-service, api-gateway,
+# document-service, ...) must share one JWT_SECRET. Helm only restarts the pods
+# whose spec changed, so a redeploy that minted a fresh secret would leave the
+# untouched services verifying against the old one and every request 401s.
+# Reuse what the tenant already runs with unless the caller pins a value.
+existing_tenant_secret() {
+  kubectl -n "${NS}" get secret "$1" -o jsonpath="{.data.$2}" 2>/dev/null | base64 -d 2>/dev/null || true
+}
+if [ -z "${JWT_SECRET:-}" ]; then
+  JWT_SECRET="$(existing_tenant_secret api-gateway-secrets JWT_SECRET)"
+  if [ -n "${JWT_SECRET}" ]; then
+    log "Reusing the tenant's existing JWT_SECRET so issued tokens stay valid across the redeploy"
+  else
+    JWT_SECRET="$(openssl rand -hex 32)"
+  fi
+fi
+if [ -z "${SECRET_KEY_BASE:-}" ]; then
+  SECRET_KEY_BASE="$(existing_tenant_secret admin-service-secrets SECRET_KEY_BASE)"
+  [ -n "${SECRET_KEY_BASE}" ] || SECRET_KEY_BASE="$(openssl rand -hex 64)"
+fi
 
 # ---------- Namespace + isolation guardrails ----------
 log "Creating namespace ${NS} with quota / limits / network policy..."

@@ -213,6 +213,18 @@ aws_account_id() {
   export AWS_ACCOUNT_ID
 }
 
+# Resolve the RDS master password from Secrets Manager when the operator did not export
+# it; teardown-tenant.sh and the verify-clean RDS probe both refuse to certify without it.
+: "${RDS_MASTER_SECRET_ID:=otterworks/dev/rds/master}"
+ensure_db_password() {
+  [ -n "${DB_PASSWORD:-}" ] && return 0
+  [ "${DRY_RUN}" = "1" ] && return 0
+  DB_PASSWORD="$(aws secretsmanager get-secret-value --secret-id "${RDS_MASTER_SECRET_ID}" \
+    --region "${AWS_REGION}" --query SecretString --output text 2>/dev/null | jq -r '.password // empty' 2>/dev/null || true)"
+  if [ -n "${DB_PASSWORD}" ]; then export DB_PASSWORD; dlog "DB_PASSWORD resolved from Secrets Manager ${RDS_MASTER_SECRET_ID}"
+  else dwarn "DB_PASSWORD unset and ${RDS_MASTER_SECRET_ID} unreadable; RDS drop/probe will not run"; fi
+}
+
 ensure_kubeconfig() {
   [ -n "${KUBERNETES_SERVICE_HOST:-}" ] && return 0
   [ "${DRY_RUN}" = "1" ] && return 0

@@ -50,14 +50,14 @@ RG="$(azure_rg "${TOKEN}")"
 require_bins aws kubectl helm terraform jq
 
 if [ "${MODE}" = "verify" ]; then
-  aws_account_id
+  aws_account_id; ensure_db_password
   verify_clean "${TOKEN}" && { dlog "${TOKEN}: clean"; exit 0; }
   die "${TOKEN}: survivors found" 1
 fi
 
 start_transcript "${TOKEN}" destroy
 dlog "destroy token=${TOKEN} namespace=${NS} dry_run=${DRY_RUN} ($(now_utc))"
-aws_account_id; ensure_kubeconfig
+aws_account_id; ensure_kubeconfig; ensure_db_password
 DEMO_BUCKET="$(demo_s3_bucket "${TOKEN}")"
 
 # --- 1. Azure ----------------------------------------------------------------------

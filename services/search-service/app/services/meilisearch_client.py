@@ -257,6 +257,7 @@ class MeiliSearchService:
         """
         scored: dict[str, float] = {}
         errors: list[Exception] = []
+        succeeded = 0
 
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
@@ -270,6 +271,7 @@ class MeiliSearchService:
                 logger.warning("suggest_index_failed", index=index_name, error=str(exc))
                 errors.append(exc)
                 continue
+            succeeded += 1
             for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
                 if not text:
@@ -279,7 +281,7 @@ class MeiliSearchService:
                 if text not in scored or score > scored[text]:
                     scored[text] = score
 
-        if errors and not scored:
+        if errors and not succeeded:
             raise errors[0]
 
         ranked = sorted(scored.items(), key=lambda item: item[1], reverse=True)

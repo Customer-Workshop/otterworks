@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 
 class TestSearchEndpoint:
     """Tests for GET /api/v1/search/."""
@@ -151,6 +153,20 @@ class TestSuggestEndpoint:
         response = client.get("/api/v1/search/suggest?q=te")
         assert response.status_code == 200
         assert response.get_json()["suggestions"] == ["From Docs"]
+
+    def test_suggest_one_index_failing_other_empty_is_not_an_error(self, client, mock_meilisearch_client):
+        """A healthy index with no hits plus a failing index returns [] without raising."""
+        docs_index = mock_meilisearch_client.index.return_value
+        docs_index.search.side_effect = [
+            {"estimatedTotalHits": 0, "hits": []},
+            RuntimeError("files index unavailable"),
+        ]
+
+        with patch("app.api.search.logger") as api_logger:
+            response = client.get("/api/v1/search/suggest?q=zz")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == []
+        api_logger.exception.assert_not_called()
 
     def test_suggest_backend_error_degrades_gracefully(self, client, mock_meilisearch_client):
         """A MeiliSearch failure returns 200 with empty suggestions."""

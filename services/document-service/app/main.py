@@ -7,9 +7,13 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import telemetry
 from app.api import comments, documents, health, templates
 from app.config import settings
-from app.db.session import engine, init_db
+from app.db.migrate import upgrade_to_head
+from app.db.session import async_session, engine
+from app.jobs import stats_rollup
+from app.middleware import request_log
 
 logger = structlog.get_logger()
 
@@ -30,20 +34,14 @@ structlog.configure(
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logger.info("document_service_starting")
-    await init_db()
-
-    if settings.otel_enabled:
-        try:
-            from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-            FastAPIInstrumentor.instrument_app(_app)
-            logger.info("opentelemetry_instrumented")
-        except Exception:
-            logger.exception("opentelemetry_setup_failed")
+    await upgrade_to_head(engine)
+    rollup_task = stats_rollup.start(async_session)
 
     logger.info("document_service_started")
     yield
     logger.info("document_service_shutting_down")
+    if rollup_task is not None:
+        rollup_task.cancel()
     await engine.dispose()
 
 
@@ -55,6 +53,11 @@ app = FastAPI(
     openapi_url="/openapi.json",
     lifespan=lifespan,
 )
+
+telemetry.instrument_engine(engine)
+telemetry.instrument_app(app)
+telemetry.setup_tracing(app, engine)
+request_log.install(app)
 
 app.add_middleware(
     CORSMiddleware,

@@ -6,13 +6,13 @@ import random
 from uuid import UUID
 
 import jwt
-import redis as redis_lib
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.chaos import FLAG_RENDER_CACHE, FLAG_SLOW_QUERIES, flag_active
 from app.db.session import get_db
 from app.schemas.document import (
     DocumentCreate,
@@ -26,6 +26,7 @@ from app.schemas.document import (
 from app.services.document_query_repository import DocumentQueryRepository
 from app.services.document_service import DocumentService
 from app.services.export_archive import ExportArchive
+from app.services.render_cache import render_cache
 from app.services.share_link import ShareLinkService
 
 logger = structlog.get_logger()
@@ -34,32 +35,10 @@ router = APIRouter()
 DEFAULT_SORT = "updated_at"
 DEFAULT_DIRECTION = "desc"
 
-_redis_client: redis_lib.Redis | None = None
-
-
-def _get_redis() -> redis_lib.Redis:
-    """Return a shared Redis client (lazy-initialised)."""
-    global _redis_client
-    if _redis_client is None:
-        host = os.getenv("REDIS_HOST", "localhost")
-        port = int(os.getenv("REDIS_PORT", "6379"))
-        _redis_client = redis_lib.Redis(
-            host=host, port=port, decode_responses=True, socket_timeout=1,
-        )
-    return _redis_client
-
-
-def _chaos_active(key: str) -> bool:
-    """Return True if the given chaos flag is set in Redis."""
-    try:
-        return bool(_get_redis().exists(key))
-    except Exception:
-        return False
-
 
 async def _maybe_inject_latency() -> None:
     """Inject 3-5s delay when the slow_queries chaos flag is active."""
-    if _chaos_active("chaos:document-service:slow_queries"):
+    if flag_active(FLAG_SLOW_QUERIES):
         delay = random.uniform(3.0, 5.0)
         logger.warning("chaos_latency_injected", delay_seconds=round(delay, 2))
         await asyncio.sleep(delay)
@@ -493,7 +472,15 @@ async def export_document(
         raise HTTPException(status_code=404, detail="Document not found")
     _ensure_owner(document, user_id)
 
-    body, content_type = service.export_document(document, format)
+    if flag_active(FLAG_RENDER_CACHE):
+        cached = render_cache.get(document, format)
+        if cached is not None:
+            body, content_type = cached
+        else:
+            body, content_type = service.export_document(document, format)
+            render_cache.put(document, format, body, content_type)
+    else:
+        body, content_type = service.export_document(document, format)
     return PlainTextResponse(content=body, media_type=content_type)
 
 

@@ -90,17 +90,28 @@ derive the rest with `gh pr view`.
    line as printed (`GATE PASSED: …` / `GATE FAILED: …` / `GATE INCONCLUSIVE: …`).
 
    **The gate on the golden `main` is red today**: `report-service` and
-   `notification-service` pin `commons-text` 1.9, inside the advisory range of
-   `security/deps/advisory.yaml` (CVE-2022-42889, fixed in 1.10.0). So:
-   - If the PR bumps `commons-text` (or anything that pulls it), the gate
-     **must** turn green — that is the bump being real.
-   - If the PR does not touch the advisory artifact, run `make deps-gate` on
-     the merge-base too (`git stash`-free: `git worktree add /tmp/base
-     $(git merge-base HEAD origin/main)` and run there). The verdict must be
-     identical — same artifact, same modules, same versions. Report it as
-     `GATE FAILED (pre-existing on main @<sha>, unchanged by this bump)`. A gate
-     that got *worse* (a new module or a new vulnerable path) is the bump's
-     fault and blocks `✅`.
+   `notification-service` pin `commons-text` 1.9 and `legacy-portal` reaches it
+   through `commons-configuration2`, all inside the advisory range of
+   `security/deps/advisory.yaml` (CVE-2022-42889, fixed in 1.10.0). The gate
+   is estate-wide — it scans every module in `modules.yaml`, not just the one
+   the PR touched — so judge it **per module**, against the merge-base. Run
+   `make deps-gate` on the merge-base too (`git worktree add /tmp/base
+   $(git merge-base HEAD origin/main)` and run there) and compare the
+   `<module> -> commons-text:<version> [(via <parent>)]` lines under
+   `GATE FAILED` (also in `security/deps/reports/gate.json` →
+   `verdict.vulnerable`):
+   - Every module whose manifest the PR changes must be **absent** from the
+     PR head's list. A `commons-text` bump in `report-service` that leaves
+     `report-service -> commons-text:1.9` in the list is not real.
+   - Every other line must be **identical** to the merge-base's — same module,
+     same version, same parent. Report that as `GATE FAILED (remaining paths
+     pre-existing on main @<sha>, unchanged by this bump; <module> now clean)`.
+   - A **new** line, or a changed version/parent on a module the PR did not
+     touch, is the bump's fault and blocks `✅`.
+   - `GATE PASSED` (exit 0) is only reachable once the last vulnerable module is
+     bumped; the grouping playbook is where the individual bumps combine to
+     get there. Do not withhold `✅` from a clean module because a sibling is
+     still red.
    `deps-transcript` exit codes: 0 = every contract case identical and every
    attack case neutralized, 1 = a case changed, 2 = inconclusive (unmeasured).
    Treat 2 as a failure to explain, not a pass.

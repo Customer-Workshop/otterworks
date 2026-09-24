@@ -52,7 +52,7 @@ module Api
           description      = annotations[:description].to_s.presence || summary
 
           if status == 'resolved'
-            resolve_incident(affected_service, alert_name)
+            resolve_incident(affected_service, alert_name, labels[:incident_id])
             return nil
           end
 
@@ -102,12 +102,15 @@ module Api
           nil
         end
 
-        def resolve_incident(affected_service, alert_name)
+        # A resolved alert carrying labels.incident_id resolves exactly that
+        # incident; without it, the first active incident for the service.
+        def resolve_incident(affected_service, alert_name, incident_id = nil)
           return if affected_service.blank?
 
-          incident = Incident.where(affected_service: affected_service)
-                             .where(status: %w[open investigating])
-                             .first
+          scope = Incident.where(affected_service: affected_service)
+                          .where(status: %w[open investigating])
+          scope = scope.where(id: incident_id) if incident_id.present?
+          incident = scope.first
           return unless incident
 
           incident.resolve!

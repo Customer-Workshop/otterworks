@@ -182,11 +182,45 @@ TYPE_NAMES = {
 }
 
 
+DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "::1"]
+
+
 class Checker:
     def __init__(self, config: dict[str, Any]):
         self.defaults = config.get("defaults", {})
         self.endpoints = config["endpoints"]
-        self.metric_baseline: dict[str, float] = {}
+        env_hosts = os.environ.get("API_VERIFY_ALLOWED_HOSTS", "")
+        self.allowed_hosts = set(
+            env_hosts.split(",")
+            if env_hosts
+            else self.defaults.get("allowed_hosts", DEFAULT_ALLOWED_HOSTS)
+        )
+        for endpoint in self.endpoints:
+            for url in (endpoint["url"], (endpoint.get("pre") or {}).get("url")):
+                if url:
+                    self.require_allowed_host(endpoint["name"], url)
+
+    def require_allowed_host(self, name: str, url: str) -> None:
+        # The endpoints file drives every request this loop makes, so pin it to the
+        # Compose stack: anything off the allowlist is refused before the first poll.
+        host = urllib.parse.urlsplit(url).hostname or ""
+        if host not in self.allowed_hosts:
+            raise ValueError(
+                f"endpoint {name!r}: host {host!r} is not in allowed_hosts "
+                f"({', '.join(sorted(self.allowed_hosts))}); set defaults.allowed_hosts "
+                "in the endpoints file or API_VERIFY_ALLOWED_HOSTS"
+            )
+
+    def scrape_metrics(
+        self, endpoint: dict[str, Any], headers: dict[str, str], timeout_s: float
+    ) -> dict[str, float | None]:
+        """Baseline scrape of every counter under metric_delta_max, before the pre-action."""
+        metrics = endpoint.get("expect", {}).get("metric_delta_max", {})
+        if not metrics:
+            return {}
+        status, raw, _, error = http_request(endpoint["url"], "GET", headers, None, timeout_s)
+        text = raw.decode("utf-8", errors="replace") if not error and status == 200 else ""
+        return {metric: parse_prometheus_metric(text, metric) for metric in metrics}
 
     def run_pre(self, endpoint: dict[str, Any]) -> str | None:
         pre = endpoint.get("pre")
@@ -213,6 +247,7 @@ class Checker:
         timeout_s = endpoint.get("timeout_s", self.defaults.get("timeout_s", 3))
         failures: list[str] = []
 
+        baseline = self.scrape_metrics(endpoint, headers, timeout_s)
         pre_error = self.run_pre(endpoint)
         if pre_error:
             failures.append(pre_error)
@@ -245,9 +280,12 @@ class Checker:
         document: Any = None
         if needs_json:
             try:
-                document = json.loads(text) if text else None
+                document = json.loads(text) if text.strip() else None
             except json.JSONDecodeError:
                 failures.append(f"body: expected JSON, got {text[:120]!r}")
+            else:
+                if document is None:
+                    failures.append("body: expected a JSON document, got an empty/null body")
         if document is not None:
             for key in expect.get("json_keys", []):
                 if not json_path(document, key)[0]:
@@ -263,19 +301,19 @@ class Checker:
                         f"json.{path}: expected {type_name}, got {type(actual).__name__}"
                     )
 
+        # Delta is measured within this check: baseline scrape -> pre-action -> settle
+        # -> this scrape, so the very first poll catches a rejected probe message too.
         for metric, max_delta in expect.get("metric_delta_max", {}).items():
-            value = parse_prometheus_metric(text, metric)
-            key = f"{name}:{metric}"
-            if value is None:
-                failures.append(f"metric {metric}: not found in response")
-            elif key in self.metric_baseline:
-                delta = value - self.metric_baseline[key]
-                if delta > max_delta:
-                    failures.append(
-                        f"metric {metric}: increased by {delta:g} (max {max_delta}); now {value:g}"
-                    )
-            if value is not None:
-                self.metric_baseline[key] = value
+            before, after = baseline.get(metric), parse_prometheus_metric(text, metric)
+            if before is None or after is None:
+                failures.append(
+                    f"metric {metric}: not found in response (before={before}, after={after})"
+                )
+            elif after - before > max_delta:
+                failures.append(
+                    f"metric {metric}: increased by {after - before:g} (max {max_delta}); "
+                    f"now {after:g}"
+                )
 
         return CheckResult(
             endpoint=name,
@@ -456,12 +494,33 @@ def webhook_trigger(
     return {"session_id": body.get("session_id"), "url": body.get("url")}
 
 
-def admin_alert(
-    service: str, results: list[CheckResult], error_logs: str, firing: bool
-) -> dict[str, Any]:
-    # Grafana-shaped payload for AlertsController#ingest, which creates an Incident and
-    # calls DevinSessionService.create_session itself (visible on the admin dashboard).
-    base = os.environ.get("ADMIN_SERVICE_URL", "http://localhost:8089").rstrip("/")
+def admin_base_url() -> str:
+    return os.environ.get("ADMIN_SERVICE_URL", "http://localhost:8089").rstrip("/")
+
+
+def admin_headers() -> dict[str, str]:
+    return {
+        "Content-Type": "application/json",
+        "X-Alert-Secret": os.environ.get("ALERT_WEBHOOK_SECRET", "demo-alert-secret"),
+    }
+
+
+def admin_ingest(payload: dict[str, Any]) -> dict[str, Any]:
+    status, raw, _, error = http_request(
+        f"{admin_base_url()}/api/v1/admin/alerts/ingest",
+        "POST",
+        admin_headers(),
+        json.dumps(payload).encode(),
+        15,
+    )
+    if error or status is None or status >= 300:
+        raise RuntimeError(f"admin-service alerts/ingest returned {status}: {error or raw[:300]!r}")
+    return json.loads(raw) if raw else {}
+
+
+def admin_alert(service: str, results: list[CheckResult], error_logs: str) -> dict[str, Any]:
+    # Grafana-shaped firing payload for AlertsController#ingest, which creates an Incident
+    # and calls DevinSessionService.create_session itself (visible on the admin dashboard).
     summary = f"API verify: {', '.join(r.endpoint for r in results)} failing on {service}"
     description = "\n".join(
         f"{r.endpoint}: HTTP {r.status} in {r.latency_ms}ms; " + "; ".join(r.failures)
@@ -469,10 +528,10 @@ def admin_alert(
     ) + ("\n\nRecent error logs:\n" + error_logs[-2500:] if error_logs else "")
     payload = {
         "receiver": "api-verify-loop",
-        "status": "firing" if firing else "resolved",
+        "status": "firing",
         "alerts": [
             {
-                "status": "firing" if firing else "resolved",
+                "status": "firing",
                 "labels": {
                     "alertname": "ApiVerifyAssertionFailed",
                     "severity": "critical",
@@ -483,24 +542,42 @@ def admin_alert(
             }
         ],
     }
-    headers = {
-        "Content-Type": "application/json",
-        "X-Alert-Secret": os.environ.get("ALERT_WEBHOOK_SECRET", "demo-alert-secret"),
-    }
-    status, raw, _, error = http_request(
-        f"{base}/api/v1/admin/alerts/ingest", "POST", headers, json.dumps(payload).encode(), 15
-    )
-    if error or status is None or status >= 300:
-        raise RuntimeError(f"admin-service alerts/ingest returned {status}: {error or raw[:300]!r}")
-    body = json.loads(raw) if raw else {}
+    body = admin_ingest(payload)
     incidents = body.get("incidents") or []
     first = incidents[0] if incidents and isinstance(incidents[0], dict) else {}
+    skipped = bool(first.get("skipped", False))
+    # A deduplicated alert reports someone else's already-open incident; only own
+    # what this loop actually created, so recovery never resolves a stranger's.
     return {
         "session_id": None,
         "url": None,
-        "incident_id": first.get("incident_id"),
-        "skipped": first.get("skipped", False),
+        "incident_id": None if skipped else first.get("incident_id"),
+        "skipped": skipped,
     }
+
+
+def admin_resolve_incident(service: str, incident_id: str) -> None:
+    # Resolved alert pinned to the incident this loop opened (labels.incident_id);
+    # without the pin AlertsController would close the first open incident for the
+    # service, which may be someone else's.
+    admin_ingest(
+        {
+            "receiver": "api-verify-loop",
+            "status": "resolved",
+            "alerts": [
+                {
+                    "status": "resolved",
+                    "labels": {
+                        "alertname": "ApiVerifyAssertionFailed",
+                        "affected_service": service,
+                        "incident_id": str(incident_id),
+                    },
+                    "annotations": {"summary": f"API verify: {service} green again"},
+                    "endsAt": now_iso(),
+                }
+            ],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -519,7 +596,14 @@ class ServiceState:
     session_url: str | None = None
     session_status: str | None = None
     pr_url: str | None = None
+    incident_id: str | None = None
     last_failures: list[str] = field(default_factory=list)
+
+
+# Devin session states after which the session will not do more work on its own.
+# With a PR open the fix lands once the operator rebuilds, so the guard stays up;
+# with no PR the session gave up and the loop may try again.
+TERMINAL_SESSION_STATUSES = {"finished", "stopped", "expired", "blocked", "failed"}
 
 
 class Emitter:
@@ -565,21 +649,26 @@ class Loop:
     def state_for(self, service: str) -> ServiceState:
         return self.state.setdefault(service, ServiceState())
 
+    def escalate(self, service: str) -> None:
+        state = self.state_for(service)
+        if state.escalated:
+            return
+        state.escalated = True
+        self.emitter.emit(
+            {
+                "ts": now_iso(),
+                "event": "escalated",
+                "service": service,
+                "attempts": state.attempts,
+                "max_attempts": self.max_attempts,
+                "message": "fix attempts exhausted; needs a human",
+            }
+        )
+
     def trigger(self, service: str, results: list[CheckResult]) -> None:
         state = self.state_for(service)
         if state.attempts >= self.max_attempts:
-            if not state.escalated:
-                state.escalated = True
-                self.emitter.emit(
-                    {
-                        "ts": now_iso(),
-                        "event": "escalated",
-                        "service": service,
-                        "attempts": state.attempts,
-                        "max_attempts": self.max_attempts,
-                        "message": "fix attempts exhausted; needs a human",
-                    }
-                )
+            self.escalate(service)
             return
         state.attempts += 1
         full_logs, error_logs = capture_logs(service)
@@ -605,7 +694,7 @@ class Loop:
             elif self.args.trigger == "webhook":
                 created = webhook_trigger(service, results, prompt, error_logs, state.attempts)
             elif self.args.trigger == "admin":
-                created = admin_alert(service, results, error_logs, firing=True)
+                created = admin_alert(service, results, error_logs)
             else:
                 created = {"session_id": None, "url": None, "dry_run": True}
         except Exception as exc:
@@ -617,6 +706,8 @@ class Loop:
         state.open_incident = True
         state.session_id = created.get("session_id")
         state.session_url = created.get("url")
+        state.session_status = None
+        state.incident_id = created.get("incident_id")
         self.emitter.emit(
             {
                 "ts": now_iso(),
@@ -650,12 +741,33 @@ class Loop:
                 event["pr_url"] = state.pr_url
                 event["rebuild"] = " ".join(compose_command() + ["up", "-d", "--build", service])
             self.emitter.emit(event)
+        if (state.session_status or "").lower() in TERMINAL_SESSION_STATUSES and not state.pr_url:
+            self.release(service, f"session {state.session_status} without a PR")
+
+    def release(self, service: str, reason: str) -> None:
+        # The session is over with nothing to rebuild and the endpoint is still
+        # red: drop the guard so the next failing poll retries, or escalate now.
+        state = self.state_for(service)
+        state.open_incident = False
+        state.session_id = None
+        self.emitter.emit(
+            {
+                "ts": now_iso(),
+                "event": "attempt_failed",
+                "service": service,
+                "attempt": state.attempts,
+                "max_attempts": self.max_attempts,
+                "reason": reason,
+            }
+        )
+        if state.attempts >= self.max_attempts:
+            self.escalate(service)
 
     def resolve(self, service: str) -> None:
         state = self.state_for(service)
-        if self.args.trigger == "admin":
+        if self.args.trigger == "admin" and state.incident_id:
             try:
-                admin_alert(service, [], "", firing=False)
+                admin_resolve_incident(service, state.incident_id)
             except Exception as exc:
                 self.emitter.emit(
                     {
@@ -676,6 +788,8 @@ class Loop:
             }
         )
         state.open_incident = False
+        state.incident_id = None
+        state.session_id = None
 
     def pass_once(self) -> bool:
         results = self.checker.run_all()
@@ -800,9 +914,13 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     config = json.loads(args.config.read_text())
     if args.only:
+        only = {item.strip() for value in args.only for item in value.split(",") if item.strip()}
         config["endpoints"] = [
-            e for e in config["endpoints"] if e["name"] in args.only or e["service"] in args.only
+            e for e in config["endpoints"] if e["name"] in only or e["service"] in only
         ]
+        if not config["endpoints"]:
+            print(f"--only {sorted(only)} matched no endpoint", file=sys.stderr)
+            return 2
     if (
         args.trigger == "devin"
         and not args.once
@@ -819,7 +937,12 @@ def main(argv: list[str]) -> int:
         return 2
     emitter = Emitter(args.json, args.report)
     try:
-        return Loop(args, Checker(config), emitter).run()
+        checker = Checker(config)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    try:
+        return Loop(args, checker, emitter).run()
     except KeyboardInterrupt:
         return 130
 

@@ -96,9 +96,12 @@ demo does not depend on waiting for the weekly schedule.
 **Second gap: the golden `main` is intentionally vulnerable.** `report-service`,
 `notification-service` and (transitively) `legacy-portal` pin `commons-text` 1.9
 (CVE-2022-42889, fixed in 1.10.0). `make deps-gate` is red on `main` by design.
-The verify playbook handles this: a PR that bumps `commons-text` must turn the gate
-green; a PR that does not touch it must leave the gate byte-identical to `main`'s
-and say so. The best demo PR is therefore the real bump: `commons-text 1.9 → 1.10.0`.
+The gate is estate-wide, so the verify playbook judges it per module against the
+merge-base: the module a PR bumps must drop out of the `GATE FAILED` list, and the
+other lines must be unchanged (`pre-existing on main, unchanged; <module> now clean`).
+Only the combined PR that bumps the last consumer turns the gate fully green. The
+best demo PR is therefore the real bump: `commons-text 1.9 → 1.10.0` in one module,
+with the grouping step assembling the rest.
 
 ### 1.2 One-time Devin setup (≈10 min, before the audience arrives)
 
@@ -247,14 +250,21 @@ How the loop closes: every poll emits one structured line per endpoint
 | `--trigger` | Path | When to use |
 |---|---|---|
 | `devin` (default) | Devin API `POST /v3/organizations/$DEVIN_ORG_ID/sessions`, then polls `GET …/sessions/{id}` and prints status + PR URL as they appear | the direct demo |
-| `admin` | Grafana-shaped alert to admin-service `POST /api/v1/admin/alerts/ingest` → `Incident` → `DevinSessionService.create_session` | show the existing alert→incident→Devin path and the Incidents page |
+| `admin` | Grafana-shaped alert to admin-service `POST /api/v1/admin/alerts/ingest` → `Incident` → `DevinSessionService.create_session`; on recovery a `resolved` alert pinned with `labels.incident_id` closes only the incident the loop opened | show the existing alert→incident→Devin path and the Incidents page |
 | `webhook` | `POST $DEVIN_WEBHOOK_URL` with `X-Webhook-Secret` and the same payload shape as the GitHub workflows | when the audience has already seen automations |
 | `none` | dry run: prompt file only | rehearsal without spending a session |
 
-`MAX_FIX_ATTEMPTS` (env, default 2) caps sessions per service; the loop prints
-`ESCALATED` and stops calling Devin after that. Recovery = two consecutive green
-polls (`--recover-threshold`) → `RECOVERED … loop closed`; `--until-green` exits 0
-at that point.
+`MAX_FIX_ATTEMPTS` (env, default 2) caps sessions per service. A session that
+ends (`finished`/`stopped`/`expired`/`blocked`) without a PR counts as a failed
+attempt (`attempt_failed` event) and the next red poll starts another; past the
+cap the loop prints `ESCALATED` and stops calling Devin. Recovery = two
+consecutive green polls (`--recover-threshold`) → `RECOVERED … loop closed`;
+`--until-green` exits 0 at that point.
+
+The endpoints file is the only thing that decides where the loop sends requests,
+so hosts are allowlisted: `localhost`/`127.0.0.1`/`::1` by default, overridable
+with `defaults.allowed_hosts` in the file or `API_VERIFY_ALLOWED_HOSTS=a,b`. An
+off-list host fails at startup (exit 2) before any request is made.
 
 ### 2.2 Fault injection — the four scenarios
 
@@ -298,20 +308,26 @@ make api-verify-loop ONLY=search-service            # TRIGGER=devin by default
 ```bash
 make chaos SERVICE=search-service SCENARIO=suggest_500
 ```
+(Inject from the shell, not the dashboard, if you want to keep Terminal 1 in
+focus. The Demo Controls page only tracks flags it set itself: a shell-injected
+flag does not show an active badge, and a badge set from the UI stays lit after
+`make chaos-reset` until you click **Reset All**. Existing UI behaviour, not the
+poller.)
+
 *Expected in Terminal 1, within ~10 s:*
 
 ```
-… FAIL search-suggest  search-service  HTTP 500  12ms  status: expected 200, got 500; json.query: expected 'test', got None; json.suggestions: expected list, got NoneType
+… FAIL search-suggest  search-service  HTTP 500  12ms  status: expected 200, got 500; body: expected JSON, got '<!doctype html>\n<html lang=en>\n<title>500 Internal Server Error</title>…'
 … FAIL search-suggest  …
-… LOGS_CAPTURED service=search-service lines=200 error_lines=3
+… LOGS_CAPTURED service=search-service lines=200 error_lines=32
 … DEVIN_TRIGGERED service=search-service mode=devin attempt=1 max_attempts=2 session_id=devin-… url=https://…/sessions/…
 ```
 
 Open `.api-verify-prompts/search-service-attempt1.md` on the projector — this is
 exactly what Devin received: repo, affected Compose service, the failing
-endpoint with expected vs actual, the response body
-(`{"error": "KeyError: '_rankingScore'"}`), the error lines from the container
-log, the full log tail, and the rebuild command
+endpoint with expected vs actual, the response body (Flask's HTML 500 page —
+the `KeyError: '_rankingScore'` is in the log lines, not the body), the error
+lines from the container log, the full log tail, and the rebuild command
 `docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d --build search-service`.
 
 If you used `TRIGGER=admin`, also open <http://localhost:4200/incidents>: a new
@@ -386,9 +402,10 @@ of Cognition-Partner-Workshops/otterworks and one service is now failing its ass
 
 Affected service: `search-service` (services/search-service/)
 Failing endpoint(s), expected vs actual:
-- search-suggest: HTTP 500, 12ms — status: expected 200, got 500; json.suggestions: expected list, got NoneType
-  body: {"error": "KeyError: '_rankingScore'"}
-Recent error lines from `docker compose logs search-service`: …
+- search-suggest: HTTP 500, 12ms — status: expected 200, got 500; body: expected JSON, got '<!doctype html>…'
+  body: <!doctype html><html lang=en><title>500 Internal Server Error</title>…
+Recent error lines from `docker compose logs search-service`:
+  KeyError: '_rankingScore'  …
 Full log tail: …
 
 Investigate the code path that produces the wrong status/body, fix it (keep the chaos flag —
@@ -415,9 +432,11 @@ This is fix attempt 1 of 2.
    review". In this repo they also should **not** be merged afterwards: `main`
    is the golden app and deliberately keeps the `commons-text` 1.9 pin and the
    planted admin-service bug.
-4. **The gate on `main` is red on purpose** (CVE-2022-42889). The verify
-   playbook distinguishes "pre-existing, unchanged" from "made worse"; only a
-   `commons-text` bump can turn it green.
+4. **The gate on `main` is red on purpose** (CVE-2022-42889). The gate scans
+   every module, so the verify playbook judges it per module against the
+   merge-base ("bumped module now clean, remaining paths pre-existing and
+   unchanged" vs "made worse"); it turns fully green only once every
+   `commons-text` consumer is bumped, normally in the combined PR.
 5. **Webhook URLs and secrets are per-Devin-org.** `DEVIN_DEPS_VERIFY_WEBHOOK_URL`
    and `DEVIN_DEPS_GROUP_WEBHOOK_URL` are GitHub variables that must be set for
    the target org (§0); an unset URL fails the workflow with a clear `::error::`.

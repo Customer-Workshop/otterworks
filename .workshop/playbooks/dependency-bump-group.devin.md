@@ -117,10 +117,15 @@ step 1; more PRs may have been verified (or closed) since.
    Record exit codes and the `TESTS PASSED` / `GATE PASSED` /
    `TRANSCRIPT PASSED` lines. The gate on the golden `main` is red today
    (`commons-text` 1.9 in `report-service`, `notification-service` and, via
-   `commons-configuration2`, `legacy-portal`): if the combined branch does not
-   bump that artifact, the gate must be **identical** to the merge-base's and
-   the PR body says `pre-existing on main, unchanged`; if it does, the gate must
-   be green. If anything else is red, bisect by removing the most
+   `commons-configuration2`, `legacy-portal`) and it is estate-wide, so apply
+   the same per-module rule as the verify playbook: compare the
+   `<module> -> commons-text:<version>` lines under `GATE FAILED` with the
+   merge-base's. Every module a grouped PR bumps must be absent from the
+   combined head's list; every remaining line must be identical to the
+   merge-base's, and the PR body says `remaining paths pre-existing on main,
+   unchanged; <modules> now clean`. `GATE PASSED` is required only when the
+   group covers the last vulnerable module (e.g. all three `commons-text`
+   consumers bumped together). If anything else is red, bisect by removing the most
    recently added PR from the branch and re-running until green; every PR you
    drop goes into the excluded list with the failing line that excluded it.
    Never edit source to make a combination pass — the individual PR is the place
@@ -158,9 +163,10 @@ The work is done when all of these hold:
   reason.
 - No group splits a shared version property across two PRs.
 - `make deps-tests` and `make deps-transcript` exit 0 on the combined branch
-  head; `make deps-gate` exits 0 or is verbatim-identical to the merge-base
-  (pre-existing advisory, not touched by the group); the verdict lines are in
-  the PR body.
+  head; `make deps-gate` exits 0, or its `GATE FAILED` list contains none of
+  the modules the group bumps and is otherwise verbatim-identical to the
+  merge-base's (pre-existing advisory in modules the group does not touch);
+  the verdict lines are in the PR body.
 - Exactly one combined PR exists per grouping run, against the default branch,
   and it is **not** merged or approved by Devin.
 - Each included original PR has the one-line pointer comment.

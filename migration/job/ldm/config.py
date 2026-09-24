@@ -27,7 +27,7 @@ BASE_TOP_LEVEL_KEYS = {
     "report",
     "tables",
 }
-OVERLAY_TOP_LEVEL_KEYS = {"namespace", "extends", "migrate", "azure", "purge", "execution", "batch"}
+OVERLAY_TOP_LEVEL_KEYS = {"namespace", "extends", "migrate", "azure", "purge", "execution", "batch", "run_token"}
 
 
 def validate_token(token: str) -> tuple[str, str]:

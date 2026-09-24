@@ -53,6 +53,15 @@ def test_run_token_must_match_namespace(tmp_path: Path) -> None:
         load_manifest(base, "d24-after")
 
 
+def test_overlay_may_override_run_token_for_throwaway_namespace(tmp_path: Path) -> None:
+    base = make_manifest_tree(tmp_path, "zz1")
+    (base.parent / "manifests" / "zz9-after.yaml").write_text(
+        "namespace: zz9-after\nrun_token: zz9\nextends: ../manifest.yaml\nmigrate: true\nazure: true\npurge: true\n",
+        encoding="utf-8",
+    )
+    assert load_manifest(base, "zz9-after").manifest.run_token == "zz9"
+
+
 def test_missing_overlay_is_config_error(tmp_path: Path) -> None:
     base = make_manifest_tree(tmp_path, "zz1")
     with pytest.raises(ConfigError):

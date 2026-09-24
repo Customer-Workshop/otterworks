@@ -263,7 +263,9 @@ if [ "${WANT_AZURE}" = "true" ]; then
   # Schema + ledger bootstrap (`python -m ldm init`, §9.1). Idempotent. The
   # migration stages are started later by `make demo-migrate`.
   export LDM_JOB_IMAGE="${JOB_IMAGE}"
-  run_stage_job "${TOKEN}" init "$(default_run_id)" "${TRANSCRIPT_DIR}/ldm-init.log" || wiring_rc=$?
+  # The chart names the idempotent init Job ldm-init-<token> (no run id), so the token is the
+  # run-id argument here; job_name() must produce the same name the chart renders.
+  run_stage_job "${TOKEN}" init "${TOKEN}" "${TRANSCRIPT_DIR}/ldm-init.log" || wiring_rc=$?
   stage_end "${wiring_rc}"
 fi
 

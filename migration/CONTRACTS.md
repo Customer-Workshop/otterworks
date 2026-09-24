@@ -158,7 +158,7 @@ the given base; `run_token` != `RUN`; the base contains `purge`, `migrate`, `azu
 | Path | Type | Req | Meaning |
 |---|---|---|---|
 | `schema_version` | int | yes | `1` |
-| `run_token` | string | yes | `RUN` part of every token this base serves |
+| `run_token` | string | yes | `RUN` part of every token this base serves; a throwaway overlay (`<x>-after`) MAY override it with its own `RUN` part |
 | `source.driver` | enum `db2` | yes | selects the source adapter in `ldm` |
 | `source.connection_env.{host,port,database,user,password}` | env var names | yes | §9.2 |
 | `source.unload_command` | list of strings | yes | argv template; placeholders `{table}`, `{key_from}`, `{key_to}`, `{out_file}`, `{namespace}`, `{run_id}` |

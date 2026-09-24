@@ -254,8 +254,7 @@ class MeiliSearchService:
         first). The score is only present when ``showRankingScore`` is set,
         so hits without it fall back to a score of 0 rather than failing.
         """
-        ranked: list[tuple[float, str]] = []
-        seen: set[str] = set()
+        best_scores: dict[str, float] = {}
 
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
@@ -266,12 +265,14 @@ class MeiliSearchService:
             })
             for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
-                if text and text not in seen:
-                    ranked.append((self._ranking_score(hit), text))
-                    seen.add(text)
+                if not text:
+                    continue
+                score = self._ranking_score(hit)
+                if text not in best_scores or score > best_scores[text]:
+                    best_scores[text] = score
 
-        ranked.sort(key=lambda item: item[0], reverse=True)
-        return [text for _, text in ranked[:size]]
+        ranked = sorted(best_scores.items(), key=lambda item: item[1], reverse=True)
+        return [text for text, _ in ranked[:size]]
 
     @staticmethod
     def _ranking_score(hit: dict[str, Any]) -> float:

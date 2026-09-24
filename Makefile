@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record
+.PHONY: help infra-up infra-down up down build test test-coverage test-api-flows test-api-flows-collect lint deploy-dev teardown-dev seed wait-for-db security-scan test-report build-report testdata-validate testdata-clean testdata-setup-schema batch-usage-rollup batch-usage-rollup-seed dev-backend dev-web dev-admin dev-android dev-electron dast-list dast-scan dast-verify dast-baseline dast-zap procs-validate procs-up procs-down procs-record procs-list procs-parity procs-rules-gate insurance-up insurance-down insurance-test deps-inventory deps-gate deps-command deps-transcript deps-transcript-baseline deps-tests deps-record dast-coverage dast-routes dast-test eq-list eq-gate eq-baseline eq-verify eq-exploit eq-exploit-refactored eq-tests eq-record demo-up demo-migrate demo-destroy demo-verify-clean demo-reaper
 
 SHELL := /bin/bash
 
@@ -429,3 +429,34 @@ eq-tests: ## Run the affected module's own suite against the recorded pass list
 eq-record: ## Record the before-state as the reference evidence (REASON="..." required)
 	@test -n "$(REASON)" || (echo 'REASON is required, e.g. make eq-record REASON="baseline before OW-SEC-401 refactor"' >&2; exit 2)
 	$(EQ) record --reason "$(REASON)" $(if $(FINDING),--finding $(FINDING),) $(if $(ALLOW_RERECORD),--allow-rerecord,)
+
+# ---------------------------------------------------------------------------
+# Legacy data migration demo (Db2 on EKS -> Azure SQL), ops unit.
+# Token NS=<run>-<before|after> (e.g. d24-before); see migration/CONTRACTS.md §12
+# and docs/demos/legacy-data-migration.md. DRY_RUN=1 prints commands only.
+# ---------------------------------------------------------------------------
+DEMO_NS_RE = ^[a-z][a-z0-9]{1,11}-(before|after)$$
+define demo_require_ns
+	@test -n "$(NS)" || (echo 'NS is required, e.g. make $(1) NS=d24-after' >&2; exit 2)
+	@echo "$(NS)" | grep -Eq '$(DEMO_NS_RE)' || (echo "NS='$(NS)' must match $(DEMO_NS_RE) and never main" >&2; exit 2)
+endef
+
+demo-up: ## Deploy one demo namespace: tenant + Db2 seed (+ Azure when overlay azure: true). NS=<token> [TTL=72h IMAGE_TAG=..]
+	$(call demo_require_ns,demo-up)
+	./scripts/deploy-demo.sh up $(NS) $(if $(TTL),--ttl $(TTL),) $(if $(IMAGE_TAG),--image-tag $(IMAGE_TAG),) $(if $(HOST_SUFFIX),--host-suffix $(HOST_SUFFIX),) $(if $(filter 1,$(DRY_RUN)),--dry-run,)
+
+demo-migrate: ## Run the staged migration Jobs for NS=<token> RUN_ID=<id>; streams logs, copies report to .demo/<token>/<run_id>/
+	$(call demo_require_ns,demo-migrate)
+	@test -n "$(RUN_ID)" || (echo 'RUN_ID is required, e.g. make demo-migrate NS=d24-after RUN_ID=$(shell date -u +r%Y%m%d%H%M%S)' >&2; exit 2)
+	@bash -c 'set -euo pipefail; source scripts/lib/demo-common.sh; start_transcript "$(NS)" "migrate-$(RUN_ID)"; demo_migrate "$(NS)" "$(RUN_ID)"'
+
+demo-destroy: ## Destroy everything for NS=<token> (Azure + Helm + tenant + S3 + demo-aws) and verify nothing tagged remains
+	$(call demo_require_ns,demo-destroy)
+	./scripts/demo-destroy.sh $(NS) $(if $(filter 1,$(DRY_RUN)),--dry-run,)
+
+demo-verify-clean: ## Exit 0 iff no AWS/Azure resource tagged namespace=NS and no otterworks-NS namespace remain
+	$(call demo_require_ns,demo-verify-clean)
+	./scripts/demo-destroy.sh verify $(NS)
+
+demo-reaper: ## Report (default) or destroy (APPLY=1) expired demo namespaces across AWS, Azure and the cluster
+	./scripts/demo-reaper.sh $(if $(filter 1,$(APPLY)),--apply,--dry-run)

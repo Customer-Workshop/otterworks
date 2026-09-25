@@ -393,7 +393,9 @@ endif
 	$(AIRBYTE_TF) state pull > $$BACKUP; \
 	TF_VAR_namespace=$(NS) $(AIRBYTE_TF) state rm airbyte_source_s3.billing_landing; \
 	if ! TF_VAR_namespace=$(NS) $(AIRBYTE_TF) import -input=false airbyte_source_s3.billing_landing $$SOURCE_ID; then \
-	  echo "import failed; restoring previous state" >&2; $(AIRBYTE_TF) state push -force $$BACKUP; exit 1; \
+	  echo "import failed; restoring previous state" >&2; \
+	  if ! $(AIRBYTE_TF) state push -force $$BACKUP; then trap - EXIT; echo "restore failed; state snapshot kept at $$BACKUP (contains credentials) for manual 'terraform state push'" >&2; fi; \
+	  exit 1; \
 	fi; \
 	TF_VAR_namespace=$(NS) $(AIRBYTE_TF) apply -input=false -auto-approve -target=airbyte_source_s3.billing_landing -target=airbyte_connection.billing
 

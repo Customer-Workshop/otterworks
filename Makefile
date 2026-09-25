@@ -389,13 +389,12 @@ endif
 	SCHEMA=$$($(AIRBYTE_TF) output -raw destination_schema); \
 	case "$$SCHEMA" in *.airbyte_$(NS)) ;; *) echo "initialised state is for '$$SCHEMA', not NS=$(NS); run make tp-airbyte-init NS=$(NS) first" >&2; exit 1;; esac; \
 	SOURCE_ID=$$($(AIRBYTE_TF) output -raw source_id); \
-	BACKUP=$$(mktemp -t airbyte-$(NS)-XXXXXX); \
+	BACKUP=$$(mktemp -t airbyte-$(NS)-XXXXXX); trap 'rm -f $$BACKUP' EXIT; \
 	$(AIRBYTE_TF) state pull > $$BACKUP; \
 	TF_VAR_namespace=$(NS) $(AIRBYTE_TF) state rm airbyte_source_s3.billing_landing; \
 	if ! TF_VAR_namespace=$(NS) $(AIRBYTE_TF) import -input=false airbyte_source_s3.billing_landing $$SOURCE_ID; then \
-	  echo "import failed; restoring state from $$BACKUP" >&2; $(AIRBYTE_TF) state push -force $$BACKUP; exit 1; \
+	  echo "import failed; restoring previous state" >&2; $(AIRBYTE_TF) state push -force $$BACKUP; exit 1; \
 	fi; \
-	rm -f $$BACKUP; \
 	TF_VAR_namespace=$(NS) $(AIRBYTE_TF) apply -input=false -auto-approve -target=airbyte_source_s3.billing_landing -target=airbyte_connection.billing
 
 tp-pain-mongodb: ## Beat 1 opener: "just add a field" blast radius on the Oracle estate (NS=<namespace>; needs oracle-billing-up + oracle-billing-seed)

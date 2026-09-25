@@ -11,6 +11,24 @@ resource "airbyte_source_custom" "custbill_fixedwidth" {
   configuration = jsonencode({
     feed_urls = var.custbill_feed_urls
   })
+
+  # Every feed URL must be an HTTPS object URL in this run's landing bucket
+  # under <ns>/custbill_feed/, and there must be at least one. Rejects an unset
+  # secret (which would full-refresh the target to empty), another namespace's
+  # files, and any host other than the landing bucket.
+  lifecycle {
+    precondition {
+      condition = length(local.custbill_feed_url_list) > 0 && alltrue([
+        for u in local.custbill_feed_url_list :
+        can(regex("^https://${aws_s3_bucket.landing.bucket}\\.s3[.-][a-z0-9-]+\\.amazonaws\\.com/${var.namespace}/custbill_feed/[^/?]+\\.dat(\\?.*)?$", u))
+      ])
+      error_message = "custbill_feed_urls must be one or more presigned HTTPS URLs for objects under s3://${aws_s3_bucket.landing.bucket}/${var.namespace}/custbill_feed/*.dat."
+    }
+  }
+}
+
+locals {
+  custbill_feed_url_list = [for u in split("\n", var.custbill_feed_urls) : trimspace(u) if trimspace(u) != ""]
 }
 
 resource "airbyte_connection" "custbill" {

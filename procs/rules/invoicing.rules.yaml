@@ -1,0 +1,184 @@
+module: invoicing
+# Derived from services/legacy-billing/db/procs/invoicing.sql and the six
+# recorded transcripts under procs/transcripts/invoicing/. Every decision is
+# pending: nothing here is approved until a named reviewer fills in
+# decision.status / reviewer / date and an explicit `answer` for each question.
+rules:
+  - id: INVOICING-001
+    statement: >-
+      An invoice preview always returns exactly five lines in fixed order
+      (1 plan, 2 usage, 3 regional tax, 4 local tax, 5 credit). The plan line
+      is priced at the monthly fee of the latest-starting subscription that
+      overlaps the period (starts_on <= period_end and ends_on null or
+      >= period_start), with the plan code as its description and no
+      proration. The usage line is the rating module's overage_amount for the
+      same tenant and period (billing.fn_usage_rating), described as
+      "usage overage". Both amounts are rounded to 2 decimals and their total
+      equals their amount.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [23, 50]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [line_no, line_type, description, amount, total]
+    confidence: high
+    scenarios: [INVOICE-001]
+    question: >-
+      (a) When no subscription overlaps the period the procedure still returns
+      five lines with NULL amounts (observed on the running legacy stack:
+      tenant 1, 2025-06). Should the service reproduce the NULL lines, return
+      an empty preview, or reject the request?
+      (b) A subscription that starts mid-period is chosen over one that
+      covered the start of the period and the full monthly fee is charged
+      with no proration. Is charging the full fee of the newer plan the
+      intended behaviour after a mid-period plan change?
+      (c) The usage line depends on billing.fn_usage_rating, which belongs to
+      the still-pending rating module. Should the invoicing service call a
+      rating-service endpoint, embed a copy of the rating rules, or is the
+      module boundary to be redrawn so rating ships first?
+    decision:
+      status: pending
+  - id: INVOICING-002
+    statement: >-
+      Tax is 8.25% of (monthly fee + usage overage), computed on the
+      unrounded sum, and split into two equal halves rendered as line 3
+      "regional tax" and line 4 "local tax". Each half is emitted unrounded
+      in the preview (e.g. 2.02125). For a tax-exempt tenant both tax lines
+      are still emitted with amount 0. The tax_amount column is 0 on every
+      line regardless of tenant; tax is carried only in the amount column of
+      the two tax lines.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [39, 54]
+    inputs: [tenant_id, period_start, period_end, tenants.tax_exempt]
+    outputs: [line_type, amount, tax_amount, total]
+    confidence: medium
+    scenarios: [INVOICE-002]
+    question: >-
+      (a) Rounding: the preview emits each half unrounded, but issuing rounds
+      each half separately and sums them (INVOICING-005). For a fee of 49.09
+      that yields tax 4.04 while rounding the whole tax gives 4.05 (verified on
+      the running legacy stack). Which is the rule the service must keep:
+      round-each-half (legacy) or round-the-whole?
+      (b) The 8.25% rate and the 50/50 regional/local split are hard-coded.
+      Should the service keep them as constants, or is a configurable rate
+      table an accepted change?
+      (c) tax_amount is always 0 and tax-exempt tenants still receive two
+      zero tax lines. Keep both quirks for parity, or drop the dead column and
+      the zero lines as an accepted behaviour change?
+    decision:
+      status: pending
+  - id: INVOICING-003
+    statement: >-
+      The credit line applies the lesser of the tenant's total open credit
+      (sum of remaining_amount over every credit note with remaining_amount
+      > 0, with no filter on issued_on) and the invoice gross rounded to 2
+      decimals, where gross = monthly fee + overage + unrounded tax. In the
+      preview the credit line has amount 0, credit_applied = the applied
+      amount and total = its negative. A tenant with 60.00 open credit against
+      a 53.04 gross therefore gets 53.04 applied and an issued total of 0.00.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [56, 58]
+    inputs: [tenant_id, credit_notes.remaining_amount, monthly_fee, overage_amount, tax]
+    outputs: [credit_applied, total]
+    confidence: high
+    scenarios: [INVOICE-003]
+    question: >-
+      (a) The cap is computed on the unrounded tax while the issued invoice's
+      tax is the sum of two separately rounded halves (INVOICING-005). When
+      the two differ by a cent the issued total can be +0.01 or -0.01 for a
+      fully credited invoice, and a negative total violates the invoices.total
+      >= 0 constraint. Should the service cap on the rounded tax instead
+      (accepted change) or reproduce the legacy arithmetic exactly?
+      (b) Credit notes are applied regardless of issued_on, so a note issued
+      after period_end (or in a future period) is consumed by this invoice.
+      Is that intended, or should only notes issued on or before period_end
+      count?
+    decision:
+      status: pending
+  - id: INVOICING-004
+    statement: >-
+      When an invoice is issued, the applied credit is drawn from the
+      tenant's open credit notes in ascending issued_on order, ties broken by
+      ascending id. Each note's remaining_amount becomes
+      GREATEST(remaining_amount - outstanding, 0) and the outstanding credit
+      is reduced by that note's prior remaining_amount, stopping as soon as
+      the outstanding credit reaches 0. Two 30.00 notes dated the same day
+      against 53.04 applied leave the lower id at 0.00 and the higher id at
+      6.96.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [127, 138]
+    inputs: [tenant_id, credit_notes.issued_on, credit_notes.id, credit_notes.remaining_amount, credit_applied]
+    outputs: [credit_notes.remaining_amount]
+    confidence: medium
+    scenarios: [INVOICE-004]
+    question: >-
+      (a) Tie-breaking on the uuid id is arbitrary (uuids are not
+      chronological). Is "same issued_on -> lower id first" the rule to keep,
+      or should ties be broken on another column (created order, amount)?
+      (b) No record links a credit note to the invoice it was applied to; the
+      only trace is the reduced remaining_amount. Must the service persist a
+      credit-application record (accepted addition) or keep the legacy
+      shape exactly?
+    decision:
+      status: pending
+  - id: INVOICING-005
+    statement: >-
+      Issuing an invoice first finalizes rating for the period
+      (billing.sp_finalize_rating), then upserts one invoice whose id is
+      derived deterministically from the tenant and period_start
+      (period_id = md5(tenant_id || period_start), invoice_id =
+      md5(period_id || 'invoice')), with status 'issued' and issued_at =
+      period_end at midnight. The five preview lines are deleted and
+      re-inserted with ids md5(invoice_id || line_no); plan, usage and tax
+      lines store their preview amount and the credit line stores the
+      negative applied credit. subtotal = sum of rounded plan and usage
+      amounts, tax = sum of each tax half rounded to 2 decimals, total =
+      round(subtotal + tax - credit_applied, 2).
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [85, 125]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [invoices.status, invoices.issued_at, invoices.subtotal, invoices.tax, invoices.total, invoice_lines]
+    confidence: medium
+    scenarios: [INVOICE-005]
+    question: >-
+      (a) Idempotency: re-issuing the same tenant and period rewrites the
+      invoice but also draws down the remaining credit notes again. Verified
+      on the running legacy stack for tenant 9: first issue total 0.00 with
+      6.96 credit left, second issue total 46.08 with 0.00 credit left. Is
+      the service required to reproduce this, or is "re-issue is a no-op /
+      rejected once issued" an accepted behaviour change?
+      (b) The invoice key uses period_start only, so issuing the same start
+      with a different period_end overwrites the same invoice while keeping
+      the first call's issued_at (ON CONFLICT updates only status). Keep, or
+      key on the full period?
+      (c) issued_at is period_end at 00:00 (server timezone, UTC on the
+      fixture) rather than the time of issue. Keep as the invoice date?
+      (d) The upsert forces status back to 'issued' even if the row was
+      'paid' or 'overdue'. Intended?
+      (e) Issuing writes billing.rating_periods / rating_results through the
+      pending rating module. Same boundary question as INVOICING-001(c).
+    decision:
+      status: pending
+  - id: INVOICING-006
+    statement: >-
+      Reading an invoice's lines returns the persisted invoice_lines rows for
+      that invoice ordered by ascending line_no, exposing only line_no,
+      line_type, description and amount. An unknown invoice id yields an
+      empty result, not an error.
+    source:
+      file: services/legacy-billing/db/procs/invoicing.sql
+      lines: [62, 75]
+    inputs: [invoice_id]
+    outputs: [line_no, line_type, description, amount]
+    confidence: high
+    scenarios: [INVOICE-006]
+    question: >-
+      Should the service return 200 with an empty list for an unknown
+      invoice id (legacy behaviour) or 404? Note the credit line is only
+      visible through its negative amount, since tax_amount, credit_applied
+      and total are not persisted.
+    decision:
+      status: pending

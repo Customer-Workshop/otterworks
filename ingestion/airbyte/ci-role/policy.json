@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformState",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::otterworks-terraform-state/ow-tp/airbyte/*"
+    },
+    {
+      "Sid": "TerraformStateList",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::otterworks-terraform-state"
+    },
+    {
+      "Sid": "LandingBuckets",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::ow-tp-airbyte-*",
+        "arn:aws:s3:::ow-tp-airbyte-*/*"
+      ]
+    },
+    {
+      "Sid": "LandingReaderIam",
+      "Effect": "Allow",
+      "Action": "iam:*",
+      "Resource": [
+        "arn:aws:iam::599083837640:user/ow-tp-airbyte-*",
+        "arn:aws:iam::599083837640:policy/ow-tp-airbyte-*"
+      ]
+    },
+    {
+      "Sid": "Identity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    }
+  ]
+}

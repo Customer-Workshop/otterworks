@@ -130,7 +130,9 @@ Environment: `AIRBYTE_WORKSPACE_ID`, `AIRBYTE_CLIENT_ID`, `AIRBYTE_CLIENT_SECRET
 (Airbyte Cloud → Settings → Applications), `DATABRICKS_DEMO_HOST`,
 `DATABRICKS_DEMO_TOKEN` (recon queries), `TF_VAR_databricks_client_id` /
 `TF_VAR_databricks_client_secret` (the destination's OAuth2 service principal),
-AWS credentials for the landing bucket and Terraform state.
+AWS credentials for the landing bucket and Terraform state. CI uses the
+`ow-tp-airbyte-github-actions` OIDC role (`ingestion/airbyte/ci-role/`), passed as
+the `AWS_TP_ROLE_ARN` repository secret.
 
 ## Gotchas found in the pre-run
 

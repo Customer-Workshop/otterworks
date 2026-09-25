@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 
 namespace OtterWorks.AuditService.Archive;
 
@@ -151,4 +152,8 @@ public abstract class AdoArchiveEventStore : IArchiveEventStore
 
     protected static string Str(DbDataReader reader, string column) =>
         reader.IsDBNull(reader.GetOrdinal(column)) ? string.Empty : reader.GetString(reader.GetOrdinal(column));
+
+    // SMALLINT columns (VERSION_NO) surface as Int16 from both providers; GetInt32 throws on them.
+    protected static int Int(DbDataReader reader, string column) =>
+        Convert.ToInt32(reader.GetValue(reader.GetOrdinal(column)), CultureInfo.InvariantCulture);
 }

@@ -47,7 +47,7 @@ public sealed class AzureSqlArchiveEventStore : AdoArchiveEventStore
         return new ArchiveVersionRow
         {
             ArchKey = Db2Text.RTrim(archKey),
-            VersionNo = reader.GetInt32(reader.GetOrdinal("VERSION_NO")),
+            VersionNo = Int(reader, "VERSION_NO"),
             RetentionClass = Db2Text.RTrim(Str(reader, "RETENTION_CLASS")),
             LastAccessTs = Db2Text.Timestamp12(ts, tail),
             StorageCharge = Db2Text.Decimal8(reader.GetDecimal(reader.GetOrdinal("STORAGE_CHARGE"))),

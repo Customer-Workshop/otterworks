@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl libxml2 li
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /out .
+ENV LD_LIBRARY_PATH=/app/clidriver/lib
 
 RUN useradd -u 1001 -m appuser
 USER appuser

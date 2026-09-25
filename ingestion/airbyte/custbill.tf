@@ -20,7 +20,7 @@ resource "airbyte_source_custom" "custbill_fixedwidth" {
     precondition {
       condition = length(local.custbill_feed_url_list) > 0 && alltrue([
         for u in local.custbill_feed_url_list :
-        can(regex("^https://${aws_s3_bucket.landing.bucket}\\.s3[.-][a-z0-9-]+\\.amazonaws\\.com/${var.namespace}/custbill_feed/[^/?]+\\.dat(\\?.*)?$", u))
+        can(regex("^https://${aws_s3_bucket.landing.bucket}\\.s3([.-][a-z0-9-]+)?\\.amazonaws\\.com/${var.namespace}/custbill_feed/[^/?]+\\.dat(\\?.*)?$", u))
       ])
       error_message = "custbill_feed_urls must be one or more presigned HTTPS URLs for objects under s3://${aws_s3_bucket.landing.bucket}/${var.namespace}/custbill_feed/*.dat."
     }
@@ -28,7 +28,8 @@ resource "airbyte_source_custom" "custbill_fixedwidth" {
 }
 
 locals {
-  custbill_feed_url_list = [for u in split("\n", var.custbill_feed_urls) : trimspace(u) if trimspace(u) != ""]
+  # Same whitespace split as the connector's partition router (config['feed_urls'].split()).
+  custbill_feed_url_list = [for u in regexall("\\S+", var.custbill_feed_urls) : u]
 }
 
 resource "airbyte_connection" "custbill" {

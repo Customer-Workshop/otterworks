@@ -118,6 +118,8 @@ export interface ArchiveHash {
 
 export interface PeerConfig {
   peer_app_url: string;
+  /** Same-origin path nginx proxies to the peer (e.g. /peer); empty when there is no peer. */
+  peer_proxy_url?: string;
 }
 
 export const MIG_ISSUES: readonly string[] = [

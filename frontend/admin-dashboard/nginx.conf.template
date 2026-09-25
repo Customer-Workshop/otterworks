@@ -1,5 +1,6 @@
 # Rendered by the nginx image's envsubst at container start (see Dockerfile); only
-# ${PEER_APP_URL} is substituted, nginx's own $variables are left alone.
+# ${PEER_*} variables are substituted, nginx's own $variables are left alone.
+# PEER_PROXY_URL / PEER_UPSTREAM are derived from PEER_APP_URL by 15-peer.envsh.
 server {
     listen 4200;
     server_name localhost;
@@ -16,12 +17,23 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # Peer deployment base URL for the Migration page's Before/After panel (empty = no peer).
+    # Peer deployment for the Migration page's Before/After panel (empty = no peer).
+    # peer_proxy_url is the same-origin path below, so the browser never makes a
+    # cross-origin request and the peer's gateway sees this session's bearer token.
     location = /config/peer.json {
         access_log off;
         default_type application/json;
         add_header Cache-Control "no-store";
-        return 200 '{"peer_app_url":"${PEER_APP_URL}"}';
+        return 200 '{"peer_app_url":"${PEER_APP_URL}","peer_proxy_url":"${PEER_PROXY_URL}"}';
+    }
+
+    # /peer/api/v1/... -> ${PEER_APP_URL}/api/v1/... (the peer's public host; its ingress
+    # forwards /api to its api-gateway). Without a peer this points at ourselves and
+    # peer.json says so, so nothing calls it.
+    location /peer/ {
+        proxy_pass ${PEER_UPSTREAM}/;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 
     location /health {

@@ -58,7 +58,7 @@ const rtrim = (s: string): string => s.replace(/ +$/, '');
             <mat-label>Peer deployment (PEER_APP_URL)</mat-label>
             <input matInput name="peerUrl" [value]="peerUrl" readonly placeholder="not configured" />
             <mat-hint *ngIf="!peerUrl">No peer configured: only this deployment is shown</mat-hint>
-            <mat-hint *ngIf="peerUrl">Set by the operator at deploy time; the session token is only sent to this host</mat-hint>
+            <mat-hint *ngIf="peerUrl">Set by the operator at deploy time; peer reads go through this host's /peer proxy</mat-hint>
           </mat-form-field>
           <button mat-raised-button color="primary" type="submit" [disabled]="!docId || loading">
             <mat-icon>search</mat-icon> Compare
@@ -78,7 +78,7 @@ const rtrim = (s: string): string => s.replace(/ +$/, '');
             <h3>
               {{ side.label }}
               <span class="store" *ngIf="side.document">{{ side.document.store }}</span>
-              <span class="base" *ngIf="side.baseUrl">{{ side.baseUrl }}</span>
+              <span class="base" *ngIf="side.baseUrl">{{ peerUrl }}</span>
               <span class="base" *ngIf="!side.baseUrl">this deployment</span>
             </h3>
             <mat-spinner diameter="28" *ngIf="side.loading"></mat-spinner>
@@ -160,6 +160,8 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
   @Input() autoLoad = false;
 
   peerUrl = '';
+  /** Base the peer is actually fetched from: the same-origin proxy path when nginx provides one. */
+  private peerRequestBase = '';
   loading = false;
   sides: ArchiveSide[] = [];
   verdict: 'match' | 'mismatch' | 'unknown' | null = null;
@@ -180,9 +182,10 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
   constructor(private api: MigrationApiService) {}
 
   ngOnInit(): void {
-    this.api.peerAppUrl().subscribe(url => {
+    this.api.peerConfig().subscribe(cfg => {
       if (!this.peerUrl) {
-        this.peerUrl = url;
+        this.peerUrl = cfg.peer_app_url;
+        this.peerRequestBase = cfg.peer_proxy_url || cfg.peer_app_url;
       }
       if (this.autoLoad && this.docId) {
         this.load();
@@ -210,7 +213,8 @@ export class ArchiveCompareComponent implements OnInit, OnChanges {
       { label: 'This deployment', baseUrl: '', loading: true, error: null, document: null, hash: null },
     ];
     if (peer) {
-      this.sides.push({ label: 'Peer deployment', baseUrl: peer, loading: true, error: null, document: null, hash: null });
+      const base = this.peerRequestBase || peer;
+      this.sides.push({ label: 'Peer deployment', baseUrl: base, loading: true, error: null, document: null, hash: null });
     }
 
     forkJoin(this.sides.map(side => this.fetchSide(id, side))).subscribe(() => {

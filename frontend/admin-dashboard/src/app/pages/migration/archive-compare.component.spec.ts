@@ -54,6 +54,23 @@ describe('ArchiveCompareComponent', () => {
     expect(component.differs(component.sides[0].document!.versions[0], 'owner_name')).toBeFalse();
   });
 
+  it('reads the peer through the same-origin proxy when nginx provides one', () => {
+    component.docId = 'DOC-42';
+    component.autoLoad = true;
+    fixture.detectChanges();
+    http.expectOne('/config/peer.json').flush({ peer_app_url: 'https://peer.example', peer_proxy_url: '/peer' });
+
+    http.expectOne('/api/v1/reports/archive/documents/DOC-42').flush(doc('azuresql', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001'));
+    http.expectOne('/api/v1/reports/archive/documents/DOC-42/hash').flush({ document_hash: 'h1' });
+    http.expectOne('/peer/api/v1/reports/archive/documents/DOC-42').flush(doc('db2', 'LOPEZ, M.', '2015-07-02-08.00.00.000000000001'));
+    http.expectOne('/peer/api/v1/reports/archive/documents/DOC-42/hash').flush({ document_hash: 'h1' });
+    fixture.detectChanges();
+
+    expect(component.sides.length).toBe(2);
+    expect(component.peerUrl).toBe('https://peer.example');
+    expect(component.verdict).toBe('match');
+  });
+
   it('highlights fields and events that differ between deployments', () => {
     component.docId = 'DOC-42';
     component.peerUrl = 'https://peer.example/';

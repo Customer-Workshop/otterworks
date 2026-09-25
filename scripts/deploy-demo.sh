@@ -286,6 +286,7 @@ if [ "${WANT_AZURE}" = "true" ]; then
     | apply_secret_from_stdin "${NS}" "${LDM_AZURE_SECRET}" "${TOKEN}"
   unset AZSQL_PASSWORD AZ_STORAGE_KEY AZSQL_READER_PASSWORD
   wire_archive_store "${NS}" || wiring_rc=$?
+  trust_peer_tokens "${TOKEN}" || wiring_rc=$?
   # Schema + ledger bootstrap (`python -m ldm init`, §9.1). Idempotent. The
   # migration stages are started later by `make demo-migrate`.
   export LDM_JOB_IMAGE="${JOB_IMAGE}"

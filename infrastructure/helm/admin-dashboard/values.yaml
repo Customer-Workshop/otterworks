@@ -54,3 +54,10 @@ config: {}
 # Sensitive configuration rendered into {{ .Release.Name }}-secrets (Opaque,
 # stringData) and injected via envFrom. Populate at deploy time; never commit values.
 secrets: {}
+
+# Base URL of the peer deployment (web or API host) for the Migration page's Before/After
+# panel, e.g. https://t-d24-before.otterworks.app on the AFTER deployment. nginx proxies
+# /peer/ to it same-origin, so the browser's session token reaches the peer's gateway; that
+# gateway must trust it (api-gateway secrets.JWT_PEER_SECRET = this deployment's JWT_SECRET).
+# Empty = no peer; the page then only shows this deployment's archive document.
+peerAppUrl: ""

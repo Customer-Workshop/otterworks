@@ -1,0 +1,161 @@
+{{- if .Values.initJob.enabled }}
+{{- $db := include "db2-archive.dbName" . -}}
+{{- /*
+Post-install/upgrade hook. Db2 LOAD reads the fixed-width files server-side, and the Db2 image has no
+Python 3.12, so the job (a) generates the SEED-SPEC files with the Python 3.12 generator into a
+work volume, then (b) streams them plus DDL + load.sh into the db2-archive-0 pod and runs load.sh
+there as db2inst1 via `kubectl exec`. load.sh is a no-op once its seed marker is present, so re-running the hook on upgrade is safe.
+*/ -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: db2-archive-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: db2-archive-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    # `kubectl wait pod/db2-archive-0` = GET, then LIST + WATCH with fieldSelector metadata.name; RBAC
+    # evaluates all three against resourceNames, so no other pod in the namespace is readable.
+    verbs: ["get", "list", "watch"]
+    resourceNames: ["db2-archive-0"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+    resourceNames: ["db2-archive-0"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: db2-archive-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: db2-archive-init
+subjects:
+  - kind: ServiceAccount
+    name: db2-archive-init
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db2-archive-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: {{ .Values.initJob.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.initJob.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "db2-archive.labels" . | nindent 8 }}
+        ldm/role: db2-seed
+        ldm/db2-client: "true"
+    spec:
+      serviceAccountName: db2-archive-init
+      restartPolicy: Never
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: generate
+          image: {{ .Values.initJob.seedImage | quote }}
+          workingDir: /src
+          command: ["python3", "-m", "seed", "--out", "/work/seed", "--scale", {{ .Values.initJob.scale | quote }}]
+          resources:
+            {{- toYaml .Values.initJob.resources | nindent 12 }}
+          volumeMounts:
+            - name: seed-src
+              mountPath: /src/seed
+              readOnly: true
+            - name: work
+              mountPath: /work
+      containers:
+        - name: load
+          image: {{ .Values.initJob.kubectlImage | quote }}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              ns={{ .Release.Namespace }}
+              echo "waiting for db2-archive-0 to be ready (up to {{ .Values.initJob.waitForDb2Seconds }}s)"
+              kubectl -n "$ns" wait --for=condition=Ready pod/db2-archive-0 --timeout={{ .Values.initJob.waitForDb2Seconds }}s
+              echo "shipping seed files, DDL and load.sh into db2-archive-0:/seed"
+              # ConfigMap mounts are symlink farms (load.sh -> ..data/load.sh): dereference, ship regular files.
+              kubectl -n "$ns" exec db2-archive-0 -c db2 -- bash -c 'rm -rf /seed/data /seed/ddl /seed/bin && mkdir -p /seed && chown db2inst1 /seed'
+              tar -C /work/seed -cf - . | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/data && tar -xf - -C /seed/data'
+              tar -C /ddl -chf - --exclude='..*' . | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/ddl && tar -xf - -C /seed/ddl'
+              tar -C /bin-src -chf - load.sh | kubectl -n "$ns" exec -i db2-archive-0 -c db2 -- bash -c 'mkdir -p /seed/bin && tar -xf - -C /seed/bin && chmod 0755 /seed/bin/load.sh && chown -R db2inst1 /seed'
+              echo "running load.sh as db2inst1 (DB2_DATABASE={{ $db }})"
+              kubectl -n "$ns" exec db2-archive-0 -c db2 -- su - db2inst1 -c "DB2_DATABASE={{ $db }} LDM_DDL_DIR=/seed/ddl /seed/bin/load.sh /seed/data"
+              kubectl -n "$ns" exec db2-archive-0 -c db2 -- bash -c 'rm -rf /seed/data/*.asc'
+              echo "db2-archive-init: done"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: work
+              mountPath: /work
+              readOnly: true
+            - name: ddl
+              mountPath: /ddl
+              readOnly: true
+            - name: seed-src
+              mountPath: /bin-src
+              readOnly: true
+      volumes:
+        - name: seed-src
+          configMap:
+            name: db2-archive-seed
+            defaultMode: 0555
+        - name: ddl
+          configMap:
+            name: db2-archive-ddl
+        - name: work
+          emptyDir:
+            sizeLimit: {{ .Values.initJob.workVolumeSize }}
+{{- end }}

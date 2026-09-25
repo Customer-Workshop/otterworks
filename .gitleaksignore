@@ -1,0 +1,6 @@
+# Azure Container Apps references secrets by *name* (`password_secret_name`, the job's
+# secret_env map): "registry-password" / "azsql-admin-password" are identifiers of entries in
+# the app's secret block, not values. Fingerprints are commit-scoped; re-add if the file moves.
+3e3bb913f964e56dc9a9e16d4130abbc690c008d:infrastructure/terraform/azure/containerapps.tf:hashicorp-tf-password:60
+3e3bb913f964e56dc9a9e16d4130abbc690c008d:infrastructure/terraform/azure/containerapps.tf:hashicorp-tf-password:143
+3e3bb913f964e56dc9a9e16d4130abbc690c008d:infrastructure/terraform/azure/containerapps.tf:hashicorp-tf-password:171

@@ -1,0 +1,38 @@
+{{- /* Static PersistentVolume over the EBS volume ops Terraform created (CONTRACTS.md §12.4). Cluster-scoped, so it
+     carries the demo labels for demo-destroy / verify-clean and is kept when the release is uninstalled. */ -}}
+{{- if .Values.pv.create }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ required "pv.volumeName is required" .Values.pv.volumeName | quote }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+    helm.sh/resource-policy: keep
+spec:
+  capacity:
+    storage: {{ .Values.pv.size | quote }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  volumeMode: Filesystem
+  claimRef:
+    namespace: {{ .Release.Namespace }}
+    name: db2-archive-data
+  csi:
+    driver: ebs.csi.aws.com
+    volumeHandle: {{ required "pv.volumeId (EBS volume id) is required when pv.create is true" .Values.pv.volumeId | quote }}
+    fsType: ext4
+  {{- if .Values.pv.zone }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: topology.ebs.csi.aws.com/zone
+              operator: In
+              values:
+                - {{ .Values.pv.zone | quote }}
+  {{- end }}
+{{- end }}

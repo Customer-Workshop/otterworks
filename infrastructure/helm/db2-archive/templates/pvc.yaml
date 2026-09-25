@@ -1,0 +1,19 @@
+{{- /* Static binding only: the PV (EBS gp3) is created by ops Terraform; storageClassName "" disables dynamic provisioning. */ -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db2-archive-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "db2-archive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "db2-archive.annotations" . | nindent 4 }}
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  volumeName: {{ required "pv.volumeName (the static PV created by Terraform) is required" .Values.pv.volumeName | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.pv.size | quote }}

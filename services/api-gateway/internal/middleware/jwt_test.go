@@ -260,6 +260,34 @@ func TestJWTAuth_WrongSecret(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+func TestJWTAuth_PeerSecretAccepted(t *testing.T) {
+	cfg := JWTConfig{
+		Secret:     testSecret,
+		PeerSecret: "peer-secret",
+		PublicPath: DefaultPublicPaths(),
+		PrefixPath: DefaultPrefixPaths(),
+	}
+
+	claims := JWTClaims{
+		UserID: "peer-user",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+		},
+	}
+
+	handler := JWTAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	for secret, want := range map[string]int{"peer-secret": http.StatusOK, testSecret: http.StatusOK, "other": http.StatusUnauthorized} {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/reports/archive/documents/DOC-1", nil)
+		req.Header.Set("Authorization", "Bearer "+generateTestToken(t, secret, claims))
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		assert.Equal(t, want, rec.Code, "signed with %q", secret)
+	}
+}
+
 func TestJWTAuth_MalformedAuthHeader(t *testing.T) {
 	cfg := JWTConfig{
 		Secret:     testSecret,

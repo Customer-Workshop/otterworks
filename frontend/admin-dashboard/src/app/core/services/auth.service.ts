@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { tap, delay, map } from 'rxjs/operators';
+import { tap, delay, map, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 export interface AuthUser {
@@ -15,6 +15,12 @@ export interface AuthUser {
 interface LoginResponse {
   user: AuthUser;
   token: string;
+}
+
+/** auth-service AuthResponse as proxied by the gateway at /api/v1/auth/login. */
+interface GatewayLoginResponse {
+  accessToken: string;
+  user: { id: string; email: string; displayName: string };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,10 +44,13 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  /**
+   * Signs in against the tenant gateway so the stored bearer token is one the backends accept;
+   * falls back to the offline mock user when no gateway is reachable (local dev, static demos).
+   */
   login(email: string, password: string): Observable<AuthUser> {
-    // In production, this would call the real API:
-    // return this.http.post<LoginResponse>('/api/v1/admin/auth/login', { email, password })
-    return this.mockLogin(email, password).pipe(
+    return this.gatewayLogin(email, password).pipe(
+      catchError(() => this.mockLogin(email, password)),
       tap(user => {
         localStorage.setItem(this.TOKEN_KEY, user.token);
         localStorage.setItem(this.USER_KEY, JSON.stringify(user));
@@ -67,6 +76,18 @@ export class AuthService {
       }
     }
     return null;
+  }
+
+  private gatewayLogin(email: string, password: string): Observable<AuthUser> {
+    return this.http.post<GatewayLoginResponse>('/api/v1/auth/login', { email, password }).pipe(
+      map(res => ({
+        id: res.user.id,
+        email: res.user.email,
+        displayName: res.user.displayName || 'Admin User',
+        role: 'admin',
+        token: res.accessToken,
+      })),
+    );
   }
 
   private mockLogin(email: string, password: string): Observable<AuthUser> {

@@ -1,0 +1,155 @@
+# Legacy data migration manifest (base). Schema: CONTRACTS.md §4. Values here are shared by every
+# namespace; per-namespace switches (migrate, azure, purge, execution) live ONLY in manifests/<token>.yaml.
+# A base manifest containing a `purge` key is a configuration error (exit 4).
+
+schema_version: 1
+run_token: d24
+
+source:
+  driver: db2                                   # enum: db2
+  connection_env:
+    host: DB2_HOST
+    port: DB2_PORT
+    database: DB2_DATABASE
+    user: DB2_USER
+    password: DB2_PASSWORD
+  unload_command: ["migration/source/unload/run.sh", "{table}", "{key_from}", "{key_to}", "{out_file}"]
+  copybook_dir: migration/source/copybooks
+  record_format:
+    recfm: F                                    # fixed length, no record terminator
+    text_encoding: ascii                        # CHAR columns without FOR BIT DATA
+    bit_data_encoding: cp037                    # default decoding for FOR BIT DATA columns mapped to text
+
+target:
+  provider: azuresql                            # enum: azuresql
+  connection_env:
+    server: AZSQL_SERVER
+    database: AZSQL_DATABASE
+    user: AZSQL_USER
+    password: AZSQL_PASSWORD
+    auth_mode: AZSQL_AUTH                       # sql | managed-identity
+    managed_identity_client_id: AZURE_CLIENT_ID
+  ddl_dir: migration/target/sql
+  typemap: migration/job/typemaps/db2-to-azuresql.yaml
+
+staging:
+  connection_env:
+    storage_account: AZ_STORAGE_ACCOUNT
+    container: AZ_STAGING_CONTAINER
+    local_dir: LOCAL_STAGING_DIR
+  blob_prefix: "{namespace}/{run_id}/"
+
+batch:
+  extract_range_rows: 50000                     # rows per key range = per unload file
+  load_batch_rows: 5000
+  validate_batch_rows: 20000
+  purge_batch_rows: 1000
+
+selection_sets:
+  closed-7y: [FIN7, LGL7, HRS7, TAX7, AUD7, F07R, L07R]
+
+report:
+  sessions_glob: migration/sessions/*.yaml
+  issue_register: demos/app/complexity-manifest.json
+
+tables:
+  - name: RETNPLCY
+    schema: ARCHIVE
+    role: reference                             # migrated in full, validated, never purged
+    order: 1
+    copybook: RETNPLCY.cpy
+    record_length: 128
+    field_map:
+      RP-POLICY-CD: POLICY_CODE
+      RP-POLICY-DESC: POLICY_DESC
+      RP-RET-YEARS: RETENTION_YEARS
+      RP-SUCCESSOR-CD: SUCCESSOR_CODE
+      RP-ACTIVE-FLG: ACTIVE_FLAG
+      RP-DISP-ACTION: DISPOSITION_ACTION
+      RP-EFFECTIVE-TS: EFFECTIVE_TS
+    key_columns: [POLICY_CODE]
+    hash_columns: [POLICY_CODE, POLICY_DESC, RETENTION_YEARS, SUCCESSOR_CODE, ACTIVE_FLAG, DISPOSITION_ACTION, EFFECTIVE_TS]
+    selection:
+      all: true
+    type_overrides:
+      POLICY_DESC: {target_type: "NVARCHAR(60)", trim: right}
+
+  - name: DOCARCH
+    schema: ARCHIVE
+    role: data
+    order: 2
+    copybook: DOCARCH.cpy
+    record_length: 256
+    field_map:                                  # derivation: migration/source/copybooks/FIELD-DERIVATION.md
+      DA-AKEY: ARCH_KEY
+      DA-DOCI: DOC_ID
+      DA-VSEQ: VERSION_NO
+      DA-RCLS: RETENTION_CLASS
+      DA-LACC: LAST_ACCESS_TS
+      DA-SCHG: STORAGE_CHARGE
+      DA-AMT2: UNIT_RATE
+      DA-TXT1: OWNER_NAME
+      DA-DAT1: DISPOSITION_DT
+      DA-FLG1: LEGAL_HOLD_FLAG
+      DA-CD01: CHECKSUM_ALG
+      DA-HSH1: CONTENT_SHA256
+      DA-CNT1: BYTE_SIZE
+      DA-SRC: SOURCE_SYS
+    key_columns: [ARCH_KEY]
+    hash_columns: [ARCH_KEY, DOC_ID, VERSION_NO, RETENTION_CLASS, LAST_ACCESS_TS, STORAGE_CHARGE, UNIT_RATE, OWNER_NAME, DISPOSITION_DT, LEGAL_HOLD_FLAG, CONTENT_SHA256, BYTE_SIZE]
+    selection:
+      retention_classes: closed-7y
+      class_column: RETENTION_CLASS
+      last_access_column: LAST_ACCESS_TS
+      last_access_before: "2019-01-01-00.00.00.000000000000"
+    class_totals:
+      class_column: RETENTION_CLASS
+      sum_columns: [STORAGE_CHARGE]
+      source_class_resolution:                  # system-of-record class for a retired code
+        lookup_table: RETNPLCY
+        lookup_key: POLICY_CODE
+        successor_column: SUCCESSOR_CODE
+    type_overrides:
+      ARCH_KEY: {target_type: "NVARCHAR(16)", trim: right}
+      UNIT_RATE: {target_type: "DECIMAL(18,8)"}
+      OWNER_NAME: {target_type: "NVARCHAR(40)", trim: right, encoding: cp037}
+      DISPOSITION_DT: {target_type: "DATE", encoding: cp037, format: "YYYYMMDD"}
+      RETENTION_CLASS:
+        value_map: {F07R: LGL7, L07R: FIN7, H07R: HRS7}   # retired-code consolidation
+
+  - name: FILEAUD
+    schema: ARCHIVE
+    role: data
+    order: 3
+    copybook: FILEAUD.cpy
+    record_length: 160
+    field_map:
+      FA-AUD-KEY: AUDIT_KEY
+      FA-ARCH-KEY: ARCH_KEY
+      FA-EVT-TYPE: EVENT_TYPE
+      FA-EVT-TS: EVENT_TS
+      FA-ACTOR: ACTOR_ID
+      FA-RET-CLASS: RETENTION_CLASS
+      FA-DISP-CD: DISPOSITION_CODE
+      FA-CLIENT-IP: CLIENT_IP
+      FA-DETAIL: DETAIL_TEXT
+    key_columns: [AUDIT_KEY]
+    hash_columns: [AUDIT_KEY, ARCH_KEY, EVENT_TYPE, EVENT_TS, ACTOR_ID, RETENTION_CLASS, DISPOSITION_CODE, CLIENT_IP, DETAIL_TEXT]
+    selection:
+      retention_classes: closed-7y
+      class_column: RETENTION_CLASS
+      last_access_column: EVENT_TS
+      last_access_before: "2019-01-01-00.00.00.000000000000"
+      parent:
+        table: DOCARCH
+        columns: [ARCH_KEY]                     # child columns
+        references: [ARCH_KEY]                  # parent key columns
+    class_totals:
+      class_column: RETENTION_CLASS
+      sum_columns: []
+    type_overrides:
+      ARCH_KEY: {target_type: "NVARCHAR(16)", trim: right}
+      CLIENT_IP: {target_type: "NVARCHAR(15)", trim: right}
+      DETAIL_TEXT: {target_type: "NVARCHAR(40)", trim: right}
+      RETENTION_CLASS:
+        value_map: {F07R: LGL7, L07R: FIN7, H07R: HRS7}

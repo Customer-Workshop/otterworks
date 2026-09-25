@@ -7,12 +7,16 @@ RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /out
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
-RUN apk --no-cache add curl
+# glibc-based runtime: the IBM Db2 .NET provider (Net.IBM.Data.Db2-lnx) ships native
+# libraries that do not load on musl/Alpine.
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+RUN apt-get update && apt-get install -y --no-install-recommends curl libxml2 libicu72 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /out .
+ENV LD_LIBRARY_PATH=/app/clidriver/lib
 
-RUN adduser -D -u 1001 appuser
+RUN useradd -u 1001 -m appuser
 USER appuser
 
 EXPOSE 8090

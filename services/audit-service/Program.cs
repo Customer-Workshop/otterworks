@@ -4,6 +4,7 @@ using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using OtterWorks.AuditService.Archive;
 using OtterWorks.AuditService.Config;
 using OtterWorks.AuditService.Controllers;
 using OtterWorks.AuditService.Middleware;
@@ -70,6 +71,10 @@ builder.Services.AddSingleton<IAuditRepository, DynamoDbAuditRepository>();
 builder.Services.AddSingleton<IAuditArchiver, S3AuditArchiver>();
 builder.Services.AddSingleton<IAuditService, OtterWorks.AuditService.Services.AuditService>();
 
+// Archive read path (legacy data migration): feature off unless ARCHIVE_STORE is set
+builder.Services.AddSingleton(ArchiveStoreOptions.FromEnvironment(Environment.GetEnvironmentVariable));
+builder.Services.AddSingleton<ArchiveStoreRegistry>();
+
 // SNS/SQS Consumer background service
 builder.Services.AddHostedService<SnsConsumer>();
 
@@ -129,6 +134,7 @@ app.MapGet("/metrics", async () =>
 
 // Map audit API endpoints via controller
 app.MapAuditEndpoints();
+app.MapArchiveEndpoints();
 
 app.Run();
 

@@ -30,6 +30,9 @@ type Config struct {
 
 	// JWT
 	JWTSecret string
+	// Optional second HMAC key tokens are also accepted under: the peer deployment's
+	// JWT_SECRET, so its admin dashboard can read this deployment's archive.
+	JWTPeerSecret string
 
 	// CORS
 	CORSAllowedOrigins []string
@@ -74,7 +77,8 @@ func Load() *Config {
 
 		RateLimitRPS: getEnvInt("RATE_LIMIT_RPS", 100),
 
-		JWTSecret: getEnv("JWT_SECRET", ""),
+		JWTSecret:     getEnv("JWT_SECRET", ""),
+		JWTPeerSecret: getEnv("JWT_PEER_SECRET", ""),
 
 		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:4200", "https://localhost", "capacitor://localhost"}),
 		CORSAllowedMethods: getEnvSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),

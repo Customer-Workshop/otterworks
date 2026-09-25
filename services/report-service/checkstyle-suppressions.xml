@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<!-- Pre-existing golden-app sources are exempt; new code must be clean. -->
+<suppressions>
+    <suppress files="controller[\\/]ReportController\.java" checks="LineLength"/>
+    <suppress files="service[\\/]ReportDataFetcher\.java" checks="LineLength"/>
+    <suppress files="service[\\/]ReportGenerationWorker\.java" checks="UnusedImports"/>
+    <suppress files="controller[\\/]ReportControllerIntegrationTest\.java" checks="UnusedImports"/>
+    <suppress files="service[\\/]PdfReportGeneratorTest\.java" checks="UnusedImports"/>
+</suppressions>

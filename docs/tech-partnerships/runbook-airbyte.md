@@ -74,7 +74,7 @@ Run record (NS=demo, 2026-09-25): the field list is `var.hashed_fields`
 (`_hashed`); `pipeline.tf` fans it out into eight `hashing` mappers on the
 stream. `terraform plan` showed exactly one change (the connection); apply, two
 manual syncs (jobs 107421576 and 107421927, both `succeeded` via the jobs API),
-and the recon rerun took about 25 minutes wall clock, most of it sync time
+and the recon rerun took roughly 35 minutes wall clock, most of it sync time
 (~2.5 min per sync) and the Airbyte Cloud login. `sync_and_recon.py` now also
 proves, from `ow_tp.information_schema.columns` and a `COUNT_IF(col RLIKE
 '^[0-9a-f]{64}$')` per column, that the plaintext columns are gone and every

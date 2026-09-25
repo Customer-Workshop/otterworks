@@ -88,3 +88,37 @@ variable "streams" {
     entity_attr_value = { sync_mode = "full_refresh_overwrite" }
   }
 }
+
+variable "google_sheets_spreadsheet_url" {
+  description = "Share link of the billing export spreadsheet (same sheet the Fivetran connector read)."
+  type        = string
+  default     = "https://docs.google.com/spreadsheets/d/1OiNyOfHhBBDy0xyTBWduyo8kSnjMQOjPFSmJEfToF80"
+}
+
+variable "google_sheets_tabs" {
+  description = "Spreadsheet tabs landed as streams (one Databricks table each)."
+  type        = list(string)
+  default     = ["customers", "invoices"]
+}
+
+variable "google_sheets_credentials" {
+  description = <<-EOT
+    Google auth for the Sheets source, from env only (TF_VAR_google_sheets_credentials).
+    Either a service-account JSON, or the OAuth client + refresh token that Airbyte's
+    consent flow produced. Ignored after creation (see gsheets.tf).
+  EOT
+  type = object({
+    service_account_json = optional(string)
+    oauth_client_id      = optional(string, "managed-by-airbyte-oauth")
+    oauth_client_secret  = optional(string, "managed-by-airbyte-oauth")
+    oauth_refresh_token  = optional(string, "managed-by-airbyte-oauth")
+  })
+  default   = {}
+  sensitive = true
+}
+
+variable "gsheets_sync_cron" {
+  description = "Quartz cron for the Google Sheets connection; every 6 hours, matching the Fivetran schedule."
+  type        = string
+  default     = "0 0 0/6 * * ? UTC"
+}

@@ -1,0 +1,62 @@
+{
+  "kind": "recon-report",
+  "unit": "airbyte-gsheets-billing-export",
+  "namespace": "demo",
+  "generated_at": "2026-09-25T05:48:14+00:00",
+  "run_mode": "live",
+  "target": "ow_tp.airbyte_demo",
+  "airbyte_connection_id": "73b36724-4586-445c-a5e9-e67bdb8921d0",
+  "airbyte_job_ids": [
+    107437233,
+    107437579
+  ],
+  "wall_clock_seconds": 253,
+  "checks": [
+    {
+      "id": "rowcount:customers",
+      "expected": 50,
+      "actual": 50,
+      "source_of_truth": "google sheet tab 'customers' via CSV export (9 columns, 6 distinct names)",
+      "result": "pass"
+    },
+    {
+      "id": "rowcount:invoices",
+      "expected": 200,
+      "actual": 200,
+      "source_of_truth": "google sheet tab 'invoices' via CSV export (7 columns, 7 distinct names)",
+      "result": "pass"
+    },
+    {
+      "id": "airbyte-job:107437233",
+      "expected": "succeeded",
+      "actual": "succeeded",
+      "source_of_truth": "airbyte cloud jobs api",
+      "result": "pass"
+    },
+    {
+      "id": "airbyte-job:107437579",
+      "expected": "succeeded",
+      "actual": "succeeded",
+      "source_of_truth": "airbyte cloud jobs api",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "two consecutive full_refresh_overwrite syncs (107437233, 107437579) landed identical counts; counts after each run: [{'customers': 50, 'invoices': 200}, {'customers': 50, 'invoices': 200}]"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [],
+    "actual_set": [],
+    "missing": [],
+    "unexpected": [],
+    "note": "no planted anomalies are defined for the billing export sheet"
+  },
+  "unverified_paths": [
+    "cron-scheduled sync (only API-triggered jobs were observed)",
+    "column-level parity: sheet cells land as strings; typing is a silver-layer concern",
+    "Fivetran-side row counts (its connector reported 0 loaded rows; not used as a source of truth)"
+  ]
+}

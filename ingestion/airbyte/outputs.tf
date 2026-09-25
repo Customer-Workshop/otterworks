@@ -25,3 +25,11 @@ output "destination_id" {
 output "destination_schema" {
   value = "${var.databricks_catalog}.airbyte_${var.namespace}"
 }
+
+output "gsheets_connection_id" {
+  value = airbyte_connection.gsheets.connection_id
+}
+
+output "gsheets_source_id" {
+  value = airbyte_source_google_sheets.billing_export.source_id
+}

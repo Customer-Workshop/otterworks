@@ -131,16 +131,56 @@ the credential diff), re-applies (Terraform is the source of truth, so the fix i
 "re-apply", not "edit the secret by hand"), reruns the sync, screenshots the green
 job in the UI, posts the recon.
 
-### Optional closer — the Fivetran comparison (3 min)
+### Closer — the Fivetran comparison (3 min)
 
-Only if a real Fivetran trial connector exists (Google Sheets → any free
-destination, fed by the `OtterWorks billing export (demo)` sheet). Prompt:
+Prompt:
 
 > Migrate the Fivetran Google Sheets connector to Airbyte.
 
-Devin reads the connector configuration from the Fivetran UI (no API-first path
-there), writes the equivalent `airbyte_source_google_sheets` + connection in
-Terraform, applies, and shows both UIs side by side. Skip it rather than fake it.
+Fivetran has an API and a Terraform provider too; this beat is not "Fivetran
+can't". It is the same point as the rest of the track: the pipeline ends up as
+reviewable code in this repo, with a recon report, rather than as clicks in a
+vendor console. What the pre-run actually found and did:
+
+**Read from the Fivetran UI** (read-only, recorded): two Google Sheets
+connections against the `OtterWorks billing export (demo)` sheet. `g_sheets.demo`
+is active — User OAuth, the whole sheet by URL plus one named range
+(`NamedRange1`), every 6 hours, Fivetran naming, destination `Warehouse` =
+Databricks (catalog `ow_tp`, warehouse `565cd2fd713738c4`), last sync
+successful in 56 s but **0 rows loaded** and "no schema to configure". The
+second connection (`google_sheets.demo`) was left paused and incomplete. Fivetran's
+Google Sheets connector loads one named range as one table, so a sheet with two
+tabs needs two ranges (and here, effectively, two connections).
+
+**Maps 1:1 to `ingestion/airbyte/gsheets.tf`:** spreadsheet URL →
+`configuration.spreadsheet_id`; 6-hourly schedule → `cron_expression =
+"0 0 0/6 * * ? UTC"`; Databricks destination → the existing
+`airbyte_destination_databricks.lakehouse` (schema `airbyte_demo`, no DDL);
+"Fivetran naming" → `names_conversion = true` (snake_case headers).
+
+**Does not map 1:1:**
+
+- *Auth.* Fivetran's User OAuth is a browser flow with no code artefact. Airbyte
+  also offers Google OAuth in its UI, so the live source was authorised there,
+  then `terraform import`ed. Airbyte masks the resulting credentials on read, so
+  the resource ignores `configuration` after creation and the auth block is a
+  variable (`TF_VAR_google_sheets_credentials`: service-account JSON *or* OAuth
+  client + refresh token). A service-account key is the path that is fully
+  declarative end to end.
+- *Named range vs tabs.* Airbyte reads every tab as a stream; the connection
+  selects `customers` and `invoices` explicitly. There is no named-range concept.
+- *Duplicate headers.* The `customers` tab has `cust_id`/`cust_no`/`cust_name`
+  twice. Airbyte disambiguates them by cell (`cust_id_A1`, `cust_id_G1`, …)
+  and still lands all 50 rows. Fivetran's 0-row load was not investigated
+  further — the trial estate was left untouched — so treat that as unverified.
+- *State.* The Terraform module is the source of truth for the Airbyte side;
+  the Fivetran connector stays configured only in Fivetran.
+
+Evidence: `docs/tech-partnerships/recon/airbyte-gsheets-demo.recon.json` (two
+API-triggered syncs, 50 + 200 rows recounted in Databricks after each,
+`idempotency_rerun` performed) and the side-by-side screenshots on the PR.
+Tooling: `ingestion/airbyte/tools/gsheets_sync_and_recon.py --ns demo
+--connection-id <id>`.
 
 ## Where the browser fits
 

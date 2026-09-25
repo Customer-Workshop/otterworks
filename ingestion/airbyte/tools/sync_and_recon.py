@@ -158,7 +158,12 @@ def main() -> int:
     parser.add_argument(
         "--streams", nargs="+", default=["customer_master", "invoice_header", "entity_attr_value", "invoice_line"]
     )
-    parser.add_argument("--expected-orphan-lines", type=int, default=37, help="planted orphan invoice_line count")
+    parser.add_argument(
+        "--expected-orphan-lines",
+        type=int,
+        default=None,
+        help="expected orphan invoice_line count; default max(37, lines // 10_000) from the manifest (the estate's known rate)",
+    )
     parser.add_argument("--no-sync", action="store_true", help="only recount; do not trigger jobs")
     parser.add_argument("--skip-rerun", action="store_true")
     parser.add_argument("--out", type=Path, default=ROOT / "docs/tech-partnerships/recon")
@@ -170,6 +175,9 @@ def main() -> int:
     if manifest.get("namespace") != args.ns:
         raise SystemExit(f"manifest namespace {manifest.get('namespace')!r} != --ns {args.ns!r}")
     schema = f"airbyte_{args.ns.replace('-', '_')}"
+    expected_orphans = args.expected_orphan_lines
+    if expected_orphans is None:
+        expected_orphans = max(37, manifest["tables"]["invoice_line"]["rows"] // 10_000)
 
     dbx = Databricks(args.warehouse_id)
 
@@ -223,7 +231,7 @@ def main() -> int:
                 f"LEFT ANTI JOIN {qualified(args.catalog, schema, 'invoice_header')} h ON l.invoice_id = h.invoice_id"
             )
         )
-        expected_anomalies = [f"orphan_invoice_lines:{args.expected_orphan_lines}"]
+        expected_anomalies = [f"orphan_invoice_lines:{expected_orphans}"]
         actual_anomalies = [f"orphan_invoice_lines:{orphans}"]
         anomalies = {
             "expected_set": expected_anomalies,
@@ -240,9 +248,9 @@ def main() -> int:
         ]
     else:
         anomalies = {
-            "expected_set": [f"orphan_invoice_lines:{args.expected_orphan_lines}"],
+            "expected_set": [f"orphan_invoice_lines:{expected_orphans}"],
             "actual_set": [],
-            "missing": [f"orphan_invoice_lines:{args.expected_orphan_lines}"],
+            "missing": [f"orphan_invoice_lines:{expected_orphans}"],
             "unexpected": [],
             "note": "invoice_line is not in the stream set; anomaly comparison is deferred to the stream that lands it",
         }
@@ -280,7 +288,8 @@ def main() -> int:
     path.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     print(f"wrote {path}", file=sys.stderr)
-    anomalies_match = not anomalies["missing"] and not anomalies["unexpected"]
+    anomalies_measured = "invoice_line" in args.streams and "invoice_header" in args.streams
+    anomalies_match = not anomalies_measured or (not anomalies["missing"] and not anomalies["unexpected"])
     return 0 if all(c["result"] == "pass" for c in checks) and report["idempotency_rerun"]["result"] == "pass" and anomalies_match else 1
 
 

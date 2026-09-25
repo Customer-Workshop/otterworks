@@ -119,17 +119,70 @@ so a repeat run needs fresh ones in `TF_VAR_custbill_feed_urls`.
 
 ### Beat 4 — break it, let Devin fix it (4 min)
 
-You, in Airbyte Cloud on stage: open the S3 source and replace the AWS secret
-key with garbage, then trigger a sync. It fails; the failure email/Slack alert
-arrives. Prompt:
+You, on stage: rotate the S3 source's AWS credentials to a wrong value, then
+trigger a sync. It fails; the failure email/Slack alert arrives. Prompt:
 
 > The billing sync just failed. Find out why, fix it, rerun it, confirm it's green.
 
-What Devin does: reads the failed job through `GET /v1/jobs/<id>`, sees the S3
-`config_error`, notices the source drifted from Terraform (`terraform plan` shows
-the credential diff), re-applies (Terraform is the source of truth, so the fix is
-"re-apply", not "edit the secret by hand"), reruns the sync, screenshots the green
-job in the UI, posts the recon.
+What Devin does: `make tp-airbyte-diagnose NS=demo` lists the jobs and the last
+failed one (the public API gives status, duration, 0 rows, no reason), reads the
+reason in the job's **View logs** in the UI, then `make tp-airbyte-repair NS=demo`
+(Terraform is the source of truth, so the fix is "re-push from Terraform", not
+"edit the secret by hand"), reruns the sync, screenshots the failed→green history
+in the UI, recounts the three bronze tables.
+
+**How to break it (rehearsed 2026-09-25).** The Airbyte Cloud UI runs a
+connection test on save and there is no "save anyway": a wrong secret cannot be
+saved from the source page. Break it through the API instead, before the beat
+or live in a terminal:
+
+```
+PATCH /v1/sources/28f46186-6f4c-432e-bd0f-f3a826d23668
+{"configuration": {"sourceType": "s3", ..., "aws_secret_access_key": "<wrong>"}}
+```
+
+`GET /v1/sources/<id>` returns credentials masked as `**********`; if you send
+that masked value back in `aws_access_key_id`, Airbyte stores it literally, so
+the failing job reports `InvalidAccessKeyId`. Either way the sync dies in the
+source's schema discovery with `ErrorListingFiles` / `InvalidAccessKeyId` on
+`ListObjectsV2`.
+
+**Two things the rehearsal corrected in the script above.**
+
+1. `terraform plan` does **not** show the credential drift. The provider reads
+   the masked value back and keeps the prior state, so the plan is "No changes"
+   even though the live source is broken. The repair forces the comparison by
+   re-importing the source (`state rm` + `import`, which is not destructive: the
+   source keeps its id and the connection keeps its history). The import lands
+   with an empty `configuration`, so the plan shows the whole configuration
+   block as `+` with the two credentials `(sensitive value)`, and the apply is
+   `0 to add, 1 to change, 0 to destroy`. That is what `make tp-airbyte-repair`
+   does.
+2. The public API has no attempt logs or failure reason on `/v1/jobs/<id>`;
+   `make tp-airbyte-diagnose` says so and points at the UI.
+
+**Rehearsal timeline (UTC, 2026-09-25).** Written up in
+`docs/tech-partnerships/recon/airbyte-incident-demo-2026-09-25.json`.
+
+| When | What |
+| --- | --- |
+| 06:22 | Baseline green: jobs 107441882, 107441387, 107440515 succeeded; targeted `terraform plan` clean. |
+| ~06:27 | UI attempt: wrong secret entered on the source page, test failed, no way to save. |
+| 06:29:10 | Break applied via `PATCH /v1/sources/<id>`. |
+| 06:29:45 | Sync triggered from the connection page: job **107444126**. |
+| 06:30:13 | Source log: `InvalidAccessKeyId` on `ListObjectsV2`, schema inference failed for all three streams. |
+| 06:41:29 | Job 107444126 **failed** (11m 44s, 0 rows). Timeline: "Failure in source: Checking source connection failed". |
+| 06:41:42 | Detected from `GET /v1/jobs?connectionId=...`. |
+| 06:42:03 | Root cause confirmed: source credentials differ from Terraform. `state rm` + `import`, plan `0/1/0`. |
+| 06:42:53 | `terraform apply -target=...`: `0 added, 1 changed, 0 destroyed`; follow-up plan clean. |
+| 06:43:17 | Rerun via `POST /v1/jobs`: job **107445622**. |
+| 06:46:41 | Job 107445622 **succeeded** (3m 24s, 52,083 rows). |
+| 06:47 | Databricks `ow_tp.airbyte_demo`: customer_master 25,000, invoice_header 18,750, entity_attr_value 8,333. |
+
+Break to green: 17 minutes wall clock, 11 of them the failing job timing out
+inside Airbyte. On stage, do not wait for the failed job: the timeline shows
+the source error in the job's logs within a minute of the trigger, and the
+diagnose/repair/rerun can start while the job is still red-running.
 
 ### Closer — the Fivetran comparison (3 min)
 

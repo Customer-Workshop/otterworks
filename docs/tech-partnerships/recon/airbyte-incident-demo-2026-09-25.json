@@ -1,0 +1,59 @@
+{
+  "kind": "incident-note",
+  "unit": "airbyte-ingest-billing-bronze",
+  "namespace": "demo",
+  "date": "2026-09-25",
+  "connection_id": "972a53f2-fff0-400d-a9ff-f4b3155a6fc5",
+  "source_id": "28f46186-6f4c-432e-bd0f-f3a826d23668",
+  "summary": "Billing S3 source credentials rotated to a wrong value outside Terraform; sync failed in source discovery; repaired by re-importing the source into Terraform state and applying the billing targets; rerun green; bronze counts unchanged.",
+  "break": {
+    "method": "api",
+    "detail": "Airbyte Cloud UI runs a connection test on save and offers no save-anyway, so the wrong secret could not be saved from the UI. Applied with PATCH /v1/sources/{id}. The masked aws_access_key_id returned by GET was echoed back and stored literally, so the failure surfaced as InvalidAccessKeyId.",
+    "applied_at": "2026-09-25T06:29:10Z"
+  },
+  "failed_job": {
+    "job_id": 107444126,
+    "started_at": "2026-09-25T06:29:45Z",
+    "failed_at": "2026-09-25T06:41:29Z",
+    "duration": "PT11M44S",
+    "rows_synced": 0,
+    "api_failure_reason": null,
+    "ui_failure_reason": "Failure in source: Checking source connection failed - please review this connection's configuration to prevent future syncs from failing",
+    "log_evidence": "2026-09-25 06:30:13 source ERROR ErrorListingFiles ... botocore ClientError InvalidAccessKeyId on ListObjectsV2; SchemaInferenceError for customer_master, invoice_header, entity_attr_value"
+  },
+  "diagnosis": {
+    "detected_at": "2026-09-25T06:41:42Z",
+    "detected_with": "GET /v1/jobs?connectionId=...&orderBy=createdAt|DESC (make tp-airbyte-diagnose)",
+    "terraform_plan_before_reimport": "No changes (provider keeps prior state for masked credentials; drift invisible)",
+    "terraform_plan_after_reimport": "airbyte_source_s3.billing_landing update in-place, configuration re-sent, credentials (sensitive value); Plan: 0 to add, 1 to change, 0 to destroy",
+    "root_cause": "Source credentials changed outside Terraform; live source no longer matched aws_iam_access_key.airbyte_reader."
+  },
+  "repair": {
+    "method": "terraform state rm + import airbyte_source_s3.billing_landing, then apply -target=airbyte_source_s3.billing_landing -target=airbyte_connection.billing (make tp-airbyte-repair)",
+    "apply_result": "0 added, 1 changed, 0 destroyed",
+    "applied_at": "2026-09-25T06:42:53Z",
+    "post_apply_plan": "No changes"
+  },
+  "green_job": {
+    "job_id": 107445622,
+    "started_at": "2026-09-25T06:43:17Z",
+    "succeeded_at": "2026-09-25T06:46:41Z",
+    "duration": "PT3M24S",
+    "rows_synced": 52083,
+    "bytes_synced": 39456228
+  },
+  "target_recount": {
+    "target": "ow_tp.airbyte_demo",
+    "warehouse_id": "565cd2fd713738c4",
+    "counted_at": "2026-09-25T06:47:11Z",
+    "customer_master": 25000,
+    "invoice_header": 18750,
+    "entity_attr_value": 8333,
+    "matches_baseline": true
+  },
+  "break_to_green_minutes": 17,
+  "unverified": [
+    "Failure email/Slack alert delivery was not observed.",
+    "The repair path was exercised once against the demo namespace only."
+  ]
+}

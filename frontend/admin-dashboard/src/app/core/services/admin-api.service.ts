@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, Subject, map } from 'rxjs';
+import { HttpClient, HttpResponse } from '@angular/common/http';
+import { Observable, Subject, forkJoin, map } from 'rxjs';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -8,6 +8,7 @@ import { Announcement } from '../models/announcement.model';
 import { ServiceHealth } from '../models/system-health.model';
 import { DashboardStats, AnalyticsReport, ChartDataPoint } from '../models/analytics.model';
 import { Incident } from '../models/incident.model';
+import { CreateReportRequest, Report, ReportStatus, REPORT_STATUSES } from '../models/report.model';
 
 // Service metadata not available from the health endpoint — kept here for display purposes
 const SERVICE_META: Record<string, { version: string; port: number; language: string; details: string }> = {
@@ -173,6 +174,65 @@ export class AdminApiService {
     return this.http.get<any>(`${this.baseUrl}/admin/metrics/summary`).pipe(
       map(res => this.mapAnalyticsReport(res)),
     );
+  }
+
+  // ── Reports (report-service) ─────────────────────────────────────────────
+
+  // The report-service list endpoint always filters: with no status it returns
+  // COMPLETED only, so "all statuses" is a fan-out over the four statuses.
+  getReports(status?: ReportStatus): Observable<Report[]> {
+    if (status) {
+      return this.getReportsByStatus(status);
+    }
+    return forkJoin(REPORT_STATUSES.map(s => this.getReportsByStatus(s))).pipe(
+      map(lists => lists.flat().sort((a, b) => this.reportSortKey(b) - this.reportSortKey(a))),
+    );
+  }
+
+  createReport(request: CreateReportRequest): Observable<Report> {
+    return this.http.post<any>(`${this.baseUrl}/reports`, request).pipe(
+      map(raw => this.mapReport(raw)),
+    );
+  }
+
+  downloadReport(id: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/reports/${id}/download`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  deleteReport(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/reports/${id}`);
+  }
+
+  private getReportsByStatus(status: ReportStatus): Observable<Report[]> {
+    return this.http.get<any>(`${this.baseUrl}/reports?status=${status}`).pipe(
+      map(res => (res.reports || []).map((r: any) => this.mapReport(r))),
+    );
+  }
+
+  private reportSortKey(report: Report): number {
+    return report.createdAt ? new Date(report.createdAt).getTime() : 0;
+  }
+
+  private mapReport(raw: any): Report {
+    return {
+      id: raw.id,
+      reportName: raw.reportName,
+      category: raw.category,
+      reportType: raw.reportType,
+      status: raw.status,
+      requestedBy: raw.requestedBy,
+      dateFrom: raw.dateFrom,
+      dateTo: raw.dateTo,
+      createdAt: raw.createdAt,
+      completedAt: raw.completedAt,
+      fileSizeBytes: raw.fileSizeBytes,
+      rowCount: raw.rowCount,
+      downloadUrl: raw.downloadUrl,
+      errorMessage: raw.errorMessage,
+    };
   }
 
   // ── Incidents ────────────────────────────────────────────────────────────

@@ -105,6 +105,51 @@ class TestSuggestEndpoint:
         data = response.get_json()
         assert data["suggestions"] == []
 
+    def test_suggest_requests_ranking_score(self, client, mock_meilisearch_client):
+        """Suggest asks MeiliSearch for _rankingScore instead of assuming it is present."""
+        mock_index = mock_meilisearch_client.index.return_value
+        client.get("/api/v1/search/suggest?q=te")
+        for call in mock_index.search.call_args_list:
+            assert call.args[1]["showRankingScore"] is True
+
+    def test_suggest_orders_by_ranking_score(self, client, mock_meilisearch_client):
+        """Suggestions from both indices are merged and sorted by _rankingScore."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {"estimatedTotalHits": 2, "hits": [
+                {"title": "Low", "_rankingScore": 0.2},
+                {"title": "High", "_rankingScore": 0.9},
+            ]},
+            {"estimatedTotalHits": 1, "hits": [
+                {"name": "Mid", "_rankingScore": 0.5},
+            ]},
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["High", "Mid", "Low"]
+
+    def test_suggest_without_ranking_score_still_succeeds(self, client, mock_meilisearch_client):
+        """Hits missing _rankingScore (or empty hits) never turn into a 5xx."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = [
+            {"estimatedTotalHits": 1, "hits": [{"title": "Unscored"}, {}]},
+            {"estimatedTotalHits": 0, "hits": []},
+        ]
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json()["suggestions"] == ["Unscored"]
+
+    def test_suggest_backend_error_degrades_to_empty(self, client, mock_meilisearch_client):
+        """A MeiliSearch failure returns 200 with no suggestions, not a 500."""
+        mock_index = mock_meilisearch_client.index.return_value
+        mock_index.search.side_effect = RuntimeError("meilisearch down")
+
+        response = client.get("/api/v1/search/suggest?q=te")
+        assert response.status_code == 200
+        assert response.get_json() == {"suggestions": [], "query": "te"}
+
 
 class TestAdvancedSearchEndpoint:
     """Tests for POST /api/v1/search/advanced."""

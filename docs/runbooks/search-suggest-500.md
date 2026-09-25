@@ -23,12 +23,30 @@
    redis-cli EXISTS chaos:search-service:suggest_500
    ```
 
-<!-- TODO: Complete investigation steps -->
+3. Confirm the failure mode with one request (the handler crashed before its
+   `except` block, so the response is Flask's HTML 500 page, not JSON):
+   ```
+   curl -si 'http://localhost:8087/api/v1/search/suggest?q=te' | head -1
+   ```
 
 ## Resolution Steps
 
-<!-- TODO -->
+1. Immediate mitigation: clear the chaos flag so the service falls back to the
+   unranked path (`redis-cli DEL chaos:search-service:suggest_500`).
+2. Code fix (`services/search-service`):
+   - `MeiliSearchService.suggest` asks MeiliSearch for the score
+     (`showRankingScore: true`), merges hits from both indices, and sorts with
+     `hit.get("_rankingScore")` (unscored hits sort last).
+   - `GET /suggest` has a single code path inside `try/except`; any backend
+     failure logs `suggest_failed` and returns `200 {"suggestions": []}` so the
+     autocomplete box degrades to empty rather than paging.
+3. Verify: `cd services/search-service && .venv/bin/pytest -q tests/test_search_api.py -k suggest`,
+   then watch `SearchSuggestHighErrorRate` resolve in Grafana.
 
 ## Post-Incident
 
-<!-- TODO -->
+- The `/suggest` ranking pipeline read `_rankingScore` from a result that was
+  never asked to include it, and the enrichment ran outside the handler's
+  `try/except`. Any new hit-shape assumption in search-service should be pinned
+  by a unit test with a mocked MeiliSearch response (see
+  `tests/test_search_api.py::TestSuggestEndpoint`).

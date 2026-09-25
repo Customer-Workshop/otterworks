@@ -7,7 +7,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Business hash per CONTRACTS §7: {@code SHA-256(UTF-8(render(c1) || '|' || render(c2) ...))}
@@ -16,6 +18,8 @@ import java.util.List;
  * Key columns are hashed with their padding kept (so the Db2 row and its right-trimmed Azure
  * copy differ exactly when MIG-04 applies); every other CHAR is right-trimmed; DECIMALs carry
  * eight fraction digits; timestamps use the Db2 text form; the DATE renders as {@code YYYYMMDD}.
+ * Retired retention codes hash as their RETNPLCY successor, the way the migration's
+ * {@code value_map} canonicalises them before validation, so a Db2 row and its migrated copy agree.
  */
 public final class BusinessHash {
 
@@ -32,11 +36,15 @@ public final class BusinessHash {
 
     /** DOCARCH row hash; the key {@code ARCH_KEY} is taken from {@code raw} (padding kept). */
     public static String docarch(ArchiveVersion v) {
+        return docarch(v, Collections.<String, String>emptyMap());
+    }
+
+    public static String docarch(ArchiveVersion v, Map<String, String> successorCodes) {
         return sha256Hex(String.join("|",
                 v.raw.archKey,
                 Db2Text.rtrim(v.raw.docId),
                 String.valueOf(v.versionNo),
-                v.retentionClass,
+                canonicalClass(v.retentionClass, successorCodes),
                 v.lastAccessTs,
                 v.storageCharge,
                 v.unitRate,
@@ -49,16 +57,28 @@ public final class BusinessHash {
 
     /** FILEAUD row hash; the key {@code AUDIT_KEY} is taken from {@code raw} (padding kept). */
     public static String fileaud(ArchiveEvent e) {
+        return fileaud(e, Collections.<String, String>emptyMap());
+    }
+
+    public static String fileaud(ArchiveEvent e, Map<String, String> successorCodes) {
         return sha256Hex(String.join("|",
                 e.raw.auditKey,
                 Db2Text.rtrim(e.raw.archKey),
                 e.eventType,
                 e.eventTs,
                 e.actorId,
-                e.retentionClass,
+                canonicalClass(e.retentionClass, successorCodes),
                 e.dispositionCode,
                 e.clientIp,
                 e.detailText));
+    }
+
+    static String canonicalClass(String retentionClass, Map<String, String> successorCodes) {
+        if (retentionClass == null) {
+            return null;
+        }
+        String successor = successorCodes.get(Db2Text.rtrim(retentionClass));
+        return successor == null || successor.isEmpty() ? retentionClass : successor;
     }
 
     static String sha256Hex(String text) {

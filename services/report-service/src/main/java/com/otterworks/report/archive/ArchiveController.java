@@ -56,11 +56,11 @@ public class ArchiveController {
         List<Map<String, Object>> versions = new ArrayList<Map<String, Object>>();
         StringBuilder all = new StringBuilder();
         for (ArchiveVersion version : document.getVersions()) {
-            String versionHash = BusinessHash.docarch(version);
+            String versionHash = BusinessHash.docarch(version, document.getSuccessorCodes());
             all.append(versionHash).append('\n');
             List<Map<String, Object>> events = new ArrayList<Map<String, Object>>();
             for (ArchiveEvent event : version.events) {
-                String eventHash = BusinessHash.fileaud(event);
+                String eventHash = BusinessHash.fileaud(event, document.getSuccessorCodes());
                 all.append(eventHash).append('\n');
                 Map<String, Object> e = new LinkedHashMap<String, Object>();
                 e.put("audit_key", event.auditKey);

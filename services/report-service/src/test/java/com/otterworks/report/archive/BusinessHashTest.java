@@ -4,6 +4,8 @@ import com.otterworks.report.archive.ArchiveDocument.ArchiveEvent;
 import com.otterworks.report.archive.ArchiveDocument.ArchiveVersion;
 import org.junit.Test;
 
+import java.util.Collections;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -41,6 +43,15 @@ public class BusinessHashTest {
     public void paddedKeyChangesTheHashLikeMig04() {
         assertNotEquals(BusinessHash.docarch(version("DA00000000000042")),
                 BusinessHash.docarch(version("DA00000000000042  ")));
+    }
+
+    @Test
+    public void retiredClassHashesAsItsSuccessorLikeTheMigrationValueMap() {
+        ArchiveVersion retired = version("DA00000000000042");
+        retired.retentionClass = "F07R";
+        assertEquals(BusinessHash.docarch(version("DA00000000000042")),
+                BusinessHash.docarch(retired, Collections.singletonMap("F07R", "FIN7")));
+        assertNotEquals(BusinessHash.docarch(version("DA00000000000042")), BusinessHash.docarch(retired));
     }
 
     @Test

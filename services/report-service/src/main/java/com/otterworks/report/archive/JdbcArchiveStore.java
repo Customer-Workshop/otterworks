@@ -57,19 +57,30 @@ public abstract class JdbcArchiveStore implements ArchiveStore {
                 List<ArchiveEvent> events = jdbc.query(eventsSql(), eventMapper(), version.raw.archKey);
                 for (ArchiveEvent event : events) {
                     event.archKey = null;
+                    policyOf(policies, event.retentionClass);
                 }
                 version.events = events;
-                String policyCode = version.retentionClass;
-                if (!policies.containsKey(policyCode)) {
-                    List<RetentionPolicy> found = jdbc.query(policySql(), policyMapper(), policyCode);
-                    policies.put(policyCode, found.isEmpty() ? null : found.get(0));
-                }
-                version.policy = policies.get(policyCode);
+                version.policy = policyOf(policies, version.retentionClass);
             }
-            return Optional.of(new ArchiveDocument(Db2Text.rtrim(docId), storeName(), versions));
+            ArchiveDocument document = new ArchiveDocument(Db2Text.rtrim(docId), storeName(), versions);
+            for (RetentionPolicy policy : policies.values()) {
+                if (policy != null && policy.successorCode != null && !policy.successorCode.isEmpty()) {
+                    document.getSuccessorCodes().put(policy.policyCode, policy.successorCode);
+                }
+            }
+            return Optional.of(document);
         } catch (DataAccessException e) {
             throw new ArchiveStoreUnavailableException(storeName() + " archive store query failed", e);
         }
+    }
+
+    private RetentionPolicy policyOf(Map<String, RetentionPolicy> cache, String retentionClass) {
+        String policyCode = Db2Text.rtrim(retentionClass);
+        if (!cache.containsKey(policyCode)) {
+            List<RetentionPolicy> found = jdbc.query(policySql(), policyMapper(), policyCode);
+            cache.put(policyCode, found.isEmpty() ? null : found.get(0));
+        }
+        return cache.get(policyCode);
     }
 
     @Override

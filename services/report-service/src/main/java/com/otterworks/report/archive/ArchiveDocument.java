@@ -1,11 +1,14 @@
 package com.otterworks.report.archive;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Retention history of one archived document, identical from both stores (CONTRACTS §10.4).
@@ -19,6 +22,9 @@ public class ArchiveDocument {
     private final String store;
     @JsonProperty("versions")
     private final List<ArchiveVersion> versions;
+    /** Retired retention code -> active successor (RETNPLCY.SUCCESSOR_CODE), for hashing only. */
+    @JsonIgnore
+    private final Map<String, String> successorCodes = new HashMap<String, String>();
 
     public ArchiveDocument(String docId, String store, List<ArchiveVersion> versions) {
         this.docId = docId;
@@ -36,6 +42,10 @@ public class ArchiveDocument {
 
     public List<ArchiveVersion> getVersions() {
         return versions;
+    }
+
+    public Map<String, String> getSuccessorCodes() {
+        return successorCodes;
     }
 
     /**

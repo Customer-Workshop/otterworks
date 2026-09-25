@@ -248,23 +248,36 @@ class MeiliSearchService:
         )
 
     def suggest(self, prefix: str, size: int = 10) -> list[str]:
-        """Autocomplete suggestions using MeiliSearch prefix matching."""
-        suggestions: list[str] = []
-        seen: set[str] = set()
+        """Autocomplete suggestions using MeiliSearch prefix matching.
 
+        Hits from both indexes are merged and ordered by ``_rankingScore``
+        (requested via ``showRankingScore``). A hit without a score sorts last
+        instead of failing the request.
+        """
+        scored: list[tuple[float, str]] = []
         for index_name in [self.documents_index_name, self.files_index_name]:
             index = self.client.index(index_name)
             result = index.search(prefix, {
                 "limit": size,
                 "attributesToRetrieve": ["title", "name"],
+                "showRankingScore": True,
             })
-            for hit in result["hits"]:
+            for hit in result.get("hits", []):
                 text = hit.get("title") or hit.get("name", "")
-                if text and text not in seen:
-                    suggestions.append(text)
-                    seen.add(text)
-                    if len(suggestions) >= size:
-                        break
+                if not text:
+                    continue
+                score = hit.get("_rankingScore")
+                scored.append((float(score) if isinstance(score, (int, float)) else 0.0, text))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+
+        suggestions: list[str] = []
+        seen: set[str] = set()
+        for _, text in scored:
+            if text in seen:
+                continue
+            suggestions.append(text)
+            seen.add(text)
             if len(suggestions) >= size:
                 break
 

@@ -335,6 +335,44 @@ tp-smoke: ## Golden-path smoke gate for tech-partnerships (mirrors .github/workf
 tp-run-branch: ## Cut and push the per-run working branch for a rehearsal (TRACK=mongodb|databricks|aws|modernize)
 	@scripts/tp-run-branch.sh $(TRACK)
 
+AIRBYTE_TF = terraform -chdir=ingestion/airbyte
+AIRBYTE_LANDING_DIR ?= $(HOME)/airbyte-landing
+
+tp-airbyte-init: ## Init the Airbyte Terraform module against the per-namespace state key (NS=<ns>)
+ifndef NS
+	$(error NS is required, e.g. make tp-airbyte-init NS=demo)
+endif
+	$(call validate_ns)
+	$(AIRBYTE_TF) init -input=false -backend-config="key=ow-tp/airbyte/$(NS).tfstate"
+
+tp-airbyte-plan: ## Plan the Airbyte pipeline (NS=<ns>; needs AIRBYTE_*/DATABRICKS_DEMO_*/AWS_* in env)
+ifndef NS
+	$(error NS is required, e.g. make tp-airbyte-plan NS=demo)
+endif
+	$(call validate_ns)
+	TF_VAR_namespace=$(NS) $(AIRBYTE_TF) plan -input=false
+
+tp-airbyte-apply: ## Apply the Airbyte pipeline (NS=<ns>)
+ifndef NS
+	$(error NS is required, e.g. make tp-airbyte-apply NS=demo)
+endif
+	$(call validate_ns)
+	TF_VAR_namespace=$(NS) $(AIRBYTE_TF) apply -input=false -auto-approve
+
+tp-airbyte-land: ## Export the Oracle billing tables for NS and upload them to the landing bucket (NS=<ns>)
+ifndef NS
+	$(error NS is required, e.g. make tp-airbyte-land NS=demo)
+endif
+	$(call validate_ns)
+	ORACLE_PORT=$(ORACLE_BILLING_DB_PORT) uv run --with boto3==1.40.35 --with oracledb==2.5.1 python ingestion/airbyte/tools/export_billing_csv.py --ns $(NS) --out $(AIRBYTE_LANDING_DIR) --bucket $$($(AIRBYTE_TF) output -raw landing_bucket)
+
+tp-airbyte-sync: ## Run the connection twice and write the recon report (NS=<ns>)
+ifndef NS
+	$(error NS is required, e.g. make tp-airbyte-sync NS=demo)
+endif
+	$(call validate_ns)
+	AIRBYTE_CONNECTION_ID=$$($(AIRBYTE_TF) output -raw connection_id) python3 ingestion/airbyte/tools/sync_and_recon.py --ns $(NS) --manifest $(AIRBYTE_LANDING_DIR)/$(NS)/manifest.json
+
 tp-pain-mongodb: ## Beat 1 opener: "just add a field" blast radius on the Oracle estate (NS=<namespace>; needs oracle-billing-up + oracle-billing-seed)
 ifndef NS
 	$(error NS is required, e.g. make tp-pain-mongodb NS=demo)

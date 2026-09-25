@@ -1,0 +1,69 @@
+{
+  "kind": "recon-report",
+  "unit": "airbyte-ingest-billing-bronze",
+  "namespace": "demo",
+  "generated_at": "2026-09-25T01:49:57+00:00",
+  "run_mode": "live",
+  "target": "ow_tp.airbyte_demo",
+  "airbyte_connection_id": "972a53f2-fff0-400d-a9ff-f4b3155a6fc5",
+  "checks": [
+    {
+      "id": "rowcount:customer_master",
+      "expected": 25000,
+      "actual": 25000,
+      "source_of_truth": "s3 landing manifest (demo/customer_master/customer_master.csv, sha256 43ed06436d44)",
+      "result": "pass"
+    },
+    {
+      "id": "rowcount:invoice_header",
+      "expected": 18750,
+      "actual": 18750,
+      "source_of_truth": "s3 landing manifest (demo/invoice_header/invoice_header.csv, sha256 dd3a96045ff7)",
+      "result": "pass"
+    },
+    {
+      "id": "rowcount:entity_attr_value",
+      "expected": 8333,
+      "actual": 8333,
+      "source_of_truth": "s3 landing manifest (demo/entity_attr_value/entity_attr_value.csv, sha256 7d6041ead024)",
+      "result": "pass"
+    },
+    {
+      "id": "airbyte-job:107406933",
+      "expected": "succeeded",
+      "actual": "succeeded",
+      "source_of_truth": "airbyte cloud jobs api",
+      "result": "pass"
+    },
+    {
+      "id": "airbyte-job:107407164",
+      "expected": "succeeded",
+      "actual": "succeeded",
+      "source_of_truth": "airbyte cloud jobs api",
+      "result": "pass"
+    }
+  ],
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "two consecutive full_refresh_overwrite syncs (107406933, 107407164) landed identical counts; counts after each run: [{'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}, {'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}]"
+  },
+  "planted_anomaly_detections": {
+    "expected_set": [
+      "orphan_invoice_lines:37"
+    ],
+    "actual_set": [],
+    "missing": [
+      "orphan_invoice_lines:37"
+    ],
+    "unexpected": [],
+    "note": "invoice_line is not in the initial stream set; anomaly comparison is deferred to the stream that lands it"
+  },
+  "unverified_paths": [
+    "invoice_line stream (not selected in the initial connection)",
+    "cron-scheduled sync (only API-triggered jobs were observed)",
+    "schema-change propagation (propagate_columns) on a changed export",
+    "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern"
+  ]
+}

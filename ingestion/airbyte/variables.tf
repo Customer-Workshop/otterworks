@@ -105,14 +105,27 @@ variable "google_sheets_credentials" {
   description = <<-EOT
     Google auth for the Sheets source, from env only (TF_VAR_google_sheets_credentials).
     Either a service-account JSON, or the OAuth client + refresh token that Airbyte's
-    consent flow produced. Ignored after creation (see gsheets.tf).
+    consent flow produced. Only read when the source is CREATED; a source that was
+    authorised in the Airbyte UI and imported needs none of it (see gsheets.tf).
+    The provider requires every OAuth attribute to be non-null even for an imported
+    source, so the defaults are the literal marker "import-only". Creating a source
+    with that marker fails Airbyte's connection check at apply time instead of
+    producing a source that cannot read the sheet (see the check block in gsheets.tf).
   EOT
   type = object({
     service_account_json = optional(string)
-    oauth_client_id      = optional(string, "managed-by-airbyte-oauth")
-    oauth_client_secret  = optional(string, "managed-by-airbyte-oauth")
-    oauth_refresh_token  = optional(string, "managed-by-airbyte-oauth")
+    oauth_client_id      = optional(string, "import-only")
+    oauth_client_secret  = optional(string, "import-only")
+    oauth_refresh_token  = optional(string, "import-only")
   })
+  validation {
+    condition = (
+      var.google_sheets_credentials.service_account_json != null
+      || alltrue([for v in [var.google_sheets_credentials.oauth_client_id, var.google_sheets_credentials.oauth_client_secret, var.google_sheets_credentials.oauth_refresh_token] : v == "import-only"])
+      || alltrue([for v in [var.google_sheets_credentials.oauth_client_id, var.google_sheets_credentials.oauth_client_secret, var.google_sheets_credentials.oauth_refresh_token] : v != "import-only"])
+    )
+    error_message = "OAuth needs oauth_client_id, oauth_client_secret and oauth_refresh_token together (or use service_account_json)."
+  }
   default   = {}
   sensitive = true
 }

@@ -12,6 +12,10 @@
 # and this block is updated to match.
 
 locals {
+  gsheets_credentials_present = (
+    var.google_sheets_credentials.service_account_json != null
+    || var.google_sheets_credentials.oauth_refresh_token != "import-only"
+  )
   gsheets_credentials = (
     var.google_sheets_credentials.service_account_json != null
     ? { service_account_key_authentication = { service_account_info = var.google_sheets_credentials.service_account_json } }
@@ -37,6 +41,16 @@ resource "airbyte_source_google_sheets" "billing_export" {
 
   lifecycle {
     ignore_changes = [configuration]
+  }
+}
+
+# Warns (does not block) when TF_VAR_google_sheets_credentials is unset: fine for
+# a namespace whose source is already imported; a fresh namespace must set it or
+# `terraform import` an authorised source before apply.
+check "gsheets_credentials_for_create" {
+  assert {
+    condition     = local.gsheets_credentials_present
+    error_message = "google_sheets_credentials is empty; airbyte_source_google_sheets.billing_export can only be imported, not created, in this configuration."
   }
 }
 

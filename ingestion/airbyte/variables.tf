@@ -63,6 +63,19 @@ variable "sync_cron" {
   default     = "0 0 6 * * ? UTC"
 }
 
+variable "hashed_fields" {
+  description = "PII columns hashed in flight (SHA-256) per stream; the plaintext column is replaced by <column><hashed_field_suffix> before it reaches the lakehouse."
+  type        = map(list(string))
+  default = {
+    customer_master = ["email_1", "email_2", "email_3", "phone1", "phone2", "phone3", "phone4", "fax"]
+  }
+}
+
+variable "hashed_field_suffix" {
+  type    = string
+  default = "_hashed"
+}
+
 variable "streams" {
   description = "Legacy billing tables landed under s3://<bucket>/<ns>/<table>/ and how each is synced."
   type = map(object({

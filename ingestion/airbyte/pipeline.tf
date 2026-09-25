@@ -69,6 +69,18 @@ resource "airbyte_connection" "billing" {
         # full-refresh streams, so state it to keep the plan clean.
         cursor_field = length(cfg.cursor_field) > 0 ? cfg.cursor_field : ["_ab_source_file_last_modified"]
         primary_key  = length(cfg.primary_key) > 0 ? [for f in cfg.primary_key : [f]] : null
+        mappers = length(lookup(var.hashed_fields, table, [])) > 0 ? [
+          for field in var.hashed_fields[table] : {
+            type = "hashing"
+            mapper_configuration = {
+              hashing = {
+                method            = "SHA-256"
+                target_field      = field
+                field_name_suffix = var.hashed_field_suffix
+              }
+            }
+          }
+        ] : null
       }
     ]
   }

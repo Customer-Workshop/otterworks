@@ -7,6 +7,9 @@ Steps:
   3. Recount every stream in the destination schema through the Databricks
      SQL Statement API and compare with the landing manifest written by
      export_billing_csv.py.
+  3b. For every hashed PII column (--hashed-fields), prove the destination holds
+     <column><suffix> with only 64-hex SHA-256 digests (or NULL) and that the
+     plaintext column is gone from the table.
   4. Write docs/tech-partnerships/recon/airbyte-ingest-<ns>.recon.json
      (kind: recon-report) for `make tp-validate-recon`.
 
@@ -40,6 +43,10 @@ ROOT = Path(__file__).resolve().parents[3]
 AIRBYTE_API = os.getenv("AIRBYTE_API_URL", "https://api.airbyte.com/v1")
 TERMINAL = {"succeeded", "failed", "cancelled", "incomplete"}
 IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
+SHA256_HEX = "^[0-9a-f]{64}$"
+DEFAULT_HASHED_FIELDS = {
+    "customer_master": ["email_1", "email_2", "email_3", "phone1", "phone2", "phone3", "phone4", "fax"],
+}
 
 
 def fatal_status(status: int) -> bool:
@@ -114,6 +121,9 @@ class Databricks:
         self.warehouse_id = warehouse_id
 
     def scalar(self, statement: str):
+        return self.rows(statement)[0][0]
+
+    def rows(self, statement: str) -> list[list]:
         status, body = http(
             "POST",
             f"{self.host}/api/2.0/sql/statements",
@@ -126,7 +136,7 @@ class Databricks:
         for _ in range(120):
             state = body.get("status", {}).get("state")
             if state == "SUCCEEDED":
-                return body["result"]["data_array"][0][0]
+                return body["result"]["data_array"]
             if state in {"FAILED", "CANCELED", "CLOSED"}:
                 raise SystemExit(f"databricks sql {state}: {body.get('status', {}).get('error')}")
             time.sleep(2)
@@ -145,6 +155,70 @@ def qualified(catalog: str, schema: str, table: str) -> str:
     return f"`{catalog}`.`{schema}`.`{table}`"
 
 
+def parse_hashed_fields(specs: list[str] | None) -> dict[str, list[str]]:
+    """--hashed-fields customer_master=email_1,phone1 ... (defaults mirror var.hashed_fields)."""
+    if specs is None:
+        return DEFAULT_HASHED_FIELDS
+    out: dict[str, list[str]] = {}
+    for spec in specs:
+        table, _, fields = spec.partition("=")
+        out[table] = [f for f in fields.split(",") if f]
+    return out
+
+
+def hashing_checks(dbx: Databricks, catalog: str, schema: str, hashed_fields: dict[str, list[str]], suffix: str) -> list[dict]:
+    checks = []
+    for table, fields in hashed_fields.items():
+        qualified(catalog, schema, table)
+        columns = {
+            r[0].lower()
+            for r in dbx.rows(
+                f"SELECT column_name FROM {qualified(catalog, 'information_schema', 'columns')} "
+                f"WHERE table_schema = '{schema}' AND table_name = '{table}'"
+            )
+        }
+        for field in fields:
+            hashed = f"{field}{suffix}"
+            for part in (field, hashed):
+                if not IDENT.match(part):
+                    raise SystemExit(f"refusing unsafe identifier {part!r}")
+            checks.append(
+                {
+                    "id": f"plaintext-column-absent:{table}.{field}",
+                    "expected": "absent",
+                    "actual": "present" if field in columns else "absent",
+                    "source_of_truth": f"{catalog}.information_schema.columns",
+                    "result": "fail" if field in columns else "pass",
+                }
+            )
+            if hashed not in columns:
+                checks.append(
+                    {
+                        "id": f"hashed-column:{table}.{hashed}",
+                        "expected": "every non-null value matches " + SHA256_HEX,
+                        "actual": "column missing",
+                        "source_of_truth": f"{catalog}.information_schema.columns",
+                        "result": "fail",
+                    }
+                )
+                continue
+            total, hashed_ok, nulls = dbx.rows(
+                f"SELECT COUNT(*), COUNT_IF(`{hashed}` RLIKE '{SHA256_HEX}'), COUNT_IF(`{hashed}` IS NULL) "
+                f"FROM {qualified(catalog, schema, table)}"
+            )[0]
+            total, hashed_ok, nulls = int(total), int(hashed_ok), int(nulls)
+            checks.append(
+                {
+                    "id": f"hashed-column:{table}.{hashed}",
+                    "expected": f"{total} rows: every non-null value matches {SHA256_HEX}",
+                    "actual": f"{total} rows: {hashed_ok} sha256-hex, {nulls} null, {total - hashed_ok - nulls} other",
+                    "source_of_truth": f"SELECT COUNT_IF(`{hashed}` RLIKE '{SHA256_HEX}') FROM {catalog}.{schema}.{table}",
+                    "result": "pass" if hashed_ok + nulls == total else "fail",
+                }
+            )
+    return checks
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--ns", required=True)
@@ -155,6 +229,13 @@ def main() -> int:
     parser.add_argument("--streams", nargs="+", default=["customer_master", "invoice_header", "entity_attr_value"])
     parser.add_argument("--no-sync", action="store_true", help="only recount; do not trigger jobs")
     parser.add_argument("--skip-rerun", action="store_true")
+    parser.add_argument(
+        "--hashed-fields",
+        nargs="*",
+        metavar="TABLE=COL,COL",
+        help="PII columns the connection hashes in flight (default mirrors var.hashed_fields; pass nothing to disable)",
+    )
+    parser.add_argument("--hashed-field-suffix", default=os.getenv("AIRBYTE_HASHED_FIELD_SUFFIX", "_hashed"))
     parser.add_argument("--out", type=Path, default=ROOT / "docs/tech-partnerships/recon")
     args = parser.parse_args()
     if not args.connection_id:
@@ -166,6 +247,7 @@ def main() -> int:
     schema = f"airbyte_{args.ns.replace('-', '_')}"
 
     dbx = Databricks(args.warehouse_id)
+    hashed_fields = parse_hashed_fields(args.hashed_fields)
 
     def count_all() -> dict[str, int]:
         return {t: int(dbx.scalar(f"SELECT COUNT(*) FROM {qualified(args.catalog, schema, t)}")) for t in args.streams}
@@ -209,6 +291,8 @@ def main() -> int:
             }
         )
 
+    checks.extend(hashing_checks(dbx, args.catalog, schema, hashed_fields, args.hashed_field_suffix))
+
     rerun_done = len(jobs) >= 2
     report = {
         "kind": "recon-report",
@@ -218,6 +302,7 @@ def main() -> int:
         "run_mode": "live",
         "target": f"{args.catalog}.{schema}",
         "airbyte_connection_id": args.connection_id,
+        "hashed_fields": {t: [f"{f}{args.hashed_field_suffix}" for f in fs] for t, fs in hashed_fields.items()},
         "checks": checks,
         "values_recomputed_from_target": True,
         "idempotency_rerun": {
@@ -242,6 +327,7 @@ def main() -> int:
             "cron-scheduled sync (only API-triggered jobs were observed)",
             "schema-change propagation (propagate_columns) on a changed export",
             "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
+            "hashing preimage: digests are not compared against SHA-256 of the source values (the recon runner must not read plaintext PII); only digest shape and plaintext-column absence are proven",
         ],
     }
     args.out.mkdir(parents=True, exist_ok=True)

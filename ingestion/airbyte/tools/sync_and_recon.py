@@ -42,6 +42,11 @@ TERMINAL = {"succeeded", "failed", "cancelled", "incomplete"}
 IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
+def fatal_status(status: int) -> bool:
+    """4xx other than rate limiting: retrying will not help."""
+    return 400 <= status < 500 and status != 429
+
+
 def http(method: str, url: str, body=None, headers=None, timeout=60):
     req = urllib.request.Request(
         url,
@@ -89,7 +94,7 @@ class Airbyte:
         deadline = time.monotonic() + max_minutes * 60
         while True:
             status, job = self.call("GET", f"/jobs/{job_id}")
-            if 400 <= status < 500:
+            if fatal_status(status):
                 raise SystemExit(f"airbyte job {job_id}: HTTP {status} {job}")
             state = job.get("status", "unknown") if status == 200 else f"http-{status}"
             print(f"job {job_id}: {state}", file=sys.stderr)
@@ -128,7 +133,7 @@ class Databricks:
             status, body = http(
                 "GET", f"{self.host}/api/2.0/sql/statements/{urllib.parse.quote(statement_id, safe='')}", headers=self.headers
             )
-            if 400 <= status < 500:
+            if fatal_status(status):
                 raise SystemExit(f"databricks sql poll: HTTP {status} {body}")
         raise SystemExit("databricks sql: timed out")
 

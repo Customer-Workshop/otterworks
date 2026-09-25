@@ -17,7 +17,9 @@ Environment:
 
 Usage:
   sync_and_recon.py --ns demo --manifest /path/to/manifest.json [--skip-rerun] [--no-sync]
-  sync_and_recon.py --ns demo --manifest ... --job-id <first> --job-id <rerun>   # reconcile finished jobs
+
+Idempotency is only claimed when this process observed both syncs and counted
+the destination after each one; there is no mode that infers it from finished jobs.
 """
 
 from __future__ import annotations
@@ -87,7 +89,9 @@ class Airbyte:
         deadline = time.monotonic() + max_minutes * 60
         while True:
             status, job = self.call("GET", f"/jobs/{job_id}")
-            state = job.get("status", "unknown")
+            if 400 <= status < 500:
+                raise SystemExit(f"airbyte job {job_id}: HTTP {status} {job}")
+            state = job.get("status", "unknown") if status == 200 else f"http-{status}"
             print(f"job {job_id}: {state}", file=sys.stderr)
             if state in TERMINAL:
                 return job
@@ -124,6 +128,8 @@ class Databricks:
             status, body = http(
                 "GET", f"{self.host}/api/2.0/sql/statements/{urllib.parse.quote(statement_id, safe='')}", headers=self.headers
             )
+            if 400 <= status < 500:
+                raise SystemExit(f"databricks sql poll: HTTP {status} {body}")
         raise SystemExit("databricks sql: timed out")
 
 
@@ -144,13 +150,6 @@ def main() -> int:
     parser.add_argument("--streams", nargs="+", default=["customer_master", "invoice_header", "entity_attr_value"])
     parser.add_argument("--no-sync", action="store_true", help="only recount; do not trigger jobs")
     parser.add_argument("--skip-rerun", action="store_true")
-    parser.add_argument(
-        "--job-id",
-        action="append",
-        type=int,
-        default=[],
-        help="reconcile against already-triggered job(s) instead of starting new ones (first = initial, second = rerun)",
-    )
     parser.add_argument("--out", type=Path, default=ROOT / "docs/tech-partnerships/recon")
     args = parser.parse_args()
     if not args.connection_id:
@@ -168,11 +167,7 @@ def main() -> int:
 
     jobs: list[dict] = []
     counts_per_run: list[dict[str, int]] = []
-    if args.job_id:
-        airbyte = Airbyte()
-        jobs = [airbyte.wait(j) for j in args.job_id]
-        counts_per_run.append(count_all())
-    elif not args.no_sync:
+    if not args.no_sync:
         airbyte = Airbyte()
         jobs.append(airbyte.run_sync(args.connection_id))
         counts_per_run.append(count_all())
@@ -249,7 +244,7 @@ def main() -> int:
     path.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     print(f"wrote {path}", file=sys.stderr)
-    return 0 if all(c["result"] == "pass" for c in checks) else 1
+    return 0 if all(c["result"] == "pass" for c in checks) and report["idempotency_rerun"]["result"] == "pass" else 1
 
 
 if __name__ == "__main__":

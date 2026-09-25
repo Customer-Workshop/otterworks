@@ -32,8 +32,18 @@ resource "aws_iam_user" "airbyte_reader" {
 
 data "aws_iam_policy_document" "airbyte_reader" {
   statement {
-    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+    actions   = ["s3:GetBucketLocation"]
     resources = [aws_s3_bucket.landing.arn]
+  }
+
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.landing.arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${var.namespace}/*"]
+    }
   }
 
   statement {

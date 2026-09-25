@@ -22,7 +22,7 @@ The pre-run (this PR) leaves one working pipeline behind. Every live beat is a
 | Airbyte connection | `ow-tp-airbyte-demo-billing` — `customer_master`, `invoice_header`, `entity_attr_value`; full refresh; daily 06:00 UTC | `ingestion/airbyte/pipeline.tf` |
 | Bronze | `ow_tp.airbyte_demo.<table>` | landed by Airbyte |
 | Evidence | `docs/tech-partnerships/recon/airbyte-ingest-demo.recon.json` | `make tp-airbyte-sync NS=demo` (two syncs, target-recomputed counts) |
-| CI | `.github/workflows/tp-airbyte.yml` | plan on PR (posted as a comment), apply on push to `tp-run/**` |
+| CI | `.github/workflows/tp-airbyte.yml` | fmt/validate on PRs; plan + apply on push to `tp-run/**` (namespace from `ingestion/airbyte/NAMESPACE`) |
 
 `invoice_line` is exported to S3 but deliberately **not** in the connection: it
 is beat 1.
@@ -49,7 +49,7 @@ Prompt:
 > Add INVOICE_LINE to the billing Airbyte connection as an incremental stream, hourly. Verify the sync in the Airbyte UI and post the row count.
 
 What Devin does: adds `invoice_line = { sync_mode = "incremental_append", cursor_field = [...] }`
-to `var.streams`, changes `sync_cron`, opens a PR (CI comments the plan), applies,
+to `var.streams`, changes `sync_cron`, opens a PR (CI lints), merges, CI applies,
 triggers a sync via the API, opens the connection in Airbyte Cloud and screenshots
 the stream table and job status into the PR, reruns recon (150,000 rows, 37
 orphans now visible in `planted_anomaly_detections`).

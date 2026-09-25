@@ -13,7 +13,6 @@
         },
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
-            "repo:Cognition-Partner-Workshops/otterworks:pull_request",
             "repo:Cognition-Partner-Workshops/otterworks:ref:refs/heads/tp-run/*"
           ]
         }

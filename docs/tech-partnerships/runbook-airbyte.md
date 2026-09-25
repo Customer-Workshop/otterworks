@@ -82,6 +82,41 @@ the workspace, and wires it into Terraform as a custom source. This is the beat 
 closed GUI tool cannot do at all. It is also the longest and the one most likely to
 hit a builder quirk live, so the fallback is the pre-recorded run.
 
+What the dry run actually did (about 50 minutes end to end, most of it in the
+Builder UI; the recording is attached to the PR):
+
+1. Ran the legacy chain (`sftp_ingest_poll` → `parse_custbill_fixedwidth`) to get a
+   real CUSTBILL drop: two files, 100 records, copybook CBCUST01 (CUST-ID X(10),
+   CUST-NAME X(30), BILL-DATE 9(8), BILL-AMT 9(10)V99 implied decimal, CURRENCY X(3),
+   REC-TYPE X(2)). Uploaded them to
+   `s3://<landing-bucket>/demo/custbill_feed/` and minted 7-day presigned URLs —
+   the bucket stays private; the connector reads over HTTPS.
+2. Wrote `ingestion/airbyte/connectors/custbill_fixedwidth/manifest.yaml`:
+   `IterableDecoder` (one record per line), a `ListPartitionRouter` over the feed
+   URLs, a record filter that drops HDR/TRL and short lines, and `AddFields`
+   slices that type each column (ISO date, decimal amount, `INVOICE`/`CREDIT`/
+   `UNKNOWN`, `record_key = file:md5(record)`). Checked it locally against the
+   legacy parser output first: 100/100 records identical.
+3. Builder quirk hit live, as predicted: with the feed URLs declared as an
+   `array` input, the test panel showed the values but never passed them to the
+   manifest (`'feed_urls' is a required property`). Fix: declare the input as a
+   multiline `string` and `split()` it in the partition router. Re-imported, both
+   partitions returned 50 typed records in the test panel, published as
+   `ow-tp-custbill-fixedwidth` v1.
+4. Terraform: `airbyte_source_custom` (definition id of the published connector is
+   a non-secret default in `variables.tf`; the presigned URLs come in via
+   `TF_VAR_custbill_feed_urls`) plus an `airbyte_connection` to the existing
+   Databricks destination. Plan was 2 to add / 0 to change / 0 to destroy; apply
+   took under a minute.
+5. Two API-triggered syncs: 2m32s and 1m16s, 100 rows each. Databricks recount of
+   `ow_tp.airbyte_demo.custbill_records` matched the legacy parser exactly (100 rows,
+   82 invoices / 18 credits, GBP 37 / USD 35 / EUR 28, amount sum 510391.14).
+   Recon: `docs/tech-partnerships/recon/airbyte-custbill-fixedwidth.recon.json`.
+
+Caveats to say out loud: the copybook has no invoice id, so none is emitted (the
+prompt's "invoice id" is a wish, not a field); presigned URLs expire after 7 days,
+so a repeat run needs fresh ones in `TF_VAR_custbill_feed_urls`.
+
 ### Beat 4 — break it, let Devin fix it (4 min)
 
 You, in Airbyte Cloud on stage: open the S3 source and replace the AWS secret

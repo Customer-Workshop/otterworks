@@ -1,0 +1,61 @@
+{
+  "kind": "recon-report",
+  "unit": "airbyte-custbill-fixedwidth-connector",
+  "namespace": "demo",
+  "generated_at": "2026-09-25T05:12:00+00:00",
+  "run_mode": "live",
+  "target": "ow_tp.airbyte_demo.custbill_records",
+  "airbyte_connection_id": "7613fbc5-27fc-4300-beee-753bca560e62",
+  "airbyte_source_id": "761001e1-6ca9-479f-9d13-7ba6d2609312",
+  "airbyte_definition_id": "002e525a-c47b-4d04-86d3-f5c166608bb9",
+  "source_sample": {
+    "s3_prefix": "s3://ow-tp-airbyte-demo-landing-599083837640/demo/custbill_feed/",
+    "files": [
+      {"name": "CUSTBILL_DEMO_001.dat", "records": 50, "sha256": "c70f30ca08842885fe2bc96c3902d463609d05be95a96c01875b825a88aa336c"},
+      {"name": "CUSTBILL_DEMO_002.dat", "records": 50, "sha256": "652974b8bb3a168483c8f63fb9f2db440a6ff606f4563cd0800f15914b344f48"}
+    ],
+    "layout": "CBCUST01 fixed-width, 65 columns: CUST-ID X(10), CUST-NAME X(30), BILL-DATE 9(8) YYYYMMDD, BILL-AMT 9(10)V99 implied decimal, CURRENCY X(3), REC-TYPE X(2)",
+    "source_of_truth": "legacy parse_custbill_fixedwidth job output ($OTTERWORKS_LEGACY_ROOT/parsed/*.psv), 100 rows"
+  },
+  "checks": [
+    {"id": "rowcount:custbill_records", "expected": 100, "actual": 100, "source_of_truth": "legacy parser output (100 data records across 2 files)", "result": "pass"},
+    {"id": "distinct:record_key", "expected": 100, "actual": 100, "source_of_truth": "one key per source record (file:md5(record))", "result": "pass"},
+    {"id": "count:record_type=INVOICE", "expected": 82, "actual": 82, "source_of_truth": "legacy parser output, REC-TYPE=01", "result": "pass"},
+    {"id": "count:record_type=CREDIT", "expected": 18, "actual": 18, "source_of_truth": "legacy parser output, REC-TYPE=02", "result": "pass"},
+    {"id": "count:currency", "expected": {"GBP": 37, "USD": 35, "EUR": 28}, "actual": {"GBP": 37, "USD": 35, "EUR": 28}, "source_of_truth": "legacy parser output", "result": "pass"},
+    {"id": "sum:bill_amount", "expected": "510391.14", "actual": "510391.14", "source_of_truth": "legacy parser output (implied-decimal BILL-AMT)", "result": "pass"},
+    {"id": "range:bill_date", "expected": ["2024-01-02", "2025-12-06"], "actual": ["2024-01-02", "2025-12-06"], "source_of_truth": "legacy parser output (YYYYMMDD -> ISO)", "result": "pass"},
+    {"id": "airbyte-job:107432238", "expected": "succeeded", "actual": "succeeded", "source_of_truth": "GET https://api.airbyte.com/v1/jobs/107432238 (rowsSynced=100, bytesSynced=27026, duration=PT2M32S)", "result": "pass"},
+    {"id": "airbyte-job:107432689", "expected": "succeeded", "actual": "succeeded", "source_of_truth": "GET https://api.airbyte.com/v1/jobs/107432689 (rowsSynced=100, bytesSynced=27026, duration=PT1M16S)", "result": "pass"},
+    {"id": "terraform-plan:additive-only", "expected": "2 to add, 0 to change, 0 to destroy", "actual": "2 to add, 0 to change, 0 to destroy", "source_of_truth": "terraform plan against ow-tp/airbyte/demo.tfstate before apply", "result": "pass"}
+  ],
+  "target_recount_query": "SELECT COUNT(*), COUNT(DISTINCT record_key), SUM(record_type='INVOICE'), SUM(record_type='CREDIT'), SUM(currency='GBP'), SUM(currency='USD'), SUM(currency='EUR'), CAST(SUM(bill_amount) AS DECIMAL(18,2)), MIN(bill_date), MAX(bill_date) FROM ow_tp.airbyte_demo.custbill_records",
+  "target_recount_via": "Databricks SQL Statement API, warehouse 565cd2fd713738c4",
+  "values_recomputed_from_target": true,
+  "idempotency_rerun": {
+    "performed": true,
+    "result": "pass",
+    "evidence": "two consecutive API-triggered full_refresh_overwrite syncs (107432238 wall 154s, 107432689 wall 78s) each loaded 100 rows; target recount after each run: [{'n': 100, 'n_keys': 100, 'amount_sum': '510391.14'}, {'n': 100, 'n_keys': 100, 'amount_sum': '510391.14'}]"
+  },
+  "wall_clock": {
+    "sync_1": {"job_id": 107432238, "start": "2026-09-25T05:02:34Z", "end": "2026-09-25T05:05:08Z", "seconds": 154},
+    "sync_2": {"job_id": 107432689, "start": "2026-09-25T05:05:48Z", "end": "2026-09-25T05:07:06Z", "seconds": 78}
+  },
+  "self_check": {
+    "null_and_missing_attribution": "pass — record_filter drops HDR/TRL and short lines; REC-TYPE outside {01,02} lands as record_type=UNKNOWN rather than being silently coerced",
+    "namespace_prefixing": "pass — ow-tp-airbyte-demo-custbill{,-fixedwidth}, ow_tp.airbyte_demo.custbill_records",
+    "no_shared_ddl": "pass — no DDL run; Airbyte created the target table",
+    "rerun_safety": "pass — full_refresh_overwrite, verified by the second sync",
+    "secrets": "pass — presigned URLs and client secrets are TF_VAR/GitHub secrets only; feed_urls is airbyte_secret in the spec",
+    "parity_vs_tolerance": "exact parity (contract: fixed-width parse must match the legacy job record for record)",
+    "capability_preflight": "pass — local declarative-CDK read of the manifest matched the legacy parser for all 100 records before the Builder run",
+    "tp_smoke": "see PR description"
+  },
+  "unverified_paths": [
+    "cron-scheduled sync (only API-triggered jobs were observed)",
+    "presigned URL expiry (7 days): the source needs fresh URLs via TF_VAR_custbill_feed_urls after that; a stable HTTP endpoint was not provisioned",
+    "invoice id: the CBCUST01 layout carries no invoice identifier, so none is emitted; record_key is file:md5(record) and is stable only while the record text is unchanged",
+    "schema-change propagation (propagate_columns) on a changed copybook",
+    "multi-file beyond two partitions and files larger than the two 50-record samples"
+  ]
+}

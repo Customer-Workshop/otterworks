@@ -10,6 +10,14 @@ output "source_id" {
   value = airbyte_source_s3.billing_landing.source_id
 }
 
+output "custbill_connection_id" {
+  value = airbyte_connection.custbill.connection_id
+}
+
+output "custbill_source_id" {
+  value = airbyte_source_custom.custbill_fixedwidth.source_id
+}
+
 output "destination_id" {
   value = airbyte_destination_databricks.lakehouse.destination_id
 }

@@ -63,6 +63,18 @@ variable "sync_cron" {
   default     = "0 0 6 * * ? UTC"
 }
 
+variable "custbill_definition_id" {
+  description = "Workspace definition UUID of the custom CUSTBILL fixed-width connector (published from the Connector Builder as ow-tp-custbill-fixedwidth v1). Not a secret; the default is the demo workspace's definition."
+  type        = string
+  default     = "002e525a-c47b-4d04-86d3-f5c166608bb9"
+}
+
+variable "custbill_feed_urls" {
+  description = "HTTPS URLs of the CUSTBILL fixed-width feed files (presigned S3 URLs under <ns>/custbill_feed/), one per line. Supplied via TF_VAR_custbill_feed_urls, never committed."
+  type        = string
+  sensitive   = true
+}
+
 variable "streams" {
   description = "Legacy billing tables landed under s3://<bucket>/<ns>/<table>/ and how each is synced."
   type = map(object({

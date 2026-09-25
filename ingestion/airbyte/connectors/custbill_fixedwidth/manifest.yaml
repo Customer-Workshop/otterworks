@@ -1,0 +1,134 @@
+version: 6.48.15
+
+type: DeclarativeSource
+
+description: >-
+  Reads the CUSTBILL fixed-width billing extract (copybook CBCUST01) produced by
+  the legacy ksh/Perl batch chain and lands it as typed records. Each feed file
+  is fetched over HTTPS from a presigned S3 URL; HDR/TRL control records are
+  dropped and the 65-byte detail record is sliced into fields.
+
+check:
+  type: CheckStream
+  stream_names:
+    - custbill_records
+
+definitions:
+  base_requester:
+    type: HttpRequester
+    url_base: "{{ stream_partition['feed_url'] }}"
+    path: ""
+    http_method: GET
+
+streams:
+  - type: DeclarativeStream
+    name: custbill_records
+    primary_key:
+      - record_key
+    retriever:
+      type: SimpleRetriever
+      requester:
+        $ref: "#/definitions/base_requester"
+      decoder:
+        type: IterableDecoder
+      record_selector:
+        type: RecordSelector
+        extractor:
+          type: DpathExtractor
+          field_path: []
+        record_filter:
+          type: RecordFilter
+          # Copybook CBCUST01 detail records are 65 bytes; HDR/TRL are control records.
+          condition: >-
+            {{ record['record'] | length >= 65
+               and not record['record'].startswith('HDR')
+               and not record['record'].startswith('TRL') }}
+      partition_router:
+        type: ListPartitionRouter
+        cursor_field: feed_url
+        values: "{{ config['feed_urls'].split() }}"
+    transformations:
+      - type: AddFields
+        fields:
+          - path: [source_file]
+            value: "{{ stream_partition['feed_url'].split('?')[0].split('/')[-1] }}"
+          - path: [cust_id]
+            value: "{{ record['record'][0:10] | trim }}"
+          - path: [cust_name]
+            value: "{{ record['record'][10:40] | trim }}"
+          - path: [bill_date]
+            value: "{{ record['record'][40:44] }}-{{ record['record'][44:46] }}-{{ record['record'][46:48] }}"
+          - path: [bill_amount]
+            # PIC 9(10)V99: implied two decimals, no sign.
+            value: "{{ '%d.%s' | format(record['record'][48:58] | int, record['record'][58:60]) }}"
+          - path: [currency]
+            value: "{{ record['record'][60:63] | trim }}"
+          - path: [record_type_code]
+            value: "{{ record['record'][63:65] }}"
+          - path: [record_type]
+            value: "{{ 'INVOICE' if record['record'][63:65] == '01' else ('CREDIT' if record['record'][63:65] == '02' else 'UNKNOWN') }}"
+          - path: [record_key]
+            value: "{{ stream_partition['feed_url'].split('?')[0].split('/')[-1] }}:{{ record['record'] | hash('md5') }}"
+      - type: RemoveFields
+        field_pointers:
+          - [record]
+    schema_loader:
+      type: InlineSchemaLoader
+      schema:
+        $schema: http://json-schema.org/schema#
+        type: object
+        additionalProperties: true
+        properties:
+          record_key:
+            type: string
+            description: "<source file>:<md5 of the raw 65-byte record>"
+          source_file:
+            type: string
+          cust_id:
+            type: string
+            description: CUST-ID PIC X(10), pos 1-10
+          cust_name:
+            type: string
+            description: CUST-NAME PIC X(30), pos 11-40
+          bill_date:
+            type: string
+            format: date
+            description: BILL-DATE PIC 9(8) YYYYMMDD, pos 41-48, emitted as ISO-8601
+          bill_amount:
+            type: number
+            description: BILL-AMT PIC 9(10)V99, pos 49-60, implied decimal resolved to a 2-dp decimal
+          currency:
+            type: string
+            description: CURRENCY PIC X(3), pos 61-63
+          record_type_code:
+            type: string
+            description: REC-TYPE PIC X(2), pos 64-65 (01=invoice, 02=credit)
+          record_type:
+            type: string
+            enum: [INVOICE, CREDIT, UNKNOWN]
+
+spec:
+  type: Spec
+  connection_specification:
+    $schema: http://json-schema.org/draft-07/schema#
+    type: object
+    required:
+      - feed_urls
+    properties:
+      feed_urls:
+        type: string
+        title: CUSTBILL feed URLs
+        description: >-
+          One HTTPS URL per fixed-width feed file, separated by whitespace or
+          newlines (for example presigned S3 URLs for
+          s3://<landing-bucket>/demo/custbill_feed/CUSTBILL_*.dat).
+        multiline: true
+        order: 0
+        airbyte_secret: true
+
+metadata:
+  autoImportSchema:
+    custbill_records: false
+  testedStreams:
+    custbill_records:
+      streamHash: null

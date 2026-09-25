@@ -1,0 +1,191 @@
+module: rating
+rules:
+  - id: RATING-001
+    statement: >-
+      Period usage is rated against the plan of the latest-starting subscription
+      that overlaps the period, and used_units is the sum of usage events whose
+      occurred_at date falls inside the period, both ends inclusive.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [31, 46]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [tenant_id, period_start, period_end, used_units, quota_units]
+    confidence: medium
+    scenarios: [RATING-001]
+    question: >-
+      (a) Subscription selection orders by starts_on DESC with no tie-breaker; two
+      subscriptions starting the same day pick an arbitrary one. Is a tie possible
+      after sp_change_plan, and if so which wins?
+      (b) occurred_at is timestamptz and is cast to date in the session time zone
+      (Etc/UTC in the legacy stack). Should the service fix the boundary at UTC
+      midnight, or at a tenant/billing time zone?
+      (c) A tenant with no overlapping subscription returns used_units=0,
+      quota_units=NULL, billable_units=0, overage_amount=NULL (verified against the
+      running procedure). Should the service reproduce the NULLs or reject the
+      request?
+    decision:
+      status: pending
+  - id: RATING-002
+    statement: >-
+      Rollover credit is the sum of rollover_units stored on the tenant's rating
+      results whose period_start is before this period and no more than three
+      months earlier (inclusive), capped at twice the plan's included units;
+      billable_units is used_units minus rollover minus included units, floored
+      at zero.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [48, 57]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [rollover_units, billable_units]
+    confidence: medium
+    scenarios: [RATING-002]
+    question: >-
+      (a) The lookback is `rp.period_start >= p_period_start - interval '3 months'`,
+      so for a 2026-02-01 period the 2025-11-01 period IS counted (RATING-002 sums
+      three priors, 300, then caps to 200). Is the inclusive three-month boundary
+      intended, and should it key on period_start rather than period_end?
+      (b) The 2x cap is applied twice (line 48 and line 56) with identical
+      effect; treat as one cap?
+      (c) The lookback reads rollover_units as written by sp_finalize_rating,
+      which stores unused quota (max(quota - used, 0)), not the rollover that
+      was applied in that period. Is "unused quota of the last three finalized
+      periods, capped at 2x quota" the intended rollover definition?
+      (d) Prior periods are matched by tenant only, not by subscription or
+      plan; a rollover earned on one plan carries into a later plan's period.
+      Intended?
+    decision:
+      status: pending
+  - id: RATING-003
+    statement: >-
+      Billable units are split into a first tier of at most 101 units and a
+      second tier holding every billable unit beyond the 101st.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [58, 59]
+    inputs: [billable_units]
+    outputs: [first_tier_units, second_tier_units]
+    confidence: high
+    scenarios: [RATING-004, RATING-005]
+    question: >-
+      The first-tier width is the literal 101 (RATING-004: 101 billable units all
+      land in tier one; RATING-005: the 102nd unit is tier two). Is 101 the
+      contracted boundary, or a long-standing off-by-one for 100 that customers
+      now depend on? The service will implement 101 unless told otherwise.
+    decision:
+      status: pending
+  - id: RATING-004
+    statement: >-
+      Overage amount is first-tier units at the plan overage rate plus
+      second-tier units at 1.5 times the plan overage rate, rounded to two
+      decimals with halves rounded away from zero.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [60, 60]
+    inputs: [first_tier_units, second_tier_units, overage_rate]
+    outputs: [overage_amount]
+    confidence: high
+    scenarios: [RATING-006]
+    question: >-
+      Postgres numeric round() is half-away-from-zero (RATING-003 records 4.365
+      -> 4.37; RATING-004 records 5.555 -> 5.56). Python's Decimal defaults to
+      banker's rounding and would produce 4.36. Confirm half-away-from-zero is the
+      contracted rounding, and confirm the 1.5 second-tier multiplier is a fixed
+      constant rather than a per-plan attribute.
+    decision:
+      status: pending
+  - id: RATING-005
+    statement: >-
+      When the effective subscription is suspended and its suspended_on date lies
+      inside the period (inclusive), billable_units and overage_amount are each
+      multiplied by (period_end - suspended_on + 1) / (period_end - period_start + 1);
+      billable_units is rounded to a whole unit and overage_amount to two
+      decimals, while first_tier_units and second_tier_units are left
+      unprorated.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [62, 72]
+    inputs: [subscription_status, suspended_on, period_start, period_end, billable_units, overage_amount]
+    outputs: [billable_units, overage_amount]
+    confidence: low
+    scenarios: [RATING-003]
+    question: >-
+      (a) The factor counts the days from suspended_on through period_end, i.e.
+      the SUSPENDED part of the period, not the active part before suspension.
+      RATING-003 cannot tell them apart (suspended 2026-02-15 in a 28-day month
+      gives 14/28 either way), but the running procedure rated tenant 2 for
+      2026-02-01..2026-02-20 at 200 * 6/20 = 60 billable units, not 200 * 14/20 =
+      140. Is billing the post-suspension fraction the intended behavior, or a
+      defect the service must preserve for parity?
+      (b) overage_amount is prorated from the already-rounded amount (round(8.73 *
+      0.5, 2) = 4.37), not from the unrounded 8.7325 (which would give 4.37 here
+      but can differ by a cent elsewhere). Preserve double rounding?
+      (c) first_tier_units and second_tier_units are not prorated, so they no
+      longer sum to billable_units after proration (RATING-003: 101 + 99 vs 100).
+      Acceptable, or should the tiers be recomputed?
+      (d) A subscription suspended BEFORE period_start gets no proration at all
+      and is rated at the full amount; one suspended after period_end likewise.
+      Intended?
+      (e) The check uses the stored subscription row's status = 'suspended';
+      tenants.status is ignored. Confirm the subscription, not the tenant, is the
+      authority.
+    decision:
+      status: pending
+  - id: RATING-006
+    statement: >-
+      The usage summary returns one row per usage kind that has events in the
+      inclusive period, with the event count and unit total, ordered by kind
+      ascending; kinds without events are omitted.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [79, 93]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [kind, event_count, units]
+    confidence: high
+    scenarios: [RATING-007]
+    question: >-
+      Ordering is by kind text (api, compute, storage) under the database
+      collation. Should the service order by plain byte/ASCII comparison, and
+      should kinds with zero events be returned as zero rows or stay omitted as
+      today?
+    decision:
+      status: pending
+  - id: RATING-007
+    statement: >-
+      Finalizing a period upserts a rating_periods row keyed by (tenant_id,
+      period_start) with a deterministic id md5(tenant_id || period_start),
+      updating period_end on conflict, then upserts a single rating_results row
+      with id md5(period_id) holding the fn_usage_rating outputs, except that the
+      stored rollover_units is the unused quota max(quota_units - used_units, 0)
+      and created_at is period_end at midnight; on conflict used_units,
+      rollover_units, billable_units and overage_amount are overwritten while
+      quota_units, subscription_id and created_at are kept.
+    source:
+      file: services/legacy-billing/db/procs/rating.sql
+      lines: [95, 139]
+    inputs: [tenant_id, period_start, period_end]
+    outputs: [rating_periods, rating_results]
+    confidence: medium
+    scenarios: [RATING-008]
+    question: >-
+      (a) The stored rollover_units (unused quota, RATING-008 records 0 for
+      tenant 1) differs from the rollover_units fn_usage_rating returns for the
+      same call (200, RATING-002). Is the stored value meant to be "rollover
+      earned for future periods"? If so the column name is misleading and the
+      service API should not expose both under one name.
+      (b) Re-finalizing the same tenant and period_start with a different
+      period_end moves period_end and re-rates, but keeps the original
+      subscription_id and quota_units on the result even if the plan changed.
+      Should re-finalization refresh those, or should a second finalize be
+      rejected?
+      (c) created_at is period_end::timestamptz (midnight at period end), not
+      the wall-clock time the procedure ran, and it is not updated on conflict.
+      Preserve?
+      (d) Finalizing a tenant with no overlapping subscription fails on the
+      NOT NULL subscription_id column after the rating_periods row has already
+      been written in the same transaction (so it rolls back). Should the
+      service reject up front with a clear error?
+      (e) Finalizing does not write anything to the prior periods it drew
+      rollover from, so the same rollover can be applied to every later period in
+      the three-month window. Intended?
+    decision:
+      status: pending

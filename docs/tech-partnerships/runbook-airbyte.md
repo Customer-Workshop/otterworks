@@ -73,7 +73,8 @@ Run record (NS=demo, 2026-09-25): the field list is `var.hashed_fields`
 (`customer_master`: email_1..3, phone1..4, fax) with `var.hashed_field_suffix`
 (`_hashed`); `pipeline.tf` fans it out into eight `hashing` mappers on the
 stream. `terraform plan` showed exactly one change (the connection); apply, two
-manual syncs (jobs 107421576 and 107421927, both `succeeded` via the jobs API),
+manual syncs (jobs 107421576 and 107421927, then 107422753 and 107423191 after
+review, all `succeeded` via the jobs API),
 and the recon rerun took roughly 35 minutes wall clock, most of it sync time
 (~2.5 min per sync) and the Airbyte Cloud login. `sync_and_recon.py` now also
 proves, from `ow_tp.information_schema.columns` and a `COUNT_IF(col RLIKE

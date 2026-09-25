@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "airbyte-ingest-billing-bronze",
   "namespace": "demo",
-  "generated_at": "2026-09-25T03:49:44+00:00",
+  "generated_at": "2026-09-25T04:03:10+00:00",
   "run_mode": "live",
   "target": "ow_tp.airbyte_demo",
   "airbyte_connection_id": "972a53f2-fff0-400d-a9ff-f4b3155a6fc5",
@@ -41,14 +41,14 @@
       "result": "pass"
     },
     {
-      "id": "airbyte-job:107421576",
+      "id": "airbyte-job:107422753",
       "expected": "succeeded",
       "actual": "succeeded",
       "source_of_truth": "airbyte cloud jobs api",
       "result": "pass"
     },
     {
-      "id": "airbyte-job:107421927",
+      "id": "airbyte-job:107423191",
       "expected": "succeeded",
       "actual": "succeeded",
       "source_of_truth": "airbyte cloud jobs api",
@@ -69,6 +69,13 @@
       "result": "pass"
     },
     {
+      "id": "hashed-column-populated:customer_master.email_1_hashed",
+      "expected": 25000,
+      "actual": 25000,
+      "source_of_truth": "populated `email_1` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `email_1_hashed` values in target",
+      "result": "pass"
+    },
+    {
       "id": "plaintext-column-absent:customer_master.email_2",
       "expected": "absent",
       "actual": "absent",
@@ -80,6 +87,13 @@
       "expected": "25000 rows: every non-null value matches ^[0-9a-f]{64}$",
       "actual": "25000 rows: 0 sha256-hex, 25000 null, 0 other",
       "source_of_truth": "SELECT COUNT_IF(`email_2_hashed` RLIKE '^[0-9a-f]{64}$') FROM ow_tp.airbyte_demo.customer_master",
+      "result": "pass"
+    },
+    {
+      "id": "hashed-column-populated:customer_master.email_2_hashed",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "populated `email_2` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `email_2_hashed` values in target",
       "result": "pass"
     },
     {
@@ -97,6 +111,13 @@
       "result": "pass"
     },
     {
+      "id": "hashed-column-populated:customer_master.email_3_hashed",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "populated `email_3` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `email_3_hashed` values in target",
+      "result": "pass"
+    },
+    {
       "id": "plaintext-column-absent:customer_master.phone1",
       "expected": "absent",
       "actual": "absent",
@@ -108,6 +129,13 @@
       "expected": "25000 rows: every non-null value matches ^[0-9a-f]{64}$",
       "actual": "25000 rows: 25000 sha256-hex, 0 null, 0 other",
       "source_of_truth": "SELECT COUNT_IF(`phone1_hashed` RLIKE '^[0-9a-f]{64}$') FROM ow_tp.airbyte_demo.customer_master",
+      "result": "pass"
+    },
+    {
+      "id": "hashed-column-populated:customer_master.phone1_hashed",
+      "expected": 25000,
+      "actual": 25000,
+      "source_of_truth": "populated `phone1` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `phone1_hashed` values in target",
       "result": "pass"
     },
     {
@@ -125,6 +153,13 @@
       "result": "pass"
     },
     {
+      "id": "hashed-column-populated:customer_master.phone2_hashed",
+      "expected": 12555,
+      "actual": 12555,
+      "source_of_truth": "populated `phone2` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `phone2_hashed` values in target",
+      "result": "pass"
+    },
+    {
       "id": "plaintext-column-absent:customer_master.phone3",
       "expected": "absent",
       "actual": "absent",
@@ -136,6 +171,13 @@
       "expected": "25000 rows: every non-null value matches ^[0-9a-f]{64}$",
       "actual": "25000 rows: 0 sha256-hex, 25000 null, 0 other",
       "source_of_truth": "SELECT COUNT_IF(`phone3_hashed` RLIKE '^[0-9a-f]{64}$') FROM ow_tp.airbyte_demo.customer_master",
+      "result": "pass"
+    },
+    {
+      "id": "hashed-column-populated:customer_master.phone3_hashed",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "populated `phone3` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `phone3_hashed` values in target",
       "result": "pass"
     },
     {
@@ -153,6 +195,13 @@
       "result": "pass"
     },
     {
+      "id": "hashed-column-populated:customer_master.phone4_hashed",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "populated `phone4` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `phone4_hashed` values in target",
+      "result": "pass"
+    },
+    {
       "id": "plaintext-column-absent:customer_master.fax",
       "expected": "absent",
       "actual": "absent",
@@ -165,13 +214,20 @@
       "actual": "25000 rows: 0 sha256-hex, 25000 null, 0 other",
       "source_of_truth": "SELECT COUNT_IF(`fax_hashed` RLIKE '^[0-9a-f]{64}$') FROM ow_tp.airbyte_demo.customer_master",
       "result": "pass"
+    },
+    {
+      "id": "hashed-column-populated:customer_master.fax_hashed",
+      "expected": 0,
+      "actual": 0,
+      "source_of_truth": "populated `fax` cells in landing CSV demo/customer_master/customer_master.csv vs sha256-hex `fax_hashed` values in target",
+      "result": "pass"
     }
   ],
   "values_recomputed_from_target": true,
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "two consecutive full_refresh_overwrite syncs (107421576, 107421927) landed identical counts; counts after each run: [{'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}, {'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}]"
+    "evidence": "two consecutive full_refresh_overwrite syncs (107422753, 107423191) landed identical counts; counts after each run: [{'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}, {'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}]"
   },
   "planted_anomaly_detections": {
     "expected_set": [
@@ -189,6 +245,6 @@
     "cron-scheduled sync (only API-triggered jobs were observed)",
     "schema-change propagation (propagate_columns) on a changed export",
     "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
-    "hashing preimage: digests are not compared against SHA-256 of the source values (the recon runner must not read plaintext PII); only digest shape and plaintext-column absence are proven"
+    "hashing preimage: digests are not compared against SHA-256 of the source values (the recon runner never emits plaintext PII); digest shape, plaintext-column absence and populated-cell counts are proven"
   ]
 }

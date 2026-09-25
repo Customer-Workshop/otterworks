@@ -28,6 +28,7 @@ the destination after each one; there is no mode that infers it from finished jo
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as dt
 import json
 import os
@@ -166,9 +167,38 @@ def parse_hashed_fields(specs: list[str] | None) -> dict[str, list[str]]:
     return out
 
 
-def hashing_checks(dbx: Databricks, catalog: str, schema: str, hashed_fields: dict[str, list[str]], suffix: str) -> list[dict]:
+def source_nonempty_counts(csv_path: Path, fields: list[str]) -> dict[str, int]:
+    """Count populated cells per column in the landing export; values are never retained or emitted."""
+    counts = dict.fromkeys(fields, 0)
+    with csv_path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            for field in fields:
+                if row.get(field, "").strip():
+                    counts[field] += 1
+    return counts
+
+
+def hashing_checks(
+    dbx: Databricks,
+    catalog: str,
+    schema: str,
+    hashed_fields: dict[str, list[str]],
+    suffix: str,
+    manifest: dict,
+    landing_dir: Path | None,
+    unverified: list[str],
+) -> list[dict]:
     checks = []
     for table, fields in hashed_fields.items():
+        source_counts: dict[str, int] | None = None
+        csv_path = landing_dir / manifest["tables"][table]["key"] if landing_dir else None
+        if csv_path and csv_path.is_file():
+            source_counts = source_nonempty_counts(csv_path, fields)
+        else:
+            unverified.append(
+                f"hashed-column population for {table}: landing CSV not available locally, so digest counts were not compared "
+                "with the number of populated source cells (only digest shape and plaintext-column absence are proven)"
+            )
         qualified(catalog, schema, table)
         columns = {
             r[0].lower()
@@ -216,6 +246,16 @@ def hashing_checks(dbx: Databricks, catalog: str, schema: str, hashed_fields: di
                     "result": "pass" if hashed_ok + nulls == total else "fail",
                 }
             )
+            if source_counts is not None:
+                checks.append(
+                    {
+                        "id": f"hashed-column-populated:{table}.{hashed}",
+                        "expected": source_counts[field],
+                        "actual": hashed_ok,
+                        "source_of_truth": f"populated `{field}` cells in landing CSV {manifest['tables'][table]['key']} vs sha256-hex `{hashed}` values in target",
+                        "result": "pass" if source_counts[field] == hashed_ok else "fail",
+                    }
+                )
     return checks
 
 
@@ -236,6 +276,11 @@ def main() -> int:
         help="PII columns the connection hashes in flight (default mirrors var.hashed_fields; pass nothing to disable)",
     )
     parser.add_argument("--hashed-field-suffix", default=os.getenv("AIRBYTE_HASHED_FIELD_SUFFIX", "_hashed"))
+    parser.add_argument(
+        "--landing-dir",
+        type=Path,
+        help="local landing root holding the exported CSVs (default: the --manifest's namespace parent); used only to count populated PII cells",
+    )
     parser.add_argument("--out", type=Path, default=ROOT / "docs/tech-partnerships/recon")
     args = parser.parse_args()
     if not args.connection_id:
@@ -248,6 +293,14 @@ def main() -> int:
 
     dbx = Databricks(args.warehouse_id)
     hashed_fields = parse_hashed_fields(args.hashed_fields)
+    landing_dir = args.landing_dir or args.manifest.resolve().parent.parent
+    unverified = [
+        "invoice_line stream (not selected in the initial connection)",
+        "cron-scheduled sync (only API-triggered jobs were observed)",
+        "schema-change propagation (propagate_columns) on a changed export",
+        "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
+        "hashing preimage: digests are not compared against SHA-256 of the source values (the recon runner never emits plaintext PII); digest shape, plaintext-column absence and populated-cell counts are proven",
+    ]
 
     def count_all() -> dict[str, int]:
         return {t: int(dbx.scalar(f"SELECT COUNT(*) FROM {qualified(args.catalog, schema, t)}")) for t in args.streams}
@@ -291,7 +344,9 @@ def main() -> int:
             }
         )
 
-    checks.extend(hashing_checks(dbx, args.catalog, schema, hashed_fields, args.hashed_field_suffix))
+    checks.extend(
+        hashing_checks(dbx, args.catalog, schema, hashed_fields, args.hashed_field_suffix, manifest, landing_dir, unverified)
+    )
 
     rerun_done = len(jobs) >= 2
     report = {
@@ -322,13 +377,7 @@ def main() -> int:
             "unexpected": [],
             "note": "invoice_line is not in the initial stream set; anomaly comparison is deferred to the stream that lands it",
         },
-        "unverified_paths": [
-            "invoice_line stream (not selected in the initial connection)",
-            "cron-scheduled sync (only API-triggered jobs were observed)",
-            "schema-change propagation (propagate_columns) on a changed export",
-            "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
-            "hashing preimage: digests are not compared against SHA-256 of the source values (the recon runner must not read plaintext PII); only digest shape and plaintext-column absence are proven",
-        ],
+        "unverified_paths": unverified,
     }
     args.out.mkdir(parents=True, exist_ok=True)
     path = args.out / f"airbyte-ingest-{args.ns}.recon.json"

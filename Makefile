@@ -371,7 +371,10 @@ ifndef NS
 	$(error NS is required, e.g. make tp-airbyte-sync NS=demo)
 endif
 	$(call validate_ns)
-	AIRBYTE_CONNECTION_ID=$$($(AIRBYTE_TF) output -raw connection_id) python3 ingestion/airbyte/tools/sync_and_recon.py --ns $(NS) --manifest $(AIRBYTE_LANDING_DIR)/$(NS)/manifest.json
+	AIRBYTE_CONNECTION_ID=$$($(AIRBYTE_TF) output -raw connection_id) \
+	AIRBYTE_HASHED_FIELD_SUFFIX=$$($(AIRBYTE_TF) output -raw hashed_field_suffix) \
+	python3 ingestion/airbyte/tools/sync_and_recon.py --ns $(NS) --manifest $(AIRBYTE_LANDING_DIR)/$(NS)/manifest.json \
+		--hashed-fields $$($(AIRBYTE_TF) output -json hashed_fields | python3 -c 'import json,sys; print(*json.load(sys.stdin))')
 
 tp-pain-mongodb: ## Beat 1 opener: "just add a field" blast radius on the Oracle estate (NS=<namespace>; needs oracle-billing-up + oracle-billing-seed)
 ifndef NS

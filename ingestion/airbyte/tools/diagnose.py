@@ -27,8 +27,16 @@ NON_GREEN = {"failed", "cancelled", "incomplete"}
 SECRET_KEYS = ("aws_secret_access_key", "aws_access_key_id", "secret", "token", "password", "credentials")
 
 
-def redact(config: dict) -> dict:
-    return {k: ("<redacted>" if any(s in k for s in SECRET_KEYS) else v) for k, v in config.items() if k != "streams"}
+def redact(value):
+    if isinstance(value, dict):
+        return {
+            k: ("<redacted>" if any(s in k.lower() for s in SECRET_KEYS) else redact(v))
+            for k, v in value.items()
+            if k != "streams"
+        }
+    if isinstance(value, list):
+        return [redact(v) for v in value]
+    return value
 
 
 def main() -> int:
@@ -49,8 +57,9 @@ def main() -> int:
         raise SystemExit(f"airbyte list jobs: HTTP {status} {body}")
     jobs = body.get("data", [])
     if args.json:
-        print(json.dumps(jobs, indent=2))
+        print(json.dumps(redact(jobs), indent=2))
         return 0
+    latest_is_green = bool(jobs) and jobs[0]["status"] == "succeeded"
 
     print(f"connection {args.connection_id}: last {len(jobs)} jobs (newest first)")
     for job in jobs:
@@ -62,12 +71,13 @@ def main() -> int:
     bad = next((j for j in jobs if j["status"] in NON_GREEN), None)
     if bad is None:
         print("no failed/cancelled/incomplete job in this window")
-        return 0
-    latest_is_green = bool(jobs) and jobs[0]["status"] == "succeeded"
+        if not latest_is_green:
+            print(f"latest job is {jobs[0]['status'] if jobs else 'absent'}, not succeeded")
+        return 0 if latest_is_green else 1
 
     status, detail = airbyte.call("GET", f"/jobs/{bad['jobId']}")
     print(f"\nlast non-green job: {bad['jobId']} ({bad['status']})")
-    print(json.dumps(detail if status == 200 else {"http": status, "body": detail}, indent=2))
+    print(json.dumps(redact(detail if status == 200 else {"http": status, "body": detail}), indent=2))
     print(
         "\nThe public API does not return attempt logs or a failure reason. Read them in the Cloud UI:\n"
         f"  connection -> Timeline -> job {bad['jobId']} -> View logs / Download logs\n"
@@ -82,6 +92,7 @@ def main() -> int:
         if status == 200:
             print(f"\nsource {source['sourceId']} ({source['name']}) non-secret configuration:")
             print(json.dumps(redact(source.get("configuration", {})), indent=2))
+    print("\nexit status: 0 only when the newest job in the window succeeded")
     if latest_is_green:
         print(f"\nlatest job {jobs[0]['jobId']} succeeded; the connection has recovered")
         return 0

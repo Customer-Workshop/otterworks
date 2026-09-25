@@ -60,7 +60,7 @@ variable "databricks_catalog" {
 variable "sync_cron" {
   description = "Quartz cron for the billing connection (Airbyte uses 6-7 field Quartz syntax)."
   type        = string
-  default     = "0 0 6 * * ? UTC"
+  default     = "0 0 * * * ? UTC"
 }
 
 variable "custbill_definition_id" {
@@ -86,6 +86,8 @@ variable "streams" {
     customer_master   = { sync_mode = "full_refresh_overwrite" }
     invoice_header    = { sync_mode = "full_refresh_overwrite" }
     entity_attr_value = { sync_mode = "full_refresh_overwrite" }
+    # Lines arrive as new files; dedup on line_id, cursor is the S3 file mtime.
+    invoice_line = { sync_mode = "incremental_deduped_history", primary_key = ["line_id"] }
   }
 }
 

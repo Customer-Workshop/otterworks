@@ -19,13 +19,15 @@ The pre-run (this PR) leaves one working pipeline behind. Every live beat is a
 | Landing | `s3://ow-tp-airbyte-demo-landing-<acct>/demo/<table>/<table>.csv` + `manifest.json` (row counts, sha256) | `make tp-airbyte-land NS=demo` exports the Oracle estate; Airbyte Cloud cannot reach the on-VM database, so S3 is the reachable edge |
 | Airbyte source | `ow-tp-airbyte-demo-billing-landing` (S3, one CSV stream per table) | `ingestion/airbyte/pipeline.tf` |
 | Airbyte destination | `ow-tp-airbyte-demo-lakehouse` (Databricks, OAuth2 service principal `ow_tp_airbyte_demo`) | `ingestion/airbyte/pipeline.tf` |
-| Airbyte connection | `ow-tp-airbyte-demo-billing` — `customer_master`, `invoice_header`, `entity_attr_value`; full refresh; daily 06:00 UTC | `ingestion/airbyte/pipeline.tf` |
+| Airbyte connection | `ow-tp-airbyte-demo-billing` — `customer_master`, `invoice_header`, `entity_attr_value` (full refresh) and, since beat 1, `invoice_line` (incremental, deduped on `line_id`); hourly cron | `ingestion/airbyte/pipeline.tf` |
 | Bronze | `ow_tp.airbyte_demo.<table>` | landed by Airbyte |
 | Evidence | `docs/tech-partnerships/recon/airbyte-ingest-demo.recon.json` | `make tp-airbyte-sync NS=demo` (two syncs, target-recomputed counts) |
 | CI | `.github/workflows/tp-airbyte.yml` | fmt/validate on PRs; plan + apply on push to `tp-run/**` (namespace from `ingestion/airbyte/NAMESPACE`) |
 
-`invoice_line` is exported to S3 but deliberately **not** in the connection: it
-is beat 1.
+Before beat 1 the connection carried only the first three tables (full refresh,
+daily 06:00 UTC); `invoice_line` was exported to S3 but not selected. Beat 1 adds
+it — to rehearse from the pre-beat state, drop it from `var.streams` and set
+`sync_cron` back to `0 0 6 * * ? UTC`.
 
 Expected counts for `demo`: `customer_master` 25,000 · `invoice_header` 18,750 ·
 `entity_attr_value` 8,333 · `invoice_line` 150,000 (37 orphaned lines — the
@@ -56,6 +58,33 @@ orphans now visible in `planted_anomaly_detections`).
 
 Contrast: in a GUI tool this is a stream toggle plus a schedule dropdown that
 nobody reviews and nobody can diff.
+
+What the dry run actually did (about 12 minutes wall clock from `terraform plan`
+to the recon report; no browser):
+
+1. One edit to `var.streams`: `invoice_line = { sync_mode =
+   "incremental_deduped_history", primary_key = ["line_id"] }`. The S3 source's
+   own cursor (`_ab_source_file_last_modified`) is the module default, so nothing
+   else to state. `sync_cron` went from `0 0 6 * * ? UTC` to `0 0 * * * ? UTC`.
+2. `terraform plan -target=airbyte_source_s3.billing_landing
+   -target=airbyte_connection.billing`: 0 to add, 2 to change, 0 to destroy —
+   the new S3 stream (`demo/invoice_line/*.csv`) and the connection's stream list
+   plus cron. Apply took 30 s (source 3 s, connection 26 s).
+3. Two API-triggered syncs on the connection (`sync_and_recon.py --streams ...
+   invoice_line`): job 107441387 (2m25s, 202,083 records read — the three
+   full-refresh tables plus 150,000 lines) and job 107441882 (1m56s, 52,083
+   records — the incremental cursor skipped the unchanged `invoice_line` file).
+   Both `succeeded` per `GET /v1/jobs/<id>`.
+4. Databricks recount of `ow_tp.airbyte_demo.invoice_line`: 150,000 after each
+   run, so the dedup rerun did not double the table. The anti-join
+   `invoice_line LEFT JOIN invoice_header ON invoice_id` returned 37
+   orphaned lines — the legacy estate's own referential gap, now visible in
+   `planted_anomaly_detections` of the recon report.
+
+Caveats to say out loud: the hourly cron itself was not observed firing in the
+dry run (all jobs were API-triggered), and neither sync saw a *new* line file
+land, so incremental pickup of fresh data is asserted by the sync mode, not by
+evidence; both stay in `unverified_paths`.
 
 ### Beat 2 — bulk policy change (4 min)
 

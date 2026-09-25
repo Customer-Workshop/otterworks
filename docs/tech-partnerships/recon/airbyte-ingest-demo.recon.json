@@ -2,7 +2,7 @@
   "kind": "recon-report",
   "unit": "airbyte-ingest-billing-bronze",
   "namespace": "demo",
-  "generated_at": "2026-09-25T01:49:57+00:00",
+  "generated_at": "2026-09-25T06:13:01+00:00",
   "run_mode": "live",
   "target": "ow_tp.airbyte_demo",
   "airbyte_connection_id": "972a53f2-fff0-400d-a9ff-f4b3155a6fc5",
@@ -29,14 +29,21 @@
       "result": "pass"
     },
     {
-      "id": "airbyte-job:107406933",
+      "id": "rowcount:invoice_line",
+      "expected": 150000,
+      "actual": 150000,
+      "source_of_truth": "s3 landing manifest (demo/invoice_line/invoice_line.csv, sha256 2ad818c759d3)",
+      "result": "pass"
+    },
+    {
+      "id": "airbyte-job:107441387",
       "expected": "succeeded",
       "actual": "succeeded",
       "source_of_truth": "airbyte cloud jobs api",
       "result": "pass"
     },
     {
-      "id": "airbyte-job:107407164",
+      "id": "airbyte-job:107441882",
       "expected": "succeeded",
       "actual": "succeeded",
       "source_of_truth": "airbyte cloud jobs api",
@@ -47,22 +54,22 @@
   "idempotency_rerun": {
     "performed": true,
     "result": "pass",
-    "evidence": "two consecutive full_refresh_overwrite syncs (107406933, 107407164) landed identical counts; counts after each run: [{'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}, {'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333}]"
+    "evidence": "two consecutive syncs (three full_refresh_overwrite streams + invoice_line incremental_deduped_history) (107441387, 107441882) landed identical counts; counts after each run: [{'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333, 'invoice_line': 150000}, {'customer_master': 25000, 'invoice_header': 18750, 'entity_attr_value': 8333, 'invoice_line': 150000}]; the second sync re-read 52,083 records (the full-refresh tables only: the invoice_line file was unchanged so the incremental cursor skipped it) and invoice_line stayed at 150,000"
   },
   "planted_anomaly_detections": {
     "expected_set": [
       "orphan_invoice_lines:37"
     ],
-    "actual_set": [],
-    "missing": [
+    "actual_set": [
       "orphan_invoice_lines:37"
     ],
+    "missing": [],
     "unexpected": [],
-    "note": "invoice_line is not in the initial stream set; anomaly comparison is deferred to the stream that lands it"
+    "note": "orphans = invoice_line rows whose invoice_id has no invoice_header row, recounted in the destination after the last sync (job 107441882); orphan count recomputed with sync_and_recon.py --no-sync at 2026-09-25T06:13:20+00:00"
   },
   "unverified_paths": [
-    "invoice_line stream (not selected in the initial connection)",
     "cron-scheduled sync (only API-triggered jobs were observed)",
+    "incremental pickup of a NEW invoice_line file (both syncs saw the same landed file)",
     "schema-change propagation (propagate_columns) on a changed export",
     "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern"
   ]

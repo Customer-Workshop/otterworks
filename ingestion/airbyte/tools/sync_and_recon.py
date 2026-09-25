@@ -3,7 +3,10 @@
 
 Steps:
   1. Trigger a sync job through the Airbyte Cloud API and wait for it.
-  2. Rerun it (idempotency: full_refresh_overwrite must land the same counts).
+  2. Rerun it (idempotency: full_refresh_overwrite and deduped incremental
+     streams must land the same counts).
+  2b. If invoice_line is a stream, count the orphaned lines (no invoice_header
+     for their invoice_id) in the destination and compare with the expected set.
   3. Recount every stream in the destination schema through the Databricks
      SQL Statement API and compare with the landing manifest written by
      export_billing_csv.py.
@@ -152,7 +155,10 @@ def main() -> int:
     parser.add_argument("--connection-id", default=os.getenv("AIRBYTE_CONNECTION_ID"))
     parser.add_argument("--warehouse-id", default=os.getenv("DATABRICKS_WAREHOUSE_ID", "565cd2fd713738c4"))
     parser.add_argument("--catalog", default="ow_tp")
-    parser.add_argument("--streams", nargs="+", default=["customer_master", "invoice_header", "entity_attr_value"])
+    parser.add_argument(
+        "--streams", nargs="+", default=["customer_master", "invoice_header", "entity_attr_value", "invoice_line"]
+    )
+    parser.add_argument("--expected-orphan-lines", type=int, default=37, help="planted orphan invoice_line count")
     parser.add_argument("--no-sync", action="store_true", help="only recount; do not trigger jobs")
     parser.add_argument("--skip-rerun", action="store_true")
     parser.add_argument("--out", type=Path, default=ROOT / "docs/tech-partnerships/recon")
@@ -210,6 +216,42 @@ def main() -> int:
         )
 
     rerun_done = len(jobs) >= 2
+    if "invoice_line" in args.streams and "invoice_header" in args.streams:
+        orphans = int(
+            dbx.scalar(
+                f"SELECT COUNT(*) FROM {qualified(args.catalog, schema, 'invoice_line')} l "
+                f"LEFT ANTI JOIN {qualified(args.catalog, schema, 'invoice_header')} h ON l.invoice_id = h.invoice_id"
+            )
+        )
+        expected_anomalies = [f"orphan_invoice_lines:{args.expected_orphan_lines}"]
+        actual_anomalies = [f"orphan_invoice_lines:{orphans}"]
+        anomalies = {
+            "expected_set": expected_anomalies,
+            "actual_set": actual_anomalies,
+            "missing": sorted(set(expected_anomalies) - set(actual_anomalies)),
+            "unexpected": sorted(set(actual_anomalies) - set(expected_anomalies)),
+            "note": "orphans = invoice_line rows whose invoice_id has no invoice_header row, recounted in the destination after the last sync",
+        }
+        unverified = [
+            "cron-scheduled sync (only API-triggered jobs were observed)",
+            "incremental pickup of a NEW invoice_line file (both syncs saw the same landed file)",
+            "schema-change propagation (propagate_columns) on a changed export",
+            "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
+        ]
+    else:
+        anomalies = {
+            "expected_set": [f"orphan_invoice_lines:{args.expected_orphan_lines}"],
+            "actual_set": [],
+            "missing": [f"orphan_invoice_lines:{args.expected_orphan_lines}"],
+            "unexpected": [],
+            "note": "invoice_line is not in the stream set; anomaly comparison is deferred to the stream that lands it",
+        }
+        unverified = [
+            "invoice_line stream (not selected in this connection)",
+            "cron-scheduled sync (only API-triggered jobs were observed)",
+            "schema-change propagation (propagate_columns) on a changed export",
+            "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
+        ]
     report = {
         "kind": "recon-report",
         "unit": "airbyte-ingest-billing-bronze",
@@ -224,32 +266,22 @@ def main() -> int:
             "performed": True,
             "result": "pass" if rerun_done and all_succeeded and counts_stable and all(c["result"] == "pass" for c in checks) else "fail",
             "evidence": (
-                f"two consecutive full_refresh_overwrite syncs ({', '.join(str(j['jobId']) for j in jobs)}) "
+                f"two consecutive syncs ({', '.join(str(j['jobId']) for j in jobs)}) "
                 f"landed {'identical' if counts_stable else 'DIFFERENT'} counts; counts after each run: {counts_per_run}"
                 if rerun_done
                 else "rerun not performed in this invocation"
             ),
         },
-        "planted_anomaly_detections": {
-            "expected_set": ["orphan_invoice_lines:37"],
-            "actual_set": [],
-            "missing": ["orphan_invoice_lines:37"],
-            "unexpected": [],
-            "note": "invoice_line is not in the initial stream set; anomaly comparison is deferred to the stream that lands it",
-        },
-        "unverified_paths": [
-            "invoice_line stream (not selected in the initial connection)",
-            "cron-scheduled sync (only API-triggered jobs were observed)",
-            "schema-change propagation (propagate_columns) on a changed export",
-            "CSV typing: all columns land as string; numeric/date parity is a silver-layer concern",
-        ],
+        "planted_anomaly_detections": anomalies,
+        "unverified_paths": unverified,
     }
     args.out.mkdir(parents=True, exist_ok=True)
     path = args.out / f"airbyte-ingest-{args.ns}.recon.json"
     path.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     print(f"wrote {path}", file=sys.stderr)
-    return 0 if all(c["result"] == "pass" for c in checks) and report["idempotency_rerun"]["result"] == "pass" else 1
+    anomalies_match = not anomalies["missing"] and not anomalies["unexpected"]
+    return 0 if all(c["result"] == "pass" for c in checks) and report["idempotency_rerun"]["result"] == "pass" and anomalies_match else 1
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ type JWTClaims struct {
 // JWTConfig holds configuration for JWT validation middleware.
 type JWTConfig struct {
 	Secret              string
+	PeerSecret          string   // optional second key (peer deployment's JWT_SECRET); "" disables
 	PublicPath          []string // exact paths that skip JWT validation
 	PrefixPath          []string // prefix paths that skip JWT validation (e.g. /health, /metrics)
 	ProtectedPrefixPath []string // route prefixes that require JWT validation; empty means all non-public paths
@@ -72,6 +73,9 @@ func JWTAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 			}
 
 			claims, err := validateToken(tokenStr, cfg.Secret)
+			if err != nil && cfg.PeerSecret != "" {
+				claims, err = validateToken(tokenStr, cfg.PeerSecret)
+			}
 			if err != nil {
 				writeJSONError(w, http.StatusUnauthorized, fmt.Sprintf("invalid token: %v", err))
 				return

@@ -89,6 +89,7 @@ func main() {
 	// JWT validation
 	r.Use(middleware.JWTAuth(middleware.JWTConfig{
 		Secret:              cfg.JWTSecret,
+		PeerSecret:          cfg.JWTPeerSecret,
 		PublicPath:          middleware.DefaultPublicPaths(),
 		PrefixPath:          middleware.DefaultPrefixPaths(),
 		ProtectedPrefixPath: routePrefixes(routes),

@@ -1,0 +1,19 @@
+{{- if and .Values.manifest.mount (or .Values.manifest.base .Values.manifest.overlay) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-manifest
+  labels:
+    {{- include "migration-job.labels" . | nindent 4 }}
+  annotations:
+    demo/expires-at: {{ .Values.expires | quote }}
+data:
+  {{- if .Values.manifest.base }}
+  manifest.yaml: |
+    {{- .Values.manifest.base | nindent 4 }}
+  {{- end }}
+  {{- if .Values.manifest.overlay }}
+  {{ include "migration-job.token" . }}.yaml: |
+    {{- .Values.manifest.overlay | nindent 4 }}
+  {{- end }}
+{{- end }}

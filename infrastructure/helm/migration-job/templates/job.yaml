@@ -1,0 +1,102 @@
+{{- $token := include "migration-job.token" . -}}
+{{- $mount := and .Values.manifest.mount (or .Values.manifest.base .Values.manifest.overlay) -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "migration-job.name" . }}
+  labels:
+    {{- include "migration-job.labels" . | nindent 4 }}
+  annotations:
+    demo/expires-at: {{ .Values.expires | quote }}
+    ldm/run-id: {{ include "migration-job.runId" . | quote }}
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "migration-job.labels" . | nindent 8 }}
+        ldm/db2-client: "true"
+    spec:
+      restartPolicy: {{ .Values.job.restartPolicy }}
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ .Release.Name }}
+      {{- end }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ldm
+          image: {{ include "migration-job.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - {{ .Values.stage | quote }}
+            - "--manifest"
+            - {{ .Values.manifestPath | quote }}
+            - "--namespace"
+            - {{ $token | quote }}
+            {{- if ne .Values.stage "init" }}
+            - "--run-id"
+            - {{ .Values.runId | quote }}
+            {{- end }}
+            {{- range .Values.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            - name: LDM_HOST
+              value: eks
+            - name: LDM_JOB_IMAGE
+              value: {{ include "migration-job.image" . | quote }}
+            - name: LOCAL_STAGING_DIR
+              value: /work/staging
+            {{- range $k, $v := .Values.env }}
+            {{- if $v }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secrets.db2 }}
+            - secretRef:
+                name: {{ .Values.secrets.azure }}
+                optional: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: staging
+              mountPath: /work/staging
+            {{- if $mount }}
+            {{- if .Values.manifest.base }}
+            - name: manifest
+              mountPath: /app/migration/manifest.yaml
+              subPath: manifest.yaml
+              readOnly: true
+            {{- end }}
+            {{- if .Values.manifest.overlay }}
+            - name: manifest
+              mountPath: /app/migration/manifests/{{ $token }}.yaml
+              subPath: {{ $token }}.yaml
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        - name: staging
+          emptyDir:
+            sizeLimit: {{ .Values.staging.sizeLimit }}
+        {{- if $mount }}
+        - name: manifest
+          configMap:
+            name: {{ .Release.Name }}-manifest
+        {{- end }}

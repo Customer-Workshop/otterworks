@@ -1,0 +1,6 @@
+apiVersion: v2
+name: db2-archive
+description: Db2 Community Edition (legacy ARCHIVE store) for one legacy-data-migration tenant namespace - ClusterIP only, static PV, seeded on install
+type: application
+version: 0.1.0
+appVersion: "11.5.9.0"

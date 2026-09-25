@@ -1,0 +1,6 @@
+apiVersion: v2
+name: migration-job
+description: One-shot Kubernetes Job running one stage of the ldm legacy data migration (Db2 -> Azure SQL)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

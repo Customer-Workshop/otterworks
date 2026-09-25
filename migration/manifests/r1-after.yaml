@@ -1,0 +1,10 @@
+# Throwaway rehearsal namespace (docs/demos/legacy-data-migration.md §10): same shape as d24-after,
+# deployed with a short TTL and destroyed to produce the destroy transcript. Never a presenter target.
+namespace: r1-after
+run_token: r1
+extends: ../manifest.yaml
+migrate: true
+azure: true
+purge: true
+execution:
+  run_job_in_azure: false

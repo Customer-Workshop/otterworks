@@ -1,0 +1,18 @@
+{{- if .Values.networkPolicy.enabled }}
+# A Job serves nothing: deny all ingress. Egress (Db2 in-namespace, Azure SQL / Blob public endpoints) is open.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "migration-job.labels" . | nindent 4 }}
+  annotations:
+    demo/expires-at: {{ .Values.expires | quote }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "migration-job.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress: []
+{{- end }}

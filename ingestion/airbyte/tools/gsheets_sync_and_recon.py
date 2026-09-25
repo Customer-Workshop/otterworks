@@ -80,10 +80,14 @@ def main() -> int:
 
     schema = f"airbyte_{args.ns.replace('-', '_')}"
     dbx = Databricks(args.warehouse_id)
-    airbyte = Airbyte()
-    live_sheet, live_tabs = connection_source(airbyte, args.connection_id)
-    sheet_url = args.sheet_url or live_sheet
-    tabs = args.tabs or live_tabs
+    airbyte: Airbyte | None = None
+    if not (args.no_sync and args.sheet_url and args.tabs):
+        airbyte = Airbyte()
+        live_sheet, live_tabs = connection_source(airbyte, args.connection_id)
+        sheet_url = args.sheet_url or live_sheet
+        tabs = args.tabs or live_tabs
+    else:
+        sheet_url, tabs = args.sheet_url, args.tabs
     if not tabs:
         raise SystemExit(f"connection {args.connection_id} has no selected streams")
     args.tabs = tabs
@@ -106,6 +110,7 @@ def main() -> int:
         counts = count_all()
         print(json.dumps({"sheet": sheet_url, "expected": {t: expected[t][0] for t in tabs}, "target": counts}, indent=2))
         return 0 if all(counts[t] == expected[t][0] for t in tabs) else 1
+    assert airbyte is not None
     for _ in range(2):
         jobs.append(airbyte.run_sync(args.connection_id))
         counts_per_run.append(count_all())

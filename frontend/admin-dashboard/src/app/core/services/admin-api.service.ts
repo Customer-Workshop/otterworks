@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Observable, Subject, forkJoin, map } from 'rxjs';
+import { Observable, Subject, catchError, forkJoin, map, of } from 'rxjs';
 import { User, UserActivity } from '../models/user.model';
 import { AuditEvent } from '../models/audit.model';
 import { FeatureFlag } from '../models/feature-flag.model';
@@ -8,7 +8,13 @@ import { Announcement } from '../models/announcement.model';
 import { ServiceHealth } from '../models/system-health.model';
 import { DashboardStats, AnalyticsReport, ChartDataPoint } from '../models/analytics.model';
 import { Incident } from '../models/incident.model';
-import { CreateReportRequest, Report, ReportStatus, REPORT_STATUSES } from '../models/report.model';
+import {
+  CreateReportRequest,
+  Report,
+  ReportListResult,
+  ReportStatus,
+  REPORT_STATUSES,
+} from '../models/report.model';
 
 // Service metadata not available from the health endpoint — kept here for display purposes
 const SERVICE_META: Record<string, { version: string; port: number; language: string; details: string }> = {
@@ -180,12 +186,31 @@ export class AdminApiService {
 
   // The report-service list endpoint always filters: with no status it returns
   // COMPLETED only, so "all statuses" is a fan-out over the four statuses.
-  getReports(status?: ReportStatus): Observable<Report[]> {
+  // A single failing status query degrades to a partial list plus the statuses
+  // that could not be read; the caller only sees an error if all of them fail.
+  getReports(status?: ReportStatus): Observable<ReportListResult> {
     if (status) {
-      return this.getReportsByStatus(status);
+      return this.getReportsByStatus(status).pipe(
+        map(reports => ({ reports, failedStatuses: [] })),
+      );
     }
-    return forkJoin(REPORT_STATUSES.map(s => this.getReportsByStatus(s))).pipe(
-      map(lists => lists.flat().sort((a, b) => this.reportSortKey(b) - this.reportSortKey(a))),
+    const queries = REPORT_STATUSES.map(s => this.getReportsByStatus(s).pipe(
+      map(reports => ({ status: s, reports, failed: false })),
+      catchError(() => of({ status: s, reports: [] as Report[], failed: true })),
+    ));
+    return forkJoin(queries).pipe(
+      map(results => {
+        const failedStatuses = results.filter(r => r.failed).map(r => r.status);
+        if (failedStatuses.length === REPORT_STATUSES.length) {
+          throw new Error('No report status could be loaded');
+        }
+        return {
+          reports: results
+            .flatMap(r => r.reports)
+            .sort((a, b) => this.reportSortKey(b) - this.reportSortKey(a)),
+          failedStatuses,
+        };
+      }),
     );
   }
 

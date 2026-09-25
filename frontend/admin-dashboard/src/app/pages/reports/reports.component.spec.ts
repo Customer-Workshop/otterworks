@@ -78,12 +78,12 @@ describe('ReportsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No Failed reports');
   });
 
-  it('should show an error state instead of an empty table when the request fails', () => {
+  it('should show an error state instead of an empty table when every request fails', () => {
     fixture.detectChanges();
-    httpMock.expectOne('/api/v1/reports?status=PENDING')
-      .flush('service unavailable', { status: 503, statusText: 'Service Unavailable' });
-    // the remaining status requests are cancelled once the first one fails
-    httpMock.match(() => true);
+    for (const status of ['PENDING', 'GENERATING', 'COMPLETED', 'FAILED']) {
+      httpMock.expectOne(`/api/v1/reports?status=${status}`)
+        .flush('service unavailable', { status: 503, statusText: 'Service Unavailable' });
+    }
     fixture.detectChanges();
 
     expect(component.error).toContain('Could not load reports');
@@ -92,6 +92,24 @@ describe('ReportsComponent', () => {
     expect(compiled.querySelector('.error-container')).toBeTruthy();
     expect(compiled.querySelector('.empty-state')).toBeFalsy();
     expect(compiled.querySelector('.reports-table')).toBeFalsy();
+  });
+
+  it('should keep the reports it could load and warn when one status query fails', () => {
+    fixture.detectChanges();
+    httpMock.expectOne('/api/v1/reports?status=PENDING').flush({ reports: [], total: 0 });
+    httpMock.expectOne('/api/v1/reports?status=GENERATING').flush({ reports: [], total: 0 });
+    httpMock.expectOne('/api/v1/reports?status=COMPLETED')
+      .flush({ reports: [COMPLETED_REPORT], total: 1 });
+    httpMock.expectOne('/api/v1/reports?status=FAILED')
+      .flush('boom', { status: 500, statusText: 'Internal Server Error' });
+    fixture.detectChanges();
+
+    expect(component.error).toBe('');
+    expect(component.dataSource.data.length).toBe(1);
+    expect(component.warning).toContain('Failed');
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.warning-banner')).toBeTruthy();
+    expect(compiled.querySelector('.reports-table')).toBeTruthy();
   });
 
   it('should show an empty state when there are no reports', () => {

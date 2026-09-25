@@ -107,6 +107,11 @@ import {
         <button mat-stroked-button color="primary" (click)="loadReports()">Retry</button>
       </div>
 
+      <div *ngIf="!loading && !error && warning" class="warning-banner">
+        <mat-icon>warning_amber</mat-icon>
+        <span>{{ warning }}</span>
+      </div>
+
       <div class="table-container" *ngIf="!loading && !error && dataSource.data.length > 0">
         <table mat-table [dataSource]="dataSource" class="reports-table">
           <ng-container matColumnDef="reportName">
@@ -182,6 +187,13 @@ import {
     .error-container .mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; }
     .error-container p { margin-bottom: 16px; }
 
+    .warning-banner {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+      padding: 12px 16px; border-radius: 8px; font-size: .85rem;
+      background: #fff8e1; color: #8d6e00;
+    }
+    .warning-banner .mat-icon { font-size: 20px; width: 20px; height: 20px; }
+
     .table-container {
       background: white; border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.08); overflow: hidden;
@@ -215,6 +227,7 @@ export class ReportsComponent implements OnInit {
   loading = true;
   creating = false;
   error = '';
+  warning = '';
   statusFilter: ReportStatus | '' = '';
   showCreateForm = false;
   downloadingId: number | null = null;
@@ -242,13 +255,15 @@ export class ReportsComponent implements OnInit {
   loadReports(): void {
     this.loading = true;
     this.error = '';
+    this.warning = '';
     this.api.getReports(this.statusFilter || undefined).pipe(
       catchError(() => {
         this.error = 'Could not load reports. The report service is unreachable.';
         return of(null);
       }),
-    ).subscribe(reports => {
-      this.dataSource.data = reports ?? [];
+    ).subscribe(result => {
+      this.dataSource.data = result?.reports ?? [];
+      this.warning = this.warningFor(result?.failedStatuses ?? []);
       this.loading = false;
     });
   }
@@ -300,6 +315,14 @@ export class ReportsComponent implements OnInit {
       .split('_')
       .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ');
+  }
+
+  private warningFor(failedStatuses: ReportStatus[]): string {
+    if (failedStatuses.length === 0) {
+      return '';
+    }
+    const names = failedStatuses.map(status => this.label(status)).join(', ');
+    return `Could not load ${names} reports, so this list is incomplete.`;
   }
 
   private fileName(report: Report, contentDisposition: string | null): string {

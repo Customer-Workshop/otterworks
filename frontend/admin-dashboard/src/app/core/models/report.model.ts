@@ -42,6 +42,11 @@ export interface Report {
   errorMessage?: string;
 }
 
+export interface ReportListResult {
+  reports: Report[];
+  failedStatuses: ReportStatus[];
+}
+
 export interface CreateReportRequest {
   reportName: string;
   category: ReportCategory;

@@ -32,3 +32,8 @@
 - Stops: STOP A soft (60 s default-accept), STOP B hard, STOP C hard. Routing: this web session only.
 - Every stop/halt/wave-close writes one row to `05_decisions.md` with honest provenance.
 - Wave manifests always set `auto_merge` explicitly.
+
+## Profile feedback folded in after wave 0 (oracle profile addenda for this engagement)
+- Mapping `root_table`/`child_table` are schema-qualified (`OW_BILLING.<TABLE>`): the read-only principal has no synonyms, so unqualified names fail Tier 1 with ORA-00942.
+- `recon run` grades every collection in `--mapping`; batches use the unit-scoped views `.migration/mapping/<unit>.json` (filtered copies of `03_mapping_spec.json`, same version).
+- Every shell that touches the fixture or the harness sources `~/.config/ow_billing_env.sh` (local, untracked: Oracle DSN env vars + `RECON_REDACT_SALT`).

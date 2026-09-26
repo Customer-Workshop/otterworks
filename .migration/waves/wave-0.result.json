@@ -1,0 +1,51 @@
+{
+  "auto_merge": true,
+  "batches": [
+    {
+      "branch": "unit/w0-b01",
+      "failure_class": "",
+      "id": "w0-b01",
+      "one_line_summary": "orchestrator single-session batch: CODES/TENANTS/PLANS loaded (32/70/3 docs), fixture PASS then live migration_cluster PASS merge_eligible=true",
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1709",
+      "recon_mode": "live",
+      "recon_verdict": "PASS",
+      "skill_feedback": [
+        "oracle profile: schema-qualify root_table/child_table when the RO principal has no synonyms (harness Tier 1 ORA-00942 otherwise)",
+        "recon run grades every collection in --mapping; per-unit mapping views are needed to scope one batch"
+      ],
+      "status": "PASS",
+      "target_class": "migration_cluster",
+      "write_targets": [
+        "mmp_rt_billing.codes",
+        "mmp_rt_billing.tenants",
+        "mmp_rt_billing.plans"
+      ]
+    }
+  ],
+  "breaker_tripped_on": null,
+  "closed": true,
+  "manifest_sha": "6476a1749fa3",
+  "merged_prs": [
+    "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1709"
+  ],
+  "run_id": "local-wave0-1790443360",
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "verify": {
+    "findings": [
+      "Batch w0-b01 (shared-reference) passes independent live recon against the migration cluster with merge_eligible=true and all 116 checks green across three tiers.",
+      "Probes past the gate found no nulls, missing fields, duplicate keys, empty collections, or orphan TENANT_STATUS references in codes, tenants, or plans.",
+      "Both application parity replays (fn_list_plans and the tenant summary join for all 70 tenants) return identical results from Oracle and MongoDB.",
+      "The unique indexes required by the mapping index_plan (tenants.name, plans.code) exist on the loaded collections.",
+      "PR #1709 touches only its own recon evidence directory and the new mongo backend and loader code, and is eligible to merge under auto_merge=true, but this verifier did not merge it per instructions."
+    ],
+    "report_path": "recon/wave-0:.migration/recon/wave-0/report.md",
+    "unit_verdicts": {
+      "w0-b01": "PASS"
+    },
+    "wave_verdict": "PASS"
+  },
+  "wave": 0,
+  "width": 3,
+  "write_target_overlaps": []
+}

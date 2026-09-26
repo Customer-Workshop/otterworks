@@ -59,3 +59,7 @@ Each field is FACT (intake), DISCOVERED (probed), or PROPOSED (defaulted, confir
 ## Resolved access axes (STOP A)
 - source_access: live
 - target_access: migration_cluster
+
+## Fixture (playbook 2 step 5)
+- fixture_manifest: `.migration/fixtures/ow_billing.json`; DSN secret name `ORACLE_BILLING_RO_DSN` (the synthetic demo estate on this VM is itself the fixture; no sampled copy — see STOP B decision row).
+- execution: single-session (units < 10, rows ~204k, and the source is reachable only from this VM).

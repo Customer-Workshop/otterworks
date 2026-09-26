@@ -1650,7 +1650,8 @@
       }
      ],
      "cardinality": "sum(attributes[].length) = count(ENTITY_ATTR_VALUE WHERE ENTITY_TYPE='CUSTOMER') = 8337; element key EAV_ID because (ENTITY_ID, ATTR_NAME) repeats 181 times",
-     "child_where": "ENTITY_TYPE = 'CUSTOMER'"
+     "child_where": "ENTITY_TYPE = 'CUSTOMER'",
+     "target_where": "{}"
     }
    ],
    "unit": "customers",

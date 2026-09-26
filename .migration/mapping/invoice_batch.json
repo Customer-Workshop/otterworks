@@ -327,7 +327,8 @@
       }
      ],
      "cardinality": "sum(lines[].length) = count(INVOICE_LINE) - 37 orphans = 149963; element key LINE_ID because LINE_NO repeats within an invoice (19415 duplicates)",
-     "child_where": "EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID)"
+     "child_where": "EXISTS (SELECT 1 FROM OW_BILLING.INVOICE_HEADER h WHERE h.INVOICE_ID = INVOICE_LINE.INVOICE_ID)",
+     "target_where": "{}"
     }
    ],
    "unit": "invoice_batch",

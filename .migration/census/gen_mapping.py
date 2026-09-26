@@ -80,6 +80,7 @@ def embed(path, child, parent_key, key_src, key_tgt, cardinality, child_where=No
          "key": {"source": key_src, "target": key_tgt}, "fields": fields(child), "cardinality": cardinality}
     if child_where:
         e["child_where"] = child_where
+        e.setdefault("target_where", "{}")  # harness scopes both sides or neither; all loaded elems are in scope
     e.update(extra)
     return e
 

@@ -10,7 +10,7 @@
  "source_access": "live",
  "target_access": "migration_cluster",
  "child_minutes": 45,
- "execution": "single-session (playbook 2 step 5: <10 units, ~204k rows; AND the source is reachable only from this VM, so fan-out children on other machines cannot read it). Batches run in this session via !mongo_unit_migration; verification via !mongo_reconciliation as recorded at STOP B.",
+ "execution": "single-session: 1 batch (playbook 0 step 5: '1 or 2 batches ... run !mongo_unit_migration for each batch here, then !mongo_reconciliation in one fresh session' -> fresh Local subagent as verifier).",
  "batches": [
   {
    "id": "w0-b01",

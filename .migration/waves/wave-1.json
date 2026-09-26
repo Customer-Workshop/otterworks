@@ -10,7 +10,7 @@
  "source_access": "live",
  "target_access": "migration_cluster",
  "child_minutes": 45,
- "execution": "single-session (playbook 2 step 5: <10 units, ~204k rows; AND the source is reachable only from this VM, so fan-out children on other machines cannot read it). Batches run in this session via !mongo_unit_migration; verification via !mongo_reconciliation as recorded at STOP B.",
+ "execution": "migration-fanout, Local backend (STOP B change): one Devin Local subagent per batch on this VM (which can reach the Oracle fixture), at most width=3 at once, then one fresh verifier subagent; orchestrator runs manifest+collision check, breaker, writes result/brief (single ledger writer). child_macro/verify_macro do not resolve on Local: children get skills/install-mongo-kit/playbooks/3-unit_migration.md as a file, the verifier 4-reconciliation_and_parallel_run.md.",
  "expected_cost_note": "wave 1 is the calibration wave for two pattern classes: wide-embed (customers, XL 155 cols) and proc-heavy (subscriptions_rating/invoicing/dunning). No later wave to discount against.",
  "batches": [
   {
@@ -56,5 +56,6 @@
    "fixture_manifest": ".migration/fixtures/ow_billing.json",
    "brief": "Units: subscriptions_rating (pkg_plans, pkg_rating), invoicing (pkg_invoicing), dunning (pkg_dunning). Source: Oracle OW_BILLING via secret ORACLE_BILLING_RO_DSN (read-only, concurrency 1). Target: Atlas otterworks-demo database mmp_rt_billing via secret MONGODB_MMP_RT_TARGET_URI; write ONLY to mmp_rt_billing.subscriptions, mmp_rt_billing.usage_events, mmp_rt_billing.rating_periods, mmp_rt_billing.invoices, mmp_rt_billing.credit_notes, mmp_rt_billing.dunning_attempts, mmp_rt_billing.notifications. Mapping: .migration/03_mapping_spec.json v1.0.0 (fields, keys, embeds, canonicalization). Tolerances: .migration/02_tolerances.json v1.0.0 (exact). Fixture manifest: .migration/fixtures/ow_billing.json. Loader: Python oracledb -> pymongo bulk_write (replace, upsert) into the declared collections, idempotent by _id. Recon: `recon run` from repo root, --mode fixture until green, then exactly one --mode live --target-class migration_cluster; merge only on live PASS. Never touch Oracle beyond SELECT; never edit .migration/; open one PR per batch against the run branch. Port the four PL/SQL packages to app-side Python (services/legacy-billing/app/backends/mongo.py) with request-scoped state replacing package globals."
   }
- ]
+ ],
+ "backend": "local"
 }

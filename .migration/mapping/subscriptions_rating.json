@@ -1,6 +1,6 @@
 {
- "version": "1.0.0",
- "generated_at": "2026-09-26T17:08:31+00:00",
+ "version": "1.1.0",
+ "generated_at": "2026-09-26T18:11:09+00:00",
  "generator": ".migration/census/gen_mapping.py over .migration/census/discovery.json",
  "source": {
   "family": "oracle",
@@ -339,34 +339,13 @@
   "seq_customer_master / seq_entity_attr_value / seq_billing_audit_log / seq_subscriptions_hist": "surrogate numbers copied as long; new inserts after cutover use a counters collection (PROPOSED)"
  },
  "index_plan": {
-  "customers": [
-   "{tenantId:1, custSeqNo:1}",
-   "{custNo:1}"
-  ],
-  "invoice_headers": [
-   "{batchNo:1, statusCd:1}",
-   "{custId:1}",
-   "{tenantId:1}"
-  ],
   "usage_events": [
    "{tenantId:1, occurredAt:-1}"
   ],
   "rating_periods": [
    "{tenantId:1, periodStart:1} unique"
-  ],
-  "dunning_attempts": [
-   "{invoiceId:1, attemptNo:1} unique",
-   "{tenantId:1, scheduledFor:-1}"
-  ],
-  "notifications": [
-   "{tenantId:1, kindCd:1, sentAt:1} unique"
-  ],
-  "plans": [
-   "{code:1} unique"
-  ],
-  "tenants": [
-   "{name:1} unique"
   ]
  },
- "derived_from": ".migration/03_mapping_spec.json v1.0.0 filtered to unit subscriptions_rating"
+ "unit_view": "subscriptions_rating",
+ "derived_from": ".migration/03_mapping_spec.json"
 }

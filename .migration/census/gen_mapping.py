@@ -103,13 +103,10 @@ MODEL = [
                        "sum(attributes[].length) = count(ENTITY_ATTR_VALUE WHERE ENTITY_TYPE='CUSTOMER') = 8337; element key EAV_ID because (ENTITY_ID, ATTR_NAME) repeats 181 times",
                        )]),  # unscoped: census shows every ENTITY_ATTR_VALUE row is ENTITY_TYPE='CUSTOMER'; a scoped embed can never be merge-eligible in the harness
     coll("invoice_headers", "INVOICE_HEADER", ["INVOICE_ID"], unit="invoice_batch", wave=1,
-         access_pattern="reports.py:46-67 header x line aggregates by batch_no; max 21 lines/header -> embed lines",
-         embeds=[embed("lines", "INVOICE_LINE", ["INVOICE_ID"], ["LINE_ID"], "lineId",
-                       "sum(lines[].length) = count(INVOICE_LINE) - 37 orphans = 149963; element key LINE_ID because LINE_NO repeats within an invoice (19415 duplicates)",
-                       child_where=HAS_HDR)]),
-    coll("invoice_line_orphans", "INVOICE_LINE", ["LINE_ID"], unit="invoice_batch", wave=1,
-         root_where=ORPHAN, target_where='{"orphan": true}',
-         access_pattern="37 INVOICE_LINE rows have no INVOICE_HEADER (planted orphaned_rows); kept verbatim in a sibling collection, flagged orphan:true"),
+         access_pattern="reports.py:46-67 header x line aggregates by batch_no; lines referenced via invoice_lines.invoiceId (halt fix A: harness zeroes merge_eligible on any where-scoped embed, and 37 orphans forbid an unscoped one)"),
+    coll("invoice_lines", "INVOICE_LINE", ["LINE_ID"], unit="invoice_batch", wave=1,
+         access_pattern="all 150000 INVOICE_LINE rows as a referenced root collection; orphan:true flag (derived, ungraded) on the 37 rows without an INVOICE_HEADER; reports join by invoiceId via $lookup",
+         derived_fields=[{"target": "orphan", "bson_type": "bool", "rule": "NOT EXISTS INVOICE_HEADER for INVOICE_ID", "graded": False}]),
     coll("subscriptions", "SUBSCRIPTIONS", ["ID"], unit="subscriptions_rating", wave=1,
          access_pattern="pkg_plans.fn_entitlement/sp_change_plan; backends/oracle.py:68,161; RATING_RESULTS references subscription_id"),
     coll("usage_events", "USAGE_EVENTS", ["ID"], unit="subscriptions_rating", wave=1,
@@ -131,7 +128,7 @@ MODEL = [
 ]
 
 spec = {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
     "generator": ".migration/census/gen_mapping.py over .migration/census/discovery.json",
     "source": {"family": "oracle", "schema": "OW_BILLING"},
@@ -153,6 +150,7 @@ spec = {
     "index_plan": {
         "customers": ["{tenantId:1, custSeqNo:1}", "{custNo:1}"],
         "invoice_headers": ["{batchNo:1, statusCd:1}", "{custId:1}", "{tenantId:1}"],
+        "invoice_lines": ["{invoiceId:1, lineNo:1}", "{orphan:1}"],
         "usage_events": ["{tenantId:1, occurredAt:-1}"],
         "rating_periods": ["{tenantId:1, periodStart:1} unique"],
         "dunning_attempts": ["{invoiceId:1, attemptNo:1} unique", "{tenantId:1, scheduledFor:-1}"],

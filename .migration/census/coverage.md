@@ -17,7 +17,7 @@ Every object in exactly one bucket. Rows: live COUNT(*).
 | CUSTOMER_MASTER | 25001 (25000 batch 14531857 + 1 static) | migration unit | `customers` (customers, XL: 155 cols) | facade.py:287; reports.py:87 |
 | ENTITY_ATTR_VALUE | 8337 (all ENTITY_TYPE=CUSTOMER, 0 dangling) | migration unit | embedded `customers.attributes` | facade.py:294 |
 | INVOICE_HEADER | 18750 | migration unit | `invoice_headers` (invoice_batch) | reports.py:46,67 |
-| INVOICE_LINE | 150000 (37 orphans) | migration unit | embedded `invoice_headers.lines` + `invoice_line_orphans` | reports.py:46,67; mmprt.json planted_anomalies |
+| INVOICE_LINE | 150000 (37 orphans) | migration unit | embedded `invoice_headers.lines` + `invoice_lines (v1.1.0: all lines referenced, orphan flag)` | reports.py:46,67; mmprt.json planted_anomalies |
 | SUBSCRIPTIONS | 70 | migration unit | `subscriptions` (subscriptions_rating) | pkg_plans; oracle.py:68,161 |
 | USAGE_EVENTS | 805 | migration unit | `usage_events` | facade.py:214,401; pkg_rating |
 | RATING_PERIODS | 3 | migration unit | `rating_periods` | pkg_rating.sp_finalize_rating |

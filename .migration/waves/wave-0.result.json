@@ -1,0 +1,46 @@
+{
+  "wave": 0,
+  "run_id": "single-session-wave-0",
+  "manifest_sha": "1a02333493fe",
+  "width": 1,
+  "auto_merge": false,
+  "closed": true,
+  "breaker_tripped_on": null,
+  "write_target_overlaps": [],
+  "undeclared_write_targets": {},
+  "unreported_write_targets": [],
+  "merged_prs": [],
+  "batches": [
+    {
+      "id": "w0-b01",
+      "units": [
+        "u-00-codes"
+      ],
+      "status": "FAIL",
+      "failure_class": "offline_no_live_recon",
+      "recon": "fixture PASS 32/32 (T1 1, T2 0, T3 32), target_class=local, merge_eligible=false",
+      "quarantined": 0,
+      "pr_url": "https://github.com/Cognition-Partner-Workshops/otterworks/pull/1708",
+      "write_targets_used": [
+        "ow_billing_migration.codes"
+      ],
+      "one_line_summary": "u-00-codes loader + fixture recon PASS on local target; FAIL-by-rule: live recon impossible offline"
+    }
+  ],
+  "verify": {
+    "session": "devin-a43ac910a9f44615ad85cd776a72e636",
+    "wave_verdict": "PASS (fixture, local; live recon pending customer run)",
+    "unit_verdicts": {
+      "w0-b01": "PASS"
+    },
+    "report": ".migration/recon/wave-0/report.md",
+    "findings": [
+      "F1 low: codeVal written int32, spec says long; harness does not type-check key fields",
+      "F2 low: no (codeType,codeVal) index",
+      "F3 info: RECON_REDACT_SALT unset",
+      "F4 info: quarantine paths unreachable on NOT NULL/PK schema",
+      "F5 info: unit branch touches nothing under .migration/"
+    ]
+  },
+  "path": "single-session (1 batch) + fresh reconciliation session, per orchestrator step 5"
+}

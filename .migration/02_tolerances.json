@@ -1,8 +1,13 @@
 {
-  "version": "tol-1",
+  "version": "tol-2",
   "full_diff_row_threshold": 100000,
   "sample_size": 1000,
   "numeric_abs_tol": 0,
   "aggregate_rel_tol": 0,
-  "source_concurrency": 1
+  "source_concurrency": 1,
+  "canonicalization_profile": ".migration/profiles/oracle.md",
+  "grading_of_quarantined_values": {
+    "date_string_to_date": "unparseable->null (== missing)",
+    "csv_to_array": "no harness support; malformed CSV remains a diff (gap)"
+  }
 }

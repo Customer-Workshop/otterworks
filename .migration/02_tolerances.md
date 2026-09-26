@@ -27,3 +27,6 @@ Status: PROPOSED at setup; resolved at STOP A (see `05_decisions.md` D-001). Int
 
 ## Amendment rule
 A tolerance changes only by explicit human approval: new dated row in `05_decisions.md`, old row kept, new `version` in both files, plus the list of verified units that must be re-verified. Grading-only fixes (canonicalisation rule or harness bug, no data or tolerance value change) are pre-approved: apply, log, mention at wave close.
+
+## tol-2 (approved at wave-1 close, D-011, provenance user:)
+Quarantine-aware grading: a source value that the loader quarantines (reason code recorded) compares equal to a missing target field. Implemented for text dates via the engagement profile overlay `.migration/profiles/oracle.md` (`date_string_to_date.params.unparseable=null`, combined with `null_missing_equiv`). Not implementable for malformed CSV lists: recon 0.3.2 `csv_to_array` has no `unparseable` param, so those 13 planted values in CUSTOMER_MASTER still grade as Tier 3 diffs until the plugin adds one. All other tolerances unchanged from tol-1 (exact, sample 1000, threshold 100000, concurrency 1).

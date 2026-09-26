@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -47,6 +48,12 @@ SHOWCASE_PIPELINE_PREFIX = showcase.PIPELINE_PREFIX
 SHOWCASE_DASHBOARD_PREFIXES = (showcase.HISTORY_PREFIX, showcase.DASHBOARD_PREFIX)
 
 KINDS = ("job", "pipeline", "dashboard", "schema", "lakebase_branch", "oracle")
+
+BRANCH_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+# shared schemas a run prefix must never be able to swallow, and the Lakebase
+# production branch — a prefix of any of these is a plan error, not a delete
+PROTECTED_SCHEMA_NAMES = ("bronze", "silver", "gold", "ops", "default", "information_schema")
+PROTECTED_BRANCH_NAMES = ("production",)
 
 
 @dataclass
@@ -123,6 +130,12 @@ def _order_branches_children_first(branches: list[dict]) -> list[dict]:
             children.setdefault(parent_id, []).append(branch)
         else:
             roots.append(branch)
+    # newest first among siblings and roots, so branches with unknown parents are
+    # visited before older ones that might secretly depend on them
+    by_newest = lambda b: b.get("create_time", "")  # noqa: E731
+    roots.sort(key=by_newest, reverse=True)
+    for siblings in children.values():
+        siblings.sort(key=by_newest, reverse=True)
 
     ordered: list[dict] = []
 
@@ -136,10 +149,46 @@ def _order_branches_children_first(branches: list[dict]) -> list[dict]:
     return ordered
 
 
+def _prefix_guards(p: Plan, inventory: dict, opts: Opts) -> None:
+    """Refuse prefixes broad enough to reach protected objects — the name match is
+    `startswith`, so any prefix *of* a protected name is itself dangerous. Runs in
+    plan() so a bad flag is an exit-2 plan error in dry-run too."""
+    for label, value in (("--schema-prefix", opts.schema_prefix),
+                         ("--job-prefix", opts.job_prefix),
+                         ("--branch-prefix", opts.branch_prefix)):
+        if len(value) < 3:
+            p.errors.append(f"{label} {value!r} is too short (min 3 chars)")
+    for name in PROTECTED_SCHEMA_NAMES:
+        if name.startswith(opts.schema_prefix):
+            p.errors.append(
+                f"--schema-prefix {opts.schema_prefix!r} is a prefix of protected schema {name!r}")
+            break
+    for name in PROTECTED_BRANCH_NAMES:
+        if name.startswith(opts.branch_prefix):
+            p.errors.append(
+                f"--branch-prefix {opts.branch_prefix!r} is a prefix of protected branch {name!r}")
+            break
+    for branch in inventory.get("lakebase_branches", []):
+        bid, status = branch.get("branch_id", ""), branch.get("status", {})
+        if bid.startswith(opts.branch_prefix) and (status.get("default") or status.get("is_protected")):
+            p.errors.append(
+                f"--branch-prefix {opts.branch_prefix!r} matches protected/default branch {bid!r}")
+            break
+    for name in (SHOWCASE_JOB_PREFIX, SHOWCASE_PIPELINE_PREFIX, *SHOWCASE_DASHBOARD_PREFIXES):
+        # a job prefix too short to reach the ow_tp_ boundary can't tell run objects
+        # from showcase objects; prefixes at/inside ow_tp_ only ever select run names
+        # or the already-excluded showcase ones
+        if name.startswith(opts.job_prefix) and not opts.job_prefix.startswith("ow_tp_"):
+            p.errors.append(
+                f"--job-prefix {opts.job_prefix!r} is a prefix of showcase name {name!r}")
+            break
+
+
 def plan(inventory: dict, opts: Opts) -> Plan:
     """Pure: inventory -> Plan. inventory carries schemas (existing full names),
     jobs, pipelines, dashboards, lakebase_branches, oracle_instance."""
     p = Plan()
+    _prefix_guards(p, inventory, opts)
 
     for job in inventory.get("jobs", []):
         name = job.get("settings", {}).get("name", "")
@@ -167,6 +216,9 @@ def plan(inventory: dict, opts: Opts) -> Plan:
         bid = branch.get("branch_id", "")
         status = branch.get("status", {})
         if not bid.startswith(opts.branch_prefix):
+            continue
+        if not BRANCH_ID_RE.fullmatch(bid):
+            p.errors.append(f"lakebase branch id {bid!r} is not a safe URL segment; refusing")
             continue
         if bid == "production" or status.get("default") or status.get("is_protected"):
             p.errors.append(
@@ -207,11 +259,15 @@ def inventory(dbx: Databricks, opts: Opts) -> dict:
     inv["dashboards"] = dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards")
     inv["schemas"] = dbx.sql_ok(f"SHOW SCHEMAS IN {opts.catalog}").rows
     if opts.lakebase_project:
-        payload = dbx.ok("GET", f"/api/2.0/postgres/projects/{opts.lakebase_project}/branches")
+        payload = dbx.ok("GET", f"{_project_url(opts)}/branches")
         inv["lakebase_branches"] = payload.get("branches", payload.get("_list", []))
     if opts.start_oracle:
         inv["oracle_instance"] = _describe_instance(opts.start_oracle)
     return inv
+
+
+def _project_url(opts: Opts) -> str:
+    return f"/api/2.0/postgres/projects/{urllib.parse.quote(opts.lakebase_project, safe='')}"
 
 
 def _describe_instance(instance_id: str) -> dict | None:
@@ -236,7 +292,7 @@ def _start_oracle(instance_id: str) -> str:
     instance = _describe_instance(instance_id) or {}
     ip = instance.get("PublicIpAddress")
     if not ip:
-        return "started but no public IP to poll"
+        raise DbxError(f"{instance_id} started but has no public IP to poll")
     deadline = time.time() + 300
     while time.time() < deadline:
         try:
@@ -244,34 +300,49 @@ def _start_oracle(instance_id: str) -> str:
                 return f"{instance_id} running, {ip}:1521 reachable"
         except OSError:
             time.sleep(10)
-    return f"{instance_id} running but {ip}:1521 not reachable within 5 min"
+    raise DbxError(f"{instance_id} running but {ip}:1521 not reachable within 5 min")
 
 
 def apply_plan(dbx: Databricks, p: Plan, opts: Opts) -> list[str]:
     failures = []
+    branch_failed: list[Item] = []
     order = {"job": 0, "pipeline": 1, "dashboard": 2, "schema": 3, "lakebase_branch": 4, "oracle": 5}
     for item in sorted(p.items, key=lambda i: order[i.kind]):
         try:
             if item.kind == "job":
                 dbx.ok("POST", "/api/2.2/jobs/delete", {"job_id": int(item.resource_id)})
             elif item.kind == "pipeline":
-                dbx.ok("DELETE", f"/api/2.0/pipelines/{item.resource_id}")
+                dbx.ok("DELETE", f"/api/2.0/pipelines/{urllib.parse.quote(item.resource_id, safe='')}")
             elif item.kind == "dashboard":
-                dbx.ok("DELETE", f"/api/2.0/lakeview/dashboards/{item.resource_id}")
+                dbx.ok("DELETE",
+                       f"/api/2.0/lakeview/dashboards/{urllib.parse.quote(item.resource_id, safe='')}")
             elif item.kind == "schema":
                 result = dbx.sql(item.action)
                 if not result.ok:
                     raise DbxError(f"{item.action} -> {result.state}: {result.error[:300]}")
             elif item.kind == "lakebase_branch":
-                dbx.ok("DELETE", f"/api/2.0/postgres/projects/{opts.lakebase_project}/branches/{item.name}")
+                dbx.ok("DELETE",
+                       f"{_project_url(opts)}/branches/{urllib.parse.quote(item.name, safe='')}")
             elif item.kind == "oracle":
                 detail = _start_oracle(item.name)
                 print(f"  {item.kind} {item.name}: {detail}")
                 continue
             print(f"  {item.kind} {item.name}: OK")
         except Exception as exc:  # noqa: BLE001 - collect and continue
+            if item.kind == "lakebase_branch":
+                branch_failed.append(item)  # retried once after the rest run below
             failures.append(f"{item.kind} {item.name}: {exc}")
             print(f"  {item.kind} {item.name}: FAIL {exc}")
+    for item in branch_failed:
+        # one retry after every other branch delete ran — a child that failed for
+        # ordering reasons now has its descendants gone
+        try:
+            dbx.ok("DELETE",
+                   f"{_project_url(opts)}/branches/{urllib.parse.quote(item.name, safe='')}")
+            failures.remove(next(f for f in failures if f.startswith(f"lakebase_branch {item.name}:")))
+            print(f"  {item.kind} {item.name}: OK on retry")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {item.kind} {item.name}: retry FAIL {exc}")
     return failures
 
 
@@ -300,7 +371,7 @@ def verify(dbx: Databricks, opts: Opts) -> dict:
     else:
         survivors["schemas"] = [f"verify query failed: {result.state} {result.error[:200]}"]
     if opts.lakebase_project:
-        status, payload = dbx.call("GET", f"/api/2.0/postgres/projects/{opts.lakebase_project}/branches")
+        status, payload = dbx.call("GET", f"{_project_url(opts)}/branches")
         if 200 <= status < 300:
             bids = [b.get("branch_id") for b in payload.get("branches", payload.get("_list", []))
                     if b.get("branch_id", "").startswith(opts.branch_prefix)]

@@ -54,8 +54,7 @@ class PlanTest(unittest.TestCase):
             {"branch_id": "mig-p1-w0", "status": {"default": False, "is_protected": False}},
         ]), OPTS)
         self.assertEqual(kinds(p, "lakebase_branch"), [("lakebase_branch", "mig-p1-w0")])
-        self.assertEqual(len(p.errors), 1)
-        self.assertIn("mig-prod", p.errors[0])
+        self.assertTrue(any("mig-prod" in e for e in p.errors))
 
     def test_protected_and_production_never_planned(self):
         p = demo_reset.plan(inv(lakebase_branches=[
@@ -66,8 +65,7 @@ class PlanTest(unittest.TestCase):
         ]), OPTS)
         self.assertEqual(kinds(p, "lakebase_branch"), [("lakebase_branch", "mig-ok")])
         # 'production' fails the prefix match entirely; only mig-locked errors loudly
-        self.assertEqual(len(p.errors), 1)
-        self.assertIn("mig-locked", p.errors[0])
+        self.assertTrue(any("mig-locked" in e for e in p.errors))
 
     def test_children_before_parents(self):
         p = demo_reset.plan(inv(lakebase_branches=[
@@ -240,6 +238,101 @@ class ReviewFixesTest(unittest.TestCase):
             self._run_main(["--job-prefix", ""], lambda: None)
         with self.assertRaises(SystemExit):
             self._run_main(["--branch-prefix", ""], lambda: None)
+
+
+class ReviewRound2Test(unittest.TestCase):
+    def test_unsafe_branch_id_is_plan_error(self):
+        opts = demo_reset.Opts(branch_prefix="mig/")
+        p = demo_reset.plan(inv(lakebase_branches=[
+            {"branch_id": "mig/evil", "status": {"default": False, "is_protected": False}},
+        ]), opts)
+        self.assertEqual([i for i in p.items if i.kind == "lakebase_branch"], [])
+        self.assertTrue(any("safe URL segment" in e for e in p.errors))
+
+    def test_resource_ids_and_branch_names_are_quoted_in_delete_urls(self):
+        calls = []
+
+        class FakeDbx:
+            def ok(self, method, path, body=None):
+                calls.append(path)
+                return {}
+
+        p = demo_reset.plan(inv(
+            pipelines=[{"pipeline_id": "p id", "name": "ow_tp_p"}],
+            dashboards=[{"dashboard_id": "d/x", "display_name": "ow_tp D"}],
+            lakebase_branches=[{"branch_id": "mig-a",
+                                "status": {"default": False, "is_protected": False}}]), OPTS)
+        demo_reset.apply_plan(FakeDbx(), p, OPTS)
+        self.assertIn("/api/2.0/pipelines/p%20id", calls)
+        self.assertIn("/api/2.0/lakeview/dashboards/d%2Fx", calls)
+        self.assertIn("branches/mig-a", calls[-1])
+
+    def test_start_oracle_raises_when_no_public_ip(self):
+        with mock.patch.object(demo_reset.subprocess, "run"),                 mock.patch.object(demo_reset, "_describe_instance", return_value={}):
+            with self.assertRaises(demo_reset.DbxError):
+                demo_reset._start_oracle("i-0123")
+
+    def test_start_oracle_raises_when_port_unreachable(self):
+        times = iter([0.0, 0.0, 999.0])
+        with mock.patch.object(demo_reset.subprocess, "run"),                 mock.patch.object(demo_reset, "_describe_instance",
+                                  return_value={"PublicIpAddress": "1.2.3.4"}),                 mock.patch.object(demo_reset.socket, "create_connection",
+                                  side_effect=OSError("refused")),                 mock.patch.object(demo_reset.time, "time", side_effect=lambda: next(times)),                 mock.patch.object(demo_reset.time, "sleep"):
+            with self.assertRaises(demo_reset.DbxError):
+                demo_reset._start_oracle("i-0123")
+
+    def test_oracle_start_failure_counts_as_failure(self):
+        p = demo_reset.plan(inv(oracle_instance={"InstanceId": "i-1"}),
+                            demo_reset.Opts(start_oracle="i-1", lakebase_project=""))
+        with mock.patch.object(demo_reset, "_start_oracle",
+                               side_effect=demo_reset.DbxError("no public IP")):
+            failures = demo_reset.apply_plan(object(), p, OPTS)
+        self.assertTrue(failures and failures[0].startswith("oracle"))
+
+    def test_broad_prefixes_are_plan_errors(self):
+        for opts in (demo_reset.Opts(schema_prefix="b"),
+                     demo_reset.Opts(branch_prefix="p"),
+                     demo_reset.Opts(job_prefix="ow_"),
+                     demo_reset.Opts(schema_prefix="ab"),
+                     demo_reset.Opts(job_prefix="ab")):
+            p = demo_reset.plan(inv(), opts)
+            self.assertTrue(p.errors, f"no plan error for {opts}")
+
+    def test_branch_order_roots_newest_first_mixed_metadata(self):
+        # parent claims source=production (not a candidate), child has no
+        # source_branch and was created later -> child deletes first
+        p = demo_reset.plan(inv(lakebase_branches=[
+            {"branch_id": "mig-p", "create_time": "2026-09-15T05:00:00Z",
+             "source_branch": "projects/x/branches/production",
+             "status": {"default": False}},
+            {"branch_id": "mig-c", "create_time": "2026-09-15T06:00:00Z",
+             "status": {"default": False}},
+        ]), OPTS)
+        self.assertEqual([i.name for i in p.items if i.kind == "lakebase_branch"],
+                         ["mig-c", "mig-p"])
+
+    def test_failed_branch_delete_retries_once_after_others(self):
+        calls = []
+
+        class FlakyDbx:
+            def ok(self, method, path, body=None):
+                calls.append(path)
+                if path.endswith("branches/mig-a") and calls.count(path) == 1:
+                    raise demo_reset.DbxError("has children")
+                return {}
+
+        p = demo_reset.plan(inv(lakebase_branches=[
+            {"branch_id": "mig-a", "status": {"default": False},
+             "create_time": "2026-09-15T05:00:00Z"},
+            {"branch_id": "mig-b", "status": {"default": False},
+             "create_time": "2026-09-15T06:00:00Z"},
+        ]), OPTS)
+        failures = demo_reset.apply_plan(FlakyDbx(), p, OPTS)
+        self.assertEqual(failures, [])
+        deletes = [c for c in calls if "branches/" in c]
+        # b deleted, then a's retry happens after it
+        self.assertEqual(deletes[0].rsplit("/", 1)[-1], "mig-b")
+        self.assertEqual(deletes[1].rsplit("/", 1)[-1], "mig-a")
+        self.assertEqual(deletes[2].rsplit("/", 1)[-1], "mig-a")
 
 
 if __name__ == "__main__":

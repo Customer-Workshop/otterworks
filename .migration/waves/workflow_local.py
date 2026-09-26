@@ -41,7 +41,9 @@ from collections import Counter
 from pathlib import Path
 
 WAVES_DIR = Path("/home/ubuntu/repos/otterworks/.migration/waves").resolve()
-MANIFEST_PATH = Path(os.environ.get("WAVE_MANIFEST", "/home/ubuntu/repos/otterworks/.migration/waves/wave-1.json")).resolve()
+_ACTIVE = WAVES_DIR / "ACTIVE_MANIFEST"  # run_workflow passes no env; the orchestrator writes the manifest path here
+MANIFEST_PATH = Path(os.environ.get("WAVE_MANIFEST")
+                     or (_ACTIVE.read_text().strip() if _ACTIVE.exists() else str(WAVES_DIR / "wave-1.json"))).resolve()
 if MANIFEST_PATH.suffix != ".json" or not MANIFEST_PATH.is_relative_to(WAVES_DIR):
     raise SystemExit(f"WAVE_MANIFEST must be a .json file inside {WAVES_DIR}")
 if not MANIFEST_PATH.exists():
@@ -374,7 +376,7 @@ def child_prompt(batch):
         "\n\nLOCAL BACKEND: you are a shared-VM subagent on the orchestrator's machine. The playbook body "
         "is the file /opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_mongo-migration-plugin-6d021e15/0.3.0/skills/install-mongo-kit/playbooks/3-unit_migration.md; read it and follow it. "
         "Source profile: /opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_mongo-migration-plugin-6d021e15/0.3.0/skills/mongo-migration/profiles/oracle.md. Secrets are environment variables "
-        "ORACLE_BILLING_RO_DSN and MONGODB_MMP_RT_TARGET_URI (names only; never print values). "
+        "ORACLE_BILLING_RO_DSN and MONGODB_MMP_RT_TARGET_URI (names only; never print values); run `source ~/.config/ow_billing_env.sh` in every shell first (Oracle DSN env + RECON_REDACT_SALT). "
         "Work ONLY in your own git worktree named in the brief; never edit /home/ubuntu/repos/otterworks, "
         "never switch its branch, never kill other processes or shells. Open your PR with `gh pr create` from the worktree. "
         "Do not read, fetch or check out any branch other than tp-run/mongodb-20260926T164927Z-rt-live and your own. "
@@ -400,7 +402,7 @@ def verify_prompt(passed, run_id, manifest_sha):
         "Do not edit any other file under .migration/. Each finding is one plain "
         "sentence a lead can read without opening anything."
         "\n\nLOCAL BACKEND: shared-VM subagent. Playbook body: /opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_mongo-migration-plugin-6d021e15/0.3.0/skills/install-mongo-kit/playbooks/4-reconciliation_and_parallel_run.md. "
-        "Harness: ~/.venvs/recon/bin/recon, run from a worktree root containing .migration/. Use your own worktree: "
+        "Harness: ~/.venvs/recon/bin/recon, run from a worktree root containing .migration/; `source ~/.config/ow_billing_env.sh` in every shell first (Oracle DSN env + RECON_REDACT_SALT). Use your own worktree: "
         f"`git -C /home/ubuntu/repos/otterworks worktree add /home/ubuntu/wt/verify-wave-{WAVE} -b recon/wave-{WAVE} tp-run/mongodb-20260926T164927Z-rt-live`. "
         "For each PASS batch, re-run recon yourself in --mode live --target-class migration_cluster with --mapping .migration/mapping/<unit>.json, "
         "--source-dsn-secret ORACLE_BILLING_RO_DSN --target-uri-secret MONGODB_MMP_RT_TARGET_URI --target-db mmp_rt_billing "
@@ -432,11 +434,17 @@ async def run_batch(batch, sem, breaker):
         if breaker.tripped_on:
             return {"status": "NOT_LAUNCHED", "recon_verdict": "NOT_RUN",
                     "one_line_summary": f"held back: breaker tripped on '{breaker.tripped_on}'"}
-        log(f"launch {batch['id']} ({len(batch['units'])} units)")
         try:
-            # vm_mode="shared": the Oracle source (localhost:52521) exists only on this machine
-            out = await agent(child_prompt(batch), phase="migrate", schema=CHILD_SCHEMA,
-                              label=batch["id"], vm_mode="shared")
+            if batch.get("inline_result"):
+                # single-session path (1-2 batches): the orchestrator ran !mongo_unit_migration
+                # itself; the independent verifier and the merge phase still run here
+                log(f"inline {batch['id']}: orchestrator-run batch, verifier still independent")
+                out = dict(batch["inline_result"])
+            else:
+                log(f"launch {batch['id']} ({len(batch['units'])} units)")
+                # vm_mode="shared": the Oracle source (localhost:52521) exists only on this machine
+                out = await agent(child_prompt(batch), phase="migrate", schema=CHILD_SCHEMA,
+                                  label=batch["id"], vm_mode="shared")
         except WorkflowAgentError as e:
             out = {"status": "FAIL", "recon_verdict": "NOT_RUN", "failure_class": "session_died",
                    "one_line_summary": f"child session died: {e}"}

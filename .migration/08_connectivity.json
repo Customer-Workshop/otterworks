@@ -10,10 +10,10 @@
   },
   "target": {
     "access": "migration_cluster",
-    "reason": "malformed_secret (probe class: timeout)",
+    "reason": "privilege_excess",
     "blocked": true,
-    "detail": "pymongo could not resolve the value of MONGODB_MMP_RT_TARGET_URI as a host: the secret is a 16-character token with no 'mongodb://' or 'mongodb+srv://' scheme, no '@', no host, no database (malformed secret, not a network fault). [raw driver error redacted: it echoed the secret value]"
+    "detail": "over-scoped principal: readWrite@mmp_rt_billing_n"
   },
   "blocked": true,
-  "probed_at": "2026-09-26T16:57:59.758176+00:00"
+  "probed_at": "2026-09-26T17:02:19.334020+00:00"
 }

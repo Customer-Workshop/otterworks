@@ -40,3 +40,10 @@ Diagnostics (read-only Atlas Admin API, project `otterworks-demos`): database us
 
 Not used: `ORACLE_BILLING_DSN` (over-scoped, evidence only), `MONGODB_ATLAS_URI` (readWriteAnyDatabase; forbidden for this engagement).
 Audit: Devin session https://partner-workshops.devinenterprise.com/sessions/96b8955d22a2477ba2cffcbc67cab7a9; Oracle side via `ow_billing_ro` sessions in `V$SESSION`/audit trail; Atlas side via project Access Tracking filtered on user `mmp_rt_target`.
+
+## Re-probe 2026-09-26 17:02 UTC (after the customer re-stored the target secret)
+| Side | Secret (name) | Result |
+|---|---|---|
+| Source | `ORACLE_BILLING_RO_DSN` | WORKS `live` / `probe_ok` |
+| Target | `MONGODB_MMP_RT_TARGET_URI` (`mmp_rt_target`) | **BLOCKED** `privilege_excess`: `readWrite@mmp_rt_billing_n` beyond the allowlisted `mmp_rt_billing` (D4-3). Value now a valid `mongodb+srv://` string (D4-2 DONE). |
+| Offline guard | `--target-env MONGODB_MMP_RT_TARGET_URI` | OK |

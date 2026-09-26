@@ -1,0 +1,112 @@
+{
+  "unit": "w1-b03",
+  "mode": "live",
+  "target_class": "migration_cluster",
+  "mapping_version": "1.0.0",
+  "tolerance_version": "1.0.0",
+  "seed": 20260926,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-26T17:37:53.657409+00:00",
+  "redacted": true,
+  "redaction_salted": true,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "source_counts": {
+          "dunning_attempts": 1,
+          "notifications": 1
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 5,
+      "stats": {
+        "deferred_to_tier3": [
+          "dunning_attempts.id",
+          "dunning_attempts.tenantId",
+          "dunning_attempts.invoiceId",
+          "dunning_attempts.scheduledFor",
+          "notifications.id",
+          "notifications.tenantId",
+          "notifications.sentAt"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "dunning_attempts.id",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "dunning_attempts.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "dunning_attempts.invoiceId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "notifications.id",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "notifications.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 5
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "dunning_attempts": {
+          "mode": "full_diff",
+          "population": 1,
+          "duplicate_source_key_count": 0
+        },
+        "notifications": {
+          "mode": "full_diff",
+          "population": 1,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "error": null
+}

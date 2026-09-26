@@ -2,7 +2,7 @@
 # needs a JRE) + GnuCOBOL. Azure SQL (msodbcsql18 + pyodbc) is opt-in: --build-arg WITH_AZURE=1.
 # Build from the repo root so the whole migration/ tree lands at /app/migration:
 #   docker build -f migration/job/Dockerfile -t ldm:dev .
-FROM python:3.12-slim AS base
+FROM python:3.12-slim-bookworm AS base
 
 ARG WITH_AZURE=0
 

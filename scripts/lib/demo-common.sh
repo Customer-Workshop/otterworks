@@ -35,7 +35,8 @@ ARCHIVE_STORE_SECRET="archive-store-credentials"
 LDM_AZURE_SECRET="ldm-azure"
 LDM_POSTGRES_SECRET="ldm-postgres"
 DB2_RELEASE="db2-archive"
-MIG06_FIXTURE_PATH="${MIG06_FIXTURE_PATH:-/app/migration/source/seed/fixtures/mig06_prior_run.sql}"
+# MIG-06 prior-run fixture, one rendering per target provider (image path); MIG06_FIXTURE_PATH overrides.
+MIG06_FIXTURE_DIR="${MIG06_FIXTURE_DIR:-/app/migration/source/seed/fixtures}"
 MANIFEST_DIR="${REPO_ROOT}/migration"
 # Evidence root: per-token transcripts, tfvars, report copies (git-ignored by
 # convention; copy what you want to keep into docs/demos/evidence/).
@@ -185,6 +186,21 @@ overlay_flag() {
   [ -f "${f}" ] || { printf 'false'; return 0; }
   local v; v="$(sed -nE "s/^[[:space:]]*${key}:[[:space:]]*([a-zA-Z]+).*/\1/p" "${f}" | head -1)"
   case "${v}" in true|True|TRUE) printf 'true' ;; *) printf 'false' ;; esac
+}
+
+# target.provider from the token's overlay; the base manifest's default (postgresql) otherwise.
+token_target_provider() {
+  local token="$1" f v=""; f="$(overlay_path "${token}")"
+  [ -f "${f}" ] && v="$(sed -nE 's/^[[:space:]]+provider:[[:space:]]*([a-z]+).*/\1/p' "${f}" | head -1)"
+  printf '%s' "${v:-postgresql}"
+}
+
+mig06_fixture_path() {
+  if [ -n "${MIG06_FIXTURE_PATH:-}" ]; then printf '%s' "${MIG06_FIXTURE_PATH}"; return 0; fi
+  case "$(token_target_provider "$1")" in
+    azuresql) printf '%s/mig06_prior_run.sql' "${MIG06_FIXTURE_DIR}" ;;
+    *)        printf '%s/mig06_prior_run.postgresql.sql' "${MIG06_FIXTURE_DIR}" ;;
+  esac
 }
 
 # Whether this token gets Azure objects: the overlay decides (§4.2); with no
@@ -647,7 +663,7 @@ render_job() {
   while IFS= read -r kv; do [ -n "${kv}" ] && extra+=(--set-string "${kv}"); done <<<"$(ldm_target_values "${ns}")"
   # `ldm init` also loads the MIG-06 prior-run fixture (§12.1) via --apply-sql;
   # the image ships the repo's migration/ tree at /app/migration (§13.2).
-  [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"${MIG06_FIXTURE_PATH}\"]")
+  [ "${stage}" = "init" ] && extra+=(--set-json "extraArgs=[\"--apply-sql\",\"$(mig06_fixture_path "${token}")\"]")
   # shellcheck disable=SC2086
   helm template "$(job_name "${stage}" "${run_id}")" "${JOB_CHART_DIR}" --namespace "${ns}" \
     --set "stage=${stage}" --set "namespaceToken=${token}" --set "runId=${run_id}" \

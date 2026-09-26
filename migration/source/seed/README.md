@@ -9,7 +9,8 @@ cd migration/source
 python3.12 -m seed --out /tmp/seed                 # full scale: 40 / 1,200,000 / 4,100,000 rows
 python3.12 -m seed --out /tmp/seed --scale 0.01    # smoke test: 40 / 12,042 / 41,005 rows
 python3.12 -m seed --out /tmp/seed --tables DOCARCH,FILEAUD
-python3.12 -m seed --fixture-out seed/fixtures/mig06_prior_run.sql   # re-render the MIG-06 fixture
+python3.12 -m seed --fixture-out seed/fixtures/mig06_prior_run.sql   # re-render the MIG-06 fixture (Azure SQL)
+python3.12 -m seed --fixture-out seed/fixtures/mig06_prior_run.postgresql.sql --fixture-dialect postgresql
 python3.12 -m unittest seed.test_seed -v
 ```
 
@@ -43,9 +44,11 @@ the `icr.io/db2_community/db2:11.5.9.0` image: 24 s (DDL + 3 LOADs + integrity +
 ## MIG-06 - duplicate key from a partially completed prior run
 
 Db2 cannot hold a duplicate `ARCH_KEY` (primary key), so the source rows `MIG06-0000000001..5` are
-unique and ordinary. The "prior run" lives on the **target**: `fixtures/mig06_prior_run.sql`
-(rendered by `seed/fixture.py`) inserts, under `SESSION_CONTEXT(N'ldm.namespace')`, an abandoned
+unique and ordinary. The "prior run" lives on the **target**: `fixtures/mig06_prior_run.postgresql.sql`
+(PostgreSQL) / `fixtures/mig06_prior_run.sql` (Azure SQL), both rendered by `seed/fixture.py`, insert,
+under the `ldm.namespace` session variable, an abandoned
 `mig.runs` row, a stale `mig.key_ranges` row covering the five keys, and the five keys into
 `stg.DOCARCH`, all guarded so it is idempotent. `plant-partial-run.sh <token>` applies it (via the job's
-`ldm` module when present, else `sqlcmd`) and refuses any token that is not `*-after`; the migration job's pre-run hook calls it
-so the LOAD stage hits `DUPLICATE_SOURCE_KEY` (SQLSTATE 23000) on exactly those five keys.
+`ldm` module when present, else `psql` / `sqlcmd`; `--provider azuresql` selects the T-SQL file) and refuses any token that
+is not `*-after`; the migration job's pre-run hook calls it so the LOAD stage hits `DUPLICATE_SOURCE_KEY`
+(SQLSTATE 23505 on PostgreSQL, 23000 on Azure SQL) on exactly those five keys.

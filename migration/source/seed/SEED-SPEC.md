@@ -219,11 +219,15 @@ the MIG-05 parents. `CUT` = `2019-01-01-00.00.00.000000000000`.
   `0.00000001` in FIN7 and LGL7. VALIDATE fails the 12 keys with `CLASS_TOTAL_MISMATCH`. A check
   of table totals alone passes, which is the point.
 
-## 8. MIG-06 prior-run fixture (Azure SQL)
+## 8. MIG-06 prior-run fixture (target side)
 
-File `migration/source/seed/fixtures/mig06_prior_run.sql` (T-SQL, idempotent). Applied by ops
-with `python -m ldm init --apply-sql migration/source/seed/fixtures/mig06_prior_run.sql` before
-the first real run. It reads the namespace from `SESSION_CONTEXT(N'ldm.namespace')` and inserts:
+One rendering per target provider, both produced by `seed/fixture.py` and idempotent:
+`migration/source/seed/fixtures/mig06_prior_run.postgresql.sql` (PL/pgSQL `DO` block, namespace from
+`current_setting('ldm.namespace')`, `ON CONFLICT DO NOTHING`) and
+`migration/source/seed/fixtures/mig06_prior_run.sql` (T-SQL, namespace from
+`SESSION_CONTEXT(N'ldm.namespace')`, `IF NOT EXISTS`). Applied by ops with
+`python -m ldm init --apply-sql <fixture for the manifest's target.provider>` before the first real
+run (`scripts/lib/demo-common.sh` picks the file from the overlay's `target.provider`). Each inserts:
 
 1. `mig.runs`: `run_id = 'prior-partial'`, that namespace, `status = 'ABANDONED'`,
    `purge_enabled = 0`, `started_at = '2026-01-01T00:00:00'`, `finished_at = NULL`.

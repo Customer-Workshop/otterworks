@@ -201,6 +201,48 @@ def test_spark_engine_rejects_duplicate_keys_like_serial(tmp_path: Path, token: 
     assert descs["AAA1"] == "first"
 
 
+def test_mig06_prior_run_fixture_plants_duplicates(tmp_path: Path, token: str, cleanup) -> None:
+    """`ldm init --apply-sql` with the PostgreSQL MIG-06 fixture is idempotent and makes LOAD reject MIG06-* keys."""
+    seed = seed_source()
+    manifest = make_manifest_tree(tmp_path, token)
+    fixture = manifest.parent / "fixtures" / "mig06_prior_run.postgresql.sql"
+    fixture.parent.mkdir()
+    fixture.write_bytes((manifest.parent / "source" / "seed" / "fixtures" / fixture.name).read_bytes())
+
+    ctx = _ctx(tmp_path, manifest, token, seed, "run-init")
+    assert isinstance(ctx.target, PostgresTarget)
+    cleanup.append((ctx.target, ctx.namespace))
+    for _ in range(2):
+        code, tables = execute(ctx, "init", apply_sql=[fixture])
+        assert code == 0, tables
+        assert tables["_ddl"]["scripts"] == 1
+    ns = ctx.namespace
+    ctx.target.connect()
+    try:
+        assert ctx.target.get_run_status("prior-partial", ns) == "ABANDONED"
+        stale = ctx.target.get_key_ranges("prior-partial", ns, "DOCARCH")
+        assert [(r.range_seq, r.key_from, r.key_to, r.row_count, r.load_status) for r in stale] == [
+            (1, "MIG06-0000000001", "MIG06-0000000005", 5, "RUNNING")
+        ]
+        planted = _staged(ctx.target, "prior-partial", ns, "DOCARCH")
+        assert sorted(planted) == [f"MIG06-{k:010d}" for k in range(1, 6)]
+        assert planted["MIG06-0000000001"].values["RETENTION_CLASS"] == "AUD7"
+    finally:
+        ctx.target.close()
+
+    ctx = _ctx(tmp_path, manifest, token, seed, "run-real")
+    code, tables = execute(ctx, "all")
+    assert code == 0, tables
+    ctx.target.connect()
+    try:
+        rejects = _rejects(ctx.target, ctx.run_id, ns)
+        dupes = {k for t, k, r in rejects if t == "DOCARCH" and r == "DUPLICATE_SOURCE_KEY"}
+    finally:
+        ctx.target.close()
+    assert dupes == {k.strip() for k in seed.planted["MIG-06"]}
+    assert tables["DOCARCH"]["rejected"] == sum(len(seed.planted[c]) for c in ("MIG-01", "MIG-02", "MIG-03", "MIG-06"))
+
+
 def test_target_spec_is_picklable_and_reopens(tmp_path: Path, token: str) -> None:
     import pickle
 

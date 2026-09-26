@@ -47,3 +47,6 @@ Audit: Devin session https://partner-workshops.devinenterprise.com/sessions/96b8
 | Source | `ORACLE_BILLING_RO_DSN` | WORKS `live` / `probe_ok` |
 | Target | `MONGODB_MMP_RT_TARGET_URI` (`mmp_rt_target`) | **BLOCKED** `privilege_excess`: `readWrite@mmp_rt_billing_n` beyond the allowlisted `mmp_rt_billing` (D4-3). Value now a valid `mongodb+srv://` string (D4-2 DONE). |
 | Offline guard | `--target-env MONGODB_MMP_RT_TARGET_URI` | OK |
+
+## Re-probe 2026-09-26 17:0x UTC (after the customer removed the extra role)
+source `ORACLE_BILLING_RO_DSN` live/probe_ok; target `MONGODB_MMP_RT_TARGET_URI` migration_cluster/probe_ok; offline guard OK. STOP A passed.

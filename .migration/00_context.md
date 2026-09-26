@@ -55,3 +55,7 @@ Each field is FACT (intake), DISCOVERED (probed), or PROPOSED (defaulted, confir
 | Cutover principal holder | customer DBA (not present) | FACT |
 | Rollback owner | customer DBA (not present) | FACT |
 | Merge authority | waves run in soft mode -> `auto_merge: true` (PASS unit PRs merge into the run branch); only live recon against the migration cluster is merge evidence | FACT |
+
+## Resolved access axes (STOP A)
+- source_access: live
+- target_access: migration_cluster

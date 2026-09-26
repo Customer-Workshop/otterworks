@@ -10,10 +10,10 @@
   },
   "target": {
     "access": "migration_cluster",
-    "reason": "privilege_excess",
-    "blocked": true,
-    "detail": "over-scoped principal: readWrite@mmp_rt_billing_n"
+    "reason": "probe_ok",
+    "blocked": false,
+    "detail": ""
   },
-  "blocked": true,
-  "probed_at": "2026-09-26T17:02:19.334020+00:00"
+  "blocked": false,
+  "probed_at": "2026-09-26T17:04:10.963529+00:00"
 }

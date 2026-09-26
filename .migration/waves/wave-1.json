@@ -58,5 +58,8 @@
   }
  ],
  "backend": "local",
- "mapping_version": null
+ "mapping_version": null,
+ "brief_notes": [
+  "Harness limitation (mongo-recon-harness v0.3.0): any where-scoped embed (child_where/target_where) emits 'extra target elements not checked' and zeroes merge_eligible. This halted w1-b01/w1-b02 on the first pass; resolved by halt fix A (mapping v1.1.0: invoice lines referenced, customers.attributes unscoped). Customer tracks it as a plugin gap."
+ ]
 }

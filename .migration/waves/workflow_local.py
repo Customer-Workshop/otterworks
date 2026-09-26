@@ -520,6 +520,9 @@ def write_brief(results, verify, surprises, undeclared, unreported, auto_merge, 
     lines += ["", "Skill feedback to fold in before the next wave:" if feedback
               else "Skill feedback: none."]
     lines += [f"- {s}" for s in feedback]
+    notes = MANIFEST.get("brief_notes", []) if isinstance(globals().get("MANIFEST"), dict) else []
+    if notes:
+        lines += ["", "Notes:"] + [f"- {n}" for n in notes]
     lines += ["", "Per batch:"]
     lines += [f"- {b['id']}: {r['status']}. {r['one_line_summary']}"
               + (f" {r['pr_url']}" if r.get("pr_url") else "")

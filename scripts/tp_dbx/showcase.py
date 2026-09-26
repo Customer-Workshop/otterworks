@@ -40,6 +40,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sql as S
 from client import Databricks, DbxError, require_ident, require_ns
 
+# the showcase namespace's persistent objects; demo_reset derives its never-touch
+# exclusions from these so they cannot drift
+PIPELINE_PREFIX = "ow_tp_custbill_history_dlt_"
+DASHBOARD_PREFIX = "ow_tp_billing_migration_"
+HISTORY_PREFIX = "ow_tp_billing_history"
+RECON_JOB_PREFIX = "ow_tp_billing_history_recon_"
+
 REPO = Path(__file__).resolve().parents[2]
 NOTEBOOK_DIR = "/Shared/ow_tp"
 
@@ -323,7 +330,7 @@ def cmd_lineage(dbx: Databricks, args) -> int:
 
 
 def pipeline_name(n: S.Names) -> str:
-    return f"ow_tp_custbill_history_dlt_{n.ns}"
+    return f"{PIPELINE_PREFIX}{n.ns}"
 
 
 def find_pipeline(dbx: Databricks, name: str) -> dict | None:
@@ -391,7 +398,7 @@ def cmd_run_pipeline(dbx: Databricks, args) -> int:
 
 
 def dashboard_name(n: S.Names) -> str:
-    return f"ow_tp_billing_migration_{n.ns}"
+    return f"{DASHBOARD_PREFIX}{n.ns}"
 
 
 def _widget(name: str, dataset: str, fields: list[str], spec: dict, pos: dict, *, aggregated: dict | None = None) -> dict:
@@ -633,7 +640,7 @@ def cmd_recon_job(dbx: Databricks, args) -> int:
         key=args.secret_key, catalog=n.catalog, base_branch=args.base_branch,
     ))
     settings = {
-        "name": f"ow_tp_billing_history_recon_{n.ns}",
+        "name": f"{RECON_JOB_PREFIX}{n.ns}",
         "tags": {"project": "otterworks-tp", "demo": "billing-history", "namespace": n.ns},
         "max_concurrent_runs": 1,
         "tasks": [
@@ -685,7 +692,7 @@ def cmd_recon_job(dbx: Databricks, args) -> int:
 
 def cmd_run_job(dbx: Databricks, args) -> int:
     n = names(args)
-    job = dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}")
+    job = dbx.find_job(f"{RECON_JOB_PREFIX}{n.ns}")
     if not job:
         raise SystemExit(f"recon job for ns={n.ns} not found; run recon-job first")
     run_id = dbx.run_job(int(job["job_id"]))
@@ -833,7 +840,7 @@ def cmd_status(dbx: Databricks, args) -> int:
     print(json.dumps(result.dicts()[0] if result.ok else {"state": result.state, "error": result.error}, indent=2))
     # the runbook's cost-control step leans on this: nothing should be armed to
     # spin the warehouse up unattended
-    job = dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}")
+    job = dbx.find_job(f"{RECON_JOB_PREFIX}{n.ns}")
     if job:
         # jobs/list trims settings, so read the schedule from the job itself
         detail = dbx.ok("GET", f"/api/2.1/jobs/get?job_id={int(job['job_id'])}")
@@ -891,7 +898,7 @@ def cmd_demo_preflight(dbx: Databricks, args) -> int:
     gate("recon checks", not failed,
          "all green" if not failed else "failing: " + ", ".join(c["check_id"] for c in failed[:5]))
 
-    job = dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}")
+    job = dbx.find_job(f"{RECON_JOB_PREFIX}{n.ns}")
     if job:
         detail = dbx.ok("GET", f"/api/2.1/jobs/get?job_id={int(job['job_id'])}")
         schedule = detail.get("settings", {}).get("schedule")
@@ -937,7 +944,7 @@ def cmd_teardown(dbx: Databricks, args) -> int:
     dbx.delete_dir(n.history_dir)
     # n.landing is already namespace-scoped; the volume root itself is shared
     dbx.delete_dir(n.landing)
-    job = dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}")
+    job = dbx.find_job(f"{RECON_JOB_PREFIX}{n.ns}")
     if job:
         dbx.ok("POST", "/api/2.0/jobs/delete", {"job_id": int(job["job_id"])})
         print(f"deleted job {job['job_id']}")
@@ -954,7 +961,7 @@ def cmd_teardown(dbx: Databricks, args) -> int:
     # ow_tp_billing_history_<ns> is the dashboard's pre-rename display name;
     # rehearsal namespaces staged before the rename still carry it
     for dashboard in dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards"):
-        if dashboard.get("display_name") in (dashboard_name(n), f"ow_tp_billing_history_{n.ns}"):
+        if dashboard.get("display_name") in (dashboard_name(n), f"{HISTORY_PREFIX}_{n.ns}"):
             dbx.call("DELETE", f"/api/2.0/lakeview/dashboards/{dashboard['dashboard_id']}")
             print(f"trashed dashboard {dashboard['dashboard_id']}")
     alert = find_alert(dbx, f"ow_tp_recon_failed_{n.ns}")
@@ -976,14 +983,14 @@ def cmd_teardown(dbx: Databricks, args) -> int:
         # the trash operation propagates to the list endpoint asynchronously
         for _ in range(5):
             if not (find_dashboard(dbx, dashboard_name(n))
-                    or find_dashboard(dbx, f"ow_tp_billing_history_{n.ns}")):
+                    or find_dashboard(dbx, f"{HISTORY_PREFIX}_{n.ns}")):
                 return False
             time.sleep(3)
         return True
 
     leftovers = {
         "silver_tables": remaining.rows,
-        "recon_job": dbx.find_job(f"ow_tp_billing_history_recon_{n.ns}") is not None,
+        "recon_job": dbx.find_job(f"{RECON_JOB_PREFIX}{n.ns}") is not None,
         "pipeline": find_pipeline(dbx, pipeline_name(n)) is not None,
         "alert": find_alert(dbx, f"ow_tp_recon_failed_{n.ns}") is not None,
         "dashboard": dashboard_survives(),

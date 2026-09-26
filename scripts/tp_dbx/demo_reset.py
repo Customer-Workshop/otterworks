@@ -37,10 +37,14 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from client import Databricks, DbxError, require_ident  # noqa: E402
+import showcase  # noqa: E402
 
-# the showcase teardown owns these; a demo reset must never touch them
-SHOWCASE_JOB_PREFIX = "ow_tp_billing_history_recon_"
-SHOWCASE_DASHBOARD_PREFIX = "ow_tp_billing_history"
+# the showcase teardown owns these; a demo reset must never touch them. The
+# constants come from showcase.py so the exclusions cannot drift from the names
+# showcase actually creates.
+SHOWCASE_JOB_PREFIX = showcase.RECON_JOB_PREFIX
+SHOWCASE_PIPELINE_PREFIX = showcase.PIPELINE_PREFIX
+SHOWCASE_DASHBOARD_PREFIXES = (showcase.HISTORY_PREFIX, showcase.DASHBOARD_PREFIX)
 
 KINDS = ("job", "pipeline", "dashboard", "schema", "lakebase_branch", "oracle")
 
@@ -60,6 +64,7 @@ class Item:
     kind: str
     name: str
     action: str
+    resource_id: str = ""
 
 
 @dataclass
@@ -67,8 +72,8 @@ class Plan:
     items: list = field(default_factory=list)
     errors: list = field(default_factory=list)
 
-    def add(self, kind: str, name: str, action: str) -> None:
-        self.items.append(Item(kind, name, action))
+    def add(self, kind: str, name: str, action: str, resource_id: str = "") -> None:
+        self.items.append(Item(kind, name, action, resource_id))
 
 
 def _run_schemas(rows: list, opts: Opts) -> list[str]:
@@ -139,17 +144,20 @@ def plan(inventory: dict, opts: Opts) -> Plan:
     for job in inventory.get("jobs", []):
         name = job.get("settings", {}).get("name", "")
         if name.startswith(opts.job_prefix) and not name.startswith(SHOWCASE_JOB_PREFIX):
-            p.add("job", name, f"POST /api/2.2/jobs/delete job_id={job['job_id']}")
+            p.add("job", name, f"POST /api/2.2/jobs/delete job_id={job['job_id']}",
+                  str(job["job_id"]))
 
     for pipe in inventory.get("pipelines", []):
         name = _strip_dev_prefix(pipe.get("name", ""))
-        if name.startswith(opts.job_prefix):
-            p.add("pipeline", pipe.get("name", ""), f"DELETE /api/2.0/pipelines/{pipe['pipeline_id']}")
+        if name.startswith(opts.job_prefix) and not name.startswith(SHOWCASE_PIPELINE_PREFIX):
+            p.add("pipeline", pipe.get("name", ""), f"DELETE /api/2.0/pipelines/{pipe['pipeline_id']}",
+                  pipe["pipeline_id"])
 
     for dash in inventory.get("dashboards", []):
         name = dash.get("display_name", "")
-        if name.startswith("ow_tp") and not name.startswith(SHOWCASE_DASHBOARD_PREFIX):
-            p.add("dashboard", name, f"DELETE /api/2.0/lakeview/dashboards/{dash['dashboard_id']}")
+        if name.startswith("ow_tp") and not name.startswith(SHOWCASE_DASHBOARD_PREFIXES):
+            p.add("dashboard", name, f"DELETE /api/2.0/lakeview/dashboards/{dash['dashboard_id']}",
+                  dash["dashboard_id"])
 
     for full in _run_schemas(inventory.get("schemas", []), opts):
         p.add("schema", full, f"DROP SCHEMA {full} CASCADE")
@@ -197,11 +205,10 @@ def inventory(dbx: Databricks, opts: Opts) -> dict:
     inv["jobs"] = dbx.list_all("/api/2.2/jobs/list", "jobs")
     inv["pipelines"] = dbx.list_all("/api/2.0/pipelines", "statuses", "pipelines")
     inv["dashboards"] = dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards")
-    result = dbx.sql(f"SHOW SCHEMAS IN {opts.catalog}")
-    inv["schemas"] = result.rows if result.ok else []
+    inv["schemas"] = dbx.sql_ok(f"SHOW SCHEMAS IN {opts.catalog}").rows
     if opts.lakebase_project:
-        status, payload = dbx.call("GET", f"/api/2.0/postgres/projects/{opts.lakebase_project}/branches")
-        inv["lakebase_branches"] = payload.get("branches", payload.get("_list", [])) if 200 <= status < 300 else []
+        payload = dbx.ok("GET", f"/api/2.0/postgres/projects/{opts.lakebase_project}/branches")
+        inv["lakebase_branches"] = payload.get("branches", payload.get("_list", []))
     if opts.start_oracle:
         inv["oracle_instance"] = _describe_instance(opts.start_oracle)
     return inv
@@ -246,17 +253,11 @@ def apply_plan(dbx: Databricks, p: Plan, opts: Opts) -> list[str]:
     for item in sorted(p.items, key=lambda i: order[i.kind]):
         try:
             if item.kind == "job":
-                job_id = next(j["job_id"] for j in dbx.list_all("/api/2.2/jobs/list", "jobs")
-                              if j.get("settings", {}).get("name") == item.name)
-                dbx.ok("POST", "/api/2.2/jobs/delete", {"job_id": int(job_id)})
+                dbx.ok("POST", "/api/2.2/jobs/delete", {"job_id": int(item.resource_id)})
             elif item.kind == "pipeline":
-                pid = next(x["pipeline_id"] for x in dbx.list_all("/api/2.0/pipelines", "statuses", "pipelines")
-                           if x.get("name") == item.name)
-                dbx.ok("DELETE", f"/api/2.0/pipelines/{pid}")
+                dbx.ok("DELETE", f"/api/2.0/pipelines/{item.resource_id}")
             elif item.kind == "dashboard":
-                dash = next(d for d in dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards")
-                            if d.get("display_name") == item.name)
-                dbx.ok("DELETE", f"/api/2.0/lakeview/dashboards/{dash['dashboard_id']}")
+                dbx.ok("DELETE", f"/api/2.0/lakeview/dashboards/{item.resource_id}")
             elif item.kind == "schema":
                 result = dbx.sql(item.action)
                 if not result.ok:
@@ -282,12 +283,13 @@ def verify(dbx: Databricks, opts: Opts) -> dict:
     if jobs:
         survivors["jobs"] = jobs
     pipes = [p.get("name") for p in dbx.list_all("/api/2.0/pipelines", "statuses", "pipelines")
-             if _strip_dev_prefix(p.get("name", "")).startswith(opts.job_prefix)]
+             if _strip_dev_prefix(p.get("name", "")).startswith(opts.job_prefix)
+             and not _strip_dev_prefix(p.get("name", "")).startswith(SHOWCASE_PIPELINE_PREFIX)]
     if pipes:
         survivors["pipelines"] = pipes
     dashes = [d.get("display_name") for d in dbx.list_all("/api/2.0/lakeview/dashboards", "dashboards")
               if d.get("display_name", "").startswith("ow_tp")
-              and not d.get("display_name", "").startswith(SHOWCASE_DASHBOARD_PREFIX)]
+              and not d.get("display_name", "").startswith(SHOWCASE_DASHBOARD_PREFIXES)]
     if dashes:
         survivors["dashboards"] = dashes
     result = dbx.sql(f"SHOW SCHEMAS IN {opts.catalog}")
@@ -331,8 +333,11 @@ def main() -> int:
         branch_prefix=args.branch_prefix,
         start_oracle=args.start_oracle,
     )
-    if not args.schema_prefix or "." in args.schema_prefix:
-        raise SystemExit("--schema-prefix must be a non-empty schema-name prefix (no dots)")
+    require_ident(args.schema_prefix, "--schema-prefix")
+    if not args.job_prefix:
+        raise SystemExit("--job-prefix must be non-empty")
+    if not args.branch_prefix:
+        raise SystemExit("--branch-prefix must be non-empty")
     if args.start_oracle and not args.start_oracle.startswith("i-"):
         raise SystemExit("--start-oracle expects an EC2 instance id (i-...)")
 
@@ -346,13 +351,13 @@ def main() -> int:
         return 0
 
     failures = apply_plan(dbx, p, opts)
-    print("negative verification: " + json.dumps(verify(dbx, opts)))
+    survivors = verify(dbx, opts)
+    print("negative verification: " + json.dumps(survivors))
     if failures:
         print(f"failures: {len(failures)}")
         for f in failures:
             print(f"  {f}")
-        return 1
-    return 0
+    return 1 if failures or survivors else 0
 
 
 if __name__ == "__main__":

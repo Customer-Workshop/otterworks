@@ -613,19 +613,24 @@ class PostgresTarget:
         parent_table: str,
         parent_columns: Sequence[str],
     ) -> set[str]:
-        join = " AND ".join(
-            f"RTRIM(c.{_ident(cc)}::text) = RTRIM(p.{_ident(pc)}::text)"
-            for cc, pc in zip(child_columns, parent_columns, strict=True)
-        )
+        if len(child_columns) != len(parent_columns):
+            raise ValueError("child_columns and parent_columns must have the same length")
+        child_key = ", ".join(f"RTRIM(c.{_ident(cc)}::text)" for cc in child_columns)
+        parent_key = ", ".join(f"RTRIM(p.{_ident(pc)}::text)" for pc in parent_columns)
+        # Uncorrelated IN (... UNION ALL ...) so the planner builds one hash semi-join over the
+        # parent keys; OR-ed correlated EXISTS would re-scan the parent table per child row.
         sql = (
-            f"SELECT c.source_key FROM stg.{_ident(child_table)} c WHERE c.run_id = %s AND c.namespace = %s AND ("
-            f"EXISTS (SELECT 1 FROM stg.{_ident(parent_table)} p JOIN mig.validation v "
+            f"SELECT c.source_key FROM stg.{_ident(child_table)} c WHERE c.run_id = %s AND c.namespace = %s "
+            f"AND ({child_key}) IN ("
+            f"SELECT {parent_key} FROM stg.{_ident(parent_table)} p JOIN mig.validation v "
             "ON v.run_id = p.run_id AND v.namespace = p.namespace AND v.table_name = %s "
-            "AND v.source_key = p.source_key "
-            f"AND v.status = 'VALIDATED' WHERE p.run_id = c.run_id AND p.namespace = c.namespace AND {join}) "
-            f"OR EXISTS (SELECT 1 FROM arch.{_ident(parent_table)} p WHERE p.namespace = c.namespace AND {join}))"
+            "AND v.source_key = p.source_key AND v.status = 'VALIDATED' "
+            "WHERE p.run_id = %s AND p.namespace = %s "
+            "UNION ALL "
+            f"SELECT {parent_key} FROM arch.{_ident(parent_table)} p WHERE p.namespace = %s)"
         )
-        return {str(r[0]) for r in self._rows(sql, (run_id, namespace, parent_table))}
+        params = (run_id, namespace, parent_table, run_id, namespace, namespace)
+        return {str(r[0]) for r in self._rows(sql, params)}
 
     # --- validation -------------------------------------------------------------------------------------------------
 

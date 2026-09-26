@@ -377,7 +377,7 @@ def child_prompt(batch):
         "is the file /opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_mongo-migration-plugin-6d021e15/0.3.0/skills/install-mongo-kit/playbooks/3-unit_migration.md; read it and follow it. "
         "Source profile: /opt/.devin/plugins/cache/github.com_Cognition-Partner-Workshops_mongo-migration-plugin-6d021e15/0.3.0/skills/mongo-migration/profiles/oracle.md. Secrets are environment variables "
         "ORACLE_BILLING_RO_DSN and MONGODB_MMP_RT_TARGET_URI (names only; never print values); run `source ~/.config/ow_billing_env.sh` in every shell first (Oracle DSN env + RECON_REDACT_SALT). "
-        "Work ONLY in your own git worktree named in the brief; never edit /home/ubuntu/repos/otterworks, "
+        "Wave 0 already landed on the run branch: reuse services/legacy-billing/migration/common.py (row_to_doc, load_collection, reset_collection; extend it for embedded arrays rather than duplicating) and add your unit module under services/legacy-billing/app/backends/mongo/. Fixture recon = same instance, --mode fixture; then exactly one --mode live run. Work ONLY in your own git worktree named in the brief; never edit /home/ubuntu/repos/otterworks, "
         "never switch its branch, never kill other processes or shells. Open your PR with `gh pr create` from the worktree. "
         "Do not read, fetch or check out any branch other than tp-run/mongodb-20260926T164927Z-rt-live and your own. "
         "Report via provide_structured_output when done."

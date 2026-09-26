@@ -56,7 +56,8 @@ MANIFEST_SHA = hashlib.sha256(MANIFEST_TEXT.encode()).hexdigest()[:12]
 RESULT_PATH = MANIFEST_PATH.with_suffix(".result.json")
 BRIEF_PATH = MANIFEST_PATH.with_suffix(".brief.md")
 RUN_ID_PATH = MANIFEST_PATH.with_suffix(".run_id")
-resume = os.environ.get("WAVE_RESUME") == "1"
+_RESUME_FLAG = WAVES_DIR / "ACTIVE_RESUME"  # run_workflow passes no env; the orchestrator touches this file to resume
+resume = os.environ.get("WAVE_RESUME") == "1" or _RESUME_FLAG.exists()
 prior = None
 
 if RESULT_PATH.exists() and os.environ.get("WAVE_RERUN") != "1":
@@ -78,7 +79,7 @@ if RESULT_PATH.exists() and os.environ.get("WAVE_RERUN") != "1":
                              "recorded run_id AND WAVE_RESUME=1 (finished children replay). To redo the wave "
                              "from scratch, set WAVE_RERUN=1.")
 if resume:
-    run_id = os.environ.get("WAVE_RUN_ID")
+    run_id = os.environ.get("WAVE_RUN_ID") or (RUN_ID_PATH.read_text().strip() if RUN_ID_PATH.exists() else None)
     if not run_id:
         raise SystemExit("WAVE_RESUME=1 requires WAVE_RUN_ID; pass the recorded run_id")
     if not RUN_ID_PATH.exists():
@@ -95,6 +96,11 @@ REPLAYED = {
     b["id"]: b["status"] for b in (prior or {}).get("batches", [])
     if b.get("status") in ("PASS", "FAIL", "BLOCKED")
 } if resume and isinstance(prior, dict) else {}
+PRIOR_RESULTS = {b["id"]: b for b in (prior or {}).get("batches", [])} if resume and isinstance(prior, dict) else {}
+RETRY_NOTE = ("\n\nRESUME: a previous attempt of this batch ended BLOCKED/FAIL; the orchestrator has since fixed the "
+              "blocking input on the run branch (see .migration/05_decisions.md, latest rows). Start from the current "
+              "run branch tip. If a branch/PR from the earlier attempt exists for this batch, reuse it (rebase onto the "
+              "run branch) instead of opening a second PR.")
 
 
 def validate_fixture_manifest(batch_id, path: str, root: Path) -> None:
@@ -297,7 +303,7 @@ def merge_prompt(urls, run_id) -> str:
         f"Merge phase for run {run_id}. Merge exactly these PRs (squash), nothing else: "
         f"{json.dumps(urls, sort_keys=True)}. Do not edit any file. Return merged_prs. "
         "LOCAL BACKEND: run `gh pr merge <url> --squash` from /home/ubuntu/repos/otterworks "
-        "(do not change its branch or files); confirm with `gh pr view <url> --json state,mergedAt`. Report via provide_structured_output."
+        "(do not change its branch or files); a PR that is already MERGED (a prior resume pass) counts as merged, do not fail on it; confirm with `gh pr view <url> --json state,mergedAt`. Report via provide_structured_output."
     )
 
 
@@ -435,7 +441,10 @@ async def run_batch(batch, sem, breaker):
             return {"status": "NOT_LAUNCHED", "recon_verdict": "NOT_RUN",
                     "one_line_summary": f"held back: breaker tripped on '{breaker.tripped_on}'"}
         try:
-            if batch.get("inline_result"):
+            if REPLAYED.get(batch["id"]) == "PASS":
+                log(f"replay {batch['id']}: PASS from prior run")
+                out = {k: v for k, v in PRIOR_RESULTS[batch["id"]].items() if k != "id"}
+            elif batch.get("inline_result"):
                 # single-session path (1-2 batches): the orchestrator ran !mongo_unit_migration
                 # itself; the independent verifier and the merge phase still run here
                 log(f"inline {batch['id']}: orchestrator-run batch, verifier still independent")
@@ -443,7 +452,8 @@ async def run_batch(batch, sem, breaker):
             else:
                 log(f"launch {batch['id']} ({len(batch['units'])} units)")
                 # vm_mode="shared": the Oracle source (localhost:52521) exists only on this machine
-                out = await agent(child_prompt(batch), phase="migrate", schema=CHILD_SCHEMA,
+                prompt = child_prompt(batch) + (RETRY_NOTE if batch["id"] in REPLAYED else "")
+                out = await agent(prompt, phase="migrate", schema=CHILD_SCHEMA,
                                   label=batch["id"], vm_mode="shared")
         except WorkflowAgentError as e:
             out = {"status": "FAIL", "recon_verdict": "NOT_RUN", "failure_class": "session_died",

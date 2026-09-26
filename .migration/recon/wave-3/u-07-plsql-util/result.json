@@ -1,0 +1,101 @@
+{
+  "unit": "u-07-plsql-util",
+  "mode": "fixture",
+  "target_class": "local",
+  "mapping_version": "map-draft-3.1",
+  "tolerance_version": "tol-2",
+  "seed": 1,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-26T18:53:54.713696+00:00",
+  "redacted": true,
+  "redaction_salted": false,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {
+        "source_counts": {
+          "codes": 32,
+          "billingAuditLog": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 1,
+      "stats": {
+        "deferred_to_tier3": [
+          "codes.codeDesc",
+          "billingAuditLog.loggedAt",
+          "billingAuditLog.module",
+          "billingAuditLog.message"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "codes.codeDesc",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "billingAuditLog.module",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "billingAuditLog.message",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 3
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 32,
+      "stats": {
+        "codes": {
+          "mode": "full_diff",
+          "population": 32,
+          "duplicate_source_key_count": 0
+        },
+        "billingAuditLog": {
+          "mode": "full_diff",
+          "population": 0,
+          "duplicate_source_key_count": 0
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 4,
+      "name": "app_level_parity",
+      "passed": true,
+      "checks_run": 2,
+      "stats": {},
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": false,
+  "error": null
+}

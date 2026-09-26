@@ -1,0 +1,200 @@
+{
+ "version": "map-draft-3.1",
+ "collections": [
+  {
+   "collection": "codes",
+   "root_table": "CODES",
+   "key": {
+    "source": [
+     "CODE_TYPE",
+     "CODE_VAL"
+    ],
+    "target": [
+     "codeType",
+     "codeVal"
+    ]
+   },
+   "fields": [
+    {
+     "source": "CODE_DESC",
+     "target": "codeDesc",
+     "source_type": "VARCHAR2(80)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "CODE_TYPE",
+      "target": "codeType",
+      "source_type": "VARCHAR2(30)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     },
+     {
+      "source": "CODE_VAL",
+      "target": "codeVal",
+      "source_type": "NUMBER(4)",
+      "bson_type": "long",
+      "rules": []
+     }
+    ],
+    "natural_keys": [],
+    "references": [],
+    "open_questions": [],
+    "pattern": "reference_data",
+    "patterns": [
+     {
+      "pattern": "reference_data",
+      "detail": "reference_data",
+      "evidence": "proposed from census trap"
+     }
+    ]
+   }
+  },
+  {
+   "collection": "billingAuditLog",
+   "root_table": "BILLING_AUDIT_LOG",
+   "key": {
+    "source": [
+     "LOG_ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "LOGGED_AT",
+     "target": "loggedAt",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    },
+    {
+     "source": "MODULE",
+     "target": "module",
+     "source_type": "VARCHAR2(30)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    },
+    {
+     "source": "MESSAGE",
+     "target": "message",
+     "source_type": "VARCHAR2(4000)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null",
+      "null_missing_equiv"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "sequence+trigger identity: keep numeric _id on load, application generates ids after cutover",
+    "key_fields": [
+     {
+      "source": "LOG_ID",
+      "target": "logId",
+      "source_type": "NUMBER(12)",
+      "bson_type": "long",
+      "rules": []
+     }
+    ],
+    "natural_keys": [],
+    "references": [],
+    "open_questions": [],
+    "patterns": [
+     {
+      "pattern": "ttl",
+      "detail": "TTL index on loggedAt, expireAfterSeconds 90 days, replaces JOB_PURGE_AUDIT_LOG (which is enabled => FALSE today; enable TTL only with the customer's sign-off)",
+      "evidence": "services/legacy-billing/db/oracle/schema/04_jobs.sql: DELETE FROM billing_audit_log WHERE logged_at < SYSDATE - 90"
+     }
+    ],
+    "pattern": "ttl",
+    "proposal": "TTL index on loggedAt, expireAfterSeconds 90 days, replaces JOB_PURGE_AUDIT_LOG (which is enabled => FALSE today; enable TTL only with the customer's sign-off)",
+    "pattern_evidence": "services/legacy-billing/db/oracle/schema/04_jobs.sql: DELETE FROM billing_audit_log WHERE logged_at < SYSDATE - 90"
+   }
+  }
+ ],
+ "canonicalization": {
+  "version": "map-draft-3.1-canon",
+  "rules": [
+   {
+    "rule": "decimal_round",
+    "applies_to": "decimal",
+    "params": {}
+   },
+   {
+    "rule": "datetime_utc_truncate_ms",
+    "applies_to": "date",
+    "params": {}
+   },
+   {
+    "rule": "rstrip_spaces",
+    "applies_to": "string",
+    "params": {}
+   },
+   {
+    "rule": "null_missing_equiv",
+    "applies_to": "*",
+    "params": {}
+   },
+   {
+    "rule": "yn_to_bool",
+    "applies_to": "bool",
+    "params": {}
+   },
+   {
+    "rule": "int_to_bool",
+    "applies_to": "bool",
+    "params": {}
+   },
+   {
+    "rule": "csv_to_array",
+    "applies_to": "array",
+    "params": {}
+   },
+   {
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y"
+    }
+   },
+   {
+    "rule": "empty_string_is_null",
+    "applies_to": "string",
+    "params": {}
+   },
+   {
+    "name": "date_string_to_date:dbyHMS-30dd8b",
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y %H:%M:%S"
+    }
+   },
+   {
+    "name": "date_string_to_date:dby-b3d57e",
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y"
+    }
+   }
+  ]
+ }
+}

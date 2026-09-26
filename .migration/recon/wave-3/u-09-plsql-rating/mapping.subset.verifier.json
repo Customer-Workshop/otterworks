@@ -1,0 +1,266 @@
+{
+ "version": "map-draft-3.1",
+ "collections": [
+  {
+   "collection": "ratingPeriods",
+   "root_table": "RATING_PERIODS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "TENANT_ID",
+     "target": "tenantId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "PERIOD_START",
+     "target": "periodStart",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    },
+    {
+     "source": "PERIOD_END",
+     "target": "periodEnd",
+     "source_type": "DATE",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "ID",
+      "target": "id",
+      "source_type": "VARCHAR2(36)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     }
+    ],
+    "natural_keys": [
+     {
+      "name": "UQ_RATING_PERIODS",
+      "columns": [
+       "TENANT_ID",
+       "PERIOD_START"
+      ]
+     }
+    ],
+    "references": [
+     {
+      "column": [
+       "TENANT_ID"
+      ],
+      "to": "tenants",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "parent is shared by several tables"
+     }
+    ],
+    "open_questions": []
+   }
+  },
+  {
+   "collection": "ratingResults",
+   "root_table": "RATING_RESULTS",
+   "key": {
+    "source": [
+     "ID"
+    ],
+    "target": "_id"
+   },
+   "fields": [
+    {
+     "source": "PERIOD_ID",
+     "target": "periodId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "SUBSCRIPTION_ID",
+     "target": "subscriptionId",
+     "source_type": "VARCHAR2(36)",
+     "bson_type": "string",
+     "rules": [
+      "empty_string_is_null"
+     ]
+    },
+    {
+     "source": "USED_UNITS",
+     "target": "usedUnits",
+     "source_type": "NUMBER(10)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "QUOTA_UNITS",
+     "target": "quotaUnits",
+     "source_type": "NUMBER(10)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "ROLLOVER_UNITS",
+     "target": "rolloverUnits",
+     "source_type": "NUMBER(10)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "BILLABLE_UNITS",
+     "target": "billableUnits",
+     "source_type": "NUMBER(10)",
+     "bson_type": "long",
+     "rules": []
+    },
+    {
+     "source": "OVERAGE_AMOUNT",
+     "target": "overageAmount",
+     "source_type": "NUMBER(12,2)",
+     "bson_type": "decimal",
+     "rules": [
+      "decimal_round"
+     ]
+    },
+    {
+     "source": "CREATED_AT",
+     "target": "createdAt",
+     "source_type": "TIMESTAMP",
+     "bson_type": "date",
+     "rules": [
+      "datetime_utc_truncate_ms"
+     ]
+    }
+   ],
+   "embeds": [],
+   "decision": {
+    "shape": "collection",
+    "key_strategy": "natural primary key",
+    "key_fields": [
+     {
+      "source": "ID",
+      "target": "id",
+      "source_type": "VARCHAR2(36)",
+      "bson_type": "string",
+      "rules": [
+       "empty_string_is_null"
+      ]
+     }
+    ],
+    "natural_keys": [],
+    "references": [
+     {
+      "column": [
+       "PERIOD_ID"
+      ],
+      "to": "ratingPeriods",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "parent is shared by several tables"
+     },
+     {
+      "column": [
+       "SUBSCRIPTION_ID"
+      ],
+      "to": "subscriptions",
+      "to_columns": [
+       "ID"
+      ],
+      "why": "child owns its own lifecycle"
+     }
+    ],
+    "open_questions": []
+   }
+  }
+ ],
+ "canonicalization": {
+  "version": "map-draft-3.1-canon",
+  "rules": [
+   {
+    "rule": "decimal_round",
+    "applies_to": "decimal",
+    "params": {}
+   },
+   {
+    "rule": "datetime_utc_truncate_ms",
+    "applies_to": "date",
+    "params": {}
+   },
+   {
+    "rule": "rstrip_spaces",
+    "applies_to": "string",
+    "params": {}
+   },
+   {
+    "rule": "null_missing_equiv",
+    "applies_to": "*",
+    "params": {}
+   },
+   {
+    "rule": "yn_to_bool",
+    "applies_to": "bool",
+    "params": {}
+   },
+   {
+    "rule": "int_to_bool",
+    "applies_to": "bool",
+    "params": {}
+   },
+   {
+    "rule": "csv_to_array",
+    "applies_to": "array",
+    "params": {}
+   },
+   {
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y"
+    }
+   },
+   {
+    "rule": "empty_string_is_null",
+    "applies_to": "string",
+    "params": {}
+   },
+   {
+    "name": "date_string_to_date:dbyHMS-30dd8b",
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y %H:%M:%S"
+    }
+   },
+   {
+    "name": "date_string_to_date:dby-b3d57e",
+    "rule": "date_string_to_date",
+    "applies_to": "date",
+    "params": {
+     "format": "%d-%b-%y"
+    }
+   }
+  ]
+ }
+}

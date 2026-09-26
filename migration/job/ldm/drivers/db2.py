@@ -246,7 +246,7 @@ class Db2Source:
             raise
         except Exception as e:
             db.rollback(conn)
-            raise SourceError(None, None, f"{table} batch {batch_no}: {e}") from e
+            raise SourceError(*parse_db2_error(str(e)), f"{table} batch {batch_no}: {e}") from e
         finally:
             db.autocommit(conn, db.SQL_AUTOCOMMIT_ON)
 

@@ -136,6 +136,11 @@ class BatchConfig(_Strict):
     load_batch_rows: int = Field(gt=0)
     validate_batch_rows: int = Field(gt=0)
     purge_batch_rows: int = Field(gt=0)
+    # A batch that the source rolls back for transient pressure (Db2 SQL0964C log full, lock timeout,
+    # deadlock victim) is retried after an exponential backoff instead of failing the stage.
+    purge_retry_attempts: int = Field(default=6, ge=0)
+    purge_retry_backoff_s: float = Field(default=5.0, gt=0)
+    purge_retry_max_backoff_s: float = Field(default=60.0, gt=0)
 
 
 class ReportConfig(_Strict):

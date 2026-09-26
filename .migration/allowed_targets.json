@@ -8,5 +8,8 @@
   "legacy_sources": [
     "OW_BILLING"
   ],
-  "note": "The only database Devin may write on Atlas cluster otterworks-demo (project otterworks-demos). Credential: secret MONGODB_MMP_RT_TARGET_URI (name only). MONGODB_ATLAS_URI is not used. 'catalogs' mirrors 'databases' because the org-wide dbx-migration-factory PreToolUse guard (hooks/dbx_guard.py) also reads this file and requires it."
+  "note": "The only database Devin may write on Atlas cluster otterworks-demo (project otterworks-demos). Credential: secret MONGODB_MMP_RT_TARGET_URI (name only). MONGODB_ATLAS_URI is not used. 'catalogs' mirrors 'databases' because the org-wide dbx-migration-factory PreToolUse guard (hooks/dbx_guard.py) also reads this file and requires it. 'target_hosts' names the migration-cluster secret so that guard can resolve the target connection (secret name only).",
+  "target_hosts": [
+    "MONGODB_MMP_RT_TARGET_URI"
+  ]
 }

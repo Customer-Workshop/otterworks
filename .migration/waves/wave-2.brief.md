@@ -1,0 +1,32 @@
+# Wave 2 close
+
+Landed: 0 of 3 batches passed their own recon.
+Independent verify: NOT RUN.
+Failed: w2-b02, w2-b03.
+Blocked on missing inputs: w2-b01.
+Held back by circuit breaker: none.
+Awaiting manual merge: none reported
+
+Verifier findings: none.
+
+Skill feedback to fold in before the next wave:
+- A 0-row source table (BILLING_AUDIT_LOG) passes trivially; playbook should require flagging it as an unverified path
+- Avoid $dateToString %b in pipelines (locale/case mismatch with Oracle MON); format dates in Python.
+- Embedded arrays must be sorted by (lineNo, lineId) because the fixture seed duplicates line_no; otherwise reload hashes are not idempotent.
+- Harness Tier 1 embed_cardinality counts every child row; a 1:N embed with orphan quarantine cannot pass unless the mapping spec carries child_where/target_where scoping the child population (spec change = human decision).
+- Harness has no per-collection flag; a verbatim mapping-subset copy is required per unit
+- Keep pre-existing 501 ordering for non-migrated backends when moving trigger validation into the facade
+- One --ops file with all parity ops is sufficient under source-concurrency 1; per-op runs exhaust the Oracle Free listener.
+- Oracle NUMBER integers must render as str(int) on the Mongo read path to match Decimal->string facade JSON; profile only covers Decimal128/Int64
+- Oracle TIMESTAMP fixture values are naive; treat as UTC-naive on both sides (pymongo returns naive datetimes) — profile should state this
+- Oracle TO_CHAR(x,'FM9999999990.00') == Decimal.quantize(0.01) + format(d,'f'); NULL status/type renders UNKNOWN() with empty parens.
+- Ruff I001 on `from backends import ...` in facade.py is pre-existing on the run branch
+- Store mapped bson long fields as bson.Int64, not Python int, so the target type matches the spec
+- Tier-4 app parity needs a second recon run with --ops; the brief's gate command has no ops flag
+- target_where in the mapping spec must be a JSON string, not an object.
+- tp-pre-pr-self-check ow_tp namespace prefix conflicts with the brief-mandated ow_billing_migration db; recorded as a gap
+
+Per batch:
+- w2-b01: BLOCKED. u-04-usage-audit landed in PR #1722 (unmerged, CI 9/9 green): loader + Mongo writer/read slice, fixture recon PASS on local target (817/817 keyed diffs, parity 70 tenants/0 mismatches, quarantine 0), idempotency proven; not merge evidence — live recon impossible offline. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1722
+- w2-b02: FAIL. u-05-dunning-data loader + mongo admin_dunning read path landed; fixture recon PASS tiers 1-4 (local target, merge_eligible=false, quarantine 0/0), CI green; live recon not possible (offline) so status is not PASS; PR #1721 open unmerged. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1721
+- w2-b03: FAIL. u-06 landed (loader + Mongo month-end report + CUSTBILL extract, 37/37 orphan_line quarantined, idempotent, CI 9/9 green) in unmerged PR #1724 against the run branch; official fixture recon FAILs Tier 1 by exactly the 37 quarantined lines because the spec has no child_where -> tolerance_ambiguous; live recon not possible (offline), target_class=local, not merge evidence. https://github.com/Cognition-Partner-Workshops/otterworks/pull/1724

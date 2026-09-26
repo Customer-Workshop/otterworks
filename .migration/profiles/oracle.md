@@ -1,7 +1,7 @@
 <!-- Engagement overlay of the plugin's mongo-migration/profiles/oracle.md (plugin 0.3.0), verbatim except the
 tol-2 change approved at the wave-1 close (D-011): date_string_to_date params.unparseable=null.
 csv_to_array has no equivalent param in recon 0.3.2, so malformed CSV values quarantined by loaders still
-grade as diffs (recorded harness gap). Pass this file as --canonicalization. -->
+grade as diffs (recorded harness gap). merge_canon_rules overrides by exact name, so the spec's date aliases are declared here too (finding from the first tol-2 re-run). Pass this file as --canonicalization. -->
 # Source profile: oracle
 
 Data for the `mongo-migration` skill; not a skill.
@@ -152,7 +152,9 @@ The harness `rules` array:
   {"rule": "collation_casefold", "applies_to": "string", "params": {"enabled_if": "NLS case-insensitive comparisons found in census"}},
   {"rule": "yn_to_bool", "applies_to": "CHAR(1) *_YN->bool", "params": {}},
   {"rule": "csv_to_array", "applies_to": "VARCHAR2 *_CSV,*_IDS->array", "params": {"delimiter": ",", "drop_empty": true}},
-  {"rule": "date_string_to_date", "applies_to": "VARCHAR2 *_DT holding text dates; DD-MON-YY confirmed at STOP A; tol-2 (D-011): unparseable text dates are quarantined by loaders, so the grader maps them to null (== missing under null_missing_equiv)", "params": {"format": "%d-%b-%y", "unparseable": "null"}}
+  {"rule": "date_string_to_date", "applies_to": "VARCHAR2 *_DT holding text dates; DD-MON-YY confirmed at STOP A; tol-2 (D-011): unparseable text dates are quarantined by loaders, so the grader maps them to null (== missing under null_missing_equiv)", "params": {"format": "%d-%b-%y", "unparseable": "null"}},
+  {"name": "date_string_to_date:dby-b3d57e", "rule": "date_string_to_date", "applies_to": "spec alias for DD-MON-YY text dates (map-draft-2); tol-2 unparseable->null", "params": {"format": "%d-%b-%y", "unparseable": "null"}},
+  {"name": "date_string_to_date:dbyHMS-30dd8b", "rule": "date_string_to_date", "applies_to": "spec alias for DD-MON-YY HH24:MI:SS history timestamps (map-draft-2); tol-2 unparseable->null", "params": {"format": "%d-%b-%y %H:%M:%S", "unparseable": "null"}}
 ]
 ```
 

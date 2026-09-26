@@ -1,0 +1,68 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// OtterWorks Desktop theme: the WPF client's accent blue (#2F6FEB) as the primary palette.
+$otter-accent-palette: (
+  50: #eaf1fe,
+  100: #cbdcfc,
+  200: #a8c5fa,
+  300: #85aef7,
+  400: #6a9cf3,
+  500: #2f6feb,
+  600: #2a63d4,
+  700: #2454c2,
+  800: #1d449e,
+  900: #143073,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+$desktop-primary: mat.define-palette($otter-accent-palette, 500);
+$desktop-accent: mat.define-palette(mat.$blue-grey-palette, 500);
+$desktop-warn: mat.define-palette(mat.$red-palette);
+
+$desktop-theme: mat.define-light-theme((
+  color: (
+    primary: $desktop-primary,
+    accent: $desktop-accent,
+    warn: $desktop-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+@include mat.all-component-themes($desktop-theme);
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 13.5px;
+  background: #f3f4f6;
+  color: #212529;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}

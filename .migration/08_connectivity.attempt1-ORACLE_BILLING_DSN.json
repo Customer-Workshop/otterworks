@@ -1,0 +1,19 @@
+{
+  "policy": "online",
+  "source_access": "live",
+  "target_access": "migration_cluster",
+  "source": {
+    "access": "live",
+    "reason": "privilege_excess",
+    "blocked": true,
+    "detail": "over-scoped principal: CREATE JOB, CREATE TYPE, CREATE TRIGGER, CREATE PROCEDURE, CREATE SEQUENCE, CREATE VIEW, CREATE TABLE"
+  },
+  "target": {
+    "access": "migration_cluster",
+    "reason": "malformed_secret (probe class: timeout)",
+    "blocked": true,
+    "detail": "pymongo could not resolve the value of MONGODB_MMP_RT_TARGET_URI as a host: the secret is a 16-character token with no 'mongodb://' or 'mongodb+srv://' scheme, no '@', no host, no database (malformed secret, not a network fault). [raw driver error redacted: it echoed the secret value]"
+  },
+  "blocked": true,
+  "probed_at": "2026-09-26T16:56:44.194002+00:00"
+}

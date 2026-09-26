@@ -1,10 +1,9 @@
 # Recon summary: `w1-b01` - **PASS**
 
 - Mode: `live`
-- Merge eligible: no (fixture/continuous evidence never merges)
-- Mapping `1.0.0` / tolerances `1.0.0` / seed `20260926`
-- Generated: 2026-09-26T17:56:12.828152+00:00
-- **WARNING: embed customers.attributes: scoped by a where-predicate; extra target elements not checked**
+- Merge eligible: yes (fixture/continuous evidence never merges)
+- Mapping `1.1.0` / tolerances `1.0.0` / seed `20260926`
+- Generated: 2026-09-26T18:20:48.757171+00:00
 
 | Tier | Checks | Result |
 |---|---|---|

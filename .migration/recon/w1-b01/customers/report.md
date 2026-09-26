@@ -2,12 +2,11 @@
 
 - **Verdict: PASS** (values redacted)
 - Mode: `live`
-- Merge eligible: no (fixture/continuous evidence never merges)
-- Mapping version: `1.0.0`
+- Merge eligible: yes (fixture/continuous evidence never merges)
+- Mapping version: `1.1.0`
 - Tolerance version: `1.0.0`
 - Seed: `20260926`
-- Generated: 2026-09-26T17:56:12.828152+00:00
-- **WARNING: embed customers.attributes: scoped by a where-predicate; extra target elements not checked**
+- Generated: 2026-09-26T18:20:48.757171+00:00
 - 155 fields: Tier 2 aggregates deferred to Tier 3 (rules change the value)
 - 118 string fields: min/max/distinct deferred to Tier 3
 
@@ -1144,9 +1143,6 @@
     "population": 25001,
     "duplicate_source_key_count": 0
   },
-  "embed_extras_unchecked": [
-    "customers.attributes"
-  ],
   "embeds_graded": {
     "customers.attributes": 8337
   }

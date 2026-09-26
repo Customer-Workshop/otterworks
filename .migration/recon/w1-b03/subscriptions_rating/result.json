@@ -1,0 +1,143 @@
+{
+  "unit": "w1-b03",
+  "mode": "live",
+  "target_class": "migration_cluster",
+  "mapping_version": "1.0.0",
+  "tolerance_version": "1.0.0",
+  "seed": 20260926,
+  "params": {},
+  "snapshot": null,
+  "generated_at": "2026-09-26T17:37:25.238948+00:00",
+  "redacted": true,
+  "redaction_salted": true,
+  "tiers": [
+    {
+      "tier": 1,
+      "name": "counts_through_mapping",
+      "passed": true,
+      "checks_run": 4,
+      "stats": {
+        "source_counts": {
+          "subscriptions": 70,
+          "usage_events": 805,
+          "rating_periods": 3
+        }
+      },
+      "findings": []
+    },
+    {
+      "tier": 2,
+      "name": "per_field_aggregates",
+      "passed": true,
+      "checks_run": 7,
+      "stats": {
+        "deferred_to_tier3": [
+          "subscriptions.id",
+          "subscriptions.tenantId",
+          "subscriptions.planId",
+          "subscriptions.startsOn",
+          "subscriptions.endsOn",
+          "subscriptions.suspendedOn",
+          "usage_events.id",
+          "usage_events.tenantId",
+          "usage_events.occurredAt",
+          "rating_periods.id",
+          "rating_periods.tenantId",
+          "rating_periods.periodStart",
+          "rating_periods.periodEnd"
+        ],
+        "string_aggregates_deferred_to_tier3": [
+          {
+            "field": "subscriptions.id",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptions.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "subscriptions.planId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "usage_events.id",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "usage_events.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "rating_periods.id",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          },
+          {
+            "field": "rating_periods.tenantId",
+            "stats": [
+              "min",
+              "max",
+              "distinct_count"
+            ]
+          }
+        ],
+        "fields_fully_deferred": 9
+      },
+      "findings": []
+    },
+    {
+      "tier": 3,
+      "name": "keyed_diffs",
+      "passed": true,
+      "checks_run": 881,
+      "stats": {
+        "subscriptions": {
+          "mode": "full_diff",
+          "population": 70,
+          "duplicate_source_key_count": 0
+        },
+        "usage_events": {
+          "mode": "full_diff",
+          "population": 805,
+          "duplicate_source_key_count": 0
+        },
+        "rating_periods": {
+          "mode": "full_diff",
+          "population": 3,
+          "duplicate_source_key_count": 0
+        },
+        "embeds_graded": {
+          "rating_periods.results": 3
+        }
+      },
+      "findings": []
+    }
+  ],
+  "warnings": [],
+  "verdict": "PASS",
+  "merge_eligible": true,
+  "error": null
+}

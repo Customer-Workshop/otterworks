@@ -826,17 +826,19 @@ class PostgresTarget:
             "class_totals", "validation", "rejects", "key_ranges", "stage_log", "run_ledger", "run_sessions",
             "purge_audit", "runs",
         )  # fmt: skip
+        sql = self.psycopg.sql
+        targets = [(schema, table) for table in reversed(list(self.shapes)) for schema in ("arch", "stg")]
+        targets += [("mig", t) for t in mig_tables]  # children before parents, ledger last
         deleted: dict[str, int] = {}
         try:
             with self.conn.transaction():  # type: ignore[attr-defined]
                 with self.conn.cursor() as cur:  # type: ignore[attr-defined]
-                    for table in reversed(list(self.shapes)):  # registered parent-first; delete children first
-                        for schema in ("arch", "stg"):
-                            cur.execute(f"DELETE FROM {schema}.{_ident(table)} WHERE namespace = %s", (namespace,))
-                            deleted[f"{schema}.{table}"] = int(cur.rowcount)
-                    for t in mig_tables:
-                        cur.execute(f"DELETE FROM mig.{t} WHERE namespace = %s", (namespace,))
-                        deleted[f"mig.{t}"] = int(cur.rowcount)
+                    for schema, table in targets:
+                        stmt = sql.SQL("DELETE FROM {}.{} WHERE namespace = %s").format(
+                            sql.Identifier(schema), sql.Identifier(table)
+                        )
+                        cur.execute(stmt, (namespace,))
+                        deleted[f"{schema}.{table}"] = int(cur.rowcount)
         except self.psycopg.Error as e:
             raise TargetError(*parse_pg_error(e)) from e
         return deleted

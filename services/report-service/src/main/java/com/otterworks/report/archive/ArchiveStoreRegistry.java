@@ -33,7 +33,7 @@ public class ArchiveStoreRegistry {
         this.type = properties.storeType();
         this.namespace = properties.getNamespace();
         ArchiveStore resolved = null;
-        JdbcTemplate azure = null;
+        JdbcTemplate ledger = null;
         String error = null;
         switch (type) {
             case OFF:
@@ -45,10 +45,18 @@ public class ArchiveStoreRegistry {
                     error = "ARCHIVE_STORE=db2 but DB2_HOST/DB2_DATABASE/DB2_USER/DB2_PASSWORD are incomplete";
                 }
                 break;
+            case POSTGRESQL:
+                if (properties.getPg().isComplete()) {
+                    ledger = new JdbcTemplate(dataSources.pg(properties.getPg()));
+                    resolved = new PostgresArchiveStore(ledger);
+                } else {
+                    error = "ARCHIVE_STORE=postgresql but PG_HOST/PG_DATABASE/PG_USER/PG_PASSWORD are incomplete";
+                }
+                break;
             case AZURESQL:
                 if (properties.getAzsql().isComplete()) {
-                    azure = new JdbcTemplate(dataSources.azsql(properties.getAzsql()));
-                    resolved = new AzureSqlArchiveStore(azure);
+                    ledger = new JdbcTemplate(dataSources.azsql(properties.getAzsql()));
+                    resolved = new AzureSqlArchiveStore(ledger);
                 } else {
                     error = "ARCHIVE_STORE=azuresql but AZSQL_SERVER/AZSQL_DATABASE/AZSQL_USER/AZSQL_PASSWORD "
                             + "are incomplete";
@@ -56,11 +64,11 @@ public class ArchiveStoreRegistry {
                 break;
             default:
                 error = "ARCHIVE_STORE has an unsupported value '" + properties.getStore()
-                        + "' (expected db2 or azuresql)";
+                        + "' (expected db2, postgresql or azuresql)";
                 break;
         }
         this.store = resolved;
-        this.migrationJdbc = azure;
+        this.migrationJdbc = ledger;
         this.configurationError = error;
         if (error != null) {
             logger.error("archive store misconfigured: {}", error);
@@ -89,7 +97,7 @@ public class ArchiveStoreRegistry {
         return configurationError;
     }
 
-    /** JDBC access to the Azure SQL {@code mig.*} ledger; only present when the store is azuresql. */
+    /** JDBC access to the {@code mig.*} ledger; present when the store is postgresql or azuresql. */
     public JdbcTemplate migrationJdbc() {
         return migrationJdbc;
     }
@@ -114,6 +122,15 @@ public class ArchiveStoreRegistry {
             ds.setUrl(db2.jdbcUrl());
             ds.setUsername(db2.getUser());
             ds.setPassword(db2.getPassword());
+            return ds;
+        }
+
+        public DataSource pg(ArchiveProperties.Pg pg) {
+            DriverManagerDataSource ds = new DriverManagerDataSource();
+            ds.setDriverClassName("org.postgresql.Driver");
+            ds.setUrl(pg.jdbcUrl());
+            ds.setUsername(pg.getUser());
+            ds.setPassword(pg.getPassword());
             return ds;
         }
 

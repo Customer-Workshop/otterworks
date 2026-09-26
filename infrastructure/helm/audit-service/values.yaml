@@ -61,18 +61,25 @@ secrets: {}
 # Legacy-data-migration archive read path (migration/CONTRACTS.md §10.4).
 # Leave `store` empty for ordinary tenants: the archive feature stays off and the
 # archive/reconciliation endpoints answer 404 with a hint. BEFORE deployments set
-# `store: db2`, AFTER deployments set `store: azuresql`. User/password/client-id are
-# read from the Kubernetes Secret `archive-store-credentials` (keys DB2_USER,
-# DB2_PASSWORD, AZSQL_USER, AZSQL_PASSWORD, AZURE_CLIENT_ID), created by the deploy
+# `store: db2`, AFTER deployments set `store: postgresql` (the tenant's existing RDS
+# database, where the migration job created the mig/stg/arch schemas) or, for the optional
+# Azure rehearsal, `store: azuresql`. User/password/client-id are read from the Kubernetes
+# Secret `archive-store-credentials` (keys DB2_USER, DB2_PASSWORD, PG_USER, PG_PASSWORD,
+# AZSQL_USER, AZSQL_PASSWORD, AZURE_CLIENT_ID), created by the deploy
 # script - never put them in values files.
 archive:
-  store: ""            # "" | db2 | azuresql
+  store: ""            # "" | db2 | postgresql | azuresql
   namespace: ""        # LDM_NAMESPACE, e.g. d24-after
   credentialsSecret: archive-store-credentials
   db2:
     host: db2-archive
     port: "50000"
     database: ""
+  postgresql:
+    host: ""           # shared RDS endpoint (deploy script fills from Terraform output)
+    port: "5432"
+    database: ""       # otterworks_<tenant>
+    sslmode: require
   azuresql:
     server: ""         # <server>.database.windows.net
     database: ""

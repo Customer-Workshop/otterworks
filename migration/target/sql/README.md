@@ -1,1 +1,1 @@
-Azure SQL DDL for schemas mig/stg/arch (binding: ../../CONTRACTS.md §6); idempotent, applied in file-name order by 'ldm init'.
+Azure SQL DDL for schemas mig/stg/arch (binding: ../../CONTRACTS.md §6); idempotent, applied in file-name order by 'ldm init' when the manifest target.provider is azuresql (optional rehearsal path). The default PostgreSQL target uses ../postgresql/.

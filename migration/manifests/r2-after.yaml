@@ -1,10 +1,29 @@
-# Throwaway rehearsal namespace (docs/demos/legacy-data-migration.md §10): same shape as d24-after,
-# deployed with a short TTL and destroyed to produce the destroy transcript. Never a presenter target.
+# Optional Azure rehearsal namespace: the same run against Azure SQL + Azure Blob staging with the serial
+# LOAD engine. Only deployed when a demo explicitly needs Azure (docs/demos/legacy-data-migration.md §10);
+# the default low-cost flow (d24-after, r1-after) never provisions Azure.
 namespace: r2-after
 run_token: r2
 extends: ../manifest.yaml
 migrate: true
 azure: true
 purge: true
+target:
+  provider: azuresql
+  connection_env:
+    server: AZSQL_SERVER
+    database: AZSQL_DATABASE
+    user: AZSQL_USER
+    password: AZSQL_PASSWORD
+    auth_mode: AZSQL_AUTH                       # sql | managed-identity
+    managed_identity_client_id: AZURE_CLIENT_ID
+  ddl_dir: migration/target/sql
+  typemap: migration/job/typemaps/db2-to-azuresql.yaml
+staging:
+  connection_env:
+    bucket: null                                # Azure Blob only; unset the S3 bucket
+    storage_account: AZ_STORAGE_ACCOUNT
+    container: AZ_STAGING_CONTAINER
+    local_dir: LOCAL_STAGING_DIR
 execution:
   run_job_in_azure: false
+  load_engine: serial

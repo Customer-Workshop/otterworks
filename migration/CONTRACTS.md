@@ -292,9 +292,34 @@ fixture). `demos/app/complexity-manifest.json` lists the seven classes with `id`
 Application code MUST NOT read it; `ldm` MAY read it only via `report.issue_register` to add an
 `issue` column to report failure rows.
 
-## 6. Target (Azure SQL) schema
+## 6. Target schema
 
-Files `migration/target/sql/000..100_*.sql` (T-SQL, idempotent, batches separated by a line
+### 6.0 Providers
+
+`target.provider` in the manifest selects the driver: **`postgresql` (default)** or `azuresql`
+(optional, overlays such as `manifests/r2-after.yaml`). Both apply the same logical schema (`mig`,
+`stg`, `arch`, views, reader role) and the same stage semantics; only the SQL dialect differs.
+
+**PostgreSQL** (`migration/target/postgresql/000..100_*.sql`, plain SQL, idempotent, applied by
+`ldm init` in name order, each recorded in `mig.schema_version`). The target is the tenant's
+**existing** `otterworks_<ID>` database on the shared RDS instance (§ AGENTS.md); the job only adds
+the three schemas, so no additional database or server is provisioned. Dialect notes:
+
+- Db2 `TIMESTAMP(12)` maps to `<COL> TIMESTAMP(6)` (fraction digits 1-6) plus
+  `<COL>_NANOS_TAIL INTEGER` holding digits 7-12 (`0..999999`, `CHECK`ed). PostgreSQL has no
+  7-digit timestamp, so the split point differs from Azure SQL (7 + 5) but the mapping stays
+  lossless: `2016-03-01-10.15.30.123456789012` -> `2016-03-01 10:15:30.123456` + `789012`, and every
+  reader (job, report-service, audit-service) rebuilds the 32-char Db2 text from the pair.
+- `raw_bytes`/`row_hash` are `BYTEA`; `NVARCHAR` -> `VARCHAR`, `DECIMAL` -> `NUMERIC`, `INT` ->
+  `INTEGER`, `TINYINT` -> `SMALLINT`, `DATETIME2` -> `TIMESTAMP`.
+- Key and range-boundary text columns are `COLLATE "C"` so `ORDER BY`/`BETWEEN` on keys is byte
+  order, matching Db2 and the job's Python range arithmetic.
+- `mig.rejects.rule_name` keeps the T-SQL-safe spelling so both providers share the report views.
+- Target-side hashing uses the built-in `sha256(bytea)` (PostgreSQL >= 11, no extension).
+- Duplicate key = SQLSTATE `23505`; the loader bisects a failed batch so one bad row becomes one
+  `mig.rejects` row (`DUPLICATE_SOURCE_KEY` or the target's message) instead of failing the batch.
+
+**Azure SQL** files `migration/target/sql/000..100_*.sql` (T-SQL, idempotent, batches separated by a line
 `GO`; applied by `ldm init` in name order, each recorded in `mig.schema_version`). Verified against
 SQL Server 2022 (applied twice). Columns are defined in the files; summary:
 
@@ -338,6 +363,11 @@ Expected d24-after counts (the acceptance numbers; SEED-SPEC §3):
 `hash_columns` **in manifest order**, stored as `BINARY(32)`, shown as uppercase hex. The same column
 list is used on both sides. Source side renders from the extracted fixed-width record (after
 decoding and after `value_map`); target side renders from the `stg.<T>` converted columns.
+
+The target expression is generated per provider by `ldm.hashing.hash_expression()`; the T-SQL form
+is tabulated below, the PostgreSQL form uses `sha256(convert_to(e1 || '|' || e2 ..., 'UTF8'))` with
+`RPAD`/`RTRIM`, `::numeric(38,8)::text`, `TO_CHAR(ts, 'YYYY-MM-DD-HH24.MI.SS.US') || LPAD(tail, 6)`,
+`TO_CHAR(d, 'YYYYMMDD')` and `UPPER(ENCODE(b, 'hex'))`, and must produce byte-identical input.
 
 | Source type (+override) | Source rendering | Target column | Target rendering (T-SQL) |
 |---|---|---|---|
@@ -406,8 +436,9 @@ trimmed (target) -> `75213C04D2AAA5D907946F1F4814077BC0CBC7F7C36DEFDF9DF57E1126B
 
 ## 8. Type mapping and conversion (LOAD)
 
-Default type map `migration/job/typemaps/db2-to-azuresql.yaml` (job unit creates it with exactly
-these rules; a manifest `type_overrides` entry replaces the rule for one column):
+Default type map `migration/job/typemaps/db2-to-postgresql.yaml` (azuresql overlays use
+`db2-to-azuresql.yaml`; both carry exactly these rules spelled for their dialect, see §6.0; a
+manifest `type_overrides` entry replaces the rule for one column):
 
 | Db2 type | Azure SQL type | Conversion |
 |---|---|---|
@@ -466,7 +497,9 @@ python -m ldm init --manifest <path> --namespace <token> [--apply-sql <file.sql>
 | Var | Used by | Meaning |
 |---|---|---|
 | `DB2_HOST`, `DB2_PORT`, `DB2_DATABASE`, `DB2_USER`, `DB2_PASSWORD` | extract, purge (and validate for source-side class totals) | Db2 connection (`db2-archive`, `50000`, `D24A`, from Secret `db2-archive-credentials`) |
-| `AZSQL_SERVER` | all | `sql-otterworks-<NS>.database.windows.net` |
+| `PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_USER`, `PG_PASSWORD`, `PG_SSLMODE` | all (`provider: postgresql`) | the tenant's existing RDS database (`otterworks_<ID>`), from the tenant's `postgres-credentials` Secret; `PG_SSLMODE` default `prefer` |
+| `S3_STAGING_BUCKET`, `AWS_REGION`, `S3_ENDPOINT_URL` | extract (upload), load (download) | shared staging bucket, keys `<blob_prefix><TABLE>/<range_seq:06d>.dat`; auth from the pod's IRSA role / default chain; endpoint only for MinIO/localstack |
+| `AZSQL_SERVER` | all (`provider: azuresql`) | `sql-otterworks-<NS>.database.windows.net` |
 | `AZSQL_DATABASE` | all | `sqldb-otterworks-<NS>` |
 | `AZSQL_AUTH` | all | `sql` (default) or `managed-identity` |
 | `AZSQL_USER`, `AZSQL_PASSWORD` | all when `AZSQL_AUTH=sql` | SQL admin credential (Key Vault secret `azsql-admin-password`, user `ldmadmin`) |
@@ -478,9 +511,21 @@ python -m ldm init --manifest <path> --namespace <token> [--apply-sql <file.sql>
 | `LDM_HOST` | all | `eks`, `aca` or `local` (recorded in `mig.stage_log.host`) |
 | `LDM_JOB_IMAGE` | all | recorded in `mig.runs.job_image` |
 
-Staging: EXTRACT writes each range to `LOCAL_STAGING_DIR` and uploads it to the container when
-`AZ_STORAGE_ACCOUNT` is set. LOAD reads the local file if present with the recorded SHA-256,
-otherwise downloads the blob; a SHA-256 mismatch is exit 4.
+Staging: EXTRACT writes each range to `LOCAL_STAGING_DIR` and uploads it to S3 when
+`S3_STAGING_BUCKET` is set, else to Azure Blob when `AZ_STORAGE_ACCOUNT` is set (azuresql
+namespaces only), else keeps it local. LOAD reads the local file if present with the recorded
+SHA-256, otherwise downloads the object; a SHA-256 mismatch is exit 4. Tenant isolation in the
+shared bucket is the `<NS>/<run_id>/` key prefix; teardown deletes that prefix.
+
+LOAD engine (`execution.load_engine`): `serial` (one process, the reference implementation, used by
+the unit suite) or `spark` (default for after-namespaces). Spark runs **PySpark local mode inside
+the same one-shot Job pod** (`execution.spark.master` must be `local[...]`; scratch under
+`LOCAL_STAGING_DIR/spark`; no Spark Service, operator or cluster). Each task reads only its
+`records_per_slice` slice of the range file, converts records with the same `convert_record` as
+the serial engine, a shuffle on `source_key` resolves duplicates (first well-formed occurrence
+wins, later ones `DUPLICATE_SOURCE_KEY`, malformed records keep their own reject), and sink tasks
+reopen the target from the picklable `TargetSpec` and return counts only. Both engines must produce
+identical `stg` rows, `mig.rejects` and ledger counts for the same input.
 
 ### 9.3 Exit codes
 
@@ -667,7 +712,7 @@ audit-service exposes the retention history of one archived document:
 `GET /api/v1/audit/archive/{docId}` ->
 
 ```json
-{"doc_id": "...", "store": "db2|azuresql",
+{"doc_id": "...", "store": "db2|postgresql|azuresql",
  "versions": [{"arch_key": "DA00000000000042", "version_no": 3, "retention_class": "FIN7",
    "last_access_ts": "2016-03-01-10.15.30.123456789012", "storage_charge": "1234.50000000",
    "owner_name": "LOPEZ, M.", "disposition_dt": "2023-03-01", "legal_hold": false,
@@ -677,7 +722,8 @@ audit-service exposes the retention history of one archived document:
 ```
 
 Versions ordered by `version_no`, events by `event_ts`, `audit_key`. Text trimmed of trailing
-spaces; timestamps in the Db2 text form (azuresql: rebuilt from `DATETIME2(7)` + `_NANOS_TAIL`),
+spaces; timestamps in the Db2 text form (postgresql: rebuilt from `TIMESTAMP(6)` + 6-digit
+`_NANOS_TAIL`; azuresql: from `DATETIME2(7)` + 5-digit `_NANOS_TAIL`),
 so both stores return byte-identical JSON for a migrated document. 404 if the document has no
 archived versions in the selected store.
 
@@ -824,12 +870,15 @@ monitoring namespace and kubelet. Values: `dbName`, `pv.volumeName`, `pv.size`, 
 One `batch/v1` Job per invocation: `ldm-<stage>-<run_id>`, `backoffLimit: 0`,
 `ttlSecondsAfterFinished: 86400`, pod label `ldm/db2-client: "true"`, args
 `["<stage>","--manifest","/app/migration/manifest.yaml","--namespace","<NS>","--run-id","<id>"]`,
-env §9.2 (`LDM_HOST=eks`) from Secret `db2-archive-credentials` and Secret `ldm-azure` (keys
-`AZSQL_USER`, `AZSQL_PASSWORD`, `AZ_STORAGE_KEY`, created by ops from Key Vault) and values
-(`AZSQL_SERVER`, ...); `emptyDir` 10 Gi at `/work/staging`; resources requests `250m`/`512Mi`,
-limits `1`/`1Gi`; NetworkPolicy denying all ingress. No Service, no ingress (a Job serves nothing, so
-no `/health`). The job image contains the repo's `migration/` tree at `/app/migration`, the Db2 CLP
-client and GnuCOBOL runtime (for `unload_command`), `ibm_db`, `pyodbc` + ODBC Driver 18.
+env §9.2 (`LDM_HOST=eks`) from Secret `db2-archive-credentials`, the tenant's PostgreSQL Secret
+(`PG_*`, default `postgres-credentials`) and values (`S3_STAGING_BUCKET`, `AWS_REGION`, Spark
+settings); `emptyDir` 10 Gi at `/work/staging`; resources requests `250m`/`512Mi`, limits
+`1`/`1.5Gi` (Spark local mode: driver `1g`, `local[*]` inside the pod's CPU limit); NetworkPolicy
+denying all ingress. Azure is opt-in (`azure.enabled`): Secret `ldm-azure` (keys `AZSQL_USER`,
+`AZSQL_PASSWORD`, `AZ_STORAGE_KEY`) and `AZSQL_*` values only then. No Service, no ingress (a Job
+serves nothing, so no `/health`). The job image contains the repo's `migration/` tree at
+`/app/migration`, the Db2 CLP client and GnuCOBOL runtime (for `unload_command`), `ibm_db`,
+`psycopg`, `boto3`, `pyspark` + a JRE; `pyodbc` + ODBC Driver 18 only with `--build-arg WITH_AZURE=1`.
 
 ## 14. Resolved ambiguities (decisions made by the architect)
 

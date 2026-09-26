@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Archive read-path settings, bound from {@code archive.*} which in turn map the
- * {@code ARCHIVE_STORE}, {@code LDM_NAMESPACE}, {@code DB2_*} and {@code AZSQL_*}
+ * {@code ARCHIVE_STORE}, {@code LDM_NAMESPACE}, {@code DB2_*}, {@code PG_*} and {@code AZSQL_*}
  * environment variables (see application.properties).
  */
 @ConfigurationProperties(prefix = "archive")
@@ -13,6 +13,7 @@ public class ArchiveProperties {
     private String store = "";
     private String namespace = "";
     private final Db2 db2 = new Db2();
+    private final Pg pg = new Pg();
     private final Azsql azsql = new Azsql();
 
     public String getStore() {
@@ -33,6 +34,10 @@ public class ArchiveProperties {
 
     public Db2 getDb2() {
         return db2;
+    }
+
+    public Pg getPg() {
+        return pg;
     }
 
     public Azsql getAzsql() {
@@ -97,6 +102,76 @@ public class ArchiveProperties {
 
         public String jdbcUrl() {
             return "jdbc:db2://" + host + ":" + port + "/" + database;
+        }
+    }
+
+    /**
+     * PostgreSQL connection settings (PG_HOST, PG_PORT, PG_DATABASE, PG_USER, PG_PASSWORD, PG_SSLMODE):
+     * the tenant's existing database, in which the migration job created the mig/stg/arch schemas.
+     */
+    public static class Pg {
+        private String host = "";
+        private String port = "5432";
+        private String database = "";
+        private String user = "";
+        private String password = "";
+        private String sslmode = "prefer";
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public String getPort() {
+            return port;
+        }
+
+        public void setPort(String port) {
+            this.port = port;
+        }
+
+        public String getDatabase() {
+            return database;
+        }
+
+        public void setDatabase(String database) {
+            this.database = database;
+        }
+
+        public String getUser() {
+            return user;
+        }
+
+        public void setUser(String user) {
+            this.user = user;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getSslmode() {
+            return sslmode;
+        }
+
+        public void setSslmode(String sslmode) {
+            this.sslmode = sslmode;
+        }
+
+        public boolean isComplete() {
+            return !isBlank(host) && !isBlank(database) && !isBlank(user) && !isBlank(password);
+        }
+
+        public String jdbcUrl() {
+            return "jdbc:postgresql://" + host + ":" + port + "/" + database
+                    + "?sslmode=" + (isBlank(sslmode) ? "prefer" : sslmode.trim());
         }
     }
 

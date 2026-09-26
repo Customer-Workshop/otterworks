@@ -21,20 +21,23 @@ source:
     bit_data_encoding: cp037                    # default decoding for FOR BIT DATA columns mapped to text
 
 target:
-  provider: azuresql                            # enum: azuresql
-  connection_env:
-    server: AZSQL_SERVER
-    database: AZSQL_DATABASE
-    user: AZSQL_USER
-    password: AZSQL_PASSWORD
-    auth_mode: AZSQL_AUTH                       # sql | managed-identity
-    managed_identity_client_id: AZURE_CLIENT_ID
-  ddl_dir: migration/target/sql
-  typemap: migration/job/typemaps/db2-to-azuresql.yaml
+  provider: postgresql                          # enum: postgresql | azuresql (azuresql overlays: manifests/r2-after.yaml)
+  connection_env:                               # the tenant's existing per-tenant PostgreSQL database (shared RDS)
+    host: PG_HOST
+    port: PG_PORT
+    database: PG_DATABASE
+    user: PG_USER
+    password: PG_PASSWORD
+    sslmode: PG_SSLMODE                         # optional; default prefer
+  ddl_dir: migration/target/postgresql
+  typemap: migration/job/typemaps/db2-to-postgresql.yaml
 
 staging:
   connection_env:
-    storage_account: AZ_STORAGE_ACCOUNT
+    bucket: S3_STAGING_BUCKET                   # shared bucket; tenant isolation = blob_prefix
+    region: AWS_REGION
+    endpoint_url: S3_ENDPOINT_URL               # optional (MinIO/localstack)
+    storage_account: AZ_STORAGE_ACCOUNT         # optional Azure Blob alternative (azure: true namespaces only)
     container: AZ_STAGING_CONTAINER
     local_dir: LOCAL_STAGING_DIR
   blob_prefix: "{namespace}/{run_id}/"

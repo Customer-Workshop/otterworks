@@ -67,9 +67,9 @@ public class ReconciliationRepository {
         this.registry = registry;
     }
 
-    /** True when this namespace has a migration ledger to read (store is azuresql). */
+    /** True when this namespace has a migration ledger to read (store is postgresql or azuresql). */
     public boolean isAvailable() {
-        return registry.type() == ArchiveStoreType.AZURESQL;
+        return registry.type().hasMigrationLedger();
     }
 
     public ArchiveStoreType storeType() {
@@ -123,7 +123,7 @@ public class ReconciliationRepository {
         JdbcTemplate jdbc = registry.migrationJdbc();
         if (jdbc == null) {
             registry.store();
-            throw new ArchiveStoreUnavailableException("migration ledger requires ARCHIVE_STORE=azuresql");
+            throw new ArchiveStoreUnavailableException("migration ledger requires ARCHIVE_STORE=postgresql or azuresql");
         }
         return jdbc;
     }

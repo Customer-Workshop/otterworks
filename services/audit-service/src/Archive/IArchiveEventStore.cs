@@ -2,7 +2,7 @@ namespace OtterWorks.AuditService.Archive;
 
 public interface IArchiveEventStore
 {
-    /// <summary><c>db2</c> or <c>azuresql</c>.</summary>
+    /// <summary><c>db2</c>, <c>postgresql</c> or <c>azuresql</c>.</summary>
     string StoreName { get; }
 
     /// <summary>
@@ -22,7 +22,7 @@ public interface IArchiveEventStore
 
 public sealed class ArchiveFeatureDisabledException : Exception
 {
-    public const string Hint = "archive feature is off; set ARCHIVE_STORE=db2 or ARCHIVE_STORE=azuresql to enable it";
+    public const string Hint = "archive feature is off; set ARCHIVE_STORE=db2, postgresql or azuresql to enable it";
 
     public ArchiveFeatureDisabledException() : base(Hint)
     {

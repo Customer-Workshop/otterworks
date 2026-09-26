@@ -9,7 +9,7 @@ import java.util.Optional;
  */
 public interface ArchiveStore {
 
-    /** Wire name of the store ({@code db2} or {@code azuresql}). */
+    /** Wire name of the store ({@code db2}, {@code postgresql} or {@code azuresql}). */
     String storeName();
 
     /** All versions (with events and policy) of one document, or empty when none is archived. */

@@ -27,7 +27,19 @@ BASE_TOP_LEVEL_KEYS = {
     "report",
     "tables",
 }
-OVERLAY_TOP_LEVEL_KEYS = {"namespace", "extends", "migrate", "azure", "purge", "execution", "batch", "run_token"}
+OVERLAY_TOP_LEVEL_KEYS = {
+    "namespace",
+    "extends",
+    "migrate",
+    "azure",
+    "purge",
+    "execution",
+    "batch",
+    "run_token",
+    "target",
+    "staging",
+}
+TARGET_PROVIDERS = ("postgresql", "azuresql")
 
 
 def validate_token(token: str) -> tuple[str, str]:
@@ -71,25 +83,47 @@ class SourceConfig(_Strict):
 
 
 class TargetConnectionEnv(_Strict):
-    server: str
+    """Names of the environment variables holding the target connection. Which ones are required depends on
+    target.provider: postgresql reads host/port/database/user/password(/sslmode), azuresql reads server/database/
+    user/password/auth_mode/managed_identity_client_id."""
+
     database: str
     user: str
     password: str
-    auth_mode: str
-    managed_identity_client_id: str
+    host: str | None = None
+    port: str | None = None
+    sslmode: str | None = None
+    server: str | None = None
+    auth_mode: str | None = None
+    managed_identity_client_id: str | None = None
 
 
 class TargetConfig(_Strict):
-    provider: str
+    provider: Literal["postgresql", "azuresql"]
     connection_env: TargetConnectionEnv
     ddl_dir: str
     typemap: str
 
+    def check(self) -> None:
+        ce = self.connection_env
+        if self.provider == "postgresql" and not (ce.host and ce.port):
+            raise ConfigError("target.provider postgresql requires connection_env.host and connection_env.port")
+        if self.provider == "azuresql" and not (ce.server and ce.auth_mode and ce.managed_identity_client_id):
+            raise ConfigError(
+                "target.provider azuresql requires connection_env.server, auth_mode and managed_identity_client_id"
+            )
+
 
 class StagingConnectionEnv(_Strict):
-    storage_account: str
-    container: str
+    """Blob staging is selected by whichever variable is set at run time: s3 bucket (S3), else Azure storage
+    account (Azure Blob), else no blob store (files stay on the local staging volume)."""
+
     local_dir: str
+    bucket: str | None = None
+    region: str | None = None
+    endpoint_url: str | None = None
+    storage_account: str | None = None
+    container: str | None = None
 
 
 class StagingConfig(_Strict):
@@ -182,8 +216,17 @@ class TableConfig(_Strict):
         return f"{self.schema_}.{self.name}"
 
 
+class SparkConfig(_Strict):
+    master: str = "local[*]"
+    driver_memory: str = "1g"
+    shuffle_partitions: int = Field(default=8, gt=0)
+    records_per_slice: int = Field(default=5000, gt=0)
+
+
 class ExecutionConfig(_Strict):
     run_job_in_azure: bool = False
+    load_engine: Literal["serial", "spark"] = "serial"
+    spark: SparkConfig = Field(default_factory=SparkConfig)
 
 
 class Manifest(_Strict):
@@ -342,8 +385,11 @@ def load_manifest(base: Path, namespace: str) -> LoadedManifest:
         raise ConfigError(f"run_token {manifest.run_token!r} != RUN part {run!r} of namespace {namespace!r}")
     if not manifest.migrate:
         raise ConfigError(f"overlay {overlay_path} has migrate: false; this namespace is never migrated")
-    if manifest.migrate and not manifest.azure:
-        raise ConfigError("migrate: true requires azure: true")
+    if manifest.target.provider == "azuresql" and not manifest.azure:
+        raise ConfigError("target.provider azuresql requires azure: true")
+    if manifest.execution.run_job_in_azure and not manifest.azure:
+        raise ConfigError("execution.run_job_in_azure requires azure: true")
+    manifest.target.check()
 
     orders = [t.order for t in manifest.tables]
     if len(set(orders)) != len(orders):

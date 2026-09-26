@@ -4,7 +4,8 @@ namespace: r1-after
 run_token: r1
 extends: ../manifest.yaml
 migrate: true
-azure: true
+azure: false
 purge: true
 execution:
   run_job_in_azure: false
+  load_engine: spark

@@ -27,11 +27,14 @@ public sealed class ArchiveStoreRegistry
             case ArchiveStoreType.Db2 when !options.Db2Complete:
                 ConfigurationError = "ARCHIVE_STORE=db2 but DB2_HOST/DB2_DATABASE/DB2_USER/DB2_PASSWORD are incomplete";
                 break;
+            case ArchiveStoreType.PostgreSql when !options.PgComplete:
+                ConfigurationError = "ARCHIVE_STORE=postgresql but PG_HOST/PG_DATABASE/PG_USER/PG_PASSWORD are incomplete";
+                break;
             case ArchiveStoreType.AzureSql when !options.AzsqlComplete:
                 ConfigurationError = "ARCHIVE_STORE=azuresql but AZSQL_SERVER/AZSQL_DATABASE/AZSQL_USER/AZSQL_PASSWORD are incomplete";
                 break;
             case ArchiveStoreType.Invalid:
-                ConfigurationError = $"ARCHIVE_STORE has an unsupported value '{options.Store}' (expected db2 or azuresql)";
+                ConfigurationError = $"ARCHIVE_STORE has an unsupported value '{options.Store}' (expected db2, postgresql or azuresql)";
                 break;
             default:
                 _store = factory(options);
@@ -58,6 +61,7 @@ public sealed class ArchiveStoreRegistry
     private static IArchiveEventStore CreateStore(ArchiveStoreOptions options) => options.StoreType switch
     {
         ArchiveStoreType.Db2 => new Db2ArchiveEventStore(options.Db2ConnectionString),
+        ArchiveStoreType.PostgreSql => new PostgresArchiveEventStore(options.PgConnectionString),
         ArchiveStoreType.AzureSql => new AzureSqlArchiveEventStore(options.AzsqlConnectionString),
         _ => throw new InvalidOperationException("no store for " + options.StoreType),
     };

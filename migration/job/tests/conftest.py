@@ -208,7 +208,29 @@ def make_ctx(
     )
 
 
-def make_manifest_tree(tmp_path: Path, token: str, *, purge: bool = True, before: bool = False) -> Path:
+AZURE_TARGET_OVERLAY = """target:
+  provider: azuresql
+  connection_env:
+    server: AZSQL_SERVER
+    database: AZSQL_DATABASE
+    user: AZSQL_USER
+    password: AZSQL_PASSWORD
+    auth_mode: AZSQL_AUTH
+    managed_identity_client_id: AZURE_CLIENT_ID
+  ddl_dir: migration/target/sql
+  typemap: migration/job/typemaps/db2-to-azuresql.yaml
+"""
+
+
+def make_manifest_tree(
+    tmp_path: Path,
+    token: str,
+    *,
+    purge: bool = True,
+    before: bool = False,
+    azure_target: bool = False,
+    load_engine: str = "serial",
+) -> Path:
     """Copy the repo manifest into <tmp>/<token>/migration with run_token=<token> and before/after overlays.
 
     Relative manifest paths (copybooks, typemaps, DDL) resolve through symlinks to the real repo tree.
@@ -221,8 +243,9 @@ def make_manifest_tree(tmp_path: Path, token: str, *, purge: bool = True, before
     base = MANIFEST.read_text(encoding="utf-8").replace("run_token: d24", f"run_token: {token}")
     (d / "manifest.yaml").write_text(base, encoding="utf-8")
     (d / "manifests" / f"{token}-after.yaml").write_text(
-        f"namespace: {token}-after\nextends: ../manifest.yaml\nmigrate: true\nazure: true\n"
-        f"purge: {'true' if purge else 'false'}\n",
+        f"namespace: {token}-after\nextends: ../manifest.yaml\nmigrate: true\n"
+        f"azure: {'true' if azure_target else 'false'}\npurge: {'true' if purge else 'false'}\n"
+        f"execution:\n  load_engine: {load_engine}\n" + (AZURE_TARGET_OVERLAY if azure_target else ""),
         encoding="utf-8",
     )
     (d / "manifests" / f"{token}-before.yaml").write_text(

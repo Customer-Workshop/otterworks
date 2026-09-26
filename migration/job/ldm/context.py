@@ -7,6 +7,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .config import LoadedManifest, Manifest, TableConfig
 from .copybook import Copybook, parse_copybook
@@ -14,6 +15,9 @@ from .drivers.base import SelectionSpec, SourceDriver, TargetDriver
 from .errors import ConfigError
 from .staging import BlobStore
 from .typemap import ColumnSpec, build_column_specs, load_typemap
+
+if TYPE_CHECKING:
+    from .drivers.factory import TargetSpec
 
 DEFAULT_LOCAL_STAGING = "/work/staging"
 
@@ -71,6 +75,7 @@ class RunContext:
     log: Log
     env: dict[str, str] = field(default_factory=dict)
     tables: dict[str, TableSpec] = field(default_factory=dict)
+    target_spec: TargetSpec | None = None  # how a Spark task reopens `target`; None for injected drivers
 
     @property
     def manifest(self) -> Manifest:

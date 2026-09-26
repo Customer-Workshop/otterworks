@@ -42,6 +42,13 @@ public static class Db2Text
         return seven + nanosTail.ToString("00000", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>PostgreSQL TIMESTAMP(6) value plus the six-digit nanos tail (digits 7-12) rebuilds the original TIMESTAMP(12).</summary>
+    public static string Timestamp12FromMicros(DateTime timestamp6, int nanosTail6)
+    {
+        var six = timestamp6.ToString("yyyy-MM-dd-HH.mm.ss.ffffff", CultureInfo.InvariantCulture);
+        return six + nanosTail6.ToString("000000", CultureInfo.InvariantCulture);
+    }
+
     /// <summary>Db2 <c>YYYYMMDD</c> text to ISO <c>YYYY-MM-DD</c>; anything else (e.g. low-values) is returned trimmed.</summary>
     public static string IsoDateFromYyyymmdd(string yyyymmdd)
     {

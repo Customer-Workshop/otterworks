@@ -1,4 +1,4 @@
-"""Staging: local fixed-width files plus an optional Azure Blob container (CONTRACTS.md §6.4)."""
+"""Staging: local fixed-width files plus an optional S3 bucket or Azure Blob container (CONTRACTS.md §6.4)."""
 
 from __future__ import annotations
 
@@ -68,6 +68,46 @@ class DirectoryBlobStore:
         dest = self.root / blob_path
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
+
+
+class S3BlobStore:
+    """boto3 backed store on a shared bucket; tenant isolation is the `{namespace}/{run_id}/` key prefix.
+
+    Credentials come from the default boto3 chain (IRSA on EKS, env/profile locally). `endpoint_url` points at a
+    MinIO/localstack stand-in for tests.
+    """
+
+    enabled = True
+
+    def __init__(self, bucket: str, region: str | None = None, endpoint_url: str | None = None):
+        try:
+            import boto3
+            from botocore.exceptions import ClientError
+        except ImportError as e:  # pragma: no cover - exercised only in the image
+            raise ConfigError("boto3 is not installed; pip install 'ldm[s3]'") from e
+        self.bucket = bucket
+        self._not_found = ClientError
+        self.client = boto3.client("s3", region_name=region or None, endpoint_url=endpoint_url or None)
+
+    def upload(self, local: Path, blob_path: str) -> None:
+        with local.open("rb") as f:
+            self.client.upload_fileobj(f, self.bucket, blob_path)
+
+    def download(self, blob_path: str, local: Path) -> bool:
+        local.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with local.open("wb") as f:
+                self.client.download_fileobj(self.bucket, blob_path, f)
+        except self._not_found as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code in ("404", "NoSuchKey", "NotFound"):
+                local.unlink(missing_ok=True)
+                return False
+            raise
+        return True
+
+    def upload_bytes(self, data: bytes, blob_path: str, content_type: str) -> None:
+        self.client.put_object(Bucket=self.bucket, Key=blob_path, Body=data, ContentType=content_type)
 
 
 class AzureBlobStore:

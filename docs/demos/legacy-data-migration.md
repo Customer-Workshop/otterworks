@@ -40,8 +40,8 @@ Azure `otterworks/<token>/terraform.tfstate` in the `TFSTATE_AZ_*` storage accou
 
 ## 2. Prerequisites (presenter workstation or CI runner)
 
-Tools: `aws`, `kubectl`, `helm`, `terraform >= 1.7`, `jq`, `az` (AFTER only), `openssl`, and
-for the AFTER token [go-sqlcmd](https://github.com/microsoft/go-sqlcmd) on `PATH` (falls back
+Tools: `aws`, `kubectl`, `helm`, `terraform >= 1.7`, `jq`, `openssl`; only for an `azure: true`
+overlay additionally `az` and [go-sqlcmd](https://github.com/microsoft/go-sqlcmd) on `PATH` (falls back
 to `docker run mcr.microsoft.com/mssql-tools`, which cannot grant the managed identity - Entra
 auth - so prefer go-sqlcmd).
 
@@ -50,7 +50,7 @@ aws sts get-caller-identity                      # account 599083837640
 aws eks update-kubeconfig --name otterworks-dev --region us-east-1
 export DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id otterworks/dev/rds/master \
   --region us-east-1 --query SecretString --output text | jq -r .password)
-# AFTER token only:
+# only for an azure: true overlay (the default AFTER flow is PostgreSQL + S3, no Azure):
 export AZURE_CLIENT_ID=... AZURE_CLIENT_SECRET=... AZURE_TENANT_ID=... AZURE_SUBSCRIPTION_ID=...
 export TFSTATE_AZ_ACCOUNT=<storage account> TFSTATE_AZ_RESOURCE_GROUP=<rg> TFSTATE_AZ_CONTAINER=tfstate
 ```
@@ -210,10 +210,17 @@ anyone remembering to.
 - AWS: one gp3 20 GiB volume (~$1.60/month), S3 unload files (< 5 GB, 7-day lifecycle),
   ECR (10-image lifecycle). The tenant itself runs on the shared SPOT node group; Db2 needs
   about 2 vCPU / 4 GiB while seeding.
-- Azure (AFTER only): SQL serverless GP 2 vCore auto-pauses after 60 min idle (compute
-  ~$0.50/vCore-hour while active, storage ~$0.12/GB-month); Container Apps environment
-  consumption plan (Report/Audit copies scale to zero); storage account + Key Vault are cents.
-  A 72 h window with a couple of hours of active use is well under $50.
+- AFTER target (default): the tenant's existing PostgreSQL database on the shared RDS instance
+  (no new instance, no new database - `mig`/`stg`/`arch` schemas only, roughly 1-2 GB of
+  storage for the selected slice), staging in the same S3 bucket as the unload files
+  (7-day lifecycle) and PySpark in local mode inside the one-shot Job (about 0.5-2 vCPU /
+  2.5 GiB for the minutes LOAD runs). Marginal cost of the AFTER tenant is therefore only its
+  pods on the shared SPOT node group: a few dollars for a 72 h window.
+- Azure (optional, `azure: true` overlay only): SQL serverless GP 2 vCore auto-pauses after
+  60 min idle (compute ~$0.50/vCore-hour while active, storage ~$0.12/GB-month); Container
+  Apps environment consumption plan (Report/Audit copies scale to zero); storage account +
+  Key Vault are cents. A 72 h window with a couple of hours of active use is well under $50.
+  The default flow never provisions any of this and needs no Azure credentials.
 - Both deployments stay up for the talk; destroy immediately afterwards (section 7) or let
   the reaper do it.
 

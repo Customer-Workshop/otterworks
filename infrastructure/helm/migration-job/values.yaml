@@ -29,7 +29,18 @@ job:
   restartPolicy: Never
 
 # Non-secret environment (CONTRACTS.md §9.2). LDM_HOST is fixed to eks by this chart.
+# Default target: the tenant's existing PostgreSQL database on the shared RDS instance
+# (PG_*), staging in the token's prefix of the shared S3 bucket (S3_STAGING_BUCKET). The
+# AZSQL_*/AZ_* keys are only for the optional Azure rehearsal overlay (azure: true).
 env:
+  PG_HOST: ""
+  PG_PORT: "5432"
+  PG_DATABASE: ""
+  PG_SSLMODE: require
+  S3_STAGING_BUCKET: ""
+  AWS_REGION: us-east-1
+  # optional S3-compatible endpoint (localstack / MinIO); empty = AWS
+  S3_ENDPOINT_URL: ""
   AZSQL_SERVER: ""
   AZSQL_DATABASE: ""
   AZSQL_AUTH: sql
@@ -46,7 +57,9 @@ env:
 secrets:
   # keys DB2_USER, DB2_PASSWORD (created by the db2-archive chart / ops)
   db2: db2-archive-credentials
-  # keys AZSQL_USER, AZSQL_PASSWORD, AZ_STORAGE_KEY (created by ops from Key Vault)
+  # keys PG_USER, PG_PASSWORD (created by deploy-demo.sh from the tenant database credentials)
+  postgres: ldm-postgres
+  # keys AZSQL_USER, AZSQL_PASSWORD, AZ_STORAGE_KEY (created by ops from Key Vault); optional
   azure: ldm-azure
 
 # Manifest + overlay are mounted over the copies baked into the image so the presenter can edit them
@@ -59,17 +72,22 @@ manifest:
 staging:
   sizeLimit: 10Gi
 
+# Sized for PySpark local mode inside the single Job container (manifest execution.spark.*:
+# local[*] master, 1g driver). Spark scratch lives on the staging emptyDir (SPARK_LOCAL_DIRS).
 resources:
   requests:
-    cpu: 250m
-    memory: 512Mi
+    cpu: 500m
+    memory: 1536Mi
   limits:
-    cpu: "1"
-    memory: 1Gi
+    cpu: "2"
+    memory: 2560Mi
 
 networkPolicy:
   enabled: true
 
 serviceAccount:
   create: true
+  # IRSA role for the S3 staging prefix (demo-aws Terraform output job_role_arn). Without it
+  # the Job runs with the node role and S3 staging fails closed.
+  roleArn: ""
   annotations: {}
